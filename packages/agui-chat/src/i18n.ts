@@ -25,7 +25,13 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "attach": "Attach a file",
     "useAttached": "Please use the attached document.",
     "remove": "Remove",
-    "tooBig": "{name} is larger than {mb} MB"
+    "tooBig": "{name} is larger than {mb} MB",
+    "errNetwork": "No connection. Check the internet.",
+    "errAccess": "No access to the assistant. Reload the page and sign in again.",
+    "errBusy": "The assistant is busy right now. Try again in a minute.",
+    "errServer": "The assistant's server had a problem.",
+    "errModel": "The assistant could not answer this time.",
+    "slow": "Still working\u2026"
   },
   "ru": {
     "title": "\u0410\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442",
@@ -52,7 +58,13 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "attach": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u0444\u0430\u0439\u043b",
     "useAttached": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435, \u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u043d\u044b\u0439 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442.",
     "remove": "\u0423\u0431\u0440\u0430\u0442\u044c",
-    "tooBig": "{name}: \u0431\u043e\u043b\u044c\u0448\u0435 {mb} \u041c\u0411"
+    "tooBig": "{name}: \u0431\u043e\u043b\u044c\u0448\u0435 {mb} \u041c\u0411",
+    "errNetwork": "\u041d\u0435\u0442 \u0441\u0432\u044f\u0437\u0438. \u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0438\u043d\u0442\u0435\u0440\u043d\u0435\u0442.",
+    "errAccess": "\u041d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u0430 \u043a \u0430\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442\u0443. \u041e\u0431\u043d\u043e\u0432\u0438\u0442\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0438 \u0432\u043e\u0439\u0434\u0438\u0442\u0435 \u0441\u043d\u043e\u0432\u0430.",
+    "errBusy": "\u0410\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442 \u0441\u0435\u0439\u0447\u0430\u0441 \u0437\u0430\u043d\u044f\u0442. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0447\u0435\u0440\u0435\u0437 \u043c\u0438\u043d\u0443\u0442\u0443.",
+    "errServer": "\u041d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435 \u0430\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442\u0430 \u0441\u0431\u043e\u0439.",
+    "errModel": "\u0410\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442 \u043d\u0435 \u0441\u043c\u043e\u0433 \u043e\u0442\u0432\u0435\u0442\u0438\u0442\u044c \u0432 \u044d\u0442\u043e\u0442 \u0440\u0430\u0437.",
+    "slow": "\u0415\u0449\u0451 \u0440\u0430\u0431\u043e\u0442\u0430\u044e\u2026"
   },
   "uk": {
     "title": "\u0410\u0441\u0438\u0441\u0442\u0435\u043d\u0442",
@@ -79,7 +91,13 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "attach": "\u041f\u0440\u0438\u043a\u0440\u0456\u043f\u0438\u0442\u0438 \u0444\u0430\u0439\u043b",
     "useAttached": "\u0412\u0438\u043a\u043e\u0440\u0438\u0441\u0442\u0430\u0439\u0442\u0435, \u0431\u0443\u0434\u044c \u043b\u0430\u0441\u043a\u0430, \u0434\u043e\u0434\u0430\u043d\u0438\u0439 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442.",
     "remove": "\u041f\u0440\u0438\u0431\u0440\u0430\u0442\u0438",
-    "tooBig": "{name}: \u0431\u0456\u043b\u044c\u0448\u0435 {mb} \u041c\u0411"
+    "tooBig": "{name}: \u0431\u0456\u043b\u044c\u0448\u0435 {mb} \u041c\u0411",
+    "errNetwork": "\u041d\u0435\u043c\u0430\u0454 \u0437\u0432'\u044f\u0437\u043a\u0443. \u041f\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u0456\u043d\u0442\u0435\u0440\u043d\u0435\u0442.",
+    "errAccess": "\u041d\u0435\u043c\u0430\u0454 \u0434\u043e\u0441\u0442\u0443\u043f\u0443 \u0434\u043e \u0430\u0441\u0438\u0441\u0442\u0435\u043d\u0442\u0430. \u041e\u043d\u043e\u0432\u0456\u0442\u044c \u0441\u0442\u043e\u0440\u0456\u043d\u043a\u0443 \u0442\u0430 \u0443\u0432\u0456\u0439\u0434\u0456\u0442\u044c \u0437\u043d\u043e\u0432\u0443.",
+    "errBusy": "\u0410\u0441\u0438\u0441\u0442\u0435\u043d\u0442 \u0437\u0430\u0440\u0430\u0437 \u0437\u0430\u0439\u043d\u044f\u0442\u0438\u0439. \u0421\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0437\u0430 \u0445\u0432\u0438\u043b\u0438\u043d\u0443.",
+    "errServer": "\u041d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0456 \u0430\u0441\u0438\u0441\u0442\u0435\u043d\u0442\u0430 \u0437\u0431\u0456\u0439.",
+    "errModel": "\u0410\u0441\u0438\u0441\u0442\u0435\u043d\u0442 \u043d\u0435 \u0437\u043c\u0456\u0433 \u0432\u0456\u0434\u043f\u043e\u0432\u0456\u0441\u0442\u0438 \u0446\u044c\u043e\u0433\u043e \u0440\u0430\u0437\u0443.",
+    "slow": "\u0429\u0435 \u043f\u0440\u0430\u0446\u044e\u044e\u2026"
   },
   "de": {
     "title": "Assistent",
@@ -106,7 +124,13 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "attach": "Datei anh\u00e4ngen",
     "useAttached": "Bitte nutze das angeh\u00e4ngte Dokument.",
     "remove": "Entfernen",
-    "tooBig": "{name} ist gr\u00f6\u00dfer als {mb} MB"
+    "tooBig": "{name} ist gr\u00f6\u00dfer als {mb} MB",
+    "errNetwork": "Keine Verbindung. Pr\u00fcfe das Internet.",
+    "errAccess": "Kein Zugriff auf den Assistenten. Lade die Seite neu und melde dich wieder an.",
+    "errBusy": "Der Assistent ist gerade ausgelastet. Versuche es in einer Minute.",
+    "errServer": "Der Server des Assistenten hatte ein Problem.",
+    "errModel": "Der Assistent konnte diesmal nicht antworten.",
+    "slow": "Arbeite noch\u2026"
   },
   "fr": {
     "title": "Assistant",
@@ -133,7 +157,13 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "attach": "Joindre un fichier",
     "useAttached": "Utilisez le document joint, s'il vous pla\u00eet.",
     "remove": "Retirer",
-    "tooBig": "{name} d\u00e9passe {mb} Mo"
+    "tooBig": "{name} d\u00e9passe {mb} Mo",
+    "errNetwork": "Pas de connexion. V\u00e9rifiez Internet.",
+    "errAccess": "Pas d'acc\u00e8s \u00e0 l'assistant. Rechargez la page et reconnectez-vous.",
+    "errBusy": "L'assistant est occup\u00e9. R\u00e9essayez dans une minute.",
+    "errServer": "Le serveur de l'assistant a eu un probl\u00e8me.",
+    "errModel": "L'assistant n'a pas pu r\u00e9pondre cette fois.",
+    "slow": "Je travaille encore\u2026"
   },
   "it": {
     "title": "Assistente",
@@ -160,7 +190,13 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "attach": "Allega un file",
     "useAttached": "Usa il documento allegato, per favore.",
     "remove": "Rimuovi",
-    "tooBig": "{name} supera {mb} MB"
+    "tooBig": "{name} supera {mb} MB",
+    "errNetwork": "Nessuna connessione. Controlla internet.",
+    "errAccess": "Nessun accesso all'assistente. Ricarica la pagina e accedi di nuovo.",
+    "errBusy": "L'assistente \u00e8 occupato. Riprova tra un minuto.",
+    "errServer": "Il server dell'assistente ha avuto un problema.",
+    "errModel": "L'assistente non \u00e8 riuscito a rispondere questa volta.",
+    "slow": "Sto ancora lavorando\u2026"
   },
   "es": {
     "title": "Asistente",
@@ -187,6 +223,12 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "attach": "Adjuntar un archivo",
     "useAttached": "Usa el documento adjunto, por favor.",
     "remove": "Quitar",
-    "tooBig": "{name} supera los {mb} MB"
+    "tooBig": "{name} supera los {mb} MB",
+    "errNetwork": "Sin conexi\u00f3n. Revisa internet.",
+    "errAccess": "Sin acceso al asistente. Recarga la p\u00e1gina e inicia sesi\u00f3n de nuevo.",
+    "errBusy": "El asistente est\u00e1 ocupado. Int\u00e9ntalo en un minuto.",
+    "errServer": "El servidor del asistente tuvo un problema.",
+    "errModel": "El asistente no pudo responder esta vez.",
+    "slow": "Sigo trabajando\u2026"
   }
 }

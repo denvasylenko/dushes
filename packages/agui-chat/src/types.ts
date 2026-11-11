@@ -87,6 +87,8 @@ export interface ChatApi {
   readonly threadId: string
   readonly options: ChatOptions
   readonly busy: boolean
+  /** The chat's language (two letters), e.g. for plural rules. */
+  readonly lang: string
   /** Files attached in the composer for the message being sent (plugins put them into the run). */
   readonly attachments: Attachment[]
   send(text: string): Promise<void>

@@ -72,7 +72,7 @@ export function formguide(opts: FormguideOptions): Plugin {
     toolLabels,
     renderers: {
       set_fields: (it, c) => fieldCard(it, c, ctx),
-      ask: (it, c) => askCard(it, c),
+      ask: (it, c) => askCard(it, c, ctx),
       upload: (it, c) => uploadCard(it, c, ctx),
       confirm: (it, c) => confirmCard(it, c),
     },

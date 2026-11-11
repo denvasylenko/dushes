@@ -503,10 +503,34 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
         allow_text = True
     if not opts and not allow_text:
         raise ToolError("a question without options must allow a typed answer")
-    ctx.pending_interaction = {"kind": "ask", "question": question, "options": opts,
+    payload: dict[str, Any] = {"kind": "ask", "question": question, "options": opts,
                                "multiple": bool(multiple) and bool(opts), "allow_text": allow_text,
                                **({"input": inp} if inp else {}), **({"field": field_name} if field_name else {})}
+    if field_name and opts:
+        payload.update(_applying(ctx, field_name, opts))
+    ctx.pending_interaction = payload
     return ""
+
+
+def _applying(ctx: ToolCtx, name: str, opts: list[dict]) -> dict:
+    """A question about an editable choice field fills it when answered: each option carries its value in
+    the form's own format, and the card carries the field's previous value (for Undo)."""
+    e = ctx.ov[name]
+    if not e.editable or (e.node.role not in CHOICE and e.node.role != "multiselect"):
+        return {}
+    try:
+        for o in opts:
+            found = vals.find_option(e.options, o["id"])
+            if found is None:
+                return {}
+            choice = {"id": found["id"], "name": found["name"]}
+            o["value"] = (form_value(ctx, name, [choice])[0] if e.node.role == "multiselect"
+                          else form_value(ctx, name, choice))
+    except ToolError:
+        for o in opts:
+            o.pop("value", None)
+        return {}
+    return {"applies": True, "label": e.label or name, **previous_of(ctx, name)}
 
 
 INPUT_TYPES = ("text", "number", "date", "time", "datetime")

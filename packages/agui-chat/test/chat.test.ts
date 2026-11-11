@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import '../src/index'
 import type { AguiChatElement } from '../src/element'
+import { errorKind } from '../src/element'
 import { formguide } from '../src/formguide/index'
 import { parseBlock, sseEvents } from '../src/transport'
 import { newState, step, visible } from '../src/typewriter'
@@ -197,11 +198,43 @@ describe('<agui-chat>', () => {
   it('shakes on an empty send and shows a retry after an error', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{"detail":"boom"}', { status: 500 })))
     const el = await mount()
-    ;($(el, '.send') as HTMLButtonElement).disabled = false
+    expect($(el, '.send').classList.contains('empty')).toBe(true)   // looks quiet but still answers a tap
+    expect(($(el, '.send') as HTMLButtonElement).disabled).toBe(false)
     $(el, '.send').click()
     expect($(el, '.foot').classList.contains('nudge')).toBe(true)
     await el.send('hi')
-    expect($(el, '.error').textContent).toContain('boom')
+    expect($(el, '.error span').textContent).toBe("The assistant's server had a problem.")   // human words
+    expect($(el, '.error span').title).toContain('boom')                                       // the raw text for whoever debugs
+    expect($(el, '.error .btn').textContent).toBe('Try again')
+  })
+
+  it('names the kind of a failure', () => {
+    expect(errorKind('TypeError: Failed to fetch')).toBe('errNetwork')
+    expect(errorKind('HTTP 401 Unauthorized')).toBe('errAccess')
+    expect(errorKind('429 rate limit exceeded')).toBe('errBusy')
+    expect(errorKind('502 Bad Gateway')).toBe('errServer')
+    expect(errorKind('anthropic: invalid_request_error')).toBe('errModel')
+    expect(errorKind('boom')).toBe('error')
+  })
+
+  it('says it is still working when the dots last', async () => {
+    vi.useFakeTimers()
+    try {
+      let release!: () => void
+      vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((ok) => { release = () => ok(sse(run(...text('m', 'Hi')))) })))
+      const el = document.createElement('agui-chat') as AguiChatElement
+      for (const [k, v] of Object.entries({ mode: 'inline', typing: 'plain', 'persist-thread': 'off' })) el.setAttribute(k, v)
+      document.body.appendChild(el)
+      const sent = el.send('hi')
+      await vi.advanceTimersByTimeAsync(1000)
+      expect($(el, '.wait .slow')).toBeNull()
+      await vi.advanceTimersByTimeAsync(3500)
+      expect($(el, '.wait .slow').textContent).toBe('Still working\u2026')
+      release()
+      await vi.runAllTimersAsync()
+      await sent
+      expect($(el, '.wait')).toBeNull()
+    } finally { vi.useRealTimers() }
   })
 })
 
@@ -348,6 +381,51 @@ describe('formguide plugin', () => {
     ;($(el, '.card .btn.pri') as HTMLButtonElement).click()
     await tick(5)
     expect(bodies[1].forwardedProps.command.resume).toEqual({ answer: { text: '2026-11-20' } })
+  })
+
+  it('fills the field with one tap, with Undo', async () => {
+    const q = { type: 'ask', card_id: 'q1', question: 'Which loan?', field: 'loan_type', label: 'Loan type', applies: true, previous: null,
+      options: [{ id: 'auto', label: 'Car loan', value: { id: 'auto', name: 'Car loan' } }, { id: 'cash', label: 'Cash', value: { id: 'cash', name: 'Cash' } }],
+      multiple: false, allow_text: true }
+    const { el, applyChanges } = await withPlugin(run(interrupt(q)))
+    ;($$(el, '.card .chip')[0] as HTMLButtonElement).click()
+    await tick(5)
+    expect(applyChanges).toHaveBeenCalledWith({ loan_type: { id: 'auto', name: 'Car loan' } })
+    const resume = bodies[1].forwardedProps.command.resume
+    expect(resume).toMatchObject({ answer: { ids: ['auto'] }, config: { state: { loan_type: { id: 'auto', name: 'Car loan' } } }, ui: { focused: null } })
+    expect($(el, '.card .ok-line').textContent).toContain('Car loan')
+    expect($$(el, '.card .chip')).toHaveLength(0)                                       // the card shrank to its answer
+    const undo = $(el, '.card .ok-line .btn') as HTMLButtonElement
+    expect(undo.textContent).toBe('Undo')
+    undo.click()
+    await tick(5)
+    expect(applyChanges).toHaveBeenLastCalledWith({ loan_type: null })
+    expect(bodies[2].messages.at(-1).content).toContain('Loan type')
+  })
+
+  it('fills a multiple-choice field with a list, and keeps the card when apply fails', async () => {
+    const q = { type: 'ask', card_id: 'q1', question: 'Which?', field: 'extras', applies: true, previous: [], multiple: true, allow_text: false,
+      options: [{ id: 'a', label: 'A', value: 'a' }, { id: 'b', label: 'B', value: 'b' }] }
+    const applyChanges = vi.fn().mockRejectedValueOnce(new Error('HTTP 500')).mockResolvedValue({ state: {} })
+    const { el } = await withPlugin(run(interrupt(q)), { applyChanges })
+    $$(el, '.card .chip').forEach((b) => b.click())
+    ;($(el, '.card .btn.pri') as HTMLButtonElement).click()
+    await tick(5)
+    expect($(el, '.card .err-line').textContent).toBe('Could not fill in the field. Try again.')
+    expect(bodies).toHaveLength(1)                                                       // nothing sent yet
+    ;($(el, '.card .btn.pri') as HTMLButtonElement).click()
+    await tick(5)
+    expect(applyChanges).toHaveBeenLastCalledWith({ extras: ['a', 'b'] })
+    expect(bodies[1].forwardedProps.command.resume.answer).toEqual({ ids: ['a', 'b'] })
+  })
+
+  it('counts the fields on the fill button, in the right plural', async () => {
+    let { el } = await withPlugin(run(interrupt({ type: 'set_fields', card_id: 'c1', changes: CHANGES })))
+    expect(($(el, '.card .btn.pri') as HTMLButtonElement).textContent).toBe('Fill in 3 fields')
+    ;({ el } = await withPlugin(run(interrupt({ type: 'set_fields', card_id: 'c2', changes: CHANGES.slice(0, 1) }))))
+    expect(($(el, '.card .btn.pri') as HTMLButtonElement).textContent).toBe('Fill in 1 field')
+    el.options = { lang: 'ru' }
+    expect(el.t('fillFields', { n: 5, fields: el.t('field_many') })).toBe('\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c 5 \u043f\u043e\u043b\u0435\u0439')
   })
 
   it('confirms and skips', async () => {

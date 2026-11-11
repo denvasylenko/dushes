@@ -99,7 +99,8 @@ export default function App() {
     javaForm(formId).then(async (f) => {
       // the frontend forwards the JSX, the domain pack and the initial config (checked for value formats) once
       const hash = await registerLayout(f.jsx, f.form_id, f.domain, f.config)
-      const title = (f.domain?.title as string) ?? f.form_id
+      // the pack's title, or the id in words: loan_application -> Loan application
+      const title = (f.domain?.title as string) ?? f.form_id.replace(/[_-]+/g, ' ').replace(/^./, (c: string) => c.toUpperCase())
       // reopen: the same conversation, the saved form values and the sections that were open
       const threadId = store.get<string>(`formguide:thread:${f.form_id}`) ?? crypto.randomUUID()
       store.set(`formguide:thread:${f.form_id}`, threadId)

@@ -420,6 +420,18 @@ def build_graph(guide: FormGuide):
             if kind == "ask":
                 got, why = read_answer(payload, answer)
                 text = answer_text(got, why)
+                if got and got.get("ids") and payload.get("applies") and answer.get("config"):
+                    # the client filled the field with the chosen option: like an accepted card
+                    new_cfg = answer["config"]
+                    upd["config"] = new_cfg
+                    ctx = ctx_for({**state, "config": new_cfg, "ui": answer.get("ui") or state.get("ui")})
+                    diff = compute_diff(ctx.ov, state.get("snapshot"), agent_names={payload["field"]})
+                    ctx.deps.observe(diff, ctx.ov)
+                    v = (state.get("version") or 0) + 1
+                    upd.update(snapshot=ctx.ov.snapshot(), version=v)
+                    label = ctx.ov[payload["field"]].label or payload["field"]
+                    text += (f". This filled the field {label} ({payload['field']}); do not propose it again.\n"
+                             + render_changes(ctx.ov, diff, v - 1, v))
             elif kind == "upload":
                 tid = state.get("thread_id") or ""
                 files = read_upload(answer, lambda i: (guide.attachments.load(tid, i) or (None,))[0])

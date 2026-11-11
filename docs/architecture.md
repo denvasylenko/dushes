@@ -28,7 +28,7 @@ A ready-made client is [`<agui-chat>`](chat-widget.md) ([`packages/agui-chat`](.
 
 A run streams `RUN_STARTED`, text (`TEXT_MESSAGE_*`), server tool calls with results (`TOOL_CALL_*`, `TOOL_CALL_RESULT`), frontend tool calls without results, `CUSTOM` events (`ui_directive`, `on_interrupt`, `tool_progress` for sub-steps of a running tool, `suggestions` for quick replies when enabled, `agent_context`, `agent_note`, `memory_compacted`), and ends with exactly one `RUN_FINISHED` or `RUN_ERROR`. Four kinds of cards stop a turn, one at a time:
 - a field-change card (`type: "set_fields"`), answered `{accepted, config, names?, edited?}`. Each change carries `previous` / `previous_display`; `names` keeps a subset of rows, and `edited` holds values the user changed on the card;
-- a question from `ask_user` (`type: "ask"`, `{question, options: [{id, label}], multiple, allow_text, input?, field?}`), answered `{answer: {ids?, text?}}`. `input` asks for a typed date, time or number;
+- a question from `ask_user` (`type: "ask"`, `{question, options: [{id, label, value?}], multiple, allow_text, input?, field?, applies?, previous?}`), answered `{answer: {ids?, text?}}`. For an editable choice field the options carry form-format values and `applies: true`: the UI fills the field on the tap and resumes with `{answer, config, ui}`, which `confirm` takes like an accepted card (new baseline and version, the field counts as filled); `input` asks for a typed date, time or number;
 - a file request from `request_file` (`type: "upload"`), answered `{attachment_ids}`;
 - a confirmation from `confirm_action`, or a call held by `confirm_tools` (`type: "confirm"`), answered `{accepted}`.
 
@@ -66,7 +66,7 @@ message + config
 | `compact` | Summarizes older turns when the history is above the threshold | A failed compaction never blocks the turn |
 | `llm` | Streams the reply; withholds short internal notes before tool calls | Retries once without earlier reasoning blocks if the provider rejects them |
 | `tools` | Built-in tools, skill tools, configured tools; a frontend tool call ends the run | `propose_changes` validates visibility, availability, read-only and options |
-| `confirm` | Interrupt with the card (`set_fields`) or question (`ask`); afterwards gives the model the form's reaction, which rows were kept (`names`), or the answer | An ignored card or question is closed on the next message; one waiting interaction per step |
+| `confirm` | Interrupt with the card (`set_fields`) or question (`ask`); afterwards gives the model the form's reaction, which rows were kept (`names`), or the answer (an applied answer also sets the config baseline) | An ignored card or question is closed on the next message; one waiting interaction per step |
 | `nudge` | Asks the model to answer if it ended the turn silently | At most once per turn |
 
 After a card is accepted, the model receives the diff (for example "+ appeared tab_collateral") and continues dependent steps: service → barber → date → slot.

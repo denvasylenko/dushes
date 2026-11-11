@@ -59,6 +59,32 @@ function editor(ch: Change, props: Record<string, any> | undefined): { el: HTMLE
   }
 }
 
+/** "Fill in 3 fields", with the language's plural form. */
+function fillLabel(c: RendererContext, n: number): string {
+  const form = new Intl.PluralRules(c.chat.lang).select(n)
+  const word = c.t(`field_${form}`) !== `field_${form}` ? c.t(`field_${form}`) : c.t('field_other')
+  return c.t('fillFields', { n, fields: word })
+}
+
+/** True on a mouse or trackpad: there, focusing a new card is helpful; on a touch screen it is not. */
+export const finePointer = (): boolean => typeof matchMedia !== 'function' || matchMedia('(pointer: fine)').matches
+
+/** An Undo link on a result line: puts the previous values back and tells the agent. Gone after a while. */
+function undoButton(line: HTMLElement, c: RendererContext, ctx: Ctx, fields: { name: string; label: string; previous: unknown }[]): void {
+  if (!ctx.flags.undo) return
+  const undo = h('button', { class: 'btn link', type: 'button', 'data-keep': true, onclick: async () => {
+    undo.setAttribute('disabled', '')
+    try {
+      await (ctx.revertChanges ?? ctx.applyChanges)(Object.fromEntries(fields.map((f) => [f.name, f.previous])))
+      line.querySelector('span')!.textContent = c.t('undone')
+      await whenIdle(c.chat)
+      void c.chat.send(c.t('undoneMsg', { fields: fields.map((f) => f.label).join(', ') }))
+    } catch { undo.removeAttribute('disabled') }
+  } }, c.t('undo'))
+  line.appendChild(undo)
+  setTimeout(() => undo.remove(), (ctx.undoSeconds ?? 20) * 1000)
+}
+
 const whenIdle = (chat: ChatApi): Promise<void> => new Promise((ok) => {
   if (!chat.busy) return ok()
   const f = () => { chat.host.removeEventListener('agui:run-end', f); chat.host.removeEventListener('agui:error', f); ok() }
@@ -75,31 +101,31 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
   const edits = new Map<string, [unknown, string]>()
   const many = changes.length > 1
   const err = h('div', { class: 'muted', role: 'alert' })
-  const primary = h('button', { class: 'btn pri', type: 'button' }, c.t('fill')) as HTMLButtonElement
+  const primary = h('button', { class: 'btn pri', type: 'button' }, fillLabel(c, changes.length)) as HTMLButtonElement
   const sync = () => {
     primary.disabled = keep.size === 0
-    primary.textContent = keep.size === changes.length ? c.t('fill') : c.t('fillN', { n: keep.size, total: changes.length })
+    primary.textContent = keep.size === changes.length ? fillLabel(c, keep.size) : c.t('fillN', { n: keep.size, total: changes.length })
   }
   let props: Record<string, any> = {} // eslint-disable-line @typescript-eslint/no-explicit-any
   void Promise.resolve(ctx.getState()).then((s) => { props = s.config?.props ?? {} }).catch(() => {})
 
   const rows = changes.map((ch) => {
     const valueEl = h('b', null, ch.display)
-    const row = h('div', { class: 'row', style: 'display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--agui-line)' })
+    const row = h('div', { class: 'row' })
     const check = flags.select && many
-      ? h('input', { type: 'checkbox', checked: true, 'aria-label': ch.label, style: 'margin-top:4px', onchange: (e: Event) => {
+      ? h('input', { type: 'checkbox', checked: true, 'aria-label': ch.label, onchange: (e: Event) => {
           if ((e.target as HTMLInputElement).checked) keep.add(ch.name); else keep.delete(ch.name)
-          row.style.opacity = keep.has(ch.name) ? '' : '.5'
+          row.classList.toggle('off', !keep.has(ch.name))
           sync()
         } })
       : null
     const prev = flags.diff && ch.previous_display && ch.previous_display !== ch.display
-      ? h('s', { class: 'muted', style: 'margin-right:6px' }, ch.previous_display) : null
-    const line = h('div', { style: 'flex:1;min-width:0' },
-      h('div', { class: 'muted', style: 'font-size:12.5px' }, ch.label),
+      ? h('s', { class: 'muted was' }, ch.previous_display) : null
+    const line = h('div', { class: 'row-main' },
+      h('div', { class: 'muted row-label' }, ch.label),
       h('div', null, prev, valueEl),
       flags.reason && ch.reason ? h('div', { class: 'muted' }, ch.reason) : null)
-    const tools = h('div', { style: 'display:flex;gap:2px;flex:none' })
+    const tools = h('div', { class: 'row-tools' })
     if (flags.edit) {
       tools.appendChild(h('button', { class: 'btn link', type: 'button', onclick: () => {
         const ed = editor(ch, props[ch.name])
@@ -110,7 +136,7 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
           box.replaceWith(line)
           tools.hidden = false
         } }, 'OK')
-        const box = h('div', { class: 'field', style: 'flex:1;display:flex;gap:6px;align-items:center' }, ed.el, done)
+        const box = h('div', { class: 'field' }, ed.el, done)
         line.replaceWith(box)
         tools.hidden = true
         ed.el.focus()
@@ -131,20 +157,7 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
   const status = (ok: boolean, applied: Change[], partial = false) => {
     const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '✓' : '✕'),
       h('span', null, ok ? (partial ? c.t('partly') : c.t('filled')) : c.t('rejected')))
-    if (ok && flags.undo) {
-      const undo = h('button', { class: 'btn link', type: 'button', 'data-keep': true, onclick: async () => {
-        undo.setAttribute('disabled', '')
-        const previous = Object.fromEntries(applied.map((x) => [x.name, x.previous ?? null]))
-        try {
-          await (ctx.revertChanges ?? ctx.applyChanges)(previous)
-          line.querySelector('span')!.textContent = c.t('undone')
-          await whenIdle(c.chat)
-          void c.chat.send(c.t('undoneMsg', { fields: applied.map((x) => x.label).join(', ') }))
-        } catch { undo.removeAttribute('disabled') }
-      } }, c.t('undo'))
-      line.appendChild(undo)
-      setTimeout(() => undo.remove(), (ctx.undoSeconds ?? 20) * 1000)
-    }
+    if (ok) undoButton(line, c, ctx, applied.map((x) => ({ name: x.name, label: x.label, previous: x.previous ?? null })))
     acts.replaceWith(line)
     card.querySelectorAll('.row .btn.link:not([data-keep])').forEach((b) => b.remove())   // no editing after the answer
   }
@@ -178,17 +191,40 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
 
 const INPUT: Record<string, string> = { date: 'date', time: 'time', datetime: 'datetime-local', number: 'number', text: 'text' }
 
-export function askCard(it: Interrupt, c: RendererContext): HTMLElement {
-  const options: { id: string; label: string }[] = it.options ?? []
+export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLElement {
+  const options: { id: string; label: string; value?: unknown }[] = it.options ?? []
   const multiple = !!it.multiple
+  const applies = !!(it.applies && it.field && ctx)   // tapping an option fills the field (no second card)
   const picked = new Set<string>()
+  const err = h('div', { class: 'muted err-line', role: 'alert' })
   const answered = (labels: string, ok = true) => {   // the card shrinks to the question and the answer
-    acts.replaceWith(h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '✓' : '✕'), h('span', null, labels)))
+    const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, labels))
+    acts.replaceWith(line)
     card.querySelector('.chips')?.remove()
     text?.remove()
+    err.remove()
+    return line
+  }
+  const fill = async (ids: string[], labels: string) => {
+    const chosen = ids.map((i) => options.find((o) => o.id === i)!)
+    const value = multiple ? chosen.map((o) => o.value) : chosen[0].value
+    card.querySelectorAll<HTMLButtonElement>('.chip, .btn').forEach((b) => { b.disabled = true })
+    err.textContent = ''
+    try {
+      const config = await ctx!.applyChanges({ [it.field]: value })
+      const state = await ctx!.getState()
+      const line = answered(labels)
+      undoButton(line, c, ctx!, [{ name: it.field, label: it.label ?? it.field, previous: it.previous ?? null }])
+      c.resolve({ answer: { ids }, config, ui: state.ui })
+    } catch (e) {
+      card.querySelectorAll<HTMLButtonElement>('.chip, .btn').forEach((b) => { b.disabled = false })
+      err.textContent = c.t('applyFailed')
+      err.title = e instanceof Error ? e.message : String(e)
+    }
   }
   const send = (ids: string[], text: string) => {
     const labels = [...ids.map((i) => options.find((o) => o.id === i)?.label ?? i), ...(text ? [`"${text}"`] : [])].join(', ')
+    if (applies && ids.length && !text) return void fill(ids, labels)
     answered(labels)
     c.resolve({ answer: { ...(ids.length ? { ids } : {}), ...(text ? { text } : {}) } })
   }
@@ -217,20 +253,21 @@ export function askCard(it: Interrupt, c: RendererContext): HTMLElement {
     if (ids.length || t) send(ids, t)
   }
   const sendBtn = h('button', { class: 'btn pri', type: 'button', onclick: submit }, c.t('send')) as HTMLButtonElement
-  const sync = () => { sendBtn.disabled = !(picked.size || text?.value.trim()) }
+  // single choice: the chips are the answer, Send appears only for typed text
+  const sync = () => { sendBtn.disabled = !(picked.size || text?.value.trim()); sendBtn.hidden = !multiple && !text?.value.trim() }
   const acts = h('div', { class: 'acts' }, (multiple || text) ? sendBtn : null,
     h('button', { class: 'btn link', type: 'button', onclick: () => { answered(c.t('skipped'), false); c.resolve({ accepted: false }) } }, c.t('skip')))
   const card = h('div', { tabindex: 0, 'aria-label': it.question },
     h('div', { class: 'card-q' }, it.question),
     options.length ? h('div', { class: 'chips' }, chips) : null,
-    text, acts)
+    text, err, acts)
   card.addEventListener('keydown', (e) => {   // 1..9 picks an option
     if (e.target instanceof HTMLInputElement) return
     const n = Number(e.key)
     if (n >= 1 && n <= chips.length) { e.preventDefault(); chips[n - 1].click() }
   })
   sync()
-  if (!options.length && text) text.setAttribute('autofocus', '')
+  if (!options.length && text && finePointer()) text.setAttribute('autofocus', '')
   return card
 }
 
@@ -255,19 +292,18 @@ function uploadOne(url: string, threadId: string, file: File, onProgress: (f: nu
 
 export function uploadCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElement {
   const picker = h('input', { type: 'file', accept: it.accept, multiple: !!it.multiple, hidden: true }) as HTMLInputElement
-  const bar = h('div', { style: 'height:4px;border-radius:4px;background:var(--agui-line);overflow:hidden;margin-top:10px', hidden: true },
-    h('div', { style: 'height:100%;width:0;background:var(--agui-link);transition:width .2s' }))
+  const bar = h('div', { class: 'bar', hidden: true }, h('div'))
   const msg = h('div', { class: 'muted', role: 'status' })
   const zone = h('div', {
-    style: 'border:1.5px dashed var(--agui-line-2);border-radius:14px;padding:18px;text-align:center;cursor:pointer',
+    class: 'zone',
     tabindex: 0, role: 'button',
     onclick: () => picker.click(),
     onkeydown: (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); picker.click() } },
-    ondragover: (e: DragEvent) => { e.preventDefault(); zone.style.borderColor = 'var(--agui-link)' },
-    ondragleave: () => { zone.style.borderColor = '' },
-    ondrop: (e: DragEvent) => { e.preventDefault(); zone.style.borderColor = ''; void go([...(e.dataTransfer?.files ?? [])]) },
-  }, h('div', null, `${c.t('drop')} `, h('span', { style: 'color:var(--agui-link)' }, c.t('pick'))),
-    h('div', { class: 'muted', style: 'margin-top:4px' }, String(it.accept ?? '').replaceAll(',', ', ')))
+    ondragover: (e: DragEvent) => { e.preventDefault(); zone.classList.add('over') },
+    ondragleave: () => { zone.classList.remove('over') },
+    ondrop: (e: DragEvent) => { e.preventDefault(); zone.classList.remove('over'); void go([...(e.dataTransfer?.files ?? [])]) },
+  }, h('div', null, `${c.t('drop')} `, h('span', { class: 'link-text' }, c.t('pick'))),
+    h('div', { class: 'muted' }, String(it.accept ?? '').replaceAll(',', ', ')))
   picker.addEventListener('change', () => void go([...(picker.files ?? [])]))
   let busy = false
   const go = async (files: File[]) => {
@@ -316,5 +352,5 @@ export function confirmCard(it: Interrupt, c: RendererContext): HTMLElement {
     h('button', { class: `btn ${it.danger ? 'danger' : 'pri'}`, type: 'button', onclick: () => answer(true) }, it.confirm_label || c.t('confirm')),
     h('button', { class: 'btn sec', type: 'button', onclick: () => answer(false) }, c.t('cancel')))
   return h('div', { role: 'alertdialog', 'aria-label': it.title },
-    h('div', { class: 'card-q' }, it.title), h('div', { style: 'color:var(--agui-ink-2)' }, it.message), acts)
+    h('div', { class: 'card-q' }, it.title), h('div', { class: 'card-msg' }, it.message), acts)
 }

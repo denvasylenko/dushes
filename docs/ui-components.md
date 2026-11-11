@@ -466,9 +466,14 @@ When the user must choose between known options, or the request is ambiguous ("I
   ],
   "multiple": false,
   "allow_text": true,
-  "field": "loan_type"
+  "field": "loan_type",
+  "label": "Loan type",
+  "applies": true,
+  "previous": null
 }
 ```
+
+When the question is about an editable choice field, every option also carries `value`: the option in the form's own format (the option object, or just its id, per 1.5), and the card has `applies: true` plus `previous` (the field's current value). Then **one tap fills the field**: apply `{[field]: option.value}` the way user input goes (a list of values when `multiple`), and resume with the new config. No field-change card follows.
 
 | Key | Meaning | Render |
 |---|---|---|
@@ -477,6 +482,7 @@ When the user must choose between known options, or the request is ambiguous ("I
 | `multiple` | several options may be chosen | checkboxes plus a *Send* button |
 | `allow_text` | a typed answer is allowed (default `true`) | a small text box: "or type your answer" |
 | `field` | present when the options are a field's choices | nothing required; useful to show the card next to that field |
+| `applies`, `previous`, `label`, `options[].value` | the answer may fill the field (see above) | apply the tapped option, show a check mark and "Car loan" with Undo (put `previous` back) |
 
 **Answering:**
 
@@ -484,11 +490,12 @@ When the user must choose between known options, or the request is ambiguous ("I
 resume: { answer: { ids: ["auto"] } }                // a clicked option
 resume: { answer: { ids: ["sms", "email"] } }        // several, when multiple
 resume: { answer: { text: "only on weekends" } }     // typed (a plain string works too)
+resume: { answer: { ids: ["auto"] }, config, ui }   // a tapped option you already applied (applies: true)
 resume: { accepted: false }                          // skipped (or AG-UI status: "cancelled")
 // AG-UI 1.0 style:  resume: [{ interrupt_id: card_id, status: "resolved", payload: { answer: { ids: ["auto"] } } }]
 ```
 
-The agent gets "The user chose: Car loan (auto)" and continues in the same turn. Usually it then sends a field-change card for `loan_type`. **The question card never changes the form by itself.** An id that was not offered, several ids for a single-choice question, or text when `allow_text` is false counts as skipped, and the agent is told why.
+The agent gets "The user chose: Car loan (auto)" and continues in the same turn. If the resume carries `config` (and the card had `applies`), the agent takes it like an accepted field-change card: the field counts as filled and is not proposed again. Without `config` the answer only answers, and the agent may then send a field-change card for `loan_type`: a UI that does not apply answers keeps working as before. Typed text never fills the field by itself. An id that was not offered, several ids for a single-choice question, or text when `allow_text` is false counts as skipped, and the agent is told why.
 
 With `interrupt_mode: structured` the question arrives as `RUN_FINISHED.outcome.interrupts[0]` with `reason: "ask_user"`, `message` = the question, and the rest in `metadata`. A field-change card has `reason: "confirm_field_changes"` there.
 

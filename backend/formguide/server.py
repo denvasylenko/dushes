@@ -13,7 +13,7 @@ POST /kb/{form_id}/compile           {jsx, config}              documents -> dom
 GET  /threads/{thread_id}            transcript + pending card, to restore a conversation
                                      (?format=agui: AG-UI messages for agent.setMessages)
 DELETE /threads/{thread_id}          forget a conversation (transcript + model history)
-GET  /debug/{thread_id}              history as the model sees it (development)
+GET  /debug/{thread_id}              history as the model sees it (only with debug=True)
 """
 from __future__ import annotations
 
@@ -30,6 +30,9 @@ except ImportError as e:  # pragma: no cover
 from pydantic import BaseModel, ValidationError
 
 from .guide import FormGuide
+
+
+MAX_JSX_CHARS = 2_000_000   # a registered layout is parsed and kept on disk; real forms are far smaller
 
 
 class LayoutIn(BaseModel):
@@ -52,7 +55,9 @@ class CompileIn(BaseModel):
     config: dict[str, Any]
 
 
-def create_router(guide: FormGuide, *, debug: bool = True) -> APIRouter:
+def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
+    """The agent endpoints. `debug=True` adds GET /debug/{thread_id} (development only: it shows
+    the model's history to anyone who knows the thread id). Authentication is the host app's job."""
     r = APIRouter()
 
     def bad(e: Exception) -> HTTPException:
@@ -60,6 +65,8 @@ def create_router(guide: FormGuide, *, debug: bool = True) -> APIRouter:
 
     @r.post("/layouts")
     def put_layout(body: LayoutIn) -> dict:
+        if len(body.jsx) > MAX_JSX_CHARS:
+            raise HTTPException(413, f"layout is larger than {MAX_JSX_CHARS} characters")
         return guide.register_form(body.jsx, body.form_id, body.domain, body.config)
 
     @r.get("/layouts/{h}")
@@ -96,7 +103,10 @@ def create_router(guide: FormGuide, *, debug: bool = True) -> APIRouter:
     @r.post("/attachments")
     async def upload_attachment(thread_id: str = Form(...), file: UploadFile = File(...)) -> dict:
         try:
-            return guide.save_attachment(thread_id, file.filename or "file", await file.read())
+            # read at most one byte past the store's limit, so an oversized upload never sits in memory whole
+            limit = getattr(guide.attachments, "max_bytes", None)
+            data = await file.read(limit + 1) if limit else await file.read()
+            return guide.save_attachment(thread_id, file.filename or "file", data)
         except ValueError as e:
             raise bad(e) from None
 

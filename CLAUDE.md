@@ -20,6 +20,9 @@ Documentation is maintained continuously, in the same change as the code — nev
   cd backend && uv run pytest -q
   ```
 
+## UI work
+Before any interface change (the `<agui-chat>` widget, its card renderers and texts, the demo form, the examples, the docs pages), load the `ui-craft` skill (`.claude/skills/ui-craft/`): a five-line mini-brief, the ten laws (one main action, complex in one tap, Undo instead of confirmations, instant, every state designed), the type / spacing / radius scales, text rules and the check in the browser (390 px and desktop, light and dark). Known UI debt is in its `references/audit.md`; update it when you fix or find something.
+
 ## Layout
 - `backend/formguide/` — the library (form core, agent graph, domain packs, knowledge, attachments, models, skills, config, optional FastAPI router).
 - `backend/demo/` — example integration: mock form backend, FastAPI app, `formguide.yaml`, skills, samples.

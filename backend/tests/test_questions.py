@@ -53,7 +53,7 @@ def test_question_with_own_options_and_click_answer(guide, model):
 def test_question_from_a_field(guide, model):
     v, _, _ = ask(guide, model, "q2", {"question": "Which loan?", "field": "loan_type"})
     assert v["field"] == "loan_type" and len(v["options"]) == 4
-    assert {"id": "auto", "label": "Car loan"} in v["options"]
+    assert {"id": "auto", "label": "Car loan"} in [{"id": o["id"], "label": o["label"]} for o in v["options"]]
 
     v, _, _ = ask(guide, model, "q3", {"question": "Which loan?", "field": "loan_type",
                                        "options": ["Car loan", "mortgage"]})
@@ -180,3 +180,65 @@ def test_partial_acceptance_edge_cases(guide, model):
     collect(guide, "p4", resume=agui.run_kwargs({"threadId": "p4", "messages": [], "forwardedProps": {
         "command": {"resume": "ok"}}})["resume"])
     assert tool_result(model, "t1").startswith("The user confirmed")
+
+
+# ---------------------------------------------------------------- one-tap: a question that fills its field
+
+
+def test_question_about_an_editable_field_carries_values(guide, model):
+    v, _, _ = ask(guide, model, "t1", {"question": "Which loan?", "field": "loan_type"})
+    assert v["applies"] is True and v["previous"] is None
+    car = next(o for o in v["options"] if o["id"] == "auto")
+    assert car["value"] == {"id": "auto", "name": "Car loan"}          # the form's own format
+
+    v, _, _ = ask(guide, model, "t2", {"question": "Same address?", "options": ["Yes", "No"]})
+    assert "applies" not in v and "value" not in v["options"][0]      # not tied to a field
+
+
+def test_locked_field_question_only_answers(guide, model):
+    state = start(guide, LOAN)
+    state["config"]["props"]["loan_type"]["disabled"] = True
+    v, _, _ = ask(guide, model, "t3", {"question": "Which loan?", "field": "loan_type"}, state=state)
+    assert "applies" not in v
+
+
+def test_an_applied_answer_fills_the_field(guide, model):
+    v, state, _ = ask(guide, model, "t4", {"question": "Which loan?", "field": "loan_type"})
+    car = next(o for o in v["options"] if o["id"] == "auto")
+    cfg = LOAN.compute({**state["config"]["state"], "loan_type": car["value"]})
+    model.script = [say("Done, next is the amount.")]
+    collect(guide, "t4", resume={"answer": {"ids": ["auto"]}, "config": cfg})
+    text = tool_result(model, "q1")
+    assert text.startswith("The user chose: Car loan (auto). This filled the field")
+    assert "loan_type" in text and "do not propose it again" in text
+    q = next(e for e in guide.thread("t4")["transcript"] if e["kind"] == "question")
+    assert q["status"] == "answered" and q["applied"] is True
+
+    # the graph now holds the applied config as its baseline (a new version, like an accepted card)
+    import asyncio
+
+    values = asyncio.run(guide.graph.aget_state({"configurable": {"thread_id": "t4"}})).values
+    assert values["config"] == cfg and values["version"] == 2
+
+
+def test_an_answer_without_config_only_answers(guide, model):
+    ask(guide, model, "t5", {"question": "Which loan?", "field": "loan_type"})
+    model.script = [say("", ("t9", "propose_changes", {"changes": [{"name": "loan_type", "value": "auto"}]}))]
+    ev = collect(guide, "t5", resume={"answer": {"ids": ["auto"]}})
+    assert tool_result(model, "q1") == "The user chose: Car loan (auto)"
+    assert interrupt_value(ev)["type"] == "set_fields"                 # the old two-step flow still works
+
+
+def test_one_tap_values_follow_the_component_format(tmp_path, model):
+    from formguide import FormGuide, GuideConfig, Models
+    from formguide.form.layout import ComponentMap
+
+    comps = ComponentMap(fields={"Select": {"role": "select", "value": "id", "options_prop": "items"}})
+    g = FormGuide(GuideConfig(models=Models(agent=model), data_dir=tmp_path, components=comps))
+    h = g.register_form('<Form name="main"><Select name="loan_type" /></Form>', "x")["jsx_hash"]
+    cfg = {"props": {"main": {}, "loan_type": {"label": "Loan type", "items": [{"value": "auto", "label": "Car loan"}]}},
+           "state": {"loan_type": None}}
+    model.script = [say("", ("q1", "ask_user", {"question": "Which?", "field": "loan_type"}))]
+    v = interrupt_value(collect(g, "t6", message="go", state={"config": cfg, "jsx_hash": h, "form_id": "x"}))
+    assert v["options"] == [{"id": "auto", "label": "Car loan", "value": "auto"}]
+

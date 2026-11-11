@@ -196,16 +196,25 @@ It does five things:
    | Card | What the user can do | Resume value |
    |---|---|---|
    | `set_fields`: field changes | untick rows, see old → new, edit a value (text, number, date, or another option), jump to the field, Undo after applying | `{accepted, config, ui, names?, edited?}` |
-   | `ask`: a question | click an option (or press 1-9), tick several, type an answer, pick a date / time / number | `{answer: {ids?, text?}}`, Skip: `{accepted: false}` |
+   | `ask`: a question | click an option (or press 1-9), tick several, type an answer, pick a date / time / number; when the card `applies`, the tap fills the field at once, with Undo | `{answer: {ids?, text?}}` (plus `config, ui` when applied), Skip: `{accepted: false}` |
    | `upload`: a file request | drop a file or choose one; uploads with a progress bar | `{attachment_ids}`, Skip: `{accepted: false}` |
    | `confirm`: a confirmation | Confirm (red when `danger`) or Cancel | `{accepted}` |
 
 4. **Restores the chat** after a reload: `GET {baseUrl}/threads/{id}?format=agui&form_id=…` gives the messages, a pending card and the form's starters.
 5. **Labels the steps** of formguide's tools in seven languages ("Looking at the form", "Reading your document", …). The tools that produce a card (`propose_changes`, `ask_user`, `request_file`, `confirm_action`) get no step of their own, since the card shows the result; `cardSteps: true` shows them.
 
+The fill button counts the fields ("Fill in 3 fields", "Fill in 2 of 3" when some are unticked), with the plural form of the chat's language.
+
 Edited values are applied in the shape the form uses: a dropdown that stores the option object gets the option object, one that stores an id gets the id.
 
 ---
+
+## Errors, waiting and touch
+
+- A failed run shows one sentence in plain words per kind of failure (no connection, no access, busy, server, model) and *Try again*; the raw error text is in the line's tooltip and in the `agui:error` event.
+- After 4 s with only the dots, a quiet "Still working…" appears next to them.
+- On a touch screen buttons, chips and links are at least 44 px tall, and the chat does not move the focus by itself (that would open the keyboard). With a mouse, a new card's first option gets the focus, so number keys work at once.
+- The send button looks quiet while the box is empty but still reacts: an empty send shakes the composer.
 
 ## Events and methods
 

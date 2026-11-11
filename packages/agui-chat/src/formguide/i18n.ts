@@ -24,7 +24,11 @@ export const FG_STRINGS: Record<string, Record<string, string>> = {
     "cancel": "Cancel",
     "confirmed": "Confirmed",
     "declined": "Declined",
-    "empty": "empty"
+    "empty": "empty",
+    "fillFields": "Fill in {n} {fields}",
+    "field_one": "field",
+    "field_other": "fields",
+    "applyFailed": "Could not fill in the field. Try again."
   },
   "ru": {
     "fillTitle": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u044d\u0442\u0438 \u043f\u043e\u043b\u044f?",
@@ -50,7 +54,13 @@ export const FG_STRINGS: Record<string, Record<string, string>> = {
     "cancel": "\u041e\u0442\u043c\u0435\u043d\u0430",
     "confirmed": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u043e",
     "declined": "\u041e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u043e",
-    "empty": "\u043f\u0443\u0441\u0442\u043e"
+    "empty": "\u043f\u0443\u0441\u0442\u043e",
+    "fillFields": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c {n} {fields}",
+    "field_one": "\u043f\u043e\u043b\u0435",
+    "field_few": "\u043f\u043e\u043b\u044f",
+    "field_many": "\u043f\u043e\u043b\u0435\u0439",
+    "field_other": "\u043f\u043e\u043b\u044f",
+    "applyFailed": "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u043f\u043e\u043b\u0435. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437."
   },
   "uk": {
     "fillTitle": "\u0417\u0430\u043f\u043e\u0432\u043d\u0438\u0442\u0438 \u0446\u0456 \u043f\u043e\u043b\u044f?",
@@ -76,7 +86,13 @@ export const FG_STRINGS: Record<string, Record<string, string>> = {
     "cancel": "\u0421\u043a\u0430\u0441\u0443\u0432\u0430\u0442\u0438",
     "confirmed": "\u041f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043d\u043e",
     "declined": "\u0412\u0456\u0434\u0445\u0438\u043b\u0435\u043d\u043e",
-    "empty": "\u043f\u043e\u0440\u043e\u0436\u043d\u044c\u043e"
+    "empty": "\u043f\u043e\u0440\u043e\u0436\u043d\u044c\u043e",
+    "fillFields": "\u0417\u0430\u043f\u043e\u0432\u043d\u0438\u0442\u0438 {n} {fields}",
+    "field_one": "\u043f\u043e\u043b\u0435",
+    "field_few": "\u043f\u043e\u043b\u044f",
+    "field_many": "\u043f\u043e\u043b\u0456\u0432",
+    "field_other": "\u043f\u043e\u043b\u044f",
+    "applyFailed": "\u041d\u0435 \u0432\u0434\u0430\u043b\u043e\u0441\u044f \u0437\u0430\u043f\u043e\u0432\u043d\u0438\u0442\u0438 \u043f\u043e\u043b\u0435. \u0421\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0449\u0435 \u0440\u0430\u0437."
   },
   "de": {
     "fillTitle": "Diese Felder ausf\u00fcllen?",
@@ -102,7 +118,11 @@ export const FG_STRINGS: Record<string, Record<string, string>> = {
     "cancel": "Abbrechen",
     "confirmed": "Best\u00e4tigt",
     "declined": "Abgelehnt",
-    "empty": "leer"
+    "empty": "leer",
+    "fillFields": "{n} {fields} ausf\u00fcllen",
+    "field_one": "Feld",
+    "field_other": "Felder",
+    "applyFailed": "Das Feld konnte nicht ausgef\u00fcllt werden. Versuche es nochmal."
   },
   "fr": {
     "fillTitle": "Remplir ces champs ?",
@@ -128,7 +148,12 @@ export const FG_STRINGS: Record<string, Record<string, string>> = {
     "cancel": "Annuler",
     "confirmed": "Confirm\u00e9",
     "declined": "Refus\u00e9",
-    "empty": "vide"
+    "empty": "vide",
+    "fillFields": "Remplir {n} {fields}",
+    "field_one": "champ",
+    "field_many": "champs",
+    "field_other": "champs",
+    "applyFailed": "Impossible de remplir le champ. R\u00e9essayez."
   },
   "it": {
     "fillTitle": "Compilare questi campi?",
@@ -154,7 +179,12 @@ export const FG_STRINGS: Record<string, Record<string, string>> = {
     "cancel": "Annulla",
     "confirmed": "Confermato",
     "declined": "Rifiutato",
-    "empty": "vuoto"
+    "empty": "vuoto",
+    "fillFields": "Compila {n} {fields}",
+    "field_one": "campo",
+    "field_many": "campi",
+    "field_other": "campi",
+    "applyFailed": "Impossibile compilare il campo. Riprova."
   },
   "es": {
     "fillTitle": "\u00bfRellenar estos campos?",
@@ -180,7 +210,12 @@ export const FG_STRINGS: Record<string, Record<string, string>> = {
     "cancel": "Cancelar",
     "confirmed": "Confirmado",
     "declined": "Rechazado",
-    "empty": "vac\u00edo"
+    "empty": "vac\u00edo",
+    "fillFields": "Rellenar {n} {fields}",
+    "field_one": "campo",
+    "field_many": "campos",
+    "field_other": "campos",
+    "applyFailed": "No se pudo rellenar el campo. Vuelve a intentarlo."
   }
 }
 

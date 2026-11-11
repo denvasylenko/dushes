@@ -60,6 +60,23 @@ interface AiItem { id: string; text: string; el: HTMLElement; body: HTMLElement;
 interface StepsItem { el: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement; steps: Map<string, HTMLElement>; count: number }
 interface PendingCall { id: string; name: string; args: string }
 
+/** After this long with only the dots, a quiet "Still working…" appears. */
+const SLOW_MS = 4000
+
+/** A mouse or trackpad: there, moving the focus helps; on a touch screen it would open the keyboard. */
+const finePointer = (): boolean => typeof matchMedia !== 'function' || matchMedia('(pointer: fine)').matches
+
+/** The kind of a failed run, for a message in human words (the raw text stays in the tooltip). */
+export function errorKind(raw: string): string {
+  const m = raw.toLowerCase()
+  if (/failed to fetch|networkerror|load failed|network|offline|timed? ?out/.test(m)) return 'errNetwork'
+  if (/\b(401|403)\b|unauthori[sz]ed|forbidden|permission/.test(m)) return 'errAccess'
+  if (/\b(429|529)\b|rate.?limit|too many|overloaded|busy/.test(m)) return 'errBusy'
+  if (/\b5\d\d\b|server error|bad gateway|unavailable/.test(m)) return 'errServer'
+  if (/model|anthropic|openai|api.?key|invalid_request|context length|tokens?/.test(m)) return 'errModel'
+  return 'error'
+}
+
 export class AguiChatElement extends HTMLElement implements ChatApi {
   static observedAttributes = Object.keys(ATTRS)
 
@@ -168,7 +185,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (this._opts.mode !== 'floating') return
     this.$.wrap.classList.add('open')
     this.$.panel.setAttribute('aria-hidden', 'false')
-    setTimeout(() => (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true }), 60)
+    if (finePointer()) setTimeout(() => (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true }), 60)   // a phone would open its keyboard
   }
 
   close(): void {
@@ -323,7 +340,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const send = this.$.send as HTMLButtonElement
     send.innerHTML = this._busy ? ICON.stop : ICON.send
     send.setAttribute('aria-label', this._busy ? this.t('stop') : this.t('send'))
-    send.disabled = !this._busy && !(this.$.input as HTMLTextAreaElement).value.trim() && !this._files.length
+    // never disabled: an empty send nudges the composer instead of doing nothing
+    send.classList.toggle('empty', !this._busy && !(this.$.input as HTMLTextAreaElement).value.trim() && !this._files.length)
   }
 
   private _trapFocus(e: KeyboardEvent): void {
@@ -430,8 +448,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   private _showDots(on: boolean): void {
     if (on && !this._dots) {
-      this._dots = h('div', { class: 'msg ai wait', 'aria-label': this.t('working') }, h('span', { class: 'dots' }, h('i'), h('i'), h('i')))
-      this.$.log.appendChild(this._dots)
+      const dots = h('div', { class: 'msg ai wait', 'aria-label': this.t('working') }, h('span', { class: 'dots' }, h('i'), h('i'), h('i')))
+      this._dots = dots
+      this.$.log.appendChild(dots)
+      setTimeout(() => { if (this._dots === dots) dots.appendChild(h('span', { class: 'slow', role: 'status' }, this.t('slow'))) }, SLOW_MS)
       this._scroll()
     } else if (!on && this._dots) {
       this._dots.remove()
@@ -547,7 +567,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (failed) {
       this.dispatchEvent(new CustomEvent('agui:error', { detail: failed }))
       const retry = h('button', { class: 'btn sec', type: 'button', onclick: () => { el.remove(); if (this._lastRun) void this._run(this._lastRun) } }, this.t('retry'))
-      const el = this._append(h('div', { class: 'error', role: 'alert' }, h('span', null, `${this.t('error')} ${failed}`), retry))
+      const el = this._append(h('div', { class: 'error', role: 'alert' }, h('span', { title: failed }, this.t(errorKind(failed))), retry))
       return
     }
     this.dispatchEvent(new CustomEvent('agui:run-end', { detail: { threadId: this._thread } }))
@@ -779,7 +799,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const orig = ctx.resolve
     ctx.resolve = (v: unknown) => { delete el.dataset.pending; orig(v) }
     this._append(el)
-    el.querySelector<HTMLElement>('[autofocus], .chip, .btn.pri')?.focus({ preventScroll: true })
+    if (finePointer()) el.querySelector<HTMLElement>('[autofocus], .chip, .btn.pri')?.focus({ preventScroll: true })
   }
 
   /** A new message closes cards nobody answered (the server closes them too): they shrink and say so. */

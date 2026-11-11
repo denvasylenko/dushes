@@ -256,7 +256,7 @@ ANTHROPIC_API_KEY=... formguide serve --config my-agent/formguide.yaml --cors "*
           <tr><td><code>state</code></td><td><code>{config, jsx_hash, form_id, ui?, attachments?}</code>: the form as your backend last built it</td></tr>
           <tr><td><code>messages</code></td><td>a trailing <code>user</code> message is the new text; trailing <code>tool</code> messages are frontend tool results. History is kept on the server, so older messages are ignored</td></tr>
           <tr><td><code>tools</code></td><td>frontend tools offered to the model (CopilotKit actions, <code>HttpAgent</code> tools)</td></tr>
-          <tr><td><code>resume</code></td><td>AG-UI 1.0 answer to a card: <code>resolved</code> with <code>{accepted, config, names?, edited?}</code> (field changes), <code>{answer: {ids?, text?}}</code> (a question), <code>{attachment_ids}</code> (a file request) or <code>{accepted}</code> (a confirmation), or <code>cancelled</code></td></tr>
+          <tr><td><code>resume</code></td><td>AG-UI 1.0 answer to a card: <code>resolved</code> with <code>{accepted, config, names?, edited?}</code> (field changes), <code>{answer: {ids?, text?}, config?, ui?}</code> (a question; with <code>config</code> when the tap filled the field), <code>{attachment_ids}</code> (a file request) or <code>{accepted}</code> (a confirmation), or <code>cancelled</code></td></tr>
           <tr><td><code>forwardedProps</code></td><td><code>command.resume</code> (CopilotKit’s answer to a card) and <code>prefill</code></td></tr>
         </tbody>
       </table></div>
@@ -439,7 +439,7 @@ await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
                 "reveal": [{ "type": "tab", "tabs": "main", "tab": "tab_loan" },
                            { "type": "accordion", "name": "acc_loan_params" }] }] }</code></pre>
       <p><strong>Keep some rows:</strong> a checkbox per row; send only the ticked changes to your backend and resume <code>{accepted: true, config, names: ["first_name", "last_name"]}</code>. The agent is told which were declined. Each change also has <code>previous</code> / <code>previous_display</code> (old → new, Undo), and a value the user corrected on the card goes back as <code>edited: {name: value}</code>.</p>
-      <p><strong>The question card</strong>, the same <code>on_interrupt</code> with <code>type: "ask"</code>: the agent asks when the user must choose between known options or the request is ambiguous. Buttons for a single choice, checkboxes for <code>multiple</code>, a text box when <code>allow_text</code>. It never changes the form by itself; the agent usually follows with a field-change card.</p>
+      <p><strong>The question card</strong>, the same <code>on_interrupt</code> with <code>type: "ask"</code>: the agent asks when the user must choose between known options or the request is ambiguous. Buttons for a single choice, checkboxes for <code>multiple</code>, a text box when <code>allow_text</code>. When it is about an editable choice field, the options carry the form-format <code>value</code> and the card has <code>applies: true</code>: one tap fills the field (with Undo) and the resume carries the new config, so no field-change card follows. Typed text only answers.</p>
 <pre><code>{ "type": "ask", "card_id": "a41c09e2d7f3", "question": "What kind of loan do you need?",
   "options": [{ "id": "auto", "label": "Car loan" }, { "id": "mortgage", "label": "Mortgage" }],
   "multiple": false, "allow_text": true, "field": "loan_type" }

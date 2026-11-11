@@ -81,5 +81,11 @@ export async function* runAgent(agent: AgentLike, input: RunAgentInput, signal?:
   }
 }
 
-export const uid = (): string =>
-  (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`)
+/** A random id (thread and message ids). randomUUID needs https; getRandomValues works on plain http too,
+ *  so a thread id is never guessable. Math.random is only the last resort for a browser without Web Crypto. */
+export function uid(): string {
+  const c = globalThis.crypto
+  if (c?.randomUUID) return c.randomUUID()
+  if (c?.getRandomValues) return [...c.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('')
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`
+}

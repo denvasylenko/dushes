@@ -147,8 +147,9 @@ class FormGuide:
         if resume is not None:
             if card and card["kind"] == "question":
                 got, _ = read_answer(card, resume)
+                applied = bool(got and got.get("ids") and card.get("applies") and resume.get("config"))
                 tx.update(thread_id, card["id"], status="answered" if got else "dismissed",
-                          **({"answer": got} if got else {}))
+                          **({"answer": got} if got else {}), **({"applied": True} if applied else {}))
             elif card and card["kind"] == "upload":
                 files = read_upload(resume, lambda i: (self.attachments.load(thread_id, i) or (None,))[0])
                 tx.update(thread_id, card["id"], status="answered" if files else "dismissed",
