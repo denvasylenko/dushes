@@ -41,6 +41,7 @@ FORMGUIDE_MODEL environment variable does the same without a file. Everything el
     interrupt_mode: legacy                           # confirmation cards: legacy (CopilotKit) | structured (AG-UI 1.0) | both
     confirm_tools: [submit_application]              # these tools always ask the user before running
     suggestions: {enabled: true, max: 3}             # quick replies after each answer (a cheap model)
+    tracing: {callbacks: ["my_app.tracing:langfuse_handler"], tags: [staging]}   # LangSmith: env vars only
 """
 from __future__ import annotations
 
@@ -80,6 +81,14 @@ class SuggestionsConfig:
 
 
 @dataclass
+class TracingConfig:
+    """Tracers for every turn. LangSmith needs nothing here: set LANGSMITH_TRACING=true and its API key.
+    `callbacks`: factories returning LangChain callback handlers (e.g. Langfuse); `tags`: added to every turn."""
+    callbacks: list[Any] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+
+
+@dataclass
 class GuideConfig:
     models: Models = field(default_factory=default_models)
     data_dir: str | Path = "data"                   # deps maps, KB and attachments default to subfolders
@@ -99,6 +108,7 @@ class GuideConfig:
     interrupt_mode: str = "legacy"
     confirm_tools: list[str] = field(default_factory=list)   # tools that always ask the user first
     suggestions: SuggestionsConfig = field(default_factory=SuggestionsConfig)
+    tracing: TracingConfig = field(default_factory=TracingConfig)
 
 
 # ===================================================================== YAML
@@ -184,6 +194,17 @@ def load_config(path: str | Path) -> GuideConfig:
     if not isinstance(ct, list) or not all(isinstance(x, str) for x in ct):
         raise ValueError("confirm_tools must be a list of tool names")
     cfg.confirm_tools = list(ct)
+    tr = raw.get("tracing") or {}
+    unknown = set(tr) - {"callbacks", "tags"}
+    if unknown:
+        raise ValueError(f"tracing: unknown key(s) {sorted(unknown)}")
+    factories = []
+    for ref in tr.get("callbacks") or []:
+        try:
+            factories.append(import_object(str(ref)))
+        except (ImportError, AttributeError) as e:
+            raise ValueError(f"tracing.callbacks: cannot import {ref!r}: {e}") from None
+    cfg.tracing = TracingConfig(callbacks=factories, tags=[str(t) for t in tr.get("tags") or []])
     sg = raw.get("suggestions")
     if sg is not None:
         sg = {"enabled": sg} if isinstance(sg, bool) else sg

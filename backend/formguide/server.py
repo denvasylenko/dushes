@@ -156,6 +156,6 @@ def create_router(guide: FormGuide, *, debug: bool = True) -> APIRouter:
     if debug:
         @r.get("/debug/{thread_id}")
         async def debug_thread(thread_id: str) -> dict:
-            return {"messages": await guide.history(thread_id)}
+            return {"messages": await guide.history(thread_id), "runs": guide.recent_runs(thread_id)}
 
     return r

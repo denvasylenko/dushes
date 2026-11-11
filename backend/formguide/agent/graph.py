@@ -27,6 +27,8 @@ from langgraph.types import interrupt
 from ..form.overlay import Overlay, compute_diff
 from ..form.render import locate, render_changes, render_focus, render_outline
 from ..models import system_message
+from ..stats import RunStats
+from ..stats import current as current_stats
 from .memory import compact as compact_history
 from .memory import new_turn_id
 from .prompts import context_block, system_prompt
@@ -247,9 +249,15 @@ def build_graph(guide: FormGuide):
             w({"kind": "text_delta", "id": msg_id, "delta": held})
             held = ""
 
+        stats = current_stats()
+        t_call = RunStats.now()
+        first_chunk: float | None = None
+
         async def stream(msgs: list[BaseMessage]):
-            nonlocal full, calling, held
+            nonlocal full, calling, held, first_chunk
             async for chunk in model.astream(msgs):
+                if first_chunk is None:
+                    first_chunk = RunStats.now()
                 full = chunk if full is None else full + chunk
                 if chunk.tool_call_chunks and not calling:
                     calling = True
@@ -280,6 +288,8 @@ def build_graph(guide: FormGuide):
                 await stream([system_message(sys_text, base), *history])
             flush()
         except Exception as e:  # noqa: BLE001 — provider errors vary; surface them in the chat
+            if stats:
+                stats.model_call(t_call, first_chunk, None)
             log.exception("model call failed")
             w({"kind": "error", "message": f"model error: {type(e).__name__}: {e}"})
             return {"stop_reason": "error"}
@@ -289,6 +299,8 @@ def build_graph(guide: FormGuide):
             return {"stop_reason": "end_turn", "said": bool(state.get("said"))}
         msg = AIMessage(content=full.content, tool_calls=full.tool_calls, id=full.id,
                         response_metadata=full.response_metadata, usage_metadata=full.usage_metadata)
+        if stats:
+            stats.model_call(t_call, first_chunk, dict(full.usage_metadata or {}))
         meta = full.response_metadata or {}
         if meta.get("stop_reason") == "refusal" or meta.get("finish_reason") == "content_filter":
             w({"kind": "error", "message": "the model declined to answer this request"})
@@ -355,6 +367,7 @@ def build_graph(guide: FormGuide):
             # sub-steps of a tool (e.g. the document researcher) carry the id of the call they belong to
             ctx.emit = (lambda cid: lambda d: w({**d, "parent_id": cid} if d.get("kind") == "tool" else d))(call["id"])
             before = (ctx.pending_changes, ctx.pending_interaction)
+            stats, t_tool, failed = current_stats(), RunStats.now(), False
             try:
                 out = await run_tool(call["name"], call.get("args"), ctx)
                 if before == (None, None) and (ctx.pending_changes is not None or ctx.pending_interaction is not None):
@@ -364,6 +377,10 @@ def build_graph(guide: FormGuide):
                 r = {"id": call["id"], "content": out or "ok"}
             except ToolError as e:
                 r = {"id": call["id"], "content": str(e), "error": True}
+                failed = True
+            finally:
+                if stats:
+                    stats.tool_call(call["name"], t_tool, failed)
             results.append(r)
             w({"kind": "tool_result", **r})
         for d in ctx.ui_directives:
@@ -408,11 +425,15 @@ def build_graph(guide: FormGuide):
                 files = read_upload(answer, lambda i: (guide.attachments.load(tid, i) or (None,))[0])
                 text = upload_text(files)
             elif read_confirm(answer) and payload.get("held"):
+                stats, t_tool, failed = current_stats(), RunStats.now(), False
                 try:
                     out = await run_tool(payload["tool"], payload.get("args"), ctx_for(state))
                     text = "The user confirmed. " + (out or "ok")
                 except ToolError as e:
                     text = f"The user confirmed, but the tool failed: {e}"
+                    failed = True
+                if stats:
+                    stats.tool_call(payload["tool"], t_tool, failed)
             elif payload.get("held"):
                 text = "The user declined; the tool was not run."
             else:

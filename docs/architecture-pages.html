@@ -291,7 +291,7 @@ await agent.runAgent({ tools: [getUserLocale] }, {
 await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
 # -&gt; {"values": [{"name": "gender", "value": {"id": "f", "name": "Female"}, "status": "now"}, ...], "errors": [...]}</code></pre>
       <div class="grid2">
-        <div class="note"><h3>Events</h3><ul><li><code>RUN_STARTED</code>, then exactly one of <code>RUN_FINISHED</code> or <code>RUN_ERROR</code></li><li>text, tool calls with results, <code>CUSTOM</code>: <code>ui_directive</code>, <code>on_interrupt</code> (<code>type</code> <code>set_fields</code>, <code>ask</code>, <code>upload</code>, <code>confirm</code>), <code>tool_progress</code>, <code>suggestions</code>, <code>agent_context</code>, <code>memory_compacted</code></li></ul></div>
+        <div class="note"><h3>Events</h3><ul><li><code>RUN_STARTED</code>, then exactly one of <code>RUN_FINISHED</code> or <code>RUN_ERROR</code></li><li>text, tool calls with results, <code>CUSTOM</code>: <code>ui_directive</code>, <code>on_interrupt</code> (<code>type</code> <code>set_fields</code>, <code>ask</code>, <code>upload</code>, <code>confirm</code>), <code>tool_progress</code>, <code>suggestions</code>, <code>run_stats</code> (timings, tokens, cache), <code>agent_context</code>, <code>memory_compacted</code></li></ul></div>
         <div class="note"><h3>Checked</h3><ul><li>CopilotKit 1.86: chat, card, frontend tool, prefill</li><li><code>@ag-ui/client</code> 1.0.4: the demo frontend, restore after reload</li><li>every event validated against <code>ag-ui-protocol</code> in tests</li></ul></div>
       </div>
     </section>
@@ -1020,6 +1020,9 @@ frontend/                    demo UI on @ag-ui/client</code></pre>
           <tr><td><code>max_tool_rounds</code></td><td><code>10</code></td><td>model ⇄ tool rounds per turn</td></tr>
           <tr><td><code>learn_dependencies</code></td><td><code>true</code></td><td>keep observed field dependencies per form</td></tr>
           <tr><td><code>interrupt_mode</code></td><td><code>legacy</code></td><td>cards for CopilotKit (<code>legacy</code>), AG-UI 1.0 (<code>structured</code>) or <code>both</code></td></tr>
+          <tr><td><code>suggestions</code></td><td>off</td><td>quick replies after answers from a cheap model, with a timeout</td></tr>
+          <tr><td><code>confirm_tools</code></td><td>none</td><td>tools that always ask the user before running</td></tr>
+          <tr><td><code>tracing</code></td><td>none</td><td>tracer callbacks and tags; LangSmith needs only its env vars; every turn carries the thread id. Each run ends with <code>run_stats</code> (<a href="https://github.com/denvasylenko/dushes/blob/main/docs/observability.md">observability.md</a>)</td></tr>
         </tbody>
       </table></div>
       <h2>Extension points</h2>
@@ -1068,7 +1071,7 @@ guide = FormGuide(load_config("formguide.yaml"))
 app.include_router(create_router(guide), prefix="/agent")      # or call guide.run(...) directly</code></pre>
       <div class="grid2">
         <div class="note"><h3>Model requirements</h3><ul><li>agent and researcher: tool calling</li><li>compile and extract: structured output</li><li>extracting from scans: vision / PDF input</li></ul></div>
-        <div class="note"><h3>Checked</h3><p><span class="pill ok">71 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic, and AG-UI event validation. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
+        <div class="note"><h3>Checked</h3><p><span class="pill ok">84 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic, and AG-UI event validation. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
       </div>
     </section>
 

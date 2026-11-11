@@ -6,6 +6,7 @@ Documentation:
 - [`docs/architecture.md`](docs/architecture.md) — how the parts fit together;
 - [`docs/ui-components.md`](docs/ui-components.md) — start here if you build the form UI: what the form sends, what the agent sends back when it fills fields, and how each component must behave;
 - [`docs/configuration.md`](docs/configuration.md) — models per provider and every YAML key;
+- [`docs/observability.md`](docs/observability.md) — turn timings, tracing (LangSmith, Langfuse), speed tests and the live benchmark with its baseline;
 - [`openspec/specs/`](openspec/specs) — behaviour contracts per capability, maintained with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec list --specs`, `openspec validate --all --strict`);
 - architecture pages with diagrams: https://denvasylenko.github.io/dushes/ — built from `docs/architecture-pages.html` plus the specs by `python3 scripts/build_docs_site.py`, deployed by `.github/workflows/docs.yml`.
 
@@ -131,6 +132,7 @@ cd backend && uv run pytest -q                                          # offlin
 cd backend && uv run python scripts/chat_harness.py                     # live, needs the demo server with a key
 cd backend && uv run python scripts/chat_harness.py --form barber_booking
 cd packages/agui-chat && npm test                                    # the chat widget (Vitest)
+cd backend && uv run python scripts/bench.py --repeat 3                 # live speed benchmark (see docs/observability.md)
 ```
 
 ## How it works (short)

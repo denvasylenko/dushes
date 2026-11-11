@@ -39,3 +39,11 @@ The resume SHALL carry `{attachment_ids}`, the ids that `POST /attachments` retu
 #### Scenario: Asking for a passport scan
 - **WHEN** the user uploads `passport.pdf`
 - **THEN** the model's tool result names `passport.pdf` with its attachment id, and the model reads it with `extract_from_attachment`
+
+### Requirement: Large photos are shrunk for the model
+Before an image goes to a model, an image larger than 2000 px on a side or 3.5 MB SHALL be scaled down to at most 2000 px and re-encoded (JPEG, or PNG when it has transparency) under 3.5 MB, so it fits the model's per-image limit. Smaller images SHALL be sent unchanged.
+
+#### Scenario: A 10 MB phone photo
+- **WHEN** the user uploads a 10 MB PNG photo of a passport and the agent reads it
+- **THEN** the model receives a JPEG of at most 2000 px and 3.5 MB, and the extraction does not fail on the size
+

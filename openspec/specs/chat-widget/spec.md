@@ -145,7 +145,11 @@ When `attach` is on and an uploader exists (the `upload` option, or a plugin's),
 - **THEN** the run carries the attachment, and the user's bubble shows the file name
 
 ### Requirement: Attachment limits
-`attachAccept`, `attachMultiple` and `attachMaxMb` SHALL limit the file types offered, the number of files and their size. A file over the size limit SHALL not be uploaded, and the composer SHALL say which file was refused.
+`attachAccept`, `attachMultiple` and `attachMaxMb` SHALL limit the file types offered, the number of files and their size. Photos larger than `imageMaxPx` (default 2000) on a side, or than 1.5 MB, SHALL be scaled down and saved as JPEG before upload. A file still over the size limit SHALL not be uploaded, and the composer SHALL say which file was refused.
+
+#### Scenario: A big phone photo
+- **WHEN** the user attaches a 10 MB photo
+- **THEN** a JPEG of at most 2000 px is uploaded instead
 
 #### Scenario: A file that is too big
 - **WHEN** `attachMaxMb` is 1 and the user picks a 2 MB file
@@ -157,3 +161,11 @@ The element SHALL offer `run({forwardedProps, notice?})`, which runs the agent w
 #### Scenario: Prefill from the host app
 - **WHEN** the host calls `chat.run({forwardedProps: {prefill: {data}}, notice: "Prefilled from your profile"})`
 - **THEN** the notice appears and the agent's answer follows without a user bubble
+
+### Requirement: Cards closed by a new message
+When the user sends a message while a card waits for an answer, the card SHALL be closed: it SHALL keep its question or title, hide its controls, and say it was skipped.
+
+#### Scenario: Typing instead of answering
+- **WHEN** a question card is pending and the user sends "Actually, let me think"
+- **THEN** the card shows only the question and "Skipped"
+

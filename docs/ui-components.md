@@ -289,6 +289,7 @@ The agent streams AG-UI events. Here is **everything the frontend can receive**,
 | `CUSTOM suggestions` | after an answer (when enabled on the server) | 2-3 chips; clicking one sends it as a message |
 | `TOOL_CALL_*` + `TOOL_CALL_RESULT` | the agent used one of its own tools | optional: a step "Searching the documents" with a spinner, then a tick |
 | `TOOL_CALL_*` without a result | the agent called **your** frontend tool | anything you like: it is your own component (see Integrate in the architecture pages) |
+| `CUSTOM run_stats` | last event of every run: timings, tokens, cache hits ([observability.md](observability.md)) | nothing, or a debug line |
 | `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
 | `RUN_FINISHED` / `RUN_ERROR` | the turn ended | stop the spinner, show the error |
 
@@ -508,7 +509,7 @@ Show a drop zone and a file button limited to `accept`. Upload each file with `P
 resume: { attachment_ids: ["att_1a2b3c4d"] }     // or { accepted: false } to skip
 ```
 
-The agent then reads the file with `extract_from_attachment` and usually sends a field-change card with what it found.
+The agent then reads the file with `extract_from_attachment` and usually sends a field-change card with what it found. Big phone photos are fine: the server shrinks any image over 2000 px or 3.5 MB before the model sees it (`<agui-chat>` also shrinks them before upload, which is faster).
 
 ### 2.7 "Are you sure?": the confirmation
 

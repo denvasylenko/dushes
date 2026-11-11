@@ -10,6 +10,7 @@ import { AguiChatElement } from './element'
 export { AguiChatElement, DEFAULTS } from './element'
 export { h, md, esc } from './dom'
 export { sseEvents, runHttp, runAgent, uid } from './transport'
+export { shrinkImage } from './image'
 export type * from './types'
 
 /** Define the element (done on import; call again to use another tag name). */

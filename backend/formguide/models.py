@@ -103,11 +103,49 @@ def system_message(text: str, model: BaseChatModel) -> SystemMessage:
     return SystemMessage(content=text)
 
 
+# Model APIs cap one image (Anthropic: 10 MB as base64, i.e. about 7.5 MB of bytes) and gain nothing from
+# more than about 2000 px: phone photos are shrunk before they are sent.
+IMAGE_MAX_BYTES = 3_500_000
+IMAGE_MAX_SIDE = 2000
+
+
+def fit_image(data: bytes, media_type: str) -> tuple[bytes, str]:
+    """A photo small enough for the model: at most IMAGE_MAX_SIDE px and IMAGE_MAX_BYTES, as JPEG
+    (PNG when it has transparency). Small images are returned unchanged."""
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:   # without Pillow only a clear error is possible
+        if len(data) > IMAGE_MAX_BYTES * 2:
+            raise ValueError("the image is too large for the model; install pillow to shrink photos") from None
+        return data, media_type
+    import io
+
+    with Image.open(io.BytesIO(data)) as im:
+        if len(data) <= IMAGE_MAX_BYTES and max(im.size) <= IMAGE_MAX_SIDE:
+            return data, media_type
+        im = ImageOps.exif_transpose(im)
+        im.thumbnail((IMAGE_MAX_SIDE, IMAGE_MAX_SIDE))
+        alpha = im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info)
+        out = io.BytesIO()
+        if alpha:
+            im.save(out, "PNG", optimize=True)
+            return out.getvalue(), "image/png"
+        quality = 85
+        while True:
+            out = io.BytesIO()
+            im.convert("RGB").save(out, "JPEG", quality=quality, optimize=True)
+            if out.tell() <= IMAGE_MAX_BYTES or quality <= 45:
+                return out.getvalue(), "image/jpeg"
+            quality -= 15
+
+
 def file_block(filename: str, media_type: str, data: bytes) -> dict[str, Any]:
     """A user file as a LangChain standard content block (converted per provider)."""
     if media_type.startswith("text/"):
         return {"type": "text", "text": f"<document name=\"{filename}\">\n"
                                         f"{data.decode('utf-8', errors='replace')}\n</document>"}
+    if media_type.startswith("image/"):
+        data, media_type = fit_image(data, media_type)
     b64 = base64.standard_b64encode(data).decode()
     if media_type.startswith("image/"):
         return {"type": "image", "base64": b64, "mime_type": media_type}

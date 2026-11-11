@@ -24,3 +24,4 @@ examples/*/dist/
 backend/dist/
 packages/*/node_modules/
 packages/*/dist/
+backend/scripts/bench-*.json

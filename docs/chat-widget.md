@@ -73,6 +73,7 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `attachAccept` (`attach-accept`) | the plugin's types | file types offered, e.g. `.pdf,.jpg` |
 | `attachMultiple` (`attach-multiple`) | `true` | several files at once |
 | `attachMaxMb` (`attach-max-mb`) | `20` | the largest file; bigger ones are refused with a message |
+| `imageMaxPx` (`image-max-px`) | `2000` | photos larger than this (or 1.5 MB) are shrunk to a JPEG before upload; `0` sends them as they are |
 | `upload` | the plugin's | your own uploader: `(file, chat) => Promise<{id, filename}>` (attachments without formguide) |
 | `quickReplies` (`quick-replies`) | `true` | starter chips in an empty chat and suggested replies after answers |
 | `starters` | — | opening messages for an empty chat (formguide also reads them from the domain pack) |

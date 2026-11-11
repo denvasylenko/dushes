@@ -97,6 +97,12 @@ def cmd_check(args: argparse.Namespace) -> int:
               f"scopes={cfg.knowledge.scopes or '{}'}")
     print(f"tools: {', '.join(t.name for t in cfg.tools) or '(none)'}")
     print(f"interrupt_mode: {cfg.interrupt_mode}")
+    import os
+
+    langsmith = os.environ.get("LANGSMITH_TRACING", os.environ.get("LANGCHAIN_TRACING_V2", "")).lower() == "true"
+    hooks = [getattr(f, "__name__", type(f).__name__) for f in cfg.tracing.callbacks]
+    print(f"tracing: LangSmith {'on' if langsmith else 'off (set LANGSMITH_TRACING=true and LANGSMITH_API_KEY)'}"
+          + (f"; callbacks: {', '.join(hooks)}" if hooks else "") + (f"; tags: {cfg.tracing.tags}" if cfg.tracing.tags else ""))
     print("components:")
     for tag, role in cfg.components.containers.items():
         print(f"  <{tag}> container {role}")

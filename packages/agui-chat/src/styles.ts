@@ -98,6 +98,10 @@ button:focus { outline: none; } button:focus-visible, textarea:focus-visible, in
   animation: rise .5s var(--agui-ease) both; font-size: 14.5px; line-height: 1.45; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 .card.done { opacity: .72; }
+.card input[type=checkbox], .chip input[type=checkbox] { accent-color: var(--agui-accent); width: 15px; height: 15px; }
+/* a card closed by a new message keeps what was asked, not the controls */
+.card.dismissed .chips, .card.dismissed .text-in, .card.dismissed [role=button], .card.dismissed .row input,
+.card.dismissed .row .btn, .card.dismissed .field { display: none; }
 .card-t { font-size: 13px; font-weight: 600; color: var(--agui-ink-2); margin-bottom: 10px; }
 .card-q { font-size: 15.5px; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.01em; }
 .card .muted, .muted { color: var(--agui-ink-3); font-size: 13px; }

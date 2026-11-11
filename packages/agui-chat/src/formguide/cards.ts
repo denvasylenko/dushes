@@ -1,5 +1,6 @@
 /** formguide's cards: field changes, questions, upload requests and confirmations. */
 import { h } from '../dom'
+import { shrinkImage } from '../image'
 import type { ChatApi, Interrupt, RendererContext } from '../types'
 import type { Ctx, Directive, FieldCardFlags } from './index'
 
@@ -275,6 +276,7 @@ export function uploadCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLEle
     busy = true
     bar.hidden = false
     msg.textContent = c.t('uploading')
+    files = await Promise.all(files.map((f) => shrinkImage(f, c.chat.options.imageMaxPx)))   // big photos -> JPEG
     const fill = bar.firstElementChild as HTMLElement
     const ids: string[] = []
     try {
@@ -295,7 +297,11 @@ export function uploadCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLEle
     }
   }
   const acts = h('div', { class: 'acts' },
-    h('button', { class: 'btn link', type: 'button', onclick: () => { acts.replaceWith(h('div', { class: 'ok-line off' }, h('i', null, '✕'), h('span', null, c.t('skipped')))); c.resolve({ accepted: false }) } }, c.t('skip')))
+    h('button', { class: 'btn link', type: 'button', onclick: () => {
+      acts.replaceWith(h('div', { class: 'ok-line off' }, h('i', null, '✕'), h('span', null, c.t('skipped'))))
+      zone.remove(); msg.textContent = ''; bar.hidden = true        // a skipped request shrinks to its prompt
+      c.resolve({ accepted: false })
+    } }, c.t('skip')))
   return h('div', null, h('div', { class: 'card-q' }, it.prompt), zone, picker, bar, msg, acts)
 }
 

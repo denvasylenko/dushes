@@ -1,6 +1,7 @@
 /** <agui-chat>: an AG-UI chat as a Web Component. See docs/chat-widget.md for every option. */
 import { h, md, reducedMotion, store } from './dom'
 import { STRINGS } from './i18n'
+import { shrinkImage } from './image'
 import { dictate, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
 import { runAgent, runHttp, uid, type AgentLike } from './transport'
@@ -14,7 +15,7 @@ export const DEFAULTS: ChatOptions = {
   theme: 'auto', lang: '', title: '', subtitle: '', intro: '', placeholder: '', starters: [], resumeStyle: 'command',
   history: 'full', headers: {}, forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, attach: true, attachAccept: '', attachMultiple: true,
-  attachMaxMb: 20, upload: undefined,
+  attachMaxMb: 20, imageMaxPx: 2000, upload: undefined,
 }
 
 /** attribute -> [option, parser] */
@@ -26,7 +27,7 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   intro: ['intro', String], placeholder: ['placeholder', String], 'resume-style': ['resumeStyle', String],
   history: ['history', String], open: ['open', bool], attach: ['attach', bool], 'mic-lang': ['micLang', String],
   'mic-auto-send': ['micAutoSend', bool], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
-  'attach-max-mb': ['attachMaxMb', Number],
+  'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
 }
 
 /** Interrupt reasons of RUN_FINISHED.outcome (AG-UI 1.0) -> the `type` renderers are registered for. */
@@ -403,6 +404,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const upload = this._opts.upload ?? this._plugins.find((p) => p.attach)?.attach?.upload
     if (!upload || !list.length) return
     if (!this._opts.attachMultiple) { list = list.slice(0, 1); this._files = [] }
+    this.$.hint.textContent = this.t('working')
+    list = await Promise.all(list.map((f) => shrinkImage(f, this._opts.imageMaxPx)))   // big photos -> JPEG
     const max = this._opts.attachMaxMb * 1024 * 1024
     const big = list.filter((f) => f.size > max)
     list = list.filter((f) => f.size <= max)
@@ -779,12 +782,15 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     el.querySelector<HTMLElement>('[autofocus], .chip, .btn.pri')?.focus({ preventScroll: true })
   }
 
-  /** A new message closes cards nobody answered (the server closes them too). */
+  /** A new message closes cards nobody answered (the server closes them too): they shrink and say so. */
   private _closePendingCards(): void {
     this.$.log.querySelectorAll<HTMLElement>('.card[data-pending]').forEach((el) => {
       delete el.dataset.pending
-      el.classList.add('done')
+      el.classList.add('done', 'dismissed')
       el.querySelectorAll<HTMLElement>('button, input, select, textarea').forEach((x) => x.setAttribute('disabled', ''))
+      const line = h('div', { class: 'ok-line off' }, h('i', null, '\u2715'), h('span', null, this.t('skipped')))
+      const acts = el.querySelector('.acts')
+      if (acts) acts.replaceWith(line); else el.appendChild(line)
     })
   }
 }

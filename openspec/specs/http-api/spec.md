@@ -67,3 +67,14 @@ The router SHALL provide `POST /prefill` with `{state, data?, text?, attachment_
 #### Scenario: Export
 - **WHEN** a client requests `format=agui`
 - **THEN** the response is `{messages: [...]}` in AG-UI message format
+
+### Requirement: Debug view of a thread
+The development-only `GET /debug/{thread_id}` SHALL return:
+- the model's history for the thread;
+- `runs`: the stats of the thread's most recent runs (see run-observability).
+
+It SHALL only be mounted when the router is created with `debug=True`.
+
+#### Scenario: Debug off
+- **WHEN** the router is created with `debug=False`
+- **THEN** `GET /debug/{thread_id}` is not found

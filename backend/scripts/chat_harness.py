@@ -136,6 +136,11 @@ class Session:
                     self.log.append(f"   💭 (hidden from the user) {_short(e['value'], 100)}")
                 elif name == "agent_context":
                     self.ctx_tokens = e["value"]["stats"]["context_tokens"]
+                elif name == "run_stats":
+                    s = e["value"]
+                    ttft = f"{s['ttft_ms'] / 1000:.1f}s" if s.get("ttft_ms") is not None else "-"
+                    self.log.append(f"   \u23f1 first token {ttft}, run {s['total_ms'] / 1000:.1f}s, "
+                                    f"tools {len(s['tools'])}, tokens {s['tokens'].get('input')}/{s['tokens'].get('output')}")
                 elif name == "ui_directive":
                     d = e["value"]
                     for s in d["reveal"]:

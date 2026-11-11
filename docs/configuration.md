@@ -107,6 +107,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `learn_dependencies` | `true` | persist observed field dependencies per form |
 | `interrupt_mode` | `legacy` | cards as `CUSTOM on_interrupt` (CopilotKit), `structured` (AG-UI 1.0 interrupts), or `both` |
 | `confirm_tools` | none | tool names that always need the user's confirmation: the call is held, the user sees a confirm card, and the tool runs only on yes |
+| `tracing` | none | `{callbacks: ["module:factory"], tags: [...]}`: LangChain callback handlers (Langfuse, Phoenix, your own) and extra tags for every turn. LangSmith needs only `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in the environment. See [observability.md](observability.md) |
 | `suggestions` | off | quick replies after answers: `true`, or `{enabled, model, max, timeout}`; `model` defaults to the memory model, `max` 3 (up to 5), `timeout` 4 s. Sent as `CUSTOM suggestions {items}`; a failure or timeout sends nothing |
 
 ## Field specs: how each component stores its value

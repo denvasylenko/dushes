@@ -145,6 +145,8 @@ export interface ChatOptions {
   attachMultiple: boolean
   /** Largest file in MB; bigger files are refused with a message. */
   attachMaxMb: number
+  /** Photos larger than this many pixels on a side are shrunk before upload; 0 sends them as they are. */
+  imageMaxPx: number
   /** Your own uploader (overrides the plugin's): file -> {id, filename}. */
   upload?: (file: File, chat: ChatApi) => Promise<Attachment>
 }

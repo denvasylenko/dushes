@@ -10,6 +10,12 @@ import type { Config, JsxNode, RevealStep, UiDirective, UiState } from './types'
 
 type AgentCtx = { text: string; stats: { context_tokens: number; config_tokens: number } } | null
 
+/** The server's numbers for the last run (CUSTOM run_stats). */
+type RunStats = { ttft_ms: number | null; total_ms: number; model_ms: number; tool_ms: number; tools: unknown[];
+  tokens: { input: number | null; output: number | null }; cache_hit_rate: number | null } | null
+
+const sec = (ms: number | null) => (ms == null ? '-' : `${(ms / 1000).toFixed(1)} s`)
+
 type LoadedForm = { formId: string; jsx: string; tree: JsxNode; hash: string; title: string }
 
 const EMPTY_UI: UiState = { activeTabs: {}, openAccordions: [], focused: null }
@@ -67,6 +73,7 @@ export default function App() {
   const [highlight, setHighlight] = useState<Highlight>(null)
   const [agentCtx, setAgentCtx] = useState<AgentCtx>(null)
   const [showCtx, setShowCtx] = useState(false)
+  const [runStats, setRunStats] = useState<RunStats>(null)
   const [busy, setBusy] = useState(false)
   const [thread, setThread] = useState('')
   const [lang, setLang] = useState(() => store.get<string>('formguide:chat-lang') ?? '')
@@ -185,6 +192,7 @@ export default function App() {
 
   const onEvent = useCallback((e: { type: string; name?: string; value?: unknown }) => {
     if (e.type === 'CUSTOM' && e.name === 'agent_context') setAgentCtx(e.value as AgentCtx)
+    if (e.type === 'CUSTOM' && e.name === 'run_stats') setRunStats(e.value as RunStats)
   }, [])
 
   const onThread = useCallback((id: string) => {
@@ -257,6 +265,14 @@ export default function App() {
             {LANGS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
+        {showCtx && runStats && (
+          <div className="ctx stats">
+            last turn: first token {sec(runStats.ttft_ms)} · total {sec(runStats.total_ms)} · model {sec(runStats.model_ms)}
+            {' '}· tools {sec(runStats.tool_ms)} ({runStats.tools.length}) · {runStats.tokens.input?.toLocaleString('en') ?? '-'} in /
+            {' '}{runStats.tokens.output?.toLocaleString('en') ?? '-'} out
+            {runStats.cache_hit_rate != null && <> · cache {Math.round(runStats.cache_hit_rate * 100)}%</>}
+          </div>
+        )}
         {showCtx && agentCtx && <pre className="ctx">{agentCtx.text}</pre>}
         <AguiChat
           ref={chatRef}

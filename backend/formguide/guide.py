@@ -13,7 +13,9 @@ and the LangGraph graph. Transport-agnostic: `run()` yields AG-UI-shaped events;
 from __future__ import annotations
 
 import json
+import logging
 import uuid
+from collections import defaultdict, deque
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -35,7 +37,10 @@ from .prefill import prefill_instruction, suggest_prefill
 from .skills import SkillRegistry
 from .form.values import value_warnings
 from .agent.interaction import read_answer, read_confirm, read_decision, read_edits, read_upload
+from .stats import RunStats, activate, deactivate
 from .suggestions import suggest
+
+stats_log = logging.getLogger("formguide.stats")
 from .transcript import FileTranscriptStore, check_thread_id, new_entry, pending_card
 
 
@@ -53,6 +58,9 @@ class FormGuide:
         self.models = cfg.models.resolve()
         from .models import build_model
         self.models.memory = build_model(cfg.memory.model) if cfg.memory.model else self.models.research
+        self._recent: dict[str, deque] = defaultdict(lambda: deque(maxlen=20))   # recent run stats per thread
+        # tracer handlers, built once: factories are called, ready handlers are used as they are
+        self._callbacks = [f if hasattr(f, "on_llm_start") or not callable(f) else f() for f in cfg.tracing.callbacks]
         sg = cfg.suggestions
         self.suggestions_model = (build_model(sg.model) if sg.model else self.models.memory) if sg.enabled else None
         self.data_dir = Path(cfg.data_dir)
@@ -165,13 +173,30 @@ class FormGuide:
             elif prefill:
                 tx.append(thread_id, new_entry("notice", text="The form was prefilled from data the app already has."))
         mode = self.config.interrupt_mode
+        run_id = run_id or str(uuid.uuid4())
+        stats = RunStats(run_id, thread_id)
+        token = activate(stats)   # the graph's nodes record into it (see stats.py)
+        try:
+            async for ev in self._events(thread_id, mode, stats, tx, message=message, state=state, resume=resume,
+                                         run_id=run_id, client_tools=client_tools, tool_results=tool_results,
+                                         prefill=prefill):
+                yield ev
+        finally:
+            deactivate(token)
+
+    async def _events(self, thread_id: str, mode: str, stats: RunStats, tx: Any, *, message: str | None,
+                      state: dict[str, Any] | None, resume: dict[str, Any] | None, run_id: str,
+                      client_tools: list[dict] | None, tool_results: dict[str, str] | None,
+                      prefill: dict[str, Any] | None) -> AsyncIterator[dict]:
+        """The run's AG-UI events, with the transcript kept in step (the body of run())."""
         texts: dict[str, str] = {}
         calls: dict[str, dict] = {}
         interrupts: list[dict] = []
         said: list[str] = []          # this run's answer, for quick replies
         context = ""                  # what the model saw of the form, for quick replies
         async for ev in self._run(thread_id, message=message, state=state, resume=resume, run_id=run_id,
-                                  client_tools=client_tools, tool_results=tool_results, prefill=prefill):
+                                  client_tools=client_tools, tool_results=tool_results, prefill=prefill,
+                                  stats=stats):
             t, name = ev["type"], ev.get("name")
             if t == "TEXT_MESSAGE_CONTENT":
                 texts[ev["messageId"]] = texts.get(ev["messageId"], "") + ev["delta"]
@@ -216,11 +241,18 @@ class FormGuide:
             if t == "RUN_FINISHED" and not interrupts and said and self.suggestions_model is not None:
                 user_text = message or next((e.get("text", "") for e in reversed(tx.list(thread_id))
                                              if e["kind"] == "user"), "")
+                t_sug = RunStats.now()
                 items = await suggest(self.suggestions_model, user_text=user_text, answer="\n".join(said),
                                       context=context, limit=self.config.suggestions.max,
                                       timeout=self.config.suggestions.timeout)
+                stats.model_call(t_sug, None, None, kind="suggestions")
                 if items:
                     yield {"type": "CUSTOM", "name": "suggestions", "value": {"items": items}}
+            if t in ("RUN_FINISHED", "RUN_ERROR"):   # the numbers go last, right before the terminal event
+                summary = stats.as_event()
+                self._recent[thread_id].append(summary)
+                stats_log.info(json.dumps(summary, ensure_ascii=False))
+                yield {"type": "CUSTOM", "name": "run_stats", "value": summary}
             yield ev
 
     def thread(self, thread_id: str, form_id: str | None = None) -> dict[str, Any]:
@@ -257,10 +289,22 @@ class FormGuide:
 
     async def _run(self, thread_id: str, *, message: str | None, state: dict[str, Any] | None,
                    resume: dict[str, Any] | None, run_id: str | None, client_tools: list[dict] | None = None,
-                   tool_results: dict[str, str] | None = None, prefill: dict[str, Any] | None = None
-                   ) -> AsyncIterator[dict]:
-        cfg = {"configurable": {"thread_id": thread_id}}
+                   tool_results: dict[str, str] | None = None, prefill: dict[str, Any] | None = None,
+                   stats: RunStats | None = None) -> AsyncIterator[dict]:
         run_id = run_id or str(uuid.uuid4())
+        stats = stats or RunStats(run_id, thread_id)
+        form_id = (state or {}).get("form_id") or ""
+        # Tracers (LangSmith via its environment variables, or config.tracing.callbacks) see every turn
+        # under its conversation: the thread id and form are in the run's metadata and tags.
+        cfg: dict[str, Any] = {
+            "configurable": {"thread_id": thread_id},
+            "run_name": "formguide turn",
+            "tags": ["formguide", *([form_id] if form_id else []), *self.config.tracing.tags],
+            "metadata": {"thread_id": thread_id, "run_id": run_id, "form_id": form_id,
+                         "jsx_hash": (state or {}).get("jsx_hash") or ""},
+        }
+        if self._callbacks:
+            cfg["callbacks"] = list(self._callbacks)
         yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
         opened: set[str] = set()
         error: str | None = None
@@ -289,6 +333,7 @@ class FormGuide:
                     opened.add(chunk["id"])
                     yield {"type": "TEXT_MESSAGE_START", "messageId": chunk["id"], "role": "assistant"}
                 elif k == "text_delta":
+                    stats.first_token()
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": chunk["id"], "delta": chunk["delta"]}
                 elif k == "text_end":
                     opened.discard(chunk["id"])
@@ -336,6 +381,10 @@ class FormGuide:
         res = await self.suggest_prefill(state, data=prefill.get("data"), text=prefill.get("text"),
                                          attachment_ids=prefill.get("attachment_ids"), thread_id=thread_id)
         return prefill_instruction(res, prefill.get("language"))
+
+    def recent_runs(self, thread_id: str) -> list[dict]:
+        """Stats of the thread's last runs (in memory, for the debug endpoint), oldest first."""
+        return list(self._recent.get(thread_id, ()))
 
     async def history(self, thread_id: str) -> list[dict]:
         """The model's history (not the display transcript), for debugging."""
