@@ -1,6 +1,6 @@
 # formguide architecture
 
-formguide is a chat agent that guides end users through large configurable forms: it shows where to click, explains fields, answers from the business's documents, reads documents the user attaches, and fills fields after the user confirms. Behaviour contracts live in [`openspec/specs/`](../openspec/specs); this page explains how the parts fit together.
+formguide is a chat agent that guides end users through large configurable forms: it shows where to click, explains fields, answers from the business's documents, reads documents the user attaches, and fills fields after the user confirms. Behaviour contracts live in [`openspec/specs/`](../openspec/specs); this page explains how the parts fit together. The same material with diagrams, plus the rendered specs, is published at https://denvasylenko.github.io/dushes/.
 
 ## 1. System overview
 

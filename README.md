@@ -5,7 +5,7 @@ A chat agent that guides users through large configurable forms: it shows where 
 Documentation:
 - [`docs/architecture.md`](docs/architecture.md) — how the parts fit together;
 - [`openspec/specs/`](openspec/specs) — behaviour contracts per capability, maintained with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec list --specs`, `openspec validate --all --strict`);
-- architecture pages with diagrams (GitHub Pages): built from `docs/architecture-pages.html` plus the specs by `python3 scripts/build_docs_site.py`, deployed by `.github/workflows/docs.yml`.
+- architecture pages with diagrams: https://denvasylenko.github.io/dushes/ — built from `docs/architecture-pages.html` plus the specs by `python3 scripts/build_docs_site.py`, deployed by `.github/workflows/docs.yml`.
 
 ## Layout
 
