@@ -85,6 +85,8 @@ td:first-child { white-space: nowrap; }
 main a:not(.src a):not(.pager a) { color: var(--accent); }
 li code, p code { overflow-wrap: anywhere; }
 td code { white-space: nowrap; }
+.tbl.wrap td code { white-space: normal; }
+.tbl.wrap td:first-child { white-space: nowrap; }
 .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); }
 .pager a { color: var(--accent); text-decoration: none; font-weight: 500; }
 .pager a:empty { visibility: hidden; }
@@ -638,9 +640,9 @@ form reacted:
     <!-- ============================================================ 7 -->
     <section data-page="config" hidden>
       <p class="eyebrow">Configuration</p>
-      <h1>Install or copy it, then configure</h1>
+      <h1>Install or copy it, then configure: models, YAML, every key</h1>
       <p class="lead">The <code>formguide</code> library does not depend on a transport or a UI. <code>demo/</code> is an example integration: a mock form backend, a FastAPI app and a frontend. Every domain and every provider is set in the configuration, in code or YAML.</p>
-      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/config.py" title="backend/formguide/config.py">config.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/models.py" title="backend/formguide/models.py">models.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/skills.py" title="backend/formguide/skills.py">skills.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/cli.py" title="backend/formguide/cli.py">cli.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/demo/formguide.yaml" title="backend/demo/formguide.yaml">formguide.yaml</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/pyproject.toml" title="backend/pyproject.toml">pyproject.toml</a></p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/config.py" title="backend/formguide/config.py">config.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/models.py" title="backend/formguide/models.py">models.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/skills.py" title="backend/formguide/skills.py">skills.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/cli.py" title="backend/formguide/cli.py">cli.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/demo/formguide.yaml" title="backend/demo/formguide.yaml">formguide.yaml</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/pyproject.toml" title="backend/pyproject.toml">pyproject.toml</a> <a href="https://github.com/denvasylenko/dushes/blob/main/docs/configuration.md" title="docs/configuration.md">configuration.md</a></p>
 <pre><code>backend/
   formguide/                 the library (pip install "formguide[...]" or copy the folder)
     guide.py                 FormGuide: register_form · run (AG-UI events) · suggest_prefill · compile_knowledge
@@ -658,6 +660,99 @@ form reacted:
   demo/                      example: app.py · formguide.yaml · skills/ · domain_packs/ · mock_forms/
 examples/copilotkit/         CopilotKit 1.86 client
 frontend/                    demo UI on @ag-ui/client</code></pre>
+      <h2>From a YAML file to a running guide</h2>
+      <p><code>load_config("formguide.yaml")</code> reads the file into a plain <code>GuideConfig</code> (you can still change it in Python); <code>FormGuide(config)</code> then builds one model per role and opens the stores. Paths in the file are relative to the file, <code>${VAR}</code> is replaced from the environment, and <code>"module:attr"</code> strings are imported. <code>formguide check --config …</code> does all of this except calling a model. The full reference, key by key, is <a href="https://github.com/denvasylenko/dushes/blob/main/docs/configuration.md">docs/configuration.md</a>.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 300" role="img" aria-label="The YAML file becomes a GuideConfig, then a FormGuide with five model roles; research, compile and extract fall back to the agent model, memory falls back to research.">
+            <defs>
+              <marker id="a7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a7k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="box" x="20" y="40" width="170" height="84" rx="8"/>
+            <text x="105" y="68" text-anchor="middle" class="t-b">formguide.yaml</text>
+            <text x="105" y="88" text-anchor="middle" class="t-m">model: / models:</text>
+            <text x="105" y="106" text-anchor="middle" class="t-m">${ENV} · ./paths</text>
+            <rect class="box" x="250" y="40" width="160" height="84" rx="8"/>
+            <text x="330" y="68" text-anchor="middle" class="t-b">GuideConfig</text>
+            <text x="330" y="88" text-anchor="middle" class="t-s">plain Python,</text>
+            <text x="330" y="106" text-anchor="middle" class="t-s">editable in code</text>
+            <rect class="key" x="470" y="40" width="160" height="84" rx="8"/>
+            <text x="550" y="68" text-anchor="middle" class="t-b">FormGuide</text>
+            <text x="550" y="88" text-anchor="middle" class="t-s">builds models,</text>
+            <text x="550" y="106" text-anchor="middle" class="t-s">opens the stores</text>
+            <line class="ln" x1="190" y1="82" x2="248" y2="82" marker-end="url(#a7)"/>
+            <text x="219" y="74" text-anchor="middle" class="t-m">load</text>
+            <line class="ln" x1="410" y1="82" x2="468" y2="82" marker-end="url(#a7)"/>
+
+            <rect class="key" x="680" y="20" width="140" height="44" rx="8"/>
+            <text x="750" y="40" text-anchor="middle" class="t-b">agent</text>
+            <text x="750" y="56" text-anchor="middle" class="t-s">chat, tools, cards</text>
+            <rect class="soft" x="680" y="90" width="140" height="40" rx="8"/>
+            <text x="750" y="108" text-anchor="middle" class="t-b">research</text>
+            <text x="750" y="123" text-anchor="middle" class="t-s">documents</text>
+            <rect class="soft" x="680" y="150" width="140" height="40" rx="8"/>
+            <text x="750" y="168" text-anchor="middle" class="t-b">compile</text>
+            <text x="750" y="183" text-anchor="middle" class="t-s">docs → domain pack</text>
+            <rect class="soft" x="680" y="210" width="140" height="40" rx="8"/>
+            <text x="750" y="228" text-anchor="middle" class="t-b">extract</text>
+            <text x="750" y="243" text-anchor="middle" class="t-s">attachments, prefill</text>
+            <rect class="soft" x="470" y="210" width="160" height="40" rx="8"/>
+            <text x="550" y="228" text-anchor="middle" class="t-b">memory</text>
+            <text x="550" y="243" text-anchor="middle" class="t-s">long-chat summaries</text>
+            <line class="ln" x1="630" y1="70" x2="678" y2="46" marker-end="url(#a7)"/>
+
+            <path class="ln-key" d="M822,110 C836,92 836,62 822,46" marker-end="url(#a7k)"/>
+            <path class="ln-key" d="M822,170 C846,140 846,72 822,50" marker-end="url(#a7k)"/>
+            <path class="ln-key" d="M822,230 C856,190 856,74 822,54" marker-end="url(#a7k)"/>
+            <path class="ln-key" d="M630,226 C660,226 660,112 678,112" marker-end="url(#a7k)"/>
+            <text x="840" y="284" text-anchor="end" class="t-k">green: an unset role uses the model its arrow points to</text>
+          </svg>
+        </div>
+        <figcaption>Set only <code>model:</code> and every role uses it. Set <code>models:</code> to give some roles their own model; the others fall back along the green arrows (memory → research → agent).</figcaption>
+      </figure>
+      <h2>Models: three ways to write one</h2>
+      <div class="tbl wrap"><table>
+        <thead><tr><th>Form</th><th>Example</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td>string</td><td><code>"openai:gpt-5"</code></td><td>LangChain <code>init_chat_model</code></td></tr>
+          <tr><td>provider + model</td><td><code>{provider: anthropic, model: claude-opus-5-5, max_tokens: 16000}</code></td><td><code>init_chat_model</code>; the other keys go to the model’s constructor</td></tr>
+          <tr><td>class</td><td><code>{class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5}</code></td><td>imports the class and calls it with the other keys: any <code>BaseChatModel</code>, including your own</td></tr>
+        </tbody>
+      </table></div>
+      <h2>Providers</h2>
+      <div class="tbl wrap"><table>
+        <thead><tr><th>Provider</th><th>YAML</th><th>Package · credentials</th></tr></thead>
+        <tbody>
+          <tr><td>Anthropic</td><td><code>"anthropic:claude-opus-5-5"</code></td><td><code>langchain-anthropic</code> · <code>ANTHROPIC_API_KEY</code></td></tr>
+          <tr><td>OpenAI</td><td><code>"openai:gpt-5"</code></td><td><code>langchain-openai</code> · <code>OPENAI_API_KEY</code></td></tr>
+          <tr><td>Azure OpenAI</td><td><code>{class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, api_version: "2025-04-01-preview", azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}</code></td><td><code>langchain-openai</code> · <code>AZURE_OPENAI_API_KEY</code></td></tr>
+          <tr><td>Gemini</td><td><code>"google_genai:gemini-2.5-pro"</code></td><td><code>langchain-google-genai</code> · <code>GOOGLE_API_KEY</code></td></tr>
+          <tr><td>Bedrock</td><td><code>{provider: bedrock_converse, model: &lt;model id&gt;, region_name: eu-central-1}</code></td><td><code>langchain-aws</code> · AWS credentials</td></tr>
+          <tr><td>Ollama</td><td><code>{provider: ollama, model: llama3.1}</code></td><td><code>langchain-ollama</code> · none</td></tr>
+          <tr><td>OpenAI-compatible</td><td><code>{class: "langchain_openai:ChatOpenAI", model: &lt;name&gt;, base_url: "http://gateway/v1"}</code></td><td>vLLM, LM Studio, an internal gateway</td></tr>
+        </tbody>
+      </table></div>
+      <p>Covered by the offline tests: Anthropic, OpenAI and Azure OpenAI (real request payloads). The others go through the same LangChain path but were not run here.</p>
+      <h2>Every key</h2>
+      <div class="tbl wrap"><table>
+        <thead><tr><th>Key</th><th>Default</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>model</code> / <code>models</code></td><td><code>$FORMGUIDE_MODEL</code>, else Claude</td><td>one model for every role, or one per role (<code>agent</code>, <code>research</code>, <code>compile</code>, <code>extract</code>)</td></tr>
+          <tr><td><code>data_dir</code></td><td><code>data</code></td><td>formguide’s own files: learned dependencies, layouts, documents, attachments, transcripts</td></tr>
+          <tr><td><code>components</code></td><td>Tabs, Tab, Accordion, Section, Form; Input, Dropdown, Checkbox, …</td><td>your component library: <code>{containers: {Tag: role}, fields: {Tag: role}}</code>; a given map replaces the default one</td></tr>
+          <tr><td><code>domain_packs</code></td><td>none (neutral persona)</td><td><code>dir</code> of <code>&lt;form_id&gt;.json</code>, inline <code>packs</code>, or a <code>provider</code> function <code>(form_id) → dict</code></td></tr>
+          <tr><td><code>knowledge</code></td><td><code>&lt;data_dir&gt;/kb</code>, BM25, own namespace</td><td><code>dir</code>; <code>index</code>: <code>bm25</code> or <code>{factory, filter}</code> for a LangChain vector store; <code>scopes</code>: form → namespaces</td></tr>
+          <tr><td><code>skills</code></td><td>none</td><td><code>dir</code> of <code>&lt;skill&gt;/SKILL.md</code> (name, description, forms, tools)</td></tr>
+          <tr><td><code>tools</code></td><td>none</td><td><code>["module:tool"]</code>, LangChain tools for every form</td></tr>
+          <tr><td><code>memory</code></td><td>60 000 tokens, 4 turns, research model</td><td><code>max_history_tokens</code>, <code>keep_turns</code>, <code>model</code></td></tr>
+          <tr><td><code>checkpointer</code></td><td>in memory</td><td><code>{sqlite: path}</code>: the model’s history survives restarts</td></tr>
+          <tr><td><code>transcripts</code></td><td>files under <code>data_dir</code></td><td><code>{dir: path}</code> or <code>memory</code>: the chat the user sees</td></tr>
+          <tr><td><code>max_tool_rounds</code></td><td><code>10</code></td><td>model ⇄ tool rounds per turn</td></tr>
+          <tr><td><code>learn_dependencies</code></td><td><code>true</code></td><td>keep observed field dependencies per form</td></tr>
+          <tr><td><code>interrupt_mode</code></td><td><code>legacy</code></td><td>cards for CopilotKit (<code>legacy</code>), AG-UI 1.0 (<code>structured</code>) or <code>both</code></td></tr>
+        </tbody>
+      </table></div>
       <h2>Extension points</h2>
       <div class="tbl"><table>
         <thead><tr><th>What</th><th>How</th><th>Example</th></tr></thead>
@@ -675,8 +770,8 @@ frontend/                    demo UI on @ag-ui/client</code></pre>
           <tr><td>Frontend tools</td><td>declared by the client per run</td><td>CopilotKit <code>useFrontendTool</code>, <code>HttpAgent</code> tools</td></tr>
         </tbody>
       </table></div>
-      <h2>YAML</h2>
-      <p>The shortest working file is one line. Everything below it is optional and shown with typical values.</p>
+      <h2>A complete YAML file</h2>
+      <p>The shortest working file is one line. Everything below it is optional and shown with typical values; the demo’s file is <a href="https://github.com/denvasylenko/dushes/blob/main/backend/demo/formguide.yaml">backend/demo/formguide.yaml</a>.</p>
 <pre><code>model: "anthropic:claude-opus-5-5"     # one model for every role, or per role:
 models:
   agent:    {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5,
@@ -704,7 +799,7 @@ guide = FormGuide(load_config("formguide.yaml"))
 app.include_router(create_router(guide), prefix="/agent")      # or call guide.run(...) directly</code></pre>
       <div class="grid2">
         <div class="note"><h3>Model requirements</h3><ul><li>agent and researcher: tool calling</li><li>compile and extract: structured output</li><li>extracting from scans: vision / PDF input</li></ul></div>
-        <div class="note"><h3>Checked</h3><p><span class="pill ok">40 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic, and AG-UI event validation. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
+        <div class="note"><h3>Checked</h3><p><span class="pill ok">41 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic, and AG-UI event validation. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
       </div>
     </section>
 

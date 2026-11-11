@@ -151,6 +151,8 @@ Why the system prompt is frozen: some models (Claude Opus 5.5) bind reasoning bl
 
 ## 7. Configuration and extension points
 
+The full reference (model forms per provider, role fallbacks, every YAML key with its default, environment variables) is [`configuration.md`](configuration.md).
+
 Quick start: `formguide init my-agent` writes a starter `formguide.yaml`, a domain pack and a skill; `formguide check --config …` loads it without calling a model; `formguide serve --config …` runs the endpoints ([`cli.py`](../backend/formguide/cli.py)). The only required setting is `model:` (or `FORMGUIDE_MODEL`). The package's core dependencies are LangGraph, LangChain core, Pydantic, PyYAML and pypdf; providers, the HTTP layer, the researcher and SQLite are extras (`anthropic`, `openai`, `server`, `research`, `sqlite`, `all`), imported only when used.
 
 ### Prefill

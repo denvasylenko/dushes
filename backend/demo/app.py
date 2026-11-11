@@ -58,6 +58,15 @@ def java_event(ev: JavaEvent) -> dict:
 
 app.include_router(java)
 
+@app.middleware("http")
+async def no_stale_page(request, call_next):
+    """The page itself is never cached, so a rebuilt frontend shows up on a normal reload."""
+    response = await call_next(request)
+    if not request.url.path.startswith(("/assets/", "/agent/", "/java/")):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 _DIST = HERE.parents[1] / "frontend" / "dist"
 if _DIST.exists():
     app.mount("/", StaticFiles(directory=_DIST, html=True), name="frontend")

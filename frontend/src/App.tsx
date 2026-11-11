@@ -4,6 +4,7 @@ import { deleteThread, getThread, getThreadMessages, javaEvent, javaForm, javaFo
 import { FormProvider, Render, type Highlight } from './Form'
 import { parseJsx } from './jsx'
 import Manager from './Manager'
+import { SPEECH_LANGS, useSpeech } from './speech'
 import type { Config, JsxNode, ProposedChange, RevealStep, UiDirective, UiState } from './types'
 
 type ChatItem =
@@ -345,6 +346,15 @@ function Chat({ items, busy, onSend, onCard, suggestions, thread }: {
   const [uploading, setUploading] = useState(false)
   const [fileErr, setFileErr] = useState('')
   const picker = useRef<HTMLInputElement>(null)
+  // voice input: dictated text goes into the input box, appended to what was typed before
+  const [speechLang, setSpeechLang] = useState(() => store.get<string>('formguide:speech-lang') ?? '')
+  const before = useRef('')
+  const speech = useSpeech(speechLang, (said) => setText((before.current ? before.current + ' ' : '') + said))
+  const toggleMic = () => {
+    if (speech.listening) return speech.stop()
+    before.current = text.trim()
+    speech.start()
+  }
 
   const pick = async (list: FileList | null) => {
     if (!list?.length) return
@@ -365,10 +375,21 @@ function Chat({ items, busy, onSend, onCard, suggestions, thread }: {
   const submit = () => {
     const t = text.trim() || (files.length ? 'Please use the attached document.' : '')
     if (!t) return
+    speech.cancel()   // the mic goes off and late results cannot bring the text back
+    before.current = ''
     onSend(t, files)
     setText('')
     setFiles([])
   }
+
+  // the message box grows with its text (up to a limit, then it scrolls)
+  const box = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`
+  }, [text])
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
@@ -425,6 +446,7 @@ function Chat({ items, busy, onSend, onCard, suggestions, thread }: {
         {busy && <div className="typing muted">the assistant is thinking…</div>}
         <div ref={end} />
       </div>
+      {speech.error && <div className="pending-files"><span className="err">{speech.error}</span></div>}
       {(files.length > 0 || fileErr) && (
         <div className="pending-files">
           {files.map((f) => (
@@ -442,7 +464,23 @@ function Chat({ items, busy, onSend, onCard, suggestions, thread }: {
         <button type="button" title="Attach a document" disabled={busy || uploading} onClick={() => picker.current?.click()}>
           {uploading ? '…' : '📎'}
         </button>
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message the assistant…" disabled={busy} />
+        {speech.supported && (
+          <>
+            <button type="button" className={speech.listening ? 'mic on' : 'mic'} disabled={busy}
+              title={speech.listening ? 'Stop dictation' : 'Dictate a message'} aria-pressed={speech.listening}
+              onClick={toggleMic}>{speech.listening ? '■' : '🎤'}</button>
+            <select className="mic-lang" value={speechLang} aria-label="Dictation language" disabled={speech.listening}
+              onChange={(e) => { setSpeechLang(e.target.value); store.set('formguide:speech-lang', e.target.value) }}>
+              {SPEECH_LANGS.map((l) => <option key={l} value={l}>{l ? l.slice(0, 2).toUpperCase() : 'Auto'}</option>)}
+            </select>
+          </>
+        )}
+        <textarea ref={box} rows={2} value={text} onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() }
+          }}
+          placeholder={speech.listening ? 'Listening… speak, then press ■ or ➤' : 'Message the assistant… (Shift+Enter: new line)'}
+          disabled={busy} />
         <button className="primary" disabled={busy || uploading || (!text.trim() && !files.length)}>➤</button>
       </form>
     </>

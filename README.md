@@ -4,6 +4,7 @@ A chat agent that guides users through large configurable forms: it shows where 
 
 Documentation:
 - [`docs/architecture.md`](docs/architecture.md) — how the parts fit together;
+- [`docs/configuration.md`](docs/configuration.md) — models per provider and every YAML key;
 - [`openspec/specs/`](openspec/specs) — behaviour contracts per capability, maintained with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec list --specs`, `openspec validate --all --strict`);
 - architecture pages with diagrams: https://denvasylenko.github.io/dushes/ — built from `docs/architecture-pages.html` plus the specs by `python3 scripts/build_docs_site.py`, deployed by `.github/workflows/docs.yml`.
 
@@ -66,7 +67,7 @@ await guide.suggest_prefill(state, data=profile)    # values to prefill, without
 
 ## Configure
 
-Everything can be set in code (`GuideConfig`) or YAML (`load_config`); see [`config.py`](backend/formguide/config.py) and [`demo/formguide.yaml`](backend/demo/formguide.yaml).
+Everything can be set in code (`GuideConfig`) or YAML (`load_config`). The full reference — how to write a model for each provider, which role falls back to which, every key with its default — is [`docs/configuration.md`](docs/configuration.md); a working file is [`demo/formguide.yaml`](backend/demo/formguide.yaml).
 
 | What | Options |
 |---|---|
@@ -101,7 +102,7 @@ cd frontend && npm install && npm run build && cd ..
 cd backend && ANTHROPIC_API_KEY=... uv run uvicorn demo.app:app --port 8000 --reload --reload-dir formguide --reload-dir demo
 ```
 
-Open http://localhost:8000. Two demo forms with nothing in common: `loan_application` (221 fields, 8 tabs, nested up to 4 levels) and `barber_booking` (a 4-step wizard). "Manager: documents" uploads business documents for a form (`demo/samples/kb/` has examples); 📎 in the chat attaches a user document (`demo/samples/attachments/`).
+Open http://localhost:8000. Two demo forms with nothing in common: `loan_application` (221 fields, 8 tabs, nested up to 4 levels) and `barber_booking` (a 4-step wizard). "Manager: documents" uploads business documents for a form (`demo/samples/kb/` has examples); 📎 in the chat attaches a user document (`demo/samples/attachments/`). 🎤 dictates a message through the browser's speech recognition (Chrome, Edge, Safari; pick the language next to it, Auto = the browser's language; Chrome sends the audio to its own speech service).
 
 Note: `--reload` watches `.py` files only; after editing `formguide.yaml`, touch a `.py` file or restart.
 

@@ -181,3 +181,22 @@ def test_kb_bm25_scoped(tmp_path):
     assert kb2.search("loan_application", "tax return")
     with pytest.raises(ValueError):
         kb.add_document("../etc", "a.md", b"x")
+
+
+def test_yaml_model_shorthands(tmp_path, monkeypatch):
+    from formguide import load_config
+    from formguide.config import GuideConfig
+
+    f = tmp_path / "a.yaml"
+    f.write_text('model: "openai:gpt-5"\n')
+    m = load_config(f).models
+    assert m.agent == "openai:gpt-5" and m.research is None            # other roles fall back to agent
+    f.write_text('model: "openai:gpt-5"\nmodels: {agent: "anthropic:claude-opus-5-5", extract: "openai:gpt-5"}\n')
+    m = load_config(f).models
+    assert m.agent == "anthropic:claude-opus-5-5" and m.extract == "openai:gpt-5"   # models wins
+    f.write_text('models: "openai:gpt-5-mini"\ndata_dir: ${FG_TEST_DIR}\n')
+    monkeypatch.setenv("FG_TEST_DIR", "store")
+    cfg = load_config(f)
+    assert cfg.models.agent == "openai:gpt-5-mini" and cfg.data_dir == (tmp_path / "store").resolve()
+    monkeypatch.setenv("FORMGUIDE_MODEL", "openai:gpt-5")
+    assert GuideConfig().models.agent == "openai:gpt-5"

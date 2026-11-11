@@ -140,3 +140,15 @@ table.docs th { color: var(--muted); font-weight: 500; }
 .notice { font-size: 12px; text-align: center; padding: 2px 8px; }
 .chat-head .row { display: flex; gap: 12px; }
 .chat-head .row button { border: 0; padding: 0; background: none; }
+/* voice input */
+.composer .mic.on { background: var(--err); border-color: var(--err); color: #fff; animation: pulse 1.2s ease-in-out infinite; }
+.composer .mic-lang { border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; font-size: 12px; padding: 0 4px; }
+@keyframes pulse { 50% { opacity: .65; } }
+@media (prefers-reduced-motion: reduce) { .composer .mic.on { animation: none; } }
+/* message box: a textarea that grows with the text */
+.composer { align-items: flex-end; }
+.composer textarea { flex: 1; min-width: 0; min-height: 44px; max-height: 220px; resize: none; overflow-y: auto;
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--input); color: var(--text);
+  font: inherit; line-height: 1.4; }
+.composer textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.composer > button, .composer .mic-lang { height: 36px; }
