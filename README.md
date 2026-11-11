@@ -4,6 +4,7 @@ A chat agent that guides users through large configurable forms: it shows where 
 
 Documentation:
 - [`docs/architecture.md`](docs/architecture.md) — how the parts fit together;
+- [`docs/ui-components.md`](docs/ui-components.md) — start here if you build the form UI: what the form sends, what the agent sends back when it fills fields, and how each component must behave;
 - [`docs/configuration.md`](docs/configuration.md) — models per provider and every YAML key;
 - [`openspec/specs/`](openspec/specs) — behaviour contracts per capability, maintained with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec list --specs`, `openspec validate --all --strict`);
 - architecture pages with diagrams: https://denvasylenko.github.io/dushes/ — built from `docs/architecture-pages.html` plus the specs by `python3 scripts/build_docs_site.py`, deployed by `.github/workflows/docs.yml`.
@@ -72,7 +73,7 @@ Everything can be set in code (`GuideConfig`) or YAML (`load_config`). The full 
 | What | Options |
 |---|---|
 | Models (per role: agent, research, compile, extract, memory) | `model: "openai:gpt-5"` for all roles; or per role: any LangChain `BaseChatModel`, `"provider:model"` strings, `{provider, model, ...}`, `{class: "langchain_openai:AzureChatOpenAI", ...}` |
-| Component library | `ComponentMap`: JSX tag → role |
+| Component library | `components:` JSX tag → role, or a field spec saying how the component stores its value (id or option object, `"Y"`/`"N"`, `"31.05.1990"`, your own codec); see [docs/ui-components.md](docs/ui-components.md#15-your-components-store-values-differently-describe-them) |
 | Domain packs | shipped with the form › `provider` callable › `packs` dict › JSON dir › neutral default |
 | Business documents | `KnowledgeBase(root, index=BM25Index() \| VectorStoreIndex(any LangChain VectorStore), scopes={form: [namespaces]})` |
 | Skills | folders with `SKILL.md` (name, description, forms, tools) or `Skill(...)` in code |
@@ -82,6 +83,8 @@ Everything can be set in code (`GuideConfig`) or YAML (`load_config`). The full 
 | Cards | `interrupt_mode`: `legacy` · `structured` · `both` |
 
 Model requirements: tool calling (agent, research), structured output (compile, extract, prefill from text), vision / PDF input (extracting from scans).
+
+Card and prefill values are written in the form's own format. Since component value formats were added, a number goes out as a JSON number (`250000`) by default; set `value: string` on the number component to keep `"250000"`.
 
 ## Layout
 

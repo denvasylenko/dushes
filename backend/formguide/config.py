@@ -24,7 +24,9 @@ FORMGUIDE_MODEL environment variable does the same without a file. Everything el
       agent: {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, api_version: "2025-04-01-preview"}
       research: "openai:gpt-5-mini"                 # init_chat_model string
       extract: {provider: anthropic, model: claude-opus-5-5, max_tokens: 8000}
-    components: {containers: {Tabs: tabs, Tab: tab}, fields: {TextField: text, Select: select}}
+    components:                                      # your tags; a field is a role or a field spec
+      containers: {Tabs: tabs, Tab: tab}
+      fields: {TextField: text, Select: {role: select, value: id, options_prop: items}}
     domain_packs: {dir: domain_packs, provider: "my_app.packs:load_pack"}
     knowledge:
       dir: data/kb

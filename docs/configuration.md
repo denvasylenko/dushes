@@ -89,7 +89,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `model` / `models` | see above | the models |
 | `data_dir` | `data` | where formguide keeps its own files: learned field dependencies (`deps/`), registered layouts (`layouts/`), documents (`kb/`), attachments (`attachments/`), transcripts (`transcripts/`) unless set elsewhere |
 | `components.containers` | `Tabs: tabs, Tab: tab, Accordion: accordion, Section: section, Form: form` | your component library's container tags → role. **Replaces** the default map when given |
-| `components.fields` | `Input: text, NumberInput: number, TextArea: text, DatePicker: date, Dropdown: select, Checkbox: bool, FileUpload: file` | field tags → role (`text`, `number`, `date`, `select`, `bool`, `file`). **Replaces** the default map when given |
+| `components.fields` | `Input: text, NumberInput: number, TextArea: text, DatePicker: date, Dropdown: select, Checkbox: bool, FileUpload: file` | field tags → role (`text`, `number`, `date`, `select`, `radio`, `multiselect`, `bool`, `file`) or a **field spec** (below). **Replaces** the default map when given |
 | `domain_packs.dir` | none | a folder of `<form_id>.json` packs (persona, flow hints, glossary, rules, PII fields) |
 | `domain_packs.packs` | none | packs inline: `{form_id: {...pack}}` |
 | `domain_packs.provider` | none | `"module:function"`; `function(form_id) -> dict or None`, e.g. reading from your database |
@@ -106,6 +106,35 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `max_tool_rounds` | `10` | model ⇄ tool rounds per turn |
 | `learn_dependencies` | `true` | persist observed field dependencies per form |
 | `interrupt_mode` | `legacy` | cards as `CUSTOM on_interrupt` (CopilotKit), `structured` (AG-UI 1.0 interrupts), or `both` |
+
+## Field specs: how each component stores its value
+
+A field tag can map to an object instead of a role, so the agent reads your form's values correctly and writes card and prefill values in exactly your format. The full explanation with examples is in [`ui-components.md`](ui-components.md#15-your-components-store-values-differently-describe-them).
+
+```yaml
+components:
+  fields:
+    Select:      {role: select, value: id, options_prop: items}         # stores "auto"; choices in props.items
+    Lookup:      {role: select, option_keys: {id: code, name: title}}   # stores the option object
+    RadioGroup:  {role: radio, value: id}
+    MultiSelect: {role: multiselect, value: ids}
+    Toggle:      {role: bool, true: "Y", false: "N"}
+    Calendar:    {role: date, format: "%d.%m.%Y"}                       # or epoch_ms
+    Amount:      {role: number, value: string}
+    Phone:       {role: text, codec: "my_app.codecs:PhoneCodec"}         # decode(raw, props) / encode(value, props)
+```
+
+| Key | Roles | Values | Default |
+|---|---|---|---|
+| `role` | — | `text`, `number`, `date`, `select`, `radio`, `multiselect`, `bool`, `file` | required |
+| `value` | select, radio / multiselect / number | `option`, `id`, `name` / `options`, `ids`, `names` / `number`, `string` | `option` / `options` / `number` |
+| `options_prop` | choices | the props key with the choices | `options` |
+| `option_keys` | choices | `{id: <key>, name: <key>}` | detected: `id/name`, `value/label`, `key/label`, `value/text`, `code/name`, `code/title`; strings and `{id: label}` objects too |
+| `true`, `false` | bool | the stored values | `true`, `false` |
+| `format` | date | `iso`, a `strftime` pattern, `epoch_ms` | `iso` |
+| `codec` | all | `"module:Class"` with `decode` and/or `encode` | none |
+
+An unknown role or key fails `load_config` with the tag's name. To check a form and a sample config against these specs: `formguide check --config formguide.yaml --jsx form.jsx --form-config config.json`, or `POST /agent/layouts` with `config`.
 
 ## Environment variables
 

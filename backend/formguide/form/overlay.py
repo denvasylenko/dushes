@@ -14,7 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .layout import LayoutIndex, Node
+from .layout import CHOICE, FieldSpec, LayoutIndex, Node
+from .values import decode, read_options
 
 
 # ===================================================================== effective view
@@ -30,6 +31,11 @@ class Eff:
     own_visible: bool
     own_disabled: bool
     missing: bool          # name exists in JSX but not in config
+    raw: Any = None        # the value as the form stores it; `value` is the canonical one (form/values.py)
+    opts: list[dict] | None = None   # canonical options [{id, name, raw}]
+    unreadable: bool = False         # the stored value could not be read with the field spec
+    opts_warning: str | None = None
+    spec: FieldSpec | None = None
 
     @property
     def name(self) -> str:
@@ -53,8 +59,7 @@ class Eff:
 
     @property
     def options(self) -> list[dict] | None:
-        o = self.props.get("options")
-        return o if isinstance(o, list) else None
+        return self.opts
 
     @property
     def editable(self) -> bool:
@@ -65,6 +70,8 @@ class Eff:
         v = self.value
         if self.node.role == "bool":
             return v is True
+        if isinstance(v, list):
+            return bool(v)
         if isinstance(v, str):
             return bool(v.strip())
         return v is not None
@@ -76,15 +83,19 @@ class Eff:
 
     @property
     def invalid_value(self) -> bool:
-        if self.node.role != "select" or not isinstance(self.value, dict):
+        role = self.node.role
+        items = self.value if role == "multiselect" and isinstance(self.value, list) else (
+            [self.value] if role in CHOICE and isinstance(self.value, dict) else [])
+        if not items:
             return False
-        ids = {o.get("id") for o in self.options or []}
-        return self.value.get("id") not in ids
+        ids = {str(o.get("id")) for o in self.options or []}
+        return any(str(v.get("id")) not in ids for v in items if isinstance(v, dict))
 
     def options_sig(self) -> str:
         if self.options is None:
             return ""
-        return hashlib.md5(json.dumps(self.options, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:8]
+        return hashlib.md5(json.dumps(self.options, sort_keys=True, ensure_ascii=False, default=str)
+                           .encode()).hexdigest()[:8]
 
 
 class Overlay:
@@ -100,11 +111,16 @@ class Overlay:
             p = props.get(name)
             missing = p is None and n.is_field
             p = p or {}
+            spec = layout.components.spec(n.tag) if n.is_field else None
+            opts, owarn = read_options(spec, p) if n.role in CHOICE or n.role == "multiselect" else (None, None)
+            raw = state.get(name)
+            value, readable = decode(spec, n.role, raw, opts, p) if n.is_field else (raw, True)
             own_v = bool(p.get("visible", True)) and not missing
             own_d = bool(p.get("disabled", False))
             par = self.eff.get(n.parent) if n.parent else None
             self.eff[name] = Eff(
-                node=n, props=p, value=state.get(name),
+                node=n, props=p, value=value, raw=raw, opts=opts, unreadable=not readable,
+                opts_warning=owarn, spec=spec,
                 own_visible=own_v, own_disabled=own_d, missing=missing,
                 visible=own_v and (par.visible if par else True),
                 disabled=own_d or (par.disabled if par else False),
@@ -176,8 +192,13 @@ class Overlay:
             return "yes"
         if e.node.role == "file":
             return f"file \"{v.get('name', 'uploaded')}\"" if isinstance(v, dict) else "uploaded"
+        if isinstance(v, list):
+            shown = ", ".join(f"\"{x.get('name')}\" (id={x.get('id')})" if isinstance(x, dict) else str(x) for x in v)
+            return shown if len(shown) <= limit * 3 else shown[:limit * 3] + "…"
         if isinstance(v, dict):
             return f"\"{v.get('name')}\" (id={v.get('id')})"
+        if e.unreadable:
+            return f"\"{str(v)[:limit]}\" (unreadable)"
         s = str(v)
         return f'"{s[:limit]}…"' if len(s) > limit else f'"{s}"'
 
@@ -195,8 +216,13 @@ class Overlay:
 def _trigger_value(e: Eff) -> str:
     """A field value as a "condition" for the dependency map: "<id>|<display name>"."""
     v = e.value
-    if e.node.role == "select":
+    if e.node.role in CHOICE:
         return f"{v.get('id')}|{v.get('name')}" if isinstance(v, dict) else "∅|not selected"
+    if e.node.role == "multiselect":
+        if not isinstance(v, list) or not v:
+            return "∅|nothing selected"
+        items = [x for x in v if isinstance(x, dict)]
+        return ",".join(str(x.get("id")) for x in items) + "|" + ", ".join(str(x.get("name")) for x in items)
     if e.node.role == "bool":
         return "true|checked" if v is True else "false|unchecked"
     return "*|filled" if e.filled else "∅|empty"
@@ -314,7 +340,7 @@ class DepStore:
             return
         # If the batch contains dropdowns / checkboxes, treat them as the cause:
         # free-text fields rarely restructure a form.
-        cats = {t: v for t, v in diff.triggers.items() if ov[t].node.role in ("select", "bool")}
+        cats = {t: v for t, v in diff.triggers.items() if ov[t].node.role in CHOICE | {"bool", "multiselect"}}
         triggers = cats or diff.triggers
         w = 1 / len(triggers)
         exact = len(diff.triggers) == 1  # exactly one field changed: the cause is certain

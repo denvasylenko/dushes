@@ -15,10 +15,8 @@ The frontend applies changes through the same path as user input.
 """
 from __future__ import annotations
 
-import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.tools import BaseTool
@@ -28,6 +26,8 @@ from ..domain.packs import DomainPack
 
 if TYPE_CHECKING:
     from ..guide import FormGuide
+from ..form import values as vals
+from ..form.layout import CHOICE
 from ..form.overlay import DepStore, Overlay
 from ..form.render import Location, container_line, disabled_reason, field_card, render_container
 from ..form.search import search
@@ -91,7 +91,8 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "propose_changes",
         "description": "Propose filling fields with values the user gave in the chat. The user sees a card and "
-                       "confirms or rejects it. For dropdowns pass the option id. Dates: YYYY-MM-DD. "
+                       "confirms or rejects it. For dropdowns and radio groups pass the option id; for "
+                       "multi-selects a list of option ids. Dates: YYYY-MM-DD. "
                        "Only the user can upload files.",
         "input_schema": {
             "type": "object",
@@ -102,7 +103,7 @@ TOOLS: list[dict[str, Any]] = [
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
-                            "value": {"type": ["string", "number", "boolean"]},
+                            "value": {"type": ["string", "number", "boolean", "array"], "items": {"type": "string"}},
                             "reason": {"type": "string"},
                         },
                         "required": ["name", "value"],
@@ -263,8 +264,8 @@ def _t_search_fields(a: dict, ctx: ToolCtx) -> str:
 def _t_get_options(a: dict, ctx: ToolCtx) -> str:
     n = _need(ctx, a["name"])
     e = ctx.ov[n.name]
-    if n.role != "select":
-        raise ToolError(f"{n.name} is not a dropdown")
+    if n.role not in CHOICE and n.role != "multiselect":
+        raise ToolError(f"{n.name} is not a dropdown, radio group or multi-select")
     opts = e.options or []
     q = (a.get("query") or "").lower()
     if q:
@@ -306,49 +307,64 @@ def _t_focus_field(a: dict, ctx: ToolCtx) -> str:
 
 # ---------------------------------------------------------------- changes
 
-# Yes / no in several languages; Cyrillic words are escaped: \u0434\u0430 = "da" (ru), \u0442\u0430\u043a = "tak" (uk),
-# \u043d\u0435\u0442 = "net" (ru), \u043d\u0456 = "ni" (uk).
-_TRUE = {"true", "1", "yes", "y", "\u0434\u0430", "\u0442\u0430\u043a", "ja", "oui", "si", "s\u00ed"}
-_FALSE = {"false", "0", "no", "n", "\u043d\u0435\u0442", "\u043d\u0456", "nein", "non"}
+def _choice(e, name: str, value: Any) -> dict:
+    o = vals.find_option(e.options, value)
+    if o:
+        return {"id": o["id"], "name": o["name"]}
+    avail = ", ".join(f"{x['id']}:{x['name']}" for x in (e.options or [])[:12]) or "the list is empty"
+    raise ToolError(f"{name}: there is no option {value!r}. Available: {avail}")
 
 
 def _norm_value(ctx: ToolCtx, name: str, value: Any) -> Any:
+    """The model's value -> the canonical value of the field's role (form/values.py), or ToolError."""
     e = ctx.ov[name]
     role = e.node.role
-    if role == "select":
-        v = str(value).strip().lower()
-        for o in e.options or []:
-            if v in (str(o["id"]).lower(), o["name"].lower()):
-                return {"id": o["id"], "name": o["name"]}
-        avail = ", ".join(f"{o['id']}:{o['name']}" for o in (e.options or [])[:12]) or "the list is empty"
-        raise ToolError(f"{name}: there is no option {value!r}. Available: {avail}")
-    if role == "bool":
-        if isinstance(value, bool):
-            return value
-        s = str(value).strip().lower()
-        if s in _TRUE:
-            return True
-        if s in _FALSE:
-            return False
-        raise ToolError(f"{name}: true/false expected")
-    if role == "date":
-        s = str(value).strip()
-        for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
+    if role in CHOICE:
+        return _choice(e, name, value)
+    if role == "multiselect":
+        items = vals._split_list(value)
+        if not items:
+            raise ToolError(f"{name}: a list of options is expected")
+        out, bad = [], []
+        for it in items:
             try:
-                return datetime.strptime(s, fmt).date().isoformat()
-            except ValueError:
-                pass
-        raise ToolError(f"{name}: date expected as YYYY-MM-DD")
-    if role == "number":
-        s = re.sub(r"[\s_]", "", str(value)).replace(",", ".")
+                c = _choice(e, name, it)
+                if c not in out:
+                    out.append(c)
+            except ToolError:
+                bad.append(repr(it))
+        if bad:
+            avail = ", ".join(f"{x['id']}:{x['name']}" for x in (e.options or [])[:12]) or "the list is empty"
+            raise ToolError(f"{name}: there is no option {', '.join(bad)}. Available: {avail}")
+        return out
+    if role == "bool":
+        b = vals._bool_of(None, value)
+        if b is None:
+            raise ToolError(f"{name}: true/false expected")
+        return b
+    if role == "date":
         try:
-            float(s)
+            return vals.parse_date(str(value), "iso")
         except ValueError:
+            raise ToolError(f"{name}: date expected as YYYY-MM-DD") from None
+    if role == "number":
+        try:
+            return vals.parse_number(value)
+        except (ValueError, TypeError):
             raise ToolError(f"{name}: a number is expected") from None
-        return s
     if role == "file":
         raise ToolError(f"{name}: only the user can upload a file. Show the field with focus_field.")
     return str(value)
+
+
+def form_value(ctx_or_ov: Any, name: str, value: Any) -> Any:
+    """A canonical value written in the form's own format (the field spec), or ToolError."""
+    ov = getattr(ctx_or_ov, "ov", ctx_or_ov)
+    e = ov[name]
+    try:
+        return vals.encode(e.spec, e.node.role, value, e.options, e.props)
+    except vals.CodecError as err:
+        raise ToolError(f"{name}: {err}") from None
 
 
 def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
@@ -373,10 +389,9 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
             if e.readonly:
                 raise ToolError(f"{n.name} is read-only, computed by the form")
             val = _norm_value(ctx, n.name, ch["value"])
-            # card text for the user: language-neutral
-            shown = val["name"] if isinstance(val, dict) else ("✓" if val is True else "✗" if val is False else val)
-            ok.append({"name": n.name, "label": e.label or n.name, "value": val,
-                       "display": str(shown),
+            # card text for the user: language-neutral; `value` is in the form's own format
+            ok.append({"name": n.name, "label": e.label or n.name, "value": form_value(ctx, n.name, val),
+                       "display": vals.display(val),
                        "reason": ch.get("reason", ""), "reveal": reveal_chain(ctx, n.name)})
         except ToolError as err:
             errors.append(str(err))

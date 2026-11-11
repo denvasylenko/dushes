@@ -28,6 +28,8 @@ The frontend talks to one endpoint, `POST /agent/run`, with an AG-UI `RunAgentIn
 
 A run streams `RUN_STARTED`, text (`TEXT_MESSAGE_*`), server tool calls with results (`TOOL_CALL_*`, `TOOL_CALL_RESULT`), frontend tool calls without results, `CUSTOM` events (`ui_directive`, `on_interrupt`, `agent_context`, `agent_note`, `memory_compacted`), and ends with exactly one `RUN_FINISHED` or `RUN_ERROR`. A card is delivered according to `interrupt_mode`: `legacy` (default) as `CUSTOM on_interrupt` with a JSON-string value `{type, card_id, changes}` (the ag-ui-langgraph convention CopilotKit reads), `structured` as `RUN_FINISHED.outcome` interrupts (AG-UI 1.0), or `both`. Registered layouts are kept under `data_dir/layouts/`, so a server restart does not break clients holding a `jsx_hash`.
 
+The exact payloads the UI receives (the card's `changes`, the `ui_directive`, value formats per field role) and how the form's components must behave are in [`ui-components.md`](ui-components.md), written for people new to the project.
+
 Principles:
 - **The config is the source of truth.** Form state is rebuilt from the config on every turn; it is never stored in the agent's memory, synced or summarized.
 - **The core knows no domain.** Loans, bookings and calendars differ only in configuration: domain packs, business documents, skills and the component map.
@@ -155,6 +157,18 @@ The full reference (model forms per provider, role fallbacks, every YAML key wit
 
 Quick start: `formguide init my-agent` writes a starter `formguide.yaml`, a domain pack and a skill; `formguide check --config …` loads it without calling a model; `formguide serve --config …` runs the endpoints ([`cli.py`](../backend/formguide/cli.py)). The only required setting is `model:` (or `FORMGUIDE_MODEL`). The package's core dependencies are LangGraph, LangChain core, Pydantic, PyYAML and pypdf; providers, the HTTP layer, the researcher and SQLite are extras (`anthropic`, `openai`, `server`, `research`, `sqlite`, `all`), imported only when used.
 
+### Component value formats
+
+[`form/values.py`](../backend/formguide/form/values.py) sits at the two edges of the agent. `Overlay` **decodes** each stored value and option list through the tag's `FieldSpec` into one canonical value per role:
+- text: a string;
+- number: a number;
+- date: an ISO string;
+- select / radio: `{id, name}`;
+- multiselect: a list of those;
+- bool: a boolean.
+
+Everything else (filled, out of the options, diff, learned dependencies, the model's context) sees only canonical values. Decoding is lenient and never raises; an unreadable value is marked ⚠. `propose_changes` and `suggest_prefill` **encode** the canonical value back into the form's format, so a card's `value` goes to the form backend unchanged; `display` is human text. Option keys are detected from common pairs (`id/name`, `value/label`, ...). `register_form(..., config=)` and `formguide check --jsx --form-config` report values or options that cannot be read. Details for UI developers: [`ui-components.md`](ui-components.md#15-your-components-store-values-differently-describe-them).
+
 ### Prefill
 
 [`prefill.py`](../backend/formguide/prefill.py): `suggest_prefill(state, data, text, attachments)` validates known data against the form the same way `propose_changes` does — keys that are field names directly, everything else through the extraction model — and marks each value `now` (editable) or `later` (inside a locked or hidden step). In a chat (`prefill=` / `forwardedProps.prefill`), these values become the turn's instruction: the agent proposes the `now` values in one card, keeps the `later` ones, and greets the user; the transcript records a notice instead of a user message.
@@ -162,7 +176,7 @@ Quick start: `formguide init my-agent` writes a starter `formguide.yaml`, a doma
 | What | How |
 |---|---|
 | Models per role (agent, research, compile, extract, memory) | any LangChain `BaseChatModel`; `"provider:model"` strings; `{provider, model, ...}`; `{class: "module:Class", ...}` |
-| Component library | `ComponentMap`: JSX tag → role |
+| Component library | `ComponentMap`: JSX tag → role or `FieldSpec` (how the component stores its value: shape of a choice, options key and keys, checkbox values, date format, codec) |
 | Domain packs | shipped with the form › provider callable › packs dict › JSON directory › neutral default |
 | Search | `BM25Index` or `VectorStoreIndex(vector_store, filter_builder)` |
 | Scopes | form id → list of document namespaces |

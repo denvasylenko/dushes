@@ -28,13 +28,16 @@ export async function javaEvent(formId: string, state: Config['state'], changes:
 // ---------------------------------------------------------------- agent
 
 /** Sent once per form: the JSX and, if the form backend provides it, the domain pack. */
-export async function registerLayout(jsx: string, formId: string, domain: DomainPack): Promise<string> {
+/** Register the form's JSX once. With the initial config the server also checks value formats. */
+export async function registerLayout(jsx: string, formId: string, domain: DomainPack, config?: Config): Promise<string> {
   const r = await fetch('/agent/layouts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsx, form_id: formId, domain }),
+    body: JSON.stringify({ jsx, form_id: formId, domain, config }),
   })
-  return (await r.json()).jsx_hash
+  const res = await r.json()
+  for (const w of res.warnings ?? []) console.warn(`formguide: ${w}`)
+  return res.jsx_hash
 }
 
 // ---------------------------------------------------------------- knowledge base (managers) and attachments

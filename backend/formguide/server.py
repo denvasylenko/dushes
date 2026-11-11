@@ -36,6 +36,7 @@ class LayoutIn(BaseModel):
     jsx: str
     form_id: str | None = None
     domain: dict[str, Any] | None = None
+    config: dict[str, Any] | None = None   # a sample {props, state}: adds value-format warnings
 
 
 class PrefillIn(BaseModel):
@@ -59,7 +60,7 @@ def create_router(guide: FormGuide, *, debug: bool = True) -> APIRouter:
 
     @r.post("/layouts")
     def put_layout(body: LayoutIn) -> dict:
-        return guide.register_form(body.jsx, body.form_id, body.domain)
+        return guide.register_form(body.jsx, body.form_id, body.domain, body.config)
 
     @r.get("/layouts/{h}")
     def has_layout(h: str) -> dict:

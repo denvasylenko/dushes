@@ -22,21 +22,16 @@ from typing import TYPE_CHECKING, Any
 
 from .attachments import extract as att
 from .form.overlay import Overlay
+from .form.values import display as values_display
 
 if TYPE_CHECKING:
     from .guide import FormGuide
 
 
-def _display(v: Any) -> str:
-    if isinstance(v, dict):
-        return str(v.get("name", v.get("id", "")))
-    return "✓" if v is True else "✗" if v is False else str(v)
-
-
 async def suggest_prefill(guide: FormGuide, state: dict[str, Any], *, data: dict[str, Any] | None = None,
                           text: str | None = None, attachment_ids: list[str] | None = None,
                           thread_id: str | None = None) -> dict[str, Any]:
-    from .agent.tools import ToolCtx, ToolError, _norm_value
+    from .agent.tools import ToolCtx, ToolError, _norm_value, form_value
 
     lay = guide.layout(state.get("jsx_hash", ""))
     if lay is None:
@@ -62,12 +57,13 @@ async def suggest_prefill(guide: FormGuide, state: dict[str, Any], *, data: dict
             return
         try:
             v = _norm_value(ctx, name, raw)
+            stored = form_value(ctx, name, v)
         except ToolError as err:
             errors.append(str(err))
             return
         if e.filled and e.value == v:
             return   # already there
-        values[name] = {"name": name, "label": e.label or name, "value": v, "display": _display(v),
+        values[name] = {"name": name, "label": e.label or name, "value": stored, "display": values_display(v),
                         "status": "now" if e.editable else "later",
                         "why_later": "" if e.editable else ("hidden" if not e.visible else "disabled"),
                         "source": source, **extra}

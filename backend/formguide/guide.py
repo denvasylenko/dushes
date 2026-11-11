@@ -33,6 +33,7 @@ from .knowledge import compile as kb_compile
 from .knowledge.base import KnowledgeBase
 from .prefill import prefill_instruction, suggest_prefill
 from .skills import SkillRegistry
+from .form.values import value_warnings
 from .transcript import FileTranscriptStore, check_thread_id, new_entry, pending_card
 
 
@@ -65,8 +66,12 @@ class FormGuide:
         self.graph = build_graph(self)
 
     # ------------------------------------------------------------------ forms
-    def register_form(self, jsx: str, form_id: str | None = None, domain: dict[str, Any] | None = None) -> dict:
-        """Parse and cache the layout (once per JSX); optionally register a domain pack shipped with the form."""
+    def register_form(self, jsx: str, form_id: str | None = None, domain: dict[str, Any] | None = None,
+                      config: dict[str, Any] | None = None) -> dict:
+        """Parse and cache the layout (once per JSX); optionally register a domain pack shipped with the form.
+
+        With a sample `config` ({props, state}) the warnings also say where values or options cannot be
+        read with the configured field specs (components.fields), and what to set."""
         h = jsx_hash(jsx)
         if h not in self._layouts:
             self._layouts[h] = LayoutIndex(jsx, self.config.components)
@@ -83,6 +88,8 @@ class FormGuide:
             pack = self.packs.get(form_id)
             source = pack.source
             warnings += validate_pack(pack, set(lay.nodes))
+        if config:
+            warnings += value_warnings(lay, config)
         return {"jsx_hash": h, "nodes": len(lay.nodes), "domain_pack": source, "warnings": warnings}
 
     def _layout_path(self, h: str) -> Path:

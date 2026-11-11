@@ -97,6 +97,32 @@ def cmd_check(args: argparse.Namespace) -> int:
               f"scopes={cfg.knowledge.scopes or '{}'}")
     print(f"tools: {', '.join(t.name for t in cfg.tools) or '(none)'}")
     print(f"interrupt_mode: {cfg.interrupt_mode}")
+    print("components:")
+    for tag, role in cfg.components.containers.items():
+        print(f"  <{tag}> container {role}")
+    for tag in cfg.components.fields:
+        sp = cfg.components.spec(tag)
+        extra = {k: v for k, v in (("value", sp.shape), ("option_keys", sp.option_keys),
+                                   ("options_prop", sp.options_prop if sp.options_prop != "options" else None),
+                                   ("true", sp.true if sp.true is not True else None),
+                                   ("false", sp.false if sp.false is not False else None),
+                                   ("format", sp.format if sp.role == "date" else None), ("codec", sp.codec))
+                 if v is not None}
+        print(f"  <{tag}> {sp.role}" + ("".join(f" {k}={v}" for k, v in extra.items())))
+    if args.jsx:
+        from .form.layout import LayoutIndex
+        from .form.values import value_warnings
+
+        lay = LayoutIndex(Path(args.jsx).read_text(encoding="utf-8"), cfg.components)
+        warnings = list(lay.warnings)
+        if args.form_config:
+            warnings += value_warnings(lay, json.loads(Path(args.form_config).read_text(encoding="utf-8")))
+        print(f"form {args.jsx}: {len(lay.nodes)} nodes, {sum(1 for _ in lay.fields())} fields")
+        for w in warnings:
+            print(f"  warning: {w}")
+        if warnings:
+            print(f"{len(warnings)} warning(s)")
+            return 1
     print("OK")
     return 0
 
@@ -122,6 +148,8 @@ def main(argv: list[str] | None = None) -> int:
     i.add_argument("dir", nargs="?", default=".")
     i.add_argument("--force", action="store_true", help="overwrite existing files")
     c = sub.add_parser("check", help="load a configuration and report it (no model calls)")
+    c.add_argument("--jsx", help="also check a form: its JSX file")
+    c.add_argument("--form-config", help="with --jsx: a sample config JSON {props, state} to check value formats")
     c.add_argument("--config", default="formguide.yaml")
     s = sub.add_parser("serve", help="run the agent endpoints (needs the `server` extra)")
     s.add_argument("--config", default=None)

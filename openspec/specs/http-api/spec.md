@@ -13,7 +13,20 @@ Expose the guide to a frontend over HTTP and Server-Sent Events in the AG-UI for
 - **THEN** open text messages are ended and `RUN_ERROR` with the message is the last event
 
 ### Requirement: Optional FastAPI router
-`create_router(guide)` SHALL provide: `POST /layouts` (register a form with optional domain pack), `POST /run` (AG-UI RunAgentInput, SSE), `POST /prefill`, `POST /attachments`, `GET /kb/{form_id}`, `POST /kb/{namespace}/documents`, `DELETE /kb/{namespace}/documents/{doc_id}`, `POST /kb/{form_id}/compile`, the thread endpoints, and a development-only `GET /debug/{thread_id}`. Registered layouts SHALL be kept under the data directory, so clients keep working after a server restart.
+`create_router(guide)` SHALL provide:
+- `POST /layouts`, which takes an optional domain pack and an optional sample `config`;
+- `POST /run` (AG-UI, SSE);
+- `POST /prefill`;
+- `POST /attachments`;
+- the knowledge-base endpoints under `/kb`;
+- the thread endpoints;
+- a development-only `GET /debug/{thread_id}`.
+
+Registered layouts SHALL be kept under the data directory, so clients keep working after a server restart.
+
+#### Scenario: Knowledge-base endpoints
+- **WHEN** the router is mounted
+- **THEN** it serves `GET /kb/{form_id}`, `POST /kb/{namespace}/documents`, `DELETE /kb/{namespace}/documents/{doc_id}` and `POST /kb/{form_id}/compile`
 
 #### Scenario: Unknown layout
 - **WHEN** `/run` is called with a `jsx_hash` that was never registered
@@ -22,6 +35,10 @@ Expose the guide to a frontend over HTTP and Server-Sent Events in the AG-UI for
 #### Scenario: Server restart
 - **WHEN** the server restarts after a form was registered
 - **THEN** runs with that `jsx_hash` keep working without registering again
+
+#### Scenario: Checking a sample config
+- **WHEN** `POST /layouts` is called with the JSX and the form's initial config, and a dropdown's options have no recognisable keys
+- **THEN** the response's `warnings` name that field and suggest setting `option_keys`
 
 ### Requirement: Per-message state
 Each new message SHALL carry `state = {config, jsx_hash, form_id, ui?, attachments?}`, where `ui` holds active tabs, open accordions, the focused field and the user's local time.

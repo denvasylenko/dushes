@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..domain.packs import DomainPack
-from .layout import Node
+from .layout import CHOICE, Node
 from .overlay import DepStore, Diff, Eff, Overlay
 
 LEGEND = ("▶ on the user's screen · * required · ⚑ restructures the form · ⊘ disabled · "
@@ -139,7 +139,13 @@ def field_card(ov: Overlay, e: Eff, deps: DepStore | None, pack: DomainPack | No
         flags.append(f'! "{e.error}"')
     if e.invalid_value:
         flags.append("⚠ value is not in the current options")
-    if n.role == "select":
+    if e.unreadable:
+        flags.append(f"⚠ the stored value cannot be read as {n.role}")
+    if n.role == "radio":
+        flags.append("radio: one choice")
+    elif n.role == "multiselect":
+        flags.append("multi-select: a list of choices")
+    if n.role in CHOICE or n.role == "multiselect":
         o = e.options or []
         if not o:
             flags.append("options: none")

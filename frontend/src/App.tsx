@@ -114,7 +114,7 @@ export default function App() {
     setForm(null)
     javaForm(formId).then(async (f) => {
       // the frontend forwards the JSX (and the domain pack, if any) to the agent once
-      const hash = await registerLayout(f.jsx, f.form_id, f.domain)
+      const hash = await registerLayout(f.jsx, f.form_id, f.domain, f.config)
       const title = (f.domain?.title as string) ?? f.form_id
       // reopen: the same conversation, the saved form values and the sections that were open
       const threadId = store.get<string>(`formguide:thread:${f.form_id}`) ?? crypto.randomUUID()

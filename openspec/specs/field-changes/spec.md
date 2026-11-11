@@ -24,11 +24,36 @@ Each proposed change SHALL be checked against the current config. Changes to unk
 - **THEN** no card is shown and the model gets the reason (learned or GUESS)
 
 ### Requirement: Values are normalized
-Dropdown values SHALL be accepted as an option id or name and returned as `{id, name}`; checkbox values as booleans or common yes/no words in several languages; dates as `YYYY-MM-DD` or `DD.MM.YYYY` and returned as ISO dates; numbers with spaces or commas.
+A proposed value SHALL be checked against the field's role and written in the field's own format (see component-values). Each card change SHALL also carry `display`, the value as human text.
+
+#### Scenario: Accepted inputs
+- **WHEN** the model proposes a value
+- **THEN** each field type accepts the following:
+  - a dropdown or radio: an option id or label;
+  - a multiselect: a list or a comma-separated text of ids or labels, each validated;
+  - a checkbox: a boolean or a common yes/no word in several languages;
+  - a date: `YYYY-MM-DD` or `DD.MM.YYYY`;
+  - a number: digits with spaces or commas.
+
+#### Scenario: Default written formats
+- **WHEN** the field uses the default spec of its role
+- **THEN** the value is written as:
+  - a dropdown or radio: `{id, name}`;
+  - a multiselect: a list of those;
+  - a date: an ISO date;
+  - a number: a JSON number.
 
 #### Scenario: Day-first date format
-- **WHEN** the model proposes `birth_date = 03.02.1991`
+- **WHEN** the model proposes `birth_date = 03.02.1991` for a date field with the default spec
 - **THEN** the card value is `1991-02-03`
+
+#### Scenario: Number with spaces
+- **WHEN** the model proposes `loan_amount = 250 000` for a number field with the default spec
+- **THEN** the card value is the JSON number `250000` and the display is `250000`
+
+#### Scenario: A dropdown that stores the id
+- **WHEN** the field spec has `value: id` and the model proposes the label "Car loan" of option `auto`
+- **THEN** the card value is `"auto"` and the display is "Car loan"
 
 ### Requirement: One proposal at a time
 A turn SHALL have at most one pending card; a second proposal in the same step SHALL be refused.
