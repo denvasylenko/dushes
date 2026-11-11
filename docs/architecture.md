@@ -118,6 +118,19 @@ The form state is never summarized, because it is rebuilt from the config every 
 - **Memory** (written by a cheap model and merged with the previous memory): goal; facts the user gave with exact values and status (in the form / not yet, and why); decisions and preferences; rejected proposals; open questions and next step.
 - The memory is prepended to the first kept user message; the frozen system prompt is not edited.
 
+### Two histories
+
+The model's history and the conversation the user sees are kept apart:
+
+| | Model history | Display transcript |
+|---|---|---|
+| Store | LangGraph checkpointer (in memory by default; `sqlite_checkpointer()`, Postgres, Redis) | `TranscriptStore` (files under `data_dir/transcripts` by default, or your own) |
+| Contents | context blocks, tool results, reasoning, the conversation memory after compaction | user messages and attached file names, assistant replies, tool activity, cards with status, errors, notices |
+| Compaction | rewritten | never touched |
+| Used by | the model | the client, to restore the chat (`GET /threads/{id}`) |
+
+`FormGuide.run` records the transcript from the events it streams, so every transport gets it. Cards carry a `card_id` and move `pending → accepted | rejected` on resume, or `pending → dismissed` when the user writes instead. With a persistent checkpointer and transcript store, the user can close the form, come back after a server restart, see the whole chat, and still answer a pending card. Form values themselves are the form backend's responsibility (the demo keeps them in the browser).
+
 Why the system prompt is frozen: some models (Claude Opus 5.5) bind reasoning blocks to the exact conversation prefix, including the system prompt. When documents were recompiled during an open conversation, the rebuilt prompt invalidated earlier reasoning and the provider rejected the request. Freezing the prompt, delivering updates as `<updated_instructions>`, and retrying once without old reasoning blocks fixed it.
 
 ## 7. Configuration and extension points
@@ -131,7 +144,7 @@ Why the system prompt is frozen: some models (Claude Opus 5.5) bind reasoning bl
 | Scopes | form id → list of document namespaces |
 | Skills | `SKILL.md` folders or `Skill(...)` in code, scoped to forms, optionally with tools |
 | Extra tools | any LangChain `BaseTool` |
-| History | any LangGraph checkpointer |
+| History | any LangGraph checkpointer (`sqlite_checkpointer(path)` included) for the model; any `TranscriptStore` for what the user saw |
 | Memory | `MemoryConfig(max_history_tokens, keep_turns, model)` |
 
 Model requirements: tool calling (agent, research), structured output (compile, extract), vision or PDF input (extracting from scans).

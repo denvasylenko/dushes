@@ -137,3 +137,6 @@ table.docs th { color: var(--muted); font-weight: 500; }
 .composer > button[type='button'] { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 10px; }
 @media (max-width: 900px) { .manager { padding: 16px; } }
 .row button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.notice { font-size: 12px; text-align: center; padding: 2px 8px; }
+.chat-head .row { display: flex; gap: 12px; }
+.chat-head .row button { border: 0; padding: 0; background: none; }

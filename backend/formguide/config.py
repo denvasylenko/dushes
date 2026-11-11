@@ -30,6 +30,8 @@ From YAML (paths are relative to the YAML file, ${ENV_VARS} are expanded):
     skills: {dir: skills}
     tools: ["my_app.tools:check_status"]
     memory: {max_history_tokens: 60000, keep_turns: 4, model: "anthropic:claude-haiku-5-5"}
+    checkpointer: {sqlite: data/checkpoints.sqlite}  # model history; default in memory
+    transcripts: {dir: data/transcripts}             # what the user saw; default files under data_dir
     max_tool_rounds: 10
 """
 from __future__ import annotations
@@ -51,6 +53,7 @@ from .knowledge.index import BM25Index, SearchIndex, VectorStoreIndex
 from .agent.memory import MemoryConfig
 from .models import Models
 from .skills import SkillRegistry, import_object
+from .transcript import FileTranscriptStore, MemoryTranscriptStore, TranscriptStore, sqlite_checkpointer
 
 
 @dataclass
@@ -63,7 +66,8 @@ class GuideConfig:
     skills: SkillRegistry | None = None
     attachments: AttachmentStore | None = None       # default: <data_dir>/attachments
     tools: list[BaseTool] = field(default_factory=list)   # extra tools for every form
-    checkpointer: BaseCheckpointSaver | None = None  # default: in memory (use Postgres/Redis in production)
+    checkpointer: BaseCheckpointSaver | None = None  # model history; default in memory (sqlite_checkpointer(), Postgres, Redis)
+    transcripts: TranscriptStore | None = None       # display transcript; default: files under <data_dir>/transcripts
     max_tool_rounds: int = 10
     learn_dependencies: bool = True                  # persist observed field dependencies per form
     memory: MemoryConfig = field(default_factory=MemoryConfig)   # long-chat compaction
@@ -128,6 +132,14 @@ def load_config(path: str | Path) -> GuideConfig:
         cfg.skills = SkillRegistry.from_dir(rel(raw["skills"].get("dir", "skills")))
     cfg.tools = [import_object(t) for t in raw.get("tools") or []]
     cfg.max_tool_rounds = int(raw.get("max_tool_rounds", cfg.max_tool_rounds))
+    cp = raw.get("checkpointer")
+    if isinstance(cp, dict) and cp.get("sqlite"):
+        cfg.checkpointer = sqlite_checkpointer(rel(cp["sqlite"]))
+    tr = raw.get("transcripts")
+    if tr == "memory":
+        cfg.transcripts = MemoryTranscriptStore()
+    elif isinstance(tr, dict) and tr.get("dir"):
+        cfg.transcripts = FileTranscriptStore(rel(tr["dir"]))
     cfg.learn_dependencies = bool(raw.get("learn_dependencies", True))
     if raw.get("memory"):
         m = raw["memory"]

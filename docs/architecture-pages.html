@@ -481,6 +481,17 @@ form reacted:
         </div>
         <figcaption>Turns 1–6 become memory and are dropped together with their context blocks. The memory merges with the previous one, so it survives many compactions. The threshold and the number of verbatim turns are set in <code>memory:</code> in the config.</figcaption>
       </figure>
+      <h2>Two histories</h2>
+      <p>The model’s history and the chat the user sees are stored apart. Compaction rewrites only the first, so a user who leaves and comes back sees the whole conversation, even after a server restart, and can still answer a pending card.</p>
+      <div class="tbl"><table>
+        <thead><tr><th></th><th>Model history</th><th>Display transcript</th></tr></thead>
+        <tbody>
+          <tr><td>Store</td><td>LangGraph checkpointer (SQLite, Postgres, Redis)</td><td><code>TranscriptStore</code> (files by default)</td></tr>
+          <tr><td>Contents</td><td>context blocks, tool results, reasoning, memory</td><td>messages, files, replies, tools, cards with status</td></tr>
+          <tr><td>Compaction</td><td>rewritten</td><td>never touched</td></tr>
+          <tr><td>Read by</td><td>the model</td><td>the client: <code>GET /threads/{id}</code></td></tr>
+        </tbody>
+      </table></div>
       <h2>What the memory keeps</h2>
       <div class="tbl"><table>
         <thead><tr><th>Section</th><th>Why</th></tr></thead>
@@ -529,7 +540,7 @@ form reacted:
           <tr><td>Scopes</td><td>form → document namespaces</td><td><code>loan: [loan, bank_common]</code></td></tr>
           <tr><td>Skills</td><td><code>SKILL.md</code> folders or <code>Skill(...)</code></td><td><code>gift_cards</code> + <code>check_gift_card</code></td></tr>
           <tr><td>Tools</td><td>any <code>BaseTool</code>, for all forms</td><td>a call to your API</td></tr>
-          <tr><td>History</td><td><code>checkpointer</code></td><td>Postgres / Redis saver</td></tr>
+          <tr><td>History</td><td><code>checkpointer</code> + <code>TranscriptStore</code></td><td><code>sqlite_checkpointer()</code>, Postgres; files</td></tr>
           <tr><td>Memory</td><td><code>MemoryConfig</code></td><td>threshold, verbatim turns, model</td></tr>
         </tbody>
       </table></div>
@@ -546,7 +557,9 @@ knowledge:
   scopes: {loan_application: [loan_application, bank_common]}
 skills: {dir: skills}
 tools: ["my_app.tools:check_status"]
-memory: {max_history_tokens: 60000, keep_turns: 4, model: "anthropic:claude-haiku-5-5"}</code></pre>
+memory: {max_history_tokens: 60000, keep_turns: 4, model: "anthropic:claude-haiku-5-5"}
+checkpointer: {sqlite: data/checkpoints.sqlite}   # model history
+transcripts: {dir: data/transcripts}             # what the user saw</code></pre>
       <h2>In code</h2>
 <pre><code>from formguide import FormGuide, load_config
 from formguide.server import create_router
@@ -555,7 +568,7 @@ guide = FormGuide(load_config("formguide.yaml"))
 app.include_router(create_router(guide), prefix="/agent")   # or call guide.run(...) directly</code></pre>
       <div class="grid2">
         <div class="note"><h3>Model requirements</h3><ul><li>agent and researcher: tool calling</li><li>compile and extract: structured output</li><li>extracting from scans: vision / PDF input</li></ul></div>
-        <div class="note"><h3>Checked</h3><p><span class="pill ok">25 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
+        <div class="note"><h3>Checked</h3><p><span class="pill ok">29 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
       </div>
     </section>
 

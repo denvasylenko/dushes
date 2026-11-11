@@ -31,6 +31,7 @@ from .form.overlay import DepStore
 from .knowledge import compile as kb_compile
 from .knowledge.base import KnowledgeBase
 from .skills import SkillRegistry
+from .transcript import FileTranscriptStore, check_thread_id, new_entry, pending_card
 
 
 class FormGuide:
@@ -47,6 +48,7 @@ class FormGuide:
         self.skills = cfg.skills or SkillRegistry()
         self.attachments = cfg.attachments or AttachmentStore(self.data_dir / "attachments")
         self.checkpointer = cfg.checkpointer or InMemorySaver()
+        self.transcripts = cfg.transcripts or FileTranscriptStore(self.data_dir / "transcripts")
         self.max_tool_rounds = cfg.max_tool_rounds
         self._tools = list(cfg.tools)
         self._layouts: dict[str, LayoutIndex] = {}
@@ -86,7 +88,52 @@ class FormGuide:
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None) -> AsyncIterator[dict]:
         """One turn. Either a new user message (with state = {config, jsx_hash, form_id, ui?, attachments?})
-        or a resume after a confirmation card ({accepted, config?, ui?})."""
+        or a resume after a confirmation card ({accepted, config?, ui?}).
+
+        Everything the user sees is also recorded in the thread's display transcript (see transcript.py)."""
+        check_thread_id(thread_id)
+        tx = self.transcripts
+        card = pending_card(tx.list(thread_id))
+        if resume is not None:
+            if card:
+                tx.update(thread_id, card["id"], status="accepted" if resume.get("accepted") else "rejected")
+        else:
+            if card:   # a new message closes an unanswered card (the graph does the same)
+                tx.update(thread_id, card["id"], status="dismissed")
+            files = [a.get("filename") for a in (state or {}).get("attachments") or []]
+            tx.append(thread_id, new_entry("user", text=message or "", files=files))
+        texts: dict[str, str] = {}
+        async for ev in self._run(thread_id, message=message, state=state, resume=resume, run_id=run_id):
+            t, name = ev["type"], ev.get("name")
+            if t == "TEXT_MESSAGE_CONTENT":
+                texts[ev["messageId"]] = texts.get(ev["messageId"], "") + ev["delta"]
+            elif t == "TEXT_MESSAGE_END" and texts.get(ev["messageId"], "").strip():
+                tx.append(thread_id, new_entry("assistant", text=texts.pop(ev["messageId"])))
+            elif t == "RUN_ERROR":
+                tx.append(thread_id, new_entry("error", text=ev["message"]))
+            elif name == "tool_activity":
+                tx.append(thread_id, new_entry("tool", name=ev["value"]["name"], input=ev["value"].get("input")))
+            elif name == "memory_compacted":
+                tx.append(thread_id, new_entry("notice", text="Earlier messages were summarized for the assistant; "
+                                                              "the chat history is kept in full."))
+            elif name == "on_interrupt":
+                entry = tx.append(thread_id, new_entry("card", changes=ev["value"].get("changes", []), status="pending"))
+                ev = {**ev, "value": {**ev["value"], "card_id": entry["id"]}}
+            yield ev
+
+    def thread(self, thread_id: str) -> dict[str, Any]:
+        """What a client needs to restore a conversation: the transcript and the pending card, if any."""
+        entries = self.transcripts.list(check_thread_id(thread_id))
+        return {"thread_id": thread_id, "transcript": entries, "pending_card": pending_card(entries)}
+
+    async def delete_thread(self, thread_id: str) -> None:
+        """Forget a conversation: its transcript and the model's history."""
+        self.transcripts.delete(check_thread_id(thread_id))
+        if hasattr(self.checkpointer, "adelete_thread"):
+            await self.checkpointer.adelete_thread(thread_id)
+
+    async def _run(self, thread_id: str, *, message: str | None, state: dict[str, Any] | None,
+                   resume: dict[str, Any] | None, run_id: str | None) -> AsyncIterator[dict]:
         cfg = {"configurable": {"thread_id": thread_id}}
         run_id = run_id or str(uuid.uuid4())
         if resume is not None:
@@ -128,8 +175,9 @@ class FormGuide:
             yield {"type": "RUN_ERROR", "message": f"{type(e).__name__}: {e}"}
         yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
 
-    def history(self, thread_id: str) -> list[dict]:
-        st = self.graph.get_state({"configurable": {"thread_id": thread_id}})
+    async def history(self, thread_id: str) -> list[dict]:
+        """The model's history (not the display transcript), for debugging."""
+        st = await self.graph.aget_state({"configurable": {"thread_id": thread_id}})
         return messages_to_dict(st.values.get("messages", []))
 
     # ------------------------------------------------------------------ knowledge

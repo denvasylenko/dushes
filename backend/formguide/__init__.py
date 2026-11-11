@@ -16,9 +16,10 @@ from .knowledge.base import KnowledgeBase
 from .knowledge.index import BM25Index, Chunk, SearchIndex, VectorStoreIndex
 from .models import Models
 from .skills import Skill, SkillRegistry
+from .transcript import FileTranscriptStore, MemoryTranscriptStore, TranscriptStore, sqlite_checkpointer
 
 __all__ = [
     "AttachmentStore", "BM25Index", "Chunk", "ComponentMap", "DomainPack", "DomainPackRegistry", "FormGuide",
-    "GuideConfig", "KnowledgeBase", "Models", "SearchIndex", "Skill", "SkillRegistry", "VectorStoreIndex",
-    "load_config",
+    "FileTranscriptStore", "GuideConfig", "KnowledgeBase", "MemoryTranscriptStore", "Models", "SearchIndex", "Skill",
+    "SkillRegistry", "TranscriptStore", "VectorStoreIndex", "load_config", "sqlite_checkpointer",
 ]

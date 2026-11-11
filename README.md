@@ -51,7 +51,7 @@ Everything can be set in code (`GuideConfig`) or YAML (`load_config`); see `form
 | Business documents | `KnowledgeBase(root, index=BM25Index() \| VectorStoreIndex(any LangChain VectorStore), scopes={form: [namespaces]})` |
 | Skills | folders with `SKILL.md` (name, description, forms, tools) or `Skill(...)` in code |
 | Extra tools | any LangChain `BaseTool` |
-| History | any LangGraph checkpointer (in memory by default; Postgres / Redis in production) |
+| History | model history: any LangGraph checkpointer (in memory by default; `sqlite_checkpointer(path)`, Postgres, Redis); display transcript: any `TranscriptStore` (files by default) |
 | Long chats | `MemoryConfig(max_history_tokens, keep_turns, model)` |
 
 Model requirements: tool calling (agent, research), structured output (compile, extract), vision / PDF input (extracting from scans). Install the provider's LangChain package (`langchain-anthropic` is included; `pip install -e "backend[openai]"` for OpenAI / Azure).
@@ -83,6 +83,7 @@ cd backend && uv run python scripts/chat_harness.py --form barber_booking
 - **Business documents.** Compiled once into rules and field notes in the domain pack; a deep-agent researcher (`deepagents`, read-only `/docs/` filesystem + ranked search) handles the long tail and returns a cited answer.
 - **User documents.** Read by a separate extraction call; only the values (with confidence and evidence) enter the conversation.
 - **Long chats.** Older turns are compacted into a conversation memory by a cheap model (goal, values not yet in the form, decisions, rejections, next step); the form state is never summarized because it is rebuilt from the config every turn.
+- **Chat history.** The conversation the user sees is a separate display transcript: compaction never touches it, and with durable stores it survives reloads and restarts (`GET /threads/{id}` restores it, including a pending card).
 - **Append-only history.** The system prompt is frozen per thread; knowledge updates arrive as `<updated_instructions>` in a new message. Models that bind reasoning to the exact prefix (Claude Opus 5.5) otherwise reject earlier reasoning blocks; if a provider still rejects them, the turn is retried once without them.
 
 ## Next steps

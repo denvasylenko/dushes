@@ -9,6 +9,8 @@ GET  /kb/{form_id}                   documents in the form's scope + compiled kn
 POST /kb/{namespace}/documents       multipart files            managers upload documents
 DELETE /kb/{namespace}/documents/{doc_id}
 POST /kb/{form_id}/compile           {jsx, config}              documents -> domain pack
+GET  /threads/{thread_id}            transcript + pending card, to restore a conversation
+DELETE /threads/{thread_id}          forget a conversation (transcript + model history)
 GET  /debug/{thread_id}              history as the model sees it (development)
 """
 from __future__ import annotations
@@ -114,9 +116,24 @@ def create_router(guide: FormGuide, *, debug: bool = True) -> APIRouter:
         except (ValueError, RuntimeError) as e:
             raise bad(e) from None
 
+    @r.get("/threads/{thread_id}")
+    def get_thread(thread_id: str) -> dict:
+        try:
+            return guide.thread(thread_id)
+        except ValueError as e:
+            raise bad(e) from None
+
+    @r.delete("/threads/{thread_id}")
+    async def delete_thread(thread_id: str) -> dict:
+        try:
+            await guide.delete_thread(thread_id)
+        except ValueError as e:
+            raise bad(e) from None
+        return {"deleted": thread_id}
+
     if debug:
         @r.get("/debug/{thread_id}")
-        def debug_thread(thread_id: str) -> dict:
-            return {"messages": guide.history(thread_id)}
+        async def debug_thread(thread_id: str) -> dict:
+            return {"messages": await guide.history(thread_id)}
 
     return r

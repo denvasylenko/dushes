@@ -29,3 +29,7 @@ memory:                        # long chats: older turns are compacted into a co
   max_history_tokens: 60000
   keep_turns: 4
   # model: "anthropic:claude-haiku-5-5"   # default: the research model
+
+# Durable history: the model's history (LangGraph checkpointer) and what the user saw (display transcript).
+checkpointer: {sqlite: ../data/checkpoints.sqlite}
+transcripts: {dir: ../data/transcripts}

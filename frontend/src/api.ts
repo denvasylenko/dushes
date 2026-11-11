@@ -73,6 +73,31 @@ export async function kbCompile(formId: string, jsx: string, config: Config): Pr
 
 export type Attachment = { id: string; filename: string }
 
+// ---------------------------------------------------------------- conversation history
+
+export type TranscriptEntry = {
+  id: string
+  ts: string
+  kind: 'user' | 'assistant' | 'tool' | 'card' | 'error' | 'notice'
+  text?: string
+  files?: string[]
+  name?: string
+  input?: unknown
+  changes?: unknown[]
+  status?: 'pending' | 'accepted' | 'rejected' | 'dismissed'
+}
+
+/** The conversation as the user saw it (kept apart from the model's compacted history). */
+export async function getThread(threadId: string): Promise<{ transcript: TranscriptEntry[]; pending_card: TranscriptEntry | null }> {
+  const r = await fetch(`/agent/threads/${encodeURIComponent(threadId)}`)
+  if (!r.ok) return { transcript: [], pending_card: null }
+  return r.json()
+}
+
+export async function deleteThread(threadId: string): Promise<void> {
+  await fetch(`/agent/threads/${encodeURIComponent(threadId)}`, { method: 'DELETE' })
+}
+
 export async function uploadAttachment(threadId: string, file: File): Promise<Attachment> {
   const body = new FormData()
   body.append('thread_id', threadId)

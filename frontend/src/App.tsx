@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { javaEvent, javaForm, javaForms, registerLayout, runAgent, uploadAttachment, type AgentEvent, type Attachment } from './api'
+import { deleteThread, getThread, javaEvent, javaForm, javaForms, registerLayout, runAgent, uploadAttachment, type AgentEvent, type Attachment, type TranscriptEntry } from './api'
 import { FormProvider, Render, type Highlight } from './Form'
 import { parseJsx } from './jsx'
 import Manager from './Manager'
@@ -11,6 +11,7 @@ type ChatItem =
   | { kind: 'tool'; name: string; input: unknown }
   | { kind: 'error'; text: string }
   | { kind: 'card'; id: string; changes: ProposedChange[]; status: 'pending' | 'accepted' | 'rejected' | 'dismissed' }
+  | { kind: 'notice'; text: string }
 
 type AgentCtx = { text: string; stats: { context_tokens: number; config_tokens: number } } | null
 
@@ -22,6 +23,45 @@ const EMPTY_UI: UiState = { activeTabs: {}, openAccordions: [], focused: null }
 const SUGGESTIONS: Record<string, string[]> = {
   loan_application: ['Where do I start?', 'Where do I enter the department code?', 'I want a car loan of 1.5 million for 5 years'],
   barber_booking: ['Book me a haircut + beard next Tuesday around 3pm', 'How much is a haircut with Maria?', 'Book a kids haircut for my son, he is 6'],
+}
+
+// Per-viewer persistence in the browser. The thread id is what brings the conversation back;
+// form values and open sections stand in for what the real form backend would persist.
+const store = {
+  get<T>(key: string): T | null {
+    try {
+      const v = localStorage.getItem(key)
+      return v ? (JSON.parse(v) as T) : null
+    } catch {
+      return null
+    }
+  },
+  set(key: string, value: unknown): void {
+    try {
+      localStorage.setItem(key, JSON.stringify(value))
+    } catch {
+      /* storage unavailable: the page still works, it just will not remember */
+    }
+  },
+}
+
+function fromTranscript(entries: TranscriptEntry[]): ChatItem[] {
+  return entries.map((e): ChatItem => {
+    switch (e.kind) {
+      case 'user':
+        return { kind: 'user', text: e.text ?? '', files: e.files }
+      case 'assistant':
+        return { kind: 'assistant', id: e.id, text: e.text ?? '' }
+      case 'tool':
+        return { kind: 'tool', name: e.name ?? '', input: e.input }
+      case 'card':
+        return { kind: 'card', id: e.id, changes: (e.changes ?? []) as ProposedChange[], status: e.status ?? 'dismissed' }
+      case 'notice':
+        return { kind: 'notice', text: e.text ?? '' }
+      default:
+        return { kind: 'error', text: e.text ?? '' }
+    }
+  })
 }
 
 function localNow(): string {
@@ -43,7 +83,7 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [agentCtx, setAgentCtx] = useState<AgentCtx>(null)
   const [showCtx, setShowCtx] = useState(false)
-  const [thread, setThread] = useState(() => crypto.randomUUID())
+  const [thread, setThread] = useState('')
   const [view, setView] = useState<'form' | 'manager'>('form')
 
   const cfgRef = useRef<Config | null>(null)
@@ -64,14 +104,38 @@ export default function App() {
       // the frontend forwards the JSX (and the domain pack, if any) to the agent once
       const hash = await registerLayout(f.jsx, f.form_id, f.domain)
       const title = (f.domain?.title as string) ?? f.form_id
+      // reopen: the same conversation, the saved form values and the sections that were open
+      const threadId = store.get<string>(`formguide:thread:${f.form_id}`) ?? crypto.randomUUID()
+      store.set(`formguide:thread:${f.form_id}`, threadId)
+      const saved = store.get<Config['state']>(`formguide:state:${f.form_id}`)
+      const cfg = saved ? await javaEvent(f.form_id, saved, {}) : f.config
+      const history = await getThread(threadId)
       setForm({ formId: f.form_id, jsx: f.jsx, tree: parseJsx(f.jsx), hash, title })
-      setConfig(f.config)
-      setUi(EMPTY_UI)
-      setChat([])
+      setConfig(cfg)
+      setUi(store.get<UiState>(`formguide:ui:${f.form_id}`) ?? EMPTY_UI)
+      setChat(fromTranscript(history.transcript))
       setAgentCtx(null)
-      setThread(crypto.randomUUID())
+      setThread(threadId)
     })
   }, [formId])
+
+  // remember form values and open sections (stands in for the form backend's persistence)
+  useEffect(() => {
+    if (form && config) store.set(`formguide:state:${form.formId}`, config.state)
+  }, [form, config])
+  useEffect(() => {
+    if (form) store.set(`formguide:ui:${form.formId}`, { ...ui, focused: null })
+  }, [form, ui])
+
+  const newChat = async () => {
+    if (!form || busy) return
+    await deleteThread(thread)
+    const id = crypto.randomUUID()
+    store.set(`formguide:thread:${form.formId}`, id)
+    setThread(id)
+    setChat([])
+    setAgentCtx(null)
+  }
 
   // ------------------------------------------------------------ form events -> form backend -> new config
   const pushToJava = useCallback(async (changes: Record<string, unknown>) => {
@@ -137,7 +201,9 @@ export default function App() {
       else if (e.name === 'tool_activity') setChat((c) => [...c, { kind: 'tool', name: e.value.name, input: e.value.input }])
       else if (e.name === 'agent_context') setAgentCtx(e.value)
       else if (e.name === 'on_interrupt')
-        setChat((c) => [...c, { kind: 'card', id: crypto.randomUUID(), changes: e.value.changes, status: 'pending' }])
+        setChat((c) => [...c, { kind: 'card', id: e.value.card_id ?? crypto.randomUUID(), changes: e.value.changes, status: 'pending' }])
+      else if (e.name === 'memory_compacted')
+        setChat((c) => [...c, { kind: 'notice', text: 'Earlier messages were summarized for the assistant; the chat history is kept in full.' }])
     }
   }, [applyDirective])
 
@@ -229,9 +295,12 @@ export default function App() {
       <aside className="chat-pane">
         <div className="chat-head">
           <strong>Assistant</strong>
-          <button className="link" onClick={() => setShowCtx((s) => !s)} disabled={!agentCtx}>
-            {showCtx ? 'Hide' : 'What the agent sees'}
-          </button>
+          <div className="row">
+            <button className="link" onClick={() => setShowCtx((s) => !s)} disabled={!agentCtx}>
+              {showCtx ? 'Hide' : 'What the agent sees'}
+            </button>
+            <button className="link" onClick={() => void newChat()} disabled={busy || !chat.length}>New chat</button>
+          </div>
         </div>
         {showCtx && agentCtx && <pre className="ctx">{agentCtx.text}</pre>}
         <Chat items={chat} busy={busy} onSend={send} onCard={answerCard} thread={thread}
@@ -307,6 +376,8 @@ function Chat({ items, busy, onSend, onCard, suggestions, thread }: {
               return <div key={i} className="msg bot">{m.text || '…'}</div>
             case 'error':
               return <div key={i} className="msg error">{m.text}</div>
+            case 'notice':
+              return <div key={i} className="notice muted">{m.text}</div>
             case 'tool':
               return <div key={i} className="tool">⚙ {m.name}({shortArgs(m.input)})</div>
             case 'card':

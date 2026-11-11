@@ -25,3 +25,10 @@ Each new message SHALL carry `state = {config, jsx_hash, form_id, ui?, attachmen
 #### Scenario: Relative dates
 - **WHEN** the UI state carries the user's local time and the user says "next Tuesday"
 - **THEN** the agent resolves the date relative to that time
+
+### Requirement: Thread endpoints
+The router SHALL provide `GET /threads/{thread_id}` returning `{transcript, pending_card}` and `DELETE /threads/{thread_id}` removing the thread's transcript and model history. Invalid thread ids SHALL be rejected with 400.
+
+#### Scenario: Restoring a thread
+- **WHEN** a client calls `GET /threads/{thread_id}` for a thread with a pending card
+- **THEN** the response contains the full transcript and that card in `pending_card`

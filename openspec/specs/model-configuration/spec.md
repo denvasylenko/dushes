@@ -25,3 +25,10 @@ The system SHALL accept a `GuideConfig` in code or load one from YAML with paths
 #### Scenario: Demo YAML
 - **WHEN** `demo/formguide.yaml` is loaded
 - **THEN** the guide has Anthropic models, the loan form's scope `[loan_application, bank_common]` and the `gift_cards` skill for the barber form
+
+### Requirement: Persistent stores
+The configuration SHALL accept a LangGraph checkpointer and a transcript store, in code or in YAML (`checkpointer: {sqlite: path}`, `transcripts: {dir: path}` or `transcripts: memory`). Without configuration, the checkpointer SHALL default to an in-memory saver and the transcript store to files under the data directory (like dependency maps, documents and attachments).
+
+#### Scenario: Demo configuration
+- **WHEN** `demo/formguide.yaml` is loaded
+- **THEN** the guide uses an SQLite checkpointer and a file transcript store under `data/`
