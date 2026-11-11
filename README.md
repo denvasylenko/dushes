@@ -22,7 +22,17 @@ The agent is now an AG-UI endpoint at `POST http://localhost:8000/agent/run`. Th
 
 ## Connect a frontend (AG-UI first)
 
-Any AG-UI client works as is. Each run carries the form in `state`; cards are interrupts; frontend tools and prefill use the protocol's own fields. See the [Integrate page](https://denvasylenko.github.io/dushes/#integrate) for the whole wire format.
+**The quickest way is the ready-made chat**, [`<agui-chat>`](docs/chat-widget.md): a Web Component (one `<script>` tag, npm, or a React wrapper) with the formguide plugin. It streams answers with a typewriter, shows the agent's steps, draws every card (field changes with edit and Undo, questions, file requests, confirmations), dictation, attachments and quick replies; every part is configurable.
+
+```html
+<agui-chat url="/agent/run"></agui-chat>
+<script src="agui-chat.iife.js"></script>
+<script>
+  document.querySelector('agui-chat').use(AguiChat.formguide({ getState, applyChanges }))
+</script>
+```
+
+Any AG-UI client works as is too. Each run carries the form in `state`; cards are interrupts; frontend tools and prefill use the protocol's own fields. See the [Integrate page](https://denvasylenko.github.io/dushes/#integrate) for the whole wire format.
 
 ```ts
 import { HttpAgent } from "@ag-ui/client"           // or CopilotKit's re-export
@@ -40,7 +50,7 @@ await agent.runAgent({ tools: frontendTools }, {
 ```
 
 - **CopilotKit 1.86**: [`examples/copilotkit/`](examples/copilotkit) — `CopilotKitProvider` with an `HttpAgent` (no CopilotKit runtime server), cards with `useInterrupt`, a frontend tool with `useFrontendTool`, prefill.
-- **Plain `@ag-ui/client`**: the demo UI, [`frontend/src/api.ts`](frontend/src/api.ts).
+- **`<agui-chat>`**: the demo UI ([`frontend/src/App.tsx`](frontend/src/App.tsx), React wrapper) and a plain-HTML page with live settings ([`examples/widget-html/`](examples/widget-html), served at http://localhost:8000/examples/widget/).
 - **Cards**: field-change cards (a checkbox per row; `names` keeps a subset) and question cards (`ask_user`: options from the model or from a field, single or multiple choice, typed answers); payloads in [docs/ui-components.md](docs/ui-components.md#25-which-one-the-question-card). `interrupt_mode: legacy` (default; `CUSTOM on_interrupt`, what CopilotKit reads), `structured` (AG-UI 1.0 `RUN_FINISHED.outcome` + `resume[]`) or `both`.
 - **Restore a chat**: `GET /agent/threads/{id}?format=agui` returns AG-UI messages for `setMessages`.
 
@@ -96,18 +106,21 @@ backend/
   demo/             an example integration: mock form backend, FastAPI app, YAML config, skills, samples
   tests/            offline tests (scripted model, no API keys)
   scripts/          chat_harness.py: live conversations with the running demo
-frontend/           demo UI on @ag-ui/client (React); the library does not need it
+packages/agui-chat/ the chat widget: <agui-chat> Web Component, formguide plugin, React wrapper (npm run build / test)
+frontend/           demo UI (React) using the widget; the library does not need it
 examples/copilotkit CopilotKit 1.86 client
+examples/widget-html the widget from one script tag, with a live settings panel
 ```
 
 ## Run the demo
 
 ```bash
+cd packages/agui-chat && npm install && npm run build && cd ../..   # the chat widget (also for /examples/widget/)
 cd frontend && npm install && npm run build && cd ..
 cd backend && ANTHROPIC_API_KEY=... uv run uvicorn demo.app:app --port 8000 --reload --reload-dir formguide --reload-dir demo
 ```
 
-Open http://localhost:8000. Two demo forms with nothing in common: `loan_application` (221 fields, 8 tabs, nested up to 4 levels) and `barber_booking` (a 4-step wizard). "Manager: documents" uploads business documents for a form (`demo/samples/kb/` has examples); 📎 in the chat attaches a user document (`demo/samples/attachments/`). 🎤 dictates a message through the browser's speech recognition (Chrome, Edge, Safari; pick the language next to it, Auto = the browser's language; Chrome sends the audio to its own speech service).
+Open http://localhost:8000. Two demo forms with nothing in common: `loan_application` (221 fields, 8 tabs, nested up to 4 levels) and `barber_booking` (a 4-step wizard). "Manager: documents" uploads business documents for a form (`demo/samples/kb/` has examples); 📎 in the chat attaches a user document (`demo/samples/attachments/`). 🎤 dictates a message through the browser's speech recognition (Chrome, Edge, Safari; the language select above the chat sets the chat's language and dictation, Auto = the browser's; Chrome sends the audio to its own speech service). The chat is [`<agui-chat>`](docs/chat-widget.md); http://localhost:8000/examples/widget/ shows it from one script tag with a panel that switches every option live.
 
 Note: `--reload` watches `.py` files only; after editing `formguide.yaml`, touch a `.py` file or restart.
 
@@ -117,6 +130,7 @@ Note: `--reload` watches `.py` files only; after editing `formguide.yaml`, touch
 cd backend && uv run pytest -q                                          # offline
 cd backend && uv run python scripts/chat_harness.py                     # live, needs the demo server with a key
 cd backend && uv run python scripts/chat_harness.py --form barber_booking
+cd packages/agui-chat && npm test                                    # the chat widget (Vitest)
 ```
 
 ## How it works (short)

@@ -113,6 +113,7 @@ td code { white-space: nowrap; }
       <li><a href="#overview">System overview</a></li>
       <li><a href="#integrate">Integrate</a></li>
       <li><a href="#ui">Build the UI</a></li>
+      <li><a href="#widget">Chat widget</a></li>
       <li><a href="#turn">One turn</a></li>
       <li><a href="#context">What the model sees</a></li>
       <li><a href="#knowledge">Business documents</a></li>
@@ -255,10 +256,12 @@ ANTHROPIC_API_KEY=... formguide serve --config my-agent/formguide.yaml --cors "*
           <tr><td><code>state</code></td><td><code>{config, jsx_hash, form_id, ui?, attachments?}</code>: the form as your backend last built it</td></tr>
           <tr><td><code>messages</code></td><td>a trailing <code>user</code> message is the new text; trailing <code>tool</code> messages are frontend tool results. History is kept on the server, so older messages are ignored</td></tr>
           <tr><td><code>tools</code></td><td>frontend tools offered to the model (CopilotKit actions, <code>HttpAgent</code> tools)</td></tr>
-          <tr><td><code>resume</code></td><td>AG-UI 1.0 answer to a card: <code>resolved</code> with <code>{accepted, config, names?}</code> (a field-change card) or <code>{answer: {ids?, text?}}</code> (a question), or <code>cancelled</code></td></tr>
+          <tr><td><code>resume</code></td><td>AG-UI 1.0 answer to a card: <code>resolved</code> with <code>{accepted, config, names?, edited?}</code> (field changes), <code>{answer: {ids?, text?}}</code> (a question), <code>{attachment_ids}</code> (a file request) or <code>{accepted}</code> (a confirmation), or <code>cancelled</code></td></tr>
           <tr><td><code>forwardedProps</code></td><td><code>command.resume</code> (CopilotKit’s answer to a card) and <code>prefill</code></td></tr>
         </tbody>
       </table></div>
+      <h2>The ready-made chat</h2>
+      <p><a href="#widget">&lt;agui-chat&gt;</a> is an AG-UI client too: one tag plus the formguide plugin gives the whole experience below without writing a client.</p>
       <h2>CopilotKit</h2>
 <pre><code>import { CopilotChat, CopilotKitProvider, HttpAgent, useAgent, useInterrupt } from "@copilotkit/react-core/v2"
 
@@ -288,7 +291,7 @@ await agent.runAgent({ tools: [getUserLocale] }, {
 await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
 # -&gt; {"values": [{"name": "gender", "value": {"id": "f", "name": "Female"}, "status": "now"}, ...], "errors": [...]}</code></pre>
       <div class="grid2">
-        <div class="note"><h3>Events</h3><ul><li><code>RUN_STARTED</code>, then exactly one of <code>RUN_FINISHED</code> or <code>RUN_ERROR</code></li><li>text, tool calls with results, <code>CUSTOM</code>: <code>ui_directive</code>, <code>on_interrupt</code> (<code>type</code> <code>set_fields</code> or <code>ask</code>), <code>agent_context</code>, <code>memory_compacted</code></li></ul></div>
+        <div class="note"><h3>Events</h3><ul><li><code>RUN_STARTED</code>, then exactly one of <code>RUN_FINISHED</code> or <code>RUN_ERROR</code></li><li>text, tool calls with results, <code>CUSTOM</code>: <code>ui_directive</code>, <code>on_interrupt</code> (<code>type</code> <code>set_fields</code>, <code>ask</code>, <code>upload</code>, <code>confirm</code>), <code>tool_progress</code>, <code>suggestions</code>, <code>agent_context</code>, <code>memory_compacted</code></li></ul></div>
         <div class="note"><h3>Checked</h3><ul><li>CopilotKit 1.86: chat, card, frontend tool, prefill</li><li><code>@ag-ui/client</code> 1.0.4: the demo frontend, restore after reload</li><li>every event validated against <code>ag-ui-protocol</code> in tests</li></ul></div>
       </div>
     </section>
@@ -297,7 +300,7 @@ await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
     <section data-page="ui" hidden>
       <p class="eyebrow">Build the UI</p>
       <h1>What the form gives the agent, what comes back, and how to build the components</h1>
-      <p class="lead">Think of the agent as a colleague sitting next to the user. It can look at the form, point at a field and suggest values, but it never types into the form. Each suggestion is a card: on Accept, your form backend applies the values exactly as if the user had typed them.</p>
+      <p class="lead">Do not want to build it? <a href="#widget">&lt;agui-chat&gt;</a> does all of this page for you. Think of the agent as a colleague sitting next to the user. It can look at the form, point at a field and suggest values, but it never types into the form. Each suggestion is a card: on Accept, your form backend applies the values exactly as if the user had typed them.</p>
       <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/docs/ui-components.md" title="docs/ui-components.md">ui-components.md</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/layout.py" title="backend/formguide/form/layout.py">layout.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/overlay.py" title="backend/formguide/form/overlay.py">overlay.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/agent/tools.py" title="backend/formguide/agent/tools.py">tools.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/frontend/src/App.tsx" title="frontend/src/App.tsx">App.tsx</a> <a href="https://github.com/denvasylenko/dushes/blob/main/frontend/src/types.ts" title="frontend/src/types.ts">types.ts</a></p>
       <figure>
         <div class="diagram">
@@ -435,7 +438,7 @@ await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
                 "reason": "You said car loan",
                 "reveal": [{ "type": "tab", "tabs": "main", "tab": "tab_loan" },
                            { "type": "accordion", "name": "acc_loan_params" }] }] }</code></pre>
-      <p><strong>Keep some rows:</strong> a checkbox per row; send only the ticked changes to your backend and resume <code>{accepted: true, config, names: ["first_name", "last_name"]}</code>. The agent is told which were declined.</p>
+      <p><strong>Keep some rows:</strong> a checkbox per row; send only the ticked changes to your backend and resume <code>{accepted: true, config, names: ["first_name", "last_name"]}</code>. The agent is told which were declined. Each change also has <code>previous</code> / <code>previous_display</code> (old → new, Undo), and a value the user corrected on the card goes back as <code>edited: {name: value}</code>.</p>
       <p><strong>The question card</strong>, the same <code>on_interrupt</code> with <code>type: "ask"</code>: the agent asks when the user must choose between known options or the request is ambiguous. Buttons for a single choice, checkboxes for <code>multiple</code>, a text box when <code>allow_text</code>. It never changes the form by itself; the agent usually follows with a field-change card.</p>
 <pre><code>{ "type": "ask", "card_id": "a41c09e2d7f3", "question": "What kind of loan do you need?",
   "options": [{ "id": "auto", "label": "Car loan" }, { "id": "mortgage", "label": "Mortgage" }],
@@ -448,7 +451,10 @@ resume: { answer: { ids: ["auto"] } }   // or { answer: { text: "..." } }, or { 
           <tr><td><code>TEXT_MESSAGE_*</code></td><td>the agent's reply, streamed</td></tr>
           <tr><td><code>CUSTOM ui_directive</code></td><td>open tabs and accordions, scroll, highlight, hint</td></tr>
           <tr><td><code>on_interrupt</code> <code>set_fields</code></td><td>field-change card, a checkbox per row</td></tr>
-          <tr><td><code>on_interrupt</code> <code>ask</code></td><td>question card: options and/or typed answer</td></tr>
+          <tr><td><code>on_interrupt</code> <code>ask</code></td><td>question card: options and/or typed answer (a picker when <code>input</code> is set)</td></tr>
+          <tr><td><code>on_interrupt</code> <code>upload</code></td><td>file request: drop zone; resume <code>{attachment_ids}</code></td></tr>
+          <tr><td><code>on_interrupt</code> <code>confirm</code></td><td>confirmation; resume <code>{accepted}</code></td></tr>
+          <tr><td><code>tool_progress</code>, <code>suggestions</code></td><td>sub-steps of a tool; quick-reply chips</td></tr>
           <tr><td><code>TOOL_CALL_*</code> without a result</td><td>your own frontend tool: any component you like</td></tr>
           <tr><td><code>TOOL_CALL_*</code> with a result</td><td>optional "searching..." line</td></tr>
           <tr><td><code>agent_note</code>, <code>agent_context</code>, <code>memory_compacted</code></td><td>nothing, or a debug panel</td></tr>
@@ -467,6 +473,91 @@ resume: { answer: { ids: ["auto"] } }   // or { answer: { text: "..." } }, or { 
         <div class="note"><h3>The page</h3><ul><li>register the JSX once, keep <code>jsx_hash</code></li><li>send the latest config with every run</li><li>draw <code>on_interrupt</code> by <code>type</code>: <code>set_fields</code> or <code>ask</code></li><li>after a reload, <code>GET /agent/threads/{id}</code> returns <code>pending_card</code> (a card or a question): show it again</li></ul></div>
       </div>
       <p>The step-by-step guide with every field explained, common mistakes and fixes: <a href="https://github.com/denvasylenko/dushes/blob/main/docs/ui-components.md">docs/ui-components.md</a>.</p>
+    </section>
+
+    <!-- ============================================================ widget -->
+    <section data-page="widget" hidden>
+      <p class="eyebrow">Chat widget</p>
+      <h1>&lt;agui-chat&gt;: a ready-made chat for any AG-UI agent, one tag</h1>
+      <p class="lead">A framework-free Web Component with no runtime dependencies (about 23 KB gzipped from one script tag). It streams answers with a typewriter, shows the agent's steps, renders cards through a registry, and does dictation, attachments and quick replies. The formguide plugin adds the form, the directives and formguide's four cards. Everything can be switched off or restyled.</p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/docs/chat-widget.md" title="docs/chat-widget.md">chat-widget.md</a> <a href="https://github.com/denvasylenko/dushes/blob/main/packages/agui-chat/src/element.ts" title="packages/agui-chat/src/element.ts">element.ts</a> <a href="https://github.com/denvasylenko/dushes/blob/main/packages/agui-chat/src/typewriter.ts" title="packages/agui-chat/src/typewriter.ts">typewriter.ts</a> <a href="https://github.com/denvasylenko/dushes/blob/main/packages/agui-chat/src/formguide/index.ts" title="packages/agui-chat/src/formguide/index.ts">formguide/index.ts</a> <a href="https://github.com/denvasylenko/dushes/blob/main/packages/agui-chat/src/formguide/cards.ts" title="packages/agui-chat/src/formguide/cards.ts">cards.ts</a> <a href="https://github.com/denvasylenko/dushes/blob/main/examples/widget-html/index.html" title="examples/widget-html/index.html">widget-html</a></p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 330" role="img" aria-label="The page hosts agui-chat; the formguide plugin gives it the form state and applies accepted values through the form backend; the chat sends runs to formguide and renders the events it streams back.">
+            <defs>
+              <marker id="a11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a11k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="zone" x="16" y="14" width="520" height="302" rx="12"/>
+            <text x="32" y="38" class="t-m">your page</text>
+            <rect class="key" x="36" y="54" width="300" height="244" rx="10"/>
+            <text x="186" y="78" text-anchor="middle" class="t-b">&lt;agui-chat&gt; (shadow root)</text>
+            <rect class="box" x="54" y="94" width="264" height="34" rx="6"/>
+            <text x="186" y="116" text-anchor="middle" class="t-s">transport: RunAgentInput over SSE</text>
+            <rect class="box" x="54" y="136" width="264" height="34" rx="6"/>
+            <text x="186" y="158" text-anchor="middle" class="t-s">typewriter, word fade-in, live steps</text>
+            <rect class="box" x="54" y="178" width="264" height="34" rx="6"/>
+            <text x="186" y="200" text-anchor="middle" class="t-s">renderer registry: interrupt type → card</text>
+            <rect class="box" x="54" y="220" width="264" height="34" rx="6"/>
+            <text x="186" y="242" text-anchor="middle" class="t-s">composer: mic, files, quick replies</text>
+            <text x="186" y="282" text-anchor="middle" class="t-m">options · theme tokens · ::part · i18n</text>
+            <rect class="box" x="362" y="94" width="156" height="118" rx="8"/>
+            <text x="440" y="118" text-anchor="middle" class="t-b">formguide plugin</text>
+            <text x="440" y="142" text-anchor="middle" class="t-s">getState() → state</text>
+            <text x="440" y="162" text-anchor="middle" class="t-s">4 cards, directives</text>
+            <text x="440" y="182" text-anchor="middle" class="t-s">restore, tool labels</text>
+            <text x="440" y="202" text-anchor="middle" class="t-s">uploads</text>
+            <line class="ln" x1="336" y1="152" x2="360" y2="152" marker-end="url(#a11)"/>
+            <rect class="soft" x="362" y="240" width="156" height="40" rx="8"/>
+            <text x="440" y="265" text-anchor="middle" class="t-s">your form backend</text>
+            <line class="ln-key" x1="440" y1="212" x2="440" y2="238" marker-end="url(#a11k)"/>
+            <text x="452" y="229" class="t-k">applyChanges</text>
+            <rect class="box" x="640" y="94" width="196" height="118" rx="8"/>
+            <text x="738" y="118" text-anchor="middle" class="t-b">formguide /agent</text>
+            <text x="738" y="142" text-anchor="middle" class="t-s">POST /run (SSE)</text>
+            <text x="738" y="162" text-anchor="middle" class="t-s">GET /threads/{id}</text>
+            <text x="738" y="182" text-anchor="middle" class="t-s">POST /attachments</text>
+            <line class="ln-key" x1="520" y1="128" x2="638" y2="128" marker-end="url(#a11k)"/>
+            <text x="579" y="120" text-anchor="middle" class="t-k">run + state</text>
+            <line class="ln" x1="638" y1="180" x2="520" y2="180" marker-end="url(#a11)"/>
+            <text x="579" y="172" text-anchor="middle" class="t-s">AG-UI events</text>
+          </svg>
+        </div>
+        <figcaption>The element knows only AG-UI. The plugin supplies the form as <code>state</code> before each run, applies accepted values through your form backend (the same path as typing), and draws formguide's cards; another agent's cards plug into the same registry.</figcaption>
+      </figure>
+
+      <h2>Install</h2>
+<pre><code>&lt;agui-chat url="/agent/run" mode="floating"&gt;&lt;/agui-chat&gt;
+&lt;script src="agui-chat.iife.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  document.querySelector('agui-chat').use(AguiChat.formguide({
+    getState: () =&gt; ({ config, jsx_hash, form_id, ui }),
+    applyChanges: (changes) =&gt; formBackend.apply(changes),   // -&gt; new config
+  }))
+&lt;/script&gt;
+
+// npm: import '@formguide/agui-chat'; import { formguide } from '@formguide/agui-chat/formguide'
+// React: &lt;AguiChat url="/agent/run" mode="inline" plugins={[formguide({...})]} /&gt;</code></pre>
+
+      <h2>What the user sees</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>On screen</th><th>From</th><th>Switch</th></tr></thead>
+        <tbody>
+          <tr><td>typed answer, words fading in</td><td><code>TEXT_MESSAGE_*</code></td><td><code>typing</code>: words, plain, off</td></tr>
+          <tr><td>"Searching the documents" ✓, sub-steps</td><td><code>TOOL_CALL_*</code>, <code>tool_progress</code></td><td><code>tool-steps</code>, <code>toolLabels</code></td></tr>
+          <tr><td>field card: rows, old → new, edit, show field, Undo</td><td><code>on_interrupt</code> <code>set_fields</code></td><td><code>cards.set_fields</code>: select, diff, reason, edit, jump, undo</td></tr>
+          <tr><td>question: options (keys 1-9), text, date / number picker</td><td><code>on_interrupt</code> <code>ask</code></td><td>the agent's <code>input</code></td></tr>
+          <tr><td>file request: drop zone, progress</td><td><code>on_interrupt</code> <code>upload</code></td><td></td></tr>
+          <tr><td>confirmation, red when dangerous</td><td><code>on_interrupt</code> <code>confirm</code></td><td></td></tr>
+          <tr><td>starter and quick-reply chips</td><td>pack <code>starters</code>, <code>suggestions</code></td><td><code>quick-replies</code></td></tr>
+          <tr><td>dictation, attachments</td><td>Web Speech API, <code>POST /attachments</code></td><td><code>mic</code>, <code>attach</code></td></tr>
+        </tbody>
+      </table></div>
+      <div class="grid2">
+        <div class="note"><h3>Configurable</h3><ul><li>attributes, <code>chat.options = {...}</code> or React props, applied live</li><li><code>mode</code>: floating, inline, page; <code>theme</code>: auto, light, dark</li><li>tokens: <code>--agui-accent</code>, <code>--agui-radius</code>, <code>--agui-font</code>…; parts: <code>::part(card)</code>…</li><li>7 languages, any string overridable</li></ul></div>
+        <div class="note"><h3>Extensible</h3><ul><li><code>chat.renderers.set(type, fn)</code>: your own card; <code>resolve(value)</code> resumes</li><li><code>chat.registerTool({...})</code>: frontend tools that can render into the chat</li><li><code>chat.agent = new HttpAgent(...)</code>: any AG-UI agent object</li><li>events <code>agui:event</code>, <code>agui:run-end</code>…</li></ul></div>
+      </div>
+      <p>Every option, token, method and the plugin API: <a href="https://github.com/denvasylenko/dushes/blob/main/docs/chat-widget.md">docs/chat-widget.md</a>. Try every switch live: the demo server's <code>/examples/widget/</code>.</p>
     </section>
 
     <!-- ============================================================ 2 -->
@@ -977,7 +1068,7 @@ guide = FormGuide(load_config("formguide.yaml"))
 app.include_router(create_router(guide), prefix="/agent")      # or call guide.run(...) directly</code></pre>
       <div class="grid2">
         <div class="note"><h3>Model requirements</h3><ul><li>agent and researcher: tool calling</li><li>compile and extract: structured output</li><li>extracting from scans: vision / PDF input</li></ul></div>
-        <div class="note"><h3>Checked</h3><p><span class="pill ok">61 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic, and AG-UI event validation. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
+        <div class="note"><h3>Checked</h3><p><span class="pill ok">71 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic, and AG-UI event validation. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
       </div>
     </section>
 

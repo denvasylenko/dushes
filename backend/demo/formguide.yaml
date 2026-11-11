@@ -25,6 +25,8 @@ skills:
 
 max_tool_rounds: 10
 
+suggestions: {enabled: true, max: 3}   # quick replies after each answer (the memory model: Sonnet)
+
 memory:                        # long chats: older turns are compacted into a conversation memory
   max_history_tokens: 60000
   keep_turns: 4

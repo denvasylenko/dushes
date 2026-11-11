@@ -134,12 +134,14 @@ def create_router(guide: FormGuide, *, debug: bool = True) -> APIRouter:
             raise bad(e) from None
 
     @r.get("/threads/{thread_id}")
-    def get_thread(thread_id: str, format: str | None = None) -> dict:  # noqa: A002
+    def get_thread(thread_id: str, format: str | None = None, form_id: str | None = None) -> dict:  # noqa: A002
+        """`form_id`: for an empty thread, also return that form's `starters` (opening messages)."""
         try:
+            t = guide.thread(thread_id, form_id)
             if format == "agui":
                 return {"thread_id": thread_id, "messages": guide.thread_messages(thread_id),
-                        "pending_card": guide.thread(thread_id)["pending_card"]}
-            return guide.thread(thread_id)
+                        "pending_card": t["pending_card"], **({"starters": t["starters"]} if "starters" in t else {})}
+            return t
         except ValueError as e:
             raise bad(e) from None
 

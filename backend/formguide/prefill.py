@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 async def suggest_prefill(guide: FormGuide, state: dict[str, Any], *, data: dict[str, Any] | None = None,
                           text: str | None = None, attachment_ids: list[str] | None = None,
                           thread_id: str | None = None) -> dict[str, Any]:
-    from .agent.tools import ToolCtx, ToolError, _norm_value, form_value
+    from .agent.tools import ToolCtx, ToolError, _norm_value, form_value, previous_of
 
     lay = guide.layout(state.get("jsx_hash", ""))
     if lay is None:
@@ -63,7 +63,7 @@ async def suggest_prefill(guide: FormGuide, state: dict[str, Any], *, data: dict
             return
         if e.filled and e.value == v:
             return   # already there
-        values[name] = {"name": name, "label": e.label or name, "value": stored, "display": values_display(v),
+        values[name] = {"name": name, "label": e.label or name, "value": stored, "display": values_display(v), **previous_of(ov, name),
                         "status": "now" if e.editable else "later",
                         "why_later": "" if e.editable else ("hidden" if not e.visible else "disabled"),
                         "source": source, **extra}

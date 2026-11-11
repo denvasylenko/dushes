@@ -67,6 +67,13 @@ async def no_stale_page(request, call_next):
     return response
 
 
+# The chat widget's one-script build and the plain-HTML example (examples/widget-html):
+# http://localhost:8000/examples/widget/ after `cd packages/agui-chat && npm run build`.
+_WIDGET = HERE.parents[1] / "packages" / "agui-chat" / "dist"
+if _WIDGET.exists():
+    app.mount("/widget", StaticFiles(directory=_WIDGET), name="widget")
+app.mount("/examples/widget", StaticFiles(directory=HERE.parents[1] / "examples" / "widget-html", html=True), name="widget-example")
+
 _DIST = HERE.parents[1] / "frontend" / "dist"
 if _DIST.exists():
     app.mount("/", StaticFiles(directory=_DIST, html=True), name="frontend")

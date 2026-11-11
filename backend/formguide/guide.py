@@ -26,7 +26,7 @@ from langgraph.types import Command
 from .agent.graph import build_graph
 from .attachments.extract import AttachmentStore
 from .config import GuideConfig
-from .domain.packs import DomainPackRegistry, validate_pack
+from .domain.packs import DomainPackRegistry, starters_of, validate_pack
 from .form.layout import LayoutIndex, jsx_hash
 from .form.overlay import DepStore
 from .knowledge import compile as kb_compile
@@ -34,7 +34,8 @@ from .knowledge.base import KnowledgeBase
 from .prefill import prefill_instruction, suggest_prefill
 from .skills import SkillRegistry
 from .form.values import value_warnings
-from .agent.interaction import read_answer, read_decision
+from .agent.interaction import read_answer, read_confirm, read_decision, read_edits, read_upload
+from .suggestions import suggest
 from .transcript import FileTranscriptStore, check_thread_id, new_entry, pending_card
 
 
@@ -52,6 +53,8 @@ class FormGuide:
         self.models = cfg.models.resolve()
         from .models import build_model
         self.models.memory = build_model(cfg.memory.model) if cfg.memory.model else self.models.research
+        sg = cfg.suggestions
+        self.suggestions_model = (build_model(sg.model) if sg.model else self.models.memory) if sg.enabled else None
         self.data_dir = Path(cfg.data_dir)
         self.packs = cfg.domain_packs or DomainPackRegistry()
         self.knowledge = cfg.knowledge or KnowledgeBase(self.data_dir / "kb")
@@ -122,6 +125,8 @@ class FormGuide:
         - a new user message: `message` + `state` = {config, jsx_hash, form_id, ui?, attachments?};
         - a resume after a field-change card: `resume` = {accepted, config?, ui?, names?, comment?};
         - a resume after a question card: `resume` = {answer: {ids?, text?}} ({accepted: False} = skipped);
+        - a resume after an upload request: `resume` = {attachment_ids} (none = skipped);
+        - a resume after a confirmation: `resume` = {accepted};
         - a continuation after frontend tools ran: `tool_results` = {tool_call_id: content} + `state`;
         - a prefilled start: `prefill` = {data?, text?, attachment_ids?} + `state` (see suggest_prefill).
 
@@ -136,10 +141,18 @@ class FormGuide:
                 got, _ = read_answer(card, resume)
                 tx.update(thread_id, card["id"], status="answered" if got else "dismissed",
                           **({"answer": got} if got else {}))
+            elif card and card["kind"] == "upload":
+                files = read_upload(resume, lambda i: (self.attachments.load(thread_id, i) or (None,))[0])
+                tx.update(thread_id, card["id"], status="answered" if files else "dismissed",
+                          **({"files": files} if files else {}))
+            elif card and card["kind"] == "confirm":
+                tx.update(thread_id, card["id"], status="accepted" if read_confirm(resume) else "rejected")
             elif card:
                 applied, declined = read_decision(card.get("changes") or [], resume)
                 status = "rejected" if not applied else "partial" if declined else "accepted"
-                tx.update(thread_id, card["id"], status=status, **({"names": applied} if declined else {}))
+                edited = read_edits(card.get("changes") or [], resume, applied)
+                tx.update(thread_id, card["id"], status=status, **({"names": applied} if declined else {}),
+                          **({"edited": edited} if edited else {}))
         else:
             if card:   # a new message closes an unanswered card (the graph does the same)
                 tx.update(thread_id, card["id"], status="dismissed")
@@ -155,13 +168,18 @@ class FormGuide:
         texts: dict[str, str] = {}
         calls: dict[str, dict] = {}
         interrupts: list[dict] = []
+        said: list[str] = []          # this run's answer, for quick replies
+        context = ""                  # what the model saw of the form, for quick replies
         async for ev in self._run(thread_id, message=message, state=state, resume=resume, run_id=run_id,
                                   client_tools=client_tools, tool_results=tool_results, prefill=prefill):
             t, name = ev["type"], ev.get("name")
             if t == "TEXT_MESSAGE_CONTENT":
                 texts[ev["messageId"]] = texts.get(ev["messageId"], "") + ev["delta"]
             elif t == "TEXT_MESSAGE_END" and texts.get(ev["messageId"], "").strip():
+                said.append(texts[ev["messageId"]])
                 tx.append(thread_id, new_entry("assistant", text=texts.pop(ev["messageId"])))
+            elif name == "agent_context":
+                context = (ev.get("value") or {}).get("text") or ""
             elif t == "RUN_ERROR":
                 tx.append(thread_id, new_entry("error", text=ev["message"]))
             elif t == "TOOL_CALL_START":
@@ -177,9 +195,9 @@ class FormGuide:
             elif name == "memory_compacted":
                 tx.append(thread_id, new_entry("notice", text="Earlier messages were summarized for the assistant; "
                                                               "the chat history is kept in full."))
-            elif name == "on_interrupt" and ev["value"].get("type") == "ask":
+            elif name == "on_interrupt" and ev["value"].get("type") in _CARD_KIND:
                 q = {k: v for k, v in ev["value"].items() if k != "type"}
-                entry = tx.append(thread_id, new_entry("question", **q, status="pending"))
+                entry = tx.append(thread_id, new_entry(_CARD_KIND[ev["value"]["type"]], **q, status="pending"))
                 value = {**ev["value"], "card_id": entry["id"]}
                 interrupts.append(value)
                 if mode not in ("legacy", "both"):
@@ -195,12 +213,24 @@ class FormGuide:
                 ev = {**ev, "value": json.dumps(value, ensure_ascii=False)}
             elif t == "RUN_FINISHED" and interrupts and mode in ("structured", "both"):
                 ev = {**ev, "outcome": {"type": "interrupt", "interrupts": [_outcome(v) for v in interrupts]}}
+            if t == "RUN_FINISHED" and not interrupts and said and self.suggestions_model is not None:
+                user_text = message or next((e.get("text", "") for e in reversed(tx.list(thread_id))
+                                             if e["kind"] == "user"), "")
+                items = await suggest(self.suggestions_model, user_text=user_text, answer="\n".join(said),
+                                      context=context, limit=self.config.suggestions.max,
+                                      timeout=self.config.suggestions.timeout)
+                if items:
+                    yield {"type": "CUSTOM", "name": "suggestions", "value": {"items": items}}
             yield ev
 
-    def thread(self, thread_id: str) -> dict[str, Any]:
-        """What a client needs to restore a conversation: the transcript and the pending card, if any."""
+    def thread(self, thread_id: str, form_id: str | None = None) -> dict[str, Any]:
+        """What a client needs to restore a conversation: the transcript and the pending card, if any.
+        For an empty thread of a form whose domain pack has `starters`, those opening messages too."""
         entries = self.transcripts.list(check_thread_id(thread_id))
-        return {"thread_id": thread_id, "transcript": entries, "pending_card": pending_card(entries)}
+        out = {"thread_id": thread_id, "transcript": entries, "pending_card": pending_card(entries)}
+        if not entries and form_id:
+            out["starters"] = starters_of(self.packs.get(form_id))
+        return out
 
     def thread_messages(self, thread_id: str) -> list[dict[str, Any]]:
         """The transcript as AG-UI messages (for `agent.setMessages` / CopilotKit)."""
@@ -277,6 +307,10 @@ class FormGuide:
                     yield {"type": "CUSTOM", "name": "agent_note", "value": chunk["text"]}
                 elif k == "memory":
                     yield {"type": "CUSTOM", "name": "memory_compacted", "value": chunk}
+                elif k == "tool" and chunk.get("parent_id"):   # a sub-step of a running tool
+                    yield {"type": "CUSTOM", "name": "tool_progress",
+                           "value": {"parent_id": chunk["parent_id"], "name": chunk.get("name"),
+                                     "input": chunk.get("input")}}
                 elif k == "context":
                     yield {"type": "CUSTOM", "name": "agent_context", "value": chunk}
                 elif k == "error":
@@ -326,10 +360,17 @@ class FormGuide:
         return self.attachments.save(thread_id, filename, data)
 
 
+_CARD_KIND = {"ask": "question", "upload": "upload", "confirm": "confirm"}   # interrupt type -> transcript kind
+
+
 def _outcome(v: dict[str, Any]) -> dict[str, Any]:
     """A card as an AG-UI 1.0 interrupt (RUN_FINISHED.outcome)."""
+    meta = {k: x for k, x in v.items() if k not in ("type", "card_id")}
     if v.get("type") == "ask":
-        meta = {k: v[k] for k in ("question", "options", "multiple", "allow_text", "field") if k in v}
         return {"id": v["card_id"], "reason": "ask_user", "message": v["question"], "metadata": meta}
+    if v.get("type") == "upload":
+        return {"id": v["card_id"], "reason": "request_file", "message": v["prompt"], "metadata": meta}
+    if v.get("type") == "confirm":
+        return {"id": v["card_id"], "reason": "confirm_action", "message": v["title"], "metadata": meta}
     return {"id": v["card_id"], "reason": "confirm_field_changes", "message": "Confirm the proposed field values",
             "metadata": {"changes": v["changes"]}}

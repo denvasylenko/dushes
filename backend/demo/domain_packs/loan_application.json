@@ -25,5 +25,7 @@
     "consent_bki": "Without this consent the bank cannot review the application."
   },
   "pii": ["passport_series", "passport_number", "inn", "snils", "codeword",
-          "cob_passport_series", "cob_passport_number", "payout_account"]
+          "cob_passport_series", "cob_passport_number", "payout_account"],
+  "starters": ["Where do I start?", "Where do I enter the department code?",
+               "I want a car loan of 1.5 million for 5 years"]
 }

@@ -90,7 +90,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `data_dir` | `data` | where formguide keeps its own files: learned field dependencies (`deps/`), registered layouts (`layouts/`), documents (`kb/`), attachments (`attachments/`), transcripts (`transcripts/`) unless set elsewhere |
 | `components.containers` | `Tabs: tabs, Tab: tab, Accordion: accordion, Section: section, Form: form` | your component library's container tags → role. **Replaces** the default map when given |
 | `components.fields` | `Input: text, NumberInput: number, TextArea: text, DatePicker: date, Dropdown: select, Checkbox: bool, FileUpload: file` | field tags → role (`text`, `number`, `date`, `select`, `radio`, `multiselect`, `bool`, `file`) or a **field spec** (below). **Replaces** the default map when given |
-| `domain_packs.dir` | none | a folder of `<form_id>.json` packs (persona, flow hints, glossary, rules, PII fields) |
+| `domain_packs.dir` | none | a folder of `<form_id>.json` packs (persona, flow hints, glossary, rules, PII fields, `starters`: up to 6 opening messages for an empty chat) |
 | `domain_packs.packs` | none | packs inline: `{form_id: {...pack}}` |
 | `domain_packs.provider` | none | `"module:function"`; `function(form_id) -> dict or None`, e.g. reading from your database |
 | `knowledge.dir` | `<data_dir>/kb` | where uploaded business documents are stored |
@@ -106,6 +106,8 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `max_tool_rounds` | `10` | model ⇄ tool rounds per turn |
 | `learn_dependencies` | `true` | persist observed field dependencies per form |
 | `interrupt_mode` | `legacy` | cards as `CUSTOM on_interrupt` (CopilotKit), `structured` (AG-UI 1.0 interrupts), or `both` |
+| `confirm_tools` | none | tool names that always need the user's confirmation: the call is held, the user sees a confirm card, and the tool runs only on yes |
+| `suggestions` | off | quick replies after answers: `true`, or `{enabled, model, max, timeout}`; `model` defaults to the memory model, `max` 3 (up to 5), `timeout` 4 s. Sent as `CUSTOM suggestions {items}`; a failure or timeout sends nothing |
 
 ## Field specs: how each component stores its value
 

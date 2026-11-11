@@ -41,6 +41,7 @@ class DomainPack:
     rules: list[str] = field(default_factory=list)       # business rules (pack + compiled documents)
     kb_summary: str = ""                                  # what the form's documents cover
     kb_documents: list[str] = field(default_factory=list)
+    starters: list[Any] = field(default_factory=list)     # opening messages offered in an empty chat (up to 6)
     source: str = "default"   # inline | provider | packs | dir | default, "+kb" when documents are merged
 
     @classmethod
@@ -54,6 +55,7 @@ class DomainPack:
             glossary={str(k): str(v) for k, v in (d.get("glossary") or {}).items()},
             pii={str(x) for x in d.get("pii") or []},
             rules=[str(x) for x in d.get("rules") or []],
+            starters=list(d.get("starters") or []),
             source=source,
         )
 
@@ -131,7 +133,19 @@ class DomainPackRegistry:
         )
 
 
+MAX_STARTERS = 6
+
+
 def validate_pack(pack: DomainPack, known_names: set[str]) -> list[str]:
-    """Warn about glossary / pii keys that do not exist in the form layout."""
-    return [f"domain pack references unknown field: {k}"
-            for k in sorted((set(pack.glossary) | pack.pii) - known_names)]
+    """Warn about glossary / pii keys that do not exist in the form layout, and about bad starters."""
+    out = [f"domain pack references unknown field: {k}"
+           for k in sorted((set(pack.glossary) | pack.pii) - known_names)]
+    if len(pack.starters) > MAX_STARTERS:
+        out.append(f"domain pack has {len(pack.starters)} starters; at most {MAX_STARTERS} are shown")
+    if any(not isinstance(x, str) or not x.strip() for x in pack.starters):
+        out.append("domain pack starters must be non-empty strings")
+    return out
+
+
+def starters_of(pack: DomainPack) -> list[str]:
+    return [x.strip() for x in pack.starters if isinstance(x, str) and x.strip()][:MAX_STARTERS]

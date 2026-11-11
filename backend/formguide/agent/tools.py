@@ -2,7 +2,9 @@
 
 - focus_field     -> a UI directive for the frontend (open tabs/accordions, highlight);
 - propose_changes -> validated, then goes to an interrupt (the user confirms);
-- ask_user        -> a question card with clickable options, also an interrupt (the user answers).
+- ask_user        -> a question card with clickable options or a typed answer (date, number...), an interrupt;
+- request_file    -> asks the user to upload a document, an interrupt (answered with attachment ids);
+- confirm_action  -> a yes/no confirmation before an action with side effects, an interrupt.
 
 Two tools delegate to separate model calls, so their inputs never enter the main context:
 - ask_documents           -> the deep-agent researcher over the form's business documents;
@@ -29,6 +31,7 @@ if TYPE_CHECKING:
     from ..guide import FormGuide
 from ..form import values as vals
 from ..form.layout import CHOICE
+from .interaction import input_ok as interaction_ok
 from ..form.overlay import DepStore, Overlay
 from ..form.render import Location, container_line, disabled_reason, field_card, render_container
 from ..form.search import search
@@ -92,8 +95,41 @@ TOOLS: list[dict[str, Any]] = [
                 "field": {"type": "string", "description": "a dropdown, radio or multi-select field"},
                 "multiple": {"type": "boolean", "description": "several choices allowed"},
                 "allow_text": {"type": "boolean", "description": "a typed answer allowed; default true"},
+                "input": {"type": "object", "description": "the kind of typed answer, shown as a picker",
+                          "properties": {"type": {"type": "string",
+                                                  "enum": ["text", "number", "date", "time", "datetime"]},
+                                         "min": {"type": ["string", "number"]}, "max": {"type": ["string", "number"]}}},
             },
             "required": ["question"],
+        },
+    },
+    {
+        "name": "request_file",
+        "description": "Ask the user to upload a document (passport scan, payslip...) and wait for it. Then read it "
+                       "with extract_from_attachment. Use it when a document would save typing or is required.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string", "description": "what to upload, one short sentence"},
+                "accept": {"type": "string", "description": "file types, e.g. '.pdf,.jpg'; default: all supported"},
+                "multiple": {"type": "boolean"},
+                "field": {"type": "string", "description": "the file field this document is for, if any"},
+            },
+            "required": ["prompt"],
+        },
+    },
+    {
+        "name": "confirm_action",
+        "description": "Ask the user to confirm an action with side effects (submitting, sending, cancelling) "
+                       "before you call the tool that does it. Not for field values: propose_changes confirms those.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"}, "message": {"type": "string"},
+                "confirm_label": {"type": "string", "description": "the confirm button, e.g. 'Submit'"},
+                "danger": {"type": "boolean", "description": "the action cannot be undone"},
+            },
+            "required": ["title", "message"],
         },
     },
     {
@@ -187,7 +223,8 @@ class ToolCtx:
     loc: Location
     ui_directives: list[dict] = field(default_factory=list)
     pending_changes: list[dict] | None = None
-    pending_question: dict | None = None
+    pending_interaction: dict | None = None      # a card that waits for the user: {kind: ask|upload|confirm, ...}
+    confirm_tools: frozenset[str] = frozenset()  # tools that always need the user's confirmation first
     thread_id: str = ""
     emit: Callable[[dict], None] | None = None   # progress events for the UI
     guide: FormGuide | None = None               # access to models, knowledge, attachments, skills
@@ -379,6 +416,17 @@ def _norm_value(ctx: ToolCtx, name: str, value: Any) -> Any:
     return str(value)
 
 
+def previous_of(ctx_or_ov: Any, name: str) -> dict:
+    """The field's value before a change: {previous (the form's format), previous_display} or nulls."""
+    ov = getattr(ctx_or_ov, "ov", ctx_or_ov)
+    e = ov[name]
+    if not e.filled:
+        return {"previous": None, "previous_display": None}
+    if e.unreadable:
+        return {"previous": e.raw, "previous_display": str(e.raw)}
+    return {"previous": e.raw, "previous_display": vals.display(e.value)}
+
+
 def form_value(ctx_or_ov: Any, name: str, value: Any) -> Any:
     """A canonical value written in the form's own format (the field spec), or ToolError."""
     ov = getattr(ctx_or_ov, "ov", ctx_or_ov)
@@ -389,12 +437,16 @@ def form_value(ctx_or_ov: Any, name: str, value: Any) -> Any:
         raise ToolError(f"{name}: {err}") from None
 
 
+def _waiting(ctx: ToolCtx) -> bool:
+    return ctx.pending_changes is not None or ctx.pending_interaction is not None
+
+
 WAITING = "a card or question is already waiting for the user. One at a time: call it in a later step."
 MAX_QUESTION_OPTIONS = 12
 
 
 def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
-    if ctx.pending_changes is not None or ctx.pending_question is not None:
+    if _waiting(ctx):
         raise ToolError(WAITING)
     question = str(a.get("question") or "").strip()
     if not question:
@@ -410,11 +462,13 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
     if field_name:
         n = _need(ctx, field_name)
         e = ctx.ov[n.name]
-        if n.role not in CHOICE and n.role != "multiselect":
+        if n.role in ("date", "number") and not raw:   # a typed answer with a picker of the field's type
+            a = {**a, "input": a.get("input") or {"type": n.role}}
+        elif n.role not in CHOICE and n.role != "multiselect":
             raise ToolError(f"{n.name} is not a dropdown, radio group or multi-select; pass your own options")
-        if not e.options:
+        elif not e.options:
             raise ToolError(f"{n.name} has no options right now (they probably depend on another field)")
-        if raw:
+        elif raw:
             bad = []
             for x in raw:
                 key = (x.get("id") or x.get("label")) if isinstance(x, dict) else x
@@ -444,15 +498,68 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
                         "ones with `options`, or ask in text.")
     allow_text = a.get("allow_text")
     allow_text = True if allow_text is None else bool(allow_text)
+    inp = _question_input(a.get("input"))
+    if inp:
+        allow_text = True
     if not opts and not allow_text:
         raise ToolError("a question without options must allow a typed answer")
-    ctx.pending_question = {"question": question, "options": opts, "multiple": bool(multiple) and bool(opts),
-                            "allow_text": allow_text, **({"field": field_name} if field_name else {})}
+    ctx.pending_interaction = {"kind": "ask", "question": question, "options": opts,
+                               "multiple": bool(multiple) and bool(opts), "allow_text": allow_text,
+                               **({"input": inp} if inp else {}), **({"field": field_name} if field_name else {})}
+    return ""
+
+
+INPUT_TYPES = ("text", "number", "date", "time", "datetime")
+
+
+def _question_input(raw: Any) -> dict | None:
+    """`input` of ask_user: {type, min?, max?}; bounds are checked to match the type."""
+    if not raw:
+        return None
+    if not isinstance(raw, dict) or raw.get("type") not in INPUT_TYPES:
+        raise ToolError(f"input.type must be one of {', '.join(INPUT_TYPES)}")
+    out: dict[str, Any] = {"type": raw["type"]}
+    for k in ("min", "max"):
+        if raw.get(k) in (None, ""):
+            continue
+        if not interaction_ok(out["type"], raw[k]):
+            raise ToolError(f"input.{k} {raw[k]!r} is not a valid {out['type']}")
+        out[k] = raw[k]
+    return out
+
+
+def _t_request_file(a: dict, ctx: ToolCtx) -> str:
+    if _waiting(ctx):
+        raise ToolError(WAITING)
+    prompt = str(a.get("prompt") or "").strip()
+    if not prompt:
+        raise ToolError("prompt must not be empty")
+    supported = list(att.MEDIA)
+    wanted = [x.strip().lower() for x in str(a.get("accept") or "").replace(";", ",").split(",") if x.strip()]
+    wanted = [x if x.startswith(".") else "." + x.split("/")[-1] for x in wanted]
+    accept = [x for x in wanted if x in supported] or supported
+    payload: dict[str, Any] = {"kind": "upload", "prompt": prompt[:300], "accept": ",".join(accept),
+                               "multiple": bool(a.get("multiple"))}
+    if a.get("field"):
+        payload["field"] = _need(ctx, a["field"]).name
+    ctx.pending_interaction = payload
+    return ""
+
+
+def _t_confirm_action(a: dict, ctx: ToolCtx) -> str:
+    if _waiting(ctx):
+        raise ToolError(WAITING)
+    title, message = str(a.get("title") or "").strip(), str(a.get("message") or "").strip()
+    if not title or not message:
+        raise ToolError("title and message must not be empty")
+    ctx.pending_interaction = {"kind": "confirm", "title": title[:120], "message": message[:600],
+                               "confirm_label": str(a.get("confirm_label") or "").strip()[:40],
+                               "danger": bool(a.get("danger"))}
     return ""
 
 
 def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
-    if ctx.pending_changes is not None or ctx.pending_question is not None:
+    if _waiting(ctx):
         raise ToolError(WAITING)
     changes = a.get("changes")
     if not isinstance(changes, list) or not changes:
@@ -475,7 +582,7 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
             val = _norm_value(ctx, n.name, ch["value"])
             # card text for the user: language-neutral; `value` is in the form's own format
             ok.append({"name": n.name, "label": e.label or n.name, "value": form_value(ctx, n.name, val),
-                       "display": vals.display(val),
+                       "display": vals.display(val), **previous_of(ctx, n.name),
                        "reason": ch.get("reason", ""), "reveal": reveal_chain(ctx, n.name)})
         except ToolError as err:
             errors.append(str(err))

@@ -10,6 +10,10 @@ model's history, never this. Entries, in order:
                                       "names"?: applied names when partial}
     {"id", "ts", "kind": "question",  "question", "options": [{id, label}], "multiple", "allow_text", "field"?,
                                       "status": pending|answered|dismissed, "answer"?: {ids?, labels?, text?}}
+    {"id", "ts", "kind": "upload",    "prompt", "accept", "multiple", "field"?,
+                                      "status": pending|answered|dismissed, "files"?: [{id, filename}]}
+    {"id", "ts", "kind": "confirm",   "title", "message", "confirm_label", "danger", "tool"?, "args"?,
+                                      "status": pending|accepted|rejected|dismissed}
     {"id", "ts", "kind": "error",     "text"}
     {"id", "ts", "kind": "notice",    "text"}
 
@@ -102,7 +106,7 @@ class FileTranscriptStore:
 
 def pending_card(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
     """The card or question still waiting for the user (its `kind` says which)."""
-    return next((e for e in reversed(entries) if e["kind"] in ("card", "question") and e.get("status") == "pending"),
+    return next((e for e in reversed(entries) if e["kind"] in ("card", "question", "upload", "confirm") and e.get("status") == "pending"),
                 None)
 
 

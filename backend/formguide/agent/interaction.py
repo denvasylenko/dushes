@@ -6,6 +6,8 @@ FormGuide.run(resume=...).
 """
 from __future__ import annotations
 
+import re
+from datetime import date, datetime
 from typing import Any
 
 _YES = {"yes", "y", "ok", "accept", "accepted", "true"}
@@ -45,6 +47,11 @@ def read_answer(question: dict, resume: dict[str, Any]) -> tuple[dict | None, st
         return None, "several options were sent for a single-choice question"
     if text and not question.get("allow_text"):
         return None, "a typed answer was sent but the question allowed only the options"
+    inp = question.get("input")
+    if text and inp and not ids:
+        why = input_problem(inp, text)
+        if why:
+            return None, why
     if not ids and not text:
         return None, ""
     out: dict[str, Any] = {}
@@ -66,3 +73,82 @@ def answer_text(answer: dict | None, why: str = "") -> str:
     if answer.get("text"):
         parts.append(f"The user wrote: {answer['text']}")
     return ". ".join(parts)
+
+
+# ---------------------------------------------------------------- typed answers (ask_user input)
+
+
+def _parse(kind: str, value: Any) -> Any:
+    s = str(value).strip()
+    if kind == "number":
+        return float(s.replace(" ", "").replace(",", "."))
+    if kind == "date":
+        return date.fromisoformat(s)
+    if kind == "datetime":
+        return datetime.fromisoformat(s)
+    if kind == "time":
+        if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", s):
+            raise ValueError("not HH:MM")
+        return s
+    return s
+
+
+def input_ok(kind: str, value: Any) -> bool:
+    try:
+        _parse(kind, value)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def input_problem(inp: dict, text: str) -> str:
+    """Why a typed answer does not fit the question's input, or ''."""
+    kind = inp.get("type") or "text"
+    try:
+        v = _parse(kind, text)
+    except (ValueError, TypeError):
+        fmt = {"date": "YYYY-MM-DD", "time": "HH:MM", "datetime": "YYYY-MM-DDTHH:MM", "number": "a number"}.get(kind)
+        return f"the answer {text!r} is not {fmt}" if fmt else ""
+    for k, cmp in (("min", lambda a, b: a < b), ("max", lambda a, b: a > b)):
+        if inp.get(k) not in (None, ""):
+            try:
+                if cmp(v, _parse(kind, inp[k])):
+                    return f"the answer {text!r} is out of range ({k} {inp[k]})"
+            except (ValueError, TypeError):
+                pass
+    return ""
+
+
+# ---------------------------------------------------------------- edits, uploads, confirmations
+
+
+def read_edits(changes: list[dict], resume: dict[str, Any], applied: list[str]) -> dict[str, Any]:
+    """Values the user changed on the card before applying (only for applied rows)."""
+    edited = resume.get("edited") if isinstance(resume.get("edited"), dict) else {}
+    proposed = {c["name"]: c.get("value") for c in changes}
+    return {k: v for k, v in edited.items() if k in applied and v != proposed.get(k)}
+
+
+def read_upload(resume: dict[str, Any], lookup) -> list[dict]:
+    """An upload request -> [{id, filename}] of the uploaded files that exist in this thread."""
+    ids = resume.get("attachment_ids") if isinstance(resume.get("attachment_ids"), list) else []
+    out = []
+    for i in ids:
+        found = lookup(str(i))
+        if found and not any(o["id"] == str(i) for o in out):
+            out.append({"id": str(i), "filename": found})
+    return out
+
+
+def upload_text(files: list[dict]) -> str:
+    if not files:
+        return "The user did not upload a file (skipped the request)."
+    return ("The user uploaded: " + ", ".join(f"{f['filename']} (attachment_id={f['id']})" for f in files)
+            + ". Read it with extract_from_attachment.")
+
+
+def read_confirm(resume: dict[str, Any]) -> bool:
+    if "accepted" in resume:
+        return bool(resume.get("accepted"))
+    text = str((resume.get("answer") or {}).get("text") or "") if isinstance(resume.get("answer"), dict) else ""
+    return text.strip().lower() in _YES

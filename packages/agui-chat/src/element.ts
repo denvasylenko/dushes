@@ -1,0 +1,778 @@
+/** <agui-chat>: an AG-UI chat as a Web Component. See docs/chat-widget.md for every option. */
+import { h, md, reducedMotion, store } from './dom'
+import { STRINGS } from './i18n'
+import { dictate, speechSupported } from './speech'
+import { CSS } from './styles'
+import { runAgent, runHttp, uid, type AgentLike } from './transport'
+import { fadeWords, newState, step, visible, type TypewriterState } from './typewriter'
+import type {
+  AguiEvent, Attachment, ChatApi, ChatOptions, FrontendTool, Interrupt, Message, Plugin, Renderer, RunAgentInput, ToolCall,
+} from './types'
+
+export const DEFAULTS: ChatOptions = {
+  url: '/agent/run', threadId: undefined, persistThread: true, mode: 'floating', typing: 'words', toolSteps: true, mic: true, quickReplies: true,
+  theme: 'auto', lang: '', title: '', subtitle: '', intro: '', placeholder: '', starters: [], resumeStyle: 'command',
+  history: 'full', headers: {}, forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
+  cards: {}, open: false, attach: true,
+}
+
+/** attribute -> [option, parser] */
+const bool = (v: string | null) => v !== null && v !== 'off' && v !== 'false' && v !== 'no'
+const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> = {
+  url: ['url', String], 'thread-id': ['threadId', String], 'persist-thread': ['persistThread', bool], mode: ['mode', String],
+  typing: ['typing', String], 'tool-steps': ['toolSteps', bool], mic: ['mic', bool], 'quick-replies': ['quickReplies', bool],
+  theme: ['theme', String], lang: ['lang', String], title: ['title', String], subtitle: ['subtitle', String],
+  intro: ['intro', String], placeholder: ['placeholder', String], 'resume-style': ['resumeStyle', String],
+  history: ['history', String], open: ['open', bool], attach: ['attach', bool],
+}
+
+/** Interrupt reasons of RUN_FINISHED.outcome (AG-UI 1.0) -> the `type` renderers are registered for. */
+const REASON_TYPE: Record<string, string> = {
+  confirm_field_changes: 'set_fields', ask_user: 'ask', request_file: 'upload', confirm_action: 'confirm',
+}
+
+const ICON = {
+  spark: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" opacity=".7"/></svg>',
+  send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+  clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 01-7.8-7.8l8.6-8.6a3.7 3.7 0 015.2 5.2l-8.6 8.6a1.8 1.8 0 01-2.6-2.6l7.9-7.9"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+}
+
+let sheet: CSSStyleSheet | null = null
+function styles(root: ShadowRoot): void {
+  try {
+    sheet ??= new CSSStyleSheet()
+    if (!sheet.cssRules.length) sheet.replaceSync(CSS)
+    root.adoptedStyleSheets = [sheet]
+  } catch {   // no constructable stylesheets: a <style> element
+    root.appendChild(h('style', null, CSS))
+  }
+}
+
+interface AiItem { id: string; text: string; el: HTMLElement; body: HTMLElement; st: TypewriterState; done: boolean; raf: number }
+interface StepsItem { el: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement; steps: Map<string, HTMLElement>; count: number }
+interface PendingCall { id: string; name: string; args: string }
+
+export class AguiChatElement extends HTMLElement implements ChatApi {
+  static observedAttributes = Object.keys(ATTRS)
+
+  readonly renderers = new Map<string, Renderer>()
+  readonly tools = new Map<string, FrontendTool>()
+  /** An AG-UI agent instance (e.g. @ag-ui/client HttpAgent) to run instead of the built-in transport. */
+  agent: AgentLike | null = null
+
+  private _opts: ChatOptions = { ...DEFAULTS }
+  private _plugins: Plugin[] = []
+  private _labels: Record<string, Record<string, string> | string> = {}
+  private _i18n: Record<string, Record<string, string>> = {}
+  private _thread = ''
+  private _busy = false
+  private _built = false
+  private _messages: Message[] = []
+  private _abort: AbortController | null = null
+  private _ai: AiItem | null = null
+  private _steps: StepsItem | null = null
+  private _dots: HTMLElement | null = null
+  private _quick: HTMLElement | null = null
+  private _suggestions: string[] = []
+  private _starters: string[] = []
+  private _pendingCalls: PendingCall[] = []
+  private _calls = new Map<string, PendingCall>()
+  private _shown = new Set<string>()     // interrupt ids already on screen
+  private _interrupted = false
+  private _lastRun: Parameters<AguiChatElement['_run']>[0] | null = null
+  private _stopMic: (() => void) | null = null
+  private _files: Attachment[] = []
+  private _sending: Attachment[] = []
+  private $: Record<string, HTMLElement> = {}
+  private root!: ShadowRoot
+
+  get threadId(): string { return this._thread }
+  get attachments(): Attachment[] { return this._sending }
+  get busy(): boolean { return this._busy }
+  get host(): HTMLElement { return this }
+  get options(): ChatOptions { return this._opts }
+  /** Merge options; unknown keys are ignored with a warning. Takes effect at once. */
+  set options(o: Partial<ChatOptions>) {
+    for (const [k, v] of Object.entries(o ?? {})) {
+      if (!(k in DEFAULTS)) { console.warn(`agui-chat: unknown option "${k}"`); continue }
+      (this._opts as unknown as Record<string, unknown>)[k] = v
+    }
+    if (o && 'threadId' in o && o.threadId && o.threadId !== this._thread) {
+      if (this._built) this._switchThread(o.threadId)
+      else this._thread = o.threadId
+    }
+    else if (o && 'url' in o && this._built && !this._messages.length && !this._opts.threadId) {
+      const saved = this._savedThread()   // the thread kept for this endpoint
+      if (saved && saved !== this._thread) { this._thread = saved; void this._restore() } else this._setThread(this._thread, true)
+    }
+    this._apply()
+  }
+  get plugins(): Plugin[] { return this._plugins }
+  set plugins(list: Plugin[]) { this._plugins = []; for (const p of list ?? []) this.use(p) }
+
+  /** Add a plugin: its renderers, frontend tools, step labels and strings. */
+  use(p: Plugin): this {
+    this._plugins.push(p)
+    for (const [k, r] of Object.entries(p.renderers ?? {})) this.renderers.set(k, r)
+    for (const tl of p.tools ?? []) this.tools.set(tl.name, tl)
+    Object.assign(this._labels, p.toolLabels ?? {})
+    for (const [lang, s] of Object.entries(p.i18n ?? {})) this._i18n[lang] = { ...(this._i18n[lang] ?? {}), ...s }
+    this._apply()
+    if (this._built && p.restore && !this._messages.length) void this._restore()
+    return this
+  }
+
+  /** Register a frontend tool the agent can call (sent as `tools` with each run). */
+  registerTool(tool: FrontendTool): this { this.tools.set(tool.name, tool); return this }
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    const lang = this.lang
+    let s = this._opts.i18n[key] ?? this._i18n[lang]?.[key] ?? STRINGS[lang]?.[key] ?? this._i18n.en?.[key] ?? STRINGS.en[key] ?? key
+    for (const [k, v] of Object.entries(vars ?? {})) s = s.replaceAll(`{${k}}`, String(v))
+    return s
+  }
+
+  get lang(): string {
+    const l = (this._opts.lang || document.documentElement.lang || navigator.language || 'en').slice(0, 2).toLowerCase()
+    return STRINGS[l] || this._i18n[l] ? l : 'en'
+  }
+
+  // ------------------------------------------------------------------ lifecycle
+  connectedCallback(): void {
+    if (this._built) return
+    this._built = true
+    this.root = this.attachShadow({ mode: 'open' })
+    styles(this.root)
+    this._build()
+    this._setThread(this._opts.threadId || this._savedThread() || uid(), false)
+    this._apply()
+    void this._restore()
+    if (this._opts.open) this.open()
+  }
+
+  attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
+    const a = ATTRS[name]
+    if (a) this.options = { [a[0]]: value === null && name !== 'open' ? DEFAULTS[a[0]] : a[1](value) } as Partial<ChatOptions>
+  }
+
+  open(): void {
+    if (this._opts.mode !== 'floating') return
+    this.$.wrap.classList.add('open')
+    this.$.panel.setAttribute('aria-hidden', 'false')
+    setTimeout(() => (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true }), 60)
+  }
+
+  close(): void {
+    this.$.wrap.classList.remove('open')
+    this.$.panel.setAttribute('aria-hidden', 'true')
+    this.$.fab?.focus()
+  }
+
+  /** Start a new conversation (a new thread id). */
+  reset(): void {
+    this._switchThread(uid(), false)
+  }
+
+  private _switchThread(id: string, restore = true): void {
+    this.stop()
+    this._setThread(id, true)
+    this._messages = []
+    this._shown.clear()
+    this._clearQuick()
+    this._starters = []
+    this.$.log.replaceChildren()
+    if (restore) void this._restore(); else this._renderEmpty()
+  }
+
+  /** Abort the running turn. */
+  stop(): void {
+    if (!this._abort) return
+    this._abort.abort()
+  }
+
+  async send(text: string): Promise<void> {
+    text = String(text ?? '').trim()
+    if (!text && this._files.length) text = this.t('useAttached')
+    if (!text || this._busy) return
+    this._stopMic?.()
+    this._clearQuick()
+    this.$.log.querySelector('.empty')?.remove()
+    this._closePendingCards()
+    this._sending = this._files
+    this._files = []
+    this._renderFiles()
+    this._userBubble(text, this._sending.map((f) => f.filename))
+    this._messages.push({ id: uid(), role: 'user', content: text })
+    await this._run({})
+  }
+
+  async run(opts: { forwardedProps?: Record<string, unknown>; notice?: string } = {}): Promise<void> {
+    if (this._busy) return
+    this._clearQuick()
+    this._closePendingCards()
+    if (opts.notice) this.notice(opts.notice)
+    this._sending = []
+    await this._run({ forwardedProps: opts.forwardedProps })
+  }
+
+  /** Show a small centred line in the chat. */
+  notice(text: string): void { this._append(h('div', { class: 'notice', part: 'notice' }, text)) }
+
+  // ------------------------------------------------------------------ DOM
+  private _build(): void {
+    const wrap = h('div', { class: 'wrap' })
+    const fab = h('button', { class: 'fab', part: 'fab', type: 'button', onclick: () => this.open() })
+    fab.innerHTML = ICON.spark
+    fab.appendChild(h('span', { class: 'fab-label' }))
+    const scrim = h('div', { class: 'scrim', onclick: () => this.close() })
+    const logo = h('div', { class: 'logo' }); logo.innerHTML = ICON.spark
+    const title = h('div', { class: 'title' }), sub = h('div', { class: 'sub' })
+    const btnNew = h('button', { class: 'icon', type: 'button', onclick: () => this.reset() }); btnNew.innerHTML = ICON.plus
+    const btnClose = h('button', { class: 'icon close', type: 'button', onclick: () => this.close() }); btnClose.innerHTML = ICON.close
+    const head = h('div', { class: 'head', part: 'header' }, logo, h('div', null, title, sub), btnNew, btnClose)
+    const log = h('div', { class: 'log', part: 'log', role: 'log', 'aria-live': 'polite', 'aria-relevant': 'additions' })
+    const input = h('textarea', { rows: 1, part: 'input' }) as HTMLTextAreaElement
+    const mic = h('button', { class: 'mic', type: 'button' }); mic.innerHTML = ICON.mic
+    const clip = h('button', { class: 'mic clip', type: 'button' }); clip.innerHTML = ICON.clip
+    const picker = h('input', { type: 'file', multiple: true, hidden: true }) as HTMLInputElement
+    const send = h('button', { class: 'send', type: 'button', part: 'send' }); send.innerHTML = ICON.send
+    const box = h('div', { class: 'box' }, clip, input, mic, send)
+    const files = h('div', { class: 'files chips' })
+    const hint = h('div', { class: 'hint', 'aria-live': 'polite' })
+    const foot = h('div', { class: 'foot', part: 'composer' }, files, box, hint, picker)
+    const panel = h('section', { class: 'panel', part: 'panel', role: 'dialog' }, head, log, foot)
+    wrap.append(scrim, panel, fab)
+    this.root.appendChild(wrap)
+    this.$ = { wrap, fab, scrim, panel, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, fabLabel: fab.lastElementChild as HTMLElement }
+    files.hidden = true
+    clip.addEventListener('click', () => picker.click())
+    picker.addEventListener('change', () => { void this._upload([...(picker.files ?? [])]); picker.value = '' })
+
+    const grow = () => { input.style.height = 'auto'; input.style.height = `${Math.min(180, input.scrollHeight)}px` }
+    input.addEventListener('input', () => { grow(); this._syncSend() })
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this._submit() }
+    })
+    send.addEventListener('click', () => (this._busy ? this.stop() : this._submit()))
+    mic.addEventListener('click', () => this._toggleMic())
+    panel.addEventListener('keydown', (e) => {
+      if (this._opts.mode !== 'floating') return
+      if (e.key === 'Escape') { e.preventDefault(); this.close() }
+      if (e.key === 'Tab') this._trapFocus(e)
+    })
+    requestAnimationFrame(() => fab.classList.add('show'))
+  }
+
+  private _submit(): void {
+    const input = this.$.input as HTMLTextAreaElement
+    const text = input.value.trim()
+    if (!text && !this._files.length) {
+      this.$.foot.classList.remove('nudge'); void this.$.foot.offsetWidth; this.$.foot.classList.add('nudge')
+      return
+    }
+    if (this._busy) return
+    input.value = ''
+    input.style.height = 'auto'
+    this._syncSend()
+    void this.send(text)
+  }
+
+  private _toggleMic(): void {
+    if (this._stopMic) { this._stopMic(); return }
+    const input = this.$.input as HTMLTextAreaElement
+    const before = input.value ? input.value.replace(/\s*$/, ' ') : ''
+    this.$.hint.textContent = ''
+    this._stopMic = dictate(this._opts.lang || document.documentElement.lang || navigator.language || 'en-US', (text) => {
+      input.value = before + text
+      input.dispatchEvent(new Event('input'))
+    }, (on, error) => {
+      this.$.mic.classList.toggle('on', on)
+      this.$.mic.setAttribute('aria-label', on ? this.t('micStop') : this.t('mic'))
+      if (!on) this._stopMic = null
+      if (error === 'denied') this.$.hint.textContent = this.t('micDenied')
+    })
+  }
+
+  private _syncSend(): void {
+    const send = this.$.send as HTMLButtonElement
+    send.innerHTML = this._busy ? ICON.stop : ICON.send
+    send.setAttribute('aria-label', this._busy ? this.t('stop') : this.t('send'))
+    send.disabled = !this._busy && !(this.$.input as HTMLTextAreaElement).value.trim() && !this._files.length
+  }
+
+  private _trapFocus(e: KeyboardEvent): void {
+    const items = [...this.$.panel.querySelectorAll<HTMLElement>('button, textarea, input, select, a[href]')]
+      .filter((x) => !x.hasAttribute('disabled') && x.offsetParent !== null)
+    if (!items.length) return
+    const first = items[0], last = items[items.length - 1]
+    const active = this.root.activeElement
+    if (e.shiftKey && active === first) { e.preventDefault(); last.focus() } else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus() }
+  }
+
+  private _apply(): void {
+    if (!this._built) return
+    const o = this._opts
+    const wrap = this.$.wrap
+    wrap.className = `wrap mode-${o.mode}${wrap.classList.contains('open') ? ' open' : ''}`
+    const dark = o.theme === 'dark' || (o.theme === 'auto' && typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches)
+    this.classList.toggle('dark', dark)
+    this.classList.toggle('calm', reducedMotion())
+    this.style.setProperty('--agui-fade', `${o.fadeMs}ms`)
+    this.$.title.textContent = o.title || this.t('title')
+    this.$.sub.textContent = o.subtitle || this.t('subtitle')
+    this.$.fabLabel.textContent = this.t('open')
+    this.$.btnNew.setAttribute('aria-label', this.t('newChat'))
+    this.$.btnClose.setAttribute('aria-label', this.t('close'))
+    this.$.panel.setAttribute('aria-label', o.title || this.t('title'))
+    if (o.mode === 'floating') this.$.panel.setAttribute('aria-modal', 'true'); else this.$.panel.removeAttribute('aria-modal')
+    const input = this.$.input as HTMLTextAreaElement
+    input.placeholder = o.placeholder || this.t('placeholder')
+    input.setAttribute('aria-label', input.placeholder)
+    this.$.mic.hidden = !o.mic || !speechSupported()
+    this.$.mic.setAttribute('aria-label', this.t('mic'))
+    const attach = this._plugins.find((p) => p.attach)?.attach
+    this.$.clip.hidden = !o.attach || !attach
+    this.$.clip.setAttribute('aria-label', this.t('attach'))
+    if (attach?.accept) this.$.picker.setAttribute('accept', attach.accept)
+    this.$.log.querySelectorAll('.steps').forEach((s) => ((s as HTMLElement).hidden = !o.toolSteps))
+    if (this._quick) this._quick.hidden = !o.quickReplies
+    const empty = this.$.log.querySelector('.empty')
+    if (empty || !this.$.log.children.length) this._renderEmpty()
+    this._syncSend()
+  }
+
+  private _renderEmpty(): void {
+    this.$.log.querySelector('.empty')?.remove()
+    if (this.$.log.children.length) return
+    const starters = this._opts.starters.length ? this._opts.starters : this._starters
+    const el = h('div', { class: 'empty' },
+      h('h3', null, this._opts.title || this.t('title')),
+      h('p', null, this._opts.intro || this.t('intro')),
+      this._opts.quickReplies && starters.length
+        ? h('div', { class: 'chips' }, starters.map((s) => h('button', { class: 'chip', part: 'chip', type: 'button', onclick: () => void this.send(s) }, s)))
+        : null)
+    this.$.log.appendChild(el)
+  }
+
+  private _append(el: HTMLElement): HTMLElement {
+    this.$.log.querySelector('.empty')?.remove()
+    const before = this._dots && this._dots.isConnected ? this._dots : null
+    this.$.log.insertBefore(el, before)
+    this._scroll()
+    return el
+  }
+
+  private _scroll(): void {
+    const log = this.$.log
+    requestAnimationFrame(() => { log.scrollTop = log.scrollHeight })
+  }
+
+  private _userBubble(text: string, files: string[] = []): void {
+    this._append(h('div', { class: 'msg me', part: 'message user' },
+      h('div', null, files.length ? h('div', { class: 'muted' }, files.map((f) => `\u{1F4CE} ${f}`).join('  ')) : null, text)))
+  }
+
+  private async _upload(list: File[]): Promise<void> {
+    const attach = this._plugins.find((p) => p.attach)?.attach
+    if (!attach || !list.length) return
+    this.$.hint.textContent = `${this.t('working')}`
+    try {
+      for (const f of list) this._files.push(await attach.upload(f, this))
+      this.$.hint.textContent = ''
+    } catch (e) {
+      this.$.hint.textContent = `${this.t('error')} ${e instanceof Error ? e.message : String(e)}`
+    }
+    this._renderFiles()
+    this._syncSend()
+  }
+
+  private _renderFiles(): void {
+    this.$.files.replaceChildren(...this._files.map((f, i) => h('span', { class: 'chip file' }, `\u{1F4CE} ${f.filename}`,
+      h('button', { class: 'btn link', type: 'button', 'aria-label': this.t('remove'), onclick: () => {
+        this._files.splice(i, 1); this._renderFiles(); this._syncSend()
+      } }, '\u00d7'))))
+    this.$.files.hidden = !this._files.length
+  }
+
+  private _showDots(on: boolean): void {
+    if (on && !this._dots) {
+      this._dots = h('div', { class: 'msg ai wait', 'aria-label': this.t('working') }, h('span', { class: 'dots' }, h('i'), h('i'), h('i')))
+      this.$.log.appendChild(this._dots)
+      this._scroll()
+    } else if (!on && this._dots) {
+      this._dots.remove()
+      this._dots = null
+    }
+  }
+
+  private _clearQuick(): void { this._quick?.remove(); this._quick = null; this._suggestions = [] }
+
+  private _renderQuick(): void {
+    this._quick?.remove()
+    this._quick = null
+    if (!this._suggestions.length) return
+    this._quick = this._append(h('div', { class: 'quick chips' }, this._suggestions.map((s) =>
+      h('button', { class: 'chip', part: 'chip', type: 'button', onclick: () => void this.send(s) }, s))))
+    this._quick.hidden = !this._opts.quickReplies
+  }
+
+  // ------------------------------------------------------------------ thread
+  private _key(): string { return `agui-chat:thread:${location.pathname}:${this._opts.url}` }
+  private _savedThread(): string | null { return this._opts.persistThread ? store<string>(this._key()).get() : null }
+  private _setThread(id: string, _persist: boolean): void {
+    const changed = id !== this._thread
+    this._thread = id
+    if (this._opts.persistThread) store<string>(this._key()).set(id)
+    if (changed) this.dispatchEvent(new CustomEvent('agui:thread', { detail: id }))
+  }
+
+  private async _restore(): Promise<void> {
+    const p = this._plugins.find((x) => x.restore)
+    if (!p?.restore) { this._renderEmpty(); return }
+    let r = null
+    try { r = await p.restore(this._thread, this) } catch { r = null }
+    if (!r) { this._renderEmpty(); return }
+    this._starters = r.starters ?? []
+    if (r.messages?.length) {
+      this._messages = r.messages
+      this.$.log.replaceChildren()
+      for (const m of r.messages) {
+        if (m.role === 'user' && m.content) this._userBubble(m.content)
+        else if (m.role === 'assistant' && m.content) {
+          const body = h('div', { class: 'body' }); body.innerHTML = md(m.content)
+          this._append(h('div', { class: 'msg ai', part: 'message assistant' }, body))
+        }
+      }
+    }
+    if (r.interrupt) this._showInterrupt(r.interrupt, true)
+    this._renderEmpty()
+  }
+
+  // ------------------------------------------------------------------ runs
+  private _input(extra: { forwardedProps?: Record<string, unknown>; resume?: RunAgentInput['resume'] }): RunAgentInput {
+    const msgs = this._opts.history === 'last' ? this._tail() : this._messages
+    return {
+      threadId: this._thread, runId: uid(), messages: msgs, state: this._opts.state ?? {},
+      tools: [...this.tools.values()].map(({ name, description, parameters }) => ({ name, description, parameters: parameters ?? { type: 'object', properties: {} } })),
+      context: [], forwardedProps: { ...this._opts.forwardedProps, ...(extra.forwardedProps ?? {}) },
+      ...(extra.resume ? { resume: extra.resume } : {}),
+    }
+  }
+
+  /** The messages since the last assistant text: the new user message or the frontend tool results. */
+  private _tail(): Message[] {
+    let i = this._messages.length
+    while (i > 0 && !(this._messages[i - 1].role === 'assistant' && this._messages[i - 1].content)) i--
+    return this._messages.slice(i)
+  }
+
+  private async _run(args: { resume?: { card_id: string; value: unknown }; forwardedProps?: Record<string, unknown> }): Promise<void> {
+    this._lastRun = args
+    const extra: Parameters<AguiChatElement['_input']>[0] = { forwardedProps: args.forwardedProps }
+    if (args.resume) {
+      if (this._opts.resumeStyle === 'resume') {
+        const v = args.resume.value as { accepted?: boolean } | null
+        extra.resume = [v && typeof v === 'object' && v.accepted === false && Object.keys(v).length === 1
+          ? { interrupt_id: args.resume.card_id, status: 'cancelled' }
+          : { interrupt_id: args.resume.card_id, status: 'resolved', payload: args.resume.value }]
+      } else {
+        extra.forwardedProps = { ...(extra.forwardedProps ?? {}), command: { resume: args.resume.value } }
+      }
+    }
+    const input = this._input(extra)
+    for (const p of this._plugins) await p.beforeRun?.(input, this)
+    this._setBusy(true)
+    this._interrupted = false
+    this._pendingCalls = []
+    this._calls.clear()
+    this._steps = null
+    this._ai = null
+    this._showDots(true)
+    this._abort = new AbortController()
+    const signal = this._abort.signal
+    this.dispatchEvent(new CustomEvent('agui:run-start', { detail: input }))
+    let failed: string | null = null
+    try {
+      const events = this.agent ? runAgent(this.agent, input, signal) : runHttp(this._opts.url, input, { headers: this._opts.headers, signal })
+      for await (const ev of events) {
+        this.dispatchEvent(new CustomEvent('agui:event', { detail: ev }))
+        if (this._plugins.some((p) => p.onEvent?.(ev, this) === true)) continue
+        this._handle(ev)
+        if (ev.type === 'RUN_ERROR') failed = String(ev.message ?? this.t('error'))
+      }
+    } catch (e) {
+      if (!signal.aborted) failed = e instanceof Error ? e.message : String(e)
+    }
+    const aborted = signal.aborted
+    this._abort = null
+    this._finishText()
+    this._showDots(false)
+    this._finishSteps(!!failed || aborted)
+    this._setBusy(false)
+    if (aborted) { this.notice(this.t('stopped')); return }
+    if (failed) {
+      this.dispatchEvent(new CustomEvent('agui:error', { detail: failed }))
+      const retry = h('button', { class: 'btn sec', type: 'button', onclick: () => { el.remove(); if (this._lastRun) void this._run(this._lastRun) } }, this.t('retry'))
+      const el = this._append(h('div', { class: 'error', role: 'alert' }, h('span', null, `${this.t('error')} ${failed}`), retry))
+      return
+    }
+    this.dispatchEvent(new CustomEvent('agui:run-end', { detail: { threadId: this._thread } }))
+    if (this._pendingCalls.length && !this._interrupted) await this._runFrontendTools()
+    else if (!this._interrupted) this._renderQuick()
+  }
+
+  private _setBusy(on: boolean): void {
+    this._busy = on
+    this.toggleAttribute('busy', on)
+    this._syncSend()
+  }
+
+  private _handle(ev: AguiEvent): void {
+    switch (ev.type) {
+      case 'TEXT_MESSAGE_START':
+        this._startText(ev.messageId)
+        break
+      case 'TEXT_MESSAGE_CONTENT':
+        if (!this._ai || this._ai.id !== ev.messageId) this._startText(ev.messageId)
+        this._ai!.text += ev.delta ?? ''
+        this._renderText()
+        break
+      case 'TEXT_MESSAGE_END':
+        if (this._ai && this._ai.id === ev.messageId) {
+          if (this._ai.text.trim()) this._messages.push({ id: this._ai.id, role: 'assistant', content: this._ai.text })
+          this._finishText()
+        }
+        break
+      case 'TOOL_CALL_START': {
+        const call = { id: ev.toolCallId, name: ev.toolCallName, args: '' }
+        this._calls.set(call.id, call)
+        const front = this.tools.get(call.name)
+        if (front) this._pendingCalls.push(call)
+        if (!front || front.label) this._addStep(call.id, call.name, front?.label)
+        break
+      }
+      case 'TOOL_CALL_ARGS': {
+        const c = this._calls.get(ev.toolCallId)
+        if (c) c.args += ev.delta ?? ''
+        break
+      }
+      case 'TOOL_CALL_END': {
+        const c = this._calls.get(ev.toolCallId)
+        if (c) this._messages.push({ id: uid(), role: 'assistant', toolCalls: [toolCall(c)] })
+        break
+      }
+      case 'TOOL_CALL_RESULT':
+        this._doneStep(ev.toolCallId)
+        this._messages.push({ id: ev.messageId ?? uid(), role: 'tool', toolCallId: ev.toolCallId, content: String(ev.content ?? '') })
+        break
+      case 'CUSTOM':
+        this._custom(ev.name, ev.value)
+        break
+      case 'RUN_FINISHED':
+        for (const it of ev.outcome?.type === 'interrupt' ? ev.outcome.interrupts ?? [] : []) {
+          this._showInterrupt({ type: REASON_TYPE[it.reason] ?? it.reason, card_id: it.id, ...(it.metadata ?? {}) }, false)
+        }
+        break
+    }
+  }
+
+  private _custom(name: string, value: unknown): void {
+    if (name === 'on_interrupt') {
+      let v = value
+      if (typeof v === 'string') { try { v = JSON.parse(v) } catch { v = { type: 'unknown', text: v } } }
+      const it = v as Interrupt
+      this._showInterrupt({ ...it, card_id: it.card_id ?? it.id ?? uid() }, false)
+    } else if (name === 'tool_progress') {
+      const p = value as { parent_id?: string; name?: string; input?: unknown }
+      if (p?.parent_id) this._addSubStep(p.parent_id, p.name ?? '')
+    } else if (name === 'suggestions') {
+      const items = (value as { items?: unknown[] })?.items
+      this._suggestions = Array.isArray(items) ? items.map(String).slice(0, 5) : []
+    }
+  }
+
+  // ------------------------------------------------------------------ text and the typewriter
+  private _startText(id: string): void {
+    this._finishText()
+    this._showDots(false)
+    const body = h('div', { class: 'body' })
+    const el = h('div', { class: 'msg ai', part: 'message assistant' }, body)
+    this._ai = { id, text: '', el, body, st: newState(), done: false, raf: 0 }
+    this._append(el)
+  }
+
+  private get _animate(): boolean { return this._opts.typing === 'words' && !reducedMotion() }
+
+  private _renderText(): void {
+    const ai = this._ai
+    if (!ai) return
+    if (this._opts.typing === 'off') return
+    if (!this._animate) { ai.body.innerHTML = md(ai.text); this._scroll(); return }
+    if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
+  }
+
+  private _tick(ai: AiItem, now: number): void {
+    ai.raf = 0
+    step(ai.st, ai.text, now, this._opts.typingSpeed)
+    ai.body.innerHTML = md(visible(ai.text, ai.st.shown))
+    fadeWords(ai.body, ai.st, now, this._opts.fadeMs)
+    const log = this.$.log
+    if (log.scrollHeight - log.scrollTop - log.clientHeight < 120) log.scrollTop = log.scrollHeight
+    const fading = ai.st.marks.length > 0 && now - ai.st.marks[ai.st.marks.length - 1][1] < this._opts.fadeMs
+    if (ai.st.shown < ai.text.length || fading) ai.raf = requestAnimationFrame((t) => this._tick(ai, t))
+    else if (ai.done) ai.body.innerHTML = md(ai.text)   // all typed and faded in: the plain text stays
+  }
+
+  /** The message ended: the typewriter finishes on its own; other modes show the full text now. */
+  private _finishText(): void {
+    const ai = this._ai
+    if (!ai) return
+    ai.done = true
+    this._ai = null
+    if (!ai.text.trim()) { ai.el.remove(); return }
+    if (!this._animate || this._abort?.signal.aborted) { cancelAnimationFrame(ai.raf); ai.body.innerHTML = md(ai.text); return }
+    if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
+  }
+
+  // ------------------------------------------------------------------ steps
+  private _label(name: string): string {
+    const own = this._opts.toolLabels[name]
+    if (own) return own
+    const l = this._labels[name]
+    if (typeof l === 'string') return l
+    if (l) return l[this.lang] ?? l.en ?? Object.values(l)[0]
+    const sub = name.includes('.') ? name.split('.').pop()! : name
+    const s = sub.replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim()
+    return s.charAt(0).toUpperCase() + s.slice(1)
+  }
+
+  private _ensureSteps(): StepsItem {
+    if (this._steps) return this._steps
+    const list = h('ul')
+    const toggle = h('button', { type: 'button', 'aria-expanded': 'true' }, this.t('working')) as HTMLButtonElement
+    const el = h('div', { class: 'steps openlist', part: 'steps' }, toggle, list)
+    toggle.addEventListener('click', () => {
+      const closed = el.classList.toggle('collapsed')
+      el.classList.toggle('openlist', !closed)
+      toggle.setAttribute('aria-expanded', String(!closed))
+    })
+    el.hidden = !this._opts.toolSteps
+    this._steps = { el, list, toggle, steps: new Map(), count: 0 }
+    this._append(el)
+    return this._steps
+  }
+
+  private _addStep(id: string, name: string, label?: string): void {
+    const s = this._ensureSteps()
+    const li = h('li', { class: 'run' }, h('span', { class: 'mark' }), h('span', null, label ?? this._label(name)))
+    s.steps.set(id, li)
+    s.count++
+    s.list.appendChild(li)
+    this._scroll()
+  }
+
+  private _addSubStep(parent: string, name: string): void {
+    const li = this._steps?.steps.get(parent)
+    if (!li) return
+    let ul = li.querySelector('ul')
+    if (!ul) { ul = h('ul'); li.classList.add('has-sub'); li.appendChild(ul) }
+    ul.querySelectorAll('li.run').forEach((x) => x.classList.replace('run', 'ok'))
+    ul.appendChild(h('li', { class: 'sub run' }, h('span', { class: 'mark' }), h('span', null, this._label(name))))
+  }
+
+  private _doneStep(id: string): void {
+    const li = this._steps?.steps.get(id)
+    if (!li) return
+    li.classList.replace('run', 'ok')
+    li.querySelectorAll('li.run').forEach((x) => x.classList.replace('run', 'ok'))
+  }
+
+  private _finishSteps(failed: boolean): void {
+    const s = this._steps
+    if (!s) return
+    s.el.querySelectorAll('li.run').forEach((x) => x.classList.replace('run', failed ? 'fail' : 'ok'))
+    s.toggle.textContent = this.t('steps', { n: s.count })
+    s.el.classList.add('collapsed')
+    s.el.classList.remove('openlist')
+    s.toggle.setAttribute('aria-expanded', 'false')
+  }
+
+  // ------------------------------------------------------------------ frontend tools
+  private async _runFrontendTools(): Promise<void> {
+    const calls = this._pendingCalls
+    this._pendingCalls = []
+    for (const c of calls) {
+      const tool = this.tools.get(c.name)!
+      let args: unknown = {}
+      try { args = c.args ? JSON.parse(c.args) : {} } catch { args = {} }
+      let out: unknown
+      try {
+        out = await tool.handler(args, { render: (el) => { this._append(h('div', { class: 'tool-el' }, el)) }, chat: this })
+      } catch (e) {
+        out = `The frontend tool failed: ${e instanceof Error ? e.message : String(e)}`
+      }
+      this._messages.push({ id: uid(), role: 'tool', toolCallId: c.id, content: typeof out === 'string' ? out : JSON.stringify(out ?? 'ok') })
+    }
+    await this._run({})
+  }
+
+  // ------------------------------------------------------------------ interrupts
+  private _showInterrupt(it: Interrupt, restored: boolean): void {
+    if (this._shown.has(it.card_id)) return
+    this._shown.add(it.card_id)
+    this._interrupted = true
+    this._showDots(false)
+    const renderer = this.renderers.get(it.type) ?? fallback
+    let done = false
+    const ctx = {
+      chat: this as ChatApi, restored, flags: this._opts.cards[it.type] ?? {},
+      t: (k: string, v?: Record<string, string | number>) => this.t(k, v),
+      resolve: (value: unknown) => {
+        if (done) return
+        done = true
+        el.classList.add('done')
+        el.querySelectorAll<HTMLElement>('button, input, select, textarea').forEach((x) => {
+          if (!x.hasAttribute('data-keep')) x.setAttribute('disabled', '')
+        })
+        void this._run({ resume: { card_id: it.card_id, value } })
+      },
+    }
+    let el: HTMLElement
+    try { el = renderer(it, ctx) } catch (e) { console.error('agui-chat: renderer failed', e); el = fallback(it, ctx) }
+    el.classList.add('card')
+    el.setAttribute('part', `card card-${it.type}`)
+    el.dataset.cardId = it.card_id
+    el.dataset.pending = ''
+    const orig = ctx.resolve
+    ctx.resolve = (v: unknown) => { delete el.dataset.pending; orig(v) }
+    this._append(el)
+    el.querySelector<HTMLElement>('[autofocus], .chip, .btn.pri')?.focus({ preventScroll: true })
+  }
+
+  /** A new message closes cards nobody answered (the server closes them too). */
+  private _closePendingCards(): void {
+    this.$.log.querySelectorAll<HTMLElement>('.card[data-pending]').forEach((el) => {
+      delete el.dataset.pending
+      el.classList.add('done')
+      el.querySelectorAll<HTMLElement>('button, input, select, textarea').forEach((x) => x.setAttribute('disabled', ''))
+    })
+  }
+}
+
+function toolCall(c: PendingCall): ToolCall {
+  return { id: c.id, type: 'function', function: { name: c.name, arguments: c.args || '{}' } }
+}
+
+/** Shown for an interrupt type nobody registered: the payload and Skip. */
+const fallback: Renderer = (it, ctx) => {
+  const { type, card_id: _id, ...rest } = it
+  void _id
+  return h('div', null,
+    h('div', { class: 'card-t' }, ctx.t('unknownCard', { type })),
+    h('pre', { class: 'raw' }, JSON.stringify(rest, null, 2)),
+    h('div', { class: 'acts' }, h('button', { class: 'btn sec', type: 'button', onclick: () => ctx.resolve({ accepted: false }) }, ctx.t('skip'))))
+}

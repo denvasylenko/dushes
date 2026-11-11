@@ -1,5 +1,7 @@
 # Building the form UI: a guide for first-timers
 
+> **Shortcut:** you do not have to build the chat yourself. [`<agui-chat>`](chat-widget.md) is a ready-made chat that handles everything on this page (cards, directives, uploads, quick replies) and only needs `getState()` and `applyChanges()` from you. This page is still worth reading: it explains what flows between the form, the chat and the agent.
+
 This page explains, from zero, what your form gives the agent, what the agent sends back when it wants to fill fields, and how to build your UI components so the two fit together. No prior knowledge of formguide, LangGraph or AG-UI is needed. Every message shown here is a real one, copied from a run of the demo.
 
 If you only have five minutes, read [The whole thing in 30 seconds](#the-whole-thing-in-30-seconds) and [The checklist](#the-checklist).
@@ -280,8 +282,12 @@ The agent streams AG-UI events. Here is **everything the frontend can receive**,
 | `TEXT_MESSAGE_START` / `_CONTENT` / `_END` | the agent replies | a chat bubble, filled as the text streams |
 | `CUSTOM ui_directive` (2.1) | the agent points at a place in the form | open tabs and accordions, scroll, highlight, show the hint |
 | `CUSTOM on_interrupt`, `type: "set_fields"` (2.2) | the agent wants to fill fields | a card with a row per field: *Fill in* / *Reject* |
-| `CUSTOM on_interrupt`, `type: "ask"` (2.5) | the agent asks a question with options | a question card: option buttons and/or a text box |
-| `TOOL_CALL_*` + `TOOL_CALL_RESULT` | the agent used one of its own tools | optional: a small "searching the documents..." line |
+| `CUSTOM on_interrupt`, `type: "ask"` (2.5) | the agent asks a question with options | a question card: option buttons and/or a text box (a date / time / number picker when `input` is set) |
+| `CUSTOM on_interrupt`, `type: "upload"` (2.6) | the agent asks for a document | a drop zone; upload, then answer with the attachment ids |
+| `CUSTOM on_interrupt`, `type: "confirm"` (2.7) | the agent needs a yes/no before an action | a confirmation: Confirm / Cancel |
+| `CUSTOM tool_progress` | a sub-step of a running tool (the document researcher) | optional: a sub-line under that tool's step |
+| `CUSTOM suggestions` | after an answer (when enabled on the server) | 2-3 chips; clicking one sends it as a message |
+| `TOOL_CALL_*` + `TOOL_CALL_RESULT` | the agent used one of its own tools | optional: a step "Searching the documents" with a spinner, then a tick |
 | `TOOL_CALL_*` without a result | the agent called **your** frontend tool | anything you like: it is your own component (see Integrate in the architecture pages) |
 | `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
 | `RUN_FINISHED` / `RUN_ERROR` | the turn ended | stop the spinner, show the error |
@@ -376,6 +382,7 @@ Sent when the agent wants to set one or more fields. The run then **stops and wa
 | `changes[].display` | the value as text for people (`"Car loan"`, `"✓"`, `"✗"`, `"250000"`) | the card's right column |
 | `changes[].reason` | why the agent suggests it (may be empty) | a small grey line under the row |
 | `changes[].reveal` | how to make this field visible | after *Accept*, open the place of the last change so the user sees the result |
+| `changes[].previous`, `previous_display` | the field's value before the change (your format, and as text); `null` when it was empty | show "~~old~~ new"; put `previous` back for an Undo button |
 
 **Before a card is sent the agent has already checked every value.** A value for a hidden, locked or read-only field, an option that is not in `options`, or a date that does not exist never reaches a card. The agent is told the problem and has to fix it or explain it to the user. Your UI can trust `value`.
 
@@ -405,6 +412,14 @@ resume: { accepted: true, config: newConfig, names: ["first_name", "last_name"] 
 ```
 
 The agent is told "The user applied: first_name, last_name. Declined (not applied): gender." and will not push the declined value again unless the user asks. Without `names`, *Accept* means all rows. `names: []` is the same as *Reject*.
+
+**Let the user correct a value.** If the card lets the user change a value before accepting (an Edit button), apply the corrected value and tell the agent with `edited`:
+
+```ts
+resume: { accepted: true, config: newConfig, edited: { loan_amount: 1200000 } }
+```
+
+The agent is told "The user edited before applying: loan_amount -> 1200000", so it does not "correct" the user back.
 
 **On Reject:** resume with `{accepted: false}` (or `status: "cancelled"`). Optionally add `comment: "wrong amount"`. Do not touch the form.
 
@@ -476,6 +491,38 @@ The agent gets "The user chose: Car loan (auto)" and continues in the same turn.
 
 With `interrupt_mode: structured` the question arrives as `RUN_FINISHED.outcome.interrupts[0]` with `reason: "ask_user"`, `message` = the question, and the rest in `metadata`. A field-change card has `reason: "confirm_field_changes"` there.
 
+With `input: {type: "date" | "time" | "datetime" | "number" | "text", min?, max?}` the question expects a typed answer of that kind: show a native picker (`<input type="date" min=... max=...>`) and send the value as `{answer: {text: "2026-11-20"}}`. Dates are `YYYY-MM-DD`, times `HH:MM`. An answer of the wrong kind or out of range counts as skipped, and the agent is told why. When the agent asks about a date or number field, `input` is set for you.
+
+### 2.6 "Please upload it": the file request
+
+When a document would save typing (a passport, a payslip), the agent asks for it:
+
+```json
+{ "type": "upload", "card_id": "f2c8a1d0e4b7", "prompt": "Upload a photo of your ID",
+  "accept": ".jpg,.jpeg,.png,.pdf", "multiple": false, "field": "passport_scan" }
+```
+
+Show a drop zone and a file button limited to `accept`. Upload each file with `POST /agent/attachments` (form fields `thread_id` and `file`; the answer has `id`), then resume:
+
+```ts
+resume: { attachment_ids: ["att_1a2b3c4d"] }     // or { accepted: false } to skip
+```
+
+The agent then reads the file with `extract_from_attachment` and usually sends a field-change card with what it found.
+
+### 2.7 "Are you sure?": the confirmation
+
+Before an action with side effects (submitting, cancelling), or before a tool listed in the server's `confirm_tools`, the agent asks:
+
+```json
+{ "type": "confirm", "card_id": "9b1e0c7a2d44", "title": "Submit the application?",
+  "message": "It goes to the bank and cannot be changed afterwards.", "confirm_label": "Submit", "danger": true }
+```
+
+Two buttons; make the confirm button red when `danger`. Resume `{accepted: true}` or `{accepted: false}`. For a tool held by `confirm_tools`, the payload also has `tool` and `args`, and the tool runs only after `{accepted: true}`.
+
+With `interrupt_mode: structured` the reasons are `request_file` and `confirm_action`.
+
 ---
 
 ## Part 3. How to build each component
@@ -521,7 +568,7 @@ The agent sends values in **the same format your component stores**: the default
 - On load: `POST /agent/layouts` once, keep `jsx_hash`.
 - Keep one object `ui = {activeTabs, openAccordions, focused}` in your state, update it when the user clicks, and send it with every message.
 - Before every run set `state = {config, jsx_hash, form_id, ui}` with the **latest** config.
-- Handle the events: `ui_directive` → `applyDirective`; `on_interrupt` → look at `type`: `set_fields` → a field-change card (2.2), `ask` → a question card (2.5).
+- Handle the events: `ui_directive` → `applyDirective`; `on_interrupt` → look at `type`: `set_fields` → a field-change card (2.2), `ask` → a question card (2.5), `upload` → a file request (2.6), `confirm` → a confirmation (2.7).
 - Card buttons follow 2.3 (with a checkbox per row) and 2.5.
 
 ---
@@ -542,7 +589,8 @@ Copy this into your ticket.
 - [ ] Card *Accept*: changes → your form backend → new config → form updated → resume `{accepted: true, config}`.
 - [ ] Card *Reject*: resume `{accepted: false}`; the form is not touched.
 - [ ] Card rows have checkboxes; a partial *Accept* sends only the ticked changes and `names`.
-- [ ] `on_interrupt` is drawn by `type`: `set_fields` → field-change card, `ask` → question card answered with `{answer: {ids?, text?}}`, *Skip* → `{accepted: false}`.
+- [ ] `on_interrupt` is drawn by `type`: `set_fields` → field-change card, `ask` → question card answered with `{answer: {ids?, text?}}`, `upload` → file request answered with `{attachment_ids}`, `confirm` → `{accepted}`; *Skip* → `{accepted: false}`.
+- [ ] Or skip all of this and use [`<agui-chat>`](chat-widget.md) with the formguide plugin.
 - [ ] After a page reload, `GET /agent/threads/{id}` returns `pending_card` (`kind: "card"` or `"question"`); show it again so the user can still answer.
 
 ---

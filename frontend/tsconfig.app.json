@@ -22,7 +22,14 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* the chat widget from this repository (see vite.config.ts) */
+    "paths": {
+      "@formguide/agui-chat": ["../packages/agui-chat/src/index.ts"],
+      "@formguide/agui-chat/formguide": ["../packages/agui-chat/src/formguide/index.ts"],
+      "@formguide/agui-chat/react": ["../packages/agui-chat/src/react.ts"]
+    }
   },
   "include": ["src"]
 }

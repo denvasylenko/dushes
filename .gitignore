@@ -22,3 +22,5 @@ backend/scripts/*.log
 examples/*/node_modules/
 examples/*/dist/
 backend/dist/
+packages/*/node_modules/
+packages/*/dist/

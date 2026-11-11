@@ -69,6 +69,8 @@ INITIAL_STATE = initial_state(FORM)
 DOMAIN = {
     "form_id": "barber_booking",
     "title": "Barbershop booking",
+    "starters": ["Book me a haircut + beard next Tuesday around 3pm", "How much is a haircut with Maria?",
+                 "Book a kids haircut for my son, he is 6"],
     "persona": "You are the barbershop's friendly booking assistant. Keep it short and casual.",
     "flow_hints": [
         "Choose the service first: the list of barbers depends on it.",

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>agui-chat · one script tag</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #f5f5f7; --panel: #fff; --ink: #1d1d1f; --muted: #6e6e73; --line: #e3e3e8; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #111113; --panel: #1c1c1e; --ink: #f5f5f7; --muted: #a1a1a6; --line: #333336; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 120px; display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 24px; }
+    @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
+    h1 { font-size: 28px; letter-spacing: -0.02em; margin: 0 0 6px; grid-column: 1 / -1; }
+    .lead { color: var(--muted); margin: 0 0 8px; grid-column: 1 / -1; max-width: 70ch; }
+    section { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; min-width: 0; }
+    h2 { font-size: 15px; margin: 0 0 12px; }
+    label { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
+    label:first-of-type { border-top: 0; }
+    select, input[type=color], input[type=range] { font: inherit; }
+    pre { margin: 0; font: 12px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; }
+    code { font: 13px ui-monospace, Menlo, monospace; }
+    .inline-host { height: 560px; margin-top: 16px; }
+    .inline-host[hidden] { display: none; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>&lt;agui-chat&gt; from one script tag</h1>
+  <p class="lead">This page is plain HTML: <code>&lt;script src="agui-chat.iife.js"&gt;</code>, one element and the formguide plugin, talking to
+    <code>/agent/run</code> for the barbershop demo form. Change any setting on the left: the chat updates at once.</p>
+
+  <section aria-label="Settings">
+    <h2>Settings</h2>
+    <label>Mode <select data-opt="mode"><option>floating</option><option>inline</option><option>page</option></select></label>
+    <label>Typing <select data-opt="typing"><option>words</option><option>plain</option><option>off</option></select></label>
+    <label>Theme <select data-opt="theme"><option>auto</option><option>light</option><option>dark</option></select></label>
+    <label>Language <select data-opt="lang"><option value="">browser</option><option>en</option><option>ru</option><option>uk</option><option>de</option><option>fr</option><option>it</option><option>es</option></select></label>
+    <label>Tool steps <input type="checkbox" data-opt="toolSteps" checked></label>
+    <label>Microphone <input type="checkbox" data-opt="mic" checked></label>
+    <label>Quick replies <input type="checkbox" data-opt="quickReplies" checked></label>
+    <label>Attachments <input type="checkbox" data-opt="attach" checked></label>
+    <label>Card: checkboxes <input type="checkbox" data-card="select" checked></label>
+    <label>Card: old &rarr; new <input type="checkbox" data-card="diff" checked></label>
+    <label>Card: edit values <input type="checkbox" data-card="edit" checked></label>
+    <label>Card: show field <input type="checkbox" data-card="jump" checked></label>
+    <label>Card: undo <input type="checkbox" data-card="undo" checked></label>
+    <label>Accent <input type="color" data-css="--agui-accent" value="#1d1d1f"></label>
+    <label>Corner radius <input type="range" min="0" max="28" value="18" data-css="--agui-radius" data-unit="px"></label>
+  </section>
+
+  <section aria-label="The form">
+    <h2>The form's state (what the mock form backend returned last)</h2>
+    <pre id="state">loading...</pre>
+    <div class="inline-host" id="inline-host" hidden></div>
+  </section>
+</main>
+
+<agui-chat id="chat" url="/agent/run" title="Barbershop" subtitle="formguide · one script tag"></agui-chat>
+
+<script src="/widget/agui-chat.iife.js"></script>
+<script>
+  const FORM_ID = 'barber_booking'
+  const chat = document.getElementById('chat')
+  let form = null   // {jsx_hash, config}
+  let ui = { activeTabs: {}, openAccordions: [], focused: null }
+
+  // the mock form backend (/java) stands in for your own one
+  async function load() {
+    const f = await (await fetch(`/java/form?form_id=${FORM_ID}`)).json()
+    const r = await (await fetch('/agent/layouts', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsx: f.jsx, form_id: f.form_id, domain: f.domain, config: f.config }) })).json()
+    form = { jsx_hash: r.jsx_hash, config: f.config }
+    show()
+  }
+  async function apply(changes) {
+    form.config = await (await fetch('/java/event', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ form_id: FORM_ID, state: form.config.state, changes }) })).json()
+    show()
+    return form.config
+  }
+  function show() {
+    const filled = Object.fromEntries(Object.entries(form.config.state).filter(([, v]) => v !== null && v !== '' && v !== false))
+    document.getElementById('state').textContent = JSON.stringify(filled, null, 2) || '{}'
+  }
+
+  const cards = { select: true, diff: true, edit: true, jump: true, undo: true }
+  function plugin() {
+    return AguiChat.formguide({
+      getState: () => ({ ...form, form_id: FORM_ID, ui: { ...ui, now: new Date().toString() } }),
+      applyChanges: apply,
+      onDirective: (d) => { ui.focused = d.target },
+    })
+  }
+
+  load().then(() => {
+    chat.use(plugin())
+    chat.registerTool({
+      name: 'get_user_locale', description: "The user's browser language and time zone.",
+      parameters: { type: 'object', properties: {} },
+      handler: () => ({ language: navigator.language, time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    })
+  })
+
+  // the settings panel: every change goes straight into chat.options or a theme token
+  for (const el of document.querySelectorAll('[data-opt]')) {
+    el.addEventListener('change', () => {
+      const v = el.type === 'checkbox' ? el.checked : el.value
+      chat.options = { [el.dataset.opt]: v }
+      if (el.dataset.opt === 'mode') {
+        const host = document.getElementById('inline-host')
+        host.hidden = v !== 'inline'
+        if (v === 'inline') host.appendChild(chat); else document.body.appendChild(chat)
+        if (v === 'floating') chat.open()
+      }
+    })
+  }
+  for (const el of document.querySelectorAll('[data-card]')) {
+    el.addEventListener('change', () => { cards[el.dataset.card] = el.checked; chat.options = { cards: { set_fields: { ...cards } } } })
+  }
+  for (const el of document.querySelectorAll('[data-css]')) {
+    el.addEventListener('input', () => chat.style.setProperty(el.dataset.css, el.value + (el.dataset.unit || '')))
+  }
+</script>
+</body>
+</html>

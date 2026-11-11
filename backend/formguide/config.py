@@ -39,6 +39,8 @@ FORMGUIDE_MODEL environment variable does the same without a file. Everything el
     transcripts: {dir: data/transcripts}             # what the user saw; default files under data_dir
     max_tool_rounds: 10
     interrupt_mode: legacy                           # confirmation cards: legacy (CopilotKit) | structured (AG-UI 1.0) | both
+    confirm_tools: [submit_application]              # these tools always ask the user before running
+    suggestions: {enabled: true, max: 3}             # quick replies after each answer (a cheap model)
 """
 from __future__ import annotations
 
@@ -69,6 +71,15 @@ def default_models() -> Models:
 
 
 @dataclass
+class SuggestionsConfig:
+    """Quick replies: 1..max short next messages after each answer (a CUSTOM `suggestions` event)."""
+    enabled: bool = False
+    model: Any = None          # ModelSpec; default: the memory role's model
+    max: int = 3
+    timeout: float = 4.0       # seconds; on timeout or error no event is sent
+
+
+@dataclass
 class GuideConfig:
     models: Models = field(default_factory=default_models)
     data_dir: str | Path = "data"                   # deps maps, KB and attachments default to subfolders
@@ -86,6 +97,8 @@ class GuideConfig:
     # How confirmation cards reach the client: "legacy" = CUSTOM on_interrupt (CopilotKit,
     # ag-ui-langgraph), "structured" = RUN_FINISHED.outcome interrupts (AG-UI 1.0), or "both".
     interrupt_mode: str = "legacy"
+    confirm_tools: list[str] = field(default_factory=list)   # tools that always ask the user first
+    suggestions: SuggestionsConfig = field(default_factory=SuggestionsConfig)
 
 
 # ===================================================================== YAML
@@ -167,4 +180,17 @@ def load_config(path: str | Path) -> GuideConfig:
         m = raw["memory"]
         cfg.memory = MemoryConfig(max_history_tokens=m.get("max_history_tokens", 60_000),
                                   keep_turns=int(m.get("keep_turns", 4)), model=m.get("model"))
+    ct = raw.get("confirm_tools") or []
+    if not isinstance(ct, list) or not all(isinstance(x, str) for x in ct):
+        raise ValueError("confirm_tools must be a list of tool names")
+    cfg.confirm_tools = list(ct)
+    sg = raw.get("suggestions")
+    if sg is not None:
+        sg = {"enabled": sg} if isinstance(sg, bool) else sg
+        unknown = set(sg) - {"enabled", "model", "max", "timeout"}
+        if unknown:
+            raise ValueError(f"suggestions: unknown key(s) {sorted(unknown)}")
+        cfg.suggestions = SuggestionsConfig(enabled=bool(sg.get("enabled", True)), model=sg.get("model"),
+                                            max=max(1, min(int(sg.get("max", 3)), 5)),
+                                            timeout=float(sg.get("timeout", 4.0)))
     return cfg
