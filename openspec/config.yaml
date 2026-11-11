@@ -1,0 +1,46 @@
+schema: spec-driven
+
+context: |
+  Language: English
+  All artifacts must be written in English.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  Project: formguide — a chat agent that guides end users through large configurable forms.
+  The form backend (a Java service in production; backend/demo/mock_forms here) sends a JSX string
+  (tags + `name` only) once and rebuilds a flat config (props + state keyed by name) on every form event.
+  The frontend forwards the JSX once and the config with every chat message. The agent never writes the
+  config: it proposes values, the user confirms a card, and the frontend applies them as form events.
+
+  Code layout:
+  - backend/formguide/  the library (install with `pip install -e backend` or copy the folder)
+    form/ layout, overlay, diff, context rendering · agent/ LangGraph graph, tools, prompt, memory ·
+    domain/ domain packs · knowledge/ documents, index, scopes, compile, deep-agent researcher ·
+    attachments/ user files + extraction · models.py · skills.py · config.py · guide.py · server.py
+  - backend/demo/  example integration (mock form backend, FastAPI app, YAML config, skills, samples)
+  - backend/tests/ offline tests with a scripted model · backend/scripts/chat_harness.py live scenarios
+  - frontend/      optional demo UI (React + Vite)
+  - docs/architecture.md  architecture overview
+
+  Tech: Python 3.11+, LangGraph, LangChain chat models (any provider), deepagents, FastAPI (optional),
+  pytest; React 19 + TypeScript for the demo UI.
+
+  Principles: the config is the source of truth for form state; the core is form- and provider-agnostic
+  (domain knowledge comes from domain packs, documents, skills); the per-turn context stays small;
+  conversation history is append-only (frozen system prompt per thread).
+
+rules:
+  specs:
+    - Describe observable behaviour (inputs, outputs, errors, guarantees), not implementation details.
+    - Name fields, events and endpoints exactly as they appear in the code.
+  proposal:
+    - State which existing specs in openspec/specs/ the change touches.
+  tasks:
+    - Include updating tests (backend/tests), docs/architecture.md and README.md when behaviour changes.
+
+operations:
+  apply:
+    guidance:
+      - Run `cd backend && uv run pytest -q` before marking tasks done.
+  archive:
+    guidance:
+      - Run `openspec validate --all --strict` after syncing specs.

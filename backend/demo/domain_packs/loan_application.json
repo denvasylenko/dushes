@@ -1,0 +1,29 @@
+{
+  "form_id": "loan_application",
+  "title": "Loan application",
+  "persona": "You are a bank consultant helping a client fill in a loan application. Use plain language, no banking jargon; be brief and to the point.",
+  "flow_hints": [
+    "Choose the loan type (loan_type) and the employment type (employment_type) first: they control the Collateral tab, the employer / sole proprietor / pension blocks and the list of documents.",
+    "The co-borrower tab is only needed if the client wants to add a co-borrower.",
+    "The count dropdowns in Assets control how many asset blocks have to be filled in.",
+    "Consents and the code word are usually filled in last, but if the client asks earlier and the tab is available, fill them in."
+  ],
+  "glossary": {
+    "passport_dept_code": "Department code: on the second page of the passport, next to the issue date, format 000-000.",
+    "passport_issued_by": "Exactly as written in the passport, including abbreviations.",
+    "inn": "Personal tax ID (INN): 12 digits. Available on the tax service website or Gosuslugi.",
+    "snils": "SNILS: the number on the pension insurance certificate or in Gosuslugi.",
+    "reg_since": "The date from the registration stamp in the passport.",
+    "income_main": "Monthly income after taxes (take-home pay).",
+    "income_proof_type": "2-NDFL is issued by the employer; the SFR statement can be downloaded from Gosuslugi.",
+    "pdn_ratio": "Debt-to-income ratio: the share of income going to loan payments. Above 50% lowers the approval chance.",
+    "down_payment": "For a mortgage: at least 20% of the loan amount.",
+    "codeword": "A word the bank uses to identify the client by phone. Not a birth date and not a name.",
+    "col_car_vin": "VIN: 17 characters, found in the vehicle passport / registration certificate and on the body.",
+    "employer_inn": "Company tax ID: 10 digits, usually in the employment contract or on the company website.",
+    "business_ogrnip": "OGRNIP: 15 digits, found in the EGRIP registry extract.",
+    "consent_bki": "Without this consent the bank cannot review the application."
+  },
+  "pii": ["passport_series", "passport_number", "inn", "snils", "codeword",
+          "cob_passport_series", "cob_passport_number", "payout_account"]
+}

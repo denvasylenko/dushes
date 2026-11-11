@@ -1,0 +1,345 @@
+"""LangGraph: every user message brings a fresh config in the state.
+
+START → sync → compact → llm ─┬─(tool calls)→ tools ─┬→ llm
+                    │                      └─(propose_changes)→ confirm [interrupt] → llm
+                    ├─(no tool calls, nothing said)→ nudge → llm
+                    └─(done)→ END
+
+The model is any LangChain chat model with tool calling (configured per FormGuide).
+History is stored as LangChain messages in the checkpointer.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import unicodedata
+import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, TypedDict
+
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
+from langgraph.config import get_stream_writer
+from langgraph.graph import END, START, StateGraph
+from langgraph.types import interrupt
+
+from ..form.overlay import Overlay, compute_diff
+from ..form.render import locate, render_changes, render_focus, render_outline
+from ..models import system_message
+from .memory import compact as compact_history
+from .memory import new_turn_id
+from .prompts import context_block, system_prompt
+from .tools import ToolCtx, ToolError, run_tool, tool_schemas
+
+if TYPE_CHECKING:
+    from ..guide import FormGuide
+
+log = logging.getLogger("formguide")
+
+PREAMBLE_CHARS = 240  # shorter text right before a tool call may be an internal note
+
+
+class AgentState(TypedDict, total=False):
+    messages: list[BaseMessage]
+    config: dict
+    jsx_hash: str
+    form_id: str
+    ui: dict
+    user_text: str
+    thread_id: str
+    attachments: list[dict]   # files attached to the current message: [{id, filename}]
+    snapshot: dict
+    version: int
+    pending: dict | None
+    stop_reason: str
+    tool_round: int
+    said: bool      # the user saw some text this turn
+    nudged: bool    # we already asked the model to reply with text
+    system_prompt: str   # frozen for the thread: changing it would invalidate the model's earlier reasoning
+    memory: str          # summary of older turns after compaction (see memory.py)
+
+
+def _script(text: str) -> str | None:
+    """Dominant writing system of a text (LATIN, CYRILLIC, GREEK, ...), or None."""
+    counts: dict[str, int] = {}
+    for ch in text:
+        if ch.isalpha():
+            try:
+                s = unicodedata.name(ch).split(" ")[0]
+            except ValueError:
+                continue
+            counts[s] = counts.get(s, 0) + 1
+    return max(counts, key=counts.get) if counts else None
+
+
+def is_note(text: str, state: dict) -> bool:
+    """Short text right before a tool call is an internal note if the model has
+    not done anything yet this turn, or if it is in a different script than the user."""
+    if (state.get("tool_round") or 0) == 0:
+        return True
+    user, note = _script(state.get("user_text") or ""), _script(text)
+    return bool(user and note and user != note)
+
+
+def _approx_tokens(s: str) -> int:
+    return round(len(s) / 3.2)
+
+
+REASONING_BLOCKS = {"thinking", "redacted_thinking", "reasoning"}
+
+
+def strip_reasoning(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """Drop provider reasoning blocks from earlier assistant turns (text and tool calls stay)."""
+    out = []
+    for m in messages:
+        if isinstance(m, AIMessage) and isinstance(m.content, list):
+            content = [b for b in m.content if not (isinstance(b, dict) and b.get("type") in REASONING_BLOCKS)]
+            m = m.model_copy(update={"content": content or ""})
+        out.append(m)
+    return out
+
+
+def _is_reasoning_binding_error(e: Exception) -> bool:
+    t = str(e).lower()
+    return ("signature" in t and "thinking" in t) or "block is bound" in t
+
+
+def _tool_messages(results: list[dict]) -> list[ToolMessage]:
+    return [ToolMessage(content=r["content"], tool_call_id=r["id"], status="error" if r.get("error") else "success")
+            for r in results]
+
+
+def build_graph(guide: FormGuide):
+    def ctx_for(state: AgentState) -> ToolCtx:
+        lay = guide.layout(state["jsx_hash"])
+        if lay is None:
+            raise RuntimeError("layout is not registered: send the JSX to register_form / POST /layouts first")
+        pack = guide.packs.get(state.get("form_id"))
+        ov = Overlay(lay, state["config"], pack.pii)
+        return ToolCtx(ov=ov, deps=guide.deps(lay.jsx_hash), pack=pack, loc=locate(ov, state.get("ui")),
+                       thread_id=state.get("thread_id") or "", guide=guide,
+                       extra_tools={t.name: t for t in guide.tools_for(pack.form_id)})
+
+    # ------------------------------------------------------------------ nodes
+    def sync(state: AgentState) -> dict:
+        """Diff the incoming config against the previous one, build context, append the message."""
+        w = get_stream_writer()
+        ctx = ctx_for(state)
+        v_prev = state.get("version") or 0
+        version = v_prev + 1
+        diff = compute_diff(ctx.ov, state.get("snapshot"))
+        ctx.deps.observe(diff, ctx.ov)
+        outline = render_outline(ctx.ov, ctx.loc, ctx.deps, ctx.pack, version)
+        focus = render_focus(ctx.ov, ctx.loc, ctx.deps, ctx.pack)
+        changes = render_changes(ctx.ov, diff, v_prev, version) if v_prev else "CHANGES: this is the first message"
+        # The frontend sends the user's local time; fall back to the server clock.
+        now = (state.get("ui") or {}).get("now") or datetime.now().strftime("%Y-%m-%d %A %H:%M")
+        block = context_block(outline, focus, changes, now)
+        cfg_chars = len(json.dumps(state["config"], ensure_ascii=False))
+        w({"kind": "context", "text": block,
+           "stats": {"context_tokens": _approx_tokens(block), "config_tokens": round(cfg_chars / 3.2)}})
+
+        new: list[BaseMessage] = []
+        pending = state.get("pending")
+        if pending:  # the user ignored the card and wrote a new message
+            new += _tool_messages(pending["other_results"] + [{
+                "id": pending["tool_call_id"],
+                "content": "The user did not answer the card and sent a new message. Nothing was applied."}])
+        content: list[dict[str, Any]] = []
+        # The system prompt is frozen per thread (append-only history). If the form's knowledge
+        # changed since (documents recompiled, skills edited), deliver it as an update here.
+        current = system_prompt(ctx.pack, guide.skills.for_form(ctx.pack.form_id))
+        frozen = state.get("system_prompt") or current
+        if current != frozen:
+            content.append({"type": "text", "text": "<updated_instructions>\nThe form's instructions changed during this "
+                                                    "conversation. These replace the earlier ones:\n" + current
+                                                    + "\n</updated_instructions>"})
+        content += [{"type": "text", "text": block}, {"type": "text", "text": state.get("user_text") or "…"}]
+        for a in state.get("attachments") or []:
+            content.append({"type": "text", "text": f"[The user attached {a['filename']} (attachment_id={a['id']}). "
+                                                    "Use extract_from_attachment to read it.]"})
+        new.append(HumanMessage(content=content, id=new_turn_id()))
+        return {
+            "messages": [*(state.get("messages") or []), *new],
+            "snapshot": ctx.ov.snapshot(), "version": version, "pending": None, "tool_round": 0,
+            "said": False, "nudged": False, "attachments": [], "system_prompt": frozen,
+        }
+
+    async def compact(state: AgentState) -> dict:
+        """Long chats: summarize older turns into a conversation memory (see memory.py)."""
+        pack = guide.packs.get(state.get("form_id"))
+        try:
+            res = await compact_history(state["messages"], state.get("memory") or "", guide.models.memory,
+                                        guide.config.memory, pack.title)
+        except Exception as e:  # noqa: BLE001 — a failed compaction must not block the turn
+            log.warning("compaction failed: %s", e)
+            return {}
+        if not res:
+            return {}
+        history, memory = res
+        get_stream_writer()({"kind": "memory", "memory": memory,
+                             "dropped_messages": len(state["messages"]) - len(history)})
+        return {"messages": history, "memory": memory}
+
+    async def llm(state: AgentState) -> dict:
+        w = get_stream_writer()
+        pack = guide.packs.get(state.get("form_id"))
+        base = guide.models.agent
+        model = base.bind_tools(tool_schemas(guide.tools_for(pack.form_id)))
+        sys_text = state.get("system_prompt") or system_prompt(pack, guide.skills.for_form(pack.form_id))
+        history = state["messages"]
+        msg_id = str(uuid.uuid4())
+        started = False
+        held = ""
+        calling = False
+        full = None
+
+        def flush() -> None:
+            nonlocal started, held
+            if not held:
+                return
+            if not started:
+                w({"kind": "text_start", "id": msg_id})
+                started = True
+            w({"kind": "text_delta", "id": msg_id, "delta": held})
+            held = ""
+
+        async def stream(msgs: list[BaseMessage]):
+            nonlocal full, calling, held
+            async for chunk in model.astream(msgs):
+                full = chunk if full is None else full + chunk
+                if chunk.tool_call_chunks and not calling:
+                    calling = True
+                    if not started and held.strip() and is_note(held, state):
+                        w({"kind": "note", "text": held.strip()})
+                        held = ""
+                    else:
+                        flush()
+                text = chunk.text
+                if text and not calling:
+                    held += text
+                    if started or len(held) > PREAMBLE_CHARS:
+                        flush()
+                elif text:
+                    held += text
+                    flush()
+
+        stripped = False
+        try:
+            try:
+                await stream([system_message(sys_text, base), *history])
+            except Exception as e:  # noqa: BLE001
+                if full is not None or not _is_reasoning_binding_error(e):
+                    raise
+                # The provider rejected earlier reasoning blocks (their context changed): drop them, retry once.
+                log.warning("reasoning blocks rejected (%s); retrying without them", e)
+                history, stripped = strip_reasoning(history), True
+                await stream([system_message(sys_text, base), *history])
+            flush()
+        except Exception as e:  # noqa: BLE001 — provider errors vary; surface them in the chat
+            log.exception("model call failed")
+            w({"kind": "error", "message": f"model error: {type(e).__name__}: {e}"})
+            return {"stop_reason": "error"}
+        if started:
+            w({"kind": "text_end", "id": msg_id})
+        if full is None:
+            return {"stop_reason": "end_turn", "said": bool(state.get("said"))}
+        msg = AIMessage(content=full.content, tool_calls=full.tool_calls, id=full.id,
+                        response_metadata=full.response_metadata, usage_metadata=full.usage_metadata)
+        meta = full.response_metadata or {}
+        if meta.get("stop_reason") == "refusal" or meta.get("finish_reason") == "content_filter":
+            w({"kind": "error", "message": "the model declined to answer this request"})
+        log.info("llm round=%s tools=%s usage=%s", state.get("tool_round"),
+                 [c["name"] for c in msg.tool_calls], msg.usage_metadata)
+        return {"messages": [*history, msg],
+                "stop_reason": "tool_use" if msg.tool_calls else "end_turn",
+                "said": bool(state.get("said")) or started}
+
+    def route_llm(state: AgentState) -> str:
+        if state.get("stop_reason") != "tool_use":
+            if state.get("stop_reason") == "end_turn" and not state.get("said") and not state.get("nudged"):
+                return "nudge"
+            return END
+        if (state.get("tool_round") or 0) >= guide.max_tool_rounds:
+            return END
+        return "tools"
+
+    def nudge(state: AgentState) -> dict:
+        """Safety net: the model ended the turn without saying anything to the user."""
+        log.warning("turn ended without text; nudging")
+        return {"messages": [*state["messages"], HumanMessage(
+            content="[system] You did not reply to the user with text. Reply briefly.")], "nudged": True}
+
+    async def tools(state: AgentState) -> dict:
+        w = get_stream_writer()
+        ctx = ctx_for(state)
+        ctx.emit = w
+        last = state["messages"][-1]
+        results: list[dict] = []
+        pending_id = None
+        partial_errors = ""
+        for call in getattr(last, "tool_calls", None) or []:
+            w({"kind": "tool", "name": call["name"], "input": call.get("args")})
+            before = ctx.pending_changes
+            try:
+                out = await run_tool(call["name"], call.get("args"), ctx)
+                if before is None and ctx.pending_changes is not None:
+                    pending_id = call["id"]
+                    partial_errors = out
+                    continue
+                results.append({"id": call["id"], "content": out or "ok"})
+            except ToolError as e:
+                results.append({"id": call["id"], "content": str(e), "error": True})
+        for d in ctx.ui_directives:
+            w({"kind": "ui", "directive": d})
+        upd: dict[str, Any] = {"tool_round": (state.get("tool_round") or 0) + 1}
+        if pending_id:
+            upd["pending"] = {"tool_call_id": pending_id, "changes": ctx.pending_changes,
+                              "partial_errors": partial_errors, "other_results": results}
+        else:
+            upd["messages"] = [*state["messages"], *_tool_messages(results)]
+        return upd
+
+    def route_tools(state: AgentState) -> str:
+        return "confirm" if state.get("pending") else "llm"
+
+    def confirm(state: AgentState) -> dict:
+        """Human in the loop. The frontend shows a card; on accept it applies the
+        changes through the normal pipeline (the form backend rebuilds the config)
+        and resumes the graph with {accepted, config}."""
+        p = state["pending"]
+        answer = interrupt({"type": "set_fields", "changes": p["changes"]})
+        accepted = bool(answer.get("accepted"))
+        upd: dict[str, Any] = {"pending": None}
+        if not accepted:
+            text = "The user rejected the changes." + (f" Comment: {answer['comment']}" if answer.get("comment") else "")
+        else:
+            new_cfg = answer.get("config") or state["config"]
+            upd["config"] = new_cfg
+            ctx = ctx_for({**state, "config": new_cfg, "ui": answer.get("ui") or state.get("ui")})
+            names = {c["name"] for c in p["changes"]}
+            diff = compute_diff(ctx.ov, state.get("snapshot"), agent_names=names)
+            ctx.deps.observe(diff, ctx.ov)
+            v = (state.get("version") or 0) + 1
+            upd.update(snapshot=ctx.ov.snapshot(), version=v)
+            text = "The user confirmed; changes applied.\n" + render_changes(ctx.ov, diff, v - 1, v)
+        if p.get("partial_errors"):
+            text += "\nFailed validation and were not proposed:\n" + p["partial_errors"]
+        results = p["other_results"] + [{"id": p["tool_call_id"], "content": text}]
+        upd["messages"] = [*state["messages"], *_tool_messages(results)]
+        return upd
+
+    g = StateGraph(AgentState)
+    g.add_node("sync", sync)
+    g.add_node("llm", llm)
+    g.add_node("tools", tools)
+    g.add_node("confirm", confirm)
+    g.add_node("nudge", nudge)
+    g.add_node("compact", compact)
+    g.add_edge(START, "sync")
+    g.add_edge("sync", "compact")
+    g.add_edge("compact", "llm")
+    g.add_conditional_edges("llm", route_llm, ["tools", "nudge", END])
+    g.add_edge("nudge", "llm")
+    g.add_conditional_edges("tools", route_tools, ["llm", "confirm"])
+    g.add_edge("confirm", "llm")
+    return g.compile(checkpointer=guide.checkpointer)

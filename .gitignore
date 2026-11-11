@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+backend/.venv/
+backend/.pytest_cache/
+
+# Runtime data (dependency maps, uploaded documents, attachments) and live-run transcripts
+backend/data/
+backend/scripts/runs/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS / editor
+.DS_Store
+.claude/settings.local.json
+
+# Built by .github/workflows/docs.yml
+docs/site/

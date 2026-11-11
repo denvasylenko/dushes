@@ -1,0 +1,363 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { javaEvent, javaForm, javaForms, registerLayout, runAgent, uploadAttachment, type AgentEvent, type Attachment } from './api'
+import { FormProvider, Render, type Highlight } from './Form'
+import { parseJsx } from './jsx'
+import Manager from './Manager'
+import type { Config, JsxNode, ProposedChange, RevealStep, UiDirective, UiState } from './types'
+
+type ChatItem =
+  | { kind: 'user'; text: string; files?: string[] }
+  | { kind: 'assistant'; id: string; text: string }
+  | { kind: 'tool'; name: string; input: unknown }
+  | { kind: 'error'; text: string }
+  | { kind: 'card'; id: string; changes: ProposedChange[]; status: 'pending' | 'accepted' | 'rejected' | 'dismissed' }
+
+type AgentCtx = { text: string; stats: { context_tokens: number; config_tokens: number } } | null
+
+type LoadedForm = { formId: string; jsx: string; tree: JsxNode; hash: string; title: string }
+
+const EMPTY_UI: UiState = { activeTabs: {}, openAccordions: [], focused: null }
+
+/** Suggested first messages per demo form (users may write in any language). */
+const SUGGESTIONS: Record<string, string[]> = {
+  loan_application: ['Where do I start?', 'Where do I enter the department code?', 'I want a car loan of 1.5 million for 5 years'],
+  barber_booking: ['Book me a haircut + beard next Tuesday around 3pm', 'How much is a haircut with Maria?', 'Book a kids haircut for my son, he is 6'],
+}
+
+function localNow(): string {
+  const d = new Date()
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const date = d.toLocaleDateString('sv-SE') // YYYY-MM-DD
+  const day = d.toLocaleDateString('en-US', { weekday: 'long' })
+  return `${date} ${day} ${d.toTimeString().slice(0, 5)} (${tz})`
+}
+
+export default function App() {
+  const [forms, setForms] = useState<string[]>([])
+  const [formId, setFormId] = useState('loan_application')
+  const [form, setForm] = useState<LoadedForm | null>(null)
+  const [config, setConfig] = useState<Config | null>(null)
+  const [ui, setUi] = useState<UiState>(EMPTY_UI)
+  const [highlight, setHighlight] = useState<Highlight>(null)
+  const [chat, setChat] = useState<ChatItem[]>([])
+  const [busy, setBusy] = useState(false)
+  const [agentCtx, setAgentCtx] = useState<AgentCtx>(null)
+  const [showCtx, setShowCtx] = useState(false)
+  const [thread, setThread] = useState(() => crypto.randomUUID())
+  const [view, setView] = useState<'form' | 'manager'>('form')
+
+  const cfgRef = useRef<Config | null>(null)
+  cfgRef.current = config
+  const uiRef = useRef(ui)
+  uiRef.current = ui
+  const reqId = useRef(0)
+  const debounce = useRef<number | undefined>(undefined)
+
+  useEffect(() => {
+    javaForms().then(setForms)
+  }, [])
+
+  // ------------------------------------------------------------ load: JSX once, config from the form backend
+  useEffect(() => {
+    setForm(null)
+    javaForm(formId).then(async (f) => {
+      // the frontend forwards the JSX (and the domain pack, if any) to the agent once
+      const hash = await registerLayout(f.jsx, f.form_id, f.domain)
+      const title = (f.domain?.title as string) ?? f.form_id
+      setForm({ formId: f.form_id, jsx: f.jsx, tree: parseJsx(f.jsx), hash, title })
+      setConfig(f.config)
+      setUi(EMPTY_UI)
+      setChat([])
+      setAgentCtx(null)
+      setThread(crypto.randomUUID())
+    })
+  }, [formId])
+
+  // ------------------------------------------------------------ form events -> form backend -> new config
+  const pushToJava = useCallback(async (changes: Record<string, unknown>) => {
+    const id = ++reqId.current
+    const next = await javaEvent(formId, cfgRef.current!.state, changes)
+    if (id === reqId.current) setConfig(next)
+    return next
+  }, [formId])
+
+  const setValue = useCallback((name: string, value: unknown, immediate: boolean) => {
+    setConfig((c) => (c ? { ...c, state: { ...c.state, [name]: value } } : c))
+    window.clearTimeout(debounce.current)
+    if (immediate) void pushToJava({ [name]: value })
+    else debounce.current = window.setTimeout(() => void pushToJava({}), 400)
+  }, [pushToJava])
+
+  const setTab = useCallback((tabs: string, tab: string) =>
+    setUi((u) => ({ ...u, activeTabs: { ...u.activeTabs, [tabs]: tab } })), [])
+  const toggleAccordion = useCallback((name: string) =>
+    setUi((u) => ({
+      ...u,
+      openAccordions: u.openAccordions.includes(name)
+        ? u.openAccordions.filter((a) => a !== name)
+        : [...u.openAccordions, name],
+    })), [])
+  const setFocused = useCallback((name: string | null) => setUi((u) => ({ ...u, focused: name })), [])
+
+  // ------------------------------------------------------------ UI directives from the agent
+  const reveal = useCallback((steps: RevealStep[]) => {
+    setUi((u) => {
+      const activeTabs = { ...u.activeTabs }
+      let open = [...u.openAccordions]
+      for (const s of steps) {
+        if (s.type === 'tab') activeTabs[s.tabs] = s.tab
+        else open = [...open.filter((a) => a !== s.name), s.name]
+      }
+      return { ...u, activeTabs, openAccordions: open }
+    })
+  }, [])
+
+  const applyDirective = useCallback((d: UiDirective) => {
+    reveal(d.reveal)
+    setHighlight({ target: d.target, hint: d.hint, ts: Date.now() })
+    window.setTimeout(() => {
+      document.querySelector(`[data-name="${d.target}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 60)
+  }, [reveal])
+
+  useEffect(() => {
+    if (!highlight) return
+    const t = window.setTimeout(() => setHighlight(null), 7000)
+    return () => window.clearTimeout(t)
+  }, [highlight])
+
+  // ------------------------------------------------------------ agent
+  const onEvent = useCallback((e: AgentEvent) => {
+    if (e.type === 'TEXT_MESSAGE_START') setChat((c) => [...c, { kind: 'assistant', id: e.messageId!, text: '' }])
+    else if (e.type === 'TEXT_MESSAGE_CONTENT')
+      setChat((c) => c.map((m) => (m.kind === 'assistant' && m.id === e.messageId ? { ...m, text: m.text + e.delta } : m)))
+    else if (e.type === 'RUN_ERROR') setChat((c) => [...c, { kind: 'error', text: e.message ?? 'error' }])
+    else if (e.type === 'CUSTOM') {
+      if (e.name === 'ui_directive') applyDirective(e.value)
+      else if (e.name === 'tool_activity') setChat((c) => [...c, { kind: 'tool', name: e.value.name, input: e.value.input }])
+      else if (e.name === 'agent_context') setAgentCtx(e.value)
+      else if (e.name === 'on_interrupt')
+        setChat((c) => [...c, { kind: 'card', id: crypto.randomUUID(), changes: e.value.changes, status: 'pending' }])
+    }
+  }, [applyDirective])
+
+  const baseState = (cfg: Config) => ({
+    config: cfg, jsx_hash: form!.hash, form_id: form!.formId, ui: { ...uiRef.current, now: localNow() },
+  })
+
+  const send = async (text: string, attachments: Attachment[] = []) => {
+    if (!text.trim() || busy || !form) return
+    window.clearTimeout(debounce.current)
+    const fresh = await pushToJava({}) // the config sent to the agent must be up to date
+    setChat((c) => [
+      ...c.map((m) => (m.kind === 'card' && m.status === 'pending' ? { ...m, status: 'dismissed' as const } : m)),
+      { kind: 'user', text, files: attachments.map((a) => a.filename) },
+    ])
+    setBusy(true)
+    try {
+      await runAgent({
+        threadId: thread,
+        messages: [{ role: 'user', content: text }],
+        state: { ...baseState(fresh), attachments },
+      }, onEvent)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const answerCard = async (card: Extract<ChatItem, { kind: 'card' }>, accepted: boolean) => {
+    setChat((c) => c.map((m) => (m.kind === 'card' && m.id === card.id ? { ...m, status: accepted ? 'accepted' : 'rejected' } : m)))
+    setBusy(true)
+    try {
+      let cfg = cfgRef.current!
+      if (accepted) {
+        // applied through the same path as user input: event -> form backend -> new config
+        cfg = await pushToJava(Object.fromEntries(card.changes.map((ch) => [ch.name, ch.value])))
+        const last = card.changes[card.changes.length - 1]
+        reveal(last.reveal)
+        setHighlight({ target: last.name, hint: 'Filled in by the assistant', ts: Date.now() })
+      }
+      await runAgent({
+        threadId: thread,
+        state: baseState(cfg),
+        forwardedProps: { command: { resume: { accepted, config: cfg, ui: uiRef.current } } },
+      }, onEvent)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const ctxValue = useMemo(
+    () => (config ? { config, ui, highlight, setValue, setTab, toggleAccordion, setFocused } : null),
+    [config, ui, highlight, setValue, setTab, toggleAccordion, setFocused],
+  )
+
+  const header = (
+    <div className="topbar">
+      <div className="seg" role="tablist">
+        <button className={view === 'form' ? 'on' : ''} onClick={() => setView('form')}>Form + assistant</button>
+        <button className={view === 'manager' ? 'on' : ''} onClick={() => setView('manager')}>Manager: documents</button>
+      </div>
+      <select value={formId} onChange={(e) => setFormId(e.target.value)} aria-label="Demo form">
+        {forms.map((f) => <option key={f} value={f}>{f}</option>)}
+      </select>
+    </div>
+  )
+
+  if (view === 'manager') return <div className="page">{header}<Manager formId={formId} /></div>
+  if (!form || !ctxValue) return <div className="page">{header}<div className="loading">Loading the form…</div></div>
+
+  const jsxKb = (form.jsx.length / 1024).toFixed(0)
+  const cfgKb = (JSON.stringify(config).length / 1024).toFixed(0)
+
+  return (
+    <div className="page">
+    {header}
+    <div className="app">
+      <main className="form-pane">
+        <header className="form-head">
+          <h1>{form.title}</h1>
+          <p className="muted">
+            JSX {jsxKb} KB (once) · config {cfgKb} KB (every event)
+            {agentCtx && <> · the agent sees ≈{agentCtx.stats.context_tokens.toLocaleString('en')} tokens instead of ≈{agentCtx.stats.config_tokens.toLocaleString('en')}</>}
+          </p>
+        </header>
+        <FormProvider value={ctxValue}>
+          <Render node={form.tree} />
+        </FormProvider>
+      </main>
+      <aside className="chat-pane">
+        <div className="chat-head">
+          <strong>Assistant</strong>
+          <button className="link" onClick={() => setShowCtx((s) => !s)} disabled={!agentCtx}>
+            {showCtx ? 'Hide' : 'What the agent sees'}
+          </button>
+        </div>
+        {showCtx && agentCtx && <pre className="ctx">{agentCtx.text}</pre>}
+        <Chat items={chat} busy={busy} onSend={send} onCard={answerCard} thread={thread}
+          suggestions={SUGGESTIONS[form.formId] ?? []} />
+      </aside>
+    </div>
+    </div>
+  )
+}
+
+function Chat({ items, busy, onSend, onCard, suggestions, thread }: {
+  items: ChatItem[]
+  busy: boolean
+  onSend: (t: string, attachments?: Attachment[]) => void
+  onCard: (c: Extract<ChatItem, { kind: 'card' }>, accepted: boolean) => void
+  suggestions: string[]
+  thread: string
+}) {
+  const [text, setText] = useState('')
+  const [files, setFiles] = useState<Attachment[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [fileErr, setFileErr] = useState('')
+  const picker = useRef<HTMLInputElement>(null)
+
+  const pick = async (list: FileList | null) => {
+    if (!list?.length) return
+    setUploading(true)
+    setFileErr('')
+    try {
+      // uploaded to the agent service, scoped to this conversation; the agent reads it with a tool
+      const added = await Promise.all(Array.from(list).map((f) => uploadAttachment(thread, f)))
+      setFiles((x) => [...x, ...added])
+    } catch (e) {
+      setFileErr(String(e))
+    } finally {
+      setUploading(false)
+      if (picker.current) picker.current.value = ''
+    }
+  }
+
+  const submit = () => {
+    const t = text.trim() || (files.length ? 'Please use the attached document.' : '')
+    if (!t) return
+    onSend(t, files)
+    setText('')
+    setFiles([])
+  }
+  const end = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [items])
+  return (
+    <>
+      <div className="msgs">
+        {items.length === 0 && (
+          <div className="empty muted">
+            Ask where to start, where a field is, or paste your details and the assistant will fill them in.
+            {suggestions.map((s) => (
+              <button key={s} className="chip" onClick={() => onSend(s)}>{s}</button>
+            ))}
+          </div>
+        )}
+        {items.map((m, i) => {
+          switch (m.kind) {
+            case 'user':
+              return (
+                <div key={i} className="msg user">
+                  {m.files?.map((f) => <div key={f} className="file-chip">📎 {f}</div>)}
+                  {m.text}
+                </div>
+              )
+            case 'assistant':
+              return <div key={i} className="msg bot">{m.text || '…'}</div>
+            case 'error':
+              return <div key={i} className="msg error">{m.text}</div>
+            case 'tool':
+              return <div key={i} className="tool">⚙ {m.name}({shortArgs(m.input)})</div>
+            case 'card':
+              return (
+                <div key={i} className={`card ${m.status}`}>
+                  <div className="card-title">Fill in these fields?</div>
+                  <ul>
+                    {m.changes.map((c) => (
+                      <li key={c.name}><span className="muted">{c.label}:</span> <b>{c.display}</b></li>
+                    ))}
+                  </ul>
+                  {m.status === 'pending' ? (
+                    <div className="card-actions">
+                      <button className="primary" disabled={busy} onClick={() => onCard(m, true)}>Fill in</button>
+                      <button disabled={busy} onClick={() => onCard(m, false)}>Reject</button>
+                    </div>
+                  ) : (
+                    <div className="muted">{{ accepted: 'Filled in', rejected: 'Rejected', dismissed: 'Skipped' }[m.status]}</div>
+                  )}
+                </div>
+              )
+          }
+        })}
+        {busy && <div className="typing muted">the assistant is thinking…</div>}
+        <div ref={end} />
+      </div>
+      {(files.length > 0 || fileErr) && (
+        <div className="pending-files">
+          {files.map((f) => (
+            <span key={f.id} className="file-chip">
+              📎 {f.filename}
+              <button className="link" onClick={() => setFiles((x) => x.filter((y) => y.id !== f.id))} aria-label="Remove">×</button>
+            </span>
+          ))}
+          {fileErr && <span className="err">{fileErr}</span>}
+        </div>
+      )}
+      <form className="composer" onSubmit={(e) => { e.preventDefault(); submit() }}>
+        <input ref={picker} type="file" hidden multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md"
+          onChange={(e) => void pick(e.target.files)} />
+        <button type="button" title="Attach a document" disabled={busy || uploading} onClick={() => picker.current?.click()}>
+          {uploading ? '…' : '📎'}
+        </button>
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message the assistant…" disabled={busy} />
+        <button className="primary" disabled={busy || uploading || (!text.trim() && !files.length)}>➤</button>
+      </form>
+    </>
+  )
+}
+
+function shortArgs(a: unknown): string {
+  const s = JSON.stringify(a ?? {})
+  return s.length > 70 ? s.slice(0, 70) + '…' : s
+}

@@ -1,0 +1,589 @@
+<title>formguide Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: sticky page index on the left, one page at a time on the right; stacks on phones. */
+:root {
+  --bg: #f5f7f9; --surface: #ffffff; --fg: #17202b; --muted: #5b6876; --line: #d5dce4;
+  --accent: #0d6e66; --accent-soft: #dff1ee; --warn: #a04b12;
+  --f-display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #10151b; --surface: #171e26; --fg: #e3e9ef; --muted: #93a1b0; --line: #2c3743;
+    --accent: #4fd1c1; --accent-soft: #143430; --warn: #f0a46a; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #10151b; --surface: #171e26; --fg: #e3e9ef; --muted: #93a1b0; --line: #2c3743;
+  --accent: #4fd1c1; --accent-soft: #143430; --warn: #f0a46a; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--f-body); margin: 0; }
+.wrap { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 40px; max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px; }
+nav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; }
+.brand { font: 600 18px/1.2 var(--f-display); margin: 0 0 4px; }
+.brand-sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+nav ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; counter-reset: p; }
+nav a { display: flex; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 6px; color: var(--muted);
+  text-decoration: none; font-size: 14px; }
+nav a::before { counter-increment: p; content: counter(p); font: 12px var(--f-mono); color: var(--muted); width: 14px; }
+nav a:hover { color: var(--fg); background: var(--surface); }
+nav a[aria-current="page"] { color: var(--fg); background: var(--accent-soft); font-weight: 500; }
+nav a:focus-visible, .pager a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { min-width: 0; }
+section[data-page] { max-width: 860px; }
+.eyebrow { font: 500 12px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
+h1 { font: 600 34px/1.15 var(--f-display); margin: 0 0 12px; text-wrap: balance; letter-spacing: -.01em; }
+h2 { font: 600 20px/1.3 var(--f-display); margin: 36px 0 10px; text-wrap: balance; }
+p, li { max-width: 68ch; }
+.lead { font-size: 17px; color: var(--muted); margin: 0 0 24px; }
+code, .mono { font-family: var(--f-mono); font-size: .9em; }
+code { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+pre { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto;
+  font: 13px/1.55 var(--f-mono); margin: 12px 0 20px; }
+pre code { border: 0; padding: 0; background: none; }
+figure { margin: 20px 0 28px; }
+.d { display: block; width: 100%; height: auto; color: var(--fg); overflow: visible; }
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; overflow-x: auto; }
+.diagram svg { min-width: 640px; }
+figcaption { color: var(--muted); font-size: 13.5px; margin-top: 10px; max-width: 72ch; }
+.d .box { fill: var(--surface); stroke: currentColor; stroke-width: 1.2; }
+.d .soft { fill: var(--bg); stroke: var(--line); stroke-width: 1.2; }
+.d .key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.6; }
+.d .zone { fill: none; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.d .ln { stroke: currentColor; stroke-width: 1.3; fill: none; }
+.d .ln-key { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+.d .ln-dash { stroke: currentColor; stroke-width: 1.2; stroke-dasharray: 4 4; fill: none; }
+.d text { fill: currentColor; font: 13px var(--f-body); }
+.d .t-b { font-weight: 600; }
+.d .t-s { font-size: 11.5px; fill: var(--muted); }
+.d .t-m { font: 11.5px var(--f-mono); fill: var(--muted); }
+.d .t-k { fill: var(--accent); font-weight: 600; }
+.d .t-w { fill: var(--warn); }
+.d .head { fill: currentColor; }
+.d .head-key { fill: var(--accent); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0 24px; }
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.note h3 { font: 600 14px var(--f-display); margin: 0 0 6px; }
+.note p, .note ul { margin: 0; font-size: 14px; color: var(--muted); }
+.note ul { padding-left: 18px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.tbl { overflow-x: auto; margin: 12px 0 24px; }
+th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 13px; }
+td:first-child { white-space: nowrap; }
+.pill { display: inline-block; font: 12px var(--f-mono); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.pill.ok { color: var(--accent); border-color: var(--accent); }
+.pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); }
+.pager a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.pager a:empty { visibility: hidden; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 20px; padding-block: 20px 48px; }
+  nav { position: static; }
+  nav ol { flex-direction: row; overflow-x: auto; padding-bottom: 6px; }
+  nav a { white-space: nowrap; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 28px; }
+}
+@media (prefers-reduced-motion: no-preference) { section[data-page] { animation: in .18s ease-out; } }
+@keyframes in { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+</style>
+
+<div class="wrap">
+  <nav aria-label="Pages">
+    <p class="brand">formguide</p>
+    <p class="brand-sub">A chat agent for large configurable forms</p>
+    <ol>
+      <li><a href="#overview">System overview</a></li>
+      <li><a href="#turn">One turn</a></li>
+      <li><a href="#context">What the model sees</a></li>
+      <li><a href="#knowledge">Business documents</a></li>
+      <li><a href="#attachments">User documents</a></li>
+      <li><a href="#memory">Long conversations</a></li>
+      <li><a href="#config">Configuration</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <!-- ============================================================ 1 -->
+    <section data-page="overview">
+      <p class="eyebrow">System overview</p>
+      <h1>The form owns the config; the agent advises and proposes</h1>
+      <p class="lead">The Java backend sends the JSX once and rebuilds the config on every event. The frontend forwards what it received. The agent never writes the config: every change takes the same path as the user’s own input.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 330" role="img" aria-label="Data flows from the Java backend to the frontend and the agent; the agent’s changes come back through the frontend and the backend, never straight into the config.">
+            <defs>
+              <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a1k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="box" x="20" y="40" width="170" height="90" rx="8"/>
+            <text x="105" y="74" text-anchor="middle" class="t-b">Form backend</text>
+            <text x="105" y="94" text-anchor="middle" class="t-s">your Java service</text>
+            <text x="105" y="112" text-anchor="middle" class="t-m">JSX · config · rules</text>
+
+            <rect class="box" x="300" y="40" width="190" height="90" rx="8"/>
+            <text x="395" y="74" text-anchor="middle" class="t-b">Frontend</text>
+            <text x="395" y="94" text-anchor="middle" class="t-s">renders JSX from config,</text>
+            <text x="395" y="110" text-anchor="middle" class="t-s">chat (AG-UI / CopilotKit)</text>
+
+            <rect class="key" x="600" y="30" width="240" height="140" rx="8"/>
+            <text x="720" y="58" text-anchor="middle" class="t-b">FormGuide</text>
+            <text x="720" y="78" text-anchor="middle" class="t-s">LangGraph: sync → llm ⇄ tools</text>
+            <text x="720" y="96" text-anchor="middle" class="t-s">Layout Index · Overlay · diff</text>
+            <text x="720" y="114" text-anchor="middle" class="t-s">Domain packs · skills</text>
+            <text x="720" y="132" text-anchor="middle" class="t-s">conversation memory</text>
+            <text x="720" y="154" text-anchor="middle" class="t-m">pip install / copy the folder</text>
+
+            <rect class="soft" x="600" y="220" width="110" height="70" rx="8"/>
+            <text x="655" y="250" text-anchor="middle" class="t-b">Models</text>
+            <text x="655" y="268" text-anchor="middle" class="t-s">any LangChain model</text>
+            <rect class="soft" x="730" y="220" width="110" height="70" rx="8"/>
+            <text x="785" y="250" text-anchor="middle" class="t-b">Knowledge</text>
+            <text x="785" y="268" text-anchor="middle" class="t-s">documents, index</text>
+
+            <line class="ln" x1="190" y1="70" x2="298" y2="70" marker-end="url(#a1)"/>
+            <text x="244" y="62" text-anchor="middle" class="t-s">JSX once</text>
+            <text x="244" y="86" text-anchor="middle" class="t-s">config per event</text>
+
+            <line class="ln" x1="490" y1="62" x2="598" y2="62" marker-end="url(#a1)"/>
+            <text x="544" y="54" text-anchor="middle" class="t-s">JSX, pack</text>
+            <line class="ln" x1="490" y1="92" x2="598" y2="92" marker-end="url(#a1)"/>
+            <text x="544" y="84" text-anchor="middle" class="t-s">config + message</text>
+            <line class="ln" x1="598" y1="122" x2="490" y2="122" marker-end="url(#a1)"/>
+            <text x="544" y="140" text-anchor="middle" class="t-s">SSE: text, highlights,</text>
+            <text x="544" y="154" text-anchor="middle" class="t-s">confirmation cards</text>
+
+            <path class="ln-key" d="M395,130 L395,230 L105,230 L105,132" marker-end="url(#a1k)"/>
+            <text x="250" y="222" text-anchor="middle" class="t-k">confirmed change</text>
+            <text x="250" y="248" text-anchor="middle" class="t-s">the frontend applies it like user input → backend → new config</text>
+
+            <line class="ln" x1="655" y1="170" x2="655" y2="218" marker-end="url(#a1)"/>
+            <line class="ln" x1="785" y1="170" x2="785" y2="218" marker-end="url(#a1)"/>
+          </svg>
+        </div>
+        <figcaption>The green loop is the only way the form changes: the agent proposes, the user confirms, the frontend sends an event to the backend, and the new config arrives with the next call.</figcaption>
+      </figure>
+      <h2>Principles</h2>
+      <div class="grid2">
+        <div class="note"><h3>The config is the source of truth</h3><p>Form state is not kept in the agent’s memory: it is rebuilt from the incoming config every turn, so it never needs syncing or summarizing.</p></div>
+        <div class="note"><h3>The core knows no domain</h3><p>A loan, a barbershop booking, a calendar: everything domain-specific comes from outside (domain packs, managers’ documents, skills). The core changes only with the component library.</p></div>
+        <div class="note"><h3>Small context</h3><p>The model sees a collapsed outline, the open section and the changes: about 1K tokens instead of about 16K for the loan form’s raw config. The rest is available through tools.</p></div>
+        <div class="note"><h3>Append-only history</h3><p>The system prompt is frozen per thread and updates arrive in new messages. This keeps prompt caching working and keeps models that bind reasoning to the prefix happy.</p></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 2 -->
+    <section data-page="turn" hidden>
+      <p class="eyebrow">One turn</p>
+      <h1>From a user message to an answer or a card</h1>
+      <p class="lead">Every message brings a fresh config. The graph diffs it against the previous snapshot, compacts the history if needed, and calls the model and its tools. When the model proposes field values, the graph stops at an interrupt until the user answers.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 380" role="img" aria-label="Graph nodes sync, compact, llm, tools, confirm with an interrupt, and nudge; the frontend applies the change and resumes the graph.">
+            <defs>
+              <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a2k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <text x="20" y="28" class="t-m">message + config</text>
+            <line class="ln" x1="80" y1="36" x2="80" y2="58" marker-end="url(#a2)"/>
+            <rect class="box" x="20" y="60" width="120" height="64" rx="8"/>
+            <text x="80" y="86" text-anchor="middle" class="t-b">sync</text>
+            <text x="80" y="104" text-anchor="middle" class="t-s">diff, context</text>
+
+            <rect class="box" x="190" y="60" width="120" height="64" rx="8"/>
+            <text x="250" y="86" text-anchor="middle" class="t-b">compact</text>
+            <text x="250" y="104" text-anchor="middle" class="t-s">if history is long</text>
+
+            <rect class="key" x="360" y="60" width="130" height="64" rx="8"/>
+            <text x="425" y="86" text-anchor="middle" class="t-b">llm</text>
+            <text x="425" y="104" text-anchor="middle" class="t-s">streams text</text>
+
+            <rect class="box" x="560" y="60" width="130" height="64" rx="8"/>
+            <text x="625" y="86" text-anchor="middle" class="t-b">tools</text>
+            <text x="625" y="104" text-anchor="middle" class="t-s">search, focus, …</text>
+
+            <rect class="box" x="560" y="200" width="130" height="64" rx="8"/>
+            <text x="625" y="226" text-anchor="middle" class="t-b">confirm</text>
+            <text x="625" y="244" text-anchor="middle" class="t-w">interrupt</text>
+
+            <rect class="soft" x="360" y="200" width="130" height="64" rx="8"/>
+            <text x="425" y="226" text-anchor="middle" class="t-b">nudge</text>
+            <text x="425" y="244" text-anchor="middle" class="t-s">silent turn</text>
+
+            <rect class="soft" x="740" y="200" width="100" height="64" rx="8"/>
+            <text x="790" y="226" text-anchor="middle" class="t-b">frontend</text>
+            <text x="790" y="244" text-anchor="middle" class="t-s">→ backend</text>
+
+            <rect class="soft" x="360" y="310" width="130" height="44" rx="22"/>
+            <text x="425" y="337" text-anchor="middle" class="t-b">answer</text>
+
+            <line class="ln" x1="140" y1="92" x2="188" y2="92" marker-end="url(#a2)"/>
+            <line class="ln" x1="310" y1="92" x2="358" y2="92" marker-end="url(#a2)"/>
+            <line class="ln" x1="490" y1="80" x2="558" y2="80" marker-end="url(#a2)"/>
+            <text x="524" y="72" text-anchor="middle" class="t-s">tool calls</text>
+            <line class="ln" x1="558" y1="106" x2="490" y2="106" marker-end="url(#a2)"/>
+            <text x="524" y="122" text-anchor="middle" class="t-s">results</text>
+
+            <line class="ln-key" x1="625" y1="124" x2="625" y2="198" marker-end="url(#a2k)"/>
+            <text x="633" y="166" class="t-k">propose_changes</text>
+            <line class="ln-dash" x1="690" y1="222" x2="738" y2="222" marker-end="url(#a2)"/>
+            <text x="714" y="214" text-anchor="middle" class="t-s">card</text>
+            <line class="ln-key" x1="738" y1="246" x2="690" y2="246" marker-end="url(#a2k)"/>
+            <text x="714" y="282" text-anchor="middle" class="t-k">resume</text>
+            <text x="714" y="296" text-anchor="middle" class="t-s">{accepted, config}</text>
+            <path class="ln" d="M560,232 C520,232 520,150 470,124" marker-end="url(#a2)"/>
+            <text x="512" y="182" text-anchor="middle" class="t-s">form diff</text>
+
+            <line class="ln" x1="425" y1="124" x2="425" y2="198" marker-end="url(#a2)"/>
+            <path class="ln" d="M400,200 C390,170 390,150 400,126" marker-end="url(#a2)"/>
+            <path class="ln" d="M362,110 C300,180 330,300 360,328" marker-end="url(#a2)"/>
+            <text x="300" y="250" text-anchor="middle" class="t-s">no tool calls</text>
+          </svg>
+        </div>
+        <figcaption>A turn ends with an answer or a card. After confirmation the frontend applies the change through the backend and resumes the graph with the new config. The model receives the diff, the form’s reaction, and carries the chain on (service → barber → date).</figcaption>
+      </figure>
+      <div class="tbl"><table>
+        <thead><tr><th>Node</th><th>What it does</th><th>Safeguard</th></tr></thead>
+        <tbody>
+          <tr><td><code>sync</code></td><td>Diffs the config against the snapshot, learns dependencies, builds the context, appends the message</td><td>System prompt frozen; knowledge updates arrive as <code>&lt;updated_instructions&gt;</code></td></tr>
+          <tr><td><code>compact</code></td><td>Compacts older turns into memory when the history is above the threshold</td><td>A failed compaction never blocks the turn</td></tr>
+          <tr><td><code>llm</code></td><td>Streams the reply; withholds short internal notes before tool calls</td><td>Retries once without reasoning blocks if the provider rejects them</td></tr>
+          <tr><td><code>tools</code></td><td>Built-in tools, skill tools and your own <code>BaseTool</code></td><td><code>propose_changes</code> checks visibility, availability, read-only and options</td></tr>
+          <tr><td><code>confirm</code></td><td>Interrupt with the card; afterwards the form’s diff for the model</td><td>An ignored card is closed on the next message</td></tr>
+          <tr><td><code>nudge</code></td><td>Asks the model to answer if it ended the turn silently</td><td>At most once per turn</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============================================================ 3 -->
+    <section data-page="context" hidden>
+      <p class="eyebrow">What the model sees</p>
+      <h1>A collapsed outline, the open section and the changes</h1>
+      <p class="lead">Structure and order come from the JSX, deterministically; labels, flags and values come from the config. No model is involved in building the context.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 330" role="img" aria-label="A model request: the frozen system prompt, history with memory, and the current message with its form_context block; about 1 thousand tokens against 16 thousand for the config.">
+            <rect class="soft" x="20" y="20" width="420" height="78" rx="8"/>
+            <text x="36" y="44" class="t-b">System prompt · frozen per thread</text>
+            <text x="36" y="64" class="t-s">persona · working rules · rules from documents</text>
+            <text x="36" y="82" class="t-s">filling hints · skills (name + description)</text>
+            <rect class="soft" x="20" y="110" width="420" height="58" rx="8"/>
+            <text x="36" y="134" class="t-b">History</text>
+            <text x="36" y="154" class="t-s">conversation memory (after compaction) + recent turns</text>
+            <rect class="key" x="20" y="180" width="420" height="132" rx="8"/>
+            <text x="36" y="204" class="t-b">Current message</text>
+            <text x="36" y="226" class="t-m">&lt;updated_instructions&gt;   only if knowledge changed</text>
+            <text x="36" y="246" class="t-m">&lt;form_context&gt; NOW · FORM · FOCUS · CHANGES</text>
+            <text x="36" y="266" class="t-m">the user’s text</text>
+            <text x="36" y="286" class="t-m">[attachment att_… — read it with a tool]</text>
+
+            <text x="490" y="44" class="t-b">Tokens per turn, loan form</text>
+            <text x="490" y="78" class="t-s">raw config</text>
+            <rect x="590" y="64" width="250" height="18" rx="3" style="fill: var(--line)"/>
+            <text x="840" y="100" text-anchor="end" class="t-m">≈16 700</text>
+            <text x="490" y="132" class="t-s">form_context</text>
+            <rect x="590" y="118" width="16" height="18" rx="3" style="fill: var(--accent)"/>
+            <text x="614" y="132" class="t-m">≈1 000</text>
+            <text x="490" y="176" class="t-s">barbershop</text>
+            <rect x="590" y="162" width="7" height="18" rx="3" style="fill: var(--accent)"/>
+            <text x="605" y="176" class="t-m">≈430</text>
+            <text x="490" y="226" class="t-s">Size barely depends on the form:</text>
+            <text x="490" y="244" class="t-s">only the section on screen is expanded,</text>
+            <text x="490" y="262" class="t-s">deeper via get_outline / get_fields,</text>
+            <text x="490" y="280" class="t-s">search by meaning via search_fields.</text>
+          </svg>
+        </div>
+        <figcaption>Bars to scale: the loan form’s context block is about 16 times smaller than the config the backend sends.</figcaption>
+      </figure>
+      <h2>An example context block</h2>
+<pre><code>NOW (user's local time): 2026-11-11 Wednesday 12:25
+FORM "Loan application" · config v4 · fields visible 87/221 · required filled 3/55 · errors 0
+1 [Tabs main]  req 3/55 ▶
+  1.3 [Tab tab_employment] "Employment & income"  req 1/10 ▶
+    1.3.2 [Accordion acc_employer] "Employer"  req 0/6 ▶ open [FOCUS]
+    1.3.3 [Accordion acc_business] "Sole proprietor" — hidden (usually appears when employment_type = Sole proprietor (seen 3x))
+  1.8 [Tab tab_documents] "Documents & consents" ⊘ disabled, 5 required inside (cause unknown; GUESS: …)
+FOCUS 1.3.2 [Accordion acc_employer] "Employer" · cursor in field employer_name
+1.3.2.2 employer_inn Input* "Company tax ID" = ∅  ℹ 10 digits, usually in the employment contract
+CHANGES v3 → v4:
+user: loan_type ∅ → "Car loan" (id=auto)
+form reacted:
+  + appeared tab_collateral "Collateral" (5 required)
+  ⊘→✓ became available loan_purpose "Loan purpose"</code></pre>
+      <div class="grid2">
+        <div class="note"><h3>Flags are inherited</h3><p>A field inside a hidden or disabled container is hidden or disabled too. Progress counts only fields that can be filled.</p></div>
+        <div class="note"><h3>Dependencies by observation</h3><p>The config never says what a field depends on. The agent records what changed after a single-field edit and shows it as a “usually appears when…” hint.</p></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 4 -->
+    <section data-page="knowledge" hidden>
+      <p class="eyebrow">Business documents</p>
+      <h1>Managers upload documents; each form sees its scope</h1>
+      <p class="lead">Documents go into a namespace (the form id by default). Scopes say which namespaces a form sees: its own and, for example, the bank’s shared documents. Then two layers: compilation into the domain pack, and a researcher for rare questions.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 360" role="img" aria-label="Managers’ documents are stored by namespace; compilation turns them into rules in the prompt; the index and the researcher answer rare questions.">
+            <defs>
+              <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a4k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="box" x="20" y="130" width="130" height="64" rx="8"/>
+            <text x="85" y="156" text-anchor="middle" class="t-b">Manager</text>
+            <text x="85" y="174" text-anchor="middle" class="t-s">.md .txt .pdf</text>
+
+            <rect class="box" x="210" y="110" width="170" height="104" rx="8"/>
+            <text x="295" y="136" text-anchor="middle" class="t-b">DocumentStore</text>
+            <text x="295" y="158" text-anchor="middle" class="t-m">loan_application/</text>
+            <text x="295" y="176" text-anchor="middle" class="t-m">bank_common/</text>
+            <text x="295" y="194" text-anchor="middle" class="t-m">barber_booking/</text>
+
+            <rect class="key" x="450" y="30" width="180" height="70" rx="8"/>
+            <text x="540" y="58" text-anchor="middle" class="t-b">Compile</text>
+            <text x="540" y="78" text-anchor="middle" class="t-s">one model pass</text>
+            <rect class="soft" x="680" y="30" width="160" height="70" rx="8"/>
+            <text x="760" y="58" text-anchor="middle" class="t-b">Domain Pack</text>
+            <text x="760" y="78" text-anchor="middle" class="t-s">rules, field notes</text>
+
+            <rect class="box" x="450" y="140" width="180" height="70" rx="8"/>
+            <text x="540" y="168" text-anchor="middle" class="t-b">SearchIndex</text>
+            <text x="540" y="188" text-anchor="middle" class="t-s">BM25 | any VectorStore</text>
+
+            <rect class="box" x="450" y="250" width="180" height="84" rx="8"/>
+            <text x="540" y="276" text-anchor="middle" class="t-b">Researcher</text>
+            <text x="540" y="296" text-anchor="middle" class="t-s">deep agent, own context</text>
+            <text x="540" y="314" text-anchor="middle" class="t-m">/docs/&lt;ns&gt;/ read-only</text>
+            <rect class="soft" x="680" y="250" width="160" height="84" rx="8"/>
+            <text x="760" y="282" text-anchor="middle" class="t-b">Form agent</text>
+            <text x="760" y="302" text-anchor="middle" class="t-s">ask_documents</text>
+
+            <line class="ln" x1="150" y1="162" x2="208" y2="162" marker-end="url(#a4)"/>
+            <text x="179" y="154" text-anchor="middle" class="t-s">into ns</text>
+            <path class="ln-key" d="M380,130 C410,100 420,70 448,66" marker-end="url(#a4k)"/>
+            <text x="414" y="84" text-anchor="end" class="t-k">all in scope</text>
+            <line class="ln-key" x1="630" y1="65" x2="678" y2="65" marker-end="url(#a4k)"/>
+            <line class="ln" x1="380" y1="175" x2="448" y2="175" marker-end="url(#a4)"/>
+            <text x="414" y="167" text-anchor="middle" class="t-s">sections</text>
+            <line class="ln" x1="540" y1="248" x2="540" y2="212" marker-end="url(#a4)"/>
+            <text x="548" y="234" class="t-s">search in scope</text>
+            <path class="ln" d="M380,200 C420,260 420,300 448,300" marker-end="url(#a4)"/>
+            <text x="404" y="276" text-anchor="end" class="t-s">files</text>
+            <line class="ln" x1="678" y1="280" x2="632" y2="280" marker-end="url(#a4)"/>
+            <text x="655" y="272" text-anchor="middle" class="t-s">question</text>
+            <line class="ln" x1="632" y1="308" x2="678" y2="308" marker-end="url(#a4)"/>
+            <text x="655" y="326" text-anchor="middle" class="t-s">answer + sources</text>
+            <path class="ln-dash" d="M760,100 L760,248" marker-end="url(#a4)"/>
+            <text x="768" y="180" class="t-s">in the prompt,</text>
+            <text x="768" y="196" class="t-s">every turn</text>
+          </svg>
+        </div>
+        <figcaption>Typical questions are answered from rules compiled into the prompt (the green path), with no retrieval. The researcher spends time and tokens only on what the rules do not cover, and returns a short cited answer to the main agent.</figcaption>
+      </figure>
+      <div class="grid2">
+        <div class="note"><h3>Why not a deep agent for everything</h3><p>A form chat is many short turns. The deep-agent harness would add its overhead to each of them. Only document work is delegated, and everything the researcher reads stays in its own context.</p></div>
+        <div class="note"><h3>Checked in live runs</h3><ul><li>“Omar does not work on Mondays”: only in the documents, not in the form</li><li>“Late-payment penalties?”: an honest “the documents do not say”</li><li>Recompiling during a conversation does not break the thread</li></ul></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 5 -->
+    <section data-page="attachments" hidden>
+      <p class="eyebrow">User documents</p>
+      <h1>A scan is read separately and never enters the history</h1>
+      <p class="lead">The user attaches a letter, a business card or a scan. A separate vision call gets the document and the form’s field catalog and returns only the values found. The main conversation sees values, not the image.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 260" role="img" aria-label="The attachment is stored per thread; a separate model call extracts values; the main agent proposes them in a card or keeps them for locked steps.">
+            <defs>
+              <marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a5k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="zone" x="220" y="20" width="300" height="220" rx="10"/>
+            <text x="370" y="40" text-anchor="middle" class="t-s">outside the main conversation</text>
+
+            <rect class="box" x="20" y="90" width="150" height="64" rx="8"/>
+            <text x="95" y="116" text-anchor="middle" class="t-b">📎 file</text>
+            <text x="95" y="134" text-anchor="middle" class="t-s">PDF · photo · text</text>
+
+            <rect class="box" x="240" y="56" width="120" height="64" rx="8"/>
+            <text x="300" y="82" text-anchor="middle" class="t-b">Attachment</text>
+            <text x="300" y="100" text-anchor="middle" class="t-s">Store (thread)</text>
+
+            <rect class="key" x="380" y="130" width="125" height="84" rx="8"/>
+            <text x="442" y="158" text-anchor="middle" class="t-b">Extraction</text>
+            <text x="442" y="178" text-anchor="middle" class="t-s">vision + catalog</text>
+            <text x="442" y="196" text-anchor="middle" class="t-s">structured output</text>
+
+            <rect class="box" x="580" y="56" width="130" height="64" rx="8"/>
+            <text x="645" y="82" text-anchor="middle" class="t-b">Form agent</text>
+            <text x="645" y="100" text-anchor="middle" class="t-s">extract_from_…</text>
+
+            <rect class="soft" x="740" y="20" width="100" height="56" rx="8"/>
+            <text x="790" y="44" text-anchor="middle" class="t-b">card</text>
+            <text x="790" y="62" text-anchor="middle" class="t-s">editable fields</text>
+            <rect class="soft" x="740" y="100" width="100" height="56" rx="8"/>
+            <text x="790" y="124" text-anchor="middle" class="t-b">remember</text>
+            <text x="790" y="142" text-anchor="middle" class="t-s">locked steps</text>
+
+            <line class="ln" x1="170" y1="110" x2="238" y2="94" marker-end="url(#a5)"/>
+            <path class="ln" d="M300,120 L300,172 L378,172" marker-end="url(#a5)"/>
+            <text x="308" y="150" class="t-s">file</text>
+            <path class="ln" d="M578,104 C540,120 530,150 507,160" marker-end="url(#a5)"/>
+            <text x="560" y="152" text-anchor="middle" class="t-s">fields</text>
+            <path class="ln-key" d="M505,190 C560,190 600,150 640,122" marker-end="url(#a5k)"/>
+            <text x="600" y="206" class="t-k">values</text>
+            <text x="600" y="222" class="t-s">+ confidence, evidence</text>
+            <line class="ln" x1="710" y1="74" x2="738" y2="52" marker-end="url(#a5)"/>
+            <line class="ln" x1="710" y1="100" x2="738" y2="124" marker-end="url(#a5)"/>
+          </svg>
+        </div>
+        <figcaption>Everything inside the dashed area touches the file itself. Only text enters the conversation: “employer_inn = 7701234567 [high; letterhead; editable now]”.</figcaption>
+      </figure>
+      <div class="grid2">
+        <div class="note"><h3>A live example</h3><p>An employment letter: the agent first chose “employed” to unlock the employer block, filled the tax id, position and start date, put the name back into the nominative case and warned about the “SAMPLE” watermark.</p></div>
+        <div class="note"><h3>PII</h3><p>Values of PII fields reach the model as <code>&lt;filled&gt;</code>. What the user types or attaches is seen by the model by design; strict regimes need tokenization before the model call.</p></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 6 -->
+    <section data-page="memory" hidden>
+      <p class="eyebrow">Long conversations</p>
+      <h1>Compact the dialogue, not the form</h1>
+      <p class="lead">The form state is rebuilt from the config every turn, so it never needs summarizing. What grows is the per-turn context blocks (about 1K tokens each, stale immediately), tool results and the dialogue itself. That is what gets compacted.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 270" role="img" aria-label="Before compaction: eight turns, each with its own context block. After: the conversation memory and the last two turns verbatim.">
+            <defs>
+              <marker id="a6k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <text x="20" y="30" class="t-b">Before: history above the threshold</text>
+            <g>
+              <rect class="soft" x="20" y="44" width="92" height="56" rx="6"/><text x="66" y="68" text-anchor="middle" class="t-s">turn 1</text><text x="66" y="86" text-anchor="middle" class="t-m">ctx+answer</text>
+              <rect class="soft" x="122" y="44" width="92" height="56" rx="6"/><text x="168" y="68" text-anchor="middle" class="t-s">turn 2</text><text x="168" y="86" text-anchor="middle" class="t-m">ctx+tools</text>
+              <rect class="soft" x="224" y="44" width="92" height="56" rx="6"/><text x="270" y="68" text-anchor="middle" class="t-s">turn 3</text><text x="270" y="86" text-anchor="middle" class="t-m">ctx+card</text>
+              <rect class="soft" x="326" y="44" width="92" height="56" rx="6"/><text x="372" y="68" text-anchor="middle" class="t-s">turn 4</text><text x="372" y="86" text-anchor="middle" class="t-m">ctx+answer</text>
+              <rect class="soft" x="428" y="44" width="92" height="56" rx="6"/><text x="474" y="68" text-anchor="middle" class="t-s">turn 5</text><text x="474" y="86" text-anchor="middle" class="t-m">ctx+tools</text>
+              <rect class="soft" x="530" y="44" width="92" height="56" rx="6"/><text x="576" y="68" text-anchor="middle" class="t-s">turn 6</text><text x="576" y="86" text-anchor="middle" class="t-m">ctx+answer</text>
+              <rect class="box" x="632" y="44" width="92" height="56" rx="6"/><text x="678" y="68" text-anchor="middle" class="t-s">turn 7</text><text x="678" y="86" text-anchor="middle" class="t-m">verbatim</text>
+              <rect class="box" x="734" y="44" width="92" height="56" rx="6"/><text x="780" y="68" text-anchor="middle" class="t-s">turn 8</text><text x="780" y="86" text-anchor="middle" class="t-m">verbatim</text>
+            </g>
+            <path class="ln-key" d="M320,104 L320,150" marker-end="url(#a6k)"/>
+            <text x="332" y="132" class="t-k">a cheap model writes the memory</text>
+            <text x="20" y="176" class="t-b">After</text>
+            <rect class="key" x="20" y="190" width="600" height="60" rx="6"/>
+            <text x="36" y="214" class="t-b">&lt;conversation_memory&gt;</text>
+            <text x="36" y="234" class="t-s">goal · user facts (not in the form yet: “code word Barsik — tab locked”) · rejections · next step</text>
+            <rect class="box" x="632" y="190" width="92" height="60" rx="6"/><text x="678" y="216" text-anchor="middle" class="t-s">turn 7</text><text x="678" y="234" text-anchor="middle" class="t-m">no reasoning</text>
+            <rect class="box" x="734" y="190" width="92" height="60" rx="6"/><text x="780" y="216" text-anchor="middle" class="t-s">turn 8</text><text x="780" y="234" text-anchor="middle" class="t-m">no reasoning</text>
+          </svg>
+        </div>
+        <figcaption>Turns 1–6 become memory and are dropped together with their context blocks. The memory merges with the previous one, so it survives many compactions. The threshold and the number of verbatim turns are set in <code>memory:</code> in the config.</figcaption>
+      </figure>
+      <h2>What the memory keeps</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Section</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Goal</td><td>What the user is applying for at all</td></tr>
+          <tr><td>Facts the user gave</td><td>Exact values and status: in the form / <b>not yet</b> (step locked, field hidden, not confirmed). What is not in the form yet matters most</td></tr>
+          <tr><td>Decisions and preferences</td><td>Agreements (“fill the consents once the tab unlocks”)</td></tr>
+          <tr><td>Rejected or declined</td><td>So rejected changes are not proposed again</td></tr>
+          <tr><td>Open questions / next step</td><td>Where the conversation stopped</td></tr>
+        </tbody>
+      </table></div>
+      <h2>The “Invalid signature in thinking block” error</h2>
+      <p>Claude Opus 5.5 binds reasoning blocks to the exact conversation prefix, including the system prompt. The prompt used to be rebuilt every turn and included rules from documents. When the documents were recompiled during a conversation, the prompt changed and the provider rejected every earlier block.</p>
+      <div class="grid2">
+        <div class="note"><h3>The fix</h3><ul><li>The system prompt is frozen per thread</li><li>Knowledge updates arrive as <code>&lt;updated_instructions&gt;</code> in a new message</li><li>If the provider still rejects old reasoning, one retry without it</li><li>Compaction removes reasoning from the kept turns</li></ul></div>
+        <div class="note"><h3>Checked</h3><ul><li>Recompiling documents during a live conversation: 0 errors</li><li>A 3,000-token threshold with 1 verbatim turn: the code word from the first message survived compaction and was entered once the tab unlocked</li></ul></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 7 -->
+    <section data-page="config" hidden>
+      <p class="eyebrow">Configuration</p>
+      <h1>Install or copy it, then configure</h1>
+      <p class="lead">The <code>formguide</code> library does not depend on a transport or a UI. <code>demo/</code> is an example integration: a mock form backend, a FastAPI app and a frontend. Every domain and every provider is set in the configuration, in code or YAML.</p>
+<pre><code>backend/
+  formguide/                 the library
+    guide.py                 FormGuide: register_form · run (AG-UI events) · compile_knowledge
+    config.py                GuideConfig, load_config(yaml)
+    models.py                models per role: agent · research · compile · extract
+    skills.py                SKILL.md + LangChain tools, scoped to forms
+    server.py                optional FastAPI router
+    form/                    layout (ComponentMap) · overlay · diff · context rendering
+    agent/                   graph · tools · prompt · memory (compaction)
+    domain/                  Domain Pack: inline › provider › packs › dir › default (+ documents)
+    knowledge/               storage · index (BM25 | VectorStore) · scopes · compile · researcher
+    attachments/             user attachments and extraction
+  demo/                      example: app.py · formguide.yaml · skills/ · domain_packs/ · mock_forms/</code></pre>
+      <h2>Extension points</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>What</th><th>How</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td>Models</td><td>Any <code>BaseChatModel</code>, a string or a class</td><td><code>AzureChatOpenAI(...)</code>, <code>"openai:gpt-5-mini"</code></td></tr>
+          <tr><td>Components</td><td><code>ComponentMap</code>: tag → role</td><td><code>{Wizard: tabs, TextField: text}</code></td></tr>
+          <tr><td>Domain packs</td><td>with the form, a callable, a dict, a JSON directory</td><td><code>provider: my_app.packs:load</code></td></tr>
+          <tr><td>Search</td><td><code>BM25Index</code> or <code>VectorStoreIndex(store)</code></td><td>PGVector, Chroma, Qdrant, Azure AI Search</td></tr>
+          <tr><td>Scopes</td><td>form → document namespaces</td><td><code>loan: [loan, bank_common]</code></td></tr>
+          <tr><td>Skills</td><td><code>SKILL.md</code> folders or <code>Skill(...)</code></td><td><code>gift_cards</code> + <code>check_gift_card</code></td></tr>
+          <tr><td>Tools</td><td>any <code>BaseTool</code>, for all forms</td><td>a call to your API</td></tr>
+          <tr><td>History</td><td><code>checkpointer</code></td><td>Postgres / Redis saver</td></tr>
+          <tr><td>Memory</td><td><code>MemoryConfig</code></td><td>threshold, verbatim turns, model</td></tr>
+        </tbody>
+      </table></div>
+      <h2>YAML</h2>
+<pre><code>models:
+  agent:    {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5,
+             api_version: "2025-04-01-preview", azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}
+  research: "openai:gpt-5-mini"
+  extract:  {provider: anthropic, model: claude-opus-5-5, max_tokens: 8000}
+components: {containers: {Tabs: tabs, Tab: tab, Accordion: accordion}, fields: {Input: text, Dropdown: select}}
+domain_packs: {dir: domain_packs, provider: "my_app.packs:load_pack"}
+knowledge:
+  index: {factory: "my_app.vectors:make_store", filter: "my_app.vectors:ns_filter"}
+  scopes: {loan_application: [loan_application, bank_common]}
+skills: {dir: skills}
+tools: ["my_app.tools:check_status"]
+memory: {max_history_tokens: 60000, keep_turns: 4, model: "anthropic:claude-haiku-5-5"}</code></pre>
+      <h2>In code</h2>
+<pre><code>from formguide import FormGuide, load_config
+from formguide.server import create_router
+
+guide = FormGuide(load_config("formguide.yaml"))
+app.include_router(create_router(guide), prefix="/agent")   # or call guide.run(...) directly</code></pre>
+      <div class="grid2">
+        <div class="note"><h3>Model requirements</h3><ul><li>agent and researcher: tool calling</li><li>compile and extract: structured output</li><li>extracting from scans: vision / PDF input</li></ul></div>
+        <div class="note"><h3>Checked</h3><p><span class="pill ok">25 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
+      </div>
+    </section>
+
+    <div class="pager"><a id="prev" href="#"></a><a id="next" href="#"></a></div>
+  </main>
+</div>
+
+<script>
+(function () {
+  const pages = [...document.querySelectorAll('section[data-page]')];
+  const names = pages.map((p) => p.dataset.page);
+  const links = [...document.querySelectorAll('nav a')];
+  const titles = Object.fromEntries(links.map((a) => [a.getAttribute('href').slice(1), a.textContent]));
+  const prev = document.getElementById('prev');
+  const next = document.getElementById('next');
+  function show() {
+    const want = location.hash.slice(1);
+    const name = names.includes(want) ? want : names[0];
+    pages.forEach((p) => { p.hidden = p.dataset.page !== name; });
+    links.forEach((a) => { if (a.getAttribute('href') === '#' + name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    const i = names.indexOf(name);
+    prev.textContent = i > 0 ? '← ' + titles[names[i - 1]] : '';
+    prev.href = i > 0 ? '#' + names[i - 1] : '#';
+    next.textContent = i < names.length - 1 ? titles[names[i + 1]] + ' →' : '';
+    next.href = i < names.length - 1 ? '#' + names[i + 1] : '#';
+    if (want) window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', show);
+  show();
+})();
+</script>
