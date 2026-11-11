@@ -1,5 +1,9 @@
 name: Docs
 
+# Builds the docs site (architecture pages + rendered OpenSpec specs) and deploys it to GitHub Pages.
+# Requires Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# Site: https://denvasylenko.github.io/dushes/
+
 on:
   push:
     branches: [main]
