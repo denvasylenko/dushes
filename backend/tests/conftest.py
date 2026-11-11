@@ -34,7 +34,10 @@ class ScriptedChatModel(BaseChatModel):
 
     def _next(self, messages) -> AIMessage:
         self.calls.append(list(messages))
-        return self.script.pop(0) if self.script else AIMessage(content="(end of script)")
+        nxt = self.script.pop(0) if self.script else AIMessage(content="(end of script)")
+        if isinstance(nxt, Exception):   # simulate a provider error
+            raise nxt
+        return nxt
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs) -> ChatResult:
         return ChatResult(generations=[ChatGeneration(message=self._next(messages))])

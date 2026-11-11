@@ -1,7 +1,9 @@
 """LangGraph: every user message brings a fresh config in the state.
 
 START → sync → compact → llm ─┬─(tool calls)→ tools ─┬→ llm
-                    │                      └─(propose_changes)→ confirm [interrupt] → llm
+                    │                      ├─(propose_changes)→ confirm [interrupt] → llm
+                    │                      └─(frontend tool calls)→ END (the client runs them;
+                    │                         the next run brings the results, see sync)
                     ├─(no tool calls, nothing said)→ nudge → llm
                     └─(done)→ END
 
@@ -28,7 +30,7 @@ from ..models import system_message
 from .memory import compact as compact_history
 from .memory import new_turn_id
 from .prompts import context_block, system_prompt
-from .tools import ToolCtx, ToolError, run_tool, tool_schemas
+from .tools import BUILTIN, ToolCtx, ToolError, run_tool, tool_schemas
 
 if TYPE_CHECKING:
     from ..guide import FormGuide
@@ -56,6 +58,9 @@ class AgentState(TypedDict, total=False):
     nudged: bool    # we already asked the model to reply with text
     system_prompt: str   # frozen for the thread: changing it would invalidate the model's earlier reasoning
     memory: str          # summary of older turns after compaction (see memory.py)
+    client_tools: list[dict]     # frontend tools declared by the client: [{name, description, parameters}]
+    client_results: dict         # results of frontend tool calls delivered by this run: {tool_call_id: content}
+    pending_client: dict | None  # frontend tool calls awaiting results: {ids, server_results}
 
 
 def _script(text: str) -> str | None:
@@ -108,7 +113,28 @@ def _tool_messages(results: list[dict]) -> list[ToolMessage]:
             for r in results]
 
 
+NOT_EXECUTED = "The client did not run this tool (no result was returned)."
+
+
+def client_tool_schemas(client_tools: list[dict] | None, taken: set[str]) -> list[dict]:
+    """Frontend tools in OpenAI function format; names of built-in or server tools win."""
+    out = []
+    for t in client_tools or []:
+        if t.get("name") and t["name"] not in taken:
+            out.append({"type": "function", "function": {
+                "name": t["name"], "description": t.get("description") or "",
+                "parameters": t.get("parameters") or {"type": "object", "properties": {}}}})
+    return out
+
+
 def build_graph(guide: FormGuide):
+    def server_tool_names(form_id: str | None) -> set[str]:
+        return set(BUILTIN) | {t.name for t in guide.tools_for(form_id or "")}
+
+    def client_names(state: AgentState) -> set[str]:
+        taken = server_tool_names(state.get("form_id"))
+        return {s["function"]["name"] for s in client_tool_schemas(state.get("client_tools"), taken)}
+
     def ctx_for(state: AgentState) -> ToolCtx:
         lay = guide.layout(state["jsx_hash"])
         if lay is None:
@@ -144,6 +170,12 @@ def build_graph(guide: FormGuide):
             new += _tool_messages(pending["other_results"] + [{
                 "id": pending["tool_call_id"],
                 "content": "The user did not answer the card and sent a new message. Nothing was applied."}])
+        pending_client = state.get("pending_client")
+        if pending_client:  # results of frontend tools, delivered by this run
+            got = state.get("client_results") or {}
+            new += _tool_messages(pending_client["server_results"] + [
+                {"id": i, "content": got[i]} if i in got else {"id": i, "content": NOT_EXECUTED, "error": True}
+                for i in pending_client["ids"]])
         content: list[dict[str, Any]] = []
         # The system prompt is frozen per thread (append-only history). If the form's knowledge
         # changed since (documents recompiled, skills edited), deliver it as an update here.
@@ -153,7 +185,10 @@ def build_graph(guide: FormGuide):
             content.append({"type": "text", "text": "<updated_instructions>\nThe form's instructions changed during this "
                                                     "conversation. These replace the earlier ones:\n" + current
                                                     + "\n</updated_instructions>"})
-        content += [{"type": "text", "text": block}, {"type": "text", "text": state.get("user_text") or "…"}]
+        user_text = state.get("user_text") or ""
+        if not user_text and pending_client:
+            user_text = "[The client returned the results of your frontend tool calls above. Continue.]"
+        content += [{"type": "text", "text": block}, {"type": "text", "text": user_text or "…"}]
         for a in state.get("attachments") or []:
             content.append({"type": "text", "text": f"[The user attached {a['filename']} (attachment_id={a['id']}). "
                                                     "Use extract_from_attachment to read it.]"})
@@ -162,6 +197,7 @@ def build_graph(guide: FormGuide):
             "messages": [*(state.get("messages") or []), *new],
             "snapshot": ctx.ov.snapshot(), "version": version, "pending": None, "tool_round": 0,
             "said": False, "nudged": False, "attachments": [], "system_prompt": frozen,
+            "pending_client": None, "client_results": {},
         }
 
     async def compact(state: AgentState) -> dict:
@@ -184,7 +220,9 @@ def build_graph(guide: FormGuide):
         w = get_stream_writer()
         pack = guide.packs.get(state.get("form_id"))
         base = guide.models.agent
-        model = base.bind_tools(tool_schemas(guide.tools_for(pack.form_id)))
+        server = guide.tools_for(pack.form_id)
+        model = base.bind_tools(tool_schemas(server) + client_tool_schemas(
+            state.get("client_tools"), server_tool_names(pack.form_id)))
         sys_text = state.get("system_prompt") or system_prompt(pack, guide.skills.for_form(pack.form_id))
         history = state["messages"]
         msg_id = str(uuid.uuid4())
@@ -274,11 +312,25 @@ def build_graph(guide: FormGuide):
         ctx = ctx_for(state)
         ctx.emit = w
         last = state["messages"][-1]
+        frontend = client_names(state)
+        calls = getattr(last, "tool_calls", None) or []
+        has_card_call = any(c["name"] == "propose_changes" for c in calls)
         results: list[dict] = []
+        client_ids: list[str] = []
         pending_id = None
         partial_errors = ""
-        for call in getattr(last, "tool_calls", None) or []:
-            w({"kind": "tool", "name": call["name"], "input": call.get("args")})
+        for call in calls:
+            w({"kind": "tool_call", "id": call["id"], "name": call["name"], "args": call.get("args") or {},
+               "client": call["name"] in frontend})
+            if call["name"] in frontend:
+                if has_card_call:   # a card and a frontend tool cannot both wait for the client
+                    r = {"id": call["id"], "content": "Not executed: call frontend tools in a separate step.",
+                         "error": True}
+                    results.append(r)
+                    w({"kind": "tool_result", **r})
+                else:
+                    client_ids.append(call["id"])
+                continue
             before = ctx.pending_changes
             try:
                 out = await run_tool(call["name"], call.get("args"), ctx)
@@ -286,21 +338,27 @@ def build_graph(guide: FormGuide):
                     pending_id = call["id"]
                     partial_errors = out
                     continue
-                results.append({"id": call["id"], "content": out or "ok"})
+                r = {"id": call["id"], "content": out or "ok"}
             except ToolError as e:
-                results.append({"id": call["id"], "content": str(e), "error": True})
+                r = {"id": call["id"], "content": str(e), "error": True}
+            results.append(r)
+            w({"kind": "tool_result", **r})
         for d in ctx.ui_directives:
             w({"kind": "ui", "directive": d})
         upd: dict[str, Any] = {"tool_round": (state.get("tool_round") or 0) + 1}
         if pending_id:
             upd["pending"] = {"tool_call_id": pending_id, "changes": ctx.pending_changes,
                               "partial_errors": partial_errors, "other_results": results}
+        elif client_ids:
+            upd["pending_client"] = {"ids": client_ids, "server_results": results}
         else:
             upd["messages"] = [*state["messages"], *_tool_messages(results)]
         return upd
 
     def route_tools(state: AgentState) -> str:
-        return "confirm" if state.get("pending") else "llm"
+        if state.get("pending"):
+            return "confirm"
+        return END if state.get("pending_client") else "llm"
 
     def confirm(state: AgentState) -> dict:
         """Human in the loop. The frontend shows a card; on accept it applies the
@@ -340,6 +398,6 @@ def build_graph(guide: FormGuide):
     g.add_edge("compact", "llm")
     g.add_conditional_edges("llm", route_llm, ["tools", "nudge", END])
     g.add_edge("nudge", "llm")
-    g.add_conditional_edges("tools", route_tools, ["llm", "confirm"])
+    g.add_conditional_edges("tools", route_tools, ["llm", "confirm", END])
     g.add_edge("confirm", "llm")
     return g.compile(checkpointer=guide.checkpointer)

@@ -9,22 +9,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from formguide import FormGuide, load_config
-from formguide.server import create_router
+from formguide.app import create_app
 
 from .mock_forms import FORMS
 
 HERE = Path(__file__).resolve().parent
 
-guide = FormGuide(load_config(HERE / "formguide.yaml"))
-
-app = FastAPI(title="formguide demo")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# The whole agent side: one call (agent endpoints under /agent).
+app = create_app(HERE / "formguide.yaml", prefix="/agent", cors=["*"], debug=True)
+guide = app.state.guide
 
 # ===================================================================== mock form backend
 
@@ -60,7 +57,6 @@ def java_event(ev: JavaEvent) -> dict:
 
 
 app.include_router(java)
-app.include_router(create_router(guide), prefix="/agent")
 
 _DIST = HERE.parents[1] / "frontend" / "dist"
 if _DIST.exists():

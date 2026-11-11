@@ -48,6 +48,7 @@ def inline(md: str) -> str:
 
 
 def render_spec(name: str, text: str) -> str:
+    url = f"https://github.com/denvasylenko/dushes/blob/main/openspec/specs/{name}/spec.md"
     out = [f'<article class="spec" id="spec-{name}">']
     in_list = False
     for line in text.splitlines():
@@ -73,6 +74,7 @@ def render_spec(name: str, text: str) -> str:
             out.append(f"<p>{inline(line)}</p>")
     if in_list:
         out.append("</ul>")
+    out.insert(2, f'<p class="src">Source: <a href="{url}">{name}/spec.md</a></p>')   # after the title
     out.append("</article>")
     return "\n".join(out)
 

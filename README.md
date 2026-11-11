@@ -7,54 +7,92 @@ Documentation:
 - [`openspec/specs/`](openspec/specs) — behaviour contracts per capability, maintained with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec list --specs`, `openspec validate --all --strict`);
 - architecture pages with diagrams: https://denvasylenko.github.io/dushes/ — built from `docs/architecture-pages.html` plus the specs by `python3 scripts/build_docs_site.py`, deployed by `.github/workflows/docs.yml`.
 
-## Layout
+## Quick start
 
-```
-backend/
-  formguide/        the library: install it (pip install -e backend) or copy the folder
-  demo/             an example integration: mock form backend, FastAPI app, YAML config, skills, samples
-  tests/            offline tests (scripted model, no API keys)
-  scripts/          chat_harness.py: live conversations with the running demo
-frontend/           optional demo UI (React); the library does not need it
+```bash
+pip install "formguide[all] @ git+https://github.com/denvasylenko/dushes.git#subdirectory=backend"
+formguide init my-agent                            # formguide.yaml, a domain pack, a skill
+formguide check --config my-agent/formguide.yaml   # loads it and reports; calls no model
+ANTHROPIC_API_KEY=... formguide serve --config my-agent/formguide.yaml --cors "*"
 ```
 
-## Use it
+The agent is now an AG-UI endpoint at `POST http://localhost:8000/agent/run`. The only required setting is the model: `model: "openai:gpt-5"` in the YAML, or `FORMGUIDE_MODEL=openai:gpt-5` with no file at all. Extras: `anthropic`, `openai`, `server`, `research`, `sqlite`, `all`; the core needs only LangGraph, LangChain core, Pydantic, PyYAML and pypdf. Or copy [`backend/formguide/`](backend/formguide) into your project.
+
+## Connect a frontend (AG-UI first)
+
+Any AG-UI client works as is. Each run carries the form in `state`; cards are interrupts; frontend tools and prefill use the protocol's own fields. See the [Integrate page](https://denvasylenko.github.io/dushes/#integrate) for the whole wire format.
+
+```ts
+import { HttpAgent } from "@ag-ui/client"           // or CopilotKit's re-export
+
+const agent = new HttpAgent({ url: "/agent/run", threadId })
+agent.setState({ config, jsx_hash, form_id })        // the form as your backend last built it
+agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "Where do I start?" })
+await agent.runAgent({ tools: frontendTools }, {
+  onCustomEvent: ({ event }) => event.name === "on_interrupt" && showCard(JSON.parse(event.value)),
+})
+// answer a card: agent.runAgent({ forwardedProps: { command: { resume: { accepted, config } } } })
+// prefill:       agent.runAgent({ forwardedProps: { prefill: { data: profile } } })
+```
+
+- **CopilotKit 1.86**: [`examples/copilotkit/`](examples/copilotkit) — `CopilotKitProvider` with an `HttpAgent` (no CopilotKit runtime server), cards with `useInterrupt`, a frontend tool with `useFrontendTool`, prefill.
+- **Plain `@ag-ui/client`**: the demo UI, [`frontend/src/api.ts`](frontend/src/api.ts).
+- **Cards**: `interrupt_mode: legacy` (default; `CUSTOM on_interrupt`, what CopilotKit reads), `structured` (AG-UI 1.0 `RUN_FINISHED.outcome` + `resume[]`) or `both`.
+- **Restore a chat**: `GET /agent/threads/{id}?format=agui` returns AG-UI messages for `setMessages`.
+
+## Use it from Python
 
 ```python
-from formguide import FormGuide, load_config
-from formguide.server import create_router          # optional FastAPI router
+from formguide.app import create_app
+app = create_app("formguide.yaml", cors=["https://my.app"])        # a whole FastAPI app
 
+from formguide import FormGuide, load_config                     # or inside your own FastAPI app
+from formguide.server import create_router
 guide = FormGuide(load_config("formguide.yaml"))
 app.include_router(create_router(guide), prefix="/agent")
 ```
 
-Without FastAPI, call the guide directly:
+Without a web framework, call the guide directly:
 
 ```python
 info = guide.register_form(jsx, form_id="loan_application", domain=optional_pack)   # once per JSX
 state = {"config": config, "jsx_hash": info["jsx_hash"], "form_id": "loan_application", "ui": ui}
 async for event in guide.run(thread_id, message="Where do I enter my tax id?", state=state):
-    ...   # AG-UI events: TEXT_MESSAGE_*, CUSTOM ui_directive / on_interrupt / tool_activity / memory_compacted
+    ...   # AG-UI events as dicts: TEXT_MESSAGE_*, TOOL_CALL_*, CUSTOM ui_directive / on_interrupt, RUN_FINISHED
 async for event in guide.run(thread_id, resume={"accepted": True, "config": new_config}):
     ...   # after the user answered a confirmation card
+await guide.suggest_prefill(state, data=profile)    # values to prefill, without a chat
 ```
 
 ## Configure
 
-Everything can be set in code (`GuideConfig`) or YAML (`load_config`); see `formguide/config.py` and `demo/formguide.yaml`.
+Everything can be set in code (`GuideConfig`) or YAML (`load_config`); see [`config.py`](backend/formguide/config.py) and [`demo/formguide.yaml`](backend/demo/formguide.yaml).
 
 | What | Options |
 |---|---|
-| Models (per role: agent, research, compile, extract, memory) | any LangChain `BaseChatModel`; `"openai:gpt-5"` strings; `{provider, model, ...}`; `{class: "langchain_openai:AzureChatOpenAI", ...}` |
+| Models (per role: agent, research, compile, extract, memory) | `model: "openai:gpt-5"` for all roles; or per role: any LangChain `BaseChatModel`, `"provider:model"` strings, `{provider, model, ...}`, `{class: "langchain_openai:AzureChatOpenAI", ...}` |
 | Component library | `ComponentMap`: JSX tag → role |
 | Domain packs | shipped with the form › `provider` callable › `packs` dict › JSON dir › neutral default |
 | Business documents | `KnowledgeBase(root, index=BM25Index() \| VectorStoreIndex(any LangChain VectorStore), scopes={form: [namespaces]})` |
 | Skills | folders with `SKILL.md` (name, description, forms, tools) or `Skill(...)` in code |
-| Extra tools | any LangChain `BaseTool` |
+| Extra tools | any LangChain `BaseTool`; frontend tools come from the client per run |
 | History | model history: any LangGraph checkpointer (in memory by default; `sqlite_checkpointer(path)`, Postgres, Redis); display transcript: any `TranscriptStore` (files by default) |
 | Long chats | `MemoryConfig(max_history_tokens, keep_turns, model)` |
+| Cards | `interrupt_mode`: `legacy` · `structured` · `both` |
 
-Model requirements: tool calling (agent, research), structured output (compile, extract), vision / PDF input (extracting from scans). Install the provider's LangChain package (`langchain-anthropic` is included; `pip install -e "backend[openai]"` for OpenAI / Azure).
+Model requirements: tool calling (agent, research), structured output (compile, extract, prefill from text), vision / PDF input (extracting from scans).
+
+## Layout
+
+```
+backend/
+  formguide/        the library — guide.py · agui.py · server.py · app.py · cli.py · prefill.py · agent/ · form/ · knowledge/
+  demo/             an example integration: mock form backend, FastAPI app, YAML config, skills, samples
+  tests/            offline tests (scripted model, no API keys)
+  scripts/          chat_harness.py: live conversations with the running demo
+frontend/           demo UI on @ag-ui/client (React); the library does not need it
+examples/copilotkit CopilotKit 1.86 client
+```
 
 ## Run the demo
 
@@ -78,6 +116,8 @@ cd backend && uv run python scripts/chat_harness.py --form barber_booking
 ## How it works (short)
 
 - **Context.** Each message brings the fresh config. The model sees a collapsed outline, the open section and what changed since the last message: ~1K tokens instead of ~16K of raw config. Details come through tools.
+- **Protocol.** Strict AG-UI: input validated as `RunAgentInput`, every event validated and encoded with the official package; server tools stream as tool calls with results; frontend tools end the run and their results come back as `tool` messages.
+- **Prefill.** Known data is validated against the form (field names directly, anything else through extraction); the agent proposes what is editable now and keeps the rest for locked steps.
 - **Changes.** The agent never writes the config. `propose_changes` validates (visible, enabled, not read-only, value in options) and interrupts; the frontend shows a card, applies the change through the form backend and resumes with the new config.
 - **Dependencies.** Inferred from config diffs (the config does not declare them) and persisted per form.
 - **Business documents.** Compiled once into rules and field notes in the domain pack; a deep-agent researcher (`deepagents`, read-only `/docs/` filesystem + ranked search) handles the long tail and returns a cited answer.

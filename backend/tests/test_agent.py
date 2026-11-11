@@ -1,6 +1,8 @@
 """The agent graph with a scripted model: tool calls, interrupt, skills, extra tools, HTTP router."""
 from __future__ import annotations
 
+import json
+
 import asyncio
 
 import pytest
@@ -48,7 +50,7 @@ def test_full_flow_with_interrupt_and_ignored_card(guide, model):
     directive = next(e["value"] for e in ev if e.get("name") == "ui_directive")
     assert directive["reveal"] == [{"type": "tab", "tabs": "main", "tab": "tab_loan"},
                                    {"type": "accordion", "name": "acc_loan_params"}]
-    intr = next(e["value"] for e in ev if e.get("name") == "on_interrupt")
+    intr = next(json.loads(e["value"]) for e in ev if e.get("name") == "on_interrupt")
     assert [x["name"] for x in intr["changes"]] == ["loan_type"]            # age (🔒) dropped by validation
     assert intr["changes"][0]["value"] == {"id": "auto", "name": "Car loan"}
 

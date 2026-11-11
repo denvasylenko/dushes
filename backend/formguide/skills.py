@@ -73,6 +73,9 @@ class SkillRegistry:
     def add(self, skill: Skill) -> None:
         self._skills[skill.name] = skill
 
+    def all(self) -> list[Skill]:
+        return list(self._skills.values())
+
     def for_form(self, form_id: str) -> list[Skill]:
         return [s for s in self._skills.values() if s.applies_to(form_id)]
 

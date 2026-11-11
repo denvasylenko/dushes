@@ -117,8 +117,11 @@ def sqlite_checkpointer(path: str | Path):
 
         async def _saver(self):
             if self._inner is None:
-                import aiosqlite
-                from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+                try:
+                    import aiosqlite
+                    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+                except ImportError as e:
+                    raise ImportError("the sqlite checkpointer needs: pip install 'formguide[sqlite]'") from e
 
                 self.file.parent.mkdir(parents=True, exist_ok=True)
                 self._inner = AsyncSqliteSaver(await aiosqlite.connect(str(self.file)))

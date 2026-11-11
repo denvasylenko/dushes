@@ -105,6 +105,7 @@ class Session:
 
     def _run(self, body: dict, card: str) -> None:
         texts: dict[str, str] = {}
+        calls: dict[str, list] = {}
         interrupt = None
         with self.http.stream("POST", "/agent/run", json=body) as r:
             for line in r.iter_lines():
@@ -119,10 +120,14 @@ class Session:
                     self.last_text = texts[e["messageId"]]
                 elif t == "RUN_ERROR":
                     self.log.append(f"❌ {e['message']}")
-                elif name == "tool_activity":
-                    v = e["value"]
-                    self.tools.append((v["name"], v["input"]))
-                    self.log.append(f"   ⚙ {v['name']}({_short(v['input'], 110)})")
+                elif t == "TOOL_CALL_START":
+                    calls[e["toolCallId"]] = [e["toolCallName"], ""]
+                elif t == "TOOL_CALL_ARGS":
+                    calls[e["toolCallId"]][1] += e["delta"]
+                elif t == "TOOL_CALL_END":
+                    tool, args = calls[e["toolCallId"]][0], json.loads(calls[e["toolCallId"]][1] or "{}")
+                    self.tools.append((tool, args))
+                    self.log.append(f"   ⚙ {tool}({_short(args, 110)})")
                 elif name == "agent_note":
                     self.log.append(f"   💭 (hidden from the user) {_short(e['value'], 100)}")
                 elif name == "agent_context":
@@ -136,8 +141,8 @@ class Session:
                             self.ui["openAccordions"].append(s["name"])
                     self.ui["focused"] = d["target"]
                     self.log.append(f"   🔦 highlight {d['target']}: \"{d['hint']}\"")
-                elif name == "on_interrupt":
-                    interrupt = e["value"]
+                elif name == "on_interrupt":   # a JSON string (ag-ui-langgraph convention)
+                    interrupt = json.loads(e["value"]) if isinstance(e["value"], str) else e["value"]
         if interrupt:
             ch = interrupt["changes"]
             self.cards.append(interrupt)
@@ -399,7 +404,7 @@ def sc_kb_unknown(s: Session, c: Checks):
     s.say("Can I get a loan if I have no registration in Russia?")
     c.ok(says(s, "registration"), "used the registration requirement")
     s.say("And what are the penalties for a late payment?")
-    c.ok(says(s, "don't", "do not", "not mention", "no information", "not covered", "doesn't", "not say", "not specif"),
+    c.ok(says(s, "don't", "do not", "not mention", "no information", "not covered", "doesn't", "not say", "not specif", "can't find", "cannot find", "couldn't find"),
          "admitted the documents do not cover penalties (no invention)")
 
 

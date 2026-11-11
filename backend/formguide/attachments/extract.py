@@ -111,11 +111,16 @@ def catalog(ov: Overlay, names: list[str]) -> str:
 
 
 async def extract(model: BaseChatModel, ov: Overlay, filename: str, data: bytes, names: list[str]) -> Extraction:
-    media = MEDIA[Path(filename).suffix.lower()]
+    return await extract_from_blocks(model, ov, [file_block(filename, MEDIA[Path(filename).suffix.lower()], data)],
+                                     names)
+
+
+async def extract_from_blocks(model: BaseChatModel, ov: Overlay, blocks: list[dict], names: list[str]) -> Extraction:
+    """Extraction from any content: file blocks, or a text block (prefill from free text / data)."""
     out: Extraction = await structured(model, Extraction).ainvoke([
         SystemMessage(content=SYSTEM),
         HumanMessage(content=[
-            file_block(filename, media, data),
+            *blocks,
             {"type": "text", "text": f"<form_fields>\nname | label | path | type\n{catalog(ov, names)}\n</form_fields>\n"
                                      "Extract every field value present in the document."},
         ]),

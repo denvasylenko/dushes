@@ -12,7 +12,21 @@ Form backend (Java)  ── JSX once, config on every event ──▶  Frontend 
 
 - The **form backend** owns the form: it sends a JSX string with only tags and `name` attributes, and rebuilds a flat config (`props` and `state` keyed by name) after every form event.
 - The **frontend** renders the JSX from the config and forwards what it received to the agent. It also applies accepted changes by sending them to the form backend, exactly like manual input.
-- **FormGuide** (the library in `backend/formguide`) turns each message plus the fresh config into a compact context, runs the model and its tools, and streams AG-UI events back.
+- **FormGuide** (the library in [`backend/formguide`](../backend/formguide)) turns each message plus the fresh config into a compact context, runs the model and its tools, and streams AG-UI events back.
+
+### The wire: AG-UI
+
+The frontend talks to one endpoint, `POST /agent/run`, with an AG-UI `RunAgentInput`; any AG-UI client works, CopilotKit included, with no CopilotKit runtime server. [`agui.py`](../backend/formguide/agui.py) validates the input and every outgoing event against the official `ag-ui-protocol` models; [`server.py`](../backend/formguide/server.py) is the FastAPI router; [`app.py`](../backend/formguide/app.py) wraps it into an app.
+
+| Request field | Meaning |
+|---|---|
+| `state` | the form: `{config, jsx_hash, form_id, ui?, attachments?}` |
+| `messages` | a trailing `user` message is new text; trailing `tool` messages are frontend tool results (history is kept on the server) |
+| `tools` | frontend tools the model may call; they never shadow built-in tools |
+| `resume` / `forwardedProps.command.resume` | the answer to a card: `{accepted, config}` (AG-UI 1.0 `cancelled` = rejected) |
+| `forwardedProps.prefill` | `{data?, text?, attachment_ids?, language?}`: start from data the app already has |
+
+A run streams `RUN_STARTED`, text (`TEXT_MESSAGE_*`), server tool calls with results (`TOOL_CALL_*`, `TOOL_CALL_RESULT`), frontend tool calls without results, `CUSTOM` events (`ui_directive`, `on_interrupt`, `agent_context`, `agent_note`, `memory_compacted`), and ends with exactly one `RUN_FINISHED` or `RUN_ERROR`. A card is delivered according to `interrupt_mode`: `legacy` (default) as `CUSTOM on_interrupt` with a JSON-string value `{type, card_id, changes}` (the ag-ui-langgraph convention CopilotKit reads), `structured` as `RUN_FINISHED.outcome` interrupts (AG-UI 1.0), or `both`. Registered layouts are kept under `data_dir/layouts/`, so a server restart does not break clients holding a `jsx_hash`.
 
 Principles:
 - **The config is the source of truth.** Form state is rebuilt from the config on every turn; it is never stored in the agent's memory, synced or summarized.
@@ -32,6 +46,8 @@ message + config
                           │                  confirm ── interrupt: card ──▶ frontend ──▶ form backend
                           │                     ▲                                 │
                           │                     └──── resume {accepted, config} ──┘
+                          │             frontend tool call ──▶ run ends; the client runs it and the
+                          │                                    next run brings the result (see sync)
                           ├──(no text)──▶ nudge ──▶ llm
                           └──(done)──▶ answer
 ```
@@ -41,7 +57,7 @@ message + config
 | `sync` | Diffs the config against the previous snapshot, learns dependencies, builds the context, appends the user message | System prompt frozen; knowledge updates delivered as `<updated_instructions>` |
 | `compact` | Summarizes older turns when the history is above the threshold | A failed compaction never blocks the turn |
 | `llm` | Streams the reply; withholds short internal notes before tool calls | Retries once without earlier reasoning blocks if the provider rejects them |
-| `tools` | Built-in tools, skill tools, configured tools | `propose_changes` validates visibility, availability, read-only and options |
+| `tools` | Built-in tools, skill tools, configured tools; a frontend tool call ends the run | `propose_changes` validates visibility, availability, read-only and options |
 | `confirm` | Interrupt with the card; afterwards gives the model the form's reaction | An ignored card is closed on the next message |
 | `nudge` | Asks the model to answer if it ended the turn silently | At most once per turn |
 
@@ -135,6 +151,12 @@ Why the system prompt is frozen: some models (Claude Opus 5.5) bind reasoning bl
 
 ## 7. Configuration and extension points
 
+Quick start: `formguide init my-agent` writes a starter `formguide.yaml`, a domain pack and a skill; `formguide check --config …` loads it without calling a model; `formguide serve --config …` runs the endpoints ([`cli.py`](../backend/formguide/cli.py)). The only required setting is `model:` (or `FORMGUIDE_MODEL`). The package's core dependencies are LangGraph, LangChain core, Pydantic, PyYAML and pypdf; providers, the HTTP layer, the researcher and SQLite are extras (`anthropic`, `openai`, `server`, `research`, `sqlite`, `all`), imported only when used.
+
+### Prefill
+
+[`prefill.py`](../backend/formguide/prefill.py): `suggest_prefill(state, data, text, attachments)` validates known data against the form the same way `propose_changes` does — keys that are field names directly, everything else through the extraction model — and marks each value `now` (editable) or `later` (inside a locked or hidden step). In a chat (`prefill=` / `forwardedProps.prefill`), these values become the turn's instruction: the agent proposes the `now` values in one card, keeps the `later` ones, and greets the user; the transcript records a notice instead of a user message.
+
 | What | How |
 |---|---|
 | Models per role (agent, research, compile, extract, memory) | any LangChain `BaseChatModel`; `"provider:model"` strings; `{provider, model, ...}`; `{class: "module:Class", ...}` |
@@ -146,6 +168,7 @@ Why the system prompt is frozen: some models (Claude Opus 5.5) bind reasoning bl
 | Extra tools | any LangChain `BaseTool` |
 | History | any LangGraph checkpointer (`sqlite_checkpointer(path)` included) for the model; any `TranscriptStore` for what the user saw |
 | Memory | `MemoryConfig(max_history_tokens, keep_turns, model)` |
+| Cards | `interrupt_mode`: `legacy` · `structured` · `both` |
 
 Model requirements: tool calling (agent, research), structured output (compile, extract), vision or PDF input (extracting from scans).
 

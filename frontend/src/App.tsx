@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { deleteThread, getThread, javaEvent, javaForm, javaForms, registerLayout, runAgent, uploadAttachment, type AgentEvent, type Attachment, type TranscriptEntry } from './api'
+import type { HttpAgent } from '@ag-ui/client'
+import { deleteThread, getThread, getThreadMessages, javaEvent, javaForm, javaForms, makeAgent, registerLayout, runTurn, uploadAttachment, type AgentEvent, type Attachment, type FormState, type TranscriptEntry, type Turn } from './api'
 import { FormProvider, Render, type Highlight } from './Form'
 import { parseJsx } from './jsx'
 import Manager from './Manager'
@@ -23,6 +24,15 @@ const EMPTY_UI: UiState = { activeTabs: {}, openAccordions: [], focused: null }
 const SUGGESTIONS: Record<string, string[]> = {
   loan_application: ['Where do I start?', 'Where do I enter the department code?', 'I want a car loan of 1.5 million for 5 years'],
   barber_booking: ['Book me a haircut + beard next Tuesday around 3pm', 'How much is a haircut with Maria?', 'Book a kids haircut for my son, he is 6'],
+}
+
+/** Data a host app may already have about the user: the demo's "Prefill from profile" button sends it. */
+const PROFILES: Record<string, Record<string, unknown>> = {
+  loan_application: {
+    last_name: 'Smith', first_name: 'Anna', birth_date: '1990-04-12', gender: 'Female',
+    email: 'anna.smith@example.com', phone_mobile: '+7 900 123 45 67', consent_pd: true,
+  },
+  barber_booking: { client_name: 'Anna Smith', client_phone: '+7 900 123 45 67' },
 }
 
 // Per-viewer persistence in the browser. The thread id is what brings the conversation back;
@@ -90,6 +100,7 @@ export default function App() {
   cfgRef.current = config
   const uiRef = useRef(ui)
   uiRef.current = ui
+  const agentRef = useRef<HttpAgent | null>(null)
   const reqId = useRef(0)
   const debounce = useRef<number | undefined>(undefined)
 
@@ -109,7 +120,8 @@ export default function App() {
       store.set(`formguide:thread:${f.form_id}`, threadId)
       const saved = store.get<Config['state']>(`formguide:state:${f.form_id}`)
       const cfg = saved ? await javaEvent(f.form_id, saved, {}) : f.config
-      const history = await getThread(threadId)
+      const [history, messages] = await Promise.all([getThread(threadId), getThreadMessages(threadId)])
+      agentRef.current = makeAgent(threadId, messages)
       setForm({ formId: f.form_id, jsx: f.jsx, tree: parseJsx(f.jsx), hash, title })
       setConfig(cfg)
       setUi(store.get<UiState>(`formguide:ui:${f.form_id}`) ?? EMPTY_UI)
@@ -132,6 +144,7 @@ export default function App() {
     await deleteThread(thread)
     const id = crypto.randomUUID()
     store.set(`formguide:thread:${form.formId}`, id)
+    agentRef.current = makeAgent(id)
     setThread(id)
     setChat([])
     setAgentCtx(null)
@@ -195,21 +208,33 @@ export default function App() {
     if (e.type === 'TEXT_MESSAGE_START') setChat((c) => [...c, { kind: 'assistant', id: e.messageId!, text: '' }])
     else if (e.type === 'TEXT_MESSAGE_CONTENT')
       setChat((c) => c.map((m) => (m.kind === 'assistant' && m.id === e.messageId ? { ...m, text: m.text + e.delta } : m)))
+    else if (e.type === 'TOOL_CALL_DONE') setChat((c) => [...c, { kind: 'tool', name: e.name!, input: e.value }])
     else if (e.type === 'RUN_ERROR') setChat((c) => [...c, { kind: 'error', text: e.message ?? 'error' }])
     else if (e.type === 'CUSTOM') {
       if (e.name === 'ui_directive') applyDirective(e.value)
-      else if (e.name === 'tool_activity') setChat((c) => [...c, { kind: 'tool', name: e.value.name, input: e.value.input }])
       else if (e.name === 'agent_context') setAgentCtx(e.value)
-      else if (e.name === 'on_interrupt')
-        setChat((c) => [...c, { kind: 'card', id: e.value.card_id ?? crypto.randomUUID(), changes: e.value.changes, status: 'pending' }])
+      else if (e.name === 'on_interrupt') {
+        // ag-ui-langgraph convention: the value is a JSON string
+        const v = typeof e.value === 'string' ? JSON.parse(e.value) : e.value
+        setChat((c) => [...c, { kind: 'card', id: v.card_id ?? crypto.randomUUID(), changes: v.changes, status: 'pending' }])
+      }
       else if (e.name === 'memory_compacted')
         setChat((c) => [...c, { kind: 'notice', text: 'Earlier messages were summarized for the assistant; the chat history is kept in full.' }])
     }
   }, [applyDirective])
 
-  const baseState = (cfg: Config) => ({
+  const baseState = (cfg: Config): FormState => ({
     config: cfg, jsx_hash: form!.hash, form_id: form!.formId, ui: { ...uiRef.current, now: localNow() },
   })
+
+  const run = async (turn: Turn) => {
+    setBusy(true)
+    try {
+      await runTurn(agentRef.current!, turn, onEvent)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const send = async (text: string, attachments: Attachment[] = []) => {
     if (!text.trim() || busy || !form) return
@@ -219,16 +244,14 @@ export default function App() {
       ...c.map((m) => (m.kind === 'card' && m.status === 'pending' ? { ...m, status: 'dismissed' as const } : m)),
       { kind: 'user', text, files: attachments.map((a) => a.filename) },
     ])
-    setBusy(true)
-    try {
-      await runAgent({
-        threadId: thread,
-        messages: [{ role: 'user', content: text }],
-        state: { ...baseState(fresh), attachments },
-      }, onEvent)
-    } finally {
-      setBusy(false)
-    }
+    await run({ message: text, state: { ...baseState(fresh), attachments } })
+  }
+
+  const prefill = async () => {
+    if (busy || !form) return
+    const fresh = await pushToJava({})
+    setChat((c) => [...c, { kind: 'notice', text: 'The form was prefilled from data the app already has.' }])
+    await run({ state: baseState(fresh), prefill: { data: PROFILES[form.formId] ?? {}, language: navigator.language } })
   }
 
   const answerCard = async (card: Extract<ChatItem, { kind: 'card' }>, accepted: boolean) => {
@@ -243,11 +266,7 @@ export default function App() {
         reveal(last.reveal)
         setHighlight({ target: last.name, hint: 'Filled in by the assistant', ts: Date.now() })
       }
-      await runAgent({
-        threadId: thread,
-        state: baseState(cfg),
-        forwardedProps: { command: { resume: { accepted, config: cfg, ui: uiRef.current } } },
-      }, onEvent)
+      await runTurn(agentRef.current!, { state: baseState(cfg), resume: { accepted, config: cfg, ui: uiRef.current } }, onEvent)
     } finally {
       setBusy(false)
     }
@@ -299,6 +318,8 @@ export default function App() {
             <button className="link" onClick={() => setShowCtx((s) => !s)} disabled={!agentCtx}>
               {showCtx ? 'Hide' : 'What the agent sees'}
             </button>
+            <button className="link" onClick={() => void prefill()} disabled={busy || !PROFILES[form.formId]}
+              title="Start from data the app already has (AG-UI forwardedProps.prefill)">Prefill from profile</button>
             <button className="link" onClick={() => void newChat()} disabled={busy || !chat.length}>New chat</button>
           </div>
         </div>

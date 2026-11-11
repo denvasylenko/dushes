@@ -1,3 +1,4 @@
+import { HttpAgent, type Message, type Tool } from '@ag-ui/client'
 import type { Config, UiState } from './types'
 
 // ---------------------------------------------------------------- form backend (mock of the Java service)
@@ -107,6 +108,8 @@ export async function uploadAttachment(threadId: string, file: File): Promise<At
   return r.json()
 }
 
+// ---------------------------------------------------------------- agent runs over AG-UI (official client)
+
 export type AgentEvent = {
   type: string
   name?: string
@@ -116,37 +119,74 @@ export type AgentEvent = {
   message?: string
 }
 
-export type RunInput = {
-  threadId: string
-  messages?: { role: 'user'; content: string }[]
-  state: { config: Config; jsx_hash: string; form_id: string; ui: UiState; attachments?: Attachment[] }
-  forwardedProps?: { command?: { resume: unknown } }
+export type FormState = { config: Config; jsx_hash: string; form_id: string; ui: UiState; attachments?: Attachment[] }
+
+/** One AG-UI agent per conversation; it keeps the message list the protocol sends with every run. */
+export function makeAgent(threadId: string, initialMessages: Message[] = []): HttpAgent {
+  return new HttpAgent({ url: '/agent/run', threadId, initialMessages })
 }
 
-/** POST + SSE (events in the AG-UI format). */
-export async function runAgent(input: RunInput, onEvent: (e: AgentEvent) => void): Promise<void> {
-  const r = await fetch('/agent/run', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-    body: JSON.stringify({ runId: crypto.randomUUID(), ...input }),
-  })
-  if (!r.ok || !r.body) {
-    onEvent({ type: 'RUN_ERROR', message: `HTTP ${r.status}: ${await r.text()}` })
-    return
+/** Frontend tools: declared to the agent with every run, executed here in the browser. */
+export const FRONTEND_TOOLS: (Tool & { run: (args: Record<string, unknown>) => string })[] = [
+  {
+    name: 'get_user_locale',
+    description: "The user's browser language, time zone and preferred date format. Call it when you need to " +
+      'interpret or explain dates, times or numbers in the user\'s local conventions.',
+    parameters: { type: 'object', properties: {} },
+    run: () => JSON.stringify({
+      language: navigator.language,
+      time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      date_example: new Date(2026, 11, 31).toLocaleDateString(),
+    }),
+  },
+]
+
+export type Turn = {
+  state: FormState
+  message?: string
+  resume?: { accepted: boolean; config?: Config; ui?: UiState }
+  prefill?: { data?: Record<string, unknown>; text?: string; attachment_ids?: string[]; language?: string }
+}
+
+/** One turn: run the agent, execute any frontend tools it calls, and continue until it is done. */
+export async function runTurn(agent: HttpAgent, turn: Turn, onEvent: (e: AgentEvent) => void): Promise<void> {
+  agent.setState(turn.state)
+  if (turn.message) agent.addMessage({ id: crypto.randomUUID(), role: 'user', content: turn.message })
+  let forwardedProps: Record<string, unknown> = {
+    ...(turn.resume ? { command: { resume: turn.resume } } : {}),
+    ...(turn.prefill ? { prefill: turn.prefill } : {}),
   }
-  const reader = r.body.pipeThrough(new TextDecoderStream()).getReader()
-  let buf = ''
-  for (;;) {
-    const { value, done } = await reader.read()
-    if (done) break
-    buf += value
-    let i
-    while ((i = buf.indexOf('\n\n')) >= 0) {
-      const chunk = buf.slice(0, i)
-      buf = buf.slice(i + 2)
-      for (const line of chunk.split('\n')) {
-        if (line.startsWith('data: ')) onEvent(JSON.parse(line.slice(6)))
-      }
+  const tools = FRONTEND_TOOLS.map(({ name, description, parameters }) => ({ name, description, parameters }))
+  for (let round = 0; round < 5; round++) {
+    const calls: { id: string; name: string; args: Record<string, unknown> }[] = []
+    let failed = false
+    try {
+      await agent.runAgent({ tools, forwardedProps }, {
+        onEvent: ({ event }) => { onEvent(event as unknown as AgentEvent) },
+        onRunErrorEvent: () => { failed = true },
+        onToolCallEndEvent: ({ event, toolCallName, toolCallArgs }) => {
+          onEvent({ type: 'TOOL_CALL_DONE', name: toolCallName, value: toolCallArgs })
+          if (FRONTEND_TOOLS.some((t) => t.name === toolCallName)) calls.push({ id: event.toolCallId, name: toolCallName, args: toolCallArgs })
+        },
+      })
+    } catch (e) {
+      if (!failed) onEvent({ type: 'RUN_ERROR', message: String(e) })
+      return
     }
+    if (!calls.length) return
+    for (const c of calls) {
+      const tool = FRONTEND_TOOLS.find((t) => t.name === c.name)!
+      let content: string
+      try { content = tool.run(c.args) } catch (e) { content = `error: ${String(e)}` }
+      agent.addMessage({ id: crypto.randomUUID(), role: 'tool', toolCallId: c.id, content })
+    }
+    forwardedProps = {}   // the continuation run carries only the tool results
   }
+}
+
+/** The conversation as AG-UI messages, to give a restored agent its message list. */
+export async function getThreadMessages(threadId: string): Promise<Message[]> {
+  const r = await fetch(`/agent/threads/${encodeURIComponent(threadId)}?format=agui`)
+  if (!r.ok) return []
+  return (await r.json()).messages
 }

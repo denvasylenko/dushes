@@ -14,9 +14,12 @@ In code:
         skills=SkillRegistry.from_dir("skills"),
     ))
 
-From YAML (paths are relative to the YAML file, ${ENV_VARS} are expanded):
+From YAML (paths are relative to the YAML file, ${ENV_VARS} are expanded). The shortest
+working file is one line, `model: "openai:gpt-5"` (one model for every role); the
+FORMGUIDE_MODEL environment variable does the same without a file. Everything else is optional:
 
     data_dir: data
+    model: "anthropic:claude-opus-5-5"              # one model for every role, or per role:
     models:
       agent: {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, api_version: "2025-04-01-preview"}
       research: "openai:gpt-5-mini"                 # init_chat_model string
@@ -33,6 +36,7 @@ From YAML (paths are relative to the YAML file, ${ENV_VARS} are expanded):
     checkpointer: {sqlite: data/checkpoints.sqlite}  # model history; default in memory
     transcripts: {dir: data/transcripts}             # what the user saw; default files under data_dir
     max_tool_rounds: 10
+    interrupt_mode: legacy                           # confirmation cards: legacy (CopilotKit) | structured (AG-UI 1.0) | both
 """
 from __future__ import annotations
 
@@ -56,9 +60,15 @@ from .skills import SkillRegistry, import_object
 from .transcript import FileTranscriptStore, MemoryTranscriptStore, TranscriptStore, sqlite_checkpointer
 
 
+def default_models() -> Models:
+    """FORMGUIDE_MODEL (an init_chat_model string such as "openai:gpt-5") or the Anthropic defaults."""
+    env = os.environ.get("FORMGUIDE_MODEL")
+    return Models(agent=env) if env else Models.anthropic()
+
+
 @dataclass
 class GuideConfig:
-    models: Models = field(default_factory=Models.anthropic)
+    models: Models = field(default_factory=default_models)
     data_dir: str | Path = "data"                   # deps maps, KB and attachments default to subfolders
     components: ComponentMap = DEFAULT_COMPONENTS
     domain_packs: DomainPackRegistry | None = None   # default: no packs (neutral persona)
@@ -71,6 +81,9 @@ class GuideConfig:
     max_tool_rounds: int = 10
     learn_dependencies: bool = True                  # persist observed field dependencies per form
     memory: MemoryConfig = field(default_factory=MemoryConfig)   # long-chat compaction
+    # How confirmation cards reach the client: "legacy" = CUSTOM on_interrupt (CopilotKit,
+    # ag-ui-langgraph), "structured" = RUN_FINISHED.outcome interrupts (AG-UI 1.0), or "both".
+    interrupt_mode: str = "legacy"
 
 
 # ===================================================================== YAML
@@ -112,7 +125,11 @@ def load_config(path: str | Path) -> GuideConfig:
 
     cfg = GuideConfig()
     cfg.data_dir = rel(raw.get("data_dir", "data"))
-    if raw.get("models"):
+    if raw.get("model"):
+        cfg.models = Models(agent=_model(raw["model"]))
+    if isinstance(raw.get("models"), str):
+        cfg.models = Models(agent=raw["models"])
+    elif raw.get("models"):
         m = raw["models"]
         cfg.models = Models(agent=_model(m["agent"]), research=_model(m.get("research")),
                             compile=_model(m.get("compile")), extract=_model(m.get("extract")))
@@ -141,6 +158,9 @@ def load_config(path: str | Path) -> GuideConfig:
     elif isinstance(tr, dict) and tr.get("dir"):
         cfg.transcripts = FileTranscriptStore(rel(tr["dir"]))
     cfg.learn_dependencies = bool(raw.get("learn_dependencies", True))
+    cfg.interrupt_mode = str(raw.get("interrupt_mode", cfg.interrupt_mode))
+    if cfg.interrupt_mode not in ("legacy", "structured", "both"):
+        raise ValueError("interrupt_mode must be legacy, structured or both")
     if raw.get("memory"):
         m = raw["memory"]
         cfg.memory = MemoryConfig(max_history_tokens=m.get("max_history_tokens", 60_000),

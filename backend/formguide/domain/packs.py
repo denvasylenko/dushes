@@ -95,6 +95,13 @@ class DomainPackRegistry:
                 return self._file_cache[fid]
         return DomainPack(form_id=fid, title=fid.replace("_", " ").capitalize())
 
+    def available(self) -> list[str]:
+        """Form ids with a configured pack (inline, static or files; a provider is asked on demand)."""
+        ids = set(self._inline) | set(self._static)
+        if self._dir and self._dir.is_dir():
+            ids |= {p.stem for p in self._dir.glob("*.json")}
+        return sorted(ids)
+
     def get(self, form_id: str | None) -> DomainPack:
         base = self._base(form_id or "unknown")
         return self._with_knowledge(base)

@@ -25,7 +25,6 @@ from langchain_core.tools import BaseTool
 
 from ..attachments import extract as att
 from ..domain.packs import DomainPack
-from ..knowledge import research
 
 if TYPE_CHECKING:
     from ..guide import FormGuide
@@ -407,6 +406,8 @@ async def _ta_ask_documents(a: dict, ctx: ToolCtx) -> str:
             ctx.emit({"kind": "tool", "name": f"docs.{tool}", "input": args})
 
     try:
+        from ..knowledge import research   # needs the `research` extra (deepagents)
+
         return await research.ask_documents(ctx.guide.knowledge, ctx.pack.form_id, ctx.pack.title,
                                             str(a["question"]), ctx.guide.models.research, step)
     except Exception as e:  # noqa: BLE001 — a failed lookup must not break the turn

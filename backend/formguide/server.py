@@ -3,13 +3,15 @@
     app.include_router(create_router(guide), prefix="/agent")
 
 POST /layouts                        {jsx, form_id?, domain?}   register a form (once per JSX)
-POST /run                            AG-UI RunAgentInput -> SSE  one chat turn / resume
+POST /run                            AG-UI RunAgentInput -> SSE  one chat turn / resume / tool results
+POST /prefill                        {state, data?, text?, attachment_ids?, thread_id?}  values to prefill
 POST /attachments                    multipart thread_id + file  a user document
 GET  /kb/{form_id}                   documents in the form's scope + compiled knowledge
 POST /kb/{namespace}/documents       multipart files            managers upload documents
 DELETE /kb/{namespace}/documents/{doc_id}
 POST /kb/{form_id}/compile           {jsx, config}              documents -> domain pack
 GET  /threads/{thread_id}            transcript + pending card, to restore a conversation
+                                     (?format=agui: AG-UI messages for agent.setMessages)
 DELETE /threads/{thread_id}          forget a conversation (transcript + model history)
 GET  /debug/{thread_id}              history as the model sees it (development)
 """
@@ -18,9 +20,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+try:
+    from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+    from fastapi.responses import StreamingResponse
+
+    from . import agui
+except ImportError as e:  # pragma: no cover
+    raise ImportError(f"{e}: the HTTP layer needs: pip install 'formguide[server]'") from e
+from pydantic import BaseModel, ValidationError
 
 from .guide import FormGuide
 
@@ -31,13 +38,12 @@ class LayoutIn(BaseModel):
     domain: dict[str, Any] | None = None
 
 
-class RunIn(BaseModel):
-    """Same shape as AG-UI RunAgentInput (what CopilotKit / HttpAgent sends)."""
-    threadId: str
-    runId: str | None = None
-    messages: list[dict] = Field(default_factory=list)
-    state: dict[str, Any] = Field(default_factory=dict)
-    forwardedProps: dict[str, Any] = Field(default_factory=dict)
+class PrefillIn(BaseModel):
+    state: dict[str, Any]
+    data: dict[str, Any] | None = None
+    text: str | None = None
+    attachment_ids: list[str] | None = None
+    thread_id: str | None = None
 
 
 class CompileIn(BaseModel):
@@ -62,19 +68,29 @@ def create_router(guide: FormGuide, *, debug: bool = True) -> APIRouter:
         return {"jsx_hash": h}
 
     @r.post("/run")
-    async def run(body: RunIn) -> StreamingResponse:
-        resume = (body.forwardedProps.get("command") or {}).get("resume")
-        if resume is None and not guide.layout(body.state.get("jsx_hash", "")):
+    async def run(request: Request) -> StreamingResponse:
+        try:
+            kw = agui.run_kwargs(await request.json())
+        except (ValidationError, ValueError) as e:
+            raise HTTPException(422, f"not an AG-UI RunAgentInput: {e}") from None
+        if kw["resume"] is None and not guide.layout(kw["state"].get("jsx_hash", "")):
             raise HTTPException(409, "unknown jsx_hash: POST /layouts first")
-        user = next((m for m in reversed(body.messages) if m.get("role") == "user"), {})
+        enc = agui.encoder(request.headers.get("accept"))
 
         async def events():
-            async for ev in guide.run(body.threadId, message=user.get("content", ""), state=body.state,
-                                      resume=resume, run_id=body.runId):
-                yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
+            async for ev in guide.run(**kw):
+                yield agui.encode(ev, enc)
 
-        return StreamingResponse(events(), media_type="text/event-stream",
+        return StreamingResponse(events(), media_type=enc.get_content_type(),
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    @r.post("/prefill")
+    async def prefill(body: PrefillIn) -> dict:
+        try:
+            return await guide.suggest_prefill(body.state, data=body.data, text=body.text,
+                                               attachment_ids=body.attachment_ids, thread_id=body.thread_id)
+        except KeyError as e:
+            raise HTTPException(409, str(e)) from None
 
     @r.post("/attachments")
     async def upload_attachment(thread_id: str = Form(...), file: UploadFile = File(...)) -> dict:
@@ -117,8 +133,11 @@ def create_router(guide: FormGuide, *, debug: bool = True) -> APIRouter:
             raise bad(e) from None
 
     @r.get("/threads/{thread_id}")
-    def get_thread(thread_id: str) -> dict:
+    def get_thread(thread_id: str, format: str | None = None) -> dict:  # noqa: A002
         try:
+            if format == "agui":
+                return {"thread_id": thread_id, "messages": guide.thread_messages(thread_id),
+                        "pending_card": guide.thread(thread_id)["pending_card"]}
             return guide.thread(thread_id)
         except ValueError as e:
             raise bad(e) from None

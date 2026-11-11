@@ -28,7 +28,7 @@ nav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-s
 nav ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; counter-reset: p; }
 nav a { display: flex; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 6px; color: var(--muted);
   text-decoration: none; font-size: 14px; }
-nav a::before { counter-increment: p; content: counter(p); font: 12px var(--f-mono); color: var(--muted); width: 14px; }
+nav ol a::before { counter-increment: p; content: counter(p); font: 12px var(--f-mono); color: var(--muted); width: 14px; }
 nav a:hover { color: var(--fg); background: var(--surface); }
 nav a[aria-current="page"] { color: var(--fg); background: var(--accent-soft); font-weight: 500; }
 nav a:focus-visible, .pager a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -76,6 +76,15 @@ th { font-weight: 500; color: var(--muted); font-size: 13px; }
 td:first-child { white-space: nowrap; }
 .pill { display: inline-block; font: 12px var(--f-mono); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 .pill.ok { color: var(--accent); border-color: var(--accent); }
+.src { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 0 0 24px; font-size: 13px; color: var(--muted); }
+.src a { font: 12px var(--f-mono); color: var(--accent); text-decoration: none; border: 1px solid var(--line); border-radius: 999px;
+  padding: 1px 9px; overflow-wrap: anywhere; }
+.src a:hover { border-color: var(--accent); }
+.repo { display: block; margin: 18px 10px 0; font-size: 13px; color: var(--accent); text-decoration: none; }
+.repo:hover { text-decoration: underline; }
+main a:not(.src a):not(.pager a) { color: var(--accent); }
+li code, p code { overflow-wrap: anywhere; }
+td code { white-space: nowrap; }
 .pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); }
 .pager a { color: var(--accent); text-decoration: none; font-weight: 500; }
 .pager a:empty { visibility: hidden; }
@@ -84,6 +93,8 @@ td:first-child { white-space: nowrap; }
   nav { position: static; }
   nav ol { flex-direction: row; overflow-x: auto; padding-bottom: 6px; }
   nav a { white-space: nowrap; }
+  .repo { margin: 6px 0 0; }
+  td:first-child { white-space: normal; }
   .grid2 { grid-template-columns: minmax(0, 1fr); }
   h1 { font-size: 28px; }
 }
@@ -97,6 +108,7 @@ td:first-child { white-space: nowrap; }
     <p class="brand-sub">A chat agent for large configurable forms</p>
     <ol>
       <li><a href="#overview">System overview</a></li>
+      <li><a href="#integrate">Integrate</a></li>
       <li><a href="#turn">One turn</a></li>
       <li><a href="#context">What the model sees</a></li>
       <li><a href="#knowledge">Business documents</a></li>
@@ -104,6 +116,7 @@ td:first-child { white-space: nowrap; }
       <li><a href="#memory">Long conversations</a></li>
       <li><a href="#config">Configuration</a></li>
     </ol>
+    <a class="repo" href="https://github.com/denvasylenko/dushes">Source on GitHub ↗</a>
   </nav>
 
   <main>
@@ -112,6 +125,7 @@ td:first-child { white-space: nowrap; }
       <p class="eyebrow">System overview</p>
       <h1>The form owns the config; the agent advises and proposes</h1>
       <p class="lead">The Java backend sends the JSX once and rebuilds the config on every event. The frontend forwards what it received. The agent never writes the config: every change takes the same path as the user’s own input.</p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/guide.py" title="backend/formguide/guide.py">guide.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/__init__.py" title="backend/formguide/__init__.py">__init__.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/docs/architecture.md" title="docs/architecture.md">architecture.md</a> <a href="https://github.com/denvasylenko/dushes/blob/main/README.md" title="README.md">README.md</a> <a href="https://github.com/denvasylenko/dushes/tree/main/openspec/specs/" title="openspec/specs/">specs/</a></p>
       <figure>
         <div class="diagram">
           <svg class="d" viewBox="0 0 860 330" role="img" aria-label="Data flows from the Java backend to the frontend and the agent; the agent’s changes come back through the frontend and the backend, never straight into the config.">
@@ -175,11 +189,112 @@ td:first-child { white-space: nowrap; }
       </div>
     </section>
 
+
+    <!-- ============================================================ integrate -->
+    <section data-page="integrate" hidden>
+      <p class="eyebrow">Integrate</p>
+      <h1>A standard AG-UI agent: CopilotKit and other clients connect as they are</h1>
+      <p class="lead">One endpoint, <code>POST /agent/run</code>, takes an AG-UI <code>RunAgentInput</code> and streams AG-UI events validated against the official models. The form travels in <code>state</code>; cards are interrupts; frontend tools and prefill use the protocol’s own fields.</p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/agui.py" title="backend/formguide/agui.py">agui.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/server.py" title="backend/formguide/server.py">server.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/app.py" title="backend/formguide/app.py">app.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/prefill.py" title="backend/formguide/prefill.py">prefill.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/examples/copilotkit/src/App.tsx" title="examples/copilotkit/src/App.tsx">App.tsx</a> <a href="https://github.com/denvasylenko/dushes/blob/main/frontend/src/api.ts" title="frontend/src/api.ts">api.ts</a> <a href="https://github.com/denvasylenko/dushes/blob/main/openspec/specs/agui-protocol/spec.md" title="openspec/specs/agui-protocol/spec.md">spec.md</a></p>
+      <h2>Five minutes to a running agent</h2>
+<pre><code>pip install "formguide[all] @ git+https://github.com/denvasylenko/dushes.git#subdirectory=backend"
+formguide init my-agent                        # formguide.yaml, a domain pack, a skill
+formguide check --config my-agent/formguide.yaml   # loads it, calls no model
+ANTHROPIC_API_KEY=... formguide serve --config my-agent/formguide.yaml --cors "*"</code></pre>
+      <p>The only required setting is <code>model:</code>, e.g. <code>"openai:gpt-5"</code>; with no file at all, <code>FORMGUIDE_MODEL</code> does the same. Extras: <code>anthropic</code>, <code>openai</code>, <code>server</code>, <code>research</code>, <code>sqlite</code>; the core installs with LangGraph, LangChain core, Pydantic, PyYAML and pypdf only. In an existing service: <code>app = create_app("formguide.yaml")</code>, or <code>create_router(guide)</code> on your own FastAPI app.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 430" role="img" aria-label="Three AG-UI runs: a user message with a frontend tool call, a continuation carrying the tool result that ends with a confirmation card, and a resume with the user's answer.">
+            <defs>
+              <marker id="a8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a8k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="box" x="40" y="14" width="160" height="40" rx="8"/>
+            <text x="120" y="39" text-anchor="middle" class="t-b">AG-UI client</text>
+            <rect class="key" x="660" y="14" width="160" height="40" rx="8"/>
+            <text x="740" y="39" text-anchor="middle" class="t-b">formguide /run</text>
+            <line class="ln-dash" x1="120" y1="54" x2="120" y2="416"/>
+            <line class="ln-dash" x1="740" y1="54" x2="740" y2="416"/>
+
+            <text x="20" y="84" class="t-m">run 1</text>
+            <line class="ln" x1="122" y1="96" x2="738" y2="96" marker-end="url(#a8)"/>
+            <text x="430" y="88" text-anchor="middle" class="t-s">messages [user] · state {config, jsx_hash, form_id} · tools [get_user_locale]</text>
+            <line class="ln" x1="738" y1="126" x2="122" y2="126" marker-end="url(#a8)"/>
+            <text x="430" y="118" text-anchor="middle" class="t-s">TEXT_MESSAGE_* · TOOL_CALL_* + TOOL_CALL_RESULT (server tool)</text>
+            <line class="ln" x1="738" y1="156" x2="122" y2="156" marker-end="url(#a8)"/>
+            <text x="430" y="148" text-anchor="middle" class="t-s">TOOL_CALL_START/ARGS/END get_user_locale, no result · RUN_FINISHED</text>
+            <rect class="soft" x="40" y="166" width="160" height="30" rx="6"/>
+            <text x="120" y="186" text-anchor="middle" class="t-s">runs the tool</text>
+
+            <text x="20" y="226" class="t-m">run 2</text>
+            <line class="ln" x1="122" y1="238" x2="738" y2="238" marker-end="url(#a8)"/>
+            <text x="430" y="230" text-anchor="middle" class="t-s">messages … + tool message (result) · same state</text>
+            <line class="ln-key" x1="738" y1="268" x2="122" y2="268" marker-end="url(#a8k)"/>
+            <text x="430" y="260" text-anchor="middle" class="t-k">CUSTOM on_interrupt {card_id, changes} · RUN_FINISHED</text>
+            <rect class="soft" x="40" y="278" width="160" height="44" rx="6"/>
+            <text x="120" y="297" text-anchor="middle" class="t-s">card; on accept: form</text>
+            <text x="120" y="313" text-anchor="middle" class="t-s">backend → new config</text>
+
+            <text x="20" y="352" class="t-m">run 3</text>
+            <line class="ln-key" x1="122" y1="364" x2="738" y2="364" marker-end="url(#a8k)"/>
+            <text x="430" y="356" text-anchor="middle" class="t-k">forwardedProps.command.resume {accepted, config} or resume[]</text>
+            <line class="ln" x1="738" y1="394" x2="122" y2="394" marker-end="url(#a8)"/>
+            <text x="430" y="386" text-anchor="middle" class="t-s">TOOL_CALL_RESULT propose_changes · TEXT_MESSAGE_* · RUN_FINISHED</text>
+          </svg>
+        </div>
+        <figcaption>Every run carries the current form in <code>state</code>. A frontend tool ends the run; the client runs it and sends the result as a <code>tool</code> message. A card is an interrupt; the answer resumes the same turn. With <code>interrupt_mode: structured</code> the card arrives as <code>RUN_FINISHED.outcome</code> and is answered with <code>resume[]</code>.</figcaption>
+      </figure>
+      <h2>What the request carries</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>RunAgentInput</th><th>formguide reads it as</th></tr></thead>
+        <tbody>
+          <tr><td><code>state</code></td><td><code>{config, jsx_hash, form_id, ui?, attachments?}</code>: the form as your backend last built it</td></tr>
+          <tr><td><code>messages</code></td><td>a trailing <code>user</code> message is the new text; trailing <code>tool</code> messages are frontend tool results. History is kept on the server, so older messages are ignored</td></tr>
+          <tr><td><code>tools</code></td><td>frontend tools offered to the model (CopilotKit actions, <code>HttpAgent</code> tools)</td></tr>
+          <tr><td><code>resume</code></td><td>AG-UI 1.0 answer to a card: <code>resolved</code> with <code>{accepted, config}</code>, or <code>cancelled</code></td></tr>
+          <tr><td><code>forwardedProps</code></td><td><code>command.resume</code> (CopilotKit’s answer to a card) and <code>prefill</code></td></tr>
+        </tbody>
+      </table></div>
+      <h2>CopilotKit</h2>
+<pre><code>import { CopilotChat, CopilotKitProvider, HttpAgent, useAgent, useInterrupt } from "@copilotkit/react-core/v2"
+
+const agents = { formguide: new HttpAgent({ url: "/agent/run" }) }   // no CopilotKit runtime server
+&lt;CopilotKitProvider agents__unsafe_dev_only={agents} agentId="formguide"&gt;&lt;CopilotChat /&gt;&lt;/CopilotKitProvider&gt;
+
+agent.setState({ config, jsx_hash, form_id: "barber_booking" })         // before each run
+useInterrupt({ render: ({ event, resolve }) =&gt; &lt;Card value={JSON.parse(event.value)}
+  onAnswer={(accepted, config) =&gt; resolve({ accepted, config })} /&gt; })</code></pre>
+      <p>The full example, with a frontend tool and prefill, is in <a href="https://github.com/denvasylenko/dushes/tree/main/examples/copilotkit">examples/copilotkit</a>. CopilotKit calls directly passed agents a development option; in production put a CopilotRuntime in front of the same <code>HttpAgent</code>, or use its <code>selfManagedAgents</code>. Nothing changes on the formguide side.</p>
+      <h2>Any AG-UI client</h2>
+<pre><code>import { HttpAgent } from "@ag-ui/client"
+
+const agent = new HttpAgent({ url: "/agent/run", threadId })
+agent.setState({ config, jsx_hash, form_id })
+agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "Where do I start?" })
+await agent.runAgent({ tools: [getUserLocale] }, {
+  onTextMessageContentEvent: ({ event }) =&gt; render(event.delta),
+  onCustomEvent: ({ event }) =&gt; event.name === "on_interrupt" &amp;&amp; showCard(JSON.parse(event.value)),
+})</code></pre>
+      <p>The demo frontend does exactly this: <a href="https://github.com/denvasylenko/dushes/blob/main/frontend/src/api.ts">frontend/src/api.ts</a>. To restore a chat after reopening, <code>GET /agent/threads/{id}?format=agui</code> returns the conversation as AG-UI messages for <code>setMessages</code>.</p>
+      <h2>Prefill</h2>
+      <p>Start from what your app already knows. Keys that are field names are validated directly; anything else (other keys, free text, attachments) goes through the extraction model. Values for locked or hidden steps are kept for later.</p>
+<pre><code>await agent.runAgent({ forwardedProps: { prefill: { data: { first_name: "Anna", gender: "Female" } } } })
+
+# or on the server, without a chat
+await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
+# -&gt; {"values": [{"name": "gender", "value": {"id": "f", "name": "Female"}, "status": "now"}, ...], "errors": [...]}</code></pre>
+      <div class="grid2">
+        <div class="note"><h3>Events</h3><ul><li><code>RUN_STARTED</code>, then exactly one of <code>RUN_FINISHED</code> or <code>RUN_ERROR</code></li><li>text, tool calls with results, <code>CUSTOM</code>: <code>ui_directive</code>, <code>on_interrupt</code>, <code>agent_context</code>, <code>memory_compacted</code></li></ul></div>
+        <div class="note"><h3>Checked</h3><ul><li>CopilotKit 1.86: chat, card, frontend tool, prefill</li><li><code>@ag-ui/client</code> 1.0.4: the demo frontend, restore after reload</li><li>every event validated against <code>ag-ui-protocol</code> in tests</li></ul></div>
+      </div>
+    </section>
+
     <!-- ============================================================ 2 -->
     <section data-page="turn" hidden>
       <p class="eyebrow">One turn</p>
       <h1>From a user message to an answer or a card</h1>
       <p class="lead">Every message brings a fresh config. The graph diffs it against the previous snapshot, compacts the history if needed, and calls the model and its tools. When the model proposes field values, the graph stops at an interrupt until the user answers.</p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/agent/graph.py" title="backend/formguide/agent/graph.py">graph.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/agent/tools.py" title="backend/formguide/agent/tools.py">tools.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/agent/prompts.py" title="backend/formguide/agent/prompts.py">prompts.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/openspec/specs/agent-turn/spec.md" title="openspec/specs/agent-turn/spec.md">spec.md</a></p>
       <figure>
         <div class="diagram">
           <svg class="d" viewBox="0 0 860 380" role="img" aria-label="Graph nodes sync, compact, llm, tools, confirm with an interrupt, and nudge; the frontend applies the change and resumes the graph.">
@@ -204,6 +319,11 @@ td:first-child { white-space: nowrap; }
             <rect class="box" x="560" y="60" width="130" height="64" rx="8"/>
             <text x="625" y="86" text-anchor="middle" class="t-b">tools</text>
             <text x="625" y="104" text-anchor="middle" class="t-s">search, focus, …</text>
+
+            <line class="ln-dash" x1="690" y1="92" x2="738" y2="92" marker-end="url(#a2)"/>
+            <text x="744" y="80" class="t-s">frontend tool:</text>
+            <text x="744" y="96" class="t-s">the run ends,</text>
+            <text x="744" y="112" class="t-s">the client runs it</text>
 
             <rect class="box" x="560" y="200" width="130" height="64" rx="8"/>
             <text x="625" y="226" text-anchor="middle" class="t-b">confirm</text>
@@ -243,7 +363,7 @@ td:first-child { white-space: nowrap; }
             <text x="300" y="250" text-anchor="middle" class="t-s">no tool calls</text>
           </svg>
         </div>
-        <figcaption>A turn ends with an answer or a card. After confirmation the frontend applies the change through the backend and resumes the graph with the new config. The model receives the diff, the form’s reaction, and carries the chain on (service → barber → date).</figcaption>
+        <figcaption>A turn ends with an answer, a card, or a call to a frontend tool (its result arrives with the next run). After confirmation the frontend applies the change through the backend and resumes the graph with the new config. The model receives the diff, the form’s reaction, and carries the chain on (service → barber → date).</figcaption>
       </figure>
       <div class="tbl"><table>
         <thead><tr><th>Node</th><th>What it does</th><th>Safeguard</th></tr></thead>
@@ -251,7 +371,7 @@ td:first-child { white-space: nowrap; }
           <tr><td><code>sync</code></td><td>Diffs the config against the snapshot, learns dependencies, builds the context, appends the message</td><td>System prompt frozen; knowledge updates arrive as <code>&lt;updated_instructions&gt;</code></td></tr>
           <tr><td><code>compact</code></td><td>Compacts older turns into memory when the history is above the threshold</td><td>A failed compaction never blocks the turn</td></tr>
           <tr><td><code>llm</code></td><td>Streams the reply; withholds short internal notes before tool calls</td><td>Retries once without reasoning blocks if the provider rejects them</td></tr>
-          <tr><td><code>tools</code></td><td>Built-in tools, skill tools and your own <code>BaseTool</code></td><td><code>propose_changes</code> checks visibility, availability, read-only and options</td></tr>
+          <tr><td><code>tools</code></td><td>Built-in tools, skill tools and your own <code>BaseTool</code>; frontend tools the client declared end the run</td><td><code>propose_changes</code> checks visibility, availability, read-only and options; client tools never shadow built-in ones</td></tr>
           <tr><td><code>confirm</code></td><td>Interrupt with the card; afterwards the form’s diff for the model</td><td>An ignored card is closed on the next message</td></tr>
           <tr><td><code>nudge</code></td><td>Asks the model to answer if it ended the turn silently</td><td>At most once per turn</td></tr>
         </tbody>
@@ -263,6 +383,7 @@ td:first-child { white-space: nowrap; }
       <p class="eyebrow">What the model sees</p>
       <h1>A collapsed outline, the open section and the changes</h1>
       <p class="lead">Structure and order come from the JSX, deterministically; labels, flags and values come from the config. No model is involved in building the context.</p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/layout.py" title="backend/formguide/form/layout.py">layout.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/overlay.py" title="backend/formguide/form/overlay.py">overlay.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/render.py" title="backend/formguide/form/render.py">render.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/search.py" title="backend/formguide/form/search.py">search.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/openspec/specs/agent-context/spec.md" title="openspec/specs/agent-context/spec.md">spec.md</a></p>
       <figure>
         <div class="diagram">
           <svg class="d" viewBox="0 0 860 330" role="img" aria-label="A model request: the frozen system prompt, history with memory, and the current message with its form_context block; about 1 thousand tokens against 16 thousand for the config.">
@@ -324,6 +445,7 @@ form reacted:
       <p class="eyebrow">Business documents</p>
       <h1>Managers upload documents; each form sees its scope</h1>
       <p class="lead">Documents go into a namespace (the form id by default). Scopes say which namespaces a form sees: its own and, for example, the bank’s shared documents. Then two layers: compilation into the domain pack, and a researcher for rare questions.</p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/tree/main/backend/formguide/knowledge/" title="backend/formguide/knowledge/">knowledge/</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/knowledge/compile.py" title="backend/formguide/knowledge/compile.py">compile.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/knowledge/research.py" title="backend/formguide/knowledge/research.py">research.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/domain/packs.py" title="backend/formguide/domain/packs.py">packs.py</a> <a href="https://github.com/denvasylenko/dushes/tree/main/backend/demo/samples/kb/" title="backend/demo/samples/kb/">kb/</a></p>
       <figure>
         <div class="diagram">
           <svg class="d" viewBox="0 0 860 360" role="img" aria-label="Managers’ documents are stored by namespace; compilation turns them into rules in the prompt; the index and the researcher answer rare questions.">
@@ -374,7 +496,7 @@ form reacted:
             <line class="ln" x1="678" y1="280" x2="632" y2="280" marker-end="url(#a4)"/>
             <text x="655" y="272" text-anchor="middle" class="t-s">question</text>
             <line class="ln" x1="632" y1="308" x2="678" y2="308" marker-end="url(#a4)"/>
-            <text x="655" y="326" text-anchor="middle" class="t-s">answer + sources</text>
+            <text x="655" y="350" text-anchor="middle" class="t-s">answer + sources</text>
             <path class="ln-dash" d="M760,100 L760,248" marker-end="url(#a4)"/>
             <text x="768" y="180" class="t-s">in the prompt,</text>
             <text x="768" y="196" class="t-s">every turn</text>
@@ -393,6 +515,7 @@ form reacted:
       <p class="eyebrow">User documents</p>
       <h1>A scan is read separately and never enters the history</h1>
       <p class="lead">The user attaches a letter, a business card or a scan. A separate vision call gets the document and the form’s field catalog and returns only the values found. The main conversation sees values, not the image.</p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/attachments/extract.py" title="backend/formguide/attachments/extract.py">extract.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/prefill.py" title="backend/formguide/prefill.py">prefill.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/openspec/specs/attachment-extraction/spec.md" title="openspec/specs/attachment-extraction/spec.md">spec.md</a></p>
       <figure>
         <div class="diagram">
           <svg class="d" viewBox="0 0 860 260" role="img" aria-label="The attachment is stored per thread; a separate model call extracts values; the main agent proposes them in a card or keeps them for locked steps.">
@@ -452,6 +575,7 @@ form reacted:
       <p class="eyebrow">Long conversations</p>
       <h1>Compact the dialogue, not the form</h1>
       <p class="lead">The form state is rebuilt from the config every turn, so it never needs summarizing. What grows is the per-turn context blocks (about 1K tokens each, stale immediately), tool results and the dialogue itself. That is what gets compacted.</p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/agent/memory.py" title="backend/formguide/agent/memory.py">memory.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/transcript.py" title="backend/formguide/transcript.py">transcript.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/openspec/specs/conversation-memory/spec.md" title="openspec/specs/conversation-memory/spec.md">spec.md</a> <a href="https://github.com/denvasylenko/dushes/blob/main/openspec/specs/chat-history/spec.md" title="openspec/specs/chat-history/spec.md">spec.md</a></p>
       <figure>
         <div class="diagram">
           <svg class="d" viewBox="0 0 860 270" role="img" aria-label="Before compaction: eight turns, each with its own context block. After: the conversation memory and the last two turns verbatim.">
@@ -516,19 +640,24 @@ form reacted:
       <p class="eyebrow">Configuration</p>
       <h1>Install or copy it, then configure</h1>
       <p class="lead">The <code>formguide</code> library does not depend on a transport or a UI. <code>demo/</code> is an example integration: a mock form backend, a FastAPI app and a frontend. Every domain and every provider is set in the configuration, in code or YAML.</p>
+      <p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/config.py" title="backend/formguide/config.py">config.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/models.py" title="backend/formguide/models.py">models.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/skills.py" title="backend/formguide/skills.py">skills.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/cli.py" title="backend/formguide/cli.py">cli.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/demo/formguide.yaml" title="backend/demo/formguide.yaml">formguide.yaml</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/pyproject.toml" title="backend/pyproject.toml">pyproject.toml</a></p>
 <pre><code>backend/
-  formguide/                 the library
-    guide.py                 FormGuide: register_form · run (AG-UI events) · compile_knowledge
+  formguide/                 the library (pip install "formguide[...]" or copy the folder)
+    guide.py                 FormGuide: register_form · run (AG-UI events) · suggest_prefill · compile_knowledge
     config.py                GuideConfig, load_config(yaml)
     models.py                models per role: agent · research · compile · extract
     skills.py                SKILL.md + LangChain tools, scoped to forms
-    server.py                optional FastAPI router
+    prefill.py               values from data the app already has
+    agui.py · server.py      AG-UI input / encoding · FastAPI router   (extra: server)
+    app.py · cli.py          create_app() · formguide init | check | serve
     form/                    layout (ComponentMap) · overlay · diff · context rendering
     agent/                   graph · tools · prompt · memory (compaction)
     domain/                  Domain Pack: inline › provider › packs › dir › default (+ documents)
     knowledge/               storage · index (BM25 | VectorStore) · scopes · compile · researcher
     attachments/             user attachments and extraction
-  demo/                      example: app.py · formguide.yaml · skills/ · domain_packs/ · mock_forms/</code></pre>
+  demo/                      example: app.py · formguide.yaml · skills/ · domain_packs/ · mock_forms/
+examples/copilotkit/         CopilotKit 1.86 client
+frontend/                    demo UI on @ag-ui/client</code></pre>
       <h2>Extension points</h2>
       <div class="tbl"><table>
         <thead><tr><th>What</th><th>How</th><th>Example</th></tr></thead>
@@ -542,10 +671,14 @@ form reacted:
           <tr><td>Tools</td><td>any <code>BaseTool</code>, for all forms</td><td>a call to your API</td></tr>
           <tr><td>History</td><td><code>checkpointer</code> + <code>TranscriptStore</code></td><td><code>sqlite_checkpointer()</code>, Postgres; files</td></tr>
           <tr><td>Memory</td><td><code>MemoryConfig</code></td><td>threshold, verbatim turns, model</td></tr>
+          <tr><td>Cards</td><td><code>interrupt_mode</code></td><td><code>legacy</code> (CopilotKit) · <code>structured</code> (AG-UI 1.0) · <code>both</code></td></tr>
+          <tr><td>Frontend tools</td><td>declared by the client per run</td><td>CopilotKit <code>useFrontendTool</code>, <code>HttpAgent</code> tools</td></tr>
         </tbody>
       </table></div>
       <h2>YAML</h2>
-<pre><code>models:
+      <p>The shortest working file is one line. Everything below it is optional and shown with typical values.</p>
+<pre><code>model: "anthropic:claude-opus-5-5"     # one model for every role, or per role:
+models:
   agent:    {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5,
              api_version: "2025-04-01-preview", azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}
   research: "openai:gpt-5-mini"
@@ -559,16 +692,19 @@ skills: {dir: skills}
 tools: ["my_app.tools:check_status"]
 memory: {max_history_tokens: 60000, keep_turns: 4, model: "anthropic:claude-haiku-5-5"}
 checkpointer: {sqlite: data/checkpoints.sqlite}   # model history
-transcripts: {dir: data/transcripts}             # what the user saw</code></pre>
+transcripts: {dir: data/transcripts}             # what the user saw
+interrupt_mode: legacy                           # legacy | structured | both</code></pre>
       <h2>In code</h2>
-<pre><code>from formguide import FormGuide, load_config
-from formguide.server import create_router
+<pre><code>from formguide.app import create_app
+app = create_app("formguide.yaml", cors=["https://my.app"])     # a whole FastAPI app
 
+from formguide import FormGuide, load_config                  # or inside your own app
+from formguide.server import create_router
 guide = FormGuide(load_config("formguide.yaml"))
-app.include_router(create_router(guide), prefix="/agent")   # or call guide.run(...) directly</code></pre>
+app.include_router(create_router(guide), prefix="/agent")      # or call guide.run(...) directly</code></pre>
       <div class="grid2">
         <div class="note"><h3>Model requirements</h3><ul><li>agent and researcher: tool calling</li><li>compile and extract: structured output</li><li>extracting from scans: vision / PDF input</li></ul></div>
-        <div class="note"><h3>Checked</h3><p><span class="pill ok">29 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
+        <div class="note"><h3>Checked</h3><p><span class="pill ok">40 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic, and AG-UI event validation. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
       </div>
     </section>
 

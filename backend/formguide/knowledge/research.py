@@ -13,9 +13,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from deepagents import create_deep_agent
-from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
-from deepagents.middleware.filesystem import FilesystemPermission
+try:
+    from deepagents import create_deep_agent
+    from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
+    from deepagents.middleware.filesystem import FilesystemPermission
+except ImportError as e:  # pragma: no cover
+    raise ImportError("document research needs: pip install 'formguide[research]'") from e
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import tool
 

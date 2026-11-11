@@ -1,6 +1,8 @@
 """Display transcript and durable history (chat-history capability)."""
 from __future__ import annotations
 
+import json
+
 import asyncio
 
 from langchain_core.messages import ToolMessage
@@ -28,7 +30,7 @@ def test_transcript_records_turns_and_card_status(guide, model):
     ]
     state = start(guide, LOAN)
     ev = collect(guide, "h1", message="I want a car loan", state=state)
-    card_id = next(e["value"]["card_id"] for e in ev if e.get("name") == "on_interrupt")
+    card_id = next(json.loads(e["value"])["card_id"] for e in ev if e.get("name") == "on_interrupt")
     t = guide.thread("h1")
     assert t["pending_card"]["id"] == card_id
     assert kinds(guide, "h1") == [("user", None), ("tool", None), ("tool", None), ("card", "pending")]
