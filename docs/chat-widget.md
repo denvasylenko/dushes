@@ -67,7 +67,13 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `toolSteps` (`tool-steps`) | `true` | the live list of what the agent is doing |
 | `toolLabels` | — | `{tool_name: "Label"}` for the step list |
 | `mic` | `true` | the dictation button (only where the browser supports speech recognition) |
-| `attach` | `true` | the paperclip (only when a plugin can upload files, e.g. formguide) |
+| `micLang` (`mic-lang`) | the chat's language | the dictation language, e.g. `ru-RU`, `en-GB` |
+| `micAutoSend` (`mic-auto-send`) | `false` | send the message as soon as the user stops dictating (hands-free) |
+| `attach` | `true` | the paperclip (only when files can be uploaded: the `upload` option or a plugin, e.g. formguide) |
+| `attachAccept` (`attach-accept`) | the plugin's types | file types offered, e.g. `.pdf,.jpg` |
+| `attachMultiple` (`attach-multiple`) | `true` | several files at once |
+| `attachMaxMb` (`attach-max-mb`) | `20` | the largest file; bigger ones are refused with a message |
+| `upload` | the plugin's | your own uploader: `(file, chat) => Promise<{id, filename}>` (attachments without formguide) |
 | `quickReplies` (`quick-replies`) | `true` | starter chips in an empty chat and suggested replies after answers |
 | `starters` | — | opening messages for an empty chat (formguide also reads them from the domain pack) |
 | `title`, `subtitle`, `intro`, `placeholder` | localized defaults | the header, the empty-chat text, the composer hint |
@@ -176,6 +182,7 @@ chat.use(formguide({
   baseUrl: '/agent',                                      // where threads and attachments live (default: url minus /run)
   fieldCard: { select: true, diff: true, reason: true, edit: true, jump: true, undo: true },
   undoSeconds: 20,
+  cardSteps: false,                                       // show "Preparing a question" etc. as steps too
 }))
 ```
 
@@ -193,7 +200,7 @@ It does five things:
    | `confirm`: a confirmation | Confirm (red when `danger`) or Cancel | `{accepted}` |
 
 4. **Restores the chat** after a reload: `GET {baseUrl}/threads/{id}?format=agui&form_id=…` gives the messages, a pending card and the form's starters.
-5. **Labels the steps** of formguide's tools in seven languages ("Looking at the form", "Reading your document", …).
+5. **Labels the steps** of formguide's tools in seven languages ("Looking at the form", "Reading your document", …). The tools that produce a card (`propose_changes`, `ask_user`, `request_file`, `confirm_action`) get no step of their own, since the card shows the result; `cardSteps: true` shows them.
 
 Edited values are applied in the shape the form uses: a dropdown that stores the option object gets the option object, one that stores an id gets the id.
 

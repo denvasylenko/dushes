@@ -32,6 +32,8 @@ export interface FormguideOptions {
   fieldCard?: Partial<FieldCardFlags>
   /** How long Undo stays available after a card is applied, in seconds. */
   undoSeconds?: number
+  /** Show "Preparing a question" etc. as steps although the card itself follows. Default false. */
+  cardSteps?: boolean
 }
 
 export interface Ctx extends FormguideOptions { base: (chat: ChatApi) => string; flags: FieldCardFlags }
@@ -61,10 +63,13 @@ export function formguide(opts: FormguideOptions): Plugin {
   }
   const labels: Record<string, Record<string, string>> = {}
   for (const [lang, m] of Object.entries(TOOL_LABELS)) for (const [tool, label] of Object.entries(m)) (labels[tool] ??= {})[lang] = label
+  // the card that follows already shows what these tools did: no separate step for them
+  const toolLabels: Record<string, Record<string, string> | string> = { ...labels }
+  if (!opts.cardSteps) for (const t of ['propose_changes', 'ask_user', 'request_file', 'confirm_action']) toolLabels[t] = ''
   return {
     name: 'formguide',
     i18n: FG_STRINGS,
-    toolLabels: labels,
+    toolLabels,
     renderers: {
       set_fields: (it, c) => fieldCard(it, c, ctx),
       ask: (it, c) => askCard(it, c),

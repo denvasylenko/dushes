@@ -205,6 +205,81 @@ describe('<agui-chat>', () => {
   })
 })
 
+// ---------------------------------------------------------------- dictation and attachments
+
+class FakeRecognition {
+  static last: FakeRecognition | null = null
+  lang = ''; continuous = false; interimResults = false
+  onresult: ((e: unknown) => void) | null = null
+  onerror: ((e: unknown) => void) | null = null
+  onend: (() => void) | null = null
+  aborted = false
+  constructor() { FakeRecognition.last = this }
+  start() {}
+  stop() { setTimeout(() => this.onend?.()) }
+  abort() { this.aborted = true }
+  say(text: string, final = true) {
+    this.onresult?.({ resultIndex: 0, results: { length: 1, 0: { isFinal: final, 0: { transcript: text } } } })
+  }
+}
+
+describe('dictation and attachments', () => {
+  it('clears the composer for good when a dictated message is sent', async () => {
+    vi.stubGlobal('SpeechRecognition', FakeRecognition)
+    mockRuns(run(...text('m1', 'The Loan tab is next.')))
+    const el = await mount({ 'mic-lang': 'ru-RU' })
+    $(el, '.mic').click()
+    const rec = FakeRecognition.last!
+    expect(rec.lang).toBe('ru-RU')
+    rec.say('okay which field is next', false)
+    const input = $(el, 'textarea') as HTMLTextAreaElement
+    expect(input.value).toBe('okay which field is next')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    expect(rec.aborted).toBe(true)
+    rec.say('okay which field is next')         // a late final result after sending
+    await tick(5)
+    expect(input.value).toBe('')
+    expect($(el, '.mic').classList.contains('on')).toBe(false)
+    expect(bodies[0].messages.at(-1).content).toBe('okay which field is next')
+  })
+
+  it('sends when dictation stops with mic-auto-send', async () => {
+    vi.stubGlobal('SpeechRecognition', FakeRecognition)
+    mockRuns(run(...text('m1', 'Ok.')))
+    const el = await mount({ 'mic-auto-send': '' })
+    $(el, '.mic').click()
+    FakeRecognition.last!.say('book a haircut')
+    $(el, '.mic').click()                         // stop: the result is final, the message goes
+    await tick(20)
+    expect(bodies[0].messages.at(-1).content).toBe('book a haircut')
+  })
+
+  it('takes attachment settings from options', async () => {
+    mockRuns(run(...text('m1', 'Got it.')))
+    const el = await mount({ 'attach-accept': '.pdf', 'attach-max-mb': '1' })
+    expect($(el, '.clip').hidden).toBe(true)                    // nobody can upload yet
+    const upload = vi.fn(async (f: File) => ({ id: `att_${f.name}`, filename: f.name }))
+    el.options = { upload, attachMultiple: false }
+    expect($(el, '.clip').hidden).toBe(false)
+    const picker = $(el, 'input[type=file]') as HTMLInputElement
+    expect(picker.accept).toBe('.pdf')
+    expect(picker.multiple).toBe(false)
+    const small = new File(['x'], 'a.pdf'), big = new File([new Uint8Array(2 * 1024 * 1024)], 'b.pdf')
+    Object.defineProperty(picker, 'files', { value: [big, small], configurable: true })
+    picker.dispatchEvent(new Event('change'))
+    await tick(5)
+    expect(upload).toHaveBeenCalledTimes(0)                      // multiple off: only the first, and it is too big
+    expect($(el, '.hint').textContent).toContain('b.pdf')
+    Object.defineProperty(picker, 'files', { value: [small], configurable: true })
+    picker.dispatchEvent(new Event('change'))
+    await tick(5)
+    expect(upload).toHaveBeenCalledTimes(1)
+    expect($$(el, '.files .chip').map((c) => c.textContent)).toEqual([expect.stringContaining('a.pdf')])
+    el.setAttribute('attach', 'off')
+    expect($(el, '.clip').hidden).toBe(true)
+  })
+})
+
 // ---------------------------------------------------------------- formguide cards
 
 describe('formguide plugin', () => {
@@ -302,6 +377,17 @@ describe('formguide plugin', () => {
     await tick(20)
     expect(bodies[1].forwardedProps.command.resume).toEqual({ attachment_ids: ['att_12345678'] })
     expect($(el, '.card .ok-line').textContent).toContain('passport.pdf')
+  })
+
+  it('shows no separate step for the tool that made the card', async () => {
+    const { el } = await withPlugin(run(
+      { type: 'TOOL_CALL_START', toolCallId: 'q', toolCallName: 'ask_user' }, { type: 'TOOL_CALL_END', toolCallId: 'q' },
+      interrupt({ type: 'ask', card_id: 'q1', question: 'Which?', options: [{ id: 'a', label: 'A' }], multiple: false, allow_text: false })))
+    expect($$(el, '.steps')).toHaveLength(0)
+    ;($(el, '.card .chip') as HTMLButtonElement).click()
+    await tick(5)
+    expect($$(el, '.card .chip')).toHaveLength(0)                // the answered card shrinks
+    expect($(el, '.card .ok-line').textContent).toContain('A')
   })
 
   it('passes directives to the host', async () => {

@@ -38,8 +38,13 @@
     <label>Language <select data-opt="lang"><option value="">browser</option><option>en</option><option>ru</option><option>uk</option><option>de</option><option>fr</option><option>it</option><option>es</option></select></label>
     <label>Tool steps <input type="checkbox" data-opt="toolSteps" checked></label>
     <label>Microphone <input type="checkbox" data-opt="mic" checked></label>
+    <label>Dictation language <select data-opt="micLang"><option value="">chat language</option><option>en-US</option><option>ru-RU</option><option>uk-UA</option><option>de-DE</option></select></label>
+    <label>Send when dictation stops <input type="checkbox" data-opt="micAutoSend"></label>
     <label>Quick replies <input type="checkbox" data-opt="quickReplies" checked></label>
     <label>Attachments <input type="checkbox" data-opt="attach" checked></label>
+    <label>Several files <input type="checkbox" data-opt="attachMultiple" checked></label>
+    <label>File types <select data-opt="attachAccept"><option value="">plugin default</option><option>.pdf</option><option>.jpg,.jpeg,.png</option></select></label>
+    <label>Max file size, MB <select data-opt="attachMaxMb"><option>20</option><option>5</option><option>1</option></select></label>
     <label>Card: checkboxes <input type="checkbox" data-card="select" checked></label>
     <label>Card: old &rarr; new <input type="checkbox" data-card="diff" checked></label>
     <label>Card: edit values <input type="checkbox" data-card="edit" checked></label>
@@ -105,7 +110,7 @@
   // the settings panel: every change goes straight into chat.options or a theme token
   for (const el of document.querySelectorAll('[data-opt]')) {
     el.addEventListener('change', () => {
-      const v = el.type === 'checkbox' ? el.checked : el.value
+      const v = el.type === 'checkbox' ? el.checked : el.dataset.opt === 'attachMaxMb' ? Number(el.value) : el.value
       chat.options = { [el.dataset.opt]: v }
       if (el.dataset.opt === 'mode') {
         const host = document.getElementById('inline-host')

@@ -181,8 +181,10 @@ export function askCard(it: Interrupt, c: RendererContext): HTMLElement {
   const options: { id: string; label: string }[] = it.options ?? []
   const multiple = !!it.multiple
   const picked = new Set<string>()
-  const answered = (labels: string) => {
-    acts.replaceWith(h('div', { class: 'ok-line' }, h('i', null, '✓'), h('span', null, `${c.t('answered')}: ${labels}`)))
+  const answered = (labels: string, ok = true) => {   // the card shrinks to the question and the answer
+    acts.replaceWith(h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '✓' : '✕'), h('span', null, labels)))
+    card.querySelector('.chips')?.remove()
+    text?.remove()
   }
   const send = (ids: string[], text: string) => {
     const labels = [...ids.map((i) => options.find((o) => o.id === i)?.label ?? i), ...(text ? [`"${text}"`] : [])].join(', ')
@@ -216,7 +218,7 @@ export function askCard(it: Interrupt, c: RendererContext): HTMLElement {
   const sendBtn = h('button', { class: 'btn pri', type: 'button', onclick: submit }, c.t('send')) as HTMLButtonElement
   const sync = () => { sendBtn.disabled = !(picked.size || text?.value.trim()) }
   const acts = h('div', { class: 'acts' }, (multiple || text) ? sendBtn : null,
-    h('button', { class: 'btn link', type: 'button', onclick: () => { answered(c.t('skipped')); c.resolve({ accepted: false }) } }, c.t('skip')))
+    h('button', { class: 'btn link', type: 'button', onclick: () => { answered(c.t('skipped'), false); c.resolve({ accepted: false }) } }, c.t('skip')))
   const card = h('div', { tabindex: 0, 'aria-label': it.question },
     h('div', { class: 'card-q' }, it.question),
     options.length ? h('div', { class: 'chips' }, chips) : null,

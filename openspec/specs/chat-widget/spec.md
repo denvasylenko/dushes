@@ -89,11 +89,19 @@ Typing dots SHALL show while waiting for the first token. A Stop button SHALL ab
 - **THEN** nothing is sent and the composer shakes briefly
 
 ### Requirement: Microphone
-Where the browser supports speech recognition, a microphone button SHALL dictate into the composer and stop when a message is sent.
+Where the browser supports speech recognition and `mic` is on, a microphone button SHALL dictate into the composer. Dictation SHALL use `micLang` (default: the chat's language). Sending a message SHALL end the dictation at once, and results that arrive after sending SHALL be dropped. With `micAutoSend`, the message SHALL be sent when dictation stops.
 
 #### Scenario: Dictation then send
 - **WHEN** the user dictates a sentence and presses Enter
 - **THEN** the message is sent, the composer is cleared and the microphone stops
+
+#### Scenario: A late result after sending
+- **WHEN** the recognizer delivers its final result after the message was sent
+- **THEN** the composer stays empty
+
+#### Scenario: Hands-free
+- **WHEN** `micAutoSend` is on and the user stops dictating
+- **THEN** the dictated text is sent as a message
 
 ### Requirement: Quick-reply chips
 The widget SHALL show quick-reply chips: the starters for an empty chat, and the latest `CUSTOM suggestions` event under the last answer. Clicking a chip SHALL send it as a message. The chips SHALL disappear when the user sends a message.
@@ -130,11 +138,18 @@ The widget SHALL render inside a shadow root, so its styles neither leak into no
 - **THEN** the answer is sent and the panel closes, returning focus to the floating button
 
 ### Requirement: Attachments in the composer
-When a plugin provides an uploader and `attach` is on, the composer SHALL show a paperclip button. The chosen files SHALL be uploaded through the plugin and listed above the composer, where each can be removed. They SHALL go with the next message: plugins can read them during that run. A message with files and no text SHALL be sent with a default text that asks the agent to use the attached document.
+When `attach` is on and an uploader exists (the `upload` option, or a plugin's), the composer SHALL show a paperclip button. The chosen files SHALL be uploaded and listed above the composer, where each can be removed. They SHALL go with the next message: plugins can read them during that run. A message with files and no text SHALL be sent with a default text that asks the agent to use the attached document.
 
 #### Scenario: Sending a passport with a message
 - **WHEN** the user attaches `passport.pdf` and sends "Fill in my details"
 - **THEN** the run carries the attachment, and the user's bubble shows the file name
+
+### Requirement: Attachment limits
+`attachAccept`, `attachMultiple` and `attachMaxMb` SHALL limit the file types offered, the number of files and their size. A file over the size limit SHALL not be uploaded, and the composer SHALL say which file was refused.
+
+#### Scenario: A file that is too big
+- **WHEN** `attachMaxMb` is 1 and the user picks a 2 MB file
+- **THEN** it is not uploaded and the composer names the file and the limit
 
 ### Requirement: Running without a new message
 The element SHALL offer `run({forwardedProps, notice?})`, which runs the agent without adding a user message, for example to start from prefill data. When `notice` is given it SHALL be shown as a notice line first.

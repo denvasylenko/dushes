@@ -24,7 +24,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "stopped": "Stopped.",
     "attach": "Attach a file",
     "useAttached": "Please use the attached document.",
-    "remove": "Remove"
+    "remove": "Remove",
+    "tooBig": "{name} is larger than {mb} MB"
   },
   "ru": {
     "title": "\u0410\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442",
@@ -50,7 +51,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "stopped": "\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043e.",
     "attach": "\u041f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u044c \u0444\u0430\u0439\u043b",
     "useAttached": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435, \u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u043d\u044b\u0439 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442.",
-    "remove": "\u0423\u0431\u0440\u0430\u0442\u044c"
+    "remove": "\u0423\u0431\u0440\u0430\u0442\u044c",
+    "tooBig": "{name}: \u0431\u043e\u043b\u044c\u0448\u0435 {mb} \u041c\u0411"
   },
   "uk": {
     "title": "\u0410\u0441\u0438\u0441\u0442\u0435\u043d\u0442",
@@ -76,7 +78,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "stopped": "\u0417\u0443\u043f\u0438\u043d\u0435\u043d\u043e.",
     "attach": "\u041f\u0440\u0438\u043a\u0440\u0456\u043f\u0438\u0442\u0438 \u0444\u0430\u0439\u043b",
     "useAttached": "\u0412\u0438\u043a\u043e\u0440\u0438\u0441\u0442\u0430\u0439\u0442\u0435, \u0431\u0443\u0434\u044c \u043b\u0430\u0441\u043a\u0430, \u0434\u043e\u0434\u0430\u043d\u0438\u0439 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442.",
-    "remove": "\u041f\u0440\u0438\u0431\u0440\u0430\u0442\u0438"
+    "remove": "\u041f\u0440\u0438\u0431\u0440\u0430\u0442\u0438",
+    "tooBig": "{name}: \u0431\u0456\u043b\u044c\u0448\u0435 {mb} \u041c\u0411"
   },
   "de": {
     "title": "Assistent",
@@ -102,7 +105,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "stopped": "Gestoppt.",
     "attach": "Datei anh\u00e4ngen",
     "useAttached": "Bitte nutze das angeh\u00e4ngte Dokument.",
-    "remove": "Entfernen"
+    "remove": "Entfernen",
+    "tooBig": "{name} ist gr\u00f6\u00dfer als {mb} MB"
   },
   "fr": {
     "title": "Assistant",
@@ -128,7 +132,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "stopped": "Arr\u00eat\u00e9.",
     "attach": "Joindre un fichier",
     "useAttached": "Utilisez le document joint, s'il vous pla\u00eet.",
-    "remove": "Retirer"
+    "remove": "Retirer",
+    "tooBig": "{name} d\u00e9passe {mb} Mo"
   },
   "it": {
     "title": "Assistente",
@@ -154,7 +159,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "stopped": "Fermato.",
     "attach": "Allega un file",
     "useAttached": "Usa il documento allegato, per favore.",
-    "remove": "Rimuovi"
+    "remove": "Rimuovi",
+    "tooBig": "{name} supera {mb} MB"
   },
   "es": {
     "title": "Asistente",
@@ -180,6 +186,7 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "stopped": "Detenido.",
     "attach": "Adjuntar un archivo",
     "useAttached": "Usa el documento adjunto, por favor.",
-    "remove": "Quitar"
+    "remove": "Quitar",
+    "tooBig": "{name} supera los {mb} MB"
   }
 }

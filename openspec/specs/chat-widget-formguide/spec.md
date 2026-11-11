@@ -79,7 +79,7 @@ A confirm card SHALL show a title, a message and two buttons. When `danger` is s
 - **THEN** the confirm button uses the danger colour
 
 ### Requirement: Tool labels
-The plugin SHALL provide human-readable step labels for formguide's built-in tools in the chat's language, for example "Searching the business documents" for `ask_documents` and "Reading your document" for `extract_from_attachment`. Hosts MAY override any label.
+The tools whose result is the card that follows (`propose_changes`, `ask_user`, `request_file`, `confirm_action`) SHALL not appear as separate steps unless `cardSteps` is on. The plugin SHALL provide human-readable step labels for formguide's built-in tools in the chat's language, for example "Searching the business documents" for `ask_documents` and "Reading your document" for `extract_from_attachment`. Hosts MAY override any label.
 
 #### Scenario: A localized step
 - **WHEN** the chat language is German and the agent calls `search_fields`

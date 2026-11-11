@@ -133,6 +133,18 @@ export interface ChatOptions {
   cards: Record<string, Record<string, unknown>>
   /** Open the floating panel on load. */
   open: boolean
-  /** Show the paperclip when a plugin can upload files. */
+  /** Dictation language (BCP 47, e.g. "ru-RU"); empty = the chat's language. */
+  micLang: string
+  /** Send the message as soon as dictation stops. */
+  micAutoSend: boolean
+  /** Show the paperclip when a plugin (or `upload`) can upload files. */
   attach: boolean
+  /** File types the paperclip offers, e.g. ".pdf,.jpg"; empty = what the plugin accepts. */
+  attachAccept: string
+  /** Allow several files at once. */
+  attachMultiple: boolean
+  /** Largest file in MB; bigger files are refused with a message. */
+  attachMaxMb: number
+  /** Your own uploader (overrides the plugin's): file -> {id, filename}. */
+  upload?: (file: File, chat: ChatApi) => Promise<Attachment>
 }

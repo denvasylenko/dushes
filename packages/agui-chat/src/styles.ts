@@ -134,13 +134,14 @@ button:focus { outline: none; } button:focus-visible, textarea:focus-visible, in
 .box:focus-within { border-color: var(--agui-ink-3); }
 .box textarea { flex: 1; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 16px/1.4 var(--agui-font);
   padding: 7px 0; max-height: 180px; min-height: 24px; }
+.box textarea:placeholder-shown { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .send { width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--agui-accent); color: var(--agui-on-accent); cursor: pointer;
   display: grid; place-items: center; flex: none; transition: opacity .2s, transform .15s; }
 .send:disabled { opacity: .3; cursor: default; }
-.send svg, .mic svg { width: 17px; height: 17px; }
-.mic { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--agui-ink-2); cursor: pointer; display: grid;
+.send svg, .ib svg { width: 17px; height: 17px; }
+.ib { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: var(--agui-ink-2); cursor: pointer; display: grid;
   place-items: center; flex: none; transition: background .2s, color .2s; }
-.mic:hover { background: var(--agui-soft); }
+.ib:hover { background: var(--agui-soft); }
 .mic.on { background: var(--agui-danger); color: #fff; animation: rec 1.4s ease-out infinite; }
 @keyframes rec { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, .45); } 100% { box-shadow: 0 0 0 12px rgba(255, 59, 48, 0); } }
 .nudge .box { animation: nudge .4s; }

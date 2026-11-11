@@ -1,7 +1,7 @@
 /** <agui-chat>: an AG-UI chat as a Web Component. See docs/chat-widget.md for every option. */
 import { h, md, reducedMotion, store } from './dom'
 import { STRINGS } from './i18n'
-import { dictate, speechSupported } from './speech'
+import { dictate, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
 import { runAgent, runHttp, uid, type AgentLike } from './transport'
 import { fadeWords, newState, step, visible, type TypewriterState } from './typewriter'
@@ -13,7 +13,8 @@ export const DEFAULTS: ChatOptions = {
   url: '/agent/run', threadId: undefined, persistThread: true, mode: 'floating', typing: 'words', toolSteps: true, mic: true, quickReplies: true,
   theme: 'auto', lang: '', title: '', subtitle: '', intro: '', placeholder: '', starters: [], resumeStyle: 'command',
   history: 'full', headers: {}, forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
-  cards: {}, open: false, attach: true,
+  cards: {}, open: false, micLang: '', micAutoSend: false, attach: true, attachAccept: '', attachMultiple: true,
+  attachMaxMb: 20, upload: undefined,
 }
 
 /** attribute -> [option, parser] */
@@ -23,7 +24,9 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   typing: ['typing', String], 'tool-steps': ['toolSteps', bool], mic: ['mic', bool], 'quick-replies': ['quickReplies', bool],
   theme: ['theme', String], lang: ['lang', String], title: ['title', String], subtitle: ['subtitle', String],
   intro: ['intro', String], placeholder: ['placeholder', String], 'resume-style': ['resumeStyle', String],
-  history: ['history', String], open: ['open', bool], attach: ['attach', bool],
+  history: ['history', String], open: ['open', bool], attach: ['attach', bool], 'mic-lang': ['micLang', String],
+  'mic-auto-send': ['micAutoSend', bool], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
+  'attach-max-mb': ['attachMaxMb', Number],
 }
 
 /** Interrupt reasons of RUN_FINISHED.outcome (AG-UI 1.0) -> the `type` renderers are registered for. */
@@ -84,7 +87,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _shown = new Set<string>()     // interrupt ids already on screen
   private _interrupted = false
   private _lastRun: Parameters<AguiChatElement['_run']>[0] | null = null
-  private _stopMic: (() => void) | null = null
+  private _mic: Dictation | null = null
+  private _micGen = 0   // a sent message ends a dictation: late results of older ones are dropped
   private _files: Attachment[] = []
   private _sending: Attachment[] = []
   private $: Record<string, HTMLElement> = {}
@@ -198,7 +202,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     text = String(text ?? '').trim()
     if (!text && this._files.length) text = this.t('useAttached')
     if (!text || this._busy) return
-    this._stopMic?.()
+    this._cancelMic()
     this._clearQuick()
     this.$.log.querySelector('.empty')?.remove()
     this._closePendingCards()
@@ -236,8 +240,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const head = h('div', { class: 'head', part: 'header' }, logo, h('div', null, title, sub), btnNew, btnClose)
     const log = h('div', { class: 'log', part: 'log', role: 'log', 'aria-live': 'polite', 'aria-relevant': 'additions' })
     const input = h('textarea', { rows: 1, part: 'input' }) as HTMLTextAreaElement
-    const mic = h('button', { class: 'mic', type: 'button' }); mic.innerHTML = ICON.mic
-    const clip = h('button', { class: 'mic clip', type: 'button' }); clip.innerHTML = ICON.clip
+    const mic = h('button', { class: 'ib mic', type: 'button' }); mic.innerHTML = ICON.mic
+    const clip = h('button', { class: 'ib clip', type: 'button' }); clip.innerHTML = ICON.clip
     const picker = h('input', { type: 'file', multiple: true, hidden: true }) as HTMLInputElement
     const send = h('button', { class: 'send', type: 'button', part: 'send' }); send.innerHTML = ICON.send
     const box = h('div', { class: 'box' }, clip, input, mic, send)
@@ -275,6 +279,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       return
     }
     if (this._busy) return
+    this._cancelMic()
     input.value = ''
     input.style.height = 'auto'
     this._syncSend()
@@ -282,19 +287,35 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   private _toggleMic(): void {
-    if (this._stopMic) { this._stopMic(); return }
+    if (this._mic) { this._mic.stop(); return }
     const input = this.$.input as HTMLTextAreaElement
     const before = input.value ? input.value.replace(/\s*$/, ' ') : ''
+    const gen = ++this._micGen
     this.$.hint.textContent = ''
-    this._stopMic = dictate(this._opts.lang || document.documentElement.lang || navigator.language || 'en-US', (text) => {
+    const o = this._opts
+    this._mic = dictate(o.micLang || o.lang || document.documentElement.lang || navigator.language || 'en-US', (text) => {
+      if (gen !== this._micGen) return   // this dictation ended with a sent message
       input.value = before + text
       input.dispatchEvent(new Event('input'))
     }, (on, error) => {
+      if (gen !== this._micGen && on) return
       this.$.mic.classList.toggle('on', on)
       this.$.mic.setAttribute('aria-label', on ? this.t('micStop') : this.t('mic'))
-      if (!on) this._stopMic = null
-      if (error === 'denied') this.$.hint.textContent = this.t('micDenied')
+      if (!on && gen === this._micGen) {
+        this._mic = null
+        if (error === 'denied') this.$.hint.textContent = this.t('micDenied')
+        else if (o.micAutoSend && !error && input.value.trim()) this._submit()
+      }
     })
+  }
+
+  /** The message is being sent: stop dictating at once and ignore whatever it still delivers. */
+  private _cancelMic(): void {
+    this._micGen++
+    const m = this._mic
+    this._mic = null
+    m?.abort()
+    this.$.mic.classList.remove('on')
   }
 
   private _syncSend(): void {
@@ -335,9 +356,11 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.mic.hidden = !o.mic || !speechSupported()
     this.$.mic.setAttribute('aria-label', this.t('mic'))
     const attach = this._plugins.find((p) => p.attach)?.attach
-    this.$.clip.hidden = !o.attach || !attach
+    this.$.clip.hidden = !o.attach || !(o.upload || attach)
     this.$.clip.setAttribute('aria-label', this.t('attach'))
-    if (attach?.accept) this.$.picker.setAttribute('accept', attach.accept)
+    const accept = o.attachAccept || attach?.accept || ''
+    if (accept) this.$.picker.setAttribute('accept', accept); else this.$.picker.removeAttribute('accept')
+    ;(this.$.picker as HTMLInputElement).multiple = o.attachMultiple
     this.$.log.querySelectorAll('.steps').forEach((s) => ((s as HTMLElement).hidden = !o.toolSteps))
     if (this._quick) this._quick.hidden = !o.quickReplies
     const empty = this.$.log.querySelector('.empty')
@@ -377,12 +400,16 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   private async _upload(list: File[]): Promise<void> {
-    const attach = this._plugins.find((p) => p.attach)?.attach
-    if (!attach || !list.length) return
-    this.$.hint.textContent = `${this.t('working')}`
+    const upload = this._opts.upload ?? this._plugins.find((p) => p.attach)?.attach?.upload
+    if (!upload || !list.length) return
+    if (!this._opts.attachMultiple) { list = list.slice(0, 1); this._files = [] }
+    const max = this._opts.attachMaxMb * 1024 * 1024
+    const big = list.filter((f) => f.size > max)
+    list = list.filter((f) => f.size <= max)
+    this.$.hint.textContent = big.length ? this.t('tooBig', { name: big.map((f) => f.name).join(', '), mb: this._opts.attachMaxMb }) : this.t('working')
     try {
-      for (const f of list) this._files.push(await attach.upload(f, this))
-      this.$.hint.textContent = ''
+      for (const f of list) this._files.push(await upload(f, this))
+      if (!big.length) this.$.hint.textContent = ''
     } catch (e) {
       this.$.hint.textContent = `${this.t('error')} ${e instanceof Error ? e.message : String(e)}`
     }
@@ -552,7 +579,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         this._calls.set(call.id, call)
         const front = this.tools.get(call.name)
         if (front) this._pendingCalls.push(call)
-        if (!front || front.label) this._addStep(call.id, call.name, front?.label)
+        if (front ? front.label : this._label(call.name)) this._addStep(call.id, call.name, front?.label)
         break
       }
       case 'TOOL_CALL_ARGS': {
@@ -640,8 +667,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   // ------------------------------------------------------------------ steps
   private _label(name: string): string {
-    const own = this._opts.toolLabels[name]
-    if (own) return own
+    if (name in this._opts.toolLabels) return this._opts.toolLabels[name]   // '' hides the step
     const l = this._labels[name]
     if (typeof l === 'string') return l
     if (l) return l[this.lang] ?? l.en ?? Object.values(l)[0]
