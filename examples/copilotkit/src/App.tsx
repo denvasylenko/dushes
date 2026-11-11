@@ -5,7 +5,8 @@
  * What the integration needs:
  * 1. register the form's JSX once (POST /agent/layouts) and keep the config your form backend returns;
  * 2. put {config, jsx_hash, form_id, ui} into the agent's state before each run;
- * 3. render confirmation cards with useInterrupt and resolve them with {accepted, config};
+ * 3. render cards with useInterrupt: field changes resolve with {accepted, config, names?},
+ *    questions (type "ask") resolve with {answer: {ids?, text?}} or {accepted: false};
  * 4. (optional) frontend tools with useFrontendTool; prefill with forwardedProps.prefill.
  */
 // CopilotKit re-exports the AG-UI HttpAgent it is built with (one copy of @ag-ui/client).
@@ -15,7 +16,9 @@ import { z } from 'zod'
 
 type Config = { props: Record<string, Record<string, unknown>>; state: Record<string, unknown> }
 type Change = { name: string; label: string; value: unknown; display: string }
-type Card = { type: string; card_id: string; changes: Change[] }
+type Card =
+  | { type: 'set_fields'; card_id: string; changes: Change[] }
+  | { type: 'ask'; card_id: string; question: string; options: { id: string; label: string }[]; multiple: boolean; allow_text: boolean }
 
 const FORM_ID = 'barber_booking'
 
@@ -71,22 +74,18 @@ function Page() {
     agentId: 'formguide',
     render: ({ event, resolve }) => {
       const card: Card = typeof event.value === 'string' ? JSON.parse(event.value) : (event.value as Card)
-      const answer = async (accepted: boolean) => {
-        // apply through the form backend so the config (visibility, options, errors) is recomputed
-        const cfg = accepted
-          ? await formBackendEvent(cfgRef.current!.state, Object.fromEntries(card.changes.map((c) => [c.name, c.value])))
+      if (card.type === 'ask') return <Ask card={card} onAnswer={(a) => void resolve(a)} />
+      return <Changes card={card} onAnswer={async (names) => {
+        // apply through the form backend so the config (visibility, options, errors) is recomputed;
+        // names = the rows the user kept (null = rejected)
+        const kept = names ? card.changes.filter((c) => names.includes(c.name)) : []
+        const cfg = kept.length
+          ? await formBackendEvent(cfgRef.current!.state, Object.fromEntries(kept.map((c) => [c.name, c.value])))
           : cfgRef.current!
         setConfig(cfg)
         agent.setState({ ...(agent.state as object), config: cfg })
-        await resolve({ accepted, config: cfg })
-      }
-      return (
-        <div className="card">
-          <b>Fill in these fields?</b>
-          <ul>{card.changes.map((c) => <li key={c.name}>{c.label}: <b>{c.display}</b></li>)}</ul>
-          <button onClick={() => void answer(true)}>Fill in</button> <button onClick={() => void answer(false)}>Reject</button>
-        </div>
-      )
+        await resolve({ accepted: kept.length > 0, config: cfg, ...(names && kept.length < card.changes.length ? { names } : {}) })
+      }} />
     },
   })
 
@@ -110,6 +109,43 @@ function Page() {
         </pre>
       </main>
       {hash ? <CopilotChat agentId="formguide" /> : <div style={{ padding: 16 }}>Loading the form…</div>}
+    </div>
+  )
+}
+
+
+function Changes({ card, onAnswer }: { card: Extract<Card, { type: 'set_fields' }>; onAnswer: (names: string[] | null) => void }) {
+  const [keep, setKeep] = useState(() => card.changes.map((c) => c.name))
+  return (
+    <div className="card">
+      <b>Fill in these fields?</b>
+      <ul>{card.changes.map((c) => (
+        <li key={c.name}>
+          <label><input type="checkbox" checked={keep.includes(c.name)}
+            onChange={() => setKeep((k) => (k.includes(c.name) ? k.filter((n) => n !== c.name) : [...k, c.name]))} />
+          {' '}{c.label}: <b>{c.display}</b></label>
+        </li>))}
+      </ul>
+      <button disabled={!keep.length} onClick={() => onAnswer(keep)}>Fill in</button> <button onClick={() => onAnswer(null)}>Reject</button>
+    </div>
+  )
+}
+
+function Ask({ card, onAnswer }: { card: Extract<Card, { type: 'ask' }>; onAnswer: (a: unknown) => void }) {
+  const [picked, setPicked] = useState<string[]>([])
+  const [text, setText] = useState('')
+  return (
+    <div className="card">
+      <b>{card.question}</b>
+      <div>{card.options.map((o) => card.multiple
+        ? <label key={o.id}><input type="checkbox" checked={picked.includes(o.id)}
+            onChange={() => setPicked((p) => (p.includes(o.id) ? p.filter((x) => x !== o.id) : [...p, o.id]))} /> {o.label} </label>
+        : <button key={o.id} onClick={() => onAnswer({ answer: { ids: [o.id] } })}>{o.label}</button>)}
+      </div>
+      {card.allow_text && <input value={text} onChange={(e) => setText(e.target.value)} placeholder="or type your answer" />}
+      <button disabled={!picked.length && !text.trim()}
+        onClick={() => onAnswer({ answer: { ...(picked.length ? { ids: picked } : {}), ...(text.trim() ? { text: text.trim() } : {}) } })}>Send</button>
+      {' '}<button onClick={() => onAnswer({ accepted: false })}>Skip</button>
     </div>
   )
 }

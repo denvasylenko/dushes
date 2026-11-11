@@ -37,6 +37,18 @@ export type RevealStep = { type: 'tab'; tabs: string; tab: string } | { type: 'a
 
 export type UiDirective = { type: 'focus'; target: string; reveal: RevealStep[]; hint: string }
 
+/** A question card (on_interrupt with type "ask"). */
+export type Question = {
+  question: string
+  options: { id: string; label: string }[]
+  multiple: boolean
+  allow_text: boolean
+  field?: string
+}
+
+/** The user's answer to a question card, sent as resume {answer}. */
+export type Answer = { ids?: string[]; labels?: string[]; text?: string }
+
 export type ProposedChange = {
   name: string
   label: string

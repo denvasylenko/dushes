@@ -234,7 +234,7 @@ ANTHROPIC_API_KEY=... formguide serve --config my-agent/formguide.yaml --cors "*
             <line class="ln" x1="122" y1="238" x2="738" y2="238" marker-end="url(#a8)"/>
             <text x="430" y="230" text-anchor="middle" class="t-s">messages … + tool message (result) · same state</text>
             <line class="ln-key" x1="738" y1="268" x2="122" y2="268" marker-end="url(#a8k)"/>
-            <text x="430" y="260" text-anchor="middle" class="t-k">CUSTOM on_interrupt {card_id, changes} · RUN_FINISHED</text>
+            <text x="430" y="260" text-anchor="middle" class="t-k">CUSTOM on_interrupt {type, card_id, changes | question} · RUN_FINISHED</text>
             <rect class="soft" x="40" y="278" width="160" height="44" rx="6"/>
             <text x="120" y="297" text-anchor="middle" class="t-s">card; on accept: form</text>
             <text x="120" y="313" text-anchor="middle" class="t-s">backend → new config</text>
@@ -255,7 +255,7 @@ ANTHROPIC_API_KEY=... formguide serve --config my-agent/formguide.yaml --cors "*
           <tr><td><code>state</code></td><td><code>{config, jsx_hash, form_id, ui?, attachments?}</code>: the form as your backend last built it</td></tr>
           <tr><td><code>messages</code></td><td>a trailing <code>user</code> message is the new text; trailing <code>tool</code> messages are frontend tool results. History is kept on the server, so older messages are ignored</td></tr>
           <tr><td><code>tools</code></td><td>frontend tools offered to the model (CopilotKit actions, <code>HttpAgent</code> tools)</td></tr>
-          <tr><td><code>resume</code></td><td>AG-UI 1.0 answer to a card: <code>resolved</code> with <code>{accepted, config}</code>, or <code>cancelled</code></td></tr>
+          <tr><td><code>resume</code></td><td>AG-UI 1.0 answer to a card: <code>resolved</code> with <code>{accepted, config, names?}</code> (a field-change card) or <code>{answer: {ids?, text?}}</code> (a question), or <code>cancelled</code></td></tr>
           <tr><td><code>forwardedProps</code></td><td><code>command.resume</code> (CopilotKit’s answer to a card) and <code>prefill</code></td></tr>
         </tbody>
       </table></div>
@@ -277,7 +277,7 @@ agent.setState({ config, jsx_hash, form_id })
 agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "Where do I start?" })
 await agent.runAgent({ tools: [getUserLocale] }, {
   onTextMessageContentEvent: ({ event }) =&gt; render(event.delta),
-  onCustomEvent: ({ event }) =&gt; event.name === "on_interrupt" &amp;&amp; showCard(JSON.parse(event.value)),
+  onCustomEvent: ({ event }) =&gt; event.name === "on_interrupt" &amp;&amp; showCard(JSON.parse(event.value)),  // by its type
 })</code></pre>
       <p>The demo frontend does exactly this: <a href="https://github.com/denvasylenko/dushes/blob/main/frontend/src/api.ts">frontend/src/api.ts</a>. To restore a chat after reopening, <code>GET /agent/threads/{id}?format=agui</code> returns the conversation as AG-UI messages for <code>setMessages</code>.</p>
       <h2>Prefill</h2>
@@ -288,7 +288,7 @@ await agent.runAgent({ tools: [getUserLocale] }, {
 await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
 # -&gt; {"values": [{"name": "gender", "value": {"id": "f", "name": "Female"}, "status": "now"}, ...], "errors": [...]}</code></pre>
       <div class="grid2">
-        <div class="note"><h3>Events</h3><ul><li><code>RUN_STARTED</code>, then exactly one of <code>RUN_FINISHED</code> or <code>RUN_ERROR</code></li><li>text, tool calls with results, <code>CUSTOM</code>: <code>ui_directive</code>, <code>on_interrupt</code>, <code>agent_context</code>, <code>memory_compacted</code></li></ul></div>
+        <div class="note"><h3>Events</h3><ul><li><code>RUN_STARTED</code>, then exactly one of <code>RUN_FINISHED</code> or <code>RUN_ERROR</code></li><li>text, tool calls with results, <code>CUSTOM</code>: <code>ui_directive</code>, <code>on_interrupt</code> (<code>type</code> <code>set_fields</code> or <code>ask</code>), <code>agent_context</code>, <code>memory_compacted</code></li></ul></div>
         <div class="note"><h3>Checked</h3><ul><li>CopilotKit 1.86: chat, card, frontend tool, prefill</li><li><code>@ag-ui/client</code> 1.0.4: the demo frontend, restore after reload</li><li>every event validated against <code>ag-ui-protocol</code> in tests</li></ul></div>
       </div>
     </section>
@@ -435,6 +435,25 @@ await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
                 "reason": "You said car loan",
                 "reveal": [{ "type": "tab", "tabs": "main", "tab": "tab_loan" },
                            { "type": "accordion", "name": "acc_loan_params" }] }] }</code></pre>
+      <p><strong>Keep some rows:</strong> a checkbox per row; send only the ticked changes to your backend and resume <code>{accepted: true, config, names: ["first_name", "last_name"]}</code>. The agent is told which were declined.</p>
+      <p><strong>The question card</strong>, the same <code>on_interrupt</code> with <code>type: "ask"</code>: the agent asks when the user must choose between known options or the request is ambiguous. Buttons for a single choice, checkboxes for <code>multiple</code>, a text box when <code>allow_text</code>. It never changes the form by itself; the agent usually follows with a field-change card.</p>
+<pre><code>{ "type": "ask", "card_id": "a41c09e2d7f3", "question": "What kind of loan do you need?",
+  "options": [{ "id": "auto", "label": "Car loan" }, { "id": "mortgage", "label": "Mortgage" }],
+  "multiple": false, "allow_text": true, "field": "loan_type" }
+
+resume: { answer: { ids: ["auto"] } }   // or { answer: { text: "..." } }, or { accepted: false } to skip</code></pre>
+      <div class="tbl"><table>
+        <thead><tr><th>Everything the frontend can receive</th><th>Render</th></tr></thead>
+        <tbody>
+          <tr><td><code>TEXT_MESSAGE_*</code></td><td>the agent's reply, streamed</td></tr>
+          <tr><td><code>CUSTOM ui_directive</code></td><td>open tabs and accordions, scroll, highlight, hint</td></tr>
+          <tr><td><code>on_interrupt</code> <code>set_fields</code></td><td>field-change card, a checkbox per row</td></tr>
+          <tr><td><code>on_interrupt</code> <code>ask</code></td><td>question card: options and/or typed answer</td></tr>
+          <tr><td><code>TOOL_CALL_*</code> without a result</td><td>your own frontend tool: any component you like</td></tr>
+          <tr><td><code>TOOL_CALL_*</code> with a result</td><td>optional "searching..." line</td></tr>
+          <tr><td><code>agent_note</code>, <code>agent_context</code>, <code>memory_compacted</code></td><td>nothing, or a debug panel</td></tr>
+        </tbody>
+      </table></div>
       <p><strong>The directive</strong>, <code>CUSTOM ui_directive</code>: open each <code>reveal</code> step from the outside in, scroll to <code>[data-name="target"]</code>, highlight it, show <code>hint</code>. It never changes values.</p>
 <pre><code>{ "type": "focus", "target": "loan_amount", "hint": "Enter the amount here",
   "reveal": [{ "type": "tab", "tabs": "main", "tab": "tab_loan" },
@@ -445,7 +464,7 @@ await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
         <div class="note"><h3>Every element</h3><ul><li><code>data-name="&lt;name&gt;"</code> on its outer DOM node</li><li>reads its props by <code>name</code>; applies the parent's hidden and locked state</li><li>can pulse briefly and show a hint</li></ul></div>
         <div class="note"><h3>Fields</h3><ul><li>store values in the default formats, or describe the tag in <code>components.fields</code></li><li>choices come from props, never a hard-coded list</li><li>show <code>error</code> under the field</li></ul></div>
         <div class="note"><h3>Tabs and accordions</h3><ul><li><strong>controlled</strong>: the open tab and open accordions live in page state</li><li>so a directive can open them, and you can send them as <code>ui</code></li></ul></div>
-        <div class="note"><h3>The page</h3><ul><li>register the JSX once, keep <code>jsx_hash</code></li><li>send the latest config with every run</li><li>after a reload, <code>GET /agent/threads/{id}</code> returns <code>pending_card</code>: show it again</li></ul></div>
+        <div class="note"><h3>The page</h3><ul><li>register the JSX once, keep <code>jsx_hash</code></li><li>send the latest config with every run</li><li>draw <code>on_interrupt</code> by <code>type</code>: <code>set_fields</code> or <code>ask</code></li><li>after a reload, <code>GET /agent/threads/{id}</code> returns <code>pending_card</code> (a card or a question): show it again</li></ul></div>
       </div>
       <p>The step-by-step guide with every field explained, common mistakes and fixes: <a href="https://github.com/denvasylenko/dushes/blob/main/docs/ui-components.md">docs/ui-components.md</a>.</p>
     </section>
@@ -958,7 +977,7 @@ guide = FormGuide(load_config("formguide.yaml"))
 app.include_router(create_router(guide), prefix="/agent")      # or call guide.run(...) directly</code></pre>
       <div class="grid2">
         <div class="note"><h3>Model requirements</h3><ul><li>agent and researcher: tool calling</li><li>compile and extract: structured output</li><li>extracting from scans: vision / PDF input</li></ul></div>
-        <div class="note"><h3>Checked</h3><p><span class="pill ok">51 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic, and AG-UI event validation. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
+        <div class="note"><h3>Checked</h3><p><span class="pill ok">61 offline tests</span> including real request payloads for ChatOpenAI, AzureChatOpenAI and ChatAnthropic, and AG-UI event validation. Live runs used Claude; OpenAI and Azure were not run live (no keys).</p></div>
       </div>
     </section>
 

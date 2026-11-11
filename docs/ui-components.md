@@ -273,7 +273,20 @@ All of it is optional, but with it the agent can say "the field just below" inst
 
 ## Part 2. What the agent sends back
 
-The agent streams AG-UI events. Most are chat text. **Two events touch your form.** Both arrive as `CUSTOM` events with a JSON value.
+The agent streams AG-UI events. Here is **everything the frontend can receive**, and what to draw for it:
+
+| Event | When | What to render |
+|---|---|---|
+| `TEXT_MESSAGE_START` / `_CONTENT` / `_END` | the agent replies | a chat bubble, filled as the text streams |
+| `CUSTOM ui_directive` (2.1) | the agent points at a place in the form | open tabs and accordions, scroll, highlight, show the hint |
+| `CUSTOM on_interrupt`, `type: "set_fields"` (2.2) | the agent wants to fill fields | a card with a row per field: *Fill in* / *Reject* |
+| `CUSTOM on_interrupt`, `type: "ask"` (2.5) | the agent asks a question with options | a question card: option buttons and/or a text box |
+| `TOOL_CALL_*` + `TOOL_CALL_RESULT` | the agent used one of its own tools | optional: a small "searching the documents..." line |
+| `TOOL_CALL_*` without a result | the agent called **your** frontend tool | anything you like: it is your own component (see Integrate in the architecture pages) |
+| `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
+| `RUN_FINISHED` / `RUN_ERROR` | the turn ended | stop the spinner, show the error |
+
+**Both cards stop the turn** until the user answers; there is at most one at a time. Look at `type` to know which card to draw. The two events that change what is on screen in the form are the directive and the field-change card; both arrive as `CUSTOM` events with a JSON value.
 
 ### 2.1 "Look here": the `ui_directive` event
 
@@ -385,6 +398,14 @@ await agent.runAgent({ forwardedProps: { command: { resume: JSON.stringify(
 
 The agent then compares the old and new config, sees what your form did ("*Loan* tab unlocked, *Car brand* appeared"), tells the user, and carries on.
 
+**Keep only some rows.** Give each row a checkbox, ticked by default. When the user unticks some and presses *Fill in*, send **only the ticked changes** to your form backend and add their names to the resume:
+
+```ts
+resume: { accepted: true, config: newConfig, names: ["first_name", "last_name"] }   // "gender" was unticked
+```
+
+The agent is told "The user applied: first_name, last_name. Declined (not applied): gender." and will not push the declined value again unless the user asks. Without `names`, *Accept* means all rows. `names: []` is the same as *Reject*.
+
 **On Reject:** resume with `{accepted: false}` (or `status: "cancelled"`). Optionally add `comment: "wrong amount"`. Do not touch the form.
 
 **Why not just write the values straight into the inputs?** Because your form has rules: choosing *Car loan* may show *Car brand* and change the allowed amounts. Only your form backend knows those rules. If you skip it, the agent and the screen will disagree about the form.
@@ -411,6 +432,49 @@ your UI: shows the card  ->  user presses Accept
   v
 agent: "Done. The Loan tab is open now; next is the amount."
 ```
+
+### 2.5 "Which one?": the question card
+
+When the user must choose between known options, or the request is ambiguous ("I want a loan": which kind?), the agent asks with a **question card** instead of listing the options in text. It is the same `on_interrupt` event with `type: "ask"`, and the turn waits for the answer:
+
+```json
+{
+  "type": "ask",
+  "card_id": "a41c09e2d7f3",
+  "question": "What kind of loan do you need?",
+  "options": [
+    { "id": "consumer", "label": "Consumer loan" },
+    { "id": "mortgage", "label": "Mortgage" },
+    { "id": "auto", "label": "Car loan" },
+    { "id": "refinance", "label": "Refinancing" }
+  ],
+  "multiple": false,
+  "allow_text": true,
+  "field": "loan_type"
+}
+```
+
+| Key | Meaning | Render |
+|---|---|---|
+| `question` | one short question | the card's title |
+| `options` | up to 12 choices, `{id, label}`; may be empty | a button per option (single choice) or a checkbox per option (multiple) |
+| `multiple` | several options may be chosen | checkboxes plus a *Send* button |
+| `allow_text` | a typed answer is allowed (default `true`) | a small text box: "or type your answer" |
+| `field` | present when the options are a field's choices | nothing required; useful to show the card next to that field |
+
+**Answering:**
+
+```ts
+resume: { answer: { ids: ["auto"] } }                // a clicked option
+resume: { answer: { ids: ["sms", "email"] } }        // several, when multiple
+resume: { answer: { text: "only on weekends" } }     // typed (a plain string works too)
+resume: { accepted: false }                          // skipped (or AG-UI status: "cancelled")
+// AG-UI 1.0 style:  resume: [{ interrupt_id: card_id, status: "resolved", payload: { answer: { ids: ["auto"] } } }]
+```
+
+The agent gets "The user chose: Car loan (auto)" and continues in the same turn. Usually it then sends a field-change card for `loan_type`. **The question card never changes the form by itself.** An id that was not offered, several ids for a single-choice question, or text when `allow_text` is false counts as skipped, and the agent is told why.
+
+With `interrupt_mode: structured` the question arrives as `RUN_FINISHED.outcome.interrupts[0]` with `reason: "ask_user"`, `message` = the question, and the rest in `metadata`. A field-change card has `reason: "confirm_field_changes"` there.
 
 ---
 
@@ -457,8 +521,8 @@ The agent sends values in **the same format your component stores**: the default
 - On load: `POST /agent/layouts` once, keep `jsx_hash`.
 - Keep one object `ui = {activeTabs, openAccordions, focused}` in your state, update it when the user clicks, and send it with every message.
 - Before every run set `state = {config, jsx_hash, form_id, ui}` with the **latest** config.
-- Handle the two events: `ui_directive` → `applyDirective`; `on_interrupt` → show a card.
-- Card buttons follow 2.3.
+- Handle the events: `ui_directive` → `applyDirective`; `on_interrupt` → look at `type`: `set_fields` → a field-change card (2.2), `ask` → a question card (2.5).
+- Card buttons follow 2.3 (with a checkbox per row) and 2.5.
 
 ---
 
@@ -477,7 +541,9 @@ Copy this into your ticket.
 - [ ] `ui_directive`: opens `reveal` in order, scrolls to `target`, highlights, shows `hint`.
 - [ ] Card *Accept*: changes → your form backend → new config → form updated → resume `{accepted: true, config}`.
 - [ ] Card *Reject*: resume `{accepted: false}`; the form is not touched.
-- [ ] After a page reload, `GET /agent/threads/{id}` returns `pending_card`; show it again so the user can still answer.
+- [ ] Card rows have checkboxes; a partial *Accept* sends only the ticked changes and `names`.
+- [ ] `on_interrupt` is drawn by `type`: `set_fields` → field-change card, `ask` → question card answered with `{answer: {ids?, text?}}`, *Skip* → `{accepted: false}`.
+- [ ] After a page reload, `GET /agent/threads/{id}` returns `pending_card` (`kind: "card"` or `"question"`); show it again so the user can still answer.
 
 ---
 
@@ -493,6 +559,8 @@ Copy this into your ticket.
 | A directive does nothing | no `data-name` on the element, or tabs/accordions are not controlled | see Part 3 |
 | The agent thinks a dropdown is empty or "not in the options" although it is set | the component stores the value or options in another shape | describe the tag (1.5); register with `config` to see the warning |
 | Your backend rejects a value from a card | the component expects another format (`"Y"` instead of `true`, `"31.05.1990"`, just the id) | describe the tag (1.5): the agent then writes that format |
+| A question shows up as an empty "Fill in these fields?" card | the UI draws every `on_interrupt` as a field-change card | check `type`: `"ask"` is a question card (2.5) |
+| The agent ignores the button the user clicked | the resume sent a label instead of the option's `id`, or a field-change answer to a question | resume with `{answer: {ids: [<option id>]}}` |
 | Warnings `duplicate name x` | two elements share a `name` | make names unique; the second one is renamed `x__1.2.3` and the agent cannot set it reliably |
 
 ---

@@ -30,6 +30,7 @@ from ..models import system_message
 from .memory import compact as compact_history
 from .memory import new_turn_id
 from .prompts import context_block, system_prompt
+from .interaction import answer_text, read_answer, read_decision
 from .tools import BUILTIN, ToolCtx, ToolError, run_tool, tool_schemas
 
 if TYPE_CHECKING:
@@ -166,10 +167,11 @@ def build_graph(guide: FormGuide):
 
         new: list[BaseMessage] = []
         pending = state.get("pending")
-        if pending:  # the user ignored the card and wrote a new message
-            new += _tool_messages(pending["other_results"] + [{
-                "id": pending["tool_call_id"],
-                "content": "The user did not answer the card and sent a new message. Nothing was applied."}])
+        if pending:  # the user ignored the card or question and wrote a new message
+            ignored = ("The user did not answer the question and sent a new message instead."
+                       if pending.get("kind") == "ask" else
+                       "The user did not answer the card and sent a new message. Nothing was applied.")
+            new += _tool_messages(pending["other_results"] + [{"id": pending["tool_call_id"], "content": ignored}])
         pending_client = state.get("pending_client")
         if pending_client:  # results of frontend tools, delivered by this run
             got = state.get("client_results") or {}
@@ -314,7 +316,7 @@ def build_graph(guide: FormGuide):
         last = state["messages"][-1]
         frontend = client_names(state)
         calls = getattr(last, "tool_calls", None) or []
-        has_card_call = any(c["name"] == "propose_changes" for c in calls)
+        has_card_call = any(c["name"] in ("propose_changes", "ask_user") for c in calls)
         results: list[dict] = []
         client_ids: list[str] = []
         pending_id = None
@@ -331,10 +333,10 @@ def build_graph(guide: FormGuide):
                 else:
                     client_ids.append(call["id"])
                 continue
-            before = ctx.pending_changes
+            before = (ctx.pending_changes, ctx.pending_question)
             try:
                 out = await run_tool(call["name"], call.get("args"), ctx)
-                if before is None and ctx.pending_changes is not None:
+                if before == (None, None) and (ctx.pending_changes is not None or ctx.pending_question is not None):
                     pending_id = call["id"]
                     partial_errors = out
                     continue
@@ -346,8 +348,11 @@ def build_graph(guide: FormGuide):
         for d in ctx.ui_directives:
             w({"kind": "ui", "directive": d})
         upd: dict[str, Any] = {"tool_round": (state.get("tool_round") or 0) + 1}
-        if pending_id:
-            upd["pending"] = {"tool_call_id": pending_id, "changes": ctx.pending_changes,
+        if pending_id and ctx.pending_question is not None:
+            upd["pending"] = {"kind": "ask", "tool_call_id": pending_id, "question": ctx.pending_question,
+                              "other_results": results}
+        elif pending_id:
+            upd["pending"] = {"kind": "set_fields", "tool_call_id": pending_id, "changes": ctx.pending_changes,
                               "partial_errors": partial_errors, "other_results": results}
         elif client_ids:
             upd["pending_client"] = {"ids": client_ids, "server_results": results}
@@ -365,21 +370,31 @@ def build_graph(guide: FormGuide):
         changes through the normal pipeline (the form backend rebuilds the config)
         and resumes the graph with {accepted, config}."""
         p = state["pending"]
-        answer = interrupt({"type": "set_fields", "changes": p["changes"]})
-        accepted = bool(answer.get("accepted"))
         upd: dict[str, Any] = {"pending": None}
-        if not accepted:
-            text = "The user rejected the changes." + (f" Comment: {answer['comment']}" if answer.get("comment") else "")
+        if p.get("kind") == "ask":
+            answer = interrupt({"type": "ask", **p["question"]})
+            got, why = read_answer(p["question"], answer if isinstance(answer, dict) else {"answer": answer})
+            results = p["other_results"] + [{"id": p["tool_call_id"], "content": answer_text(got, why)}]
+            upd["messages"] = [*state["messages"], *_tool_messages(results)]
+            return upd
+        answer = interrupt({"type": "set_fields", "changes": p["changes"]})
+        answer = answer if isinstance(answer, dict) else {"accepted": bool(answer)}
+        applied, declined = read_decision(p["changes"], answer)
+        comment = f" Comment: {answer['comment']}" if answer.get("comment") else ""
+        if not applied:
+            text = "The user rejected the changes." + comment
         else:
             new_cfg = answer.get("config") or state["config"]
             upd["config"] = new_cfg
             ctx = ctx_for({**state, "config": new_cfg, "ui": answer.get("ui") or state.get("ui")})
-            names = {c["name"] for c in p["changes"]}
-            diff = compute_diff(ctx.ov, state.get("snapshot"), agent_names=names)
+            diff = compute_diff(ctx.ov, state.get("snapshot"), agent_names=set(applied))
             ctx.deps.observe(diff, ctx.ov)
             v = (state.get("version") or 0) + 1
             upd.update(snapshot=ctx.ov.snapshot(), version=v)
-            text = "The user confirmed; changes applied.\n" + render_changes(ctx.ov, diff, v - 1, v)
+            head = ("The user confirmed; changes applied." if not declined else
+                    f"The user applied: {', '.join(applied)}. Declined (not applied): {', '.join(declined)}."
+                    + comment)
+            text = head + "\n" + render_changes(ctx.ov, diff, v - 1, v)
         if p.get("partial_errors"):
             text += "\nFailed validation and were not proposed:\n" + p["partial_errors"]
         results = p["other_results"] + [{"id": p["tool_call_id"], "content": text}]

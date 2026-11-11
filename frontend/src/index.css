@@ -96,6 +96,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .card { border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; background: var(--accent-soft); }
 .card.rejected, .card.dismissed { opacity: 0.6; border-color: var(--line); }
 .card-title { font-weight: 600; margin-bottom: 4px; }
+.card ul.rows.checkable { list-style: none; padding-left: 0; }
+.card ul.rows.checkable li { display: block; }
+.card ul.rows.checkable input { margin: 0 6px 0 0; vertical-align: middle; }
+.card li.declined { text-decoration: line-through; opacity: 0.6; }
+.card .reason { font-size: 12px; }
+.card.question.answered { border-color: var(--line); background: var(--panel); }
+.choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+.choice { border: 1px solid var(--accent); background: var(--panel); color: inherit; border-radius: 999px; padding: 5px 12px; cursor: pointer; font: inherit; }
+.choice.on { background: var(--accent); color: var(--panel); }
+.choice input { margin: 0 6px 0 0; vertical-align: middle; }
+.answer-text input { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; background: var(--panel); color: inherit; font: inherit; }
 .card ul { margin: 0 0 8px; padding-left: 18px; }
 .card-actions { display: flex; gap: 8px; }
 .card-actions button, .composer button { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; }

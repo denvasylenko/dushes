@@ -46,7 +46,8 @@ def _resume_value(raw: Any) -> dict[str, Any]:
         try:
             raw = json.loads(raw)
         except ValueError:
-            raw = {"accepted": raw.strip().lower() in ("true", "yes", "accept", "accepted", "ok")}
+            # plain text: a typed answer to a question; on a field-change card "yes" / "ok" counts as accept
+            raw = {"answer": {"text": raw}}
     if isinstance(raw, bool):
         return {"accepted": raw}
     return raw if isinstance(raw, dict) else {"accepted": False}

@@ -27,14 +27,28 @@ A run SHALL start with `RUN_STARTED` and end with exactly one of `RUN_FINISHED` 
 - **THEN** any open text message is ended, `RUN_ERROR` with the message is the last event, and no `RUN_FINISHED` is sent
 
 ### Requirement: Confirmation cards are interrupts
-A confirmation card SHALL be delivered as an interrupt through the configured channel: `legacy` (default) as a `CUSTOM` event `on_interrupt` whose value is a JSON string `{type, card_id, changes}`; `structured` as `RUN_FINISHED.outcome` of type `interrupt` with `{id: card_id, reason: "confirm_field_changes", metadata: {changes}}`; or `both`.
+A card SHALL be delivered as an interrupt through the configured channel. There are two kinds: a field-change card (`type: "set_fields"`) and a question card (`type: "ask"`, see user-questions). The channels are:
+- `legacy` (default): a `CUSTOM` event `on_interrupt` whose value is a JSON string `{type, card_id, ...}`;
+- `structured`: `RUN_FINISHED.outcome` of type `interrupt` with `{id: card_id, reason, message, metadata}`;
+- `both`.
+
+#### Scenario: Structured reasons
+- **WHEN** `interrupt_mode` is `structured`
+- **THEN** a field-change card has `reason: "confirm_field_changes"` with `metadata {changes}`
+- **AND** a question has `reason: "ask_user"` with `metadata {question, options, multiple, allow_text, field?}`
 
 #### Scenario: Default channel
 - **WHEN** the agent proposes field values
-- **THEN** the client receives `CUSTOM on_interrupt` with a JSON string value and then `RUN_FINISHED`
+- **THEN** the client receives `CUSTOM on_interrupt` with a JSON string value of `type: "set_fields"` and then `RUN_FINISHED`
+
+#### Scenario: A question in structured mode
+- **WHEN** the agent asks a question and `interrupt_mode` is `structured`
+- **THEN** `RUN_FINISHED.outcome.interrupts[0]` has `reason: "ask_user"` and the question in `metadata`
 
 ### Requirement: Resuming a card
-A run SHALL resume a pending card from `RunAgentInput.resume[]` (`status: resolved` with `payload {accepted, config}`; `cancelled` means rejected) or from `forwardedProps.command.resume`.
+A run SHALL resume a pending card from `RunAgentInput.resume[]` (`status: resolved` with a payload; `cancelled` means rejected or skipped) or from `forwardedProps.command.resume`. The payloads are:
+- for a field-change card: `{accepted, config, names?}`;
+- for a question: `{answer: {ids?, text?}}` or a plain string.
 
 #### Scenario: CopilotKit resumes a card
 - **WHEN** the client answers an `on_interrupt` card through `forwardedProps.command.resume`
@@ -42,7 +56,11 @@ A run SHALL resume a pending card from `RunAgentInput.resume[]` (`status: resolv
 
 #### Scenario: AG-UI 1.0 resume
 - **WHEN** a client sends `resume: [{interrupt_id: card_id, status: "cancelled"}]`
-- **THEN** the card is treated as rejected and the turn continues
+- **THEN** the card is treated as rejected (or the question as skipped) and the turn continues
+
+#### Scenario: Answering a question
+- **WHEN** a client sends `resume: [{interrupt_id: card_id, status: "resolved", payload: {answer: {ids: ["auto"]}}}]`
+- **THEN** the turn continues with that answer
 
 ### Requirement: Frontend tools
 Tools the client declares in `RunAgentInput.tools` SHALL be offered to the model, without shadowing built-in tools. A call to one SHALL be streamed as `TOOL_CALL_START/ARGS/END` with no result, and the run SHALL end so the client can execute it. When the next run carries `tool` messages for those calls, they SHALL be fed back to the model as tool results; calls without a result SHALL be reported to the model as not executed.

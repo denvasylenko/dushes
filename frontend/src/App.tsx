@@ -5,15 +5,20 @@ import { FormProvider, Render, type Highlight } from './Form'
 import { parseJsx } from './jsx'
 import Manager from './Manager'
 import { SPEECH_LANGS, useSpeech } from './speech'
-import type { Config, JsxNode, ProposedChange, RevealStep, UiDirective, UiState } from './types'
+import type { Answer, Config, JsxNode, ProposedChange, Question, RevealStep, UiDirective, UiState } from './types'
 
 type ChatItem =
   | { kind: 'user'; text: string; files?: string[] }
   | { kind: 'assistant'; id: string; text: string }
   | { kind: 'tool'; name: string; input: unknown }
   | { kind: 'error'; text: string }
-  | { kind: 'card'; id: string; changes: ProposedChange[]; status: 'pending' | 'accepted' | 'rejected' | 'dismissed' }
+  | { kind: 'card'; id: string; changes: ProposedChange[]; status: CardStatus; names?: string[] }
+  | ({ kind: 'question'; id: string; status: 'pending' | 'answered' | 'dismissed'; answer?: Answer } & Question)
   | { kind: 'notice'; text: string }
+
+type CardStatus = 'pending' | 'accepted' | 'partial' | 'rejected' | 'dismissed'
+type CardItem = Extract<ChatItem, { kind: 'card' }>
+type QuestionItem = Extract<ChatItem, { kind: 'question' }>
 
 type AgentCtx = { text: string; stats: { context_tokens: number; config_tokens: number } } | null
 
@@ -66,7 +71,11 @@ function fromTranscript(entries: TranscriptEntry[]): ChatItem[] {
       case 'tool':
         return { kind: 'tool', name: e.name ?? '', input: e.input }
       case 'card':
-        return { kind: 'card', id: e.id, changes: (e.changes ?? []) as ProposedChange[], status: e.status ?? 'dismissed' }
+        return { kind: 'card', id: e.id, changes: (e.changes ?? []) as ProposedChange[], status: (e.status ?? 'dismissed') as CardStatus, names: e.names }
+      case 'question':
+        return { kind: 'question', id: e.id, question: e.question ?? '', options: e.options ?? [], multiple: !!e.multiple,
+          allow_text: e.allow_text !== false, field: e.field, answer: e.answer,
+          status: e.status === 'answered' || e.status === 'pending' ? e.status : 'dismissed' }
       case 'notice':
         return { kind: 'notice', text: e.text ?? '' }
       default:
@@ -217,7 +226,11 @@ export default function App() {
       else if (e.name === 'on_interrupt') {
         // ag-ui-langgraph convention: the value is a JSON string
         const v = typeof e.value === 'string' ? JSON.parse(e.value) : e.value
-        setChat((c) => [...c, { kind: 'card', id: v.card_id ?? crypto.randomUUID(), changes: v.changes, status: 'pending' }])
+        const id = v.card_id ?? crypto.randomUUID()
+        if (v.type === 'ask')   // a question card: options to click and/or a typed answer
+          setChat((c) => [...c, { kind: 'question', id, question: v.question, options: v.options ?? [], multiple: !!v.multiple,
+            allow_text: v.allow_text !== false, field: v.field, status: 'pending' }])
+        else setChat((c) => [...c, { kind: 'card', id, changes: v.changes, status: 'pending' }])
       }
       else if (e.name === 'memory_compacted')
         setChat((c) => [...c, { kind: 'notice', text: 'Earlier messages were summarized for the assistant; the chat history is kept in full.' }])
@@ -242,7 +255,7 @@ export default function App() {
     window.clearTimeout(debounce.current)
     const fresh = await pushToJava({}) // the config sent to the agent must be up to date
     setChat((c) => [
-      ...c.map((m) => (m.kind === 'card' && m.status === 'pending' ? { ...m, status: 'dismissed' as const } : m)),
+      ...c.map((m) => ((m.kind === 'card' || m.kind === 'question') && m.status === 'pending' ? { ...m, status: 'dismissed' as const } : m)),
       { kind: 'user', text, files: attachments.map((a) => a.filename) },
     ])
     await run({ message: text, state: { ...baseState(fresh), attachments } })
@@ -255,19 +268,38 @@ export default function App() {
     await run({ state: baseState(fresh), prefill: { data: PROFILES[form.formId] ?? {}, language: navigator.language } })
   }
 
-  const answerCard = async (card: Extract<ChatItem, { kind: 'card' }>, accepted: boolean) => {
-    setChat((c) => c.map((m) => (m.kind === 'card' && m.id === card.id ? { ...m, status: accepted ? 'accepted' : 'rejected' } : m)))
+  /** `names`: the rows the user kept ticked; only those go to the form backend. */
+  const answerCard = async (card: CardItem, accepted: boolean, names?: string[]) => {
+    const kept = accepted ? card.changes.filter((ch) => !names || names.includes(ch.name)) : []
+    const partial = kept.length > 0 && kept.length < card.changes.length
+    const status: CardStatus = kept.length === 0 ? 'rejected' : partial ? 'partial' : 'accepted'
+    setChat((c) => c.map((m) => (m.kind === 'card' && m.id === card.id ? { ...m, status, names: partial ? kept.map((k) => k.name) : undefined } : m)))
     setBusy(true)
     try {
       let cfg = cfgRef.current!
-      if (accepted) {
+      if (kept.length) {
         // applied through the same path as user input: event -> form backend -> new config
-        cfg = await pushToJava(Object.fromEntries(card.changes.map((ch) => [ch.name, ch.value])))
-        const last = card.changes[card.changes.length - 1]
+        cfg = await pushToJava(Object.fromEntries(kept.map((ch) => [ch.name, ch.value])))
+        const last = kept[kept.length - 1]
         reveal(last.reveal)
         setHighlight({ target: last.name, hint: 'Filled in by the assistant', ts: Date.now() })
       }
-      await runTurn(agentRef.current!, { state: baseState(cfg), resume: { accepted, config: cfg, ui: uiRef.current } }, onEvent)
+      const resume = { accepted: kept.length > 0, config: cfg, ui: uiRef.current, ...(partial ? { names: kept.map((k) => k.name) } : {}) }
+      await runTurn(agentRef.current!, { state: baseState(cfg), resume }, onEvent)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** `answer` null = skipped. */
+  const answerQuestion = async (q: QuestionItem, answer: Answer | null) => {
+    setChat((c) => c.map((m) => (m.kind === 'question' && m.id === q.id
+      ? { ...m, status: answer ? 'answered' : 'dismissed', answer: answer ?? undefined } : m)))
+    setBusy(true)
+    try {
+      const cfg = cfgRef.current!
+      const resume = answer ? { answer: { ids: answer.ids, text: answer.text } } : { accepted: false }
+      await runTurn(agentRef.current!, { state: baseState(cfg), resume }, onEvent)
     } finally {
       setBusy(false)
     }
@@ -325,7 +357,7 @@ export default function App() {
           </div>
         </div>
         {showCtx && agentCtx && <pre className="ctx">{agentCtx.text}</pre>}
-        <Chat items={chat} busy={busy} onSend={send} onCard={answerCard} thread={thread}
+        <Chat items={chat} busy={busy} onSend={send} onCard={answerCard} onQuestion={answerQuestion} thread={thread}
           suggestions={SUGGESTIONS[form.formId] ?? []} />
       </aside>
     </div>
@@ -333,11 +365,12 @@ export default function App() {
   )
 }
 
-function Chat({ items, busy, onSend, onCard, suggestions, thread }: {
+function Chat({ items, busy, onSend, onCard, onQuestion, suggestions, thread }: {
   items: ChatItem[]
   busy: boolean
   onSend: (t: string, attachments?: Attachment[]) => void
-  onCard: (c: Extract<ChatItem, { kind: 'card' }>, accepted: boolean) => void
+  onCard: (c: CardItem, accepted: boolean, names?: string[]) => void
+  onQuestion: (q: QuestionItem, answer: Answer | null) => void
   suggestions: string[]
   thread: string
 }) {
@@ -423,24 +456,9 @@ function Chat({ items, busy, onSend, onCard, suggestions, thread }: {
             case 'tool':
               return <div key={i} className="tool">⚙ {m.name}({shortArgs(m.input)})</div>
             case 'card':
-              return (
-                <div key={i} className={`card ${m.status}`}>
-                  <div className="card-title">Fill in these fields?</div>
-                  <ul>
-                    {m.changes.map((c) => (
-                      <li key={c.name}><span className="muted">{c.label}:</span> <b>{c.display}</b></li>
-                    ))}
-                  </ul>
-                  {m.status === 'pending' ? (
-                    <div className="card-actions">
-                      <button className="primary" disabled={busy} onClick={() => onCard(m, true)}>Fill in</button>
-                      <button disabled={busy} onClick={() => onCard(m, false)}>Reject</button>
-                    </div>
-                  ) : (
-                    <div className="muted">{{ accepted: 'Filled in', rejected: 'Rejected', dismissed: 'Skipped' }[m.status]}</div>
-                  )}
-                </div>
-              )
+              return <ChangeCard key={i} card={m} busy={busy} onAnswer={(ok, names) => onCard(m, ok, names)} />
+            case 'question':
+              return <QuestionCard key={i} q={m} busy={busy} onAnswer={(a) => onQuestion(m, a)} />
           }
         })}
         {busy && <div className="typing muted">the assistant is thinking…</div>}
@@ -490,4 +508,89 @@ function Chat({ items, busy, onSend, onCard, suggestions, thread }: {
 function shortArgs(a: unknown): string {
   const s = JSON.stringify(a ?? {})
   return s.length > 70 ? s.slice(0, 70) + '…' : s
+}
+
+
+/** A field-change card: every row can be unticked; "Fill in" applies the ticked rows only. */
+function ChangeCard({ card, busy, onAnswer }: { card: CardItem; busy: boolean; onAnswer: (accepted: boolean, names?: string[]) => void }) {
+  const [keep, setKeep] = useState<string[]>(() => card.changes.map((c) => c.name))
+  const pending = card.status === 'pending'
+  const toggle = (name: string) => setKeep((k) => (k.includes(name) ? k.filter((n) => n !== name) : [...k, name]))
+  const applied = card.names ?? card.changes.map((c) => c.name)
+  return (
+    <div className={`card ${card.status}`}>
+      <div className="card-title">Fill in these fields?</div>
+      <ul className={pending && card.changes.length > 1 ? 'rows checkable' : 'rows'}>
+        {card.changes.map((c) => (
+          <li key={c.name} className={card.status === 'partial' && !applied.includes(c.name) ? 'declined' : ''}>
+            {pending && card.changes.length > 1 && (
+              <input type="checkbox" checked={keep.includes(c.name)} onChange={() => toggle(c.name)} aria-label={`Keep ${c.label}`} />
+            )}
+            <span className="muted">{c.label}:</span> <b>{c.display}</b>
+            {c.reason && <div className="reason muted">{c.reason}</div>}
+          </li>
+        ))}
+      </ul>
+      {pending ? (
+        <div className="card-actions">
+          <button className="primary" disabled={busy || keep.length === 0}
+            onClick={() => onAnswer(true, keep.length === card.changes.length ? undefined : keep)}>
+            {keep.length === card.changes.length ? 'Fill in' : `Fill in ${keep.length} of ${card.changes.length}`}
+          </button>
+          <button disabled={busy} onClick={() => onAnswer(false)}>Reject</button>
+        </div>
+      ) : (
+        <div className="muted">{{ accepted: 'Filled in', partial: 'Partly filled in', rejected: 'Rejected', dismissed: 'Skipped' }[card.status as Exclude<CardStatus, 'pending'>]}</div>
+      )}
+    </div>
+  )
+}
+
+/** A question card: one click for a single choice, ticks + Send for several, or a typed answer. */
+function QuestionCard({ q, busy, onAnswer }: { q: QuestionItem; busy: boolean; onAnswer: (a: Answer | null) => void }) {
+  const [picked, setPicked] = useState<string[]>([])
+  const [text, setText] = useState('')
+  const pending = q.status === 'pending'
+  if (!pending) {
+    const shown = q.answer ? [...(q.answer.labels ?? []), ...(q.answer.text ? [`"${q.answer.text}"`] : [])].join(', ') : ''
+    return (
+      <div className={`card question ${q.status}`}>
+        <div className="card-title">{q.question}</div>
+        <div className="muted">{q.status === 'answered' ? `Answered: ${shown}` : 'Skipped'}</div>
+      </div>
+    )
+  }
+  const label = (id: string) => q.options.find((o) => o.id === id)?.label ?? id
+  const send = (ids: string[], typed: string) =>
+    onAnswer({ ...(ids.length ? { ids, labels: ids.map(label) } : {}), ...(typed.trim() ? { text: typed.trim() } : {}) })
+  return (
+    <div className="card question pending">
+      <div className="card-title">{q.question}</div>
+      {q.options.length > 0 && (
+        <div className="choices">
+          {q.options.map((o) => q.multiple ? (
+            <label key={o.id} className={`choice ${picked.includes(o.id) ? 'on' : ''}`}>
+              <input type="checkbox" checked={picked.includes(o.id)} disabled={busy}
+                onChange={() => setPicked((p) => (p.includes(o.id) ? p.filter((x) => x !== o.id) : [...p, o.id]))} />
+              {o.label}
+            </label>
+          ) : (
+            <button key={o.id} className="choice" disabled={busy} onClick={() => send([o.id], '')}>{o.label}</button>
+          ))}
+        </div>
+      )}
+      {q.allow_text && (
+        <form className="answer-text" onSubmit={(e) => { e.preventDefault(); if (text.trim()) send(q.multiple ? picked : [], text) }}>
+          <input value={text} onChange={(e) => setText(e.target.value)} disabled={busy}
+            placeholder={q.options.length ? 'or type your answer' : 'type your answer'} aria-label="Your answer" />
+        </form>
+      )}
+      <div className="card-actions">
+        {(q.multiple || (q.allow_text && text.trim())) && (
+          <button className="primary" disabled={busy || (!picked.length && !text.trim())} onClick={() => send(q.multiple ? picked : [], text)}>Send</button>
+        )}
+        <button disabled={busy} onClick={() => onAnswer(null)}>Skip</button>
+      </div>
+    </div>
+  )
 }

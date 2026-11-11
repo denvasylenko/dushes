@@ -6,7 +6,10 @@ model's history, never this. Entries, in order:
     {"id", "ts", "kind": "user",      "text", "files": [...]}
     {"id", "ts", "kind": "assistant", "text"}
     {"id", "ts", "kind": "tool",      "name", "input"}
-    {"id", "ts", "kind": "card",      "changes": [...], "status": pending|accepted|rejected|dismissed}
+    {"id", "ts", "kind": "card",      "changes": [...], "status": pending|accepted|partial|rejected|dismissed,
+                                      "names"?: applied names when partial}
+    {"id", "ts", "kind": "question",  "question", "options": [{id, label}], "multiple", "allow_text", "field"?,
+                                      "status": pending|answered|dismissed, "answer"?: {ids?, labels?, text?}}
     {"id", "ts", "kind": "error",     "text"}
     {"id", "ts", "kind": "notice",    "text"}
 
@@ -98,7 +101,9 @@ class FileTranscriptStore:
 
 
 def pending_card(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
-    return next((e for e in reversed(entries) if e["kind"] == "card" and e.get("status") == "pending"), None)
+    """The card or question still waiting for the user (its `kind` says which)."""
+    return next((e for e in reversed(entries) if e["kind"] in ("card", "question") and e.get("status") == "pending"),
+                None)
 
 
 def sqlite_checkpointer(path: str | Path):

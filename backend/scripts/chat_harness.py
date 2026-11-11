@@ -43,6 +43,8 @@ class Session:
         self.pending: list[dict] | None = None
         self.last_text = ""
         self.cards: list[dict] = []
+        self.questions: list[dict] = []
+        self.answer: str | None = None   # how to answer a question card: an option label (or text); None = skip
         self.tools: list[tuple[str, Any]] = []
         self.ctx_tokens = 0
         self.to_attach: list[dict] = []
@@ -88,8 +90,10 @@ class Session:
         self.log.append(f"📎 user attached {r['filename']}")
 
     # ------------------------------------------------------------ agent
-    def say(self, text: str, card: str = "accept") -> str:
-        """card: accept | reject | ignore — what to do with a confirmation card."""
+    def say(self, text: str, card: str = "accept", answer: str | None = None) -> str:
+        """card: accept | reject | ignore — what to do with a confirmation card.
+        answer: what to click on a question card (an option label, else typed as text); None = skip."""
+        self.answer = answer
         self.log.append(f"\n👤 {text}")
         if self.pending:
             self.log.append("   (previous card ignored)")
@@ -143,6 +147,18 @@ class Session:
                     self.log.append(f"   🔦 highlight {d['target']}: \"{d['hint']}\"")
                 elif name == "on_interrupt":   # a JSON string (ag-ui-langgraph convention)
                     interrupt = json.loads(e["value"]) if isinstance(e["value"], str) else e["value"]
+        if interrupt and interrupt.get("type") == "ask":
+            self.questions.append(interrupt)
+            opts = interrupt.get("options") or []
+            hit = next((o for o in opts if self.answer and self.answer.lower() in o["label"].lower()), None)
+            reply = ({"answer": {"ids": [hit["id"]]}} if hit else
+                     {"answer": {"text": self.answer}} if self.answer else {"accepted": False})
+            self.log.append(f"   ❓ question: {interrupt['question']} "
+                            f"[{', '.join(o['label'] for o in opts)}] → {hit['label'] if hit else self.answer or 'skip'}")
+            self.answer = None
+            self._run({"threadId": self.thread, "state": self._state(),
+                       "forwardedProps": {"command": {"resume": reply}}}, card)
+            return
         if interrupt:
             ch = interrupt["changes"]
             self.cards.append(interrupt)
@@ -327,6 +343,21 @@ def sc_reject(s: Session, c: Checks):
     n_cards = len(s.cards)
     s.say("Why wasn't anything filled in?")
     c.ok(len(s.cards) == n_cards, "did not re-propose the rejected change")
+
+
+def sc_ask_ambiguous(s: Session, c: Checks):
+    """An ambiguous request: the agent asks with a question card instead of listing options in text."""
+    s.say("I'd like to apply for a loan.", answer="Car loan")
+    c.ok(bool(s.questions), "asked with a question card")
+    c.ok(any(q.get("field") == "loan_type" or any("Car loan" in o["label"] for o in q.get("options") or [])
+             for q in s.questions), "the question offers the loan types")
+    c.ok((s.value("loan_type") or {}).get("id") == "auto", "set loan_type = auto after the answer")
+
+
+def sc_no_needless_question(s: Session, c: Checks):
+    s.say("My first name is Anna and my last name is Petrova.")
+    c.ok(not s.questions, "no question card for plain data")
+    c.ok(s.value("first_name") == "Anna", "filled the name")
 
 
 def sc_ignore_card(s: Session, c: Checks):

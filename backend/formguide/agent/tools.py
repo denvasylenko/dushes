@@ -1,7 +1,8 @@
 """Agent tools. All are read-only except two with a UI side effect:
 
 - focus_field     -> a UI directive for the frontend (open tabs/accordions, highlight);
-- propose_changes -> validated, then goes to an interrupt (the user confirms).
+- propose_changes -> validated, then goes to an interrupt (the user confirms);
+- ask_user        -> a question card with clickable options, also an interrupt (the user answers).
 
 Two tools delegate to separate model calls, so their inputs never enter the main context:
 - ask_documents           -> the deep-agent researcher over the form's business documents;
@@ -73,6 +74,26 @@ TOOLS: list[dict[str, Any]] = [
             "type": "object",
             "properties": {"name": {"type": "string"}, "query": {"type": "string"}},
             "required": ["name"],
+        },
+    },
+    {
+        "name": "ask_user",
+        "description": "Ask the user one question with clickable options and wait for the answer. Use it when "
+                       "the user must choose between known options or settle an ambiguity (e.g. which loan "
+                       "type). Pass `field` to offer that field's current options (optionally `options` to offer "
+                       "only some of them). Never use it to confirm values: propose_changes does that.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string"},
+                "options": {"type": "array", "description": "choices: strings or {id, label}; omit for a typed answer",
+                            "items": {"anyOf": [{"type": "string"}, {"type": "object", "properties": {
+                                "id": {"type": "string"}, "label": {"type": "string"}}}]}},
+                "field": {"type": "string", "description": "a dropdown, radio or multi-select field"},
+                "multiple": {"type": "boolean", "description": "several choices allowed"},
+                "allow_text": {"type": "boolean", "description": "a typed answer allowed; default true"},
+            },
+            "required": ["question"],
         },
     },
     {
@@ -166,6 +187,7 @@ class ToolCtx:
     loc: Location
     ui_directives: list[dict] = field(default_factory=list)
     pending_changes: list[dict] | None = None
+    pending_question: dict | None = None
     thread_id: str = ""
     emit: Callable[[dict], None] | None = None   # progress events for the UI
     guide: FormGuide | None = None               # access to models, knowledge, attachments, skills
@@ -367,9 +389,71 @@ def form_value(ctx_or_ov: Any, name: str, value: Any) -> Any:
         raise ToolError(f"{name}: {err}") from None
 
 
+WAITING = "a card or question is already waiting for the user. One at a time: call it in a later step."
+MAX_QUESTION_OPTIONS = 12
+
+
+def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
+    if ctx.pending_changes is not None or ctx.pending_question is not None:
+        raise ToolError(WAITING)
+    question = str(a.get("question") or "").strip()
+    if not question:
+        raise ToolError("question must not be empty")
+    if len(question) > 300:
+        raise ToolError("the question is too long (300 characters at most); ask one short question")
+    raw = a.get("options") or []
+    if not isinstance(raw, list):
+        raise ToolError("options must be a list")
+    multiple = a.get("multiple")
+    field_name = a.get("field")
+    opts: list[dict] = []
+    if field_name:
+        n = _need(ctx, field_name)
+        e = ctx.ov[n.name]
+        if n.role not in CHOICE and n.role != "multiselect":
+            raise ToolError(f"{n.name} is not a dropdown, radio group or multi-select; pass your own options")
+        if not e.options:
+            raise ToolError(f"{n.name} has no options right now (they probably depend on another field)")
+        if raw:
+            bad = []
+            for x in raw:
+                key = (x.get("id") or x.get("label")) if isinstance(x, dict) else x
+                o = vals.find_option(e.options, key)
+                if o is None:
+                    bad.append(repr(key))
+                elif not any(str(p["id"]) == str(o["id"]) for p in opts):
+                    opts.append({"id": str(o["id"]), "label": o["name"]})
+            if bad:
+                raise ToolError(f"{n.name}: no option {', '.join(bad)}. Use get_options to see them.")
+        else:
+            opts = [{"id": str(o["id"]), "label": o["name"]} for o in e.options]
+        if multiple is None:
+            multiple = n.role == "multiselect"
+        field_name = n.name
+    else:
+        for x in raw:
+            if isinstance(x, dict):
+                label = str(x.get("label") or x.get("id") or "").strip()
+                oid = str(x.get("id") or label).strip()
+            else:
+                label = oid = str(x).strip()
+            if label and not any(p["id"] == oid for p in opts):
+                opts.append({"id": oid, "label": label})
+    if len(opts) > MAX_QUESTION_OPTIONS:
+        raise ToolError(f"too many options ({len(opts)}; {MAX_QUESTION_OPTIONS} at most). Offer only the likely "
+                        "ones with `options`, or ask in text.")
+    allow_text = a.get("allow_text")
+    allow_text = True if allow_text is None else bool(allow_text)
+    if not opts and not allow_text:
+        raise ToolError("a question without options must allow a typed answer")
+    ctx.pending_question = {"question": question, "options": opts, "multiple": bool(multiple) and bool(opts),
+                            "allow_text": allow_text, **({"field": field_name} if field_name else {})}
+    return ""
+
+
 def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
-    if ctx.pending_changes is not None:
-        raise ToolError("a proposal is already waiting for confirmation. One at a time.")
+    if ctx.pending_changes is not None or ctx.pending_question is not None:
+        raise ToolError(WAITING)
     changes = a.get("changes")
     if not isinstance(changes, list) or not changes:
         raise ToolError("INVALID_JSON: changes must be a non-empty list")

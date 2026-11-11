@@ -82,13 +82,20 @@ export type Attachment = { id: string; filename: string }
 export type TranscriptEntry = {
   id: string
   ts: string
-  kind: 'user' | 'assistant' | 'tool' | 'card' | 'error' | 'notice'
+  kind: 'user' | 'assistant' | 'tool' | 'card' | 'question' | 'error' | 'notice'
   text?: string
+  question?: string
+  options?: { id: string; label: string }[]
+  multiple?: boolean
+  allow_text?: boolean
+  field?: string
+  answer?: { ids?: string[]; labels?: string[]; text?: string }
+  names?: string[]
   files?: string[]
   name?: string
   input?: unknown
   changes?: unknown[]
-  status?: 'pending' | 'accepted' | 'rejected' | 'dismissed'
+  status?: 'pending' | 'accepted' | 'partial' | 'rejected' | 'dismissed' | 'answered'
 }
 
 /** The conversation as the user saw it (kept apart from the model's compacted history). */
@@ -147,7 +154,8 @@ export const FRONTEND_TOOLS: (Tool & { run: (args: Record<string, unknown>) => s
 export type Turn = {
   state: FormState
   message?: string
-  resume?: { accepted: boolean; config?: Config; ui?: UiState }
+  /** a field-change card: {accepted, config, ui?, names?}; a question card: {answer: {ids?, text?}} or {accepted: false} */
+  resume?: { accepted?: boolean; config?: Config; ui?: UiState; names?: string[]; answer?: { ids?: string[]; text?: string } }
   prefill?: { data?: Record<string, unknown>; text?: string; attachment_ids?: string[]; language?: string }
 }
 

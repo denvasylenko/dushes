@@ -33,13 +33,15 @@ agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "Where do I s
 await agent.runAgent({ tools: frontendTools }, {
   onCustomEvent: ({ event }) => event.name === "on_interrupt" && showCard(JSON.parse(event.value)),
 })
-// answer a card: agent.runAgent({ forwardedProps: { command: { resume: { accepted, config } } } })
+// on_interrupt has a `type`: "set_fields" (a field-change card) or "ask" (a question card with options)
+// answer a card: agent.runAgent({ forwardedProps: { command: { resume: { accepted, config, names? } } } })
+// answer a question:            ... resume: { answer: { ids: ["auto"] } }  or  { answer: { text } }  or  { accepted: false }
 // prefill:       agent.runAgent({ forwardedProps: { prefill: { data: profile } } })
 ```
 
 - **CopilotKit 1.86**: [`examples/copilotkit/`](examples/copilotkit) — `CopilotKitProvider` with an `HttpAgent` (no CopilotKit runtime server), cards with `useInterrupt`, a frontend tool with `useFrontendTool`, prefill.
 - **Plain `@ag-ui/client`**: the demo UI, [`frontend/src/api.ts`](frontend/src/api.ts).
-- **Cards**: `interrupt_mode: legacy` (default; `CUSTOM on_interrupt`, what CopilotKit reads), `structured` (AG-UI 1.0 `RUN_FINISHED.outcome` + `resume[]`) or `both`.
+- **Cards**: field-change cards (a checkbox per row; `names` keeps a subset) and question cards (`ask_user`: options from the model or from a field, single or multiple choice, typed answers); payloads in [docs/ui-components.md](docs/ui-components.md#25-which-one-the-question-card). `interrupt_mode: legacy` (default; `CUSTOM on_interrupt`, what CopilotKit reads), `structured` (AG-UI 1.0 `RUN_FINISHED.outcome` + `resume[]`) or `both`.
 - **Restore a chat**: `GET /agent/threads/{id}?format=agui` returns AG-UI messages for `setMessages`.
 
 ## Use it from Python

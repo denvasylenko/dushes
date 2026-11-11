@@ -34,6 +34,7 @@ from .knowledge.base import KnowledgeBase
 from .prefill import prefill_instruction, suggest_prefill
 from .skills import SkillRegistry
 from .form.values import value_warnings
+from .agent.interaction import read_answer, read_decision
 from .transcript import FileTranscriptStore, check_thread_id, new_entry, pending_card
 
 
@@ -119,7 +120,8 @@ class FormGuide:
         """One turn, as AG-UI events (plain dicts with the protocol's camelCase keys).
 
         - a new user message: `message` + `state` = {config, jsx_hash, form_id, ui?, attachments?};
-        - a resume after a confirmation card: `resume` = {accepted, config?, ui?};
+        - a resume after a field-change card: `resume` = {accepted, config?, ui?, names?, comment?};
+        - a resume after a question card: `resume` = {answer: {ids?, text?}} ({accepted: False} = skipped);
         - a continuation after frontend tools ran: `tool_results` = {tool_call_id: content} + `state`;
         - a prefilled start: `prefill` = {data?, text?, attachment_ids?} + `state` (see suggest_prefill).
 
@@ -130,8 +132,14 @@ class FormGuide:
         entries = tx.list(thread_id)
         card = pending_card(entries)
         if resume is not None:
-            if card:
-                tx.update(thread_id, card["id"], status="accepted" if resume.get("accepted") else "rejected")
+            if card and card["kind"] == "question":
+                got, _ = read_answer(card, resume)
+                tx.update(thread_id, card["id"], status="answered" if got else "dismissed",
+                          **({"answer": got} if got else {}))
+            elif card:
+                applied, declined = read_decision(card.get("changes") or [], resume)
+                status = "rejected" if not applied else "partial" if declined else "accepted"
+                tx.update(thread_id, card["id"], status=status, **({"names": applied} if declined else {}))
         else:
             if card:   # a new message closes an unanswered card (the graph does the same)
                 tx.update(thread_id, card["id"], status="dismissed")
@@ -169,6 +177,14 @@ class FormGuide:
             elif name == "memory_compacted":
                 tx.append(thread_id, new_entry("notice", text="Earlier messages were summarized for the assistant; "
                                                               "the chat history is kept in full."))
+            elif name == "on_interrupt" and ev["value"].get("type") == "ask":
+                q = {k: v for k, v in ev["value"].items() if k != "type"}
+                entry = tx.append(thread_id, new_entry("question", **q, status="pending"))
+                value = {**ev["value"], "card_id": entry["id"]}
+                interrupts.append(value)
+                if mode not in ("legacy", "both"):
+                    continue
+                ev = {**ev, "value": json.dumps(value, ensure_ascii=False)}
             elif name == "on_interrupt":
                 entry = tx.append(thread_id, new_entry("card", changes=ev["value"].get("changes", []), status="pending"))
                 value = {**ev["value"], "card_id": entry["id"]}
@@ -178,10 +194,7 @@ class FormGuide:
                 # ag-ui-langgraph convention (what CopilotKit's useLangGraphInterrupt reads): a JSON string
                 ev = {**ev, "value": json.dumps(value, ensure_ascii=False)}
             elif t == "RUN_FINISHED" and interrupts and mode in ("structured", "both"):
-                ev = {**ev, "outcome": {"type": "interrupt", "interrupts": [
-                    {"id": v["card_id"], "reason": "confirm_field_changes",
-                     "message": "Confirm the proposed field values", "metadata": {"changes": v["changes"]}}
-                    for v in interrupts]}}
+                ev = {**ev, "outcome": {"type": "interrupt", "interrupts": [_outcome(v) for v in interrupts]}}
             yield ev
 
     def thread(self, thread_id: str) -> dict[str, Any]:
@@ -311,3 +324,12 @@ class FormGuide:
     # ------------------------------------------------------------------ attachments
     def save_attachment(self, thread_id: str, filename: str, data: bytes) -> dict:
         return self.attachments.save(thread_id, filename, data)
+
+
+def _outcome(v: dict[str, Any]) -> dict[str, Any]:
+    """A card as an AG-UI 1.0 interrupt (RUN_FINISHED.outcome)."""
+    if v.get("type") == "ask":
+        meta = {k: v[k] for k in ("question", "options", "multiple", "allow_text", "field") if k in v}
+        return {"id": v["card_id"], "reason": "ask_user", "message": v["question"], "metadata": meta}
+    return {"id": v["card_id"], "reason": "confirm_field_changes", "message": "Confirm the proposed field values",
+            "metadata": {"changes": v["changes"]}}

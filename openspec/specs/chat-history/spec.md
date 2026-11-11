@@ -20,7 +20,14 @@ The transcript SHALL record, in order, with an id and a timestamp: user messages
 - **THEN** the transcript gains a user entry, a tool entry and an assistant entry, in that order
 
 ### Requirement: Confirmation card status
-A card SHALL be recorded as `pending` with a `card_id` that is also sent in the `on_interrupt` event. It SHALL become `accepted` or `rejected` when the turn is resumed, and `dismissed` when the user sends a new message instead.
+A card SHALL be recorded as `pending` with a `card_id` that is also sent in the `on_interrupt` event, and its status SHALL change when it is answered or ignored. Question cards SHALL be recorded with the kind `question`, with their question and options.
+
+#### Scenario: Statuses
+- **WHEN** a card or question is answered or ignored
+- **THEN** its status becomes:
+  - for a field-change card: `accepted`, `partial` (with the applied `names`) or `rejected`;
+  - for a question card: `answered` (with the answer) or `dismissed`;
+  - for either kind: `dismissed` if the user sends a new message instead of answering
 
 #### Scenario: Card answered after a reload
 - **WHEN** the user reloads the page while a card is pending and then accepts it
@@ -30,12 +37,20 @@ A card SHALL be recorded as `pending` with a `card_id` that is also sent in the 
 - **WHEN** the user sends a new message while a card is pending
 - **THEN** the card's status becomes `dismissed`
 
+#### Scenario: Question answered
+- **WHEN** the user clicks an option on a question card
+- **THEN** the question's status becomes `answered` and the entry records the chosen ids
+
 ### Requirement: Restore a conversation
-The system SHALL return a thread's transcript and its pending card, if any, so a client can show the conversation when the user comes back. With persistent stores configured, the transcript and the model's history SHALL survive a server restart, and a pending card SHALL still be resumable.
+The system SHALL return a thread's transcript and its pending card or question, if any, so a client can show the conversation when the user comes back. The pending item SHALL carry its `kind`. With persistent stores configured, the transcript and the model's history SHALL survive a server restart, and a pending card or question SHALL still be resumable.
 
 #### Scenario: Server restart
 - **WHEN** the server restarts with an SQLite checkpointer and a file transcript store, and the user reopens the form
 - **THEN** the chat is shown as before and the next message continues the same conversation
+
+#### Scenario: Pending question after a reload
+- **WHEN** the user reloads the page while a question is pending
+- **THEN** the thread's `pending_card` is the question entry with `kind: "question"`, and answering it resumes the turn
 
 ### Requirement: Start over
 The system SHALL allow deleting a thread's transcript and model history.
