@@ -6,6 +6,7 @@ Only the /agent part is "the product"; /java stands in for your form backend.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -19,8 +20,10 @@ from .mock_forms import FORMS
 
 HERE = Path(__file__).resolve().parent
 
-# The whole agent side: one call (agent endpoints under /agent).
-app = create_app(HERE / "formguide.yaml", prefix="/agent", cors=["*"], debug=True)
+# The whole agent side: one call (agent endpoints under /agent). DEMO_CONFIG picks another config file
+# (the hosted demo uses formguide.hosted.yaml); DEMO_DEBUG=0 turns the debug endpoint off.
+app = create_app(Path(os.environ.get("DEMO_CONFIG") or HERE / "formguide.yaml"), prefix="/agent", cors=["*"],
+                 debug=os.environ.get("DEMO_DEBUG", "1") != "0")
 guide = app.state.guide
 
 # ===================================================================== mock form backend
@@ -72,13 +75,16 @@ async def no_stale_page(request, call_next):
 _WIDGET = HERE.parents[1] / "packages" / "agui-chat" / "dist"
 if _WIDGET.exists():
     app.mount("/widget", StaticFiles(directory=_WIDGET), name="widget")
-app.mount("/examples/widget", StaticFiles(directory=HERE.parents[1] / "examples" / "widget-html", html=True), name="widget-example")
+_EXAMPLE = HERE.parents[1] / "examples" / "widget-html"
+if _EXAMPLE.exists():
+    app.mount("/examples/widget", StaticFiles(directory=_EXAMPLE, html=True), name="widget-example")
 # The react-hook-form example: http://localhost:8000/examples/react-hook-form/ after
 # `cd examples/react-hook-form && npm install && npm run build`.
 _RHF = HERE.parents[1] / "examples" / "react-hook-form" / "dist"
 if _RHF.exists():
     app.mount("/examples/react-hook-form", StaticFiles(directory=_RHF, html=True), name="rhf-example")
 
+# The demo page at "/" (DEMO_PATH moves it, e.g. "/demo" on the docs host, built with `vite build --base /demo/`).
 _DIST = HERE.parents[1] / "frontend" / "dist"
 if _DIST.exists():
-    app.mount("/", StaticFiles(directory=_DIST, html=True), name="frontend")
+    app.mount(os.environ.get("DEMO_PATH", "/"), StaticFiles(directory=_DIST, html=True), name="frontend")

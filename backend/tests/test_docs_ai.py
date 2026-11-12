@@ -144,3 +144,56 @@ flowchart LR
     idx.add(chunks)
     top = Corpus(idx, 3, len(chunks), "x").search("accent colour of the chat widget", k=2)
     assert top[0].doc_id.endswith("/frontend/themes/#tokens-on-the-element")
+
+
+def test_table_of_contents_lists_guides_and_reaches_the_model(tmp_path):
+    from docs_ai.corpus import contents
+
+    toc = contents(CORPUS + "\n---\n\n<!-- page: https://docs.example/specifications/x/ -->\n# x\n\nbody\n")
+    assert toc.splitlines() == [
+        "- [Models and providers](https://docs.example/backend/models/): Four roles, any LangChain chat model for each.",
+        "- [Themes and styling](https://docs.example/frontend/themes/): Named themes, tokens on the element and ::part().",
+    ]
+    client, model = _client(tmp_path)
+    with client as c:
+        _ask(c, "where are all the ways to set a model?")
+    system = model.calls[0][0].content
+    assert "Table of contents" in system and "](https://docs.example/frontend/themes/)" in system
+
+
+def test_code_blocks_get_ids_and_markers():
+    from docs_ai.corpus import mark_blocks
+
+    chunks = split(CORPUS)
+    blocks = mark_blocks(chunks)
+    assert list(blocks) == ["b1"]
+    b = blocks["b1"]
+    assert b.lang == "yaml" and b.code.startswith("models:\n  agent:") and b.url.endswith("#pick-a-provider")
+    assert any("[code b1 \u00b7 yaml \u00b7 yaml]" in c.text for c in chunks)
+
+
+def test_answer_text_then_cards_then_follow_ups(tmp_path):
+    from .conftest import say
+
+    script = [say("Set the roles under `models:`.",
+                  ("c1", "show_code", {"blocks": ["b1", "b999"]}),
+                  ("c2", "show_pages", {"urls": ["https://docs.example/backend/models/#pick-a-provider"]}),
+                  ("c3", "suggest_next", {"questions": ["How do I mix providers?", "Which roles are there?"]}))]
+    client, model = _client(tmp_path, script=script)
+    with client as c:
+        evs = _events(_ask(c, "azure openai agent").text)
+    kinds = [e["type"] if e["type"] != "CUSTOM" else e["name"] for e in evs]
+    assert kinds.index("TEXT_MESSAGE_END") < kinds.index("docs_card") < kinds.index("suggestions") < kinds.index("RUN_FINISHED")
+    cards = [e["value"] for e in evs if e.get("name") == "docs_card"]
+    assert cards[0]["kind"] == "code" and [b["id"] for b in cards[0]["blocks"]] == ["b1"]   # b999 does not exist
+    assert cards[0]["blocks"][0]["code"].startswith("models:\n  agent: {class:")              # verbatim from the docs
+    assert len(cards) == 1   # the page card named the same page as the code's source line: not repeated
+    assert [e["value"] for e in evs if e.get("name") == "suggestions"] == [{"items": ["How do I mix providers?", "Which roles are there?"]}]
+    assert "[code b1" in model.calls[0][0].content   # the model sees the block ids
+
+
+def test_a_conversation_has_a_limit(tmp_path):
+    client, _ = _client(tmp_path, per_thread=2)
+    with client as c:
+        assert [_ask(c, "q").status_code for _ in range(3)] == [200, 200, 429]
+        assert "limit" in _ask(c, "q").json()["detail"]

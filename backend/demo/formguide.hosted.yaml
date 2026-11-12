@@ -1,0 +1,22 @@
+# The public demo on the docs host (docs_ai/host.py): the same demo with Claude Haiku for every role, to keep a
+# public demo cheap. Paths are relative to this file.
+data_dir: ../data
+
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}
+  research: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 4000}
+  compile: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}
+  extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 4000}
+
+domain_packs: {dir: domain_packs}
+knowledge:
+  dir: ../data/kb
+  index: bm25
+  scopes:
+    loan_application: [loan_application, bank_common]
+skills: {dir: skills}
+max_tool_rounds: 8
+suggestions: {enabled: true, max: 3}
+memory: {max_history_tokens: 30000, keep_turns: 4}
+checkpointer: {sqlite: ../data/checkpoints.sqlite}
+transcripts: {dir: ../data/transcripts}

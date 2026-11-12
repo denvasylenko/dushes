@@ -1,0 +1,17 @@
+# Build context is the repository root: send what the host needs, never local data or builds.
+*
+!backend
+!site
+!frontend
+!packages/agui-chat
+!openspec
+!examples/widget-html
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.astro
+backend/data
+backend/scripts/*.log
+site/src/content/docs/specifications
