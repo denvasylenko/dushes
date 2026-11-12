@@ -42,6 +42,7 @@ Found while adopting this standard. Strike out what is fixed, add new findings w
 | An 8-row field card is about 640 px tall; at 390 px the demo's chat shows about 200 px, so "Fill in" is three screens down (2026-11-12) | 1, 5, 9 | conflicts first, 4 rows then "Show N more", the action row sticky at the bottom of the log | M | big on phones |
 | Each row has two text links (Edit, Show): 16 links in an 8-row card; the 15 px checkbox is the only toggle target (2026-11-12) | 9, 10 | the whole row toggles; tap the value to edit; one "show in form" icon button (44 px) | S | medium |
 | A row whose value conflicts with what the form has ("you said 12 March, the form has 12 April") looks like any other row (2026-11-12) | 7 | rows with a previous value or a reason go first, with the reason in the warning colour | S | medium |
+| ~~Dictation keeps running after Skip or a card answer, and dictated words stay in the composer after a chip~~ | 3, 6 | any chat action ends the dictation and drops the dictated words; typed text stays | S | medium (fixed 2026-11-12) |
 
 ## The demo form (`frontend/`)
 

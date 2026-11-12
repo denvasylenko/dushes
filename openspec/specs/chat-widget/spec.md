@@ -258,3 +258,10 @@ The widget SHALL render fenced code blocks (```` ```lang ````) in assistant mess
 #### Scenario: Copying a snippet
 - **WHEN** an answer contains a ```` ```yaml ```` block and the user taps its copy button
 - **THEN** the clipboard holds exactly the YAML, and the button reads "Copied" for a moment
+
+### Requirement: Dictation ends with any chat action
+Any chat action other than sending the composer (a chip or starter, a card answer or Skip, a run started by the host, New chat) SHALL end a running dictation and drop the dictated words, keeping only the text typed before it. Results that arrive afterwards SHALL be ignored.
+
+#### Scenario: A chip tapped while dictating
+- **WHEN** the user is dictating and taps a quick reply or Skip on a card
+- **THEN** the microphone turns off, the dictated words leave the composer, and late recognition results are ignored

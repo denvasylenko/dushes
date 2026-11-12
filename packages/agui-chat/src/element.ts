@@ -118,6 +118,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _lastRun: Parameters<AguiChatElement['_run']>[0] | null = null
   private _mic: Dictation | null = null
   private _micGen = 0   // a sent message ends a dictation: late results of older ones are dropped
+  private _micBefore: string | null = null   // what was typed before the running dictation (kept when it is dropped)
   private _files: Attachment[] = []
   private _sending: Attachment[] = []
   private $: Record<string, HTMLElement> = {}
@@ -257,6 +258,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   private _switchThread(id: string, restore = true): void {
+    this._dropDictation()
     this.stop()
     this._setThread(id, true)
     this._messages = []
@@ -277,7 +279,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     text = String(text ?? '').trim()
     if (!text && this._files.length) text = this.t('useAttached')
     if (!text || this._busy) return
-    this._cancelMic()
+    this._dropDictation()   // a chip or starter answered: the half-dictated text is stale (the composer's own send stopped it already)
     this._clearQuick()
     this.$.log.querySelector('.empty')?.remove()
     this._closePendingCards()
@@ -291,6 +293,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   async run(opts: { forwardedProps?: Record<string, unknown>; notice?: string } = {}): Promise<void> {
     if (this._busy) return
+    this._dropDictation()
     this._clearQuick()
     this._closePendingCards()
     if (opts.notice) this.notice(opts.notice)
@@ -368,6 +371,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (this._mic) { this._mic.stop(); return }
     const input = this.$.input as HTMLTextAreaElement
     const before = input.value ? input.value.replace(/\s*$/, ' ') : ''
+    this._micBefore = input.value
     const gen = ++this._micGen
     this.$.hint.textContent = ''
     const o = this._opts
@@ -381,14 +385,28 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       this.$.mic.setAttribute('aria-label', on ? this.t('micStop') : this.t('mic'))
       if (!on && gen === this._micGen) {
         this._mic = null
+        this._micBefore = null
         if (error === 'denied') this.$.hint.textContent = this.t('micDenied')
         else if (o.micAutoSend && !error && input.value.trim()) this._submit()
       }
     })
   }
 
+  /** Another action answered instead (a chip, a card, Skip, New chat): stop dictating and drop what was
+   * dictated; text typed before the dictation stays. */
+  private _dropDictation(): void {
+    if (!this._mic) return
+    const input = this.$.input as HTMLTextAreaElement
+    const typed = this._micBefore ?? input.value
+    this._cancelMic()
+    input.value = typed
+    input.style.height = 'auto'
+    this._syncSend()
+  }
+
   /** The message is being sent: stop dictating at once and ignore whatever it still delivers. */
   private _cancelMic(): void {
+    this._micBefore = null
     this._micGen++
     const m = this._mic
     this._mic = null
@@ -865,6 +883,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       resolve: (value: unknown) => {
         if (done) return
         done = true
+        this._dropDictation()   // the card was answered (or skipped) instead of the dictated text
         el.classList.add('done')
         el.querySelectorAll<HTMLElement>('button, input, select, textarea').forEach((x) => {
           if (!x.hasAttribute('data-keep')) x.setAttribute('disabled', '')
