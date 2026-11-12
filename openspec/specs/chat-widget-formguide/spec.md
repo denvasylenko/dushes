@@ -132,3 +132,13 @@ After a field-change card, a question card that fills its field, or an action ch
 - **WHEN** the user taps "Kia" on the question "Which car make?" while the Applicant tab is open, and the make field is on the Car tab
 - **THEN** the field is filled and the host receives a focus directive for it with the Car tab in `reveal`, so the page opens that tab
 
+### Requirement: Leaving cards out
+The plugin SHALL accept `exclude`, a list of cards (`ask`, `upload`, `confirm`, `review`) and variants (e.g. `ask.range`), and SHALL leave them out of the capabilities it sends with every run; an excluded card SHALL take its variants along. The capabilities SHALL include the base cards the plugin renders, so a client that excludes every variant of a card still keeps the card.
+
+#### Scenario: An app without the review
+- **WHEN** the host passes `exclude: ['review']`
+- **THEN** the run's capabilities do not list `review`, and the server does not offer review_form to the model
+
+#### Scenario: Only a variant left out
+- **WHEN** the host passes `exclude: ['ask.range']`
+- **THEN** questions still come, and a number question is drawn as a plain number box

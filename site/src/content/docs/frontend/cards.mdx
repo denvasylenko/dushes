@@ -264,7 +264,7 @@ With `interrupt_mode: structured` the reasons are `request_file` and `confirm_ac
 
 ## 2.8 Richer looks from the same data
 
-The model asks *what*; the widget decides *how* to draw it from the payload. Every key below is optional: without it (or without the host callback) the card looks as in 2.2-2.7. The plugin announces what it can draw with every run, `forwardedProps.capabilities` (`ask.details`, `ask.compare`, `ask.search`, `ask.date`, `ask.slots`, `ask.range`, `ask.multi`, `ask.address`, `set.consent`, `set.issues`, `set.document`, `review`, `sources`, `confirm.receipt`, `upload.camera`, `feedback`), and the server sends only those.
+The model asks *what*; the widget decides *how* to draw it from the payload. Every key below is optional: without it (or without the host callback) the card looks as in 2.2-2.7. The plugin announces what it can draw with every run, `forwardedProps.capabilities` (`ask.details`, `ask.compare`, `ask.search`, `ask.date`, `ask.slots`, `ask.range`, `ask.multi`, `ask.address`, `set.consent`, `set.issues`, `set.document`, `review`, `sources`, `confirm.receipt`, `upload.camera`, `feedback`, plus the base cards `ask`, `upload`, `confirm`, `review`), and the server sends only those.
 
 | Card | Payload | Look | Host callback |
 |---|---|---|---|
@@ -288,6 +288,24 @@ The model asks *what*; the widget decides *how* to draw it from the payload. Eve
 | upload | `privacy` | one privacy line; on phones "Take a photo" first | |
 
 A value chosen from a day, a slot, a range or several fields fills the field right away when the question `applies` (with Undo, and the field is shown), like a tap on an option.
+
+
+## 2.9 Leaving cards out
+
+An app that does not want a card says so once, in the plugin. The card is left out of the capabilities, so the server never sends it:
+
+```js
+chat.use(formguide({
+  getState, applyChanges,
+  exclude: ['review', 'upload', 'ask.range'],
+}))
+```
+
+- A whole card (`ask`, `upload`, `confirm`, `review`) takes its variants along, and the model no longer gets the tool behind it (`ask_user`, `request_file`, `confirm_action`, `review_form`).
+- A variant (`ask.range`, `ask.slots`, `set.consent`, `sources`, ...) falls back to the plain card: a range question becomes a number box.
+- Field-change cards cannot be left out: they are how the agent fills the form.
+
+The server can switch the same actions off for every client with `actions` in its config ([Configuration](../../reference/configuration/)); the model gets only what both allow.
 
 ## Next
 

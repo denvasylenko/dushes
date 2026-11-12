@@ -47,6 +47,20 @@ export interface FormguideOptions {
   lookupAddress?: (field: string, query: string) => { label: string; detail?: string; value?: unknown }[] | Promise<{ label: string; detail?: string; value?: unknown }[]>
   /** The thumbs rating after a confirmed action; default: POST {base}/feedback. */
   onFeedback?: (value: 1 | -1) => void | Promise<void>
+  /** Cards and variants this app does not want, e.g. ['review', 'upload', 'ask.range']. They are left out of
+   * the capabilities the plugin announces, so the server never sends them: a whole card ('upload', 'review',
+   * 'confirm', 'ask') also takes its tool away from the model; a variant ('ask.range') falls back to the
+   * plain card. Field-change cards cannot be excluded. */
+  exclude?: string[]
+}
+
+/** The cards every formguide client draws, besides the variants in CAPABILITIES. */
+const BASE_CARDS = ['ask', 'upload', 'confirm', 'review']
+
+/** What this client announces: the base cards and variants, minus `exclude` (a card takes its variants along). */
+export function capabilitiesFor(exclude: string[] = []): string[] {
+  const out = [...new Set([...BASE_CARDS, ...CAPABILITIES])]
+  return out.filter((c) => !exclude.some((x) => c === x || c.startsWith(`${x}.`)))
 }
 
 export interface Ctx extends FormguideOptions { base: (chat: ChatApi) => string; flags: FieldCardFlags }
@@ -79,6 +93,7 @@ export function formguide(opts: FormguideOptions): Plugin {
   // the card that follows already shows what these tools did: no separate step for them
   const toolLabels: Record<string, Record<string, string> | string> = { ...labels }
   if (!opts.cardSteps) for (const t of ['propose_changes', 'ask_user', 'request_file', 'confirm_action']) toolLabels[t] = ''
+  const caps = capabilitiesFor(opts.exclude)
   return {
     name: 'formguide',
     i18n: FG_STRINGS,
@@ -106,7 +121,7 @@ export function formguide(opts: FormguideOptions): Plugin {
       const st = await opts.getState()
       input.state = chat.attachments.length ? { ...st, attachments: chat.attachments } : st
       // what this client can draw: the server sends only these card variants
-      input.forwardedProps = { ...(input.forwardedProps ?? {}), capabilities: CAPABILITIES }
+      input.forwardedProps = { ...(input.forwardedProps ?? {}), capabilities: caps }
     },
     attach: {
       accept: '.pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md',

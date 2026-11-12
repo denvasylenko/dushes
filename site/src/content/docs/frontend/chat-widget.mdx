@@ -76,6 +76,7 @@ chat.use(formguide({
   getSlots: async (field, date) => ['10:00', '14:30'],      // free time slots
   lookupAddress: async (field, query) => [{ label: 'Tverskaya St, 1', detail: 'Moscow, 125009' }],
   onFeedback: (value) => {},                                // the thumbs after a confirmed action (default: POST {base}/feedback)
+  exclude: ['review', 'ask.range'],                         // cards and variants this app does not want (see Cards and answers, 2.9)
 }))
 ```
 
