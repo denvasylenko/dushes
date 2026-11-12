@@ -31,7 +31,7 @@ One card at a time stops a turn. `interrupt_mode` picks the channel: `legacy` (d
 | `ask` | `ask_user` | a question with options, single or multiple, typed answers; `applies` + `field` = tapping fills the field | `{answer: {ids}}`, `{answer: {text}}`, or with `applies` `{answer: {ids}, config}`; `{accepted: false}` skips |
 | `upload` | `request_file` | a request for a document | `{attachment_ids}` after uploading; `{accepted: false}` |
 | `confirm` | `confirm_action` | an irreversible action named on its button; `details: [{label, value}]` and `consequence` say what is sent | `{accepted: true}` / `{accepted: false}` |
-| `review` | `review_form` | `mode` `status` or `submit`; `sections: [{name, label, left, total, reveal}]`; `issues: [{severity, field, label, message, fix?, source?, reveal}]` | `{action: "continue", section?}`, `{action: "submit"}`, `{action: "fixed", names, config}` after applying fixes; `{accepted: false}` closes it |
+| `review` | `review_form` | `mode` `status` or `submit`; `sections: [{name, label, left, total, reveal}]`; `issues: [{severity, field, label, message, kind?, fix?, source?, reveal}]`: form errors first, then (in `submit`) one `kind: "missing"` row per section with empty required fields, then warnings | `{action: "continue", section?}`, `{action: "submit"}`, `{action: "fixed", names, config}` after applying fixes; `{accepted: false}` closes it |
 
 ### Optional keys
 

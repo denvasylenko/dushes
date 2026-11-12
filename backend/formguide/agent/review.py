@@ -1,8 +1,11 @@
 """The form review (review_form): progress by section and what blocks sending.
 
 The server computes everything it can from the form state:
-- sections: required editable fields per top-level section (tabs, else the root's containers);
-- errors: a field's validation error, a value no longer in the options, a required field left empty.
+- sections: required editable fields per top-level section (the outermost tabs, else the root's containers);
+- errors: a field's validation error or a value no longer in the options. They always come first and are
+  never crowded out;
+- missing: required fields still empty, only in `submit` mode (in `status` the sections show them), one row
+  per section ("Passport: 5 fields still empty", kind "missing", Show opens the first one).
 The model may add warnings (a rule or document flags a valid value) and fix values; fixes are validated
 like proposed changes and dropped when the field does not accept them.
 """
@@ -22,7 +25,8 @@ def sections(ctx: ToolCtx) -> list[dict]:
     from .tools import reveal_chain
 
     lay, ov = ctx.ov.layout, ctx.ov
-    tabs = [n for n in lay.nodes.values() if n.role == "tab"]
+    # the outermost tabs only: a tab inside another tab is part of its section, not a section of its own
+    tabs = [n for n in lay.nodes.values() if n.role == "tab" and not any(a.role == "tab" for a in lay.ancestors(n.name))]
     if not tabs and lay.root:
         tabs = [lay.nodes[c] for c in lay.nodes[lay.root].children if lay.nodes[c].is_container]
     out = []
@@ -37,49 +41,77 @@ def sections(ctx: ToolCtx) -> list[dict]:
     return out
 
 
-def issues(ctx: ToolCtx, warnings: Any = None, fixes: Any = None) -> list[dict]:
-    from .tools import ToolError, _norm_value, form_value, reveal_chain
+def _section_of(ctx: ToolCtx, name: str, tops: dict[str, str]) -> str:
+    for a in ctx.ov.layout.ancestors(name):
+        if a.name in tops:
+            return a.name
+    return ""
+
+
+def _fixes(ctx: ToolCtx, fixes: Any) -> dict[str, dict]:
+    """The model's fix values that the fields accept: {field: {value (form format), display}}."""
+    from .tools import ToolError, _norm_value, form_value
+
+    out: dict[str, dict] = {}
+    for name, value in (fixes or {}).items() if isinstance(fixes, dict) else []:
+        if name not in ctx.ov.layout.nodes or not ctx.ov[name].editable:
+            continue
+        try:
+            val = _norm_value(ctx, name, value)
+            out[name] = {"value": form_value(ctx, name, val), "display": vals.display(val)}
+        except ToolError:
+            continue   # the field does not accept it: the issue stays without a fix
+    return out
+
+
+def issues(ctx: ToolCtx, warnings: Any = None, fixes: Any = None, mode: str = "status") -> list[dict]:
+    """Errors first (fixable first, never crowded out), then the missing fields per section, then warnings."""
+    from .tools import reveal_chain
 
     ov = ctx.ov
-    found: list[dict] = []
+    fix = _fixes(ctx, fixes)
+    errs: list[dict] = []
+    missing: dict[str, list[str]] = {}   # section -> required empty fields, in form order
+    tops = {s["name"]: s["label"] for s in sections(ctx)}
     for n in ov.layout.fields():
         e = ov[n.name]
         if not e.visible or n.role == "file":
             continue
-        msg = e.error or ("the value is no longer one of the options" if e.invalid_value else
-                          "required, still empty" if e.needs_input else "")
+        msg = e.error or ("the value is no longer one of the options" if e.invalid_value else "")
         if msg:
-            found.append({"severity": "error", "field": n.name, "label": e.label or n.name, "message": str(msg)[:200]})
+            errs.append({"severity": "error", "field": n.name, "label": e.label or n.name, "message": str(msg)[:200]})
+        elif e.needs_input and n.name in fix:   # an empty field the model can fill: its own row, with Fix
+            errs.append({"severity": "error", "kind": "missing", "field": n.name, "label": e.label or n.name,
+                         "message": "required, still empty"})
+        elif e.needs_input and mode == "submit":
+            missing.setdefault(_section_of(ctx, n.name, tops), []).append(n.name)
+    for i in errs:
+        if i["field"] in fix:
+            i["fix"] = fix[i["field"]]
+    errs.sort(key=lambda i: ("fix" not in i, i.get("kind") == "missing"))   # fixable first, then real errors
+    gaps = [{"severity": "error", "kind": "missing", "field": names[0],
+             "label": tops.get(sec) or ov[names[0]].label or names[0],
+             "message": f"{len(names)} required field{'s' if len(names) > 1 else ''} still empty"}
+            for sec, names in missing.items()]
+    warns: list[dict] = []
     for w in warnings if isinstance(warnings, list) else []:
         if not isinstance(w, dict) or w.get("field") not in ov.layout.nodes or not str(w.get("message") or "").strip():
             continue
-        e = ov[w["field"]]
-        item = {"severity": "warning", "field": w["field"], "label": e.label or w["field"],
+        item = {"severity": "warning", "field": w["field"], "label": ov[w["field"]].label or w["field"],
                 "message": str(w["message"]).strip()[:200]}
         src = w.get("source")
         if isinstance(src, (str, dict)) and src:
             item["source"] = {"title": src} if isinstance(src, str) else {k: str(v) for k, v in src.items()
                                                                           if k in ("title", "section")}
-        found.append(item)
-    for name, value in (fixes or {}).items() if isinstance(fixes, dict) else []:
-        item = next((i for i in found if i["field"] == name and "fix" not in i), None)
-        if item is None or name not in ov.layout.nodes or not ov[name].editable:
-            continue
-        try:
-            val = _norm_value(ctx, name, value)
-            item["fix"] = {"value": form_value(ctx, name, val), "display": vals.display(val)}
-        except ToolError:
-            continue   # the field does not accept it: the issue stays without a fix
-    errs = sorted((i for i in found if i["severity"] == "error"), key=lambda i: "fix" not in i)   # fixable first
-    warns = [i for i in found if i["severity"] == "warning"][:5]   # the model's warnings are never crowded out
-    out = errs[:MAX_ISSUES - len(warns)] + warns
+        warns.append(item)
+    out = (errs + gaps)[:MAX_ISSUES] + warns[:5]   # the model's warnings are never crowded out
     for i in out:
         i["reveal"] = reveal_chain(ctx, i["field"])
     return out
 
 
 def build(ctx: ToolCtx, mode: str, warnings: Any = None, fixes: Any = None) -> dict:
-    return {"kind": "review", "mode": mode, "sections": sections(ctx), "issues": issues(ctx, warnings, fixes)}
+    return {"kind": "review", "mode": mode, "sections": sections(ctx), "issues": issues(ctx, warnings, fixes, mode)}
 
 
 def summary(payload: dict) -> str:

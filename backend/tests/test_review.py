@@ -18,7 +18,9 @@ def test_status_mid_way(guide, model):
     assert v["type"] == "review" and v["mode"] == "status" and v["card_id"]
     assert v["sections"] and all(s["left"] <= s["total"] for s in v["sections"])
     assert any(s["left"] for s in v["sections"]) and v["sections"][0]["reveal"]
-    assert any(i["message"] == "required, still empty" for i in v["issues"])
+    assert not any(i.get("kind") == "missing" for i in v["issues"])   # in status mode the sections show them
+    labels = [x["label"] for x in v["sections"]]
+    assert "Main income" not in labels and len(labels) == len(set(labels))   # only the outermost tabs
     assert guide.thread("v1")["pending_card"]["kind"] == "review"
 
 
@@ -55,3 +57,18 @@ def test_resume_shapes(guide, model):
     model.script = [say("Ok.")]
     collect(guide, "v5", resume={"accepted": False})
     assert tool_result(model, "r1") == "The user closed the review."
+
+
+def test_a_real_error_is_never_crowded_out(guide, model):
+    # the live case: many empty required fields on the first tabs, one real error on the Loan tab
+    state = start(guide, LOAN)
+    state["config"]["props"]["loan_amount"]["error"] = "At least 20% of the loan amount"
+    for mode in ("status", "submit"):
+        v, _ = review(guide, model, f"v6{mode}", {"mode": mode}, state=state)
+        first = v["issues"][0]
+        assert first["field"] == "loan_amount" and first["message"].startswith("At least 20%") and "kind" not in first
+        assert first["reveal"]
+    gaps = [i for i in v["issues"] if i.get("kind") == "missing"]          # submit: one row per section
+    assert gaps and all(i["message"].endswith("still empty") for i in gaps)
+    assert len({i["label"] for i in gaps}) == len(gaps)
+    assert next(i for i in gaps if i["label"] == "Applicant")["message"].split()[0].isdigit()
