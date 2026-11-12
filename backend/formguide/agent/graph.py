@@ -324,7 +324,9 @@ def build_graph(guide: FormGuide):
         msg = AIMessage(content=full.content, tool_calls=full.tool_calls, id=full.id,
                         response_metadata=full.response_metadata, usage_metadata=full.usage_metadata)
         if stats:
-            stats.model_call(t_call, first_chunk, dict(full.usage_metadata or {}))
+            rm = full.response_metadata or {}
+            stats.model_call(t_call, first_chunk, dict(full.usage_metadata or {}),
+                             model=str(rm.get("model_name") or rm.get("model") or "") or None)
         meta = full.response_metadata or {}
         if meta.get("stop_reason") == "refusal" or meta.get("finish_reason") == "content_filter":
             w({"kind": "error", "message": "the model declined to answer this request"})

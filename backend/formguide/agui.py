@@ -85,7 +85,9 @@ def run_kwargs(body: dict[str, Any]) -> dict[str, Any]:
     return {"thread_id": inp.thread_id, "run_id": inp.run_id, "message": message,
             "state": inp.state if isinstance(inp.state, dict) else {}, "resume": resume,
             "client_tools": tools, "tool_results": tool_results, "prefill": fwd.get("prefill"),
-            "capabilities": fwd.get("capabilities")}
+            "capabilities": fwd.get("capabilities"),
+            **({"trace_context": {k: str(fwd[k]) for k in ("traceparent", "tracestate") if fwd.get(k)}}
+               if fwd.get("traceparent") else {})}
 
 
 def encoder(accept: str | None = None) -> EventEncoder:

@@ -37,4 +37,19 @@ describe('formguide exclude', () => {
     expect(caps).toContain('ask')
     expect(caps).not.toContain('review')
   })
+
+  it('sends the page trace context with every run', async () => {
+    const bodies: any[] = [] // eslint-disable-line @typescript-eslint/no-explicit-any
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)))
+      return new Response(finished, { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
+    }))
+    const el = document.createElement('agui-chat') as AguiChatElement
+    for (const [k, v] of Object.entries({ mode: 'inline', typing: 'plain', 'persist-thread': 'off' })) el.setAttribute(k, v)
+    document.body.appendChild(el)
+    const tp = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01'
+    el.use(formguide({ getState: () => ({ config: {}, jsx_hash: 'h' }), applyChanges: async () => ({}), traceparent: () => tp }))
+    await el.send('hi')
+    expect(bodies[0].forwardedProps.traceparent).toBe(tp)
+  })
 })

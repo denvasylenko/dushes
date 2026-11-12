@@ -72,6 +72,41 @@ tracing:
 
 `formguide check --config formguide.yaml` prints whether LangSmith is on and which callbacks are configured.
 
+### OpenTelemetry: Azure Monitor, Zipkin, Jaeger, Datadog, any OTLP backend
+
+`pip install 'formguide[otel]'` (add `otel-zipkin` or `otel-azure` for those exporters), then one key:
+
+```yaml
+tracing:
+  otel:
+    exporter: otlp                         # otlp | zipkin | azure_monitor | console | host | "module:factory"
+    endpoint: "http://collector:4317"      # :4317 = gRPC, anything else = OTLP over HTTP
+    headers: {api-key: "${OTLP_KEY}"}      # optional, for hosted collectors
+    service_name: loan-assistant           # default: formguide
+    sample_ratio: 1.0                      # 0..1; a sampled caller trace stays sampled
+```
+
+| Exporter | For | Notes |
+| --- | --- | --- |
+| `otlp` | an OpenTelemetry Collector, Jaeger, Grafana Tempo, Datadog, Honeycomb | gRPC on `:4317`, HTTP otherwise (`/v1/traces` is added) |
+| `zipkin` | Zipkin | `endpoint: http://zipkin:9411/api/v2/spans`; needs `formguide[otel-zipkin]` |
+| `azure_monitor` | Application Insights | the connection string in `endpoint` or `APPLICATIONINSIGHTS_CONNECTION_STRING`; needs `formguide[otel-azure]` |
+| `console` | local debugging | prints spans to stdout |
+| `host` | an app that already configured OpenTelemetry | formguide adds its spans to the app's tracer provider, nothing else |
+| `"my_app.tracing:make_exporter"` | anything else | a factory returning any OTel `SpanExporter` |
+
+What you get per turn (only ids, names, types and numbers: never message text or field values):
+
+| Span | Attributes |
+| --- | --- |
+| `formguide.turn` | `formguide.thread_id`, `.run_id`, `.form_id`, `.stop` (`answer`, a card type, `frontend_tool`, `error`), `.total_ms`, `.ttft_ms`, `gen_ai.usage.input_tokens` / `output_tokens`; an event `formguide.card` (type, id) when the turn stops at a card |
+| `formguide.model` | `formguide.model.role`, `gen_ai.request.model`, `formguide.ttft_ms`, `gen_ai.usage.*`, `formguide.usage.cache_read_tokens` |
+| `formguide.tool` | `formguide.tool.name`; error status when the tool failed |
+
+**Joining your app's trace.** A run request with a W3C `traceparent` (and `tracestate`) header makes the turn a child of that span, so one trace runs from your page or API through formguide to the model. In Python, pass `guide.run(..., trace_context={"traceparent": ...})`.
+
+OpenTelemetry works next to LangSmith and `tracing.callbacks`; `run_stats` does not change.
+
 ---
 
 ## Speed tests (offline, every `pytest` run)

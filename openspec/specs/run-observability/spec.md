@@ -89,3 +89,10 @@ It SHALL save the results as JSON. It SHALL exit with an error when a `--max-ttf
 #### Scenario: Checking a model switch
 - **WHEN** the benchmark runs before and after switching the agent model
 - **THEN** both runs produce comparable tables and JSON files with the same scenarios
+
+### Requirement: OpenTelemetry next to LangChain tracers
+OpenTelemetry export (see the otel-tracing capability) SHALL work together with LangSmith and `tracing.callbacks`: enabling one SHALL NOT disable or change the others, and `run_stats` SHALL stay unchanged.
+
+#### Scenario: LangSmith and Azure Monitor at once
+- **WHEN** LangSmith is enabled through its environment variables and `tracing.otel.exporter` is `azure_monitor`
+- **THEN** each turn appears in both, and the run_stats event is the same as without them

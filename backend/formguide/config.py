@@ -44,6 +44,7 @@ FORMGUIDE_MODEL environment variable does the same without a file. Everything el
     actions: {request_file: false, review_form: true}   # switch agent actions off (true | false | auto)
     attachments: {enabled: true, privacy_note: "Your file stays on our server; only the values reach the chat."}
     tracing: {callbacks: ["my_app.tracing:langfuse_handler"], tags: [staging]}   # LangSmith: env vars only
+    # tracing: {otel: {exporter: otlp, endpoint: "http://collector:4317"}}   # OpenTelemetry (formguide[otel])
 """
 from __future__ import annotations
 
@@ -63,6 +64,7 @@ from .knowledge.base import KnowledgeBase
 from .knowledge.index import BM25Index, SearchIndex, VectorStoreIndex
 from .agent.actions import parse_config as parse_actions
 from .agent.memory import MemoryConfig
+from .otel import check as check_otel
 from .models import Models
 from .skills import SkillRegistry, import_object
 from .transcript import FileTranscriptStore, MemoryTranscriptStore, TranscriptStore, sqlite_checkpointer
@@ -89,6 +91,9 @@ class TracingConfig:
     `callbacks`: factories returning LangChain callback handlers (e.g. Langfuse); `tags`: added to every turn."""
     callbacks: list[Any] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
+    # OpenTelemetry export: {exporter: otlp | zipkin | azure_monitor | console | host | "module:factory",
+    # endpoint?, headers?, service_name?, sample_ratio?} (see otel.py); None = off
+    otel: dict | None = None
 
 
 @dataclass
@@ -202,7 +207,7 @@ def load_config(path: str | Path) -> GuideConfig:
         raise ValueError("confirm_tools must be a list of tool names")
     cfg.confirm_tools = list(ct)
     tr = raw.get("tracing") or {}
-    unknown = set(tr) - {"callbacks", "tags"}
+    unknown = set(tr) - {"callbacks", "tags", "otel"}
     if unknown:
         raise ValueError(f"tracing: unknown key(s) {sorted(unknown)}")
     factories = []
@@ -211,7 +216,8 @@ def load_config(path: str | Path) -> GuideConfig:
             factories.append(import_object(str(ref)))
         except (ImportError, AttributeError) as e:
             raise ValueError(f"tracing.callbacks: cannot import {ref!r}: {e}") from None
-    cfg.tracing = TracingConfig(callbacks=factories, tags=[str(t) for t in tr.get("tags") or []])
+    otel_spec = check_otel(tr["otel"]) if tr.get("otel") is not None else None
+    cfg.tracing = TracingConfig(callbacks=factories, tags=[str(t) for t in tr.get("tags") or []], otel=otel_spec)
     cfg.actions = parse_actions(raw.get("actions"))
     at = raw.get("attachments")
     if at is not None:

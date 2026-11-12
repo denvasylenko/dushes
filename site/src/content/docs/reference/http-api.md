@@ -33,6 +33,7 @@ description: Every endpoint of formguide's FastAPI router, with its body and ans
 | `tools` | frontend tools for this run |
 | `forwardedProps.command.resume` | the answer to a card (legacy mode) |
 | `resume[]` | the answer to a card (AG-UI 1.0 structured mode): `{interrupt_id, status: "resolved", payload}` or `status: "cancelled"` |
+| `traceparent` / `tracestate` headers, or `forwardedProps.traceparent` / `tracestate` | the caller's W3C trace context: with `tracing.otel` the turn span joins that trace; ignored otherwise |
 | `forwardedProps.capabilities` | the cards and variants the client renders ([AG-UI events](../agui-events/#capabilities)); absent = all |
 | `forwardedProps.prefill` | `{data?, text?, attachment_ids?, language?}`: values the app already knows |
 

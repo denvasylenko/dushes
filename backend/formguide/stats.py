@@ -23,6 +23,7 @@ class RunStats:
         self.ttft: float | None = None
         self.models: list[dict[str, Any]] = []
         self.tools: list[dict[str, Any]] = []
+        self.span: Any = None   # the run's OpenTelemetry turn span (otel.TurnSpan), when tracing is on
 
     @staticmethod
     def now() -> float:
@@ -35,9 +36,16 @@ class RunStats:
         if self.ttft is None:
             self.ttft = time.perf_counter() - self.t0
 
-    def model_call(self, started: float, first_chunk: float | None, usage: dict | None, kind: str = "agent") -> None:
+    def model_call(self, started: float, first_chunk: float | None, usage: dict | None, kind: str = "agent",
+                   model: str | None = None) -> None:
         u = usage or {}
         details = u.get("input_token_details") or {}
+        if self.span is not None:
+            self.span.child("formguide.model", started, {
+                "formguide.model.role": kind, "gen_ai.request.model": model,
+                "formguide.ttft_ms": round((first_chunk - started) * 1000) if first_chunk else None,
+                "gen_ai.usage.input_tokens": u.get("input_tokens"), "gen_ai.usage.output_tokens": u.get("output_tokens"),
+                "formguide.usage.cache_read_tokens": details.get("cache_read")})
         self.models.append({
             "kind": kind, "ms": self._ms(started),
             "ttft_ms": round((first_chunk - started) * 1000) if first_chunk else None,
@@ -46,6 +54,8 @@ class RunStats:
         })
 
     def tool_call(self, name: str, started: float, error: bool = False) -> None:
+        if self.span is not None:
+            self.span.child("formguide.tool", started, {"formguide.tool.name": name}, error=bool(error))
         self.tools.append({"name": name, "ms": self._ms(started), "error": bool(error)})
 
     def as_event(self) -> dict[str, Any]:

@@ -79,6 +79,9 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
     async def run(request: Request) -> StreamingResponse:
         try:
             kw = agui.run_kwargs(await request.json())
+            trace = {k: request.headers[k] for k in ("traceparent", "tracestate") if k in request.headers}
+            if trace:   # the HTTP headers win over forwardedProps.traceparent
+                kw["trace_context"] = trace   # the caller's trace: the turn joins it when OpenTelemetry is on
         except (ValidationError, ValueError) as e:
             raise HTTPException(422, f"not an AG-UI RunAgentInput: {e}") from None
         if kw["resume"] is None and not guide.layout(kw["state"].get("jsx_hash", "")):

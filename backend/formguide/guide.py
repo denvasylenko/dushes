@@ -28,6 +28,7 @@ from langgraph.types import Command
 from .agent.graph import build_graph
 from .agent.actions import parse_config as parse_actions, resolve as resolve_actions
 from .attachments.extract import AttachmentStore
+from .otel import setup as otel_setup
 from .config import GuideConfig
 from .domain.packs import DomainPackRegistry, starters_of, validate_pack
 from .form.layout import LayoutIndex, jsx_hash
@@ -62,6 +63,7 @@ class FormGuide:
         self._recent: dict[str, deque] = defaultdict(lambda: deque(maxlen=20))   # recent run stats per thread
         # tracer handlers, built once: factories are called, ready handlers are used as they are
         self._callbacks = [f if hasattr(f, "on_llm_start") or not callable(f) else f() for f in cfg.tracing.callbacks]
+        self.otel = otel_setup(cfg.tracing.otel)   # OpenTelemetry tracer, or None (see otel.py)
         sg = cfg.suggestions
         self.suggestions_model = (build_model(sg.model) if sg.model else self.models.memory) if sg.enabled else None
         from .models import missing_keys
@@ -145,7 +147,8 @@ class FormGuide:
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None,
                   client_tools: list[dict] | None = None, tool_results: dict[str, str] | None = None,
-                  prefill: dict[str, Any] | None = None, capabilities: list[str] | None = None) -> AsyncIterator[dict]:
+                  prefill: dict[str, Any] | None = None, capabilities: list[str] | None = None,
+                  trace_context: dict[str, str] | None = None) -> AsyncIterator[dict]:
         """One turn, as AG-UI events (plain dicts with the protocol's camelCase keys).
 
         - a new user message: `message` + `state` = {config, jsx_hash, form_id, ui?, attachments?};
@@ -158,6 +161,8 @@ class FormGuide:
 
         `client_tools` are the frontend tools the client declared ([{name, description, parameters}]).
         `capabilities` are the cards and variants the client renders (see agent/actions.py); None = all.
+        `trace_context`: the caller's W3C trace headers ({traceparent, tracestate}); with OpenTelemetry on,
+        the turn's span joins that trace (see otel.py).
         Everything the user sees is also recorded in the thread's display transcript (see transcript.py)."""
         check_thread_id(thread_id)
         tx = self.transcripts
@@ -200,14 +205,28 @@ class FormGuide:
         mode = self.config.interrupt_mode
         run_id = run_id or str(uuid.uuid4())
         stats = RunStats(run_id, thread_id)
+        if self.otel is not None:
+            stats.span = self.otel.turn(thread_id=thread_id, run_id=run_id,
+                                        form_id=(state or {}).get("form_id") or "", carrier=trace_context)
+        stop = "answer"
+        open_calls: set[str] = set()   # tool calls without a result: frontend tools
         token = activate(stats)   # the graph's nodes record into it (see stats.py)
         try:
             async for ev in self._events(thread_id, mode, stats, tx, message=message, state=state, resume=resume,
                                          run_id=run_id, client_tools=client_tools, tool_results=tool_results,
                                          prefill=prefill, capabilities=capabilities):
+                if stats.span is not None:
+                    stop = _track_stop(ev, stats.span, stop, open_calls)
                 yield ev
         finally:
             deactivate(token)
+            if stats.span is not None:
+                if stop == "answer" and open_calls:
+                    stop = "frontend_tool"
+                e = stats.as_event()
+                stats.span.end(stop, {"formguide.total_ms": e["total_ms"], "formguide.ttft_ms": e["ttft_ms"],
+                                      "gen_ai.usage.input_tokens": e["tokens"]["input"],
+                                      "gen_ai.usage.output_tokens": e["tokens"]["output"]})
 
     async def _events(self, thread_id: str, mode: str, stats: RunStats, tx: Any, *, message: str | None,
                       state: dict[str, Any] | None, resume: dict[str, Any] | None, run_id: str,
@@ -507,6 +526,30 @@ class FormGuide:
     # ------------------------------------------------------------------ attachments
     def save_attachment(self, thread_id: str, filename: str, data: bytes) -> dict:
         return self.attachments.save(thread_id, filename, data)
+
+
+def _track_stop(ev: dict, span: Any, stop: str, open_calls: set[str]) -> str:
+    """What ended the run, for the turn span: an answer, a card (its type), a frontend tool or an error."""
+    t = ev.get("type")
+    if t == "RUN_ERROR":
+        return "error"
+    if t == "TOOL_CALL_END":
+        open_calls.add(ev.get("toolCallId") or "")
+    elif t == "TOOL_CALL_RESULT":
+        open_calls.discard(ev.get("toolCallId") or "")
+    elif t == "CUSTOM" and ev.get("name") == "on_interrupt":
+        v = ev.get("value")
+        v = json.loads(v) if isinstance(v, str) else (v or {})
+        kind = str(v.get("type") or "set_fields")
+        span.card(kind, str(v.get("card_id") or ""))
+        return kind
+    elif t == "RUN_FINISHED" and isinstance(ev.get("outcome"), dict):
+        for it in ev["outcome"].get("interrupts") or []:
+            kind = str((it.get("metadata") or {}).get("type") or it.get("reason") or "card")
+            if stop == "answer":
+                span.card(kind, str(it.get("id") or ""))
+                stop = kind
+    return stop
 
 
 _CARD_KIND = {"ask": "question", "upload": "upload", "confirm": "confirm",   # interrupt type -> transcript kind

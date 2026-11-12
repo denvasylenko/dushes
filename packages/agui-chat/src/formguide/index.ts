@@ -52,6 +52,9 @@ export interface FormguideOptions {
    * 'confirm', 'ask') also takes its tool away from the model; a variant ('ask.range') falls back to the
    * plain card. Field-change cards cannot be excluded. */
   exclude?: string[]
+  /** The page's current W3C trace context, e.g. () => otel.propagation header: sent with every run as
+   * forwardedProps.traceparent (and tracestate), so the server's turn span joins the page's trace. */
+  traceparent?: () => string | { traceparent: string; tracestate?: string } | undefined | null
 }
 
 /** The cards every formguide client draws, besides the variants in CAPABILITIES. */
@@ -121,7 +124,9 @@ export function formguide(opts: FormguideOptions): Plugin {
       const st = await opts.getState()
       input.state = chat.attachments.length ? { ...st, attachments: chat.attachments } : st
       // what this client can draw: the server sends only these card variants
-      input.forwardedProps = { ...(input.forwardedProps ?? {}), capabilities: caps }
+      const tp = opts.traceparent?.()
+      const trace = typeof tp === 'string' ? { traceparent: tp } : tp ?? {}
+      input.forwardedProps = { ...(input.forwardedProps ?? {}), capabilities: caps, ...trace }
     },
     attach: {
       accept: '.pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md',
