@@ -81,3 +81,16 @@ def test_a_typed_date_answer_fills_its_field(guide, model):
     assert "This filled the field Date of birth" in tool_result(model, "q1")
     q = next(e for e in guide.thread("r13")["transcript"] if e["kind"] == "question")
     assert q["applied"] is True
+
+
+def test_a_yes_no_question_fills_a_checkbox_field(guide, model):
+    v, state = ask(guide, model, "r14", {"question": "Messaging apps fine?", "field": "contact_messenger",
+                                         "options": ["Sure", "Rather not"]})
+    assert [(o["id"], o["label"], o["value"]) for o in v["options"]] == [("yes", "Sure", True), ("no", "Rather not", False)]
+    assert v["applies"] is True and v["multiple"] is False
+    cfg = {**state["config"], "state": {**state["config"]["state"], "contact_messenger": True}}
+    model.script = [say("Noted.")]
+    collect(guide, "r14", resume={"answer": {"ids": ["yes"]}, "config": cfg})
+    assert "This filled the field" in tool_result(model, "q1")
+    v, _ = ask(guide, model, "r15", {"question": "Messaging apps fine?", "field": "contact_messenger"})
+    assert [o["label"] for o in v["options"]] == ["Yes", "No"]

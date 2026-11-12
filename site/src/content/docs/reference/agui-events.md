@@ -48,6 +48,7 @@ All of these are optional: a client that ignores them still works.
 | `ask` | `input: {type: number, min, max, step, unit}` | a range from the field: a slider or stepper |
 | `ask` | `input: {type: address}` | an address typed with suggestions from the host |
 | `ask` | `fields: [{name, label, input?, required}]` | 2-3 short fields in one card; answer `{answers: {name: value}, config}` |
+| `ask` | yes / no options on a checkbox field (ids `yes`, `no`, with values) | tapping fills the checkbox |
 | `ask` | `applies` on a date / number / time question | a typed answer fills the field: answer `{answer: {text}, config}` |
 | `ask` | `sources` | the documents behind compared numbers |
 | `upload` | `privacy` | the configured privacy line |

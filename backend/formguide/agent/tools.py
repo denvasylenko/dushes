@@ -531,6 +531,15 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
         e = ctx.ov[n.name]
         if n.role in ("date", "number") and not raw:   # a typed answer with a picker of the field's type
             a = {**a, "input": a.get("input") or {"type": n.role}}
+        elif n.role == "bool":   # yes / no: the first option means yes; the model's labels are kept (its language)
+            given = [x for x in raw if isinstance(x, (str, dict))][:2]
+            for oid, val, x, default in (("yes", True, given[0] if given else None, "Yes"),
+                                         ("no", False, given[1] if len(given) > 1 else None, "No")):
+                label = (x.get("label") or x.get("id")) if isinstance(x, dict) else x
+                opts.append({"id": oid, "label": str(label or default).strip()[:40] or default, **_details(x)})
+            raw = []
+            if multiple is None:
+                multiple = False
         elif n.role not in CHOICE and n.role != "multiselect":
             raise ToolError(f"{n.name} is not a dropdown, radio group or multi-select; pass your own options")
         elif not e.options:
@@ -612,8 +621,17 @@ def _applying(ctx: ToolCtx, name: str, opts: list[dict]) -> dict:
     """A question about an editable choice field fills it when answered: each option carries its value in
     the form's own format, and the card carries the field's previous value (for Undo)."""
     e = ctx.ov[name]
-    if not e.editable or (e.node.role not in CHOICE and e.node.role != "multiselect"):
+    if not e.editable or (e.node.role not in CHOICE and e.node.role not in ("multiselect", "bool")):
         return {}
+    if e.node.role == "bool":
+        try:
+            for o in opts:
+                o["value"] = form_value(ctx, name, o["id"] == "yes")
+        except ToolError:
+            for o in opts:
+                o.pop("value", None)
+            return {}
+        return {"applies": True, "label": e.label or name, **previous_of(ctx, name)}
     try:
         for o in opts:
             found = vals.find_option(e.options, o["id"])

@@ -43,3 +43,10 @@ ask_user MAY carry `fields: [{name, label?, input?, required?}]` with 2 or 3 edi
 - **WHEN** the user types first and last name and sends
 - **THEN** both fields are filled and the agent does not propose them again
 
+### Requirement: Yes or no about a checkbox field
+A question with `field` set to a bool field SHALL carry two options, `yes` and `no` (the model's labels when it gives two, else Yes and No), each with its value in the form's format, and `applies` when the field is editable, so a tap fills the field.
+
+#### Scenario: A prenuptial agreement question
+- **WHEN** the model asks a yes / no question with `field` naming a checkbox
+- **THEN** tapping Yes fills the checkbox and no field-change card follows
+
