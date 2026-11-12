@@ -134,7 +134,7 @@ export function formguide(opts: FormguideOptions): Plugin {
         const body = new FormData()
         body.append('thread_id', chat.threadId)
         body.append('file', file)
-        const r = await fetch(`${ctx.base(chat)}/attachments`, { method: 'POST', body })
+        const r = await chat.request('attachments', `${ctx.base(chat)}/attachments`, { method: 'POST', body })
         if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail ?? r.statusText)
         return r.json()
       },
@@ -163,7 +163,7 @@ export function formguide(opts: FormguideOptions): Plugin {
     async restore(threadId: string, chat: ChatApi): Promise<Restored | null> {
       const st = await opts.getState()
       const q = new URLSearchParams({ format: 'agui', ...(st.form_id ? { form_id: st.form_id } : {}) })
-      const r = await fetch(`${ctx.base(chat)}/threads/${encodeURIComponent(threadId)}?${q}`)
+      const r = await chat.request('thread', `${ctx.base(chat)}/threads/${encodeURIComponent(threadId)}?${q}`)
       if (!r.ok) return null
       const d = await r.json()
       return { messages: d.messages ?? [], interrupt: entryToInterrupt(d.pending_card), starters: d.starters ?? [] }

@@ -39,8 +39,10 @@ export function parseBlock(block: string): AguiEvent | null {
 }
 
 /** One run against an AG-UI endpoint. Throws on HTTP errors; aborting ends the stream quietly. */
-export async function* runHttp(url: string, input: RunAgentInput, opts: { headers?: Record<string, string>; signal?: AbortSignal } = {}): AsyncGenerator<AguiEvent> {
-  const res = await fetch(url, {
+export async function* runHttp(url: string, input: RunAgentInput, opts: {
+  headers?: Record<string, string>; signal?: AbortSignal; fetch?: (url: string, init: RequestInit) => Promise<Response>
+} = {}): AsyncGenerator<AguiEvent> {
+  const res = await (opts.fetch ?? fetch)(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...(opts.headers ?? {}) },
     body: JSON.stringify(input),

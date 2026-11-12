@@ -8,13 +8,14 @@ import { hasTheme, themeCss } from './themes'
 import { runAgent, runHttp, uid, type AgentLike } from './transport'
 import { fadeWords, newState, step, visible, type TypewriterState } from './typewriter'
 import type {
-  AguiEvent, Attachment, ChatApi, ChatOptions, FrontendTool, Interrupt, Message, Plugin, Renderer, RunAgentInput, ToolCall,
+  AguiEvent, Attachment, ChatApi, ChatOptions, RequestKind, FrontendTool, Interrupt, Message, Plugin, Renderer, RunAgentInput, ToolCall,
 } from './types'
 
 export const DEFAULTS: ChatOptions = {
   url: '/agent/run', threadId: undefined, persistThread: true, mode: 'floating', typing: 'words', toolSteps: true, mic: true, quickReplies: true,
   theme: 'default', scheme: '', lang: '', title: '', subtitle: '', intro: '', placeholder: '', starters: [], resumeStyle: 'command',
-  history: 'full', headers: {}, forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
+  history: 'full', headers: {}, credentials: undefined, fetch: undefined, request: undefined, transport: undefined,
+  forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined,
 }
@@ -85,6 +86,13 @@ export function errorKind(raw: string): string {
   if (/\b5\d\d\b|server error|bad gateway|unavailable/.test(m)) return 'errServer'
   if (/model|anthropic|openai|api.?key|invalid_request|context length|tokens?/.test(m)) return 'errModel'
   return 'error'
+}
+
+/** RequestInit headers in any form -> a plain object. */
+function headersObject(h: HeadersInit | undefined): Record<string, string> {
+  if (!h) return {}
+  if (typeof Headers !== 'undefined' && h instanceof Headers) return Object.fromEntries(h.entries())
+  return Array.isArray(h) ? Object.fromEntries(h) : { ...(h as Record<string, string>) }
 }
 
 export class AguiChatElement extends HTMLElement implements ChatApi {
@@ -289,6 +297,17 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._userBubble(text, this._sending.map((f) => f.filename))
     this._messages.push({ id: uid(), role: 'user', content: text })
     await this._run({})
+  }
+
+  /** A request through the chat's connection: headers (object or function), credentials, the request hook
+   * and fetch from the options. Runs use it too; plugins use it for their own calls. */
+  async request(kind: RequestKind, url: string, init: RequestInit = {}): Promise<Response> {
+    const o = this._opts
+    const extra = typeof o.headers === 'function' ? await o.headers({ kind, url }) : o.headers
+    const headers = { ...headersObject(init.headers), ...(extra ?? {}) }
+    let req = { url, init: { ...init, headers, ...(o.credentials ? { credentials: o.credentials } : {}) } as RequestInit }
+    if (o.request) req = (await o.request({ kind, ...req })) || req
+    return (o.fetch ?? fetch)(req.url, req.init)
   }
 
   async run(opts: { forwardedProps?: Record<string, unknown>; notice?: string } = {}): Promise<void> {
@@ -645,7 +664,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.dispatchEvent(new CustomEvent('agui:run-start', { detail: input }))
     let failed: string | null = null
     try {
-      const events = this.agent ? runAgent(this.agent, input, signal) : runHttp(this._opts.url, input, { headers: this._opts.headers, signal })
+      const o = this._opts
+      const events = o.transport ? o.transport(input, { signal, chat: this })
+        : this.agent ? runAgent(this.agent, input, signal)
+          : runHttp(o.url, input, { signal, fetch: (url, init) => this.request('run', url, init) })
       for await (const ev of events) {
         this.dispatchEvent(new CustomEvent('agui:event', { detail: ev }))
         if (this._plugins.some((p) => p.onEvent?.(ev, this) === true)) continue

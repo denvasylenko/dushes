@@ -50,7 +50,11 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `cards` | — | feature flags per card type, e.g. `{ set_fields: { edit: false } }` |
 | `resumeStyle` (`resume-style`) | `command` | how a card answer is sent: `forwardedProps.command.resume` (CopilotKit, ag-ui-langgraph) or AG-UI 1.0 `resume[]` |
 | `history` | `full` | send the whole conversation each run (AG-UI default) or `last` (only the new messages; formguide keeps history on the server either way) |
-| `headers` | — | extra HTTP headers (e.g. auth) |
+| `headers` | — | request headers: an object, or `({kind, url}) => headers` (sync or async) called before every request |
+| `credentials` | — | `fetch` credentials for every request (`include`, `same-origin`, `omit`) |
+| `fetch` | global `fetch` | your fetch-compatible function, used for every request |
+| `request` | — | `({kind, url, init}) => {url, init}`: change any request last; `kind` is `run`, `attachments`, `thread` or `feedback` |
+| `transport` | HTTP | `(input, {signal, chat}) => AsyncIterable<AguiEvent>`: runs without HTTP; takes precedence over `agent` and `url` |
 | `forwardedProps`, `state` | — | sent with every run (the formguide plugin fills `state` for you) |
 
 Unknown option names are ignored with a console warning.
@@ -62,6 +66,7 @@ Unknown option names are ignored with a console warning.
 | | |
 |---|---|
 | `chat.send(text)` | send a message as the user |
+| `chat.request(kind, url, init)` | a request through the chat's connection (headers, credentials, fetch, request hook); for plugins and host code |
 | `chat.run({ forwardedProps, notice })` | run without a message (e.g. prefill: `{ prefill: { data } }`) |
 | `chat.open()`, `chat.close()` | the floating panel |
 | `chat.reset()` | a new conversation (new thread id) |

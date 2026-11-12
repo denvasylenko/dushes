@@ -118,6 +118,33 @@ chat.renderers.set('pick_seat', (payload, ctx) => {
 `ctx` has `resolve(value)`, `t(key)` (the UI strings), `flags` (this type's entry of the `cards` option), `restored` (shown again after a reload) and `chat`. Reusable classes inside cards: `card-t` (small title), `card-q` (question), `chips` + `chip`, `acts`, `btn pri` / `btn sec` / `btn danger` / `btn link`, `ok-line`, `muted`. After `resolve`, buttons in the card are disabled, except ones marked `data-keep`.
 
 
+## Connection: headers, auth, your own fetch or transport
+
+The chat reaches the server with `url` and `headers` by default. Everything about a request can be yours, from one header to the whole transport, and the formguide plugin's own calls (attachments, restoring a thread, feedback) go through the same connection:
+
+```js
+chat.options = {
+  url: '/agent/run',
+  headers: async ({ kind }) => ({ Authorization: `Bearer ${await auth.token()}` }),   // before every request
+  credentials: 'include',                                   // cookies on another domain
+  fetch: (url, init) => withRetry(() => fetch(url, init)),  // your fetch
+  request: ({ kind, url, init }) =>                         // change any request last
+    kind === 'attachments' ? { url: 'https://files.example.com/upload', init } : undefined,
+}
+```
+
+`kind` says which request it is: `run`, `attachments`, `thread` or `feedback`. Runs without HTTP take a `transport`, an async generator of AG-UI events:
+
+```js
+chat.options = {
+  transport: async function* (input, { signal }) {
+    yield* eventsFromMyWebSocket(input, signal)   // RUN_STARTED ... RUN_FINISHED
+  },
+}
+```
+
+An `agent` object (`@ag-ui/client` `HttpAgent`, CopilotKit's) still works as before. A plugin sends its own calls with `chat.request(kind, url, init)`. A failing `headers`, `fetch`, `request` or `transport` ends the run with the usual readable error and **Try again**; the raw text is in `agui:error`.
+
 ## Errors, waiting and touch
 
 - A failed run shows one sentence in plain words per kind of failure (no connection, no access, busy, server, model) and *Try again*; the raw error text is in the line's tooltip and in the `agui:error` event.

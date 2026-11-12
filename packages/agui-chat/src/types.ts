@@ -86,6 +86,20 @@ export interface Plugin {
 }
 
 /** The part of the element plugins and renderers may use. */
+/** Which request the chat is making: `run`, or a plugin's (`attachments`, `thread`, `feedback`, ...). */
+export type RequestKind = 'run' | 'attachments' | 'thread' | 'feedback' | (string & {})
+
+/** Headers for a request: an object, or a function called before every request (sync or async). */
+export type HeadersOption = Record<string, string>
+  | ((req: { kind: RequestKind; url: string }) => Record<string, string> | undefined | Promise<Record<string, string> | undefined>)
+
+/** The last word on a request: return the URL and init to send (or nothing to keep them). */
+export type RequestHook = (req: { kind: RequestKind; url: string; init: RequestInit }) =>
+  { url: string; init: RequestInit } | void | Promise<{ url: string; init: RequestInit } | void>
+
+/** A run without HTTP: the run's input -> AG-UI events (WebSocket, a worker, a mock). */
+export type Transport = (input: RunAgentInput, ctx: { signal: AbortSignal; chat: ChatApi }) => AsyncIterable<AguiEvent>
+
 export interface ChatApi {
   readonly threadId: string
   readonly options: ChatOptions
@@ -95,6 +109,8 @@ export interface ChatApi {
   /** Files attached in the composer for the message being sent (plugins put them into the run). */
   readonly attachments: Attachment[]
   send(text: string): Promise<void>
+  /** A request through the chat's connection (headers, credentials, fetch, request hook), for plugins. */
+  request(kind: RequestKind, url: string, init?: RequestInit): Promise<Response>
   /** Run the agent without a new message, e.g. run({ forwardedProps: { prefill: {...} } }). */
   run(opts?: { forwardedProps?: Record<string, unknown>; notice?: string }): Promise<void>
   notice(text: string): void
@@ -130,7 +146,16 @@ export interface ChatOptions {
   resumeStyle: 'command' | 'resume'
   /** Send the whole conversation each run (AG-UI default) or only the new messages (server keeps history). */
   history: 'full' | 'last'
-  headers: Record<string, string>
+  /** Headers for every request: an object, or ({kind, url}) => headers (sync or async; e.g. a fresh token). */
+  headers: HeadersOption
+  /** fetch's credentials for every request, e.g. 'include' for cookies on another domain. */
+  credentials?: RequestCredentials
+  /** Your fetch (a proxy, retries, logging, tests); default: the global fetch. */
+  fetch?: (url: string, init: RequestInit) => Promise<Response>
+  /** Change any request last: ({kind, url, init}) => {url, init}. */
+  request?: RequestHook
+  /** Your own transport for runs instead of HTTP: (input, {signal, chat}) => AG-UI events. */
+  transport?: Transport
   forwardedProps: Record<string, unknown>
   state: unknown
   /** Characters per second at least; the reveal speeds up with the backlog. */

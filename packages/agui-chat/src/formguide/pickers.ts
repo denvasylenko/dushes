@@ -367,7 +367,7 @@ export function feedbackEl(c: { t: RendererContext['t'] }, chat: ChatApi, ctx: C
   const send = (value: 1 | -1) => {
     line.replaceChildren(h('span', null, c.t('thanks')))
     if (ctx.onFeedback) { void Promise.resolve(ctx.onFeedback(value)).catch(() => {}); return }
-    void fetch(`${ctx.base(chat)}/feedback`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    void chat.request('feedback', `${ctx.base(chat)}/feedback`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ thread_id: chat.threadId, value, ...(cardId ? { card_id: cardId } : {}) }) }).catch(() => {})
   }
   line.append(
