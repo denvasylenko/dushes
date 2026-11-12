@@ -198,7 +198,8 @@ describe('<agui-chat>', () => {
   it('shakes on an empty send and shows a retry after an error', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{"detail":"boom"}', { status: 500 })))
     const el = await mount()
-    expect($(el, '.send').classList.contains('empty')).toBe(true)   // looks quiet but still answers a tap
+    expect($(el, '.send').classList.contains('idle')).toBe(true)   // looks quiet but still answers a tap
+    expect($(el, '.send').classList.contains('empty')).toBe(false)   // never the empty chat's class (its padding moved the icon)
     expect(($(el, '.send') as HTMLButtonElement).disabled).toBe(false)
     $(el, '.send').click()
     expect($(el, '.foot').classList.contains('nudge')).toBe(true)
@@ -472,5 +473,158 @@ describe('formguide plugin', () => {
     const onDirective = vi.fn()
     await withPlugin(run({ type: 'CUSTOM', name: 'ui_directive', value: { type: 'focus', target: 'email', reveal: [], hint: 'Here' } }, ...text('m1', 'There.')), { onDirective })
     expect(onDirective).toHaveBeenCalledWith({ type: 'focus', target: 'email', reveal: [], hint: 'Here' })
+  })
+})
+
+describe('one-tap flow', () => {
+  function plugin(props: Record<string, unknown> = {}) {
+    const st: Record<string, unknown> = {}
+    const state = { config: { props: { ...props } as Record<string, unknown>, state: st }, jsx_hash: 'h', form_id: 'loan', ui: null }
+    const applyChanges = vi.fn(async (c: Record<string, unknown>) => {
+      Object.assign(st, c)
+      if ('car_make' in c) state.config.props = { ...state.config.props, car_model: { options: [{ id: 'camry', name: 'Camry' }] } }
+      return { ...state.config }
+    })
+    return { state, applyChanges, use: formguide({ getState: () => state, applyChanges }) }
+  }
+
+  it('applies a dependent row after the others, then folds the card', async () => {
+    const changes = [
+      { name: 'car_make', label: 'Make', value: { id: 'toyota', name: 'Toyota' }, display: 'Toyota', previous: null, previous_display: null },
+      { name: 'car_model', label: 'Model', value: null, display: 'Camry', lookup: 'camry', deferred: true, after: ['car_make'], shape: 'option', previous: null, previous_display: null },
+      { name: 'price', label: 'Price', value: 1200000, display: '1200000', reason: '1200000', previous: null, previous_display: null },
+    ]
+    mockRuns(run(interrupt({ type: 'set_fields', card_id: 'c1', changes })), run(...text('m2', 'Done.')))
+    const el = await mount({ lang: 'en' })
+    const p = plugin()
+    el.use(p.use)
+    await el.send('go')
+    await tick()
+    expect($(el, '.card').textContent).toContain('after Make')
+    expect($(el, '.card').textContent).toContain('1,200,000')
+    expect($$(el, '.card .row .muted').some((x) => x.textContent === '1200000')).toBe(false)   // a reason equal to the value
+    ;($(el, '.card .btn.pri') as HTMLButtonElement).click()
+    await tick(5)
+    expect(p.applyChanges.mock.calls.map((c) => Object.keys(c[0]))).toEqual([['car_make', 'price'], ['car_model']])
+    expect(p.applyChanges.mock.calls[1][0]).toEqual({ car_model: { id: 'camry', name: 'Camry' } })
+    expect(bodies[1].forwardedProps.command.resume).toMatchObject({ accepted: true })
+    expect(bodies[1].forwardedProps.command.resume.names).toBeUndefined()
+    const card = $(el, '.fcard')
+    expect(card.classList.contains('folded')).toBe(true)
+    expect($(el, '.fcard .fold').textContent).toContain('Make, Model, Price')
+    ;($(el, '.fcard .fold') as HTMLButtonElement).click()
+    expect(card.classList.contains('unfolded')).toBe(true)
+  })
+
+  it('leaves out a dependent row whose option is missing', async () => {
+    const changes = [
+      { name: 'car_make', label: 'Make', value: 'toyota', display: 'Toyota', previous: null, previous_display: null },
+      { name: 'car_model', label: 'Model', value: null, display: 'Corolla', lookup: 'Corolla', deferred: true, after: ['car_make'], shape: 'id', previous: null, previous_display: null },
+    ]
+    mockRuns(run(interrupt({ type: 'set_fields', card_id: 'c1', changes })), run(...text('m2', 'Done.')))
+    const el = await mount({ lang: 'en' })
+    const p = plugin()
+    el.use(p.use)
+    await el.send('go')
+    await tick()
+    ;($(el, '.card .btn.pri') as HTMLButtonElement).click()
+    await tick(5)
+    expect(p.applyChanges).toHaveBeenCalledTimes(1)
+    expect(bodies[1].forwardedProps.command.resume).toMatchObject({ accepted: true, names: ['car_make'] })
+    expect($(el, '.card').textContent).toContain('Not available in the list')
+  })
+
+  it('fills fields from an action chip, then sends its text', async () => {
+    const sug = { type: 'CUSTOM', name: 'suggestions', value: { items: ['Change term to 48 months', 'What next?'],
+      applies: [[{ name: 'loan_term', label: 'Loan term', value: '48', display: '48 months', previous: null }], null] } } as AguiEvent
+    mockRuns(run(...text('m1', 'A 48-month term works.'), sug), run(...text('m2', 'Done.')))
+    const el = await mount({ lang: 'en' })
+    const p = plugin()
+    el.use(p.use)
+    await el.send('go')
+    await tick()
+    const chips = $$(el, '.quick .chip')
+    expect(chips[0].classList.contains('act')).toBe(true)
+    expect(chips[1].classList.contains('act')).toBe(false)
+    chips[0].click()
+    await tick(5)
+    expect(p.applyChanges).toHaveBeenCalledWith({ loan_term: '48' })
+    expect(bodies[1].messages.at(-1).content).toBe('Change term to 48 months')
+    expect($(el, '.applied .ok-line').textContent).toContain('Loan term')
+    expect($(el, '.applied .ok-line .btn').textContent).toBe('Undo')
+  })
+
+  it('refuses an action chip that is out of date', async () => {
+    const sug = { type: 'CUSTOM', name: 'suggestions', value: { items: ['Use 48 months'],
+      applies: [[{ name: 'loan_term', label: 'Loan term', value: '48', display: '48 months', previous: null }]] } } as AguiEvent
+    mockRuns(run(...text('m1', 'Ok.'), sug))
+    const el = await mount({ lang: 'en' })
+    const p = plugin()
+    ;(p.state.config.state as Record<string, unknown>).loan_term = '60'      // the user changed it meanwhile
+    el.use(p.use)
+    await el.send('go')
+    await tick()
+    $$(el, '.quick .chip')[0].click()
+    await tick(5)
+    expect(p.applyChanges).not.toHaveBeenCalled()
+    expect($(el, '.quick .err-line').textContent).toContain('out of date')
+    expect($$(el, '.quick .chip')[0].hasAttribute('disabled')).toBe(false)
+  })
+
+  it('renders bold in a question, keeps starters on New chat, and says a typed-over card was replaced', async () => {
+    mockRuns(run(interrupt({ type: 'ask', card_id: 'q1', question: 'Which **Loan purpose**?', options: [{ id: 'a', label: 'A' }], allow_text: true })),
+      run(...text('m2', 'Ok.')))
+    const el = await mount({ lang: 'en' })
+    el.use(plugin().use)
+    await el.send('go')
+    await tick()
+    expect($(el, '.card-q').innerHTML).toBe('Which <b>Loan purpose</b>?')
+    await el.send('something else')
+    await tick()
+    expect($(el, '.card .ok-line').textContent).toContain('Replaced by your message')
+
+    const fresh = await mount({ lang: 'en' })
+    expect($(fresh, '.empty p').textContent).toBe('Ask anything about this form.')   // no starters: no promise of suggestions
+    ;(fresh as unknown as { _starters: string[] })._starters = ['Fill from my profile']
+    fresh.reset()
+    expect($$(fresh, '.empty .chip').map((c) => c.textContent)).toEqual(['Fill from my profile'])
+    expect($(fresh, '.empty p').textContent).toBe('Ask anything, or pick a suggestion.')
+  })
+})
+
+describe('showing what was filled', () => {
+  it('shows the field after a tap answer fills it, and after an action chip', async () => {
+    const onDirective = vi.fn()
+    const reveal = [{ type: 'tab', tabs: 'tabs', tab: 'car' }]
+    const q = { type: 'ask', card_id: 'q1', question: 'Which make?', field: 'car_make', label: 'Make', applies: true, previous: null, reveal,
+      options: [{ id: 'kia', label: 'Kia', value: { id: 'kia', name: 'Kia' } }], multiple: false, allow_text: false }
+    const sug = { type: 'CUSTOM', name: 'suggestions', value: { items: ['Use 48 months'],
+      applies: [[{ name: 'term', label: 'Term', value: '48', display: '48', previous: null, reveal: [{ type: 'tab', tabs: 'tabs', tab: 'loan' }] }]] } } as AguiEvent
+    mockRuns(run(interrupt(q)), run(...text('m2', 'Done.'), sug), run(...text('m3', 'Ok.')))
+    const el = await mount({ lang: 'en' })
+    const state = { config: { props: {}, state: {} as Record<string, unknown> }, jsx_hash: 'h', form_id: 'f', ui: null }
+    el.use(formguide({ getState: () => state, applyChanges: async (c) => { Object.assign(state.config.state, c); return state.config }, onDirective }))
+    await el.send('go')
+    await tick()
+    ;($$(el, '.card .chip')[0] as HTMLButtonElement).click()
+    await tick(5)
+    expect(onDirective).toHaveBeenCalledWith({ type: 'focus', target: 'car_make', reveal, hint: '' })
+    $$(el, '.quick .chip')[0].click()
+    await tick(5)
+    expect(onDirective).toHaveBeenLastCalledWith({ type: 'focus', target: 'term', reveal: [{ type: 'tab', tabs: 'tabs', tab: 'loan' }], hint: '' })
+  })
+
+  it('shows the agent hint under the field without a host callback', async () => {
+    document.body.insertAdjacentHTML('beforeend', '<label data-name="phone">Phone <input name="phone"></label>')
+    mockRuns(run({ type: 'CUSTOM', name: 'ui_directive', value: { type: 'focus', target: 'phone', reveal: [], hint: 'Enter 10 digits here' } }, ...text('m1', 'There.')))
+    const el = await mount({ lang: 'en' })
+    el.use(formguide({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({}) }))
+    await el.send('where is the phone?')
+    await tick(400)
+    const bubble = document.querySelector('[data-formguide-hint]')
+    expect(bubble?.textContent).toBe('Enter 10 digits here')
+    expect(document.activeElement?.getAttribute('name')).toBe('phone')
+    ;(bubble as HTMLElement).click()
+    expect(document.querySelector('[data-formguide-hint]')).toBeNull()
   })
 })

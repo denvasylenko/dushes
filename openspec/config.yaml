@@ -19,7 +19,7 @@ context: |
   - backend/demo/  example integration (mock form backend, FastAPI app, YAML config, skills, samples)
   - backend/tests/ offline tests with a scripted model · backend/scripts/chat_harness.py live scenarios
   - frontend/      optional demo UI (React + Vite)
-  - docs/architecture.md  architecture overview
+  - site/  documentation site (pages in site/src/content/docs/; architecture in concepts/architecture.md)
 
   Tech: Python 3.11+, LangGraph, LangChain chat models (any provider), deepagents, FastAPI (optional),
   pytest; React 19 + TypeScript for the demo UI.
@@ -35,7 +35,7 @@ rules:
   proposal:
     - State which existing specs in openspec/specs/ the change touches.
   tasks:
-    - Include updating tests (backend/tests), docs/architecture.md and README.md when behaviour changes.
+    - Include updating tests (backend/tests), the docs site pages (site/src/content/docs/) and README.md when behaviour changes.
 
 operations:
   apply:

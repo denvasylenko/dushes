@@ -1,0 +1,27 @@
+---
+title: 'Frontend tools'
+description: 'Tools that run in the browser: the model calls them, your code answers.'
+---
+import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Tools that run in the browser. They are sent as `tools` with each run; when the agent calls one, the widget runs your handler and continues the run with the result.
+
+```js
+chat.registerTool({
+  name: 'show_map',
+  description: 'Show the branch on a map',
+  parameters: { type: 'object', properties: { address: { type: 'string' } } },
+  label: 'Opening the map',                       // optional: show it in the step list
+  handler: async ({ address }, { render }) => {
+    render(myMapElement(address))                 // optional: put an element into the chat
+    return 'shown'                                // goes back to the agent
+  },
+})
+```
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Any AG-UI client" href="../agui-client/" />
+  <LinkCard title="AG-UI events" href="../../reference/agui-events/" />
+</CardGrid>

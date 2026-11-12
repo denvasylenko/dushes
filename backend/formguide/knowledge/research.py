@@ -10,6 +10,7 @@ Filesystem (deep agent built-ins ls / read_file / grep / glob):
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -58,6 +59,26 @@ def build_researcher(kb: KnowledgeBase, form_id: str, title: str, model: BaseCha
         permissions=[FilesystemPermission(operations=["write"], paths=["/docs/**"], mode="deny")],
         name="document_researcher",
     )
+
+
+def parse_sources(answer: str) -> list[dict]:
+    """The researcher's "Sources:" line -> [{title, section?}] (document file name > section)."""
+    m = re.search(r"(?im)^\W*sources?\W*:\s*(.+)$", answer or "")
+    if not m:
+        return []
+    out: list[dict] = []
+    for part in re.split(r"\s*[;\n]\s*", m.group(1)):
+        part = part.strip(" .*-")
+        if not part:
+            continue
+        bits = [x.strip(" ,") for x in re.split(r"\s*(?:\u203a|>|\u2014)\s*", part, maxsplit=1)]
+        title, section = bits[0], (bits[1] if len(bits) > 1 else "")
+        item = {"title": title[:120]}
+        if section:
+            item["section"] = section[:120]
+        if item not in out:
+            out.append(item)
+    return out[:6]
 
 
 def _text(content: Any) -> str:

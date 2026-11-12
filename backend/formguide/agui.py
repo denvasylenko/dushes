@@ -84,7 +84,8 @@ def run_kwargs(body: dict[str, Any]) -> dict[str, Any]:
     tools = [{"name": t.name, "description": t.description, "parameters": t.parameters} for t in inp.tools or []]
     return {"thread_id": inp.thread_id, "run_id": inp.run_id, "message": message,
             "state": inp.state if isinstance(inp.state, dict) else {}, "resume": resume,
-            "client_tools": tools, "tool_results": tool_results, "prefill": fwd.get("prefill")}
+            "client_tools": tools, "tool_results": tool_results, "prefill": fwd.get("prefill"),
+            "capabilities": fwd.get("capabilities")}
 
 
 def encoder(accept: str | None = None) -> EventEncoder:

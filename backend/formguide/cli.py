@@ -84,9 +84,18 @@ def cmd_check(args: argparse.Namespace) -> int:
 
     print(f"config: {Path(args.config).resolve()}")
     print(f"data_dir: {cfg.data_dir}")
+    from .models import build_model, missing_key
+
     for role in ("agent", "research", "compile", "extract"):
         spec = getattr(m, role)
-        print(f"model {role}: {show(spec) if spec else '(same as agent)'}")
+        note = ""
+        if spec:
+            try:   # builds the client only: no call, no network
+                env = missing_key(build_model(spec))
+                note = f"  !! no API key: set {env}" if env else ""
+            except Exception as e:  # noqa: BLE001
+                note = f"  !! cannot build: {type(e).__name__}: {e}"
+        print(f"model {role}: {show(spec) if spec else '(same as agent)'}{note}")
     packs = cfg.domain_packs
     names = packs.available() if packs else []
     print(f"domain packs: {', '.join(names) or '(none: neutral persona)'}")

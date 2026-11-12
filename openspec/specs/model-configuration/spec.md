@@ -32,3 +32,10 @@ The configuration SHALL accept a LangGraph checkpointer and a transcript store, 
 #### Scenario: Demo configuration
 - **WHEN** `demo/formguide.yaml` is loaded
 - **THEN** the guide uses an SQLite checkpointer and a file transcript store under `data/`
+
+### Requirement: Missing API keys are named
+When a configured model has no API key (its provider's key field is empty and the model has no other way to authenticate), the server SHALL log one warning at start-up per environment variable, naming the roles and the variable to set. `formguide check` SHALL mark such models. A run whose model call fails while the key is missing SHALL end with a `RUN_ERROR` that says "no API key" and names the variable, instead of the provider's connection error.
+
+#### Scenario: Started without a key
+- **WHEN** the server starts with Anthropic models and `ANTHROPIC_API_KEY` is not set
+- **THEN** the log says which models have no key and to set `ANTHROPIC_API_KEY`, and a chat message ends with "model error: no API key (set ANTHROPIC_API_KEY on the server)"

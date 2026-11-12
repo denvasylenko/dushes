@@ -29,26 +29,46 @@ function append(el: Node, children: Child[]): void {
 export const esc = (s: unknown): string =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 
-/** Minimal markdown: paragraphs, line breaks, **bold**, *italic*, `code`, [links](https://...) and "- " lists. */
-export function md(src: string): string {
-  const inline = (s: string) => esc(s)
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-    .replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>')
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+/** Inline markdown only (`code`, **bold**, *italic*, links), for one-line texts such as card questions. */
+export const mdInline = (s: string): string => esc(s)
+  .replace(/`([^`]+)`/g, '<code>$1</code>')
+  .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+  .replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>')
+  .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+
+/** Minimal markdown: paragraphs, line breaks, **bold**, *italic*, `code`, [links](https://...), "- " lists and
+ *  fenced code blocks (```lang) with a copy button. An unclosed fence (text still streaming) is shown as code too. */
+export function md(src: string, labels: { copy?: string } = {}): string {
+  const inline = mdInline
   const out: string[] = []
   let list: string[] | null = null
   let para: string[] = []
+  let code: string[] | null = null
+  let lang = ''
   const flushPara = () => { if (para.length) out.push(`<p>${para.map(inline).join('<br>')}</p>`); para = [] }
   const flushList = () => { if (list) out.push(`<ul>${list.map((x) => `<li>${inline(x)}</li>`).join('')}</ul>`); list = null }
+  const flushCode = () => {
+    if (!code) return
+    out.push(`<div class="code" part="code"${lang ? ` data-lang="${esc(lang)}"` : ''}>`
+      + `<button type="button" class="code-copy" data-copy data-keep>${esc(labels.copy ?? 'Copy')}</button>`
+      + `<pre><code>${esc(code.join('\n'))}</code></pre></div>`)
+    code = null
+  }
   for (const line of String(src).split('\n')) {
-    const item = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/)
+    const fence = line.match(/^\s*```\s*([\w+#.-]*)\s*$/)
+    if (code) {
+      if (fence && !fence[1]) { flushCode(); continue }
+      code.push(line)
+      continue
+    }
+    if (fence) { flushPara(); flushList(); code = []; lang = fence[1]; continue }
+    const item = line.match(/^\s*(?:[-*\u2022]|\d+[.)])\s+(.*)$/)
     if (item) { flushPara(); (list ??= []).push(item[1]); continue }
     if (!line.trim()) { flushPara(); flushList(); continue }
     flushList()
     para.push(line)
   }
-  flushPara(); flushList()
+  flushPara(); flushList(); flushCode()
   return out.join('')
 }
 

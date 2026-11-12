@@ -18,6 +18,9 @@ The frontend applies changes through the same path as user input.
 """
 from __future__ import annotations
 
+import json
+import re
+
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -25,6 +28,8 @@ from typing import TYPE_CHECKING, Any
 from langchain_core.tools import BaseTool
 
 from ..attachments import extract as att
+from . import review
+from .actions import off as switchable_off
 from ..domain.packs import DomainPack
 
 if TYPE_CHECKING:
@@ -89,15 +94,27 @@ TOOLS: list[dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "question": {"type": "string"},
-                "options": {"type": "array", "description": "choices: strings or {id, label}; omit for a typed answer",
+                "options": {"type": "array", "description": "choices: strings or {id, label, description?, attrs?}; "
+                                                            "omit for a typed answer or to offer all of `field`'s options",
                             "items": {"anyOf": [{"type": "string"}, {"type": "object", "properties": {
-                                "id": {"type": "string"}, "label": {"type": "string"}}}]}},
+                                "id": {"type": "string"}, "label": {"type": "string"},
+                                "description": {"type": "string", "description": "one short line under the option"},
+                                "attrs": {"type": "object", "description": "short facts to compare, the same keys on "
+                                          "every option, e.g. {\"Rate\": \"16.9%\"}; only from the form, rules or documents"}}}]}},
+                "recommended": {"type": "string", "description": "the id of the option that fits best, if one clearly does"},
+                "suggested": {"type": "array", "items": {"type": "string"},
+                              "description": "up to 5 likely option ids to show first in a long list"},
+                "fields": {"type": "array", "description": "instead of options: 2-3 short editable fields asked together "
+                           "(e.g. first and last name); the answers fill them",
+                           "items": {"type": "object", "properties": {"name": {"type": "string"},
+                                                                       "required": {"type": "boolean"}},
+                                     "required": ["name"]}},
                 "field": {"type": "string", "description": "a dropdown, radio or multi-select field"},
                 "multiple": {"type": "boolean", "description": "several choices allowed"},
                 "allow_text": {"type": "boolean", "description": "a typed answer allowed; default true"},
                 "input": {"type": "object", "description": "the kind of typed answer, shown as a picker",
                           "properties": {"type": {"type": "string",
-                                                  "enum": ["text", "number", "date", "time", "datetime"]},
+                                                  "enum": ["text", "number", "date", "time", "datetime", "address"]},
                                          "min": {"type": ["string", "number"]}, "max": {"type": ["string", "number"]}}},
             },
             "required": ["question"],
@@ -128,8 +145,33 @@ TOOLS: list[dict[str, Any]] = [
                 "title": {"type": "string"}, "message": {"type": "string"},
                 "confirm_label": {"type": "string", "description": "the confirm button, e.g. 'Submit'"},
                 "danger": {"type": "boolean", "description": "the action cannot be undone"},
+                "details": {"type": "array", "description": "what is sent, up to 6 short rows",
+                            "items": {"type": "object", "properties": {"label": {"type": "string"},
+                                                                       "value": {"type": "string"}},
+                                      "required": ["label", "value"]}},
+                "consequence": {"type": "string", "description": "one sentence, e.g. 'You can't edit it after sending.'"},
             },
             "required": ["title", "message"],
+        },
+    },
+    {
+        "name": "review_form",
+        "description": "Show the user a review of the form and wait: what is left per section and what blocks "
+                       "sending (computed from the form). mode status: progress when the user asks what is left; "
+                       "mode submit: the check before sending.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "mode": {"type": "string", "enum": ["status", "submit"]},
+                "warnings": {"type": "array", "description": "valid values a rule or document flags",
+                             "items": {"type": "object", "properties": {
+                                 "field": {"type": "string"}, "message": {"type": "string"},
+                                 "source": {"type": "string", "description": "document title > section"}},
+                                 "required": ["field", "message"]}},
+                "fixes": {"type": "object", "description": "{field: corrected value} for errors you can fix with "
+                                                           "data the user gave (e.g. the phone in the right format)"},
+            },
+            "required": ["mode"],
         },
     },
     {
@@ -150,6 +192,8 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Propose filling fields with values the user gave in the chat. The user sees a card and "
                        "confirms or rejects it. For dropdowns and radio groups pass the option id; for "
                        "multi-selects a list of option ids. Dates: YYYY-MM-DD. "
+                       "A dropdown whose options depend on another field in the same call (a car model after "
+                       "its make) may be included with the option's name: it is applied after the others. "
                        "Only the user can upload files.",
         "input_schema": {
             "type": "object",
@@ -162,6 +206,8 @@ TOOLS: list[dict[str, Any]] = [
                             "name": {"type": "string"},
                             "value": {"type": ["string", "number", "boolean", "array"], "items": {"type": "string"}},
                             "reason": {"type": "string"},
+                            "issue": {"type": "string", "description": "only when a rule or document flags this "
+                                      "valid value (e.g. income low for the payment): one short sentence"},
                         },
                         "required": ["name", "value"],
                     },
@@ -209,10 +255,13 @@ TOOLS += [
 BUILTIN = {t["name"] for t in TOOLS}
 
 
-def tool_schemas(extra: list[BaseTool]) -> list[Any]:
-    """Built-in tools in the provider-neutral (OpenAI function) format + extra LangChain tools."""
+def tool_schemas(extra: list[BaseTool], actions: frozenset[str] | None = None) -> list[Any]:
+    """Built-in tools in the provider-neutral (OpenAI function) format + extra LangChain tools.
+    `actions`: the switchable actions on in this run (None = all); the others are left out."""
+    hidden = switchable_off(actions) if actions is not None else frozenset()
     return [{"type": "function", "function": {"name": t["name"], "description": t["description"],
-                                              "parameters": t["input_schema"]}} for t in TOOLS] + list(extra)
+                                              "parameters": t["input_schema"]}}
+            for t in TOOLS if t["name"] not in hidden] + list(extra)
 
 
 @dataclass
@@ -229,6 +278,14 @@ class ToolCtx:
     emit: Callable[[dict], None] | None = None   # progress events for the UI
     guide: FormGuide | None = None               # access to models, knowledge, attachments, skills
     extra_tools: dict[str, BaseTool] = field(default_factory=dict)
+    actions: frozenset[str] | None = None        # switchable actions on in this run; None = all (agent/actions.py)
+    last_extraction: dict | None = None          # the thread's last read document: {title, attachment_id, values}
+    turn_sources: list[dict] | None = None       # documents the researcher cited this turn: [{title, section?}]
+    pending_source: dict | None = None           # the card's source header (values from a document)
+    caps: frozenset[str] | None = None           # what the client renders; None = everything
+
+    def can(self, variant: str) -> bool:
+        return self.caps is None or variant in self.caps
 
 
 class ToolError(Exception):
@@ -255,11 +312,19 @@ def _need(ctx: ToolCtx, name: str):
 
 
 async def run_tool(name: str, raw_args: Any, ctx: ToolCtx) -> str:
+    if ctx.actions is not None and name in switchable_off(ctx.actions):
+        return f"ERROR: {name} is not available in this chat (switched off, or the client cannot show it)."
     if name not in BUILTIN and name in ctx.extra_tools:
         try:
             out = await ctx.extra_tools[name].ainvoke(raw_args or {})
         except Exception as e:  # noqa: BLE001 — report tool failures to the model
             raise ToolError(f"{name} failed: {type(e).__name__}: {e}") from None
+        if isinstance(out, dict) and isinstance(out.get("receipt"), dict):   # a host action's receipt for the user
+            r = {k: str(v)[:80] for k, v in out["receipt"].items() if k in ("title", "number", "eta") and v}
+            if ctx.emit and ctx.can("confirm.receipt"):
+                ctx.emit({"kind": "receipt", "receipt": r})
+            rest = {k: v for k, v in out.items() if k != "receipt"}
+            return json.dumps({**rest, "receipt": r}, ensure_ascii=False)
         return out if isinstance(out, str) else str(getattr(out, "content", out))
     args = _check_args(name, raw_args)
     async_impl = globals().get(f"_ta_{name}")
@@ -442,7 +507,9 @@ def _waiting(ctx: ToolCtx) -> bool:
 
 
 WAITING = "a card or question is already waiting for the user. One at a time: call it in a later step."
-MAX_QUESTION_OPTIONS = 12
+MAX_QUESTION_OPTIONS = 12      # options the model writes itself
+MAX_FIELD_OPTIONS = 500        # a field's own options attached by the server (a searchable list)
+MAX_QUESTION_FIELDS = 3
 
 
 def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
@@ -476,7 +543,7 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
                 if o is None:
                     bad.append(repr(key))
                 elif not any(str(p["id"]) == str(o["id"]) for p in opts):
-                    opts.append({"id": str(o["id"]), "label": o["name"]})
+                    opts.append({"id": str(o["id"]), "label": o["name"], **_details(x)})
             if bad:
                 raise ToolError(f"{n.name}: no option {', '.join(bad)}. Use get_options to see them.")
         else:
@@ -492,22 +559,51 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
             else:
                 label = oid = str(x).strip()
             if label and not any(p["id"] == oid for p in opts):
-                opts.append({"id": oid, "label": label})
-    if len(opts) > MAX_QUESTION_OPTIONS:
+                opts.append({"id": oid, "label": label, **_details(x)})
+    from_field = bool(field_name) and not raw
+    searchable = from_field and ctx.can("ask.search")   # the client shows a long list with search
+    if searchable and len(opts) > MAX_FIELD_OPTIONS:
+        raise ToolError(f"{field_name} has {len(opts)} options ({MAX_FIELD_OPTIONS} at most in a card); "
+                        "ask in text or offer the likely ones with `options`.")
+    if not searchable and len(opts) > MAX_QUESTION_OPTIONS:
         raise ToolError(f"too many options ({len(opts)}; {MAX_QUESTION_OPTIONS} at most). Offer only the likely "
                         "ones with `options`, or ask in text.")
     allow_text = a.get("allow_text")
     allow_text = True if allow_text is None else bool(allow_text)
     inp = _question_input(a.get("input"))
+    if inp and field_name and inp.get("type") == "number":
+        inp = _range_from_field(ctx, field_name, inp)
+    if inp and inp.get("type") == "address" and not ctx.can("ask.address"):
+        inp = {"type": "text"}
     if inp:
         allow_text = True
-    if not opts and not allow_text:
+    asked = _question_fields(ctx, a.get("fields"))
+    if asked:
+        opts, allow_text, inp, field_name = [], False, None, None
+    if not opts and not allow_text and not asked:
         raise ToolError("a question without options must allow a typed answer")
+    _clean_details(opts, ctx)
     payload: dict[str, Any] = {"kind": "ask", "question": question, "options": opts,
                                "multiple": bool(multiple) and bool(opts), "allow_text": allow_text,
                                **({"input": inp} if inp else {}), **({"field": field_name} if field_name else {})}
+    if asked:
+        payload["fields"] = asked
+    if ctx.turn_sources and any(o.get("attrs") for o in opts):
+        payload["sources"] = ctx.turn_sources
+    ids = {o["id"] for o in opts}
+    rec = str(a.get("recommended") or "")
+    if rec in ids and ctx.can("ask.details"):
+        payload["recommended"] = rec
+    sug = [str(i) for i in a.get("suggested") or [] if str(i) in ids][:5] if isinstance(a.get("suggested"), list) else []
+    if sug and len(opts) > MAX_QUESTION_OPTIONS:
+        payload["suggested"] = list(dict.fromkeys(sug))
     if field_name and opts:
         payload.update(_applying(ctx, field_name, opts))
+    elif field_name and inp and inp.get("type") in ("date", "number", "time") and ctx.ov[field_name].editable:
+        # a typed answer about a date / number field fills it as written (ISO date, HH:MM, a number)
+        payload.update(applies=True, label=ctx.ov[field_name].label or field_name, **previous_of(ctx, field_name))
+    if field_name:   # where the field is: the client shows it once the answer fills it
+        payload["reveal"] = reveal_chain(ctx, field_name)
     ctx.pending_interaction = payload
     return ""
 
@@ -533,7 +629,81 @@ def _applying(ctx: ToolCtx, name: str, opts: list[dict]) -> dict:
     return {"applies": True, "label": e.label or name, **previous_of(ctx, name)}
 
 
-INPUT_TYPES = ("text", "number", "date", "time", "datetime")
+INPUT_TYPES = ("text", "number", "date", "time", "datetime", "address")
+
+
+def _details(x: Any) -> dict:
+    """description / attrs the model gave an option (trimmed)."""
+    if not isinstance(x, dict):
+        return {}
+    out: dict[str, Any] = {}
+    d = str(x.get("description") or "").strip()
+    if d:
+        out["description"] = d[:120]
+    at = x.get("attrs")
+    if isinstance(at, dict) and at:
+        out["attrs"] = {str(k)[:24]: str(v)[:40] for k, v in list(at.items())[:5]}
+    return out
+
+
+def _clean_details(opts: list[dict], ctx: ToolCtx) -> None:
+    """Drop what the client cannot show; attrs only when 2+ options share the same keys."""
+    keys = [tuple(sorted(o["attrs"])) for o in opts if o.get("attrs")]
+    shared = len(keys) >= 2 and len(set(keys)) == 1
+    for o in opts:
+        if not ctx.can("ask.details"):
+            o.pop("description", None)
+        if not (shared and ctx.can("ask.compare")):
+            o.pop("attrs", None)
+
+
+def _range_from_field(ctx: ToolCtx, name: str, inp: dict) -> dict:
+    """A number question about a field: min / max / step / unit from the field's props (the model may narrow)."""
+    props = ctx.ov[name].props
+    out = dict(inp)
+    for k in ("min", "max"):
+        v = props.get(k)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            mine = out.get(k)
+            try:
+                narrower = mine is not None and (float(mine) > v if k == "min" else float(mine) < v)
+            except (TypeError, ValueError):
+                narrower = False
+            out[k] = mine if narrower else v
+    if ctx.can("ask.range"):
+        if isinstance(props.get("step"), (int, float)) and not isinstance(props.get("step"), bool) and props["step"] > 0:
+            out["step"] = props["step"]
+        unit = props.get("unit") or props.get("suffix")
+        if isinstance(unit, str) and unit.strip():
+            out["unit"] = unit.strip()[:12]
+    return out
+
+
+def _question_fields(ctx: ToolCtx, raw: Any) -> list[dict]:
+    """`fields` of ask_user: 2-3 editable text / number / date fields asked in one card."""
+    if not raw:
+        return []
+    if not ctx.can("ask.multi"):
+        raise ToolError("this chat cannot ask several fields in one card; ask one question at a time")
+    if not isinstance(raw, list) or not 2 <= len(raw) <= MAX_QUESTION_FIELDS:
+        raise ToolError(f"fields must list 2 to {MAX_QUESTION_FIELDS} fields")
+    out = []
+    for f in raw:
+        name = f.get("name") if isinstance(f, dict) else f
+        n = _need(ctx, str(name))
+        e = ctx.ov[n.name]
+        if not n.is_field or n.role not in ("text", "number", "date"):
+            raise ToolError(f"{n.name}: only text, number and date fields can be asked together")
+        if not e.editable:
+            raise ToolError(f"{n.name} cannot be edited right now")
+        item: dict[str, Any] = {"name": n.name, "label": e.label or n.name,
+                                "required": bool(f.get("required", e.required)) if isinstance(f, dict) else e.required}
+        if n.role != "text":
+            item["input"] = _range_from_field(ctx, n.name, {"type": n.role}) if n.role == "number" else {"type": n.role}
+        out.append(item)
+    if len({x["name"] for x in out}) != len(out):
+        raise ToolError("fields must be different")
+    return out
 
 
 def _question_input(raw: Any) -> dict | None:
@@ -566,7 +736,17 @@ def _t_request_file(a: dict, ctx: ToolCtx) -> str:
                                "multiple": bool(a.get("multiple"))}
     if a.get("field"):
         payload["field"] = _need(ctx, a["field"]).name
+    if ctx.guide and ctx.guide.config.privacy_note:
+        payload["privacy"] = ctx.guide.config.privacy_note
     ctx.pending_interaction = payload
+    return ""
+
+
+def _t_review_form(a: dict, ctx: ToolCtx) -> str:
+    if _waiting(ctx):
+        raise ToolError(WAITING)
+    mode = a.get("mode") if a.get("mode") in ("status", "submit") else "status"
+    ctx.pending_interaction = review.build(ctx, mode, a.get("warnings"), a.get("fixes"))
     return ""
 
 
@@ -579,6 +759,12 @@ def _t_confirm_action(a: dict, ctx: ToolCtx) -> str:
     ctx.pending_interaction = {"kind": "confirm", "title": title[:120], "message": message[:600],
                                "confirm_label": str(a.get("confirm_label") or "").strip()[:40],
                                "danger": bool(a.get("danger"))}
+    details = [{"label": str(d["label"]).strip()[:40], "value": str(d["value"]).strip()[:80]}
+               for d in a.get("details") or [] if isinstance(d, dict) and d.get("label") and d.get("value") is not None]
+    if details:
+        ctx.pending_interaction["details"] = details[:6]
+    if str(a.get("consequence") or "").strip():
+        ctx.pending_interaction["consequence"] = str(a["consequence"]).strip()[:200]
     return ""
 
 
@@ -588,7 +774,7 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
     changes = a.get("changes")
     if not isinstance(changes, list) or not changes:
         raise ToolError("INVALID_JSON: changes must be a non-empty list")
-    ok, errors = [], []
+    ok, errors, later = [], [], []
     for ch in changes:
         try:
             if not isinstance(ch, dict) or "name" not in ch or "value" not in ch:
@@ -599,24 +785,78 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
                 raise ToolError(f"{n.name} is a container")
             if not e.visible:
                 raise ToolError(f"{n.name} is hidden")
+            if (n.role in CHOICE and not e.readonly and vals._codec(e.spec) is None
+                    and (e.disabled or not e.options or not vals.find_option(e.options, ch["value"]))):
+                later.append((n, e, ch))   # options appear once other fields are set: applied after them
+                continue
             if e.disabled:
                 raise ToolError(f"{n.name} is disabled (⊘): {disabled_reason(ctx.ov, ctx.deps, n.name)}")
             if e.readonly:
                 raise ToolError(f"{n.name} is read-only, computed by the form")
             val = _norm_value(ctx, n.name, ch["value"])
             # card text for the user: language-neutral; `value` is in the form's own format
-            ok.append({"name": n.name, "label": e.label or n.name, "value": form_value(ctx, n.name, val),
+            ok.append({"name": n.name, "label": e.label or n.name, "kind": n.role,
+                       "value": form_value(ctx, n.name, val),
                        "display": vals.display(val), **previous_of(ctx, n.name),
-                       "reason": ch.get("reason", ""), "reveal": reveal_chain(ctx, n.name)})
+                       "reason": ch.get("reason", ""), "reveal": reveal_chain(ctx, n.name),
+                       **_row_extras(ctx, n, e, ch, val)})
         except ToolError as err:
             errors.append(str(err))
+    if ok:
+        after = [x["name"] for x in ok]
+        for n, e, ch in later:   # a dependent choice: the client looks the option up after applying the rest
+            ok.append({"name": n.name, "label": e.label or n.name, "kind": n.role, "value": None, "deferred": True,
+                       "lookup": str(ch["value"]), "display": vals.display(ch["value"]), "after": after,
+                       "shape": (e.spec.shape if e.spec else None) or "option",
+                       **previous_of(ctx, n.name), "reason": ch.get("reason", ""),
+                       "reveal": reveal_chain(ctx, n.name)})
+    else:
+        for n, e, ch in later:
+            if e.disabled:
+                errors.append(f"{n.name} is disabled (⊘): {disabled_reason(ctx.ov, ctx.deps, n.name)}")
+            elif not e.options:
+                errors.append(f"{n.name} has no options right now (they probably depend on another field)")
+            else:
+                try:
+                    _choice(e, n.name, ch["value"])
+                except ToolError as err:
+                    errors.append(str(err))
     if errors and not ok:
         raise ToolError("no change passed validation:\n" + "\n".join(errors))
+    x = ctx.last_extraction
+    if x and ctx.can("set.document") and any(c.get("confidence") for c in ok):
+        ctx.pending_source = {"kind": "document", "title": x.get("title") or "", "attachment_id": x.get("attachment_id"),
+                              "found": len(x.get("values") or {})}
     ctx.pending_changes = ok
     return "\n".join(errors)  # errors for some fields; the valid ones go to confirmation
 
 
 # ---------------------------------------------------------------- delegated (separate model calls)
+
+
+def _row_extras(ctx: ToolCtx, n: Any, e: Any, ch: dict, val: Any) -> dict:
+    """What a card row carries besides the value: a consent, a soft issue, the document confidence."""
+    out: dict[str, Any] = {}
+    consent = ctx.pack.consents.get(n.name) if ctx.pack else None
+    if n.role == "bool" and (consent is not None or e.props.get("consent")) and ctx.can("set.consent"):
+        consent = consent or {}
+        doc = consent.get("doc") or e.props.get("consent_doc")
+        out.update(consent=True, required=bool(consent.get("required", e.required)),
+                   **({"doc": doc} if isinstance(doc, dict) else {}))
+    issue = str(ch.get("issue") or "").strip()
+    if issue and ctx.can("set.issues"):
+        out["issue"] = {"severity": "warning", "message": issue[:160]}
+    x = ctx.last_extraction
+    if x and ctx.can("set.document"):
+        got = (x.get("values") or {}).get(n.name)
+        if got and _same_value(got[0], val):
+            out["confidence"] = got[1]
+    return out
+
+
+def _same_value(a: Any, b: Any) -> bool:
+    norm = lambda v: re.sub(r"\s+", " ", str(v.get("id") if isinstance(v, dict) else v)).strip().casefold()  # noqa: E731
+    return norm(a) == norm(b)
 
 
 def _t_use_skill(a: dict, ctx: ToolCtx) -> str:
@@ -638,8 +878,14 @@ async def _ta_ask_documents(a: dict, ctx: ToolCtx) -> str:
     try:
         from ..knowledge import research   # needs the `research` extra (deepagents)
 
-        return await research.ask_documents(ctx.guide.knowledge, ctx.pack.form_id, ctx.pack.title,
-                                            str(a["question"]), ctx.guide.models.research, step)
+        answer = await research.ask_documents(ctx.guide.knowledge, ctx.pack.form_id, ctx.pack.title,
+                                              str(a["question"]), ctx.guide.models.research, step)
+        items = research.parse_sources(answer)
+        if items:
+            ctx.turn_sources = [*(ctx.turn_sources or []), *[i for i in items if i not in (ctx.turn_sources or [])]][:6]
+            if ctx.emit and ctx.can("sources"):
+                ctx.emit({"kind": "sources", "items": items})
+        return answer
     except Exception as e:  # noqa: BLE001 — a failed lookup must not break the turn
         raise ToolError(f"document research failed: {type(e).__name__}: {e}") from None
 
@@ -656,4 +902,6 @@ async def _ta_extract_from_attachment(a: dict, ctx: ToolCtx) -> str:
         x = await att.extract(ctx.guide.models.extract, ctx.ov, filename, data, names)
     except Exception as e:  # noqa: BLE001
         raise ToolError(f"extraction failed: {type(e).__name__}: {e}") from None
+    ctx.last_extraction = {"title": x.document_type or filename, "attachment_id": str(a["attachment_id"]),
+                           "values": {f.field: [f.value, f.confidence] for f in x.fields}}
     return att.describe(ctx.ov, filename, x)

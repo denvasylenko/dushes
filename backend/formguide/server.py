@@ -22,7 +22,7 @@ from typing import Any
 
 try:
     from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-    from fastapi.responses import StreamingResponse
+    from fastapi.responses import Response, StreamingResponse
 
     from . import agui
 except ImportError as e:  # pragma: no cover
@@ -109,6 +109,17 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
             return guide.save_attachment(thread_id, file.filename or "file", data)
         except ValueError as e:
             raise bad(e) from None
+
+    @r.post("/feedback", status_code=204, response_class=Response)
+    async def feedback(body: dict) -> Response:
+        try:
+            v = body.get("value")
+            if isinstance(v, bool) or not isinstance(v, int):
+                raise ValueError("value must be 1 or -1")
+            guide.feedback(str(body.get("thread_id") or ""), v, str(body["card_id"]) if body.get("card_id") else None)
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from None
+        return Response(status_code=204)
 
     @r.get("/kb/{form_id}")
     def kb_get(form_id: str) -> dict:

@@ -34,7 +34,8 @@
     <h2>Settings</h2>
     <label>Mode <select data-opt="mode"><option>floating</option><option>inline</option><option>page</option></select></label>
     <label>Typing <select data-opt="typing"><option>words</option><option>plain</option><option>off</option></select></label>
-    <label>Theme <select data-opt="theme"><option>auto</option><option>light</option><option>dark</option></select></label>
+    <label>Theme <select id="theme"><option>default</option><option>contrast</option><option value="brand">brand (accent and radius below)</option></select></label>
+    <label>Scheme <select data-opt="scheme"><option>auto</option><option>light</option><option>dark</option></select></label>
     <label>Language <select data-opt="lang"><option value="">browser</option><option>en</option><option>ru</option><option>uk</option><option>de</option><option>fr</option><option>it</option><option>es</option></select></label>
     <label>Tool steps <input type="checkbox" data-opt="toolSteps" checked></label>
     <label>Microphone <input type="checkbox" data-opt="mic" checked></label>
@@ -123,8 +124,22 @@
   for (const el of document.querySelectorAll('[data-card]')) {
     el.addEventListener('change', () => { cards[el.dataset.card] = el.checked; chat.options = { cards: { set_fields: { ...cards } } } })
   }
+  // themes: a named look for both schemes. The "brand" theme is rebuilt from the accent and radius inputs;
+  // setting tokens inline (chat.style.setProperty) would override the dark scheme too.
+  const themePick = document.getElementById('theme')
+  function brand() {
+    const tokens = {}
+    for (const el of document.querySelectorAll('[data-css]')) tokens[el.dataset.css] = el.value + (el.dataset.unit || '')
+    const r = tokens['--agui-radius'] || '14px'
+    AguiChat.defineTheme('brand', {
+      tokens: { radius: r, 'radius-sm': `calc(${r} * .7)`, 'radius-lg': `calc(${r} * 1.4)` },
+      light: { accent: tokens['--agui-accent'], link: tokens['--agui-accent'] },
+      dark: { accent: '#f5f5f7', link: '#4ea1ff' },
+    })
+  }
+  themePick.addEventListener('change', () => { if (themePick.value === 'brand') brand(); chat.options = { theme: themePick.value } })
   for (const el of document.querySelectorAll('[data-css]')) {
-    el.addEventListener('input', () => chat.style.setProperty(el.dataset.css, el.value + (el.dataset.unit || '')))
+    el.addEventListener('input', () => { brand(); themePick.value = 'brand'; chat.options = { theme: 'brand' } })
   }
 </script>
 </body>

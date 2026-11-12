@@ -42,6 +42,7 @@ class DomainPack:
     kb_summary: str = ""                                  # what the form's documents cover
     kb_documents: list[str] = field(default_factory=list)
     starters: list[Any] = field(default_factory=list)     # opening messages offered in an empty chat (up to 6)
+    consents: dict[str, dict] = field(default_factory=dict)  # bool fields that are consents: {field: {required?, doc?}}
     source: str = "default"   # inline | provider | packs | dir | default, "+kb" when documents are merged
 
     @classmethod
@@ -56,6 +57,7 @@ class DomainPack:
             pii={str(x) for x in d.get("pii") or []},
             rules=[str(x) for x in d.get("rules") or []],
             starters=list(d.get("starters") or []),
+            consents={str(k): (v if isinstance(v, dict) else {}) for k, v in (d.get("consents") or {}).items()},
             source=source,
         )
 

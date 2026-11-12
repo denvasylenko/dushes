@@ -1,0 +1,12 @@
+---
+/** One hand-drawn diagram from a concept fragment (src/fragments/<page>.html), reused on a guide page. */
+import '../styles/arch.css';
+interface Props { page: string; n?: number }
+const { page, n = 1 } = Astro.props;
+const files = import.meta.glob('../fragments/*.html', { query: '?raw', eager: true, import: 'default' }) as Record<string, string>;
+const src = files[`../fragments/${page}.html`] ?? '';
+const figs = src.match(/<figure[\s\S]*?<\/figure>/g) ?? [];
+const html = figs[n - 1] ?? '';
+if (!html) throw new Error(`ArchFigure: no figure ${n} in fragments/${page}.html`);
+---
+<div class="arch not-content"><Fragment set:html={html} /></div>

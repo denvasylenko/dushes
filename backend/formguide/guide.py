@@ -26,6 +26,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
 from .agent.graph import build_graph
+from .agent.actions import parse_config as parse_actions, resolve as resolve_actions
 from .attachments.extract import AttachmentStore
 from .config import GuideConfig
 from .domain.packs import DomainPackRegistry, starters_of, validate_pack
@@ -36,7 +37,7 @@ from .knowledge.base import KnowledgeBase
 from .prefill import prefill_instruction, suggest_prefill
 from .skills import SkillRegistry
 from .form.values import value_warnings
-from .agent.interaction import read_answer, read_confirm, read_decision, read_edits, read_upload
+from .agent.interaction import read_answer, read_confirm, read_decision, read_edits, read_review, read_upload
 from .stats import RunStats, activate, deactivate
 from .suggestions import suggest
 
@@ -63,6 +64,17 @@ class FormGuide:
         self._callbacks = [f if hasattr(f, "on_llm_start") or not callable(f) else f() for f in cfg.tracing.callbacks]
         sg = cfg.suggestions
         self.suggestions_model = (build_model(sg.model) if sg.model else self.models.memory) if sg.enabled else None
+        from .models import missing_keys
+        m = self.models
+        no_key: dict[str, list[str]] = {}
+        for role, env in missing_keys({"agent": m.agent, "research": m.research, "compile": m.compile,
+                                       "extract": m.extract, "memory": m.memory,
+                                       "suggestions": self.suggestions_model}).items():
+            no_key.setdefault(env, []).append(role)
+        for env, roles in no_key.items():
+            logging.getLogger("formguide").warning(
+                "no API key for the %s model%s: set %s (until then every call fails with a connection error)",
+                ", ".join(roles), "s" if len(roles) > 1 else "", env)
         self.data_dir = Path(cfg.data_dir)
         self.packs = cfg.domain_packs or DomainPackRegistry()
         self.knowledge = cfg.knowledge or KnowledgeBase(self.data_dir / "kb")
@@ -120,6 +132,12 @@ class FormGuide:
             self._deps[h] = DepStore(path)
         return self._deps[h]
 
+    def actions_for(self, form_id: str, caps: frozenset[str] | None) -> frozenset[str]:
+        """The agent actions on for this form and client (see agent/actions.py)."""
+        return resolve_actions(parse_actions(self.config.actions), caps=caps,
+                               has_documents=bool(self.knowledge.documents_for(form_id or "")),
+                               attachments=self.config.attachments_enabled)
+
     def tools_for(self, form_id: str) -> list[BaseTool]:
         return self._tools + self.skills.tools_for(form_id)
 
@@ -127,7 +145,7 @@ class FormGuide:
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None,
                   client_tools: list[dict] | None = None, tool_results: dict[str, str] | None = None,
-                  prefill: dict[str, Any] | None = None) -> AsyncIterator[dict]:
+                  prefill: dict[str, Any] | None = None, capabilities: list[str] | None = None) -> AsyncIterator[dict]:
         """One turn, as AG-UI events (plain dicts with the protocol's camelCase keys).
 
         - a new user message: `message` + `state` = {config, jsx_hash, form_id, ui?, attachments?};
@@ -139,6 +157,7 @@ class FormGuide:
         - a prefilled start: `prefill` = {data?, text?, attachment_ids?} + `state` (see suggest_prefill).
 
         `client_tools` are the frontend tools the client declared ([{name, description, parameters}]).
+        `capabilities` are the cards and variants the client renders (see agent/actions.py); None = all.
         Everything the user sees is also recorded in the thread's display transcript (see transcript.py)."""
         check_thread_id(thread_id)
         tx = self.transcripts
@@ -147,7 +166,8 @@ class FormGuide:
         if resume is not None:
             if card and card["kind"] == "question":
                 got, _ = read_answer(card, resume)
-                applied = bool(got and got.get("ids") and card.get("applies") and resume.get("config"))
+                applied = bool(got and (got.get("ids") or got.get("text")) and card.get("applies")
+                               and resume.get("config"))
                 tx.update(thread_id, card["id"], status="answered" if got else "dismissed",
                           **({"answer": got} if got else {}), **({"applied": True} if applied else {}))
             elif card and card["kind"] == "upload":
@@ -156,6 +176,10 @@ class FormGuide:
                           **({"files": files} if files else {}))
             elif card and card["kind"] == "confirm":
                 tx.update(thread_id, card["id"], status="accepted" if read_confirm(resume) else "rejected")
+            elif card and card["kind"] == "review":
+                action, det = read_review(resume)
+                tx.update(thread_id, card["id"], status="dismissed" if action == "closed" else "answered",
+                          action=action, **det)
             elif card:
                 applied, declined = read_decision(card.get("changes") or [], resume)
                 status = "rejected" if not applied else "partial" if declined else "accepted"
@@ -180,7 +204,7 @@ class FormGuide:
         try:
             async for ev in self._events(thread_id, mode, stats, tx, message=message, state=state, resume=resume,
                                          run_id=run_id, client_tools=client_tools, tool_results=tool_results,
-                                         prefill=prefill):
+                                         prefill=prefill, capabilities=capabilities):
                 yield ev
         finally:
             deactivate(token)
@@ -188,16 +212,17 @@ class FormGuide:
     async def _events(self, thread_id: str, mode: str, stats: RunStats, tx: Any, *, message: str | None,
                       state: dict[str, Any] | None, resume: dict[str, Any] | None, run_id: str,
                       client_tools: list[dict] | None, tool_results: dict[str, str] | None,
-                      prefill: dict[str, Any] | None) -> AsyncIterator[dict]:
+                      prefill: dict[str, Any] | None, capabilities: list[str] | None = None) -> AsyncIterator[dict]:
         """The run's AG-UI events, with the transcript kept in step (the body of run())."""
         texts: dict[str, str] = {}
         calls: dict[str, dict] = {}
         interrupts: list[dict] = []
         said: list[str] = []          # this run's answer, for quick replies
+        held_sources: list[dict] = [] # CUSTOM sources events, sent once before RUN_FINISHED
         context = ""                  # what the model saw of the form, for quick replies
         async for ev in self._run(thread_id, message=message, state=state, resume=resume, run_id=run_id,
                                   client_tools=client_tools, tool_results=tool_results, prefill=prefill,
-                                  stats=stats):
+                                  stats=stats, capabilities=capabilities):
             t, name = ev["type"], ev.get("name")
             if t == "TEXT_MESSAGE_CONTENT":
                 texts[ev["messageId"]] = texts.get(ev["messageId"], "") + ev["delta"]
@@ -221,6 +246,14 @@ class FormGuide:
             elif name == "memory_compacted":
                 tx.append(thread_id, new_entry("notice", text="Earlier messages were summarized for the assistant; "
                                                               "the chat history is kept in full."))
+            elif name == "sources":   # shown under the answer: held until the run ends
+                held_sources.append(ev)
+                continue
+            elif name == "receipt":    # turns the confirmation card it follows into a receipt
+                conf = next((e for e in reversed(tx.list(thread_id)) if e["kind"] == "confirm"), None)
+                ev = {**ev, "value": {**ev["value"], **({"card_id": conf["id"]} if conf else {})}}
+                if conf:
+                    tx.update(thread_id, conf["id"], receipt=ev["value"])
             elif name == "on_interrupt" and ev["value"].get("type") in _CARD_KIND:
                 q = {k: v for k, v in ev["value"].items() if k != "type"}
                 entry = tx.append(thread_id, new_entry(_CARD_KIND[ev["value"]["type"]], **q, status="pending"))
@@ -230,7 +263,9 @@ class FormGuide:
                     continue
                 ev = {**ev, "value": json.dumps(value, ensure_ascii=False)}
             elif name == "on_interrupt":
-                entry = tx.append(thread_id, new_entry("card", changes=ev["value"].get("changes", []), status="pending"))
+                src = {"source": ev["value"]["source"]} if ev["value"].get("source") else {}
+                entry = tx.append(thread_id, new_entry("card", changes=ev["value"].get("changes", []), status="pending",
+                                                       **src))
                 value = {**ev["value"], "card_id": entry["id"]}
                 interrupts.append(value)
                 if mode not in ("legacy", "both"):
@@ -239,6 +274,13 @@ class FormGuide:
                 ev = {**ev, "value": json.dumps(value, ensure_ascii=False)}
             elif t == "RUN_FINISHED" and interrupts and mode in ("structured", "both"):
                 ev = {**ev, "outcome": {"type": "interrupt", "interrupts": [_outcome(v) for v in interrupts]}}
+            if t in ("RUN_FINISHED", "RUN_ERROR") and held_sources:
+                merged: list[dict] = []
+                for h in held_sources:
+                    merged += [i for i in h["value"]["items"] if i not in merged]
+                held_sources.clear()
+                if t == "RUN_FINISHED":
+                    yield {"type": "CUSTOM", "name": "sources", "value": {"items": merged[:6]}}
             if t == "RUN_FINISHED" and not interrupts and said and self.suggestions_model is not None:
                 user_text = message or next((e.get("text", "") for e in reversed(tx.list(thread_id))
                                              if e["kind"] == "user"), "")
@@ -248,13 +290,57 @@ class FormGuide:
                                       timeout=self.config.suggestions.timeout)
                 stats.model_call(t_sug, None, None, kind="suggestions")
                 if items:
-                    yield {"type": "CUSTOM", "name": "suggestions", "value": {"items": items}}
+                    applies = [self._suggested_changes(it.get("set"), resume, state) for it in items]
+                    keep = [i for i, a in enumerate(applies) if a != "done"]   # already true in the form: no chip
+                    items, applies = [items[i] for i in keep], [applies[i] for i in keep]
+                if items:
+                    yield {"type": "CUSTOM", "name": "suggestions",
+                           "value": {"items": [it["text"] for it in items],
+                                     **({"applies": applies} if any(applies) else {})}}
             if t in ("RUN_FINISHED", "RUN_ERROR"):   # the numbers go last, right before the terminal event
                 summary = stats.as_event()
                 self._recent[thread_id].append(summary)
                 stats_log.info(json.dumps(summary, ensure_ascii=False))
                 yield {"type": "CUSTOM", "name": "run_stats", "value": summary}
             yield ev
+
+    def _suggested_changes(self, sets: dict | None, resume: dict[str, Any] | None,
+                           state: dict[str, Any] | None) -> list[dict] | str | None:
+        """A suggestion's {field: value} -> changes in the field-card shape, validated like a proposal.
+        Invalid fields are dropped; None when nothing is left; "done" when the form already has every value."""
+        if not sets or not state or not state.get("jsx_hash"):
+            return None
+        from .agent.tools import ToolCtx, ToolError, _norm_value, form_value, previous_of, reveal_chain
+        from .form.overlay import Overlay
+        from .form.values import display
+        config = (resume or {}).get("config") or state.get("config")
+        lay = self.layout(state["jsx_hash"])
+        if lay is None or not isinstance(config, dict):
+            return None
+        pack = self.packs.get(state.get("form_id"))
+        ov = Overlay(lay, config, pack.pii)
+        ctx = ToolCtx(ov=ov, deps=self.deps(lay.jsx_hash), pack=pack, loc=None)  # type: ignore[arg-type]
+        out: list[dict] = []
+        same = 0
+        for name, raw in sets.items():
+            node = lay.nodes.get(str(name))
+            if not node or not node.is_field:
+                continue
+            e = ov[node.name]
+            if not e.editable or node.role == "file":
+                continue
+            try:
+                val = _norm_value(ctx, node.name, raw)
+                encoded = form_value(ctx, node.name, val)
+                if e.filled and encoded == e.raw:
+                    same += 1
+                    continue
+                out.append({"name": node.name, "label": e.label or node.name, "value": encoded,
+                            "display": display(val), **previous_of(ctx, node.name),
+                            "reveal": reveal_chain(ctx, node.name)})
+            except ToolError:
+                continue
+        return out or ("done" if same else None)
 
     def thread(self, thread_id: str, form_id: str | None = None) -> dict[str, Any]:
         """What a client needs to restore a conversation: the transcript and the pending card, if any.
@@ -282,6 +368,13 @@ class FormGuide:
                                 "content": e["result"]})
         return out
 
+    def feedback(self, thread_id: str, value: int, card_id: str | None = None) -> None:
+        """A thumbs rating from the chat, kept in the thread's transcript."""
+        if value not in (1, -1):
+            raise ValueError("value must be 1 or -1")
+        self.transcripts.append(check_thread_id(thread_id),
+                                new_entry("feedback", value=value, **({"card_id": card_id} if card_id else {})))
+
     async def delete_thread(self, thread_id: str) -> None:
         """Forget a conversation: its transcript and the model's history."""
         self.transcripts.delete(check_thread_id(thread_id))
@@ -291,7 +384,7 @@ class FormGuide:
     async def _run(self, thread_id: str, *, message: str | None, state: dict[str, Any] | None,
                    resume: dict[str, Any] | None, run_id: str | None, client_tools: list[dict] | None = None,
                    tool_results: dict[str, str] | None = None, prefill: dict[str, Any] | None = None,
-                   stats: RunStats | None = None) -> AsyncIterator[dict]:
+                   stats: RunStats | None = None, capabilities: list[str] | None = None) -> AsyncIterator[dict]:
         run_id = run_id or str(uuid.uuid4())
         stats = stats or RunStats(run_id, thread_id)
         form_id = (state or {}).get("form_id") or ""
@@ -311,7 +404,8 @@ class FormGuide:
         error: str | None = None
         try:
             if resume is not None:
-                inp: Any = Command(resume=resume)
+                inp: Any = Command(resume=resume, **({"update": {"capabilities": capabilities}}
+                                                     if capabilities is not None else {}))
             else:
                 st = state or {}
                 if not self.layout(st.get("jsx_hash", "")):
@@ -324,6 +418,7 @@ class FormGuide:
                        "attachments": st.get("attachments") or [], "client_results": tool_results or {}}
                 if client_tools is not None:
                     inp["client_tools"] = client_tools
+                inp["capabilities"] = capabilities if isinstance(capabilities, list) else None
             async for mode, chunk in self.graph.astream(inp, cfg, stream_mode=["custom", "updates"]):
                 if mode == "updates":
                     for it in (chunk.get("__interrupt__") or ()) if isinstance(chunk, dict) else ():
@@ -351,6 +446,10 @@ class FormGuide:
                     yield {"type": "CUSTOM", "name": "ui_directive", "value": chunk["directive"]}
                 elif k == "note":
                     yield {"type": "CUSTOM", "name": "agent_note", "value": chunk["text"]}
+                elif k == "sources":
+                    yield {"type": "CUSTOM", "name": "sources", "value": {"items": chunk["items"]}}
+                elif k == "receipt":
+                    yield {"type": "CUSTOM", "name": "receipt", "value": chunk["receipt"]}
                 elif k == "memory":
                     yield {"type": "CUSTOM", "name": "memory_compacted", "value": chunk}
                 elif k == "tool" and chunk.get("parent_id"):   # a sub-step of a running tool
@@ -410,7 +509,8 @@ class FormGuide:
         return self.attachments.save(thread_id, filename, data)
 
 
-_CARD_KIND = {"ask": "question", "upload": "upload", "confirm": "confirm"}   # interrupt type -> transcript kind
+_CARD_KIND = {"ask": "question", "upload": "upload", "confirm": "confirm",   # interrupt type -> transcript kind
+              "review": "review"}
 
 
 def _outcome(v: dict[str, Any]) -> dict[str, Any]:

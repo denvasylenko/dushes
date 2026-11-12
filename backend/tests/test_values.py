@@ -236,3 +236,10 @@ def test_cli_checks_a_form(tmp_path, capsys):
     assert "<Select> select value=id options_prop=items" in out and out.strip().endswith("OK")
     assert main(args + ["--form-config", str(tmp_path / "bad.json")]) == 1
     assert "matches no option" in capsys.readouterr().out
+
+
+def test_default_tags_for_radio_and_multiselect():
+    from formguide.form.layout import LayoutIndex
+    lay = LayoutIndex('<Form name="f"><RadioGroup name="gender"/><MultiSelect name="channels"/></Form>')
+    assert lay.nodes["gender"].role == "radio" and lay.nodes["channels"].role == "multiselect"
+    assert not [w for w in lay.warnings if "unknown" in w.lower()]

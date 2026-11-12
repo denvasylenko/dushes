@@ -1,0 +1,135 @@
+---
+/**
+ * The landing page's live demo: a real <agui-chat> and a real form, driven by a scripted in-browser agent.
+ * Nothing leaves the page; the script replays the events formguide's server would send.
+ */
+---
+<div class="demo not-content" data-demo>
+  <div class="demo-bar">
+    <span class="demo-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="demo-url">your-app.example/apply</span>
+    <button type="button" class="demo-reset" data-reset>Start over</button>
+  </div>
+  <div class="demo-grid">
+    <div class="demo-form" data-form>
+      <noscript><p class="demo-nojs">The live demo needs JavaScript. It shows the chat filling this form; see the <a href="getting-started/quick-start/">quick start</a> to run the real agent.</p></noscript>
+    </div>
+    <div class="demo-chat">
+      <agui-chat mode="inline" persist-thread="off" attach="off" title="Loan assistant" subtitle="Replays recorded turns · no server"></agui-chat>
+    </div>
+  </div>
+  <p class="demo-cap">The real <code>&lt;agui-chat&gt;</code> widget and the formguide plugin. Only the agent is scripted: tap a suggestion.</p>
+</div>
+
+<script>
+  import '../../../packages/agui-chat/src/index'
+  import { formguide } from '../../../packages/agui-chat/src/formguide/index'
+  import { mountForm } from '../demo/form'
+  import { ScriptedAgent, STARTERS } from '../demo/agent'
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-demo]')) {
+    const form = mountForm(root.querySelector<HTMLElement>('[data-form]')!)
+    const chat = root.querySelector('agui-chat')!
+    const agent = new ScriptedAgent(form)
+    chat.agent = agent
+    chat.options = { starters: STARTERS, intro: 'Ask about any field, or let me fill the form for you.' }
+    chat.use(formguide({
+      getState: () => form.state(),
+      applyChanges: (changes) => form.apply(changes),
+      onDirective: (d) => form.reveal(d),
+      undoSeconds: 30,
+    }))
+    const scheme = () => chat.setAttribute('scheme', document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
+    scheme()
+    new MutationObserver(scheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    root.querySelector('[data-reset]')!.addEventListener('click', () => { chat.stop(); chat.reset(); form.reset() })
+  }
+</script>
+
+<style is:global>
+  .demo { --r: 20px; margin: 2.5rem auto 0; max-width: 72rem; }
+  .demo-bar, .demo-grid { background: var(--sl-color-bg-nav); }
+  .demo-bar {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--sl-color-hairline-light);
+    border-bottom: 0; border-radius: var(--r) var(--r) 0 0;
+  }
+  .demo-dots { display: flex; gap: 6px; }
+  .demo-dots i { width: 10px; height: 10px; border-radius: 999px; background: var(--sl-color-hairline-light); }
+  .demo-url {
+    flex: 1; min-width: 0; text-align: center; font: var(--sl-text-xs) var(--sl-font-mono); color: var(--sl-color-gray-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .demo-reset {
+    font: 500 var(--sl-text-xs) var(--sl-font); color: var(--sl-color-gray-2); background: none; border: 0; cursor: pointer;
+    padding: 6px 10px; border-radius: 999px; min-height: 32px;
+  }
+  .demo-reset:hover { color: var(--sl-color-white); background: var(--sl-color-gray-6); }
+  .demo-reset:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 1px; }
+  .demo-grid {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: 600px;
+    border: 1px solid var(--sl-color-hairline-light); border-radius: 0 0 var(--r) var(--r); overflow: hidden;
+    box-shadow: 0 30px 80px -30px var(--fg-glow), 0 12px 32px -16px hsla(0, 0%, 0%, .25);
+  }
+  .demo-form { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--sl-color-hairline-light); background: var(--sl-color-bg); }
+  .demo-chat { min-height: 0; padding: 12px; }
+  .demo-chat agui-chat { display: block; height: 100%; --agui-accent: var(--sl-color-accent); --agui-on-accent: #fff; --agui-link: var(--sl-color-accent); }
+  :root[data-theme='dark'] .demo-chat agui-chat { --agui-accent: var(--sl-color-accent-high); --agui-on-accent: var(--sl-color-black); --agui-link: var(--sl-color-accent-high); }
+  .demo-cap { text-align: center; color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); margin: 14px 0 0; }
+  .demo-nojs { padding: 24px; color: var(--sl-color-gray-2); }
+
+  /* the demo form */
+  .df-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 20px 24px 12px; }
+  .df-title { font: 600 var(--sl-text-xl)/1.2 var(--fg-display); letter-spacing: -0.02em; color: var(--sl-color-white); }
+  .df-progress { font: var(--sl-text-xs) var(--sl-font); color: var(--sl-color-gray-3); font-variant-numeric: tabular-nums; position: relative; padding-bottom: 6px; }
+  .df-progress::after {
+    content: ''; position: absolute; left: 0; bottom: 0; height: 3px; border-radius: 6px; background: var(--sl-color-accent);
+    width: calc(var(--p, 0) * 100%); transition: width .34s cubic-bezier(.2, .8, .2, 1);
+  }
+  .df-tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid var(--sl-color-hairline-light); }
+  .df-tab {
+    font: 500 var(--sl-text-sm) var(--sl-font); color: var(--sl-color-gray-3); background: none; border: 0; cursor: pointer;
+    padding: 10px 8px; min-height: 40px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .df-tab[aria-selected='true'] { color: var(--sl-color-white); border-color: var(--sl-color-accent); }
+  .df-tab:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: -2px; border-radius: 6px; }
+  .df-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .df-field { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; margin: -6px -8px; padding: 6px 8px; }
+  .df-label { font: 500 var(--sl-text-sm) var(--sl-font); color: var(--sl-color-gray-2); }
+  .df-in {
+    font: 16px var(--sl-font); color: var(--sl-color-white); background: var(--sl-color-bg-nav); border: 1px solid var(--sl-color-hairline-light);
+    border-radius: 10px; padding: 9px 12px; min-height: 44px; width: 100%;
+  }
+  .df-in:focus-visible { outline: none; border-color: var(--sl-color-accent); box-shadow: 0 0 0 3px var(--fg-glow); }
+  .df-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .df-segbtn {
+    font: 500 var(--sl-text-sm) var(--sl-font); color: var(--sl-color-gray-2); background: var(--sl-color-bg-nav); cursor: pointer;
+    border: 1px solid var(--sl-color-hairline-light); border-radius: 999px; padding: 6px 14px; min-height: 36px;
+  }
+  .df-segbtn[aria-checked='true'] { color: var(--sl-color-accent-high); background: var(--sl-color-accent-low); border-color: var(--sl-color-accent); }
+  :root[data-theme='light'] .df-segbtn[aria-checked='true'] { color: var(--sl-color-accent-high); }
+  .df-segbtn:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 1px; }
+  .df-flash { animation: df-flash 1.4s cubic-bezier(.2, .8, .2, 1); }
+  .df-look { animation: df-look 1.1s cubic-bezier(.2, .8, .2, 1) 2; }
+  .df-look[data-hint]::after {
+    content: attr(data-hint); position: absolute; right: 8px; top: 6px; font: 500 var(--sl-text-2xs) var(--sl-font);
+    color: var(--sl-color-accent-high); background: var(--sl-color-accent-low); border-radius: 999px; padding: 2px 8px;
+    animation: df-fade 4s forwards;
+  }
+  @keyframes df-flash { 0% { background: var(--sl-color-accent-low); } 100% { background: transparent; } }
+  @keyframes df-look { 0% { box-shadow: 0 0 0 0 var(--sl-color-accent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+  @keyframes df-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .df-flash, .df-look, .df-look[data-hint]::after { animation-duration: .01s; }
+    .df-progress::after { transition: none; }
+  }
+
+  @media (max-width: 50rem) {
+    .demo { --r: 14px; }
+    .demo-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 560px; height: auto; }
+    .demo-form { border-right: 0; border-bottom: 1px solid var(--sl-color-hairline-light); max-height: 360px; }
+    .demo-chat { padding: 8px; }
+    .df-head { padding: 16px 16px 10px; }
+    .df-tabs { padding: 0 12px; }
+    .df-body { padding: 14px 16px 18px; }
+  }
+</style>

@@ -1,0 +1,97 @@
+---
+title: A chat agent for big forms
+description: formguide is a chat agent for large forms. It shows people where to click, answers from your documents, reads theirs, and fills fields only after they confirm.
+template: splash
+hero:
+  title: 'Big forms, <span class="hero-accent">guided.</span>'
+  tagline: A chat agent that sits next to your form. It shows people where to click, answers from your documents, reads theirs, and fills fields only after they confirm.
+  actions:
+    - text: Get started
+      link: getting-started/quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: Ask AI about it
+      link: '#ask'
+      variant: minimal
+---
+import { Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+import LiveDemo from '../../components/LiveDemo.astro';
+import Stats from '../../components/Stats.astro';
+import Flow from '../../components/Flow.astro';
+
+<Tabs syncKey="pkg">
+  <TabItem label="pip">
+    ```bash
+    pip install "formguide[all] @ git+https://github.com/denvasylenko/dushes.git#subdirectory=backend"
+    ```
+  </TabItem>
+  <TabItem label="uv">
+    ```bash
+    uv add "formguide[all] @ git+https://github.com/denvasylenko/dushes.git#subdirectory=backend"
+    ```
+  </TabItem>
+  <TabItem label="the chat (browser)">
+    ```html
+    <agui-chat url="/agent/run"></agui-chat><script src="agui-chat.iife.js"></script>
+    ```
+  </TabItem>
+</Tabs>
+
+<LiveDemo />
+
+<Stats />
+
+## One exchange, five steps
+
+<Flow />
+
+## Two sides, a few lines each
+
+<CardGrid>
+  <Card title="Backend · Python" icon="seti:python">
+    ```yaml title="formguide.yaml"
+    model: "anthropic:claude-opus-5-5"
+    domain_packs: {dir: domain_packs}
+    knowledge: {dir: data/kb}
+    ```
+    ```bash
+    formguide serve --config formguide.yaml
+    ```
+    [Configure the backend →](backend/configuration/)
+  </Card>
+  <Card title="Frontend · any page" icon="seti:html">
+    ```js
+    chat.use(formguide({
+      getState: () => ({ config, jsx_hash, form_id }),
+      applyChanges: (c) => myBackend.apply(c),
+    }))
+    ```
+    [Pick a client →](frontend/overview/)
+  </Card>
+</CardGrid>
+
+## Built for forms with hundreds of fields
+
+<CardGrid>
+  <Card title="Shows, doesn't just tell" icon="seti:pipeline">"Where is the tax ID?" opens the right tab and accordion, scrolls to the field and highlights it.</Card>
+  <Card title="Fills with consent" icon="approve-check">Values go on a card: tick, edit, fill in with one tap, Undo if needed. The agent never writes to the form.</Card>
+  <Card title="Answers from your documents" icon="open-book">Policies are compiled into rules once; a researcher handles the long tail and cites the section.</Card>
+  <Card title="Reads the user's documents" icon="document">A passport scan or a payslip is read separately; only the values reach the chat.</Card>
+  <Card title="Small context, large form" icon="rocket">A collapsed outline, the open section and what changed: about 1K tokens instead of 16K.</Card>
+  <Card title="Any model, any client" icon="puzzle">Anthropic, OpenAI, Azure, Gemini, Bedrock, Ollama. Strict AG-UI: CopilotKit and any AG-UI client connect as they are.</Card>
+</CardGrid>
+
+## Works with
+
+<p class="works">LangGraph · LangChain models · AG-UI · CopilotKit · React · react-hook-form · Web Components · FastAPI · LangSmith · Langfuse · any LangChain vector store</p>
+
+<h2 id="ask">Ask the docs</h2>
+
+Every page has **Ask AI** in the header: an assistant that answers from these pages with code you can paste, and links to where it found it. Or take any page to your own assistant with **Copy page**, **Open in Claude** or **Open in ChatGPT**; [`llms.txt`](llms.txt) lists every page for AI tools.
+
+<CardGrid>
+  <LinkCard title="Quickstart" description="Backend and chat running in five minutes." href="getting-started/quick-start/" />
+  <LinkCard title="Configuration" description="From one line to per-role models, documents and durable history." href="backend/configuration/" />
+  <LinkCard title="Choose a client" description="Widget, React, react-hook-form, CopilotKit, any AG-UI client." href="frontend/overview/" />
+  <LinkCard title="How it works" description="One turn, the context, memory, with diagrams." href="concepts/overview/" />
+</CardGrid>

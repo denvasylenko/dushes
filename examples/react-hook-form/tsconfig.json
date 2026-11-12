@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@formguide/agui-chat": [
+        "../../packages/agui-chat/src/index.ts"
+      ],
+      "@formguide/agui-chat/react": [
+        "../../packages/agui-chat/src/react.ts"
+      ],
+      "@formguide/agui-chat/react-hook-form": [
+        "../../packages/agui-chat/src/rhf.ts"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}

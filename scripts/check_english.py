@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP_DIRS = {".git", "node_modules", ".venv", "dist", "data", "runs", "__pycache__", ".pytest_cache"}
+SKIP_DIRS = {".git", "node_modules", ".venv", "dist", "data", "runs", "__pycache__", ".pytest_cache", ".astro",
+             ".deploy"}   # .deploy: local, git-excluded deploy files and their build output
 SKIP_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".ico", ".lock"}
 CYRILLIC = re.compile(r"[\u0400-\u052f]")  # Cyrillic + Cyrillic Supplement
 

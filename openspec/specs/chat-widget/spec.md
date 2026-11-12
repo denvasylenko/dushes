@@ -17,7 +17,7 @@ The package SHALL define a custom element `<agui-chat>` that works without a fra
 - **THEN** the same element is used and its options and events are bridged to props
 
 ### Requirement: Works with any AG-UI agent
-The widget SHALL send `RunAgentInput` (thread id, run id, messages, state, tools, forwarded props) to a run URL over SSE with its built-in transport, or run any `AbstractAgent` instance given to it. It SHALL keep one thread id per chat, persisted per page unless the host sets one.
+The widget SHALL send `RunAgentInput` (thread id, run id, messages, state, tools, forwarded props) to a run URL over SSE with its built-in transport, or run any `AbstractAgent` instance given to it. It SHALL keep one thread id per chat, persisted per page unless the host sets one. A generated thread id SHALL come from the browser's cryptographic random source (also on plain-http pages), so it cannot be guessed.
 
 #### Scenario: A custom agent instance
 - **WHEN** the host sets `chat.agent = new HttpAgent({...})`
@@ -110,6 +110,13 @@ The widget SHALL show quick-reply chips: the starters for an empty chat, and the
 - **WHEN** the last answer has the suggestions "What comes next?" and "Fill from my passport"
 - **THEN** two chips appear under it, and clicking one sends that text
 
+### Requirement: Action chips
+A suggestion with changes in `applies` SHALL be marked as filling fields. Clicking it SHALL hand the changes to the plugin that applies them (formguide's `applyChanges`), show the result with Undo, and then send the text. When applying fails, the chips SHALL stay and a readable error SHALL show under them.
+
+#### Scenario: A chip that fills a field
+- **WHEN** the user clicks "Change term to 48 months", which carries a change of the term
+- **THEN** the term is filled at once, a "✓ Filled in · Loan term · Undo" line appears, and the text is sent
+
 ### Requirement: Configurable from the UI
 Every feature SHALL be configurable through attributes, an options object, CSS custom properties and an i18n dictionary:
 - `mode`: `floating` (a button and a side panel over a scrim), `inline` or `page`;
@@ -163,11 +170,11 @@ The element SHALL offer `run({forwardedProps, notice?})`, which runs the agent w
 - **THEN** the notice appears and the agent's answer follows without a user bubble
 
 ### Requirement: Cards closed by a new message
-When the user sends a message while a card waits for an answer, the card SHALL be closed: it SHALL keep its question or title, hide its controls, and say it was skipped.
+When the user sends a message while a card waits for an answer, the card SHALL be closed: it SHALL keep its question or title, hide its controls, and say it was replaced by the user's message.
 
 #### Scenario: Typing instead of answering
 - **WHEN** a question card is pending and the user sends "Actually, let me think"
-- **THEN** the card shows only the question and "Skipped"
+- **THEN** the card shows only the question and "Replaced by your message"
 
 ### Requirement: Readable errors
 A failed run SHALL show a sentence for its kind, with "Try again":
@@ -201,3 +208,53 @@ When a run has shown no text for 4 seconds, a quiet "Still working…" line SHAL
 #### Scenario: A sleeping server
 - **WHEN** the first answer takes 6 seconds
 - **THEN** "Still working…" is shown from the 4th second until the answer starts
+
+### Requirement: Empty chat
+An empty chat SHALL show the title, an intro and the starters. "New chat" SHALL keep the starters of the current form. Without starters, the intro SHALL not mention suggestions.
+
+#### Scenario: New chat
+- **WHEN** the user starts a new chat on a form whose pack has starters
+- **THEN** the empty chat shows those starters
+
+### Requirement: Themes
+A theme SHALL be an object with optional `extends`, `tokens` (for both schemes), `light`, `dark` and `css` (scoped to the widget). `defineTheme(name, theme)` SHALL register it, and the `theme` option or attribute SHALL apply a registered name or an object. The widget SHALL ship `default` and `contrast`. An unknown name SHALL fall back to `default` with one console warning.
+
+#### Scenario: A brand theme
+- **WHEN** a page calls `defineTheme("acme", {tokens: {accent: "#0a7f6f"}, dark: {accent: "#4fd1c1"}})` and sets `theme="acme"`
+- **THEN** buttons use #0a7f6f in the light scheme and #4fd1c1 in the dark one
+
+#### Scenario: Registered later
+- **WHEN** the element has `theme="acme"` before `acme` is defined
+- **THEN** it uses the default theme, and switches to `acme` as soon as it is defined
+
+### Requirement: Theme layering
+Theme values SHALL override the widget's defaults, and CSS on the element from the page SHALL override the theme. Theme token keys MAY omit the `--agui-` prefix. A value containing `;`, `{` or `}`, and an unknown key, SHALL be ignored with a warning.
+
+#### Scenario: Short keys
+- **WHEN** a theme has `tokens: {radius: "4px"}`
+- **THEN** `--agui-radius` is 4px inside the widget
+
+### Requirement: Scheme
+The `scheme` option and attribute SHALL take `auto`, `light` or `dark`. `auto` SHALL follow the system setting, including changes while the page is open. For compatibility, `theme` set to `auto`, `light` or `dark` SHALL act as the scheme. The element SHALL reflect `data-scheme` (`light` or `dark`) and `data-theme` (the theme name, or `custom` for an object), and keep the `dark` class.
+
+#### Scenario: The system turns dark
+- **WHEN** the scheme is `auto` and the system switches to dark mode
+- **THEN** the widget turns dark without a reload and `data-scheme` becomes `dark`
+
+#### Scenario: Page CSS per scheme
+- **WHEN** the page has `agui-chat[data-scheme="dark"] { --agui-accent: #4fd1c1 }`
+- **THEN** that accent applies only in the dark scheme
+
+### Requirement: Complete tokens
+Every colour, shadow and radius in the widget's CSS SHALL come from a token. Besides the existing ones, the widget SHALL define `--agui-radius-sm`, `--agui-radius-lg`, `--agui-radius-pill`, `--agui-shadow`, `--agui-scrim`, `--agui-on-ok` and `--agui-on-danger`.
+
+#### Scenario: Square corners
+- **WHEN** a theme sets `radius`, `radius-sm`, `radius-lg` and `radius-pill` to `0`
+- **THEN** cards, buttons, chips, the composer and the floating button have square corners
+
+### Requirement: Code blocks in answers
+The widget SHALL render fenced code blocks (```` ```lang ````) in assistant messages as a monospace block that keeps line breaks and indentation, shows the language, and has a copy button labelled in the chat's language. Tapping it SHALL put the block's text on the clipboard and say "Copied" briefly. A fence still open while the answer streams SHALL already show as code.
+
+#### Scenario: Copying a snippet
+- **WHEN** an answer contains a ```` ```yaml ```` block and the user taps its copy button
+- **THEN** the clipboard holds exactly the YAML, and the button reads "Copied" for a moment

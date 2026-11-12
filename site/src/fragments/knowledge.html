@@ -1,0 +1,63 @@
+<p class="src">Source: <a href="https://github.com/denvasylenko/dushes/tree/main/backend/formguide/knowledge/" title="backend/formguide/knowledge/">knowledge/</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/knowledge/compile.py" title="backend/formguide/knowledge/compile.py">compile.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/knowledge/research.py" title="backend/formguide/knowledge/research.py">research.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/domain/packs.py" title="backend/formguide/domain/packs.py">packs.py</a> <a href="https://github.com/denvasylenko/dushes/tree/main/backend/demo/samples/kb/" title="backend/demo/samples/kb/">kb/</a></p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 360" role="img" aria-label="Managers’ documents are stored by namespace; compilation turns them into rules in the prompt; the index and the researcher answer rare questions.">
+            <defs>
+              <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a4k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="box" x="20" y="130" width="130" height="64" rx="8"/>
+            <text x="85" y="156" text-anchor="middle" class="t-b">Manager</text>
+            <text x="85" y="174" text-anchor="middle" class="t-s">.md .txt .pdf</text>
+
+            <rect class="box" x="210" y="110" width="170" height="104" rx="8"/>
+            <text x="295" y="136" text-anchor="middle" class="t-b">DocumentStore</text>
+            <text x="295" y="158" text-anchor="middle" class="t-m">loan_application/</text>
+            <text x="295" y="176" text-anchor="middle" class="t-m">bank_common/</text>
+            <text x="295" y="194" text-anchor="middle" class="t-m">barber_booking/</text>
+
+            <rect class="key" x="450" y="30" width="180" height="70" rx="8"/>
+            <text x="540" y="58" text-anchor="middle" class="t-b">Compile</text>
+            <text x="540" y="78" text-anchor="middle" class="t-s">one model pass</text>
+            <rect class="soft" x="680" y="30" width="160" height="70" rx="8"/>
+            <text x="760" y="58" text-anchor="middle" class="t-b">Domain Pack</text>
+            <text x="760" y="78" text-anchor="middle" class="t-s">rules, field notes</text>
+
+            <rect class="box" x="450" y="140" width="180" height="70" rx="8"/>
+            <text x="540" y="168" text-anchor="middle" class="t-b">SearchIndex</text>
+            <text x="540" y="188" text-anchor="middle" class="t-s">BM25 | any VectorStore</text>
+
+            <rect class="box" x="450" y="250" width="180" height="84" rx="8"/>
+            <text x="540" y="276" text-anchor="middle" class="t-b">Researcher</text>
+            <text x="540" y="296" text-anchor="middle" class="t-s">deep agent, own context</text>
+            <text x="540" y="314" text-anchor="middle" class="t-m">/docs/&lt;ns&gt;/ read-only</text>
+            <rect class="soft" x="680" y="250" width="160" height="84" rx="8"/>
+            <text x="760" y="282" text-anchor="middle" class="t-b">Form agent</text>
+            <text x="760" y="302" text-anchor="middle" class="t-s">ask_documents</text>
+
+            <line class="ln" x1="150" y1="162" x2="208" y2="162" marker-end="url(#a4)"/>
+            <text x="179" y="154" text-anchor="middle" class="t-s">into ns</text>
+            <path class="ln-key" d="M380,130 C410,100 420,70 448,66" marker-end="url(#a4k)"/>
+            <text x="414" y="84" text-anchor="end" class="t-k">all in scope</text>
+            <line class="ln-key" x1="630" y1="65" x2="678" y2="65" marker-end="url(#a4k)"/>
+            <line class="ln" x1="380" y1="175" x2="448" y2="175" marker-end="url(#a4)"/>
+            <text x="414" y="167" text-anchor="middle" class="t-s">sections</text>
+            <line class="ln" x1="540" y1="248" x2="540" y2="212" marker-end="url(#a4)"/>
+            <text x="548" y="234" class="t-s">search in scope</text>
+            <path class="ln" d="M380,200 C420,260 420,300 448,300" marker-end="url(#a4)"/>
+            <text x="404" y="276" text-anchor="end" class="t-s">files</text>
+            <line class="ln" x1="678" y1="280" x2="632" y2="280" marker-end="url(#a4)"/>
+            <text x="655" y="272" text-anchor="middle" class="t-s">question</text>
+            <line class="ln" x1="632" y1="308" x2="678" y2="308" marker-end="url(#a4)"/>
+            <text x="655" y="350" text-anchor="middle" class="t-s">answer + sources</text>
+            <path class="ln-dash" d="M760,100 L760,248" marker-end="url(#a4)"/>
+            <text x="768" y="180" class="t-s">in the prompt,</text>
+            <text x="768" y="196" class="t-s">every turn</text>
+          </svg>
+        </div>
+        <figcaption>Typical questions are answered from rules compiled into the prompt (the green path), with no retrieval. The researcher spends time and tokens only on what the rules do not cover, and returns a short cited answer to the main agent.</figcaption>
+      </figure>
+      <div class="grid2">
+        <div class="note"><h3>Why not a deep agent for everything</h3><p>A form chat is many short turns. The deep-agent harness would add its overhead to each of them. Only document work is delegated, and everything the researcher reads stays in its own context.</p></div>
+        <div class="note"><h3>Checked in live runs</h3><ul><li>“Omar does not work on Mondays”: only in the documents, not in the form</li><li>“Late-payment penalties?”: an honest “the documents do not say”</li><li>Recompiling during a conversation does not break the thread</li></ul></div>
+      </div>

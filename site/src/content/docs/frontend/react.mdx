@@ -1,0 +1,44 @@
+---
+title: React
+description: <AguiChat> is the widget as a React component. Pass the formguide plugin, and your form backend stays in charge.
+---
+import { LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
+
+```tsx title="LoanPage.tsx"
+import { useMemo, useRef } from 'react'
+import { AguiChat } from '@formguide/agui-chat/react'
+import { formguide } from '@formguide/agui-chat/formguide'
+
+export function LoanPage({ jsxHash }: { jsxHash: string }) {
+  const form = useFormBackend('loan_application')        // your hook: { config, apply(changes) -> new config }
+  const formRef = useRef(form)
+  formRef.current = form
+
+  const plugins = useMemo(() => [formguide({
+    getState: () => ({ config: formRef.current.config, jsx_hash: jsxHash, form_id: 'loan_application' }),
+    applyChanges: (changes) => formRef.current.apply(changes),   // the same path as user input
+    onDirective: (d) => openTabAndScroll(d.target, d.reveal),    // optional: "look here"
+  })], [jsxHash])
+
+  return (
+    <div className="page">
+      <LoanForm form={form} />
+      <AguiChat url="/agent/run" mode="inline" plugins={plugins} lang="en" starters={['Where do I start?']} />
+    </div>
+  )
+}
+```
+
+- `getState` is called before every run: read from a ref, so the chat always sends the current config.
+- `applyChanges` must return the **new config** your backend computed (visibility, options, errors may change).
+- Every widget option is a prop: `mode`, `theme`, `scheme`, `lang`, `typing`, `toolSteps`, `mic`, `attach`, ... See the [`<agui-chat>` API](../../reference/agui-chat/).
+- Events: `onEvent`, `onRunStart`, `onRunEnd`, `onError`. Your own card renderers: `renderers={{ set_fields: MyCard }}`.
+
+<Aside>No form backend, just react-hook-form? Use [`useFormguide`](../react-hook-form/): it builds the skeleton and config from a schema.</Aside>
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Themes and styling" description="Match your design system." href="../themes/" />
+  <LinkCard title="Cards and answers" description="What the plugin renders for you." href="../cards/" />
+</CardGrid>

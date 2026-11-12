@@ -22,6 +22,10 @@
       "types": "./dist/types/react.d.ts",
       "import": "./dist/react.js"
     },
+    "./react-hook-form": {
+      "types": "./dist/types/rhf.d.ts",
+      "import": "./dist/react-hook-form.js"
+    },
     "./standalone": "./dist/agui-chat.iife.js"
   },
   "scripts": {

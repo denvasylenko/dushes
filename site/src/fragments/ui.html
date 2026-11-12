@@ -1,0 +1,172 @@
+<p class="src">Source: <a href="../../guides/form-ui/" title="docs/ui-components.md">ui-components.md</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/layout.py" title="backend/formguide/form/layout.py">layout.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/overlay.py" title="backend/formguide/form/overlay.py">overlay.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/agent/tools.py" title="backend/formguide/agent/tools.py">tools.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/frontend/src/App.tsx" title="frontend/src/App.tsx">App.tsx</a> <a href="https://github.com/denvasylenko/dushes/blob/main/frontend/src/types.ts" title="frontend/src/types.ts">types.ts</a></p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 420" role="img" aria-label="The agent sends a card; on Accept the UI sends the values to the form backend, gets a new config and resumes the agent with it. The agent never writes into the form.">
+            <defs>
+              <marker id="a9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a9k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="box" x="50" y="14" width="160" height="40" rx="8"/>
+            <text x="130" y="39" text-anchor="middle" class="t-b">Your UI</text>
+            <rect class="box" x="350" y="14" width="160" height="40" rx="8"/>
+            <text x="430" y="39" text-anchor="middle" class="t-b">Your form backend</text>
+            <rect class="key" x="650" y="14" width="160" height="40" rx="8"/>
+            <text x="730" y="39" text-anchor="middle" class="t-b">formguide agent</text>
+            <line class="ln-dash" x1="130" y1="54" x2="130" y2="406"/>
+            <line class="ln-dash" x1="430" y1="54" x2="430" y2="406"/>
+            <line class="ln-dash" x1="730" y1="54" x2="730" y2="406"/>
+
+            <text x="16" y="94" class="t-m">1</text>
+            <line class="ln" x1="132" y1="100" x2="728" y2="100" marker-end="url(#a9)"/>
+            <text x="430" y="92" text-anchor="middle" class="t-s halo">message + state {config, jsx_hash, form_id, ui}</text>
+
+            <text x="16" y="144" class="t-m">2</text>
+            <line class="ln" x1="728" y1="150" x2="132" y2="150" marker-end="url(#a9)"/>
+            <text x="430" y="142" text-anchor="middle" class="t-s halo">ui_directive: open these tabs, scroll to the field, highlight it</text>
+
+            <text x="16" y="194" class="t-m">3</text>
+            <line class="ln-key" x1="728" y1="200" x2="132" y2="200" marker-end="url(#a9k)"/>
+            <text x="430" y="192" text-anchor="middle" class="t-k halo">card: changes [{name, label, value, display, reason, reveal}]</text>
+            <rect class="soft" x="50" y="212" width="160" height="44" rx="6"/>
+            <text x="130" y="231" text-anchor="middle" class="t-s">user presses</text>
+            <text x="130" y="247" text-anchor="middle" class="t-s">Accept or Reject</text>
+
+            <text x="16" y="284" class="t-m">4</text>
+            <line class="ln-key" x1="132" y1="290" x2="428" y2="290" marker-end="url(#a9k)"/>
+            <text x="280" y="282" text-anchor="middle" class="t-k">{name: value, ...}</text>
+            <line class="ln" x1="428" y1="320" x2="132" y2="320" marker-end="url(#a9)"/>
+            <text x="280" y="312" text-anchor="middle" class="t-s">new config (rules applied)</text>
+
+            <text x="16" y="364" class="t-m">5</text>
+            <line class="ln-key" x1="132" y1="370" x2="728" y2="370" marker-end="url(#a9k)"/>
+            <text x="430" y="362" text-anchor="middle" class="t-k halo">resume {accepted: true, config: new config}</text>
+            <text x="730" y="396" text-anchor="middle" class="t-s">compares old and new form, carries on</text>
+          </svg>
+        </div>
+        <figcaption>The agent only points (2) and suggests (3). Values reach the form through your backend (4), which knows the rules: choosing <em>Car loan</em> may unlock a tab or show new fields. The new config goes back to the agent (5), so it sees what the form did. On Reject, resume with <code>{accepted: false}</code> and leave the form alone.</figcaption>
+      </figure>
+
+      <h2>1. What you send: the skeleton once, the form with every message</h2>
+      <p>On page load, <code>POST /agent/layouts {jsx, form_id}</code> returns a <code>jsx_hash</code> and a list of <code>warnings</code> (read it). Then every run carries <code>state = {config: {props, state}, jsx_hash, form_id, ui}</code> with the <strong>latest</strong> config.</p>
+      <div class="grid2">
+        <div class="note"><h3>JSX rules</h3><ul><li>every element has a <code>name</code>, unique in the form</li><li>only the tag and <code>name</code> are read; labels and flags go in props</li><li>text between tags is static text the agent can quote</li><li>no <code>{…}</code> expressions: conditions are <code>visible: false</code></li><li>tags are mapped to roles; your own library, and how its components store values, goes in <code>components:</code></li></ul></div>
+        <div class="note"><h3>Default tags</h3><ul><li>containers: <code>Form</code>, <code>Tabs</code>, <code>Tab</code>, <code>Accordion</code>, <code>Section</code></li><li>fields: <code>Input</code>, <code>TextArea</code> (text), <code>NumberInput</code>, <code>DatePicker</code>, <code>Dropdown</code> (select), <code>RadioGroup</code> (radio), <code>MultiSelect</code> (multiselect), <code>Checkbox</code> (bool), <code>FileUpload</code></li><li>a React form without its own config: <code>useFormguide</code> builds the skeleton and the config from a schema</li></ul></div>
+      </div>
+      <div class="tbl"><table>
+        <thead><tr><th>Prop</th><th>The agent uses it to</th></tr></thead>
+        <tbody>
+          <tr><td><code>label</code></td><td>name the field when talking and on cards</td></tr>
+          <tr><td><code>visible</code></td><td>skip hidden elements; <code>false</code> hides everything inside a container</td></tr>
+          <tr><td><code>disabled</code></td><td>know what is locked and explain why; inherited by children</td></tr>
+          <tr><td><code>readonly</code></td><td>never suggest computed values</td></tr>
+          <tr><td><code>required</code></td><td>lead the user through what is left</td></tr>
+          <tr><td><code>options</code></td><td>pick dropdown values only from <code>[{id, name}]</code> as sent right now</td></tr>
+          <tr><td><code>placeholder</code>, <code>error</code></td><td>explain the expected format and your backend's validation messages</td></tr>
+        </tbody>
+      </table></div>
+      <p>A field that is in the JSX but has no props entry counts as hidden. <code>ui</code> is <code>{activeTabs: {tabsName: tabName}, openAccordions: [...], focused, now}</code>: what the user sees right now.</p>
+
+      <h2>2. Value formats: the agent writes what your component stores</h2>
+      <p>Every library stores values its own way: a dropdown may keep the whole option, just <code>"auto"</code>, or a label; choices may be <code>options: [{id, name}]</code> or <code>items: [{value, label}]</code>; a toggle may hold <code>"Y"</code>/<code>"N"</code>. Describe each component tag once, and the agent reads your form correctly and writes card and prefill values in exactly your format.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 200" role="img" aria-label="Stored values are decoded through the field spec into one internal value per role; the agent reasons only on those; card values are encoded back into the component's own format.">
+            <defs>
+              <marker id="a10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a10k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="box" x="20" y="30" width="200" height="140" rx="8"/>
+            <text x="120" y="54" text-anchor="middle" class="t-b">Your form's state</text>
+            <text x="120" y="80" text-anchor="middle" class="t-m">loan_type: "auto"</text>
+            <text x="120" y="102" text-anchor="middle" class="t-m">consent: "N"</text>
+            <text x="120" y="124" text-anchor="middle" class="t-m">birth: "31.05.1990"</text>
+            <text x="120" y="146" text-anchor="middle" class="t-m">items: [{value, label}]</text>
+            <rect class="key" x="330" y="30" width="200" height="140" rx="8"/>
+            <text x="430" y="54" text-anchor="middle" class="t-b">What the agent reasons on</text>
+            <text x="430" y="80" text-anchor="middle" class="t-m">{id: auto, name: Car loan}</text>
+            <text x="430" y="102" text-anchor="middle" class="t-m">false</text>
+            <text x="430" y="124" text-anchor="middle" class="t-m">1990-05-31</text>
+            <text x="430" y="146" text-anchor="middle" class="t-m">[{id, name}]</text>
+            <rect class="box" x="640" y="30" width="200" height="140" rx="8"/>
+            <text x="740" y="54" text-anchor="middle" class="t-b">Card value</text>
+            <text x="740" y="80" text-anchor="middle" class="t-m">"auto"</text>
+            <text x="740" y="102" text-anchor="middle" class="t-m">"N"</text>
+            <text x="740" y="124" text-anchor="middle" class="t-m">"31.05.1990"</text>
+            <text x="740" y="146" text-anchor="middle" class="t-s">ready for your backend</text>
+            <line class="ln" x1="222" y1="100" x2="328" y2="100" marker-end="url(#a10)"/>
+            <text x="275" y="92" text-anchor="middle" class="t-s">decode</text>
+            <line class="ln-key" x1="532" y1="100" x2="638" y2="100" marker-end="url(#a10k)"/>
+            <text x="585" y="92" text-anchor="middle" class="t-k">encode</text>
+            <text x="275" y="122" text-anchor="middle" class="t-s">lenient</text>
+            <text x="585" y="122" text-anchor="middle" class="t-s">exact</text>
+          </svg>
+        </div>
+        <figcaption>Both conversions use the field spec of the component's tag. Reading accepts any plausible shape (an option object, an id or a label); writing uses exactly the configured one.</figcaption>
+      </figure>
+<pre><code>components:
+  fields:
+    Select:      {role: select, value: id, options_prop: items}   # stores "auto"
+    RadioGroup:  {role: radio, value: id}
+    MultiSelect: {role: multiselect, value: ids}                 # ["sms", "email"]
+    Toggle:      {role: bool, true: "Y", false: "N"}
+    Calendar:    {role: date, format: "%d.%m.%Y"}
+    Amount:      {role: number, value: string}                   # "250000" instead of 250000
+    Phone:       {role: text, codec: "my_app.codecs:PhoneCodec"}  # anything else</code></pre>
+      <div class="tbl"><table>
+        <thead><tr><th>Role</th><th>Default stored value</th><th>Change it with</th></tr></thead>
+        <tbody>
+          <tr><td>text</td><td>a string</td><td><code>codec</code></td></tr>
+          <tr><td>number</td><td>a number <code>250000</code></td><td><code>value: string</code></td></tr>
+          <tr><td>date</td><td><code>"1990-05-31"</code></td><td><code>format: "%d.%m.%Y"</code>, <code>epoch_ms</code></td></tr>
+          <tr><td>select, radio</td><td>the option object</td><td><code>value: id</code> / <code>name</code>; <code>options_prop</code>, <code>option_keys</code></td></tr>
+          <tr><td>multiselect</td><td>a list of option objects</td><td><code>value: ids</code> / <code>names</code></td></tr>
+          <tr><td>bool</td><td><code>true</code> / <code>false</code></td><td><code>true: "Y"</code>, <code>false: "N"</code></td></tr>
+          <tr><td>file</td><td>an object with <code>name</code>; never set by the agent</td><td></td></tr>
+        </tbody>
+      </table></div>
+      <p>Option keys <code>id/name</code>, <code>value/label</code>, <code>key/label</code>, <code>value/text</code>, <code>code/name</code>, <code>code/title</code>, lists of strings and <code>{id: label}</code> objects are detected without configuration. To check the setup, register the form with its initial config, <code>POST /agent/layouts {jsx, form_id, config}</code>, or run <code>formguide check --jsx form.jsx --form-config config.json</code>. The warnings name each field the agent cannot read and the key to set.</p>
+
+      <h2>3. What comes back</h2>
+      <p><strong>The card</strong>, <code>CUSTOM on_interrupt</code>, a JSON string. The run stops until the user answers. Every <code>value</code> is in your component's format and already checked: the field is visible and editable, the option exists, the date is real.</p>
+<pre><code>{ "type": "set_fields", "card_id": "cc9fefa2fb8e",
+  "changes": [{ "name": "loan_type", "label": "Loan type",
+                "value": { "id": "auto", "name": "Car loan" },   // goes to your backend
+                "display": "Car loan",                            // shown on the card
+                "reason": "You said car loan",
+                "reveal": [{ "type": "tab", "tabs": "main", "tab": "tab_loan" },
+                           { "type": "accordion", "name": "acc_loan_params" }] }] }</code></pre>
+      <p><strong>Keep some rows:</strong> a checkbox per row; send only the ticked changes to your backend and resume <code>{accepted: true, config, names: ["first_name", "last_name"]}</code>. The agent is told which were declined. Each change also has <code>previous</code> / <code>previous_display</code> (old → new, Undo), and a value the user corrected on the card goes back as <code>edited: {name: value}</code>.</p>
+      <p><strong>The question card</strong>, the same <code>on_interrupt</code> with <code>type: "ask"</code>: the agent asks when the user must choose between known options or the request is ambiguous. Buttons for a single choice, checkboxes for <code>multiple</code>, a text box when <code>allow_text</code>. When it is about an editable choice field, the options carry the form-format <code>value</code> and the card has <code>applies: true</code>: one tap fills the field (with Undo) and the resume carries the new config, so no field-change card follows. Typed text only answers.</p>
+<pre><code>{ "type": "ask", "card_id": "a41c09e2d7f3", "question": "What kind of loan do you need?",
+  "options": [{ "id": "auto", "label": "Car loan" }, { "id": "mortgage", "label": "Mortgage" }],
+  "multiple": false, "allow_text": true, "field": "loan_type" }
+
+resume: { answer: { ids: ["auto"] } }   // or { answer: { text: "..." } }, or { accepted: false } to skip</code></pre>
+      <div class="tbl"><table>
+        <thead><tr><th>Everything the frontend can receive</th><th>Render</th></tr></thead>
+        <tbody>
+          <tr><td><code>TEXT_MESSAGE_*</code></td><td>the agent's reply, streamed</td></tr>
+          <tr><td><code>CUSTOM ui_directive</code></td><td>open tabs and accordions, scroll, highlight, hint</td></tr>
+          <tr><td><code>on_interrupt</code> <code>set_fields</code></td><td>field-change card, a checkbox per row</td></tr>
+          <tr><td><code>on_interrupt</code> <code>ask</code></td><td>question card: options and/or typed answer (a picker when <code>input</code> is set)</td></tr>
+          <tr><td><code>on_interrupt</code> <code>upload</code></td><td>file request: drop zone; resume <code>{attachment_ids}</code></td></tr>
+          <tr><td><code>on_interrupt</code> <code>confirm</code></td><td>confirmation; resume <code>{accepted}</code></td></tr>
+          <tr><td><code>tool_progress</code>, <code>suggestions</code></td><td>sub-steps of a tool; quick-reply chips (a chip with <code>applies</code> fills fields in one tap)</td></tr>
+          <tr><td><code>TOOL_CALL_*</code> without a result</td><td>your own frontend tool: any component you like</td></tr>
+          <tr><td><code>TOOL_CALL_*</code> with a result</td><td>optional "searching..." line</td></tr>
+          <tr><td><code>agent_note</code>, <code>agent_context</code>, <code>memory_compacted</code></td><td>nothing, or a debug panel</td></tr>
+        </tbody>
+      </table></div>
+      <p><strong>The directive</strong>, <code>CUSTOM ui_directive</code>: open each <code>reveal</code> step from the outside in, scroll to <code>[data-name="target"]</code>, highlight it, show <code>hint</code>. It never changes values.</p>
+<pre><code>{ "type": "focus", "target": "loan_amount", "hint": "Enter the amount here",
+  "reveal": [{ "type": "tab", "tabs": "main", "tab": "tab_loan" },
+             { "type": "accordion", "name": "acc_loan_params" }] }</code></pre>
+
+      <h2>4. Components: the checklist</h2>
+      <div class="grid2">
+        <div class="note"><h3>Every element</h3><ul><li><code>data-name="&lt;name&gt;"</code> on its outer DOM node</li><li>reads its props by <code>name</code>; applies the parent's hidden and locked state</li><li>can pulse briefly and show a hint</li></ul></div>
+        <div class="note"><h3>Fields</h3><ul><li>store values in the default formats, or describe the tag in <code>components.fields</code></li><li>choices come from props, never a hard-coded list</li><li>show <code>error</code> under the field</li></ul></div>
+        <div class="note"><h3>Tabs and accordions</h3><ul><li><strong>controlled</strong>: the open tab and open accordions live in page state</li><li>so a directive can open them, and you can send them as <code>ui</code></li></ul></div>
+        <div class="note"><h3>The page</h3><ul><li>register the JSX once, keep <code>jsx_hash</code></li><li>send the latest config with every run</li><li>draw <code>on_interrupt</code> by <code>type</code>: <code>set_fields</code> or <code>ask</code></li><li>after a reload, <code>GET /agent/threads/{id}</code> returns <code>pending_card</code> (a card or a question): show it again</li></ul></div>
+      </div>
+      <p>The step-by-step guide with every field explained, common mistakes and fixes: <a href="../../guides/form-ui/">docs/ui-components.md</a>.</p>

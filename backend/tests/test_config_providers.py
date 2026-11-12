@@ -200,3 +200,38 @@ def test_yaml_model_shorthands(tmp_path, monkeypatch):
     assert cfg.models.agent == "openai:gpt-5-mini" and cfg.data_dir == (tmp_path / "store").resolve()
     monkeypatch.setenv("FORMGUIDE_MODEL", "openai:gpt-5")
     assert GuideConfig().models.agent == "openai:gpt-5"
+
+
+def test_missing_api_key_is_named(monkeypatch, guide, model, caplog):
+    import logging
+
+    from formguide import FormGuide, GuideConfig, Models
+    from formguide.agent import graph as G
+    from formguide.models import build_model, missing_key
+
+    from .test_agent import collect, start
+    from .test_interactions import LOAN
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    keyless = build_model({"provider": "anthropic", "model": "claude-opus-5-5"})
+    assert missing_key(keyless) == "ANTHROPIC_API_KEY"
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    assert missing_key(build_model({"provider": "anthropic", "model": "claude-opus-5-5"})) is None
+    assert missing_key(model) is None                       # a scripted test model needs no key
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    with caplog.at_level(logging.WARNING, logger="formguide"):
+        FormGuide(GuideConfig(models=Models(agent={"provider": "anthropic", "model": "claude-opus-5-5"}),
+                              data_dir=guide.data_dir))
+    assert "set ANTHROPIC_API_KEY" in caplog.text           # one warning at start-up
+
+    class Broken(type(model)):
+        async def _astream(self, *a, **k):
+            raise ConnectionError("Connection error.")
+            yield  # pragma: no cover
+
+    guide.models.agent = Broken()
+    monkeypatch.setattr(G, "missing_key", lambda m: "ANTHROPIC_API_KEY")
+    ev = collect(guide, "k1", message="hi", state=start(guide, LOAN))
+    err = next(e for e in ev if e["type"] == "RUN_ERROR")
+    assert "no API key (set ANTHROPIC_API_KEY on the server)" in err["message"]

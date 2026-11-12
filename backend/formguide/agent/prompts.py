@@ -1,7 +1,10 @@
 """System prompt. Generic for any form: everything domain-specific comes from the DomainPack."""
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from ..domain.packs import DomainPack
+from .actions import off as switchable_off
 from ..skills import Skill
 
 CORE = """\
@@ -30,6 +33,9 @@ How you work
 - Before calling a tool that submits, sends, pays or cancels something, ask with confirm_action (danger: true when it cannot be undone). Never call such a tool after the user declined.
 - Carry dependent steps through yourself. After a card is applied, new options, fields or steps may unlock (see the tool result). If the user's request covers them, propose the next fields right away, and keep going until the request is done or you need information from the user.
 - End every turn by answering what the user actually asked (a price, a time, "where is…").
+- Ask decisions as cards, not in prose: a yes/no or pick-one question goes through ask_user with options (or propose the change directly with propose_changes); never end your text with such a question.
+- A card never comes alone: in the same reply, one short sentence answers the user's message, then the card ("A 900,000 loan for a used car: here are the first fields."), not a preamble like "let me…".
+- When the user asks what is left, or before the form is submitted, call review_form (mode status or submit). It lists what is left and what blocks sending; add warnings only from the form, the rules or the documents, and fixes only for values the user gave.
 - Never claim the whole thing is done ("booked", "submitted", "application sent") unless the form's last step is complete. Say what you filled in instead.
 
 Style
@@ -42,14 +48,25 @@ Style
 """
 
 
-def system_prompt(pack: DomainPack, skills: list[Skill] | None = None) -> str:
+def core_rules(actions: Iterable[str] | None = None) -> str:
+    """CORE without the rules of actions that are off: a rule line that names such a tool is left out."""
+    if actions is None:
+        return CORE
+    hidden = switchable_off(actions)
+    return "\n".join(line for line in CORE.split("\n")
+                     if not (line.startswith("- ") and any(t in line for t in hidden)))
+
+
+def system_prompt(pack: DomainPack, skills: list[Skill] | None = None,
+                  actions: Iterable[str] | None = None) -> str:
+    actions = frozenset(actions) if actions is not None else None
     hints = "\n".join(f"- {h}" for h in pack.flow_hints) or "- Go through the sections in on-screen order."
-    out = (f"{pack.persona}\n\n{CORE}\n"
+    out = (f"{pack.persona}\n\n{core_rules(actions)}\n"
            "Recommended filling order for this form (advice, not a prohibition: if the user asks "
            f"to fill an available field, do it right away)\n{hints}\n")
     if pack.rules:
         out += "\nBusiness rules for this form (from the business's documents)\n" + "\n".join(f"- {r}" for r in pack.rules) + "\n"
-    if pack.kb_documents:
+    if pack.kb_documents and (actions is None or "ask_documents" in actions):
         out += ("\nBusiness documents for this form: " + ", ".join(pack.kb_documents)
                 + (f"\nThey cover: {pack.kb_summary}" if pack.kb_summary else "")
                 + "\nFor questions about conditions, requirements, prices or policies that the rules above do not "

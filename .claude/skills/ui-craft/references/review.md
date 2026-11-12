@@ -37,5 +37,5 @@ Order: quick wins first (S, big effect), then the large ones. For each large one
 
 - Taps from the first message to a filled field.
 - How often a card is rejected or undone (many → the agent proposes the wrong thing, or the card says it badly).
-- Time to first token and turn time (`run_stats`, see docs/observability.md).
+- Time to first token and turn time (`run_stats`, see site/src/content/docs/guides/observability.md).
 - Share of answers given by tapping (chips, cards) versus typing.

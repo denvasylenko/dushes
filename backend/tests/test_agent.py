@@ -74,7 +74,8 @@ def test_tools_are_provider_neutral_and_include_skill_tools(guide, model):
     model.script = [say("hi")]
     collect(guide, "t", message="hello", state=start(guide, BARBER))
     names = [t["function"]["name"] if isinstance(t, dict) else t.name for t in model.bound]
-    assert {"propose_changes", "ask_documents", "use_skill", "check_gift_card"} <= set(names)
+    assert {"propose_changes", "use_skill", "check_gift_card"} <= set(names)
+    assert "ask_documents" not in names                    # auto: the barber form has no documents here
     collect(guide, "t2", message="hello", state=start(guide, LOAN))
     names = [t["function"]["name"] if isinstance(t, dict) else t.name for t in model.bound]
     assert "check_gift_card" not in names                                    # skill scoped to the barber form

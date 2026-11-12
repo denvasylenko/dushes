@@ -1,0 +1,52 @@
+/* formguide's look on top of Starlight: one teal accent, a display face for headings, Plex Mono for code. */
+:root {
+  --sl-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sl-font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --fg-display: "Space Grotesk Variable", "Space Grotesk", system-ui, sans-serif;
+  --sl-hue-accent: 173;
+  --sl-color-accent-low: hsl(173, 55%, 14%);
+  --sl-color-accent: hsl(171, 72%, 42%);
+  --sl-color-accent-high: hsl(169, 62%, 76%);
+  --fg-warn: hsl(26, 80%, 66%);
+  --fg-glow: hsla(171, 72%, 45%, 0.18);
+}
+:root[data-theme='light'] {
+  --sl-color-accent-low: hsl(170, 48%, 91%);
+  --sl-color-accent: hsl(175, 79%, 24%);
+  --sl-color-accent-high: hsl(176, 82%, 18%);
+  --fg-warn: hsl(24, 79%, 35%);
+  --fg-glow: hsla(175, 79%, 30%, 0.12);
+}
+
+.sl-markdown-content :is(h1, h2, h3, h4), h1#_top, .site-title, .hero h1 {
+  font-family: var(--fg-display);
+  letter-spacing: -0.02em;
+}
+h1#_top { text-wrap: balance; }
+.site-title { font-weight: 600; }
+.sl-markdown-content h2 { text-wrap: balance; }
+.sl-markdown-content table { display: block; overflow-x: auto; max-width: 100%; }
+.sl-markdown-content td code { white-space: nowrap; }
+@media (max-width: 50rem) { .sl-markdown-content td code { white-space: normal; } }
+
+/* the landing page */
+[data-has-hero] .hero { padding-block: clamp(2rem, 6vw, 5rem) clamp(1.5rem, 4vw, 3rem); }
+[data-has-hero] .hero h1 { font-size: clamp(2.5rem, 7vw, 4.5rem); line-height: 1.02; letter-spacing: -0.04em; }
+[data-has-hero] .hero .tagline { max-width: 40ch; font-size: clamp(1.05rem, 2vw, 1.3rem); }
+.hero-accent {
+  background: linear-gradient(100deg, var(--sl-color-accent) 10%, var(--sl-color-accent-high) 90%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+[data-has-hero] .main-frame { background:
+  radial-gradient(60rem 30rem at 50% -8rem, var(--fg-glow), transparent 70%); }
+[data-has-hero] .sl-markdown-content > h2 { margin-top: 4rem; font-size: clamp(1.6rem, 3.5vw, 2.25rem); }
+.spec-meta { font: var(--sl-text-xs) var(--sl-font-mono); color: var(--sl-color-gray-3); }
+:root { --sl-content-width: 50rem; }
+/* spec pages: a scenario is a small label under its requirement */
+.sl-markdown-content h3[id^='scenario-'] {
+  font: 500 var(--sl-text-sm)/1.4 var(--sl-font-mono); letter-spacing: 0; color: var(--sl-color-accent-high);
+  margin-top: 1.25rem;
+}
+:root[data-theme='light'] .sl-markdown-content h3[id^='scenario-'] { color: var(--sl-color-accent); }
+.works { font: var(--sl-text-sm)/1.9 var(--sl-font-mono); color: var(--sl-color-gray-2); max-width: 60rem; }
+[data-has-hero] .sl-markdown-content > .tablist-wrapper:first-child, [data-has-hero] starlight-tabs:first-of-type { max-width: 44rem; }

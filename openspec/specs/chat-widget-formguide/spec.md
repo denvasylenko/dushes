@@ -19,7 +19,7 @@ It SHALL send `getState()` as the run `state` before every run, and it SHALL reg
 - **THEN** the run's `state` is the host's current form state
 
 ### Requirement: Directives reach the host
-`CUSTOM ui_directive` events SHALL be passed to `onDirective`. Without `onDirective`, the plugin SHALL open each `reveal` step and scroll to the element with `data-name` equal to the target, in the host document.
+`CUSTOM ui_directive` events SHALL be passed to `onDirective`. Without `onDirective`, the plugin SHALL scroll to the element with `data-name` (or the input with `name`) equal to the target in the host document, focus it except on touch screens, outline it for a few seconds, and show the directive's `hint` in a bubble under it. Tabs and accordions stay the host's to open.
 
 #### Scenario: Pointing at a field
 - **WHEN** the agent focuses `loan_amount`
@@ -103,3 +103,32 @@ A field-change card's main button SHALL say how many fields it fills, with the l
 #### Scenario: A card with one change
 - **WHEN** a card proposes one field
 - **THEN** its button reads "Fill in 1 field"
+
+### Requirement: Deferred rows on the card
+A deferred row SHALL show its label, the proposed option and a muted "after <field>". Accepting SHALL apply the other kept rows, then look up the deferred row's option in the refreshed form and apply it. A row whose option is not found SHALL show "not available" and SHALL be left out of `names`.
+
+#### Scenario: Make and model in one tap
+- **WHEN** the user accepts a card with Make = Toyota and a deferred Model = Camry
+- **THEN** the widget applies Make, then Model with the Camry option from the refreshed list, and resumes once
+
+### Requirement: Folded cards
+After a field-change card is accepted or rejected, its rows SHALL fold into the result line ("✓ Filled in · Make, Year", with Undo while it lasts). Clicking the line SHALL show or hide the rows.
+
+#### Scenario: A short thread
+- **WHEN** the user accepts a card with three rows
+- **THEN** the card shows one line with the three labels, and the rows appear on click
+
+### Requirement: Readable values on cards
+Number values on cards SHALL be formatted for the chat's language (1500000 -> "1,500,000" in English). A reason equal to the value SHALL be hidden. Question text SHALL render inline markdown (bold, italics, code).
+
+#### Scenario: An amount
+- **WHEN** a card proposes `loan_amount` 900000 instead of 1500000 in English
+- **THEN** it shows "~~1,500,000~~ 900,000"
+
+### Requirement: Cards show what they filled
+After a field-change card, a question card that fills its field, or an action chip is applied, the plugin SHALL send a focus directive for the (last) filled field, with its `reveal` steps and an empty hint, to `onDirective` or the default handling. Question cards tied to a field and suggested changes SHALL carry `reveal` for this.
+
+#### Scenario: A tap on another tab
+- **WHEN** the user taps "Kia" on the question "Which car make?" while the Applicant tab is open, and the make field is on the Car tab
+- **THEN** the field is filled and the host receives a focus directive for it with the Car tab in `reveal`, so the page opens that tab
+

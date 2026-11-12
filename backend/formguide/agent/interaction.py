@@ -63,6 +63,37 @@ def read_answer(question: dict, resume: dict[str, Any]) -> tuple[dict | None, st
     return out, ""
 
 
+def read_field_answers(question: dict, resume: dict[str, Any]) -> tuple[dict[str, str], list[str]]:
+    """A several-fields question -> ({name: value} the user gave, problems)."""
+    got = resume.get("answers") if isinstance(resume.get("answers"), dict) else {}
+    out: dict[str, str] = {}
+    problems: list[str] = []
+    for f in question.get("fields") or []:
+        v = str(got.get(f["name"]) or "").strip()
+        if not v:
+            if f.get("required"):
+                problems.append(f"{f['label']} was left empty")
+            continue
+        why = input_problem(f["input"], v) if f.get("input") else ""
+        if why:
+            problems.append(f"{f['label']}: {why}")
+            continue
+        out[f["name"]] = v
+    return out, problems
+
+
+def read_review(resume: dict[str, Any]) -> tuple[str, dict]:
+    """A review card -> (action: continue | submit | fixed | closed, details)."""
+    action = resume.get("action") if isinstance(resume, dict) else None
+    if action == "fixed" and isinstance(resume.get("names"), list) and resume.get("config"):
+        return "fixed", {"names": [str(n) for n in resume["names"]]}
+    if action == "submit":
+        return "submit", {}
+    if action == "continue":
+        return "continue", {"section": str(resume.get("section") or "")}
+    return "closed", {}
+
+
 def answer_text(answer: dict | None, why: str = "") -> str:
     """The tool result the model gets for a question."""
     if answer is None:

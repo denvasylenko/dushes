@@ -1,9 +1,10 @@
-/** <agui-chat>: an AG-UI chat as a Web Component. See docs/chat-widget.md for every option. */
+/** <agui-chat>: an AG-UI chat as a Web Component. Every option: site/src/content/docs/reference/agui-chat.md. */
 import { h, md, reducedMotion, store } from './dom'
 import { STRINGS } from './i18n'
 import { shrinkImage } from './image'
 import { dictate, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
+import { hasTheme, themeCss } from './themes'
 import { runAgent, runHttp, uid, type AgentLike } from './transport'
 import { fadeWords, newState, step, visible, type TypewriterState } from './typewriter'
 import type {
@@ -12,7 +13,7 @@ import type {
 
 export const DEFAULTS: ChatOptions = {
   url: '/agent/run', threadId: undefined, persistThread: true, mode: 'floating', typing: 'words', toolSteps: true, mic: true, quickReplies: true,
-  theme: 'auto', lang: '', title: '', subtitle: '', intro: '', placeholder: '', starters: [], resumeStyle: 'command',
+  theme: 'default', scheme: '', lang: '', title: '', subtitle: '', intro: '', placeholder: '', starters: [], resumeStyle: 'command',
   history: 'full', headers: {}, forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined,
@@ -23,7 +24,7 @@ const bool = (v: string | null) => v !== null && v !== 'off' && v !== 'false' &&
 const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> = {
   url: ['url', String], 'thread-id': ['threadId', String], 'persist-thread': ['persistThread', bool], mode: ['mode', String],
   typing: ['typing', String], 'tool-steps': ['toolSteps', bool], mic: ['mic', bool], 'quick-replies': ['quickReplies', bool],
-  theme: ['theme', String], lang: ['lang', String], title: ['title', String], subtitle: ['subtitle', String],
+  theme: ['theme', String], scheme: ['scheme', String], lang: ['lang', String], title: ['title', String], subtitle: ['subtitle', String],
   intro: ['intro', String], placeholder: ['placeholder', String], 'resume-style': ['resumeStyle', String],
   history: ['history', String], open: ['open', bool], attach: ['attach', bool], 'mic-lang': ['micLang', String],
   'mic-auto-send': ['micAutoSend', bool], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
@@ -46,15 +47,24 @@ const ICON = {
 }
 
 let sheet: CSSStyleSheet | null = null
-function styles(root: ShadowRoot): void {
+/** The base styles (shared) and this element's theme after them; returns a setter for the theme's CSS. */
+function styles(root: ShadowRoot): (css: string) => void {
   try {
     sheet ??= new CSSStyleSheet()
     if (!sheet.cssRules.length) sheet.replaceSync(CSS)
-    root.adoptedStyleSheets = [sheet]
-  } catch {   // no constructable stylesheets: a <style> element
+    const theme = new CSSStyleSheet()
+    root.adoptedStyleSheets = [sheet, theme]   // later sheet, same specificity: the theme wins
+    return (css) => theme.replaceSync(css)
+  } catch {   // no constructable stylesheets: <style> elements in the same order
     root.appendChild(h('style', null, CSS))
+    const theme = root.appendChild(h('style'))
+    return (css) => { theme.textContent = css }
   }
 }
+
+/** "auto" | "light" | "dark" -> light or dark now. */
+const darkNow = (scheme: string): boolean => scheme === 'dark' ||
+  (scheme !== 'light' && typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches)
 
 interface AiItem { id: string; text: string; el: HTMLElement; body: HTMLElement; st: TypewriterState; done: boolean; raf: number }
 interface StepsItem { el: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement; steps: Map<string, HTMLElement>; count: number }
@@ -99,6 +109,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _dots: HTMLElement | null = null
   private _quick: HTMLElement | null = null
   private _suggestions: string[] = []
+  private _applies: (unknown[] | null)[] = []
   private _starters: string[] = []
   private _pendingCalls: PendingCall[] = []
   private _calls = new Map<string, PendingCall>()
@@ -165,15 +176,61 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   // ------------------------------------------------------------------ lifecycle
   connectedCallback(): void {
+    this._listen(true)
     if (this._built) return
     this._built = true
     this.root = this.attachShadow({ mode: 'open' })
-    styles(this.root)
+    this._setThemeCss = styles(this.root)
+    this.root.addEventListener('click', (e) => this._copyCode(e))
     this._build()
     this._setThread(this._opts.threadId || this._savedThread() || uid(), false)
     this._apply()
     void this._restore()
     if (this._opts.open) this.open()
+  }
+
+  disconnectedCallback(): void { this._listen(false) }
+
+  /** The copy button of a code block in an answer: the code goes to the clipboard, the button says so. */
+  private _copyCode(e: Event): void {
+    const btn = (e.target as HTMLElement | null)?.closest?.('[data-copy]') as HTMLButtonElement | null
+    const code = btn?.parentElement?.querySelector('code')?.textContent
+    if (!btn || code == null) return
+    const done = (ok: boolean) => {
+      btn.textContent = ok ? this.t('copied') : this.t('error')
+      setTimeout(() => { btn.textContent = this.t('copy') }, 1500)
+    }
+    navigator.clipboard?.writeText(code).then(() => done(true), () => done(false)) ?? done(false)
+  }
+
+  private _setThemeCss: (css: string) => void = () => {}
+  private _themeKey = ''
+  private readonly _onScheme = (): void => this._applyTheme()
+  private readonly _onThemes = (e: Event): void => {
+    const t = this._opts.theme
+    if (typeof t !== 'string' || (e as CustomEvent).detail === t || (e as CustomEvent).detail === 'default') { this._themeKey = ''; this._applyTheme() }
+  }
+
+  /** The system scheme and newly defined themes, while connected. */
+  private _listen(on: boolean): void {
+    const mq = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null
+    if (on) { mq?.addEventListener?.('change', this._onScheme); window.addEventListener('agui:themes', this._onThemes) }
+    else { mq?.removeEventListener?.('change', this._onScheme); window.removeEventListener('agui:themes', this._onThemes) }
+  }
+
+  /** The scheme ("theme" auto/light/dark still means the scheme) and the theme's CSS. */
+  private _applyTheme(): void {
+    if (!this._built) return
+    const o = this._opts
+    const legacy = typeof o.theme === 'string' && ['auto', 'light', 'dark'].includes(o.theme)
+    const scheme = o.scheme || (legacy ? o.theme as string : 'auto')
+    const theme = legacy || !o.theme ? 'default' : o.theme
+    const dark = darkNow(scheme)
+    this.classList.toggle('dark', dark)
+    this.dataset.scheme = dark ? 'dark' : 'light'
+    this.dataset.theme = typeof theme === 'string' ? (hasTheme(theme) ? theme : 'default') : 'custom'
+    const key = typeof theme === 'string' ? theme : JSON.stringify(theme)
+    if (key !== this._themeKey) { this._themeKey = key; this._setThemeCss(themeCss(theme)) }
   }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
@@ -205,7 +262,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._messages = []
     this._shown.clear()
     this._clearQuick()
-    this._starters = []
+    if (restore) this._starters = []   // "New chat" keeps the form's starters
     this.$.log.replaceChildren()
     if (restore) void this._restore(); else this._renderEmpty()
   }
@@ -243,6 +300,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   /** Show a small centred line in the chat. */
   notice(text: string): void { this._append(h('div', { class: 'notice', part: 'notice' }, text)) }
+
+  /** Add an element to the conversation (plugins: sources under an answer, a receipt). */
+  append(el: HTMLElement): void { this._append(el) }
 
   // ------------------------------------------------------------------ DOM
   private _build(): void {
@@ -341,7 +401,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     send.innerHTML = this._busy ? ICON.stop : ICON.send
     send.setAttribute('aria-label', this._busy ? this.t('stop') : this.t('send'))
     // never disabled: an empty send nudges the composer instead of doing nothing
-    send.classList.toggle('empty', !this._busy && !(this.$.input as HTMLTextAreaElement).value.trim() && !this._files.length)
+    send.classList.toggle('idle', !this._busy && !(this.$.input as HTMLTextAreaElement).value.trim() && !this._files.length)
   }
 
   private _trapFocus(e: KeyboardEvent): void {
@@ -358,8 +418,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const o = this._opts
     const wrap = this.$.wrap
     wrap.className = `wrap mode-${o.mode}${wrap.classList.contains('open') ? ' open' : ''}`
-    const dark = o.theme === 'dark' || (o.theme === 'auto' && typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches)
-    this.classList.toggle('dark', dark)
+    this._applyTheme()
     this.classList.toggle('calm', reducedMotion())
     this.style.setProperty('--agui-fade', `${o.fadeMs}ms`)
     this.$.title.textContent = o.title || this.t('title')
@@ -393,7 +452,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const starters = this._opts.starters.length ? this._opts.starters : this._starters
     const el = h('div', { class: 'empty' },
       h('h3', null, this._opts.title || this.t('title')),
-      h('p', null, this._opts.intro || this.t('intro')),
+      h('p', null, this._opts.intro || this.t(this._opts.quickReplies && starters.length ? 'intro' : 'introAsk')),
       this._opts.quickReplies && starters.length
         ? h('div', { class: 'chips' }, starters.map((s) => h('button', { class: 'chip', part: 'chip', type: 'button', onclick: () => void this.send(s) }, s)))
         : null)
@@ -459,14 +518,35 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     }
   }
 
-  private _clearQuick(): void { this._quick?.remove(); this._quick = null; this._suggestions = [] }
+  private _clearQuick(): void { this._quick?.remove(); this._quick = null; this._suggestions = []; this._applies = [] }
 
   private _renderQuick(): void {
     this._quick?.remove()
     this._quick = null
     if (!this._suggestions.length) return
-    this._quick = this._append(h('div', { class: 'quick chips' }, this._suggestions.map((s) =>
-      h('button', { class: 'chip', part: 'chip', type: 'button', onclick: () => void this.send(s) }, s))))
+    const applier = this._plugins.find((p) => p.applySuggestion)
+    const err = h('div', { class: 'muted err-line', role: 'alert' })
+    const chips = this._suggestions.map((s, i) => {
+      const changes = applier ? this._applies[i] : null
+      if (!changes?.length) return h('button', { class: 'chip', part: 'chip', type: 'button', onclick: () => void this.send(s) }, s)
+      const b = h('button', { class: 'chip act', part: 'chip', type: 'button', title: this.t('fills') }, h('i', { 'aria-hidden': 'true' }, '\u2713'), s)
+      b.addEventListener('click', async () => {   // fill at once, then tell the agent (one tap, no card)
+        if (this._busy) return
+        this._quick?.querySelectorAll('button').forEach((x) => x.setAttribute('disabled', ''))
+        err.textContent = ''
+        try {
+          const line = await applier!.applySuggestion!(changes, this)
+          const sent = this.send(s)
+          if (line) this._append(h('div', { class: 'applied' }, line))
+          await sent
+        } catch (e) {
+          this._quick?.querySelectorAll('button').forEach((x) => x.removeAttribute('disabled'))
+          err.textContent = e instanceof Error && e.message ? e.message : this.t('error')
+        }
+      })
+      return b
+    })
+    this._quick = this._append(h('div', { class: 'quick' }, h('div', { class: 'chips' }, chips), err))
     this._quick.hidden = !this._opts.quickReplies
   }
 
@@ -493,7 +573,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       for (const m of r.messages) {
         if (m.role === 'user' && m.content) this._userBubble(m.content)
         else if (m.role === 'assistant' && m.content) {
-          const body = h('div', { class: 'body' }); body.innerHTML = md(m.content)
+          const body = h('div', { class: 'body' }); body.innerHTML = md(m.content, { copy: this.t('copy') })
           this._append(h('div', { class: 'msg ai', part: 'message assistant' }, body))
         }
       }
@@ -642,6 +722,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     } else if (name === 'suggestions') {
       const items = (value as { items?: unknown[] })?.items
       this._suggestions = Array.isArray(items) ? items.map(String).slice(0, 5) : []
+      const applies = (value as { applies?: unknown[] })?.applies
+      this._applies = this._suggestions.map((_, i) => (Array.isArray(applies) && Array.isArray(applies[i]) ? applies[i] as unknown[] : null))
     }
   }
 
@@ -661,20 +743,20 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const ai = this._ai
     if (!ai) return
     if (this._opts.typing === 'off') return
-    if (!this._animate) { ai.body.innerHTML = md(ai.text); this._scroll(); return }
+    if (!this._animate) { ai.body.innerHTML = md(ai.text, { copy: this.t('copy') }); this._scroll(); return }
     if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
   }
 
   private _tick(ai: AiItem, now: number): void {
     ai.raf = 0
     step(ai.st, ai.text, now, this._opts.typingSpeed)
-    ai.body.innerHTML = md(visible(ai.text, ai.st.shown))
+    ai.body.innerHTML = md(visible(ai.text, ai.st.shown), { copy: this.t('copy') })
     fadeWords(ai.body, ai.st, now, this._opts.fadeMs)
     const log = this.$.log
     if (log.scrollHeight - log.scrollTop - log.clientHeight < 120) log.scrollTop = log.scrollHeight
     const fading = ai.st.marks.length > 0 && now - ai.st.marks[ai.st.marks.length - 1][1] < this._opts.fadeMs
     if (ai.st.shown < ai.text.length || fading) ai.raf = requestAnimationFrame((t) => this._tick(ai, t))
-    else if (ai.done) ai.body.innerHTML = md(ai.text)   // all typed and faded in: the plain text stays
+    else if (ai.done) ai.body.innerHTML = md(ai.text, { copy: this.t('copy') })   // all typed and faded in: the plain text stays
   }
 
   /** The message ended: the typewriter finishes on its own; other modes show the full text now. */
@@ -684,7 +766,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     ai.done = true
     this._ai = null
     if (!ai.text.trim()) { ai.el.remove(); return }
-    if (!this._animate || this._abort?.signal.aborted) { cancelAnimationFrame(ai.raf); ai.body.innerHTML = md(ai.text); return }
+    if (!this._animate || this._abort?.signal.aborted) { cancelAnimationFrame(ai.raf); ai.body.innerHTML = md(ai.text, { copy: this.t('copy') }); return }
     if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
   }
 
@@ -808,7 +890,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       delete el.dataset.pending
       el.classList.add('done', 'dismissed')
       el.querySelectorAll<HTMLElement>('button, input, select, textarea').forEach((x) => x.setAttribute('disabled', ''))
-      const line = h('div', { class: 'ok-line off' }, h('i', null, '\u2715'), h('span', null, this.t('skipped')))
+      const line = h('div', { class: 'ok-line off' }, h('i', null, '\u2715'), h('span', null, this.t('replaced')))
       const acts = el.querySelector('.acts')
       if (acts) acts.replaceWith(line); else el.appendChild(line)
     })

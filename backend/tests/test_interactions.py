@@ -226,3 +226,58 @@ def test_starters_and_config(guide, tmp_path):
     cfg = load_config(f)
     assert cfg.confirm_tools == ["submit_application"]
     assert cfg.suggestions.enabled is True and cfg.suggestions.max == 5 and cfg.suggestions.timeout == 2.0
+
+
+def test_suggestions_with_changes(guide, model):
+    guide.config.suggestions.enabled = True
+    guide.suggestions_model = model
+    reply = json.dumps({"items": [{"text": "Make it a car loan", "set": {"loan_type": "auto"}},
+                                  {"text": "Bad pick", "set": {"loan_type": "spaceship", "nope": 1}},
+                                  "What next?"]})
+    model.script = [say("A car loan fits."), say(reply)]
+    ev = collect(guide, "sc1", message="I need a car", state=start(guide, LOAN))
+    sug = next(e["value"] for e in ev if e.get("name") == "suggestions")
+    assert sug["items"] == ["Make it a car loan", "Bad pick", "What next?"]
+    first, bad, plain = sug["applies"]
+    assert [c["name"] for c in first] == ["loan_type"] and first[0]["display"] and "previous" in first[0]
+    assert any(r["type"] == "tab" for r in first[0]["reveal"])   # where the chip's field is
+    assert bad is None and plain is None          # an invalid value drops the changes, keeps the text
+
+    state = start(guide, LOAN)
+    state["config"]["state"]["loan_type"] = first[0]["value"]       # already set: that chip is not offered
+    model.script = [say("Done."), say(reply)]
+    ev = collect(guide, "sc3", message="ok", state=state)
+    assert next(e["value"] for e in ev if e.get("name") == "suggestions")["items"] == ["Bad pick", "What next?"]
+
+    model.script = [say("Hello."), say('{"items": ["What next?"]}')]
+    ev = collect(guide, "sc2", message="hi", state=start(guide, LOAN))
+    assert "applies" not in next(e["value"] for e in ev if e.get("name") == "suggestions")
+
+
+def test_dependent_field_is_deferred(guide, model):
+    v, _ = pause(guide, model, "d1", "propose_changes",
+                 {"changes": [{"name": "loan_purpose", "value": "Used car"}, {"name": "loan_type", "value": "auto"}]})
+    names = [c["name"] for c in v["changes"]]
+    assert names == ["loan_type", "loan_purpose"]          # the deferred row comes last
+    later = v["changes"][1]
+    assert later["deferred"] is True and later["value"] is None and later["lookup"] == "Used car"
+    assert later["after"] == ["loan_type"] and later["display"] == "Used car" and later["shape"]
+
+    model.script = [say("", ("t2", "propose_changes", {"changes": [{"name": "loan_purpose", "value": "Used car"}]})),
+                    say("The purpose opens after the loan type.")]
+    ev = collect(guide, "d2", message="used car", state=start(guide, LOAN))
+    assert interrupt_value(ev) is None                      # nothing to wait for: an error, as before
+    assert "loan_purpose" in result(model, "t2")
+
+
+def test_card_keeps_its_lead_sentence(guide, model):
+    model.script = [say("Here are the first fields.", ("t1", "propose_changes",
+                                                       {"changes": [{"name": "first_name", "value": "Anna"}]}))]
+    ev = collect(guide, "lead1", message="I am Anna", state=start(guide, LOAN))
+    shown = "".join(e.get("delta", "") for e in ev if e["type"] == "TEXT_MESSAGE_CONTENT")
+    assert shown == "Here are the first fields." and interrupt_value(ev) is not None
+
+    model.script = [say("Need field names.", ("t2", "get_outline", {})), say("Hello.")]
+    ev = collect(guide, "lead2", message="hi", state=start(guide, LOAN))
+    shown = "".join(e.get("delta", "") for e in ev if e["type"] == "TEXT_MESSAGE_CONTENT")
+    assert "Need field names" not in shown                     # other tools: still an internal note

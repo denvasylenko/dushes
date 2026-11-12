@@ -1,0 +1,55 @@
+<p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/layout.py" title="backend/formguide/form/layout.py">layout.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/overlay.py" title="backend/formguide/form/overlay.py">overlay.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/render.py" title="backend/formguide/form/render.py">render.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/form/search.py" title="backend/formguide/form/search.py">search.py</a> <a href="../../specifications/agent-context/" title="openspec/specs/agent-context/spec.md">spec.md</a></p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 330" role="img" aria-label="A model request: the frozen system prompt, history with memory, and the current message with its form_context block; about 1 thousand tokens against 16 thousand for the config.">
+            <rect class="soft" x="20" y="20" width="420" height="78" rx="8"/>
+            <text x="36" y="44" class="t-b">System prompt · frozen per thread</text>
+            <text x="36" y="64" class="t-s">persona · working rules · rules from documents</text>
+            <text x="36" y="82" class="t-s">filling hints · skills (name + description)</text>
+            <rect class="soft" x="20" y="110" width="420" height="58" rx="8"/>
+            <text x="36" y="134" class="t-b">History</text>
+            <text x="36" y="154" class="t-s">conversation memory (after compaction) + recent turns</text>
+            <rect class="key" x="20" y="180" width="420" height="132" rx="8"/>
+            <text x="36" y="204" class="t-b">Current message</text>
+            <text x="36" y="226" class="t-m">&lt;updated_instructions&gt;   only if knowledge changed</text>
+            <text x="36" y="246" class="t-m">&lt;form_context&gt; NOW · FORM · FOCUS · CHANGES</text>
+            <text x="36" y="266" class="t-m">the user’s text</text>
+            <text x="36" y="286" class="t-m">[attachment att_… — read it with a tool]</text>
+
+            <text x="490" y="44" class="t-b">Tokens per turn, loan form</text>
+            <text x="490" y="78" class="t-s">raw config</text>
+            <rect x="590" y="64" width="250" height="18" rx="3" style="fill: var(--line)"/>
+            <text x="840" y="100" text-anchor="end" class="t-m">≈16 700</text>
+            <text x="490" y="132" class="t-s">form_context</text>
+            <rect x="590" y="118" width="16" height="18" rx="3" style="fill: var(--accent)"/>
+            <text x="614" y="132" class="t-m">≈1 000</text>
+            <text x="490" y="176" class="t-s">barbershop</text>
+            <rect x="590" y="162" width="7" height="18" rx="3" style="fill: var(--accent)"/>
+            <text x="605" y="176" class="t-m">≈430</text>
+            <text x="490" y="226" class="t-s">Size barely depends on the form:</text>
+            <text x="490" y="244" class="t-s">only the section on screen is expanded,</text>
+            <text x="490" y="262" class="t-s">deeper via get_outline / get_fields,</text>
+            <text x="490" y="280" class="t-s">search by meaning via search_fields.</text>
+          </svg>
+        </div>
+        <figcaption>Bars to scale: the loan form’s context block is about 16 times smaller than the config the backend sends.</figcaption>
+      </figure>
+      <h2>An example context block</h2>
+<pre><code>NOW (user's local time): 2026-11-11 Wednesday 12:25
+FORM "Loan application" · config v4 · fields visible 87/221 · required filled 3/55 · errors 0
+1 [Tabs main]  req 3/55 ▶
+  1.3 [Tab tab_employment] "Employment & income"  req 1/10 ▶
+    1.3.2 [Accordion acc_employer] "Employer"  req 0/6 ▶ open [FOCUS]
+    1.3.3 [Accordion acc_business] "Sole proprietor" — hidden (usually appears when employment_type = Sole proprietor (seen 3x))
+  1.8 [Tab tab_documents] "Documents & consents" ⊘ disabled, 5 required inside (cause unknown; GUESS: …)
+FOCUS 1.3.2 [Accordion acc_employer] "Employer" · cursor in field employer_name
+1.3.2.2 employer_inn Input* "Company tax ID" = ∅  ℹ 10 digits, usually in the employment contract
+CHANGES v3 → v4:
+user: loan_type ∅ → "Car loan" (id=auto)
+form reacted:
+  + appeared tab_collateral "Collateral" (5 required)
+  ⊘→✓ became available loan_purpose "Loan purpose"</code></pre>
+      <div class="grid2">
+        <div class="note"><h3>Flags are inherited</h3><p>A field inside a hidden or disabled container is hidden or disabled too. Progress counts only fields that can be filled.</p></div>
+        <div class="note"><h3>Dependencies by observation</h3><p>The config never says what a field depends on. The agent records what changed after a single-field edit and shows it as a “usually appears when…” hint.</p></div>
+      </div>

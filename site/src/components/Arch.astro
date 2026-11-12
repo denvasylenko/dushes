@@ -1,0 +1,13 @@
+---
+/** A concept page: the headline under the title, then the page's HTML fragment (diagrams, notes, tables). */
+import '../styles/arch.css';
+interface Props { headline: string; fragment: string }
+const { headline, fragment } = Astro.props;
+const files = import.meta.glob('../fragments/*.html', { query: '?raw', eager: true, import: 'default' }) as Record<string, string>;
+const html = files[`../fragments/${fragment}.html`];
+if (html === undefined) throw new Error(`Arch: no fragments/${fragment}.html`);
+---
+<div class="arch">
+  <p class="arch-headline">{headline}</p>
+  <Fragment set:html={html} />
+</div>

@@ -25,7 +25,7 @@ _SPEC_KEYS = {"role", "value", "option_keys", "options_prop", "true", "false", "
 
 @dataclass(frozen=True)
 class FieldSpec:
-    """How one field component stores its value (see docs/ui-components.md).
+    """How one field component stores its value (see "Build the form UI" in the docs site: site/src/content/docs/guides/form-ui.md).
 
     role          one of FIELD_ROLES
     value         select/radio: option | id | name; multiselect: options | ids | names; number: number | string
@@ -93,7 +93,8 @@ class ComponentMap:
         "Tabs": "tabs", "Tab": "tab", "Accordion": "accordion", "Section": "section", "Form": "form"})
     fields: dict[str, Any] = field(default_factory=lambda: {
         "Input": "text", "NumberInput": "number", "TextArea": "text", "DatePicker": "date",
-        "Dropdown": "select", "Checkbox": "bool", "FileUpload": "file"})
+        "Dropdown": "select", "RadioGroup": "radio", "MultiSelect": "multiselect", "Checkbox": "bool",
+        "FileUpload": "file"})
 
     def __post_init__(self) -> None:
         specs = {tag: FieldSpec.parse(tag, raw) for tag, raw in self.fields.items()}

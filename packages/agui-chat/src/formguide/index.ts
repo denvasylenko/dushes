@@ -7,9 +7,14 @@
  *     applyChanges: (changes) => formBackend.apply(changes),     // -> the new config
  *   }))
  */
-import type { AguiEvent, ChatApi, Interrupt, Plugin, Restored, RunAgentInput } from '../types'
-import { askCard, confirmCard, fieldCard, uploadCard } from './cards'
+import type { AguiEvent, ChatApi, Interrupt, Plugin, RendererContext, Restored, RunAgentInput } from '../types'
+import { appliedLine, askCard, confirmCard, fieldCard, undoLine, uploadCard } from './cards'
+import { CAPABILITIES, receiptEl, reviewCard, sourcesEl } from './pickers'
 import { FG_STRINGS, TOOL_LABELS } from './i18n'
+import { lookAt } from './hint'
+
+export { schemaForm, normOption } from './schema'
+export type { FormSchema, FieldSchema, SectionSchema, FormAccess, SchemaBridge, Option } from './schema'
 
 export interface FormState { config: { props?: Record<string, any>; state?: Record<string, unknown> }; jsx_hash: string; form_id?: string; ui?: unknown; [k: string]: unknown } // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -34,16 +39,23 @@ export interface FormguideOptions {
   undoSeconds?: number
   /** Show "Preparing a question" etc. as steps although the card itself follows. Default false. */
   cardSteps?: boolean
+  /** A live line under a range question, e.g. the monthly payment for a term: (field, value) -> text. */
+  preview?: (field: string, value: number) => string | Promise<string>
+  /** Free time slots for a time question: (field, date or null) -> ["10:00", ...]. */
+  getSlots?: (field: string, date: string | null) => string[] | Promise<string[]>
+  /** Address suggestions as the user types: (field, query) -> [{label, detail?, value?}]. */
+  lookupAddress?: (field: string, query: string) => { label: string; detail?: string; value?: unknown }[] | Promise<{ label: string; detail?: string; value?: unknown }[]>
+  /** The thumbs rating after a confirmed action; default: POST {base}/feedback. */
+  onFeedback?: (value: 1 | -1) => void | Promise<void>
 }
 
 export interface Ctx extends FormguideOptions { base: (chat: ChatApi) => string; flags: FieldCardFlags }
 
-/** The default "look here" without a host callback: scroll to [data-name=target] and flash it. */
+/** The default "look here" without a host callback: scroll to [data-name=target] (or an input with that
+ * name), focus it, ring it and show the agent's hint under it. Tabs and accordions are the host's: pass
+ * onDirective to open them first. */
 export function defaultDirective(d: Directive): void {
-  const el = document.querySelector<HTMLElement>(`[data-name="${CSS.escape(d.target)}"]`)
-  if (!el) return
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  el.animate?.([{ boxShadow: '0 0 0 0 rgba(0,113,227,.55)' }, { boxShadow: '0 0 0 8px rgba(0,113,227,0)' }], { duration: 900, iterations: 2 })
+  lookAt(d.target, d.hint)
 }
 
 /** A pending card or question from GET /threads/{id} (a transcript entry) -> an interrupt payload. */
@@ -51,7 +63,7 @@ export function entryToInterrupt(e: Record<string, any> | null | undefined): Int
   if (!e) return null
   const { id, kind, ts: _ts, status: _st, ...rest } = e
   void _ts; void _st
-  const type = { card: 'set_fields', question: 'ask', upload: 'upload', confirm: 'confirm' }[kind as string]
+  const type = { card: 'set_fields', question: 'ask', upload: 'upload', confirm: 'confirm', review: 'review' }[kind as string]
   return type ? { type, card_id: id, ...rest } : null
 }
 
@@ -59,6 +71,7 @@ export function formguide(opts: FormguideOptions): Plugin {
   const flags: FieldCardFlags = { select: true, diff: true, reason: true, edit: true, jump: true, undo: true, ...(opts.fieldCard ?? {}) }
   const ctx: Ctx = {
     ...opts, flags,
+    onDirective: opts.onDirective ?? defaultDirective,   // cards show the field they filled, with or without a host callback
     base: (chat) => (opts.baseUrl ?? chat.options.url.replace(/\/run\/?$/, '')).replace(/\/$/, ''),
   }
   const labels: Record<string, Record<string, string>> = {}
@@ -74,11 +87,26 @@ export function formguide(opts: FormguideOptions): Plugin {
       set_fields: (it, c) => fieldCard(it, c, ctx),
       ask: (it, c) => askCard(it, c, ctx),
       upload: (it, c) => uploadCard(it, c, ctx),
-      confirm: (it, c) => confirmCard(it, c),
+      confirm: (it, c) => confirmCard(it, c, ctx),
+      review: (it, c) => reviewCard(it, c, ctx, (line, fields) => undoLine(line, c, ctx, fields)),
+    },
+    /** An action chip: fill its fields at once (Undo on the line). A chip whose fields changed since is out of date. */
+    async applySuggestion(raw: unknown[], chat: ChatApi) {
+      const changes = raw as { name: string; label?: string; value: unknown; previous?: unknown }[]
+      const now = (await opts.getState()).config?.state ?? {}
+      const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+      if (changes.some((x) => x.name in now && !same(now[x.name], x.previous))) throw new Error(chat.t('stale'))
+      await opts.applyChanges(Object.fromEntries(changes.map((x) => [x.name, x.value])))
+      const last = changes[changes.length - 1] as { name: string; reveal?: Directive['reveal'] }
+      ctx.onDirective!({ type: 'focus', target: last.name, reveal: last.reveal ?? [], hint: '' })   // show what the chip filled
+      const c = { chat, t: chat.t.bind(chat), flags: {}, resolve: () => {} } as unknown as RendererContext
+      return appliedLine(c, ctx, changes.map((x) => ({ name: x.name, label: x.label ?? x.name, previous: x.previous ?? null })))
     },
     async beforeRun(input: RunAgentInput, chat: ChatApi) {
       const st = await opts.getState()
       input.state = chat.attachments.length ? { ...st, attachments: chat.attachments } : st
+      // what this client can draw: the server sends only these card variants
+      input.forwardedProps = { ...(input.forwardedProps ?? {}), capabilities: CAPABILITIES }
     },
     attach: {
       accept: '.pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md',
@@ -91,9 +119,23 @@ export function formguide(opts: FormguideOptions): Plugin {
         return r.json()
       },
     },
-    onEvent(ev: AguiEvent) {
-      if (ev.type === 'CUSTOM' && ev.name === 'ui_directive') {
-        (opts.onDirective ?? defaultDirective)(ev.value as Directive)
+    onEvent(ev: AguiEvent, chat: ChatApi) {
+      if (ev.type !== 'CUSTOM') return false
+      if (ev.name === 'ui_directive') {
+        ctx.onDirective!(ev.value as Directive)
+        return true
+      }
+      if (ev.name === 'sources') {   // chips under the answer: where it came from
+        const items = (ev.value as { items?: { title: string; section?: string; quote?: string }[] })?.items ?? []
+        if (items.length) chat.append(sourcesEl(items))
+        return true
+      }
+      if (ev.name === 'receipt') {   // the confirmed card turns into its receipt
+        const r = ev.value as { card_id?: string; title?: string; number?: string; eta?: string }
+        const card = chat.host.shadowRoot?.querySelector(`[data-card-id="${CSS.escape(String(r?.card_id ?? ''))}"]`)
+        const line = card?.querySelector('.ok-line')
+        const el = receiptEl({ t: chat.t.bind(chat) }, r ?? {})
+        if (line) line.replaceWith(el); else chat.append(el)
         return true
       }
       return false

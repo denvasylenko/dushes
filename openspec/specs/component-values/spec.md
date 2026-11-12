@@ -114,3 +114,10 @@ Each warning SHALL name the field and suggest the field spec key to set.
 #### Scenario: Wrong value shape
 - **WHEN** a `Dropdown` with the default spec stores `"auto"`, the options are objects with `id` and `name`, and `"auto"` is not an id
 - **THEN** the warning names the field and says the value matches no option
+
+### Requirement: Default tags for radio groups and multi-selects
+The default component map SHALL include `RadioGroup` (radio) and `MultiSelect` (multi-select), besides the existing default tags.
+
+#### Scenario: A generated skeleton
+- **WHEN** a JSX skeleton uses `<RadioGroup name="gender"/>` and `<MultiSelect name="channels"/>` without a `components` configuration
+- **THEN** the layout reads them as a radio group and a multi-select, with no unknown-tag warning

@@ -1,0 +1,91 @@
+---
+title: 'Value formats'
+description: 'Describe how your components store values, so the agent reads and writes exactly your format.'
+---
+import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## 1.5 Your components store values differently? Describe them
+
+Every team builds components its own way. One dropdown stores the whole option, another only `"auto"`. One library calls the choices `options: [{id, name}]`, another `items: [{value, label}]`. A toggle may store `"Y"`/`"N"`, a date may be `"31.05.1990"`. Tell the agent **once per component tag** in `formguide.yaml`, and it will:
+
+- **read** your form correctly: what is filled, which option is chosen, what is out of the list;
+- **write** every card and prefill value in exactly your format, so you send it to your backend unchanged.
+
+```yaml
+components:
+  fields:
+    Input: text                                              # a bare role: default format
+    Select:      {role: select, value: id, options_prop: items}   # stores "auto"; choices in props.items
+    RadioGroup:  {role: radio, value: id}                    # one choice, shown as radio buttons
+    MultiSelect: {role: multiselect, value: ids}             # stores ["sms", "email"]
+    Toggle:      {role: bool, true: "Y", false: "N"}         # stores "Y" / "N"
+    Calendar:    {role: date, format: "%d.%m.%Y"}            # stores "31.05.1990"
+    Amount:      {role: number, value: string}               # stores "250000" instead of 250000
+    Phone:       {role: text, codec: "my_app.codecs:PhoneCodec"}   # anything else: your own class
+```
+
+What each key means:
+
+| Key | For roles | Values | Default |
+|---|---|---|---|
+| `role` | all | `text`, `number`, `date`, `select`, `radio`, `multiselect`, `bool`, `file` | required |
+| `value` | select, radio | `option`: the whole option object as your props give it; `id`: only its id; `name`: only its label | `option` |
+| `value` | multiselect | `options`, `ids`, `names`: a list of the same | `options` |
+| `value` | number | `number` (`250000`) or `string` (`"250000"`) | `number` |
+| `options_prop` | select, radio, multiselect | the props key that holds the choices | `options` |
+| `option_keys` | select, radio, multiselect | `{id: <key>, name: <key>}` of an option object | detected, see below |
+| `true`, `false` | bool | what the component stores when checked / unchecked | `true`, `false` |
+| `format` | date | `iso`, a `strftime` pattern such as `"%d.%m.%Y"` or `"%m/%d/%Y"`, or `epoch_ms` | `iso` |
+| `codec` | all | `"module:Class"`: a class with `decode(raw, props)` and/or `encode(value, props)` | none |
+
+**Option keys are detected for you.** If your options look like any of these, you do not need `option_keys`:
+
+| Your options | Read as |
+|---|---|
+| `[{"id": "m", "name": "Male"}]` | id `m`, label `Male` |
+| `[{"value": "m", "label": "Male"}]` (most UI kits) | id `m`, label `Male` |
+| `[{"key": ..., "label": ...}]`, `[{"value": ..., "text": ...}]`, `[{"code": ..., "name" or "title": ...}]` | the same |
+| `["Morning", "Evening"]` | the text is both id and label |
+| `{"m": "Male", "f": "Female"}` | id → label |
+
+**Reading is forgiving, writing is exact.** When reading, the agent understands a choice stored as an object, an id or a label. When writing, it uses exactly the `value` you configured. With `value: option` it writes back **your own option object**, extra keys included.
+
+**A codec** handles anything the keys cannot describe, for example a phone stored as `{country, number}`:
+
+```python
+class PhoneCodec:
+    def decode(self, raw, props):      # your stored value -> what the agent reasons about (here: a string)
+        return raw["country"] + raw["number"] if raw else None
+    def encode(self, value, props):    # the agent's value -> what your component stores
+        return {"country": value[:2], "number": value[2:]}
+```
+
+What the agent reasons about, per role: text a string, number a number, date `"YYYY-MM-DD"`, select/radio `{id, name}`, multiselect a list of `{id, name}`, bool `true`/`false`. A codec that raises never breaks the chat: a value it cannot read is shown to the agent as unreadable, and a value it cannot write is not proposed.
+
+**Check your setup before you start.** Send the form's initial config when you register it, and the agent tells you what it cannot read, and what to set:
+
+```http
+POST /agent/layouts
+{ "jsx": "...", "form_id": "loan_application", "config": { "props": {...}, "state": {...} } }
+
+-> "warnings": [
+  "loan_type <Select>: the value \"auto\" matches no option; if the component stores an id or a label, set value: id / name (multiselect: ids / names)",
+  "birth_date <Calendar>: cannot read the value \"05/31/1990\" as date; set format (a strftime pattern or epoch_ms)",
+  "gender <Select>: the option objects in props.options have no recognisable id/label keys (...); set option_keys"
+]
+```
+
+Or offline, from the command line:
+
+```bash
+formguide check --config formguide.yaml --jsx form.jsx --form-config sample-config.json
+```
+
+It prints every tag with its resolved format, then the warnings, and exits with an error if there are any. The demo frontend sends the config on registration and prints the warnings in the browser console.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Build the components" href="../components/" />
+  <LinkCard title="Configuration keys" href="../../reference/configuration/#field-specs-how-each-component-stores-its-value" />
+</CardGrid>

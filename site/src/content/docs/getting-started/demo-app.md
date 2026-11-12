@@ -1,0 +1,38 @@
+---
+title: Run the demo app
+description: Two demo forms, a manager page for documents, attachments and dictation, on your machine.
+---
+
+The repository ships a full example integration: a mock form backend, a FastAPI app, a YAML configuration, skills and samples. It needs an API key; the [live demo on the home page](../../) does not.
+
+```bash
+cd packages/agui-chat && npm install && npm run build && cd ../..   # the chat widget
+cd frontend && npm install && npm run build && cd ..                # the demo UI
+cd backend && ANTHROPIC_API_KEY=... uv run uvicorn demo.app:app --port 8000 --reload --reload-dir formguide --reload-dir demo
+```
+
+Open http://localhost:8000. Two demo forms with nothing in common:
+
+| Form | What it shows |
+| --- | --- |
+| `loan_application` | 221 fields, 8 tabs, nested up to 4 levels: search, "look here", prefill, dependent dropdowns |
+| `barber_booking` | A 4-step wizard: steps that unlock, question cards, a confirmation before booking |
+
+- **Manager: documents** uploads business documents for a form (`backend/demo/samples/kb/` has examples), then compiles them into the form's rules.
+- **Attach** (the paper clip) sends a user document; `backend/demo/samples/attachments/` has scans and payslips.
+- **Dictate** (the microphone) uses the browser's speech recognition (Chrome, Edge, Safari). The language select above the chat sets the chat's language and dictation.
+- http://localhost:8000/examples/widget/ shows the widget from one script tag, with a panel that switches every option live.
+
+`--reload` watches `.py` files only: after editing `formguide.yaml`, touch a `.py` file or restart.
+
+## Tests
+
+```bash
+cd backend && uv run pytest -q                                   # offline, scripted model, no keys
+cd backend && uv run python scripts/chat_harness.py              # live, needs the demo server with a key
+cd backend && uv run python scripts/chat_harness.py --form barber_booking
+cd packages/agui-chat && npm test                                # the chat widget (Vitest)
+cd backend && uv run python scripts/bench.py --repeat 3          # live speed benchmark
+```
+
+The benchmark and its baseline are described in [Speed and tracing](../../backend/observability/).

@@ -1,0 +1,90 @@
+---
+title: Quickstart
+description: A running agent and a chat next to your form in five minutes. Backend first, then the page.
+---
+import { Steps, Aside, Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+## Backend
+
+<Steps>
+
+1. **Install and scaffold.**
+
+   ```bash
+   pip install "formguide[all] @ git+https://github.com/denvasylenko/dushes.git#subdirectory=backend"
+   formguide init my-agent          # formguide.yaml, domain_packs/my_form.json, skills/example_skill/
+   ```
+
+2. **Pick a model.** It is the only required setting.
+
+   <Tabs syncKey="provider">
+     <TabItem label="Anthropic">
+       ```yaml title="my-agent/formguide.yaml"
+       model: "anthropic:claude-opus-5-5"
+       ```
+     </TabItem>
+     <TabItem label="OpenAI">
+       ```yaml title="my-agent/formguide.yaml"
+       model: "openai:gpt-5"
+       ```
+     </TabItem>
+     <TabItem label="Azure OpenAI">
+       ```yaml title="my-agent/formguide.yaml"
+       models:
+         agent: {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, api_version: "2025-04-01-preview",
+                 azure_endpoint: "${AZURE_OPENAI_ENDPOINT}", api_key: "${AZURE_OPENAI_API_KEY}"}
+       ```
+     </TabItem>
+   </Tabs>
+
+3. **Check and serve.**
+
+   ```bash
+   formguide check --config my-agent/formguide.yaml          # no model calls; names a missing key
+   ANTHROPIC_API_KEY=... formguide serve --config my-agent/formguide.yaml --cors "*"
+   ```
+
+   The agent is at `POST http://localhost:8000/agent/run`.
+
+</Steps>
+
+## Frontend
+
+<Steps>
+
+1. **Register your form once.** Send its JSX skeleton; keep the `jsx_hash`.
+
+   ```ts
+   const { jsx_hash } = await fetch('http://localhost:8000/agent/layouts', {
+     method: 'POST', headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({ jsx: '<Form name="my_form"><Input name="full_name" /></Form>', form_id: 'my_form' }),
+   }).then((r) => r.json())
+   ```
+
+2. **Add the chat** and give it two functions: the current form, and how to apply accepted values.
+
+   ```html
+   <agui-chat url="http://localhost:8000/agent/run"></agui-chat>
+   <script src="agui-chat.iife.js"></script>
+   <script>
+     document.querySelector('agui-chat').use(AguiChat.formguide({
+       getState: () => ({ config: myForm.config, jsx_hash, form_id: 'my_form' }),
+       applyChanges: (changes) => myForm.apply(changes),     // returns the new config
+     }))
+   </script>
+   ```
+
+3. **Ask** "Where do I start?" The agent reads the form, points at fields and proposes values on cards.
+
+</Steps>
+
+`config` is `{props, state}`: each element's settings and each field's value. What exactly goes in it: [Send the form with every message](../../form/state/).
+
+<Aside type="caution">The endpoints authenticate nobody: see [Deploy and secure](../../backend/deploy/) before going live.</Aside>
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Configuration" description="Per-role models, documents, skills, durable history." href="../../backend/configuration/" />
+  <LinkCard title="Choose a client" description="React, react-hook-form, CopilotKit, your own UI." href="../../frontend/overview/" />
+</CardGrid>

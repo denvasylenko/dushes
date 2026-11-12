@@ -1,12 +1,38 @@
 /** formguide's cards: field changes, questions, upload requests and confirmations. */
-import { h } from '../dom'
+import { h, mdInline } from '../dom'
 import { shrinkImage } from '../image'
 import type { ChatApi, Interrupt, RendererContext } from '../types'
 import type { Ctx, Directive, FieldCardFlags } from './index'
+import { feedbackEl, fieldsView, formatValue, optionsView, typedView, type Opt } from './pickers'
 
 interface Change {
   name: string; label: string; value: unknown; display: string; reason?: string
   previous?: unknown; previous_display?: string | null; reveal?: Directive['reveal']
+  /** a dependent dropdown: applied after the other rows, its option found by `lookup` */
+  deferred?: boolean; lookup?: string; after?: string[]; shape?: 'option' | 'id' | 'name'
+  /** the field's role: values are formatted by it */
+  kind?: string
+  /** a consent the user ticks: never pre-ticked */
+  consent?: boolean; doc?: { title?: string; text?: string; url?: string }; required?: boolean
+  /** a soft rule from the server: shown in the row, with Why */
+  issue?: { severity?: string; message: string; why?: string }
+  /** low: a value read from a document that the user should check */
+  confidence?: string
+}
+
+/** Large plain numbers in the chat's language (1500000 -> 1,500,000); years and short numbers stay as they are. */
+export function readable(s: string | null | undefined, lang: string): string {
+  const v = String(s ?? '')
+  if (!/^-?\d{5,}(\.\d+)?$/.test(v)) return v
+  try { return new Intl.NumberFormat(lang || undefined).format(Number(v)) } catch { return v }
+}
+
+/** The option for a deferred row in the refreshed form, in the form's own shape; null when it is not there. */
+function lookupOption(ch: Change, props: Record<string, any> | undefined): unknown { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const want = String(ch.lookup ?? ch.display ?? '').trim().toLowerCase()
+  const o = (fieldOptions(props) ?? []).find((x) => String(x.id).toLowerCase() === want || x.label.toLowerCase() === want)
+  if (!o) return null
+  return ch.shape === 'id' ? o.id : ch.shape === 'name' ? o.label : o.raw
 }
 
 const KEY_PAIRS: [string, string][] = [['id', 'name'], ['value', 'label'], ['key', 'label'], ['value', 'text'], ['code', 'name'], ['code', 'title'], ['id', 'label']]
@@ -85,6 +111,17 @@ function undoButton(line: HTMLElement, c: RendererContext, ctx: Ctx, fields: { n
   setTimeout(() => undo.remove(), (ctx.undoSeconds ?? 20) * 1000)
 }
 
+/** "✓ Filled in · Make, Year" with Undo: the line an applied card or action chip leaves. */
+export function appliedLine(c: RendererContext, ctx: Ctx, fields: { name: string; label: string; previous: unknown }[]): HTMLElement {
+  const line = h('div', { class: 'ok-line' }, h('i', null, '\u2713'),
+    h('span', null, `${c.t('filled')} \u00b7 ${fields.map((f) => f.label).join(', ')}`))
+  undoButton(line, c, ctx, fields)
+  return line
+}
+
+/** Undo on any result line (used by the review card's fixes). */
+export const undoLine = undoButton
+
 const whenIdle = (chat: ChatApi): Promise<void> => new Promise((ok) => {
   if (!chat.busy) return ok()
   const f = () => { chat.host.removeEventListener('agui:run-end', f); chat.host.removeEventListener('agui:error', f); ok() }
@@ -97,36 +134,64 @@ const whenIdle = (chat: ChatApi): Promise<void> => new Promise((ok) => {
 export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElement {
   const flags: FieldCardFlags = { ...ctx.flags, ...(c.flags as Partial<FieldCardFlags>) }
   const changes: Change[] = it.changes ?? []
-  const keep = new Set(changes.map((x) => x.name))
+  const keep = new Set(changes.filter((x) => !x.consent).map((x) => x.name))   // consents start unticked
   const edits = new Map<string, [unknown, string]>()
   const many = changes.length > 1
   const err = h('div', { class: 'muted', role: 'alert' })
   const primary = h('button', { class: 'btn pri', type: 'button' }, fillLabel(c, changes.length)) as HTMLButtonElement
+  const consents = changes.filter((x) => x.consent)
   const sync = () => {
-    primary.disabled = keep.size === 0
-    primary.textContent = keep.size === changes.length ? fillLabel(c, keep.size) : c.t('fillN', { n: keep.size, total: changes.length })
+    const missing = consents.filter((x) => x.required !== false && !keep.has(x.name)).length
+    primary.disabled = keep.size === 0 || missing > 0
+    primary.textContent = missing ? c.t('tickMore', { n: missing })
+      : consents.length === changes.length ? c.t('agree')
+        : keep.size === changes.length ? fillLabel(c, keep.size) : c.t('fillN', { n: keep.size, total: changes.length })
   }
+  // one reason for every row: said once under the title
+  const reasons = new Set(changes.map((x) => (x.reason ?? '').trim()))
+  const shared = changes.length > 1 && reasons.size === 1 ? [...reasons][0] : ''
+  const source = it.source as { kind?: string; title?: string; attachment_id?: string; found?: number } | undefined
   let props: Record<string, any> = {} // eslint-disable-line @typescript-eslint/no-explicit-any
   void Promise.resolve(ctx.getState()).then((s) => { props = s.config?.props ?? {} }).catch(() => {})
 
   const rows = changes.map((ch) => {
-    const valueEl = h('b', null, ch.display)
-    const row = h('div', { class: 'row' })
-    const check = flags.select && many
-      ? h('input', { type: 'checkbox', checked: true, 'aria-label': ch.label, onchange: (e: Event) => {
+    const lang = c.chat.lang
+    const valueEl = h('b', null, ch.consent ? '' : formatValue(ch.display, ch.kind, lang))
+    const row = h('label', { class: `row${ch.consent ? ' consent' : ''}` })   // the whole row toggles its checkbox
+    const check = (flags.select && many) || ch.consent
+      ? h('input', { type: 'checkbox', checked: !ch.consent, 'aria-label': ch.label, onchange: (e: Event) => {
           if ((e.target as HTMLInputElement).checked) keep.add(ch.name); else keep.delete(ch.name)
           row.classList.toggle('off', !keep.has(ch.name))
           sync()
         } })
       : null
     const prev = flags.diff && ch.previous_display && ch.previous_display !== ch.display
-      ? h('s', { class: 'muted was' }, ch.previous_display) : null
+      ? h('s', { class: 'muted was' }, formatValue(ch.previous_display, ch.kind, lang)) : null
+    const afterLabels = (ch.after ?? []).map((n) => changes.find((x) => x.name === n)?.label ?? n).join(', ')
+    const docText = ch.doc?.text ? h('div', { class: 'muted doc', hidden: true }, ch.doc.text) : null
+    const why = ch.issue?.why ? h('div', { class: 'muted why', hidden: true }, ch.issue.why) : null
     const line = h('div', { class: 'row-main' },
-      h('div', { class: 'muted row-label' }, ch.label),
-      h('div', null, prev, valueEl),
-      flags.reason && ch.reason ? h('div', { class: 'muted' }, ch.reason) : null)
+      ch.consent ? h('div', null, ch.label, ch.required === false ? h('span', { class: 'muted' }, ` \u00b7 ${c.t('optional')}`) : null)
+        : h('div', { class: 'muted row-label' }, ch.label),
+      ch.consent ? null : h('div', null, prev, valueEl,
+        ch.confidence === 'low' ? h('span', { class: 'tag warn' }, c.t('check')) : null,
+        ch.deferred && afterLabels ? h('span', { class: 'muted after' }, ` \u00b7 ${c.t('after', { field: afterLabels })}`) : null),
+      ch.issue ? h('div', { class: `issue-line ${ch.issue.severity === 'error' ? 'error' : 'warning'}` }, ch.issue.message,
+        why ? h('button', { class: 'btn link', type: 'button', 'data-keep': true, onclick: (e: Event) => { e.preventDefault(); why.hidden = !why.hidden } }, c.t('why')) : null) : null,
+      why, docText,
+      flags.reason && !shared && ch.reason && ch.reason.trim().toLowerCase() !== String(ch.display).trim().toLowerCase()
+        ? h('div', { class: 'muted' }, ch.reason) : null)
     const tools = h('div', { class: 'row-tools' })
-    if (flags.edit) {
+    if (ch.doc && (ch.doc.text || ch.doc.url)) {
+      tools.appendChild(ch.doc.text
+        ? h('button', { class: 'btn link', type: 'button', 'data-keep': true, onclick: (e: Event) => {
+            e.preventDefault()
+            docText!.hidden = !docText!.hidden
+            ;(e.target as HTMLElement).textContent = docText!.hidden ? c.t('read') : c.t('hide')
+          } }, c.t('read'))
+        : h('a', { class: 'btn link', href: ch.doc.url, target: '_blank', rel: 'noopener noreferrer', 'data-keep': true }, c.t('read')))
+    }
+    if (flags.edit && !ch.deferred && !ch.consent) {
       tools.appendChild(h('button', { class: 'btn link', type: 'button', onclick: () => {
         const ed = editor(ch, props[ch.name])
         const done = h('button', { class: 'btn sec', type: 'button', onclick: () => {
@@ -142,24 +207,39 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
         ed.el.focus()
       } }, c.t('edit')))
     }
-    if (flags.jump && ch.reveal) {
+    if (flags.jump && ch.reveal && !ch.consent) {
       tools.appendChild(h('button', { class: 'btn link', type: 'button', 'data-keep': true, onclick: () =>
         (ctx.onDirective ?? (() => {}))({ type: 'focus', target: ch.name, reveal: ch.reveal ?? [], hint: '' }) }, c.t('jump')))
     }
     row.append(...[check, line, tools].filter(Boolean) as HTMLElement[])
+    row.dataset.name = ch.name
     return row
   })
 
   const acts = h('div', { class: 'acts' }, primary,
     h('button', { class: 'btn sec', type: 'button', onclick: () => { status(false, []); c.resolve({ accepted: false }) } }, c.t('reject')))
-  const card = h('div', null, h('div', { class: 'card-t' }, c.t('fillTitle')), ...rows, err, acts)
+  const head = source?.kind === 'document'
+    ? h('div', { class: 'doc-head' },
+        source.attachment_id ? h('img', { class: 'thumb', alt: '', src: `${ctx.base(c.chat)}/attachments/${encodeURIComponent(source.attachment_id)}?thread_id=${encodeURIComponent(c.chat.threadId)}`,
+          onerror: (e: Event) => { (e.target as HTMLElement).replaceWith(h('span', { class: 'thumb', 'aria-hidden': 'true' })) } }) : h('span', { class: 'thumb', 'aria-hidden': 'true' }),
+        h('div', null, h('b', null, source.title ?? ''),
+          h('div', { class: 'muted' }, [c.t('foundN', { n: source.found ?? changes.length }),
+            ...(changes.some((x) => x.confidence === 'low') ? [c.t('toCheck', { n: changes.filter((x) => x.confidence === 'low').length })] : [])].join(' \u00b7 '))))
+    : h('div', { class: 'card-t' }, consents.length === changes.length ? c.t('consentTitle') : c.t('fillTitle'))
+  const card = h('div', { class: 'fcard' }, head, shared && flags.reason ? h('div', { class: 'muted shared' }, shared) : null, ...rows, err, acts)
 
   const status = (ok: boolean, applied: Change[], partial = false) => {
-    const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '✓' : '✕'),
-      h('span', null, ok ? (partial ? c.t('partly') : c.t('filled')) : c.t('rejected')))
+    const names = applied.map((x) => x.label).join(', ')
+    const word = ok ? (partial ? c.t('partly') : c.t('filled')) : c.t('rejected')
+    const toggle = h('button', { class: 'fold', type: 'button', 'data-keep': true, 'aria-expanded': 'false', title: names || null, onclick: () => {
+      const open = card.classList.toggle('unfolded')
+      toggle.setAttribute('aria-expanded', String(open))
+    } }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, ok && names ? `${word} \u00b7 ${names}` : word))
+    const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, toggle)
     if (ok) undoButton(line, c, ctx, applied.map((x) => ({ name: x.name, label: x.label, previous: x.previous ?? null })))
     acts.replaceWith(line)
     card.querySelectorAll('.row .btn.link:not([data-keep])').forEach((b) => b.remove())   // no editing after the answer
+    card.classList.add('folded')   // the rows fold into the line; a click on it shows them again
   }
 
   primary.addEventListener('click', async () => {
@@ -167,19 +247,35 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
     if (!kept.length) return
     primary.disabled = true
     err.textContent = ''
-    const values = Object.fromEntries(kept.map((x) => [x.name, edits.has(x.name) ? edits.get(x.name)![0] : x.value]))
+    const now = kept.filter((x) => !x.deferred)
+    const values = Object.fromEntries(now.map((x) => [x.name, edits.has(x.name) ? edits.get(x.name)![0] : x.value]))
     try {
-      const config = await ctx.applyChanges(values)
-      const state = await ctx.getState()
-      const partial = kept.length < changes.length
+      let config = now.length ? await ctx.applyChanges(values) : (await ctx.getState()).config
+      let state = await ctx.getState()
+      for (const ch of kept.filter((x) => x.deferred)) {   // dependent dropdowns: their options exist now
+        const v = lookupOption(ch, state.config?.props?.[ch.name])
+        const row = rows.find((r) => r.dataset.name === ch.name)
+        if (v === null || v === undefined) {
+          keep.delete(ch.name)
+          row?.classList.add('off')
+          row?.querySelector('.row-main')?.appendChild(h('div', { class: 'muted' }, c.t('notAvailable')))
+          continue
+        }
+        config = await ctx.applyChanges({ [ch.name]: v })
+        state = await ctx.getState()
+      }
+      const applied = kept.filter((x) => keep.has(x.name))
+      if (!applied.length) throw new Error(c.t('notAvailable'))
+      const partial = applied.length < changes.length
       const edited = Object.fromEntries([...edits].filter(([k]) => keep.has(k)).map(([k, v]) => [k, v[0]]))
-      status(true, kept, partial)
-      c.resolve({ accepted: true, config, ui: state.ui, ...(partial ? { names: kept.map((x) => x.name) } : {}),
+      status(true, applied, partial)
+      c.resolve({ accepted: true, config, ui: state.ui, ...(partial ? { names: applied.map((x) => x.name) } : {}),
         ...(Object.keys(edited).length ? { edited } : {}) })
-      const last = kept[kept.length - 1]
+      const last = applied[applied.length - 1]
       if (last.reveal && ctx.onDirective) ctx.onDirective({ type: 'focus', target: last.name, reveal: last.reveal, hint: '' })
     } catch (e) {
-      err.textContent = e instanceof Error ? e.message : String(e)
+      err.textContent = c.t('applyFailed')
+      err.title = e instanceof Error ? e.message : String(e)
       primary.disabled = false
     }
   })
@@ -191,8 +287,11 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
 
 const INPUT: Record<string, string> = { date: 'date', time: 'time', datetime: 'datetime-local', number: 'number', text: 'text' }
 
+/** A question line with inline markdown (**bold** from the model). */
+const qText = (s: unknown): HTMLElement => { const el = h('div', { class: 'card-q' }); el.innerHTML = mdInline(String(s ?? '')); return el }
+
 export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLElement {
-  const options: { id: string; label: string; value?: unknown }[] = it.options ?? []
+  const options: Opt[] = it.options ?? []
   const multiple = !!it.multiple
   const applies = !!(it.applies && it.field && ctx)   // tapping an option fills the field (no second card)
   const picked = new Set<string>()
@@ -200,10 +299,36 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
   const answered = (labels: string, ok = true) => {   // the card shrinks to the question and the answer
     const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, labels))
     acts.replaceWith(line)
-    card.querySelector('.chips')?.remove()
+    card.querySelectorAll('.chips, .opts, .cmp, .strip, .range, .fields, .search, .note').forEach((x) => x.remove())
     text?.remove()
     err.remove()
     return line
+  }
+  /** Values that fill fields directly (a day, a slot, a range, several fields): applied with Undo, then resumed. */
+  const applyValues = async (values: Record<string, unknown>, labels: string, answer: Record<string, unknown>) => {
+    card.querySelectorAll<HTMLButtonElement>('.chip, .btn, .opt').forEach((b) => { b.disabled = true })
+    err.textContent = ''
+    try {
+      const prev = (await ctx!.getState()).config?.state ?? {}
+      const config = await ctx!.applyChanges(values)
+      const state = await ctx!.getState()
+      const line = answered(labels)
+      const names = Object.keys(values)
+      const label = (n: string) => (it.fields ?? []).find((f: { name: string }) => f.name === n)?.label ?? (n === it.field ? it.label : null) ?? n
+      undoButton(line, c, ctx!, names.map((n) => ({ name: n, label: label(n), previous: n === it.field ? it.previous ?? prev[n] ?? null : prev[n] ?? null })))
+      c.resolve({ ...answer, config, ui: state.ui })
+      ctx!.onDirective?.({ type: 'focus', target: names[names.length - 1], reveal: it.reveal ?? [], hint: '' })
+    } catch (e) {
+      card.querySelectorAll<HTMLButtonElement>('.chip, .btn, .opt').forEach((b) => { b.disabled = false })
+      err.textContent = c.t('applyFailed')
+      err.title = e instanceof Error ? e.message : String(e)
+    }
+  }
+  /** A typed answer from a richer control: fills the field when the card applies, else just answers. */
+  const commitTyped = (value: unknown, label: string) => {
+    if (applies) return void applyValues({ [it.field]: value }, label, { answer: { text: String(value) } })
+    answered(label)
+    c.resolve({ answer: { text: String(value) } })
   }
   const fill = async (ids: string[], labels: string) => {
     const chosen = ids.map((i) => options.find((o) => o.id === i)!)
@@ -216,6 +341,7 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
       const line = answered(labels)
       undoButton(line, c, ctx!, [{ name: it.field, label: it.label ?? it.field, previous: it.previous ?? null }])
       c.resolve({ answer: { ids }, config, ui: state.ui })
+      ctx!.onDirective?.({ type: 'focus', target: it.field, reveal: it.reveal ?? [], hint: '' })   // show the field it filled
     } catch (e) {
       card.querySelectorAll<HTMLButtonElement>('.chip, .btn').forEach((b) => { b.disabled = false })
       err.textContent = c.t('applyFailed')
@@ -228,18 +354,21 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
     answered(labels)
     c.resolve({ answer: { ...(ids.length ? { ids } : {}), ...(text ? { text } : {}) } })
   }
-  const chips = options.map((o, i) => {
+  const pick = (o: Opt, b: HTMLButtonElement) => {
+    if (!multiple) return send([o.id], '')
+    if (picked.has(o.id)) picked.delete(o.id); else picked.add(o.id)
+    b.classList.toggle('on', picked.has(o.id))
+    b.setAttribute('aria-pressed', String(picked.has(o.id)))
+    sync()
+  }
+  const chipFor = (o: Opt, i: number) => {
     const b = h('button', { class: 'chip', part: 'chip', type: 'button', 'aria-pressed': multiple ? 'false' : null },
       i < 9 ? h('kbd', null, String(i + 1)) : null, o.label) as HTMLButtonElement
-    b.addEventListener('click', () => {
-      if (!multiple) return send([o.id], '')
-      if (picked.has(o.id)) picked.delete(o.id); else picked.add(o.id)
-      b.classList.toggle('on', picked.has(o.id))
-      b.setAttribute('aria-pressed', String(picked.has(o.id)))
-      sync()
-    })
+    b.addEventListener('click', () => pick(o, b))
     return b
-  })
+  }
+  const view = optionsView(it, c, options, pick, chipFor)
+  const chips = view.buttons
   const inp = it.input as { type?: string; min?: string | number; max?: string | number } | undefined
   const text = it.allow_text === false ? null : h('input', {
     class: 'text-in', type: INPUT[inp?.type ?? 'text'] ?? 'text', min: inp?.min, max: inp?.max,
@@ -252,22 +381,25 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
     const ids = multiple ? [...picked] : []
     if (ids.length || t) send(ids, t)
   }
+  const typed = !it.fields?.length ? typedView(it, c, ctx, commitTyped, text) : null
+  const several = it.fields?.length && ctx
+    ? fieldsView(it, c, ctx, (values, labels) => applyValues(values, labels, { answers: values })) : null
+  if (several) text?.remove()
   const sendBtn = h('button', { class: 'btn pri', type: 'button', onclick: submit }, c.t('send')) as HTMLButtonElement
   // single choice: the chips are the answer, Send appears only for typed text
   const sync = () => { sendBtn.disabled = !(picked.size || text?.value.trim()); sendBtn.hidden = !multiple && !text?.value.trim() }
-  const acts = h('div', { class: 'acts' }, (multiple || text) ? sendBtn : null,
+  const acts = h('div', { class: 'acts' }, (multiple || (text && !several)) ? sendBtn : null,
     h('button', { class: 'btn link', type: 'button', onclick: () => { answered(c.t('skipped'), false); c.resolve({ accepted: false }) } }, c.t('skip')))
-  const card = h('div', { tabindex: 0, 'aria-label': it.question },
-    h('div', { class: 'card-q' }, it.question),
-    options.length ? h('div', { class: 'chips' }, chips) : null,
-    text, err, acts)
+  const card = h('div', { tabindex: 0, 'aria-label': String(it.question ?? '').replace(/[*`]/g, '') },
+    qText(it.question),
+    view.el, typed, several ? null : text, several, err, acts)
   card.addEventListener('keydown', (e) => {   // 1..9 picks an option
     if (e.target instanceof HTMLInputElement) return
     const n = Number(e.key)
     if (n >= 1 && n <= chips.length) { e.preventDefault(); chips[n - 1].click() }
   })
   sync()
-  if (!options.length && text && finePointer()) text.setAttribute('autofocus', '')
+  if (!options.length && text && !text.hidden && !typed && !several && finePointer()) text.setAttribute('autofocus', '')
   return card
 }
 
@@ -324,6 +456,7 @@ export function uploadCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLEle
       fill.style.width = '100%'
       acts.replaceWith(h('div', { class: 'ok-line' }, h('i', null, '✓'), h('span', null, `${c.t('uploaded')}: ${files.map((f) => f.name).join(', ')}`)))
       zone.remove()
+      phoneActs?.remove()
       msg.textContent = ''
       c.resolve({ attachment_ids: ids })
     } catch (e) {
@@ -332,25 +465,41 @@ export function uploadCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLEle
       busy = false
     }
   }
+  // phones: the camera first (when images are accepted), the file picker second
+  const images = !it.accept || /image|\.(png|jpe?g|webp|heic|gif)/i.test(String(it.accept))
+  const touch = !finePointer()
+  const camera = images && touch ? h('input', { type: 'file', accept: 'image/*', capture: 'environment', hidden: true,
+    onchange: (e: Event) => void go([...((e.target as HTMLInputElement).files ?? [])]) }) as HTMLInputElement : null
+  const phoneActs = camera ? h('div', { class: 'acts' },
+    h('button', { class: 'btn pri', type: 'button', onclick: () => camera.click() }, c.t('takePhoto')),
+    h('button', { class: 'btn sec', type: 'button', onclick: () => picker.click() }, c.t('chooseFile'))) : null
+  if (phoneActs) zone.hidden = true
   const acts = h('div', { class: 'acts' },
     h('button', { class: 'btn link', type: 'button', onclick: () => {
       acts.replaceWith(h('div', { class: 'ok-line off' }, h('i', null, '✕'), h('span', null, c.t('skipped'))))
-      zone.remove(); msg.textContent = ''; bar.hidden = true        // a skipped request shrinks to its prompt
+      zone.remove(); phoneActs?.remove(); msg.textContent = ''; bar.hidden = true        // a skipped request shrinks to its prompt
       c.resolve({ accepted: false })
     } }, c.t('skip')))
-  return h('div', null, h('div', { class: 'card-q' }, it.prompt), zone, picker, bar, msg, acts)
+  const privacy = it.privacy ? h('div', { class: 'muted privacy' }, it.privacy) : null
+  return h('div', null, h('div', { class: 'card-q' }, it.prompt), zone, phoneActs, picker, camera, bar, msg, privacy, acts)
 }
 
 // ---------------------------------------------------------------- confirmations
 
-export function confirmCard(it: Interrupt, c: RendererContext): HTMLElement {
+export function confirmCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLElement {
   const answer = (ok: boolean) => {
-    acts.replaceWith(h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '✓' : '✕'), h('span', null, ok ? c.t('confirmed') : c.t('declined'))))
+    const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '✓' : '✕'), h('span', null, ok ? c.t('confirmed') : c.t('declined')))
+    acts.replaceWith(line)
     c.resolve({ accepted: ok })
+    // a receipt (CUSTOM receipt) may replace the line later; the rating is offered once either way
+    if (ok && ctx && !c.restored) line.after(feedbackEl(c, c.chat, ctx, it.card_id))
   }
+  const details: { label: string; value: string }[] = Array.isArray(it.details) ? it.details.slice(0, 6) : []
   const acts = h('div', { class: 'acts' },
     h('button', { class: `btn ${it.danger ? 'danger' : 'pri'}`, type: 'button', onclick: () => answer(true) }, it.confirm_label || c.t('confirm')),
     h('button', { class: 'btn sec', type: 'button', onclick: () => answer(false) }, c.t('cancel')))
   return h('div', { role: 'alertdialog', 'aria-label': it.title },
-    h('div', { class: 'card-q' }, it.title), h('div', { class: 'card-msg' }, it.message), acts)
+    h('div', { class: 'card-q' }, it.title), it.message ? h('div', { class: 'card-msg' }, it.message) : null,
+    details.length ? h('dl', { class: 'details' }, details.map((d) => [h('dt', { class: 'muted' }, d.label), h('dd', null, d.value)])) : null,
+    it.consequence ? h('div', { class: 'card-msg consequence' }, it.consequence) : null, acts)
 }

@@ -16,13 +16,17 @@ from langchain_core.messages import HumanMessage, SystemMessage
 log = logging.getLogger(__name__)
 
 SYSTEM = """You suggest what the user of a form assistant might want to send next.
-Reply with JSON only: {"items": ["...", "..."]}.
+Reply with JSON only: {"items": ["...", {"text": "...", "set": {"<field name>": <value>}}]}.
 Rules: at most {max} items; each is a short message from the user's point of view (2 to 7 words);
 in the language the user writes in; concrete next steps for this form, not generic chit-chat;
-never repeat what was just answered; no field values the user did not give."""
+never repeat what was just answered or what the form already has; no field values the user did not give.
+An item MAY be an object with "set" when choosing it means filling fields: only with a value the user
+or the assistant named in this exchange (e.g. the assistant offered a 48-month term), field names
+exactly as in <form>, values as plain text, numbers or YYYY-MM-DD dates. Otherwise use a plain string."""
 
 
-def _parse(text: str, limit: int) -> list[str]:
+def _parse(text: str, limit: int) -> list[dict[str, Any]]:
+    """The model's reply -> [{text, set?}], at most `limit`, without duplicates."""
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
         return []
@@ -30,15 +34,17 @@ def _parse(text: str, limit: int) -> list[str]:
         items = json.loads(m.group(0)).get("items") or []
     except (ValueError, AttributeError):
         return []
-    out: list[str] = []
+    out: list[dict[str, Any]] = []
     for x in items:
-        s = " ".join(str(x).split())[:80]
-        if s and s not in out:
-            out.append(s)
+        raw, sets = (x.get("text"), x.get("set")) if isinstance(x, dict) else (x, None)
+        s = " ".join(str(raw or "").split())[:80]
+        if s and all(o["text"] != s for o in out):
+            out.append({"text": s, **({"set": sets} if isinstance(sets, dict) and sets else {})})
     return out[:limit]
 
 
-async def suggest(model: Any, *, user_text: str, answer: str, context: str, limit: int, timeout: float) -> list[str]:
+async def suggest(model: Any, *, user_text: str, answer: str, context: str, limit: int,
+                  timeout: float) -> list[dict[str, Any]]:
     msgs = [SystemMessage(content=SYSTEM.replace("{max}", str(limit))),
             HumanMessage(content=f"<form>\n{context[:3000]}\n</form>\n<user>\n{user_text[:1000]}\n</user>\n"
                                  f"<assistant>\n{answer[:2000]}\n</assistant>")]

@@ -1,0 +1,90 @@
+---
+title: 'Send the form with every message'
+description: 'Each run carries {config, jsx_hash, form_id, ui}: props, values and what the user is looking at.'
+---
+import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+With **every** chat message the frontend sends the current form in `state` (the AG-UI field of that name):
+
+```json
+{
+  "config":   { "props": { ... }, "state": { ... } },
+  "jsx_hash": "3f9a1c0d2b7e4a55",
+  "form_id":  "loan_application",
+  "ui":       { "activeTabs": {"main": "tab_loan"}, "openAccordions": ["acc_loan_params"], "focused": "loan_amount", "now": "2026-11-11 Wednesday 14:05" },
+  "attachments": [ { "id": "att_1a2b3c4d", "filename": "passport.pdf", "bytes": 182044 } ]
+}
+```
+
+| Key | Required | What it is |
+|---|---|---|
+| `config` | yes | props and values of the form **as your form backend last built them** |
+| `jsx_hash` | yes | the id of the skeleton, returned once by `POST /agent/layouts` (see 1.1) |
+| `form_id` | recommended | which form this is; picks the domain pack (persona, glossary, rules) and the document library |
+| `ui` | recommended | what the user sees right now (see 1.4) |
+| `attachments` | no | files the user attached to this message (from `POST /agent/attachments`) |
+## 1.2 Props — the settings of each element
+
+`config.props` has one entry per `name`. These are the keys the agent understands; any other key is passed along and ignored.
+
+| Prop | Type | Default | What the agent does with it |
+|---|---|---|---|
+| `label` | string | the `name` | calls the field by this name when talking to the user and on cards |
+| `visible` | bool | `true` | `false` hides the element **and everything inside it**. The agent will not suggest a value for a hidden field |
+| `disabled` | bool | `false` | `true` locks the element **and everything inside it**. The agent explains why it is locked (usually: earlier required fields are empty) |
+| `readonly` | bool | `false` | the value is computed by the form (e.g. `age` from `birth_date`); the agent never suggests it |
+| `required` | bool | `false` | counts toward "what is left to fill"; the agent leads the user through these |
+| `options` | a list of choices | — | for dropdowns, radios, multi-selects: the allowed choices **right now**. The agent picks only from this list. Another key or another shape (`items: [{value, label}]`)? See 1.5 |
+| `placeholder` | string | — | shown to the agent as a format hint ("+7 ___ ___ __ __") |
+| `error` | string | — | a validation message from your backend; the agent explains it and helps fix it |
+
+Two rules worth remembering:
+
+- **Containers pass their state down.** A field inside a hidden accordion is hidden; a field inside a locked tab is locked, whatever its own props say.
+- **A field that is in the JSX but has no props entry is treated as hidden.** If a field mysteriously "does not exist" for the agent, check that your backend sends props for it.
+
+Example (part of `config.props`):
+
+```json
+{
+  "tab_loan":    { "label": "Loan", "visible": true, "disabled": true },
+  "gender":      { "label": "Gender", "visible": true, "required": true,
+                   "options": [ {"id": "m", "name": "Male"}, {"id": "f", "name": "Female"} ] },
+  "age":         { "label": "Age", "visible": true, "readonly": true },
+  "loan_amount": { "label": "Loan amount", "visible": true, "required": true, "error": "Maximum is 5,000,000" }
+}
+```
+
+## 1.3 State — the values, and their exact format
+
+`config.state` has one entry per field `name`. **The agent sends values back in the same format your form uses**, so a card's value can go to your backend as it is. With the **default** components the formats are:
+
+| Role | Value in `state` | Example | Empty |
+|---|---|---|---|
+| text | string | `"Anna"` | `""` or `null` |
+| number | number (a numeric string is read too) | `250000` | `null` |
+| date | ISO date string `YYYY-MM-DD` | `"1990-05-31"` | `null` |
+| select, radio | the option object `{id, name}` | `{"id": "f", "name": "Female"}` | `null` |
+| multiselect | a list of option objects | `[{"id": "sms", "name": "SMS"}]` | `[]` |
+| bool | `true` / `false` | `true` | `false` (a bool counts as filled only when `true`) |
+| file | an object with at least `name` | `{"name": "salary.pdf"}` | `null` |
+
+Your components store values differently? That is normal: describe them once (1.5).
+
+## 1.4 `ui` — what the user is looking at
+
+| Key | Example | Why |
+|---|---|---|
+| `activeTabs` | `{"steps": "tab_loan"}` | for each tab set (by its `name`), the open tab |
+| `openAccordions` | `["acc_personal"]` | names of the expanded accordions |
+| `focused` | `"loan_amount"` | the field the cursor is in, so "what goes here?" just works |
+| `now` | `"2026-11-11 Wednesday 14:05"` | the user's local time, so "next Tuesday" is understood |
+
+All of it is optional, but with it the agent can say "the field just below" instead of a long path.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Value formats" href="../value-formats/" />
+  <LinkCard title="Cards and answers" href="../../frontend/cards/" />
+</CardGrid>

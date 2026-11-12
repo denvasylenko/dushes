@@ -1,15 +1,15 @@
 name: Docs
 
-# Builds the docs site (architecture pages + rendered OpenSpec specs) and deploys it to GitHub Pages.
+# Builds the documentation site (site/, Astro Starlight; specs rendered from openspec/specs/) and deploys it to GitHub Pages.
 # Requires Settings → Pages → Build and deployment → Source: "GitHub Actions".
 # Site: https://denvasylenko.github.io/dushes/
 
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "openspec/**", "scripts/build_docs_site.py", "scripts/check_english.py", ".github/workflows/docs.yml"]
+    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/check_english.py", ".github/workflows/docs.yml"]
   pull_request:
-    paths: ["docs/**", "openspec/**", "scripts/**"]
+    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/**"]
   workflow_dispatch:
 
 permissions:
@@ -32,18 +32,26 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
       - name: Validate specs
         run: npx --yes @fission-ai/openspec@1.17.0 validate --all --strict --no-interactive
       - name: English only
         run: python3 scripts/check_english.py
+      - name: Install
+        working-directory: site
+        run: npm ci
       - name: Build site
-        run: python3 scripts/build_docs_site.py
+        working-directory: site
+        env:
+          PUBLIC_ASK_AI_URL: ${{ vars.PUBLIC_ASK_AI_URL }}   # the docs assistant; unset = Ask AI offers Claude / ChatGPT
+        run: npm run build
       - uses: actions/configure-pages@v5
         if: github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:
-          path: docs/site
+          path: site/dist
 
   deploy:
     if: github.event_name != 'pull_request'

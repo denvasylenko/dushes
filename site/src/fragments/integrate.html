@@ -1,0 +1,94 @@
+<p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/agui.py" title="backend/formguide/agui.py">agui.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/server.py" title="backend/formguide/server.py">server.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/app.py" title="backend/formguide/app.py">app.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/prefill.py" title="backend/formguide/prefill.py">prefill.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/examples/copilotkit/src/App.tsx" title="examples/copilotkit/src/App.tsx">App.tsx</a> <a href="https://github.com/denvasylenko/dushes/blob/main/frontend/src/api.ts" title="frontend/src/api.ts">api.ts</a> <a href="../../specifications/agui-protocol/" title="openspec/specs/agui-protocol/spec.md">spec.md</a></p>
+      <h2>Five minutes to a running agent</h2>
+<pre><code>pip install "formguide[all] @ git+https://github.com/denvasylenko/dushes.git#subdirectory=backend"
+formguide init my-agent                        # formguide.yaml, a domain pack, a skill
+formguide check --config my-agent/formguide.yaml   # loads it, calls no model
+ANTHROPIC_API_KEY=... formguide serve --config my-agent/formguide.yaml --cors "*"</code></pre>
+      <p>The only required setting is <code>model:</code>, e.g. <code>"openai:gpt-5"</code>; with no file at all, <code>FORMGUIDE_MODEL</code> does the same. Extras: <code>anthropic</code>, <code>openai</code>, <code>server</code>, <code>research</code>, <code>sqlite</code>; the core installs with LangGraph, LangChain core, Pydantic, PyYAML and pypdf only. In an existing service: <code>app = create_app("formguide.yaml")</code>, or <code>create_router(guide)</code> on your own FastAPI app.</p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 430" role="img" aria-label="Three AG-UI runs: a user message with a frontend tool call, a continuation carrying the tool result that ends with a confirmation card, and a resume with the user's answer.">
+            <defs>
+              <marker id="a8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+              <marker id="a8k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <rect class="box" x="40" y="14" width="160" height="40" rx="8"/>
+            <text x="120" y="39" text-anchor="middle" class="t-b">AG-UI client</text>
+            <rect class="key" x="660" y="14" width="160" height="40" rx="8"/>
+            <text x="740" y="39" text-anchor="middle" class="t-b">formguide /run</text>
+            <line class="ln-dash" x1="120" y1="54" x2="120" y2="416"/>
+            <line class="ln-dash" x1="740" y1="54" x2="740" y2="416"/>
+
+            <text x="20" y="84" class="t-m">run 1</text>
+            <line class="ln" x1="122" y1="96" x2="738" y2="96" marker-end="url(#a8)"/>
+            <text x="430" y="88" text-anchor="middle" class="t-s">messages [user] · state {config, jsx_hash, form_id} · tools [get_user_locale]</text>
+            <line class="ln" x1="738" y1="126" x2="122" y2="126" marker-end="url(#a8)"/>
+            <text x="430" y="118" text-anchor="middle" class="t-s">TEXT_MESSAGE_* · TOOL_CALL_* + TOOL_CALL_RESULT (server tool)</text>
+            <line class="ln" x1="738" y1="156" x2="122" y2="156" marker-end="url(#a8)"/>
+            <text x="430" y="148" text-anchor="middle" class="t-s">TOOL_CALL_START/ARGS/END get_user_locale, no result · RUN_FINISHED</text>
+            <rect class="soft" x="40" y="166" width="160" height="30" rx="6"/>
+            <text x="120" y="186" text-anchor="middle" class="t-s">runs the tool</text>
+
+            <text x="20" y="226" class="t-m">run 2</text>
+            <line class="ln" x1="122" y1="238" x2="738" y2="238" marker-end="url(#a8)"/>
+            <text x="430" y="230" text-anchor="middle" class="t-s">messages … + tool message (result) · same state</text>
+            <line class="ln-key" x1="738" y1="268" x2="122" y2="268" marker-end="url(#a8k)"/>
+            <text x="430" y="260" text-anchor="middle" class="t-k">CUSTOM on_interrupt {type, card_id, changes | question} · RUN_FINISHED</text>
+            <rect class="soft" x="40" y="278" width="160" height="44" rx="6"/>
+            <text x="120" y="297" text-anchor="middle" class="t-s">card; on accept: form</text>
+            <text x="120" y="313" text-anchor="middle" class="t-s">backend → new config</text>
+
+            <text x="20" y="352" class="t-m">run 3</text>
+            <line class="ln-key" x1="122" y1="364" x2="738" y2="364" marker-end="url(#a8k)"/>
+            <text x="430" y="356" text-anchor="middle" class="t-k">forwardedProps.command.resume {accepted, config} or resume[]</text>
+            <line class="ln" x1="738" y1="394" x2="122" y2="394" marker-end="url(#a8)"/>
+            <text x="430" y="386" text-anchor="middle" class="t-s">TOOL_CALL_RESULT propose_changes · TEXT_MESSAGE_* · RUN_FINISHED</text>
+          </svg>
+        </div>
+        <figcaption>Every run carries the current form in <code>state</code>. A frontend tool ends the run; the client runs it and sends the result as a <code>tool</code> message. A card is an interrupt; the answer resumes the same turn. With <code>interrupt_mode: structured</code> the card arrives as <code>RUN_FINISHED.outcome</code> and is answered with <code>resume[]</code>.</figcaption>
+      </figure>
+      <h2>What the request carries</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>RunAgentInput</th><th>formguide reads it as</th></tr></thead>
+        <tbody>
+          <tr><td><code>state</code></td><td><code>{config, jsx_hash, form_id, ui?, attachments?}</code>: the form as your backend last built it</td></tr>
+          <tr><td><code>messages</code></td><td>a trailing <code>user</code> message is the new text; trailing <code>tool</code> messages are frontend tool results. History is kept on the server, so older messages are ignored</td></tr>
+          <tr><td><code>tools</code></td><td>frontend tools offered to the model (CopilotKit actions, <code>HttpAgent</code> tools)</td></tr>
+          <tr><td><code>resume</code></td><td>AG-UI 1.0 answer to a card: <code>resolved</code> with <code>{accepted, config, names?, edited?}</code> (field changes), <code>{answer: {ids?, text?}, config?, ui?}</code> (a question; with <code>config</code> when the tap filled the field), <code>{attachment_ids}</code> (a file request) or <code>{accepted}</code> (a confirmation), or <code>cancelled</code></td></tr>
+          <tr><td><code>forwardedProps</code></td><td><code>command.resume</code> (CopilotKit’s answer to a card) and <code>prefill</code></td></tr>
+        </tbody>
+      </table></div>
+      <h2>The ready-made chat</h2>
+      <p><a href="../../concepts/chat-widget/">&lt;agui-chat&gt;</a> is an AG-UI client too: one tag plus the formguide plugin gives the whole experience below without writing a client.</p>
+      <h2>CopilotKit</h2>
+<pre><code>import { CopilotChat, CopilotKitProvider, HttpAgent, useAgent, useInterrupt } from "@copilotkit/react-core/v2"
+
+const agents = { formguide: new HttpAgent({ url: "/agent/run" }) }   // no CopilotKit runtime server
+&lt;CopilotKitProvider agents__unsafe_dev_only={agents} agentId="formguide"&gt;&lt;CopilotChat /&gt;&lt;/CopilotKitProvider&gt;
+
+agent.setState({ config, jsx_hash, form_id: "barber_booking" })         // before each run
+useInterrupt({ render: ({ event, resolve }) =&gt; &lt;Card value={JSON.parse(event.value)}
+  onAnswer={(accepted, config) =&gt; resolve({ accepted, config })} /&gt; })</code></pre>
+      <p>The full example, with a frontend tool and prefill, is in <a href="https://github.com/denvasylenko/dushes/tree/main/examples/copilotkit">examples/copilotkit</a>. CopilotKit calls directly passed agents a development option; in production put a CopilotRuntime in front of the same <code>HttpAgent</code>, or use its <code>selfManagedAgents</code>. Nothing changes on the formguide side.</p>
+      <h2>Any AG-UI client</h2>
+<pre><code>import { HttpAgent } from "@ag-ui/client"
+
+const agent = new HttpAgent({ url: "/agent/run", threadId })
+agent.setState({ config, jsx_hash, form_id })
+agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "Where do I start?" })
+await agent.runAgent({ tools: [getUserLocale] }, {
+  onTextMessageContentEvent: ({ event }) =&gt; render(event.delta),
+  onCustomEvent: ({ event }) =&gt; event.name === "on_interrupt" &amp;&amp; showCard(JSON.parse(event.value)),  // by its type
+})</code></pre>
+      <p>The demo frontend does exactly this: <a href="https://github.com/denvasylenko/dushes/blob/main/frontend/src/api.ts">frontend/src/api.ts</a>. To restore a chat after reopening, <code>GET /agent/threads/{id}?format=agui</code> returns the conversation as AG-UI messages for <code>setMessages</code>.</p>
+      <h2>Prefill</h2>
+      <p>Start from what your app already knows. Keys that are field names are validated directly; anything else (other keys, free text, attachments) goes through the extraction model. Values for locked or hidden steps are kept for later.</p>
+<pre><code>await agent.runAgent({ forwardedProps: { prefill: { data: { first_name: "Anna", gender: "Female" } } } })
+
+# or on the server, without a chat
+await guide.suggest_prefill(state, data=profile, text="moved to Lyon in 2021")
+# -&gt; {"values": [{"name": "gender", "value": {"id": "f", "name": "Female"}, "status": "now"}, ...], "errors": [...]}</code></pre>
+      <div class="grid2">
+        <div class="note"><h3>Events</h3><ul><li><code>RUN_STARTED</code>, then exactly one of <code>RUN_FINISHED</code> or <code>RUN_ERROR</code></li><li>text, tool calls with results, <code>CUSTOM</code>: <code>ui_directive</code>, <code>on_interrupt</code> (<code>type</code> <code>set_fields</code>, <code>ask</code>, <code>upload</code>, <code>confirm</code>), <code>tool_progress</code>, <code>suggestions</code>, <code>run_stats</code> (timings, tokens, cache), <code>agent_context</code>, <code>memory_compacted</code></li></ul></div>
+        <div class="note"><h3>Checked</h3><ul><li>CopilotKit 1.86: chat, card, frontend tool, prefill</li><li><code>@ag-ui/client</code> 1.0.4: the demo frontend, restore after reload</li><li>every event validated against <code>ag-ui-protocol</code> in tests</li></ul></div>
+      </div>

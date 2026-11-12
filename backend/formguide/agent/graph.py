@@ -26,14 +26,15 @@ from langgraph.types import interrupt
 
 from ..form.overlay import Overlay, compute_diff
 from ..form.render import locate, render_changes, render_focus, render_outline
-from ..models import system_message
+from ..models import missing_key, system_message
 from ..stats import RunStats
 from ..stats import current as current_stats
 from .memory import compact as compact_history
 from .memory import new_turn_id
 from .prompts import context_block, system_prompt
-from .interaction import (answer_text, read_answer, read_confirm, read_decision, read_edits, read_upload,
+from .interaction import (answer_text, read_answer, read_field_answers, read_review, read_confirm, read_decision, read_edits, read_upload,
                           upload_text)
+from .actions import capabilities as parse_caps
 from .tools import BUILTIN, WAITING, ToolCtx, ToolError, run_tool, tool_schemas
 
 if TYPE_CHECKING:
@@ -63,6 +64,9 @@ class AgentState(TypedDict, total=False):
     system_prompt: str   # frozen for the thread: changing it would invalidate the model's earlier reasoning
     memory: str          # summary of older turns after compaction (see memory.py)
     client_tools: list[dict]     # frontend tools declared by the client: [{name, description, parameters}]
+    capabilities: list[str] | None   # what the client renders (forwardedProps.capabilities); None = all
+    last_extraction: dict | None     # the thread's last read document (values with confidence), for card sources
+    turn_sources: list | None        # documents the researcher cited this turn (reset by each new message)
     client_results: dict         # results of frontend tool calls delivered by this run: {tool_call_id: content}
     pending_client: dict | None  # frontend tool calls awaiting results: {ids, server_results}
 
@@ -78,6 +82,9 @@ def _script(text: str) -> str | None:
                 continue
             counts[s] = counts.get(s, 0) + 1
     return max(counts, key=counts.get) if counts else None
+
+
+CARD_TOOLS = frozenset({"propose_changes", "ask_user", "request_file", "confirm_action"})
 
 
 def is_note(text: str, state: dict) -> bool:
@@ -139,6 +146,12 @@ def build_graph(guide: FormGuide):
         taken = server_tool_names(state.get("form_id"))
         return {s["function"]["name"] for s in client_tool_schemas(state.get("client_tools"), taken)}
 
+    def caps_of(state: AgentState) -> frozenset[str] | None:
+        return parse_caps(state.get("capabilities"))
+
+    def actions_of(state: AgentState) -> frozenset[str]:
+        return guide.actions_for(state.get("form_id") or "", caps_of(state))
+
     def ctx_for(state: AgentState) -> ToolCtx:
         lay = guide.layout(state["jsx_hash"])
         if lay is None:
@@ -148,7 +161,9 @@ def build_graph(guide: FormGuide):
         return ToolCtx(ov=ov, deps=guide.deps(lay.jsx_hash), pack=pack, loc=locate(ov, state.get("ui")),
                        thread_id=state.get("thread_id") or "", guide=guide,
                        extra_tools={t.name: t for t in guide.tools_for(pack.form_id)},
-                       confirm_tools=frozenset(guide.config.confirm_tools or ()))
+                       confirm_tools=frozenset(guide.config.confirm_tools or ()),
+                       actions=actions_of(state), caps=caps_of(state),
+                       last_extraction=state.get("last_extraction"), turn_sources=state.get("turn_sources"))
 
     # ------------------------------------------------------------------ nodes
     def sync(state: AgentState) -> dict:
@@ -175,6 +190,7 @@ def build_graph(guide: FormGuide):
             ignored = {"ask": "The user did not answer the question and sent a new message instead.",
                        "upload": "The user did not upload a file and sent a new message instead.",
                        "confirm": "The user did not confirm and sent a new message instead. Nothing was run.",
+                       "review": "The user closed the review and sent a new message instead.",
                        }.get(pending.get("kind") or "",
                              "The user did not answer the card and sent a new message. Nothing was applied.")
             new += _tool_messages(pending["other_results"] + [{"id": pending["tool_call_id"], "content": ignored}])
@@ -187,7 +203,7 @@ def build_graph(guide: FormGuide):
         content: list[dict[str, Any]] = []
         # The system prompt is frozen per thread (append-only history). If the form's knowledge
         # changed since (documents recompiled, skills edited), deliver it as an update here.
-        current = system_prompt(ctx.pack, guide.skills.for_form(ctx.pack.form_id))
+        current = system_prompt(ctx.pack, guide.skills.for_form(ctx.pack.form_id), actions=ctx.actions)
         frozen = state.get("system_prompt") or current
         if current != frozen:
             content.append({"type": "text", "text": "<updated_instructions>\nThe form's instructions changed during this "
@@ -205,7 +221,7 @@ def build_graph(guide: FormGuide):
             "messages": [*(state.get("messages") or []), *new],
             "snapshot": ctx.ov.snapshot(), "version": version, "pending": None, "tool_round": 0,
             "said": False, "nudged": False, "attachments": [], "system_prompt": frozen,
-            "pending_client": None, "client_results": {},
+            "pending_client": None, "client_results": {}, "turn_sources": None,
         }
 
     async def compact(state: AgentState) -> dict:
@@ -229,9 +245,11 @@ def build_graph(guide: FormGuide):
         pack = guide.packs.get(state.get("form_id"))
         base = guide.models.agent
         server = guide.tools_for(pack.form_id)
-        model = base.bind_tools(tool_schemas(server) + client_tool_schemas(
+        actions = actions_of(state)
+        model = base.bind_tools(tool_schemas(server, actions) + client_tool_schemas(
             state.get("client_tools"), server_tool_names(pack.form_id)))
-        sys_text = state.get("system_prompt") or system_prompt(pack, guide.skills.for_form(pack.form_id))
+        sys_text = state.get("system_prompt") or system_prompt(pack, guide.skills.for_form(pack.form_id),
+                                                               actions=actions)
         history = state["messages"]
         msg_id = str(uuid.uuid4())
         started = False
@@ -261,7 +279,8 @@ def build_graph(guide: FormGuide):
                 full = chunk if full is None else full + chunk
                 if chunk.tool_call_chunks and not calling:
                     calling = True
-                    if not started and held.strip() and is_note(held, state):
+                    card = (chunk.tool_call_chunks[0].get("name") or "") in CARD_TOOLS   # its lead sentence is for the user
+                    if not started and held.strip() and not card and is_note(held, state):
                         w({"kind": "note", "text": held.strip()})
                         held = ""
                     else:
@@ -290,6 +309,11 @@ def build_graph(guide: FormGuide):
         except Exception as e:  # noqa: BLE001 — provider errors vary; surface them in the chat
             if stats:
                 stats.model_call(t_call, first_chunk, None)
+            env = missing_key(base)
+            if env:   # the SDK reports a missing key as "Connection error": say what is really wrong
+                log.error("model call failed: no API key, set %s", env)
+                w({"kind": "error", "message": f"model error: no API key (set {env} on the server)"})
+                return {"stop_reason": "error"}
             log.exception("model call failed")
             w({"kind": "error", "message": f"model error: {type(e).__name__}: {e}"})
             return {"stop_reason": "error"}
@@ -332,7 +356,8 @@ def build_graph(guide: FormGuide):
         last = state["messages"][-1]
         frontend = client_names(state)
         calls = getattr(last, "tool_calls", None) or []
-        waiting_tools = {"propose_changes", "ask_user", "request_file", "confirm_action", *ctx.confirm_tools}
+        waiting_tools = {"propose_changes", "ask_user", "request_file", "confirm_action", "review_form",
+                         *ctx.confirm_tools}
         has_card_call = any(c["name"] in waiting_tools for c in calls)
         results: list[dict] = []
         client_ids: list[str] = []
@@ -386,13 +411,18 @@ def build_graph(guide: FormGuide):
         for d in ctx.ui_directives:
             w({"kind": "ui", "directive": d})
         upd: dict[str, Any] = {"tool_round": (state.get("tool_round") or 0) + 1}
+        if ctx.last_extraction is not state.get("last_extraction"):
+            upd["last_extraction"] = ctx.last_extraction
+        if ctx.turn_sources is not state.get("turn_sources"):
+            upd["turn_sources"] = ctx.turn_sources
         if pending_id and ctx.pending_interaction is not None:
             pi = dict(ctx.pending_interaction)
             upd["pending"] = {"kind": pi.pop("kind"), "tool_call_id": pending_id, "payload": pi,
                               "other_results": results}
         elif pending_id:
             upd["pending"] = {"kind": "set_fields", "tool_call_id": pending_id, "changes": ctx.pending_changes,
-                              "partial_errors": partial_errors, "other_results": results}
+                              "partial_errors": partial_errors, "other_results": results,
+                              **({"source": ctx.pending_source} if ctx.pending_source else {})}
         elif client_ids:
             upd["pending_client"] = {"ids": client_ids, "server_results": results}
         else:
@@ -417,10 +447,29 @@ def build_graph(guide: FormGuide):
             shown = {k: v for k, v in payload.items() if k != "held"}
             answer = interrupt({"type": kind, **shown})
             answer = answer if isinstance(answer, dict) else {"answer": answer}
-            if kind == "ask":
+            if kind == "ask" and payload.get("fields"):
+                values, problems = read_field_answers(payload, answer)
+                if not values or not answer.get("config"):
+                    text = "The user skipped the question." if not values else (
+                        "The user answered: " + "; ".join(f"{k} = {v}" for k, v in values.items())
+                        + ". The values were not applied; propose them.")
+                else:
+                    new_cfg = answer["config"]
+                    upd["config"] = new_cfg
+                    ctx = ctx_for({**state, "config": new_cfg, "ui": answer.get("ui") or state.get("ui")})
+                    diff = compute_diff(ctx.ov, state.get("snapshot"), agent_names=set(values))
+                    ctx.deps.observe(diff, ctx.ov)
+                    v = (state.get("version") or 0) + 1
+                    upd.update(snapshot=ctx.ov.snapshot(), version=v)
+                    text = ("The user filled: " + "; ".join(f"{ctx.ov[k].label or k} ({k}) = {val}"
+                                                            for k, val in values.items())
+                            + ". Do not propose these fields again.\n" + render_changes(ctx.ov, diff, v - 1, v))
+                if problems:
+                    text += "\nNot filled: " + "; ".join(problems) + "."
+            elif kind == "ask":
                 got, why = read_answer(payload, answer)
                 text = answer_text(got, why)
-                if got and got.get("ids") and payload.get("applies") and answer.get("config"):
+                if got and (got.get("ids") or got.get("text")) and payload.get("applies") and answer.get("config"):
                     # the client filled the field with the chosen option: like an accepted card
                     new_cfg = answer["config"]
                     upd["config"] = new_cfg
@@ -432,6 +481,26 @@ def build_graph(guide: FormGuide):
                     label = ctx.ov[payload["field"]].label or payload["field"]
                     text += (f". This filled the field {label} ({payload['field']}); do not propose it again.\n"
                              + render_changes(ctx.ov, diff, v - 1, v))
+            elif kind == "review":
+                action, det = read_review(answer)
+                if action == "fixed":
+                    new_cfg = answer["config"]
+                    upd["config"] = new_cfg
+                    ctx = ctx_for({**state, "config": new_cfg, "ui": answer.get("ui") or state.get("ui")})
+                    diff = compute_diff(ctx.ov, state.get("snapshot"), agent_names=set(det["names"]))
+                    ctx.deps.observe(diff, ctx.ov)
+                    v = (state.get("version") or 0) + 1
+                    upd.update(snapshot=ctx.ov.snapshot(), version=v)
+                    text = (f"The user applied the fixes for: {', '.join(det['names'])}. Do not propose them again.\n"
+                            + render_changes(ctx.ov, diff, v - 1, v))
+                elif action == "submit":
+                    text = ("The user wants to send the form now. Ask with confirm_action before the tool that "
+                            "submits it; if errors remain, say what blocks sending instead.")
+                elif action == "continue":
+                    text = ("The user wants to continue" + (f" with the section {det['section']}" if det["section"]
+                                                            else "") + ": guide them to the next fields there.")
+                else:
+                    text = "The user closed the review."
             elif kind == "upload":
                 tid = state.get("thread_id") or ""
                 files = read_upload(answer, lambda i: (guide.attachments.load(tid, i) or (None,))[0])
@@ -439,7 +508,9 @@ def build_graph(guide: FormGuide):
             elif read_confirm(answer) and payload.get("held"):
                 stats, t_tool, failed = current_stats(), RunStats.now(), False
                 try:
-                    out = await run_tool(payload["tool"], payload.get("args"), ctx_for(state))
+                    held = ctx_for(state)
+                    held.emit = get_stream_writer()
+                    out = await run_tool(payload["tool"], payload.get("args"), held)
                     text = "The user confirmed. " + (out or "ok")
                 except ToolError as e:
                     text = f"The user confirmed, but the tool failed: {e}"
@@ -453,7 +524,8 @@ def build_graph(guide: FormGuide):
             results = p["other_results"] + [{"id": p["tool_call_id"], "content": text}]
             upd["messages"] = [*state["messages"], *_tool_messages(results)]
             return upd
-        answer = interrupt({"type": "set_fields", "changes": p["changes"]})
+        answer = interrupt({"type": "set_fields", "changes": p["changes"],
+                            **({"source": p["source"]} if p.get("source") else {})})
         answer = answer if isinstance(answer, dict) else {"accepted": bool(answer)}
         applied, declined = read_decision(p["changes"], answer)
         comment = f" Comment: {answer['comment']}" if answer.get("comment") else ""

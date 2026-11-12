@@ -1,3 +1,4 @@
+import type { Theme } from './themes'
 /** AG-UI wire types the chat uses (a subset of @ag-ui/core, kept local so the package has no dependencies). */
 
 export type Role = 'user' | 'assistant' | 'tool' | 'system'
@@ -78,6 +79,8 @@ export interface Plugin {
   onEvent?: (ev: AguiEvent, chat: ChatApi) => boolean | void
   /** Files in the composer: the paperclip button uploads them here; they go with the next message. */
   attach?: { accept?: string; upload: (file: File, chat: ChatApi) => Promise<Attachment> }
+  /** Apply a suggestion's field changes (`CUSTOM suggestions` `applies`); return a result line to show, or throw. */
+  applySuggestion?: (changes: unknown[], chat: ChatApi) => Promise<HTMLElement | null | void>
   /** Load a saved conversation for a thread id. */
   restore?: (threadId: string, chat: ChatApi) => Promise<Restored | null>
 }
@@ -95,6 +98,8 @@ export interface ChatApi {
   /** Run the agent without a new message, e.g. run({ forwardedProps: { prefill: {...} } }). */
   run(opts?: { forwardedProps?: Record<string, unknown>; notice?: string }): Promise<void>
   notice(text: string): void
+  /** Add an element to the conversation, after the last message. */
+  append(el: HTMLElement): void
   t(key: string, vars?: Record<string, string | number>): string
   host: HTMLElement
 }
@@ -111,7 +116,10 @@ export interface ChatOptions {
   toolSteps: boolean
   mic: boolean
   quickReplies: boolean
-  theme: 'auto' | 'light' | 'dark'
+  /** A registered theme name (see defineTheme) or a theme object. "auto", "light" and "dark" still set the scheme. */
+  theme: string | Theme
+  /** auto (follows the system, live), light or dark. Empty: from `theme` when it is auto/light/dark, else auto. */
+  scheme: '' | 'auto' | 'light' | 'dark'
   lang: string
   title: string
   subtitle: string

@@ -1,0 +1,58 @@
+<p class="src">Source: <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/agent/memory.py" title="backend/formguide/agent/memory.py">memory.py</a> <a href="https://github.com/denvasylenko/dushes/blob/main/backend/formguide/transcript.py" title="backend/formguide/transcript.py">transcript.py</a> <a href="../../specifications/conversation-memory/" title="openspec/specs/conversation-memory/spec.md">spec.md</a> <a href="../../specifications/chat-history/" title="openspec/specs/chat-history/spec.md">spec.md</a></p>
+      <figure>
+        <div class="diagram">
+          <svg class="d" viewBox="0 0 860 270" role="img" aria-label="Before compaction: eight turns, each with its own context block. After: the conversation memory and the last two turns verbatim.">
+            <defs>
+              <marker id="a6k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-key" d="M0,0 L10,5 L0,10 z"/></marker>
+            </defs>
+            <text x="20" y="30" class="t-b">Before: history above the threshold</text>
+            <g>
+              <rect class="soft" x="20" y="44" width="92" height="56" rx="6"/><text x="66" y="68" text-anchor="middle" class="t-s">turn 1</text><text x="66" y="86" text-anchor="middle" class="t-m">ctx+answer</text>
+              <rect class="soft" x="122" y="44" width="92" height="56" rx="6"/><text x="168" y="68" text-anchor="middle" class="t-s">turn 2</text><text x="168" y="86" text-anchor="middle" class="t-m">ctx+tools</text>
+              <rect class="soft" x="224" y="44" width="92" height="56" rx="6"/><text x="270" y="68" text-anchor="middle" class="t-s">turn 3</text><text x="270" y="86" text-anchor="middle" class="t-m">ctx+card</text>
+              <rect class="soft" x="326" y="44" width="92" height="56" rx="6"/><text x="372" y="68" text-anchor="middle" class="t-s">turn 4</text><text x="372" y="86" text-anchor="middle" class="t-m">ctx+answer</text>
+              <rect class="soft" x="428" y="44" width="92" height="56" rx="6"/><text x="474" y="68" text-anchor="middle" class="t-s">turn 5</text><text x="474" y="86" text-anchor="middle" class="t-m">ctx+tools</text>
+              <rect class="soft" x="530" y="44" width="92" height="56" rx="6"/><text x="576" y="68" text-anchor="middle" class="t-s">turn 6</text><text x="576" y="86" text-anchor="middle" class="t-m">ctx+answer</text>
+              <rect class="box" x="632" y="44" width="92" height="56" rx="6"/><text x="678" y="68" text-anchor="middle" class="t-s">turn 7</text><text x="678" y="86" text-anchor="middle" class="t-m">verbatim</text>
+              <rect class="box" x="734" y="44" width="92" height="56" rx="6"/><text x="780" y="68" text-anchor="middle" class="t-s">turn 8</text><text x="780" y="86" text-anchor="middle" class="t-m">verbatim</text>
+            </g>
+            <path class="ln-key" d="M320,104 L320,150" marker-end="url(#a6k)"/>
+            <text x="332" y="132" class="t-k">a cheap model writes the memory</text>
+            <text x="20" y="176" class="t-b">After</text>
+            <rect class="key" x="20" y="190" width="600" height="60" rx="6"/>
+            <text x="36" y="214" class="t-b">&lt;conversation_memory&gt;</text>
+            <text x="36" y="234" class="t-s">goal · user facts (not in the form yet: “code word Barsik — tab locked”) · rejections · next step</text>
+            <rect class="box" x="632" y="190" width="92" height="60" rx="6"/><text x="678" y="216" text-anchor="middle" class="t-s">turn 7</text><text x="678" y="234" text-anchor="middle" class="t-m">no reasoning</text>
+            <rect class="box" x="734" y="190" width="92" height="60" rx="6"/><text x="780" y="216" text-anchor="middle" class="t-s">turn 8</text><text x="780" y="234" text-anchor="middle" class="t-m">no reasoning</text>
+          </svg>
+        </div>
+        <figcaption>Turns 1–6 become memory and are dropped together with their context blocks. The memory merges with the previous one, so it survives many compactions. The threshold and the number of verbatim turns are set in <code>memory:</code> in the config.</figcaption>
+      </figure>
+      <h2>Two histories</h2>
+      <p>The model’s history and the chat the user sees are stored apart. Compaction rewrites only the first, so a user who leaves and comes back sees the whole conversation, even after a server restart, and can still answer a pending card.</p>
+      <div class="tbl"><table>
+        <thead><tr><th></th><th>Model history</th><th>Display transcript</th></tr></thead>
+        <tbody>
+          <tr><td>Store</td><td>LangGraph checkpointer (SQLite, Postgres, Redis)</td><td><code>TranscriptStore</code> (files by default)</td></tr>
+          <tr><td>Contents</td><td>context blocks, tool results, reasoning, memory</td><td>messages, files, replies, tools, cards with status</td></tr>
+          <tr><td>Compaction</td><td>rewritten</td><td>never touched</td></tr>
+          <tr><td>Read by</td><td>the model</td><td>the client: <code>GET /threads/{id}</code></td></tr>
+        </tbody>
+      </table></div>
+      <h2>What the memory keeps</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Section</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Goal</td><td>What the user is applying for at all</td></tr>
+          <tr><td>Facts the user gave</td><td>Exact values and status: in the form / <b>not yet</b> (step locked, field hidden, not confirmed). What is not in the form yet matters most</td></tr>
+          <tr><td>Decisions and preferences</td><td>Agreements (“fill the consents once the tab unlocks”)</td></tr>
+          <tr><td>Rejected or declined</td><td>So rejected changes are not proposed again</td></tr>
+          <tr><td>Open questions / next step</td><td>Where the conversation stopped</td></tr>
+        </tbody>
+      </table></div>
+      <h2>The “Invalid signature in thinking block” error</h2>
+      <p>Claude Opus 5.5 binds reasoning blocks to the exact conversation prefix, including the system prompt. The prompt used to be rebuilt every turn and included rules from documents. When the documents were recompiled during a conversation, the prompt changed and the provider rejected every earlier block.</p>
+      <div class="grid2">
+        <div class="note"><h3>The fix</h3><ul><li>The system prompt is frozen per thread</li><li>Knowledge updates arrive as <code>&lt;updated_instructions&gt;</code> in a new message</li><li>If the provider still rejects old reasoning, one retry without it</li><li>Compaction removes reasoning from the kept turns</li></ul></div>
+        <div class="note"><h3>Checked</h3><ul><li>Recompiling documents during a live conversation: 0 errors</li><li>A 3,000-token threshold with 1 verbatim turn: the code word from the first message survived compaction and was entered once the tab unlocked</li></ul></div>
+      </div>

@@ -1,0 +1,33 @@
+# The docs assistant behind the site's Ask AI.
+#   fly launch --no-deploy --copy-config --config deploy/docs-ai/fly.toml   (once, to create the app)
+#   fly secrets set --config deploy/docs-ai/fly.toml ANTHROPIC_API_KEY=...
+#   fly deploy . --config deploy/docs-ai/fly.toml --dockerfile deploy/docs-ai/Dockerfile   (from the repository root)
+# Then set the repository variable PUBLIC_ASK_AI_URL=https://<app>.fly.dev/ask/run and rebuild the docs.
+app = "formguide-docs-ai"
+primary_region = "fra"
+
+[env]
+  DOCS_AI_CORPUS = "https://denvasylenko.github.io/dushes/llms-full.txt"
+  DOCS_AI_ORIGINS = "https://denvasylenko.github.io"
+  DOCS_AI_MODEL = "anthropic:claude-sonnet-5-5"
+  DOCS_AI_PER_MINUTE = "6"
+  DOCS_AI_PER_DAY = "60"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

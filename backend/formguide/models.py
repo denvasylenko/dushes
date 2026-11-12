@@ -87,6 +87,31 @@ class ResolvedModels:
 
 # ===================================================================== provider-specific touches
 
+# a provider's key field on the LangChain model -> the environment variable that fills it
+_KEY_FIELDS = {"anthropic_api_key": "ANTHROPIC_API_KEY", "openai_api_key": "OPENAI_API_KEY",
+               "google_api_key": "GOOGLE_API_KEY", "mistral_api_key": "MISTRAL_API_KEY", "groq_api_key": "GROQ_API_KEY"}
+
+
+def missing_key(model: Any) -> str | None:
+    """The environment variable a model needs but has no key from, or None (a key is set, or the model
+    authenticates another way: Azure AD, Bedrock, a local model, a scripted test model).
+    Without it the provider's SDK fails with a vague "Connection error"."""
+    if "azure" in type(model).__name__.lower():
+        return None
+    fields = getattr(type(model), "model_fields", {}) or {}
+    for name, env in _KEY_FIELDS.items():
+        if name not in fields:
+            continue
+        v = getattr(model, name, None)
+        secret = v.get_secret_value() if hasattr(v, "get_secret_value") else v
+        return None if secret else env
+    return None
+
+
+def missing_keys(models: dict[str, Any]) -> dict[str, str]:
+    """{role: environment variable} for the roles whose model has no API key."""
+    return {role: env for role, m in models.items() if m is not None and (env := missing_key(m))}
+
 
 def provider_of(model: BaseChatModel) -> str:
     name = type(model).__name__.lower()

@@ -1,0 +1,144 @@
+---
+title: 'The chat widget'
+description: '<agui-chat>: one tag gives a streaming chat with steps, cards, dictation, attachments and quick replies.'
+---
+import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+A ready-made chat for any AG-UI agent, as one HTML element. It streams the agent's answer with a smooth typewriter, shows what the agent is doing step by step, renders cards (field changes, questions, file requests, confirmations) and lets the user dictate, attach files and pick suggested replies. Every part can be switched off or restyled.
+
+It is a plain Web Component, so it works on any page: plain HTML, React, Vue, Angular, server-rendered templates. It has no runtime dependencies; the one-script build is about 23 KB gzipped. The look and motion come from the chat of the Cheese project (Herefront AI).
+
+Source: [`packages/agui-chat/`](https://github.com/denvasylenko/dushes/tree/main/packages/agui-chat). Try it: run the demo server and open http://localhost:8000/examples/widget/ (every setting can be switched live there), or the demo app at http://localhost:8000.
+
+---
+
+## In 30 seconds
+
+```html
+<agui-chat url="/agent/run"></agui-chat>
+<script src="agui-chat.iife.js"></script>
+```
+
+That is a working chat with any AG-UI endpoint: a round button in the corner opens a side panel. For formguide, add the plugin, which sends your form with every message and draws formguide's cards:
+
+```html
+<script>
+  document.querySelector('agui-chat').use(AguiChat.formguide({
+    getState: () => ({ config, jsx_hash, form_id, ui }),     // the form as your backend last built it
+    applyChanges: (changes) => myFormBackend.apply(changes),  // returns the new config
+  }))
+</script>
+```
+
+
+## Install
+
+| How | Code |
+|---|---|
+| One script tag | `<script src=".../agui-chat.iife.js"></script>` defines `<agui-chat>` and `window.AguiChat` (`AguiChat.formguide`, `AguiChat.h`) |
+| npm (any bundler) | `import '@formguide/agui-chat'` defines the element; `import { formguide } from '@formguide/agui-chat/formguide'` |
+| React | `import { AguiChat } from '@formguide/agui-chat/react'` then `<AguiChat url="/agent/run" plugins={[formguide({...})]} />` |
+| React form without a config (react-hook-form, Formik…) | `useFormguide(form, schema)` from `@formguide/agui-chat/react-hook-form`, see [A React form without a config](../react-hook-form/) |
+
+Build it from this repository: `cd packages/agui-chat && npm install && npm run build` (output in `dist/`; `npm test` runs the tests). The package is not published to npm yet; until then use the built files or `npm pack`.
+
+
+## What the user sees, and where it comes from
+
+| On screen | AG-UI event |
+|---|---|
+| the answer, typed out | `TEXT_MESSAGE_START/CONTENT/END` |
+| three bouncing dots | a run started and no text came yet |
+| "Searching the business documents" with a spinner, then a tick | `TOOL_CALL_START` … `TOOL_CALL_RESULT` of a server tool |
+| sub-steps under it ("Reading a document") | `CUSTOM tool_progress {parent_id, name}` |
+| "Steps: 3 ›" (collapsed after the run) | the same steps, folded when the run ends |
+| a card | `CUSTOM on_interrupt` (JSON value with `type`) or `RUN_FINISHED.outcome.interrupts` |
+| chips under the answer; a chip marked ✓ fills fields in one tap (with Undo), then sends its text | `CUSTOM suggestions {items, applies?}` |
+| "Something went wrong" + Try again | `RUN_ERROR` or a network error |
+
+
+## The formguide plugin
+
+```js
+import { formguide } from '@formguide/agui-chat/formguide'
+
+chat.use(formguide({
+  getState: () => ({ config, jsx_hash, form_id, ui }),   // sent as the run's state
+  applyChanges: async (changes) => newConfig,             // your form backend; same path as user input
+  revertChanges: async (previous) => {},                  // optional, for Undo (default: applyChanges)
+  onDirective: (d) => openTabsAndHighlight(d),            // optional "look here"; default: scroll to [data-name]
+  baseUrl: '/agent',                                      // where threads and attachments live (default: url minus /run)
+  fieldCard: { select: true, diff: true, reason: true, edit: true, jump: true, undo: true },
+  undoSeconds: 20,
+  cardSteps: false,                                       // show "Preparing a question" etc. as steps too
+  // optional host callbacks for richer cards (see Cards and answers, 2.8); without them the plain controls stay
+  preview: (field, value) => `${payment(value)} per month`,  // live line under a number range
+  getSlots: async (field, date) => ['10:00', '14:30'],      // free time slots
+  lookupAddress: async (field, query) => [{ label: 'Tverskaya St, 1', detail: 'Moscow, 125009' }],
+  onFeedback: (value) => {},                                // the thumbs after a confirmed action (default: POST {base}/feedback)
+}))
+```
+
+It does five things:
+
+1. **Sends the form** (`getState()`) as `state` with every run, plus the files attached in the composer.
+2. **Applies directives** (`ui_directive`): your `onDirective`, or scrolling to `[data-name=target]` and flashing it.
+3. **Draws formguide's cards**:
+
+   | Card | What the user can do | Resume value |
+   |---|---|---|
+   | `set_fields`: field changes | untick rows, see old → new, edit a value (text, number, date, or another option), jump to the field, Undo after applying; a dependent dropdown (`deferred` row, "after Make") is applied after the others with its option looked up in the refreshed form; after the answer the card folds to one line (click it to see the rows) | `{accepted, config, ui, names?, edited?}` |
+   | `ask`: a question | click an option (or press 1-9), tick several, type an answer, pick a date / time / number; when the card `applies`, the tap fills the field at once, with Undo, and shows the field (its tab via `onDirective`) | `{answer: {ids?, text?}}` (plus `config, ui` when applied), Skip: `{accepted: false}` |
+   | `upload`: a file request | drop a file or choose one; uploads with a progress bar | `{attachment_ids}`, Skip: `{accepted: false}` |
+   | `confirm`: a confirmation | Confirm (red when `danger`) or Cancel | `{accepted}` |
+
+4. **Restores the chat** after a reload: `GET {baseUrl}/threads/{id}?format=agui&form_id=…` gives the messages, a pending card and the form's starters.
+5. **Labels the steps** of formguide's tools in seven languages ("Looking at the form", "Reading your document", …). The tools that produce a card (`propose_changes`, `ask_user`, `request_file`, `confirm_action`) get no step of their own, since the card shows the result; `cardSteps: true` shows them.
+
+The fill button counts the fields ("Fill in 3 fields", "Fill in 2 of 3" when some are unticked), with the plural form of the chat's language.
+
+Edited values are applied in the shape the form uses: a dropdown that stores the option object gets the option object, one that stores an id gets the id.
+
+## Cards: the renderer registry
+
+Each interrupt has a `type`. The widget looks up a renderer for it, shows what it returns, and when the renderer calls `resolve(value)`, resumes the same thread with `value` as the answer. Unknown types get a simple card with the payload and *Skip*.
+
+```js
+chat.renderers.set('pick_seat', (payload, ctx) => {
+  const box = AguiChat.h('div', null, AguiChat.h('div', { class: 'card-q' }, 'Pick a seat'))
+  for (const seat of payload.seats) {
+    box.append(AguiChat.h('button', { class: 'chip', onclick: () => ctx.resolve({ seat }) }, seat))
+  }
+  return box
+})
+```
+
+`ctx` has `resolve(value)`, `t(key)` (the UI strings), `flags` (this type's entry of the `cards` option), `restored` (shown again after a reload) and `chat`. Reusable classes inside cards: `card-t` (small title), `card-q` (question), `chips` + `chip`, `acts`, `btn pri` / `btn sec` / `btn danger` / `btn link`, `ok-line`, `muted`. After `resolve`, buttons in the card are disabled, except ones marked `data-keep`.
+
+
+## Errors, waiting and touch
+
+- A failed run shows one sentence in plain words per kind of failure (no connection, no access, busy, server, model) and *Try again*; the raw error text is in the line's tooltip and in the `agui:error` event.
+- After 4 s with only the dots, a quiet "Still working…" appears next to them.
+- On a touch screen buttons, chips and links are at least 44 px tall, and the chat does not move the focus by itself (that would open the keyboard). With a mouse, a new card's first option gets the focus, so number keys work at once.
+- The send button looks quiet while the box is empty but still reacts: an empty send shakes the composer.
+
+## Server side (formguide)
+
+The widget only needs AG-UI. With formguide the server adds:
+
+| Feature | Turn on |
+|---|---|
+| suggested replies after answers | `suggestions: {enabled: true, max: 3}` in `formguide.yaml` (a cheap model, about 4 s timeout, never blocks the turn) |
+| starters for an empty chat | `starters: [...]` in the form's domain pack |
+| upload requests, confirmations, date pickers | built in: the agent calls `request_file`, `confirm_action`, `ask_user` with `input` |
+| a confirmation before risky tools | `confirm_tools: [submit_application]` |
+
+See [configuration.md](../../reference/configuration/) and [ui-components.md](../../form/overview/) for the payloads.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Themes and styling" href="../themes/" />
+  <LinkCard title="<agui-chat> API" href="../../reference/agui-chat/" />
+</CardGrid>

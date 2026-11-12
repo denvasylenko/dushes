@@ -1,0 +1,23 @@
+---
+/** A row of facts under the demo. The spec count is read from openspec/specs/ at build time. */
+import { readdirSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+const dir = resolve(process.cwd(), '../openspec/specs') + '/';   // builds run from site/
+const specs = readdirSync(dir).filter((n) => existsSync(`${dir}${n}/spec.md`)).length;
+const stats = [
+  ['~1K', 'tokens of form context per turn, instead of ~16K'],
+  ['221', 'fields in the demo loan form, across 8 tabs'],
+  ['7', 'languages in the chat widget out of the box'],
+  [String(specs), 'capabilities with behaviour contracts'],
+];
+---
+<ul class="stats not-content" aria-label="formguide in numbers">
+  {stats.map(([n, t]) => <li><b>{n}</b><span>{t}</span></li>)}
+</ul>
+<style>
+  .stats { list-style: none; padding: 0; margin: 3rem auto 1rem; max-width: 72rem; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+  li { padding: 1rem 0 0; border-top: 1px solid var(--sl-color-hairline-light); display: flex; flex-direction: column; gap: 4px; }
+  b { font: 700 var(--sl-text-3xl)/1.1 var(--fg-display); letter-spacing: -0.03em; color: var(--sl-color-white); font-variant-numeric: tabular-nums; }
+  span { font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); max-width: 22ch; }
+  @media (max-width: 50rem) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>

@@ -1,0 +1,64 @@
+---
+title: Persistence and history
+description: Two histories, two stores. The model's history for the agent, the transcript for what the user saw.
+---
+import { Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+| | The model's history | The transcript |
+| --- | --- | --- |
+| Holds | messages, tool calls, the compacted memory | the bubbles, cards and answers the user saw |
+| Store | any LangGraph checkpointer | any `TranscriptStore` |
+| Default | in memory (lost on restart) | files under `<data_dir>/transcripts` |
+| Compacted in long chats | yes | never |
+
+```yaml title="formguide.yaml"
+checkpointer: {sqlite: data/checkpoints.sqlite}   # needs the sqlite extra
+transcripts: {dir: data/transcripts}              # or: memory
+```
+
+<Tabs syncKey="cp">
+  <TabItem label="SQLite">
+    ```python
+    from formguide import sqlite_checkpointer
+    cfg.checkpointer = sqlite_checkpointer("data/checkpoints.sqlite")
+    ```
+  </TabItem>
+  <TabItem label="Postgres">
+    ```python
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver   # langgraph-checkpoint-postgres
+
+    async with AsyncPostgresSaver.from_conn_string(DB_URL) as saver:   # e.g. in your app's lifespan
+        await saver.setup()
+        cfg.checkpointer = saver
+        guide = FormGuide(cfg)
+    ```
+  </TabItem>
+  <TabItem label="Your transcript store">
+    ```python
+    class DbTranscripts:                     # the TranscriptStore protocol
+        def append(self, thread_id, entry): ...
+        def update(self, thread_id, entry_id, **patch): ...
+        def list(self, thread_id): ...
+        def delete(self, thread_id): ...
+
+    cfg.transcripts = DbTranscripts()
+    ```
+  </TabItem>
+</Tabs>
+
+## Restore a chat after a reload
+
+```ts
+const r = await fetch(`/agent/threads/${threadId}?format=agui&form_id=loan_application`)
+const { messages, pending_card, starters } = await r.json()
+agent.setMessages(messages)            // a pending card comes back too
+```
+
+`<agui-chat>` does this by itself when `persist-thread` is on (the default). `DELETE /agent/threads/{id}` forgets a conversation.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Long conversations" description="How compaction keeps the form out of the summary." href="../../concepts/memory/" />
+  <LinkCard title="Deploy and secure" description="Thread ids, auth, CORS." href="../deploy/" />
+</CardGrid>

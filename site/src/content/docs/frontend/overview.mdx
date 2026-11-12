@@ -1,0 +1,32 @@
+---
+title: Choose a client
+description: formguide speaks plain AG-UI. Use the ready-made chat, wrap it in React, or bring CopilotKit or any AG-UI client.
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import ArchFigure from '../../../components/ArchFigure.astro';
+
+| You have | Use | Effort |
+| --- | --- | --- |
+| any page, no framework | [`<agui-chat>` from one script tag](../plain-html/) | 5 lines |
+| a React app with a form backend | [`<AguiChat>`](../react/) + the formguide plugin | 10 lines |
+| a react-hook-form / Formik form, no config | [`useFormguide(form, schema)`](../react-hook-form/) | a schema + one hook |
+| CopilotKit already | [`HttpAgent` + `useInterrupt`](../copilotkit/) | your own cards |
+| your own chat UI | [any AG-UI client](../agui-client/) | the wire format |
+
+## What every client does
+
+<ArchFigure page="integrate" />
+
+1. **Register the form's skeleton once**: `POST /agent/layouts {jsx, form_id}` → `jsx_hash`.
+2. **Send the form with every message** in AG-UI `state`: `{config, jsx_hash, form_id, ui}`.
+3. **Draw what comes back**: streamed text, "look here" directives, cards.
+4. **Answer a card** after applying accepted values through your form backend; the agent continues with the new config.
+
+The chat widget's formguide plugin does 2 to 4 for you: you give it `getState()` and `applyChanges()`.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="The chat widget" description="One tag: streaming, steps, cards, dictation." href="../chat-widget/" />
+  <LinkCard title="How the form and agent talk" description="The contract, message by message." href="../../form/overview/" />
+</CardGrid>

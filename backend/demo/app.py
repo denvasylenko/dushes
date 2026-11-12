@@ -73,6 +73,11 @@ _WIDGET = HERE.parents[1] / "packages" / "agui-chat" / "dist"
 if _WIDGET.exists():
     app.mount("/widget", StaticFiles(directory=_WIDGET), name="widget")
 app.mount("/examples/widget", StaticFiles(directory=HERE.parents[1] / "examples" / "widget-html", html=True), name="widget-example")
+# The react-hook-form example: http://localhost:8000/examples/react-hook-form/ after
+# `cd examples/react-hook-form && npm install && npm run build`.
+_RHF = HERE.parents[1] / "examples" / "react-hook-form" / "dist"
+if _RHF.exists():
+    app.mount("/examples/react-hook-form", StaticFiles(directory=_RHF, html=True), name="rhf-example")
 
 _DIST = HERE.parents[1] / "frontend" / "dist"
 if _DIST.exists():

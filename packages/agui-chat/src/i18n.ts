@@ -12,6 +12,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "newChat": "New chat",
     "error": "Something went wrong.",
     "retry": "Try again",
+    "copy": "Copy",
+    "copied": "Copied",
     "skip": "Skip",
     "steps": "Steps: {n}",
     "working": "Working\u2026",
@@ -31,7 +33,10 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "errBusy": "The assistant is busy right now. Try again in a minute.",
     "errServer": "The assistant's server had a problem.",
     "errModel": "The assistant could not answer this time.",
-    "slow": "Still working\u2026"
+    "slow": "Still working\u2026",
+    "introAsk": "Ask anything about this form.",
+    "replaced": "Replaced by your message",
+    "fills": "Fills in the form"
   },
   "ru": {
     "title": "\u0410\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442",
@@ -45,6 +50,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "newChat": "\u041d\u043e\u0432\u044b\u0439 \u0447\u0430\u0442",
     "error": "\u0427\u0442\u043e-\u0442\u043e \u043f\u043e\u0448\u043b\u043e \u043d\u0435 \u0442\u0430\u043a.",
     "retry": "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c",
+    "copy": "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c",
+    "copied": "\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e",
     "skip": "\u041f\u0440\u043e\u043f\u0443\u0441\u0442\u0438\u0442\u044c",
     "steps": "\u0428\u0430\u0433\u043e\u0432: {n}",
     "working": "\u0420\u0430\u0431\u043e\u0442\u0430\u044e\u2026",
@@ -64,7 +71,10 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "errBusy": "\u0410\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442 \u0441\u0435\u0439\u0447\u0430\u0441 \u0437\u0430\u043d\u044f\u0442. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0447\u0435\u0440\u0435\u0437 \u043c\u0438\u043d\u0443\u0442\u0443.",
     "errServer": "\u041d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435 \u0430\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442\u0430 \u0441\u0431\u043e\u0439.",
     "errModel": "\u0410\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442 \u043d\u0435 \u0441\u043c\u043e\u0433 \u043e\u0442\u0432\u0435\u0442\u0438\u0442\u044c \u0432 \u044d\u0442\u043e\u0442 \u0440\u0430\u0437.",
-    "slow": "\u0415\u0449\u0451 \u0440\u0430\u0431\u043e\u0442\u0430\u044e\u2026"
+    "slow": "\u0415\u0449\u0451 \u0440\u0430\u0431\u043e\u0442\u0430\u044e\u2026",
+    "introAsk": "\u0421\u043f\u0440\u043e\u0441\u0438\u0442\u0435 \u0447\u0442\u043e \u0443\u0433\u043e\u0434\u043d\u043e \u043e\u0431 \u044d\u0442\u043e\u0439 \u0444\u043e\u0440\u043c\u0435.",
+    "replaced": "\u0417\u0430\u043c\u0435\u043d\u0435\u043d\u043e \u0432\u0430\u0448\u0438\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\u043c",
+    "fills": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442 \u0444\u043e\u0440\u043c\u0443"
   },
   "uk": {
     "title": "\u0410\u0441\u0438\u0441\u0442\u0435\u043d\u0442",
@@ -78,6 +88,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "newChat": "\u041d\u043e\u0432\u0438\u0439 \u0447\u0430\u0442",
     "error": "\u0429\u043e\u0441\u044c \u043f\u0456\u0448\u043b\u043e \u043d\u0435 \u0442\u0430\u043a.",
     "retry": "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0438",
+    "copy": "\u041a\u043e\u043f\u0456\u044e\u0432\u0430\u0442\u0438",
+    "copied": "\u0421\u043a\u043e\u043f\u0456\u0439\u043e\u0432\u0430\u043d\u043e",
     "skip": "\u041f\u0440\u043e\u043f\u0443\u0441\u0442\u0438\u0442\u0438",
     "steps": "\u041a\u0440\u043e\u043a\u0456\u0432: {n}",
     "working": "\u041f\u0440\u0430\u0446\u044e\u044e\u2026",
@@ -97,7 +109,10 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "errBusy": "\u0410\u0441\u0438\u0441\u0442\u0435\u043d\u0442 \u0437\u0430\u0440\u0430\u0437 \u0437\u0430\u0439\u043d\u044f\u0442\u0438\u0439. \u0421\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0437\u0430 \u0445\u0432\u0438\u043b\u0438\u043d\u0443.",
     "errServer": "\u041d\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0456 \u0430\u0441\u0438\u0441\u0442\u0435\u043d\u0442\u0430 \u0437\u0431\u0456\u0439.",
     "errModel": "\u0410\u0441\u0438\u0441\u0442\u0435\u043d\u0442 \u043d\u0435 \u0437\u043c\u0456\u0433 \u0432\u0456\u0434\u043f\u043e\u0432\u0456\u0441\u0442\u0438 \u0446\u044c\u043e\u0433\u043e \u0440\u0430\u0437\u0443.",
-    "slow": "\u0429\u0435 \u043f\u0440\u0430\u0446\u044e\u044e\u2026"
+    "slow": "\u0429\u0435 \u043f\u0440\u0430\u0446\u044e\u044e\u2026",
+    "introAsk": "\u0417\u0430\u043f\u0438\u0442\u0430\u0439\u0442\u0435 \u0431\u0443\u0434\u044c-\u0449\u043e \u043f\u0440\u043e \u0446\u044e \u0444\u043e\u0440\u043c\u0443.",
+    "replaced": "\u0417\u0430\u043c\u0456\u043d\u0435\u043d\u043e \u0432\u0430\u0448\u0438\u043c \u043f\u043e\u0432\u0456\u0434\u043e\u043c\u043b\u0435\u043d\u043d\u044f\u043c",
+    "fills": "\u0417\u0430\u043f\u043e\u0432\u043d\u0438\u0442\u044c \u0444\u043e\u0440\u043c\u0443"
   },
   "de": {
     "title": "Assistent",
@@ -111,6 +126,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "newChat": "Neuer Chat",
     "error": "Etwas ist schiefgelaufen.",
     "retry": "Nochmal",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
     "skip": "\u00dcberspringen",
     "steps": "{n} Schritte",
     "working": "Arbeite\u2026",
@@ -130,7 +147,10 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "errBusy": "Der Assistent ist gerade ausgelastet. Versuche es in einer Minute.",
     "errServer": "Der Server des Assistenten hatte ein Problem.",
     "errModel": "Der Assistent konnte diesmal nicht antworten.",
-    "slow": "Arbeite noch\u2026"
+    "slow": "Arbeite noch\u2026",
+    "introAsk": "Frag etwas zu diesem Formular.",
+    "replaced": "Durch deine Nachricht ersetzt",
+    "fills": "F\u00fcllt das Formular aus"
   },
   "fr": {
     "title": "Assistant",
@@ -144,6 +164,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "newChat": "Nouvelle conversation",
     "error": "Une erreur s'est produite.",
     "retry": "R\u00e9essayer",
+    "copy": "Copier",
+    "copied": "Copi\u00e9",
     "skip": "Passer",
     "steps": "{n} \u00e9tapes",
     "working": "Je travaille\u2026",
@@ -163,7 +185,10 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "errBusy": "L'assistant est occup\u00e9. R\u00e9essayez dans une minute.",
     "errServer": "Le serveur de l'assistant a eu un probl\u00e8me.",
     "errModel": "L'assistant n'a pas pu r\u00e9pondre cette fois.",
-    "slow": "Je travaille encore\u2026"
+    "slow": "Je travaille encore\u2026",
+    "introAsk": "Posez une question sur ce formulaire.",
+    "replaced": "Remplac\u00e9 par votre message",
+    "fills": "Remplit le formulaire"
   },
   "it": {
     "title": "Assistente",
@@ -177,6 +202,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "newChat": "Nuova chat",
     "error": "Qualcosa \u00e8 andato storto.",
     "retry": "Riprova",
+    "copy": "Copia",
+    "copied": "Copiato",
     "skip": "Salta",
     "steps": "{n} passaggi",
     "working": "Sto lavorando\u2026",
@@ -196,7 +223,10 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "errBusy": "L'assistente \u00e8 occupato. Riprova tra un minuto.",
     "errServer": "Il server dell'assistente ha avuto un problema.",
     "errModel": "L'assistente non \u00e8 riuscito a rispondere questa volta.",
-    "slow": "Sto ancora lavorando\u2026"
+    "slow": "Sto ancora lavorando\u2026",
+    "introAsk": "Chiedi qualcosa su questo modulo.",
+    "replaced": "Sostituito dal tuo messaggio",
+    "fills": "Compila il modulo"
   },
   "es": {
     "title": "Asistente",
@@ -210,6 +240,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "newChat": "Nuevo chat",
     "error": "Algo sali\u00f3 mal.",
     "retry": "Reintentar",
+    "copy": "Copiar",
+    "copied": "Copiado",
     "skip": "Omitir",
     "steps": "{n} pasos",
     "working": "Trabajando\u2026",
@@ -229,6 +261,9 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "errBusy": "El asistente est\u00e1 ocupado. Int\u00e9ntalo en un minuto.",
     "errServer": "El servidor del asistente tuvo un problema.",
     "errModel": "El asistente no pudo responder esta vez.",
-    "slow": "Sigo trabajando\u2026"
+    "slow": "Sigo trabajando\u2026",
+    "introAsk": "Pregunta lo que quieras sobre este formulario.",
+    "replaced": "Sustituido por tu mensaje",
+    "fills": "Rellena el formulario"
   }
 }

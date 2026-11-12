@@ -1,0 +1,79 @@
+---
+title: 'Themes and styling'
+description: 'Named themes, tokens on the element and ::part(), in light and dark.'
+---
+import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Themes
+
+```js
+import { defineTheme } from '@formguide/agui-chat'      // the one-script build: AguiChat.defineTheme
+
+defineTheme('acme', {
+  tokens: { accent: '#0a7f6f', radius: '10px', font: '"Inter", sans-serif' },  // both schemes
+  light: { link: '#0a7f6f' },
+  dark: { accent: '#4fd1c1', 'on-accent': '#06201d', bg: '#0f1514', surface: '#151d1c' },
+  css: '.chip { font-weight: 600 }',                                           // scoped to the widget
+})
+```
+
+```html
+<agui-chat theme="acme" scheme="auto"></agui-chat>
+```
+
+Or `chat.options = { theme: 'acme' }`, `<AguiChat theme="acme" />`, or an object right away: `chat.options = { theme: { tokens: { radius: '0' } } }`.
+
+- Token keys may drop the prefix: `accent`, `--accent` and `--agui-accent` are the same. An unknown key, or a value containing `;`, `{` or `}`, is ignored with a console warning.
+- `extends: 'contrast'` starts from another theme (default: `default`).
+- Built in: `default` (the standard look) and `contrast` (black and white, stronger lines and text, a thicker focus ring).
+- A theme can be defined after the element appears: elements that use its name switch to it at once. Until then, and for an unknown name, the default theme is used.
+- `themes()` lists the registered names.
+
+## Tokens on the element
+
+For one page, CSS is enough. The element reflects `data-scheme="light|dark"` and `data-theme`, so you can target one scheme:
+
+```css
+agui-chat { --agui-accent: #0a7f6f; --agui-panel-width: 520px; }
+agui-chat[data-scheme="dark"] { --agui-accent: #4fd1c1; }
+```
+
+Avoid setting colours with `style.setProperty` on the element: inline values apply to both schemes. Use a theme or a `data-scheme` rule instead.
+
+| Token | What it colours or shapes |
+| --- | --- |
+| `accent`, `on-accent` | primary buttons, the floating button, the logo, and the text on them |
+| `link` | links and the focus ring |
+| `bg`, `surface`, `soft` | the panel, cards and the composer, quiet fills (code, user bubbles) |
+| `ink`, `ink-2`, `ink-3` | text: main, secondary, hints |
+| `line`, `line-2` | dividers and borders |
+| `ok`, `on-ok`, `danger`, `on-danger` | success marks, errors, the recording mic, and the text on them |
+| `shadow`, `scrim` | the shadow colour of the panel and the floating button; the backdrop behind the floating panel |
+| `radius`, `radius-sm`, `radius-lg`, `radius-pill` | cards and the inline frame; buttons, inputs and the logo; the composer and bubbles; chips, round buttons |
+| `font`, `panel-width`, `ease` | the font stack, the floating panel's width, the motion curve |
+
+Each is `--agui-<name>` in CSS.
+
+## Parts
+
+For changes tokens do not cover, use parts: `panel`, `header`, `log`, `message`, `user`, `assistant`, `steps`, `card`, `card-<type>`, `chip`, `composer`, `input`, `send`, `fab`, `notice`.
+
+```css
+agui-chat::part(card) { border-width: 2px; }
+agui-chat::part(fab) { bottom: 90px; }
+```
+
+With the system setting "reduce motion", nothing animates.
+
+The widget renders in a shadow root, so your page's CSS does not leak in and its CSS does not leak out. There are three layers, and each one overrides the one before:
+
+1. the widget's defaults;
+2. a **theme**: tokens for both schemes, per-scheme overrides and optional CSS inside the widget;
+3. **your page's CSS** on `agui-chat` (tokens and `::part()`).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="The chat widget" href="../chat-widget/" />
+  <LinkCard title="<agui-chat> API" href="../../reference/agui-chat/" />
+</CardGrid>

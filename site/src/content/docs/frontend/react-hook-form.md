@@ -1,0 +1,60 @@
+---
+title: react-hook-form
+description: An ordinary react-hook-form form with the formguide chat next to it. The glue is a schema and one hook.
+---
+
+A form built with react-hook-form (or Formik, or `useState`) has no JSX skeleton or `{props, state}` config for formguide to read. The schema bridge builds both from a short declarative schema, and `useFormguide` wires it to the chat. The form itself knows nothing about the chat.
+
+```tsx
+import { useForm } from 'react-hook-form'
+import { AguiChat } from '@formguide/agui-chat/react'
+import { useFormguide, type FormSchema } from '@formguide/agui-chat/react-hook-form'
+
+const schema: FormSchema = {
+  id: 'car_loan',
+  title: 'Car loan',
+  sections: [
+    { name: 'applicant', label: 'Applicant', fields: [
+      { name: 'full_name', label: 'Full name', required: true },
+      { name: 'phone', label: 'Phone', help: '10 digits' },
+    ] },
+    { name: 'car', label: 'Car', fields: [
+      { name: 'car_make', label: 'Make', type: 'select', options: ['Toyota', 'Honda'] },
+      { name: 'car_model', label: 'Model', type: 'select',
+        options: (v) => MODELS[v.car_make as string] ?? [], visible: (v) => !!v.car_make },
+    ] },
+  ],
+}
+
+export function Page() {
+  const form = useForm()
+  const [tab, setTab] = useState('applicant')
+  const { plugins, ready } = useFormguide(form, schema, { onReveal: setTab })
+  return (
+    <>
+      <MyForm form={form} tab={tab} />
+      {ready && <AguiChat url="/agent/run" mode="inline" plugins={plugins} />}
+    </>
+  )
+}
+```
+
+## What the hook does
+
+- Registers the layout once (`POST /agent/layouts`) and exposes `ready` and `error`.
+- Builds the config for every run: labels, visibility, options and required flags from the schema (rules may be functions of the current values), errors from `formState.errors`.
+- Applies accepted cards with `setValue`, converting choice values to the form's own format: `valueAs` is `id` (default), `option` or `name`.
+- Handles "show me": calls `onReveal(section)` so your page can open the tab, then scrolls to and focuses the field found by `data-name` or `name`, rings it, and shows the agent's hint ("Enter 10 digits here") in a small bubble under it. It also does this after every card, tap answer or action chip that fills a field, so the user sees what changed.
+
+The framework-free bridge underneath is `schemaForm(schema, access)` from `@formguide/agui-chat/formguide`; the [live demo](../../) on the home page uses it with a plain DOM form. Behaviour contract: [form-adapters](../../specifications/form-adapters/).
+
+## Run the example
+
+Start the demo server (port 8000), then in [`examples/react-hook-form/`](https://github.com/denvasylenko/dushes/tree/main/examples/react-hook-form):
+
+```bash
+npm install && npm run dev      # http://localhost:5175, proxies /agent to :8000
+npm install && npm run build    # or open it from the demo server: http://localhost:8000/examples/react-hook-form/
+```
+
+The demo server mounts the build only if it existed at start-up: restart it after the first build.

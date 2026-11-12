@@ -75,6 +75,25 @@ The development-only `GET /debug/{thread_id}` SHALL return:
 
 It SHALL only be mounted when the router is created with `debug=True`.
 
+It SHALL be off by default, both in `create_router` and in `create_app`.
+
 #### Scenario: Debug off
 - **WHEN** the router is created with `debug=False`
 - **THEN** `GET /debug/{thread_id}` is not found
+
+#### Scenario: Debug off by default
+- **WHEN** the router is created as `create_router(guide)`
+- **THEN** `GET /debug/{thread_id}` is not found
+
+### Requirement: Bounded chat inputs
+The router SHALL not authenticate callers; that is the host application's job. It SHALL bound what one request can make it hold:
+- `POST /layouts` SHALL refuse a layout over 2,000,000 characters with 413;
+- `POST /attachments` SHALL read at most one byte past the attachment store's size limit, and refuse a larger file with 400, without reading it whole into memory.
+
+#### Scenario: Oversized attachment
+- **WHEN** a client uploads a file larger than the attachment size limit
+- **THEN** the request fails with 400 saying the file is too large, and nothing is stored
+
+#### Scenario: Oversized layout
+- **WHEN** a client registers a layout over the size limit
+- **THEN** the request fails with 413 and nothing is stored

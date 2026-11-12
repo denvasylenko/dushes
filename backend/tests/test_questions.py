@@ -53,6 +53,7 @@ def test_question_with_own_options_and_click_answer(guide, model):
 def test_question_from_a_field(guide, model):
     v, _, _ = ask(guide, model, "q2", {"question": "Which loan?", "field": "loan_type"})
     assert v["field"] == "loan_type" and len(v["options"]) == 4
+    assert [r["type"] for r in v["reveal"]][:1] == ["tab"]      # where the field is, to show it once filled
     assert {"id": "auto", "label": "Car loan"} in [{"id": o["id"], "label": o["label"]} for o in v["options"]]
 
     v, _, _ = ask(guide, model, "q3", {"question": "Which loan?", "field": "loan_type",

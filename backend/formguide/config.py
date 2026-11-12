@@ -41,6 +41,8 @@ FORMGUIDE_MODEL environment variable does the same without a file. Everything el
     interrupt_mode: legacy                           # confirmation cards: legacy (CopilotKit) | structured (AG-UI 1.0) | both
     confirm_tools: [submit_application]              # these tools always ask the user before running
     suggestions: {enabled: true, max: 3}             # quick replies after each answer (a cheap model)
+    actions: {request_file: false, review_form: true}   # switch agent actions off (true | false | auto)
+    attachments: {enabled: true, privacy_note: "Your file stays on our server; only the values reach the chat."}
     tracing: {callbacks: ["my_app.tracing:langfuse_handler"], tags: [staging]}   # LangSmith: env vars only
 """
 from __future__ import annotations
@@ -59,6 +61,7 @@ from .domain.packs import DomainPackRegistry
 from .form.layout import DEFAULT_COMPONENTS, ComponentMap
 from .knowledge.base import KnowledgeBase
 from .knowledge.index import BM25Index, SearchIndex, VectorStoreIndex
+from .agent.actions import parse_config as parse_actions
 from .agent.memory import MemoryConfig
 from .models import Models
 from .skills import SkillRegistry, import_object
@@ -109,6 +112,10 @@ class GuideConfig:
     confirm_tools: list[str] = field(default_factory=list)   # tools that always ask the user first
     suggestions: SuggestionsConfig = field(default_factory=SuggestionsConfig)
     tracing: TracingConfig = field(default_factory=TracingConfig)
+    # Which agent actions exist: {action: True | False | "auto"} (see agent/actions.py); missing = default.
+    actions: dict[str, Any] = field(default_factory=dict)
+    attachments_enabled: bool = True                 # False: no uploads and no reading of attached files
+    privacy_note: str = ""                           # shown on upload requests (`privacy`)
 
 
 # ===================================================================== YAML
@@ -205,6 +212,15 @@ def load_config(path: str | Path) -> GuideConfig:
         except (ImportError, AttributeError) as e:
             raise ValueError(f"tracing.callbacks: cannot import {ref!r}: {e}") from None
     cfg.tracing = TracingConfig(callbacks=factories, tags=[str(t) for t in tr.get("tags") or []])
+    cfg.actions = parse_actions(raw.get("actions"))
+    at = raw.get("attachments")
+    if at is not None:
+        at = {"enabled": at} if isinstance(at, bool) else at
+        unknown = set(at) - {"enabled", "privacy_note"}
+        if unknown:
+            raise ValueError(f"attachments: unknown key(s) {sorted(unknown)}")
+        cfg.attachments_enabled = bool(at.get("enabled", True))
+        cfg.privacy_note = str(at.get("privacy_note") or "").strip()[:200]
     sg = raw.get("suggestions")
     if sg is not None:
         sg = {"enabled": sg} if isinstance(sg, bool) else sg

@@ -1,0 +1,297 @@
+---
+title: 'Cards and answers'
+description: 'What the agent sends back (directives and four kinds of cards) and how the client answers each.'
+---
+import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+The agent streams AG-UI events. Here is **everything the frontend can receive**, and what to draw for it:
+
+| Event | When | What to render |
+|---|---|---|
+| `TEXT_MESSAGE_START` / `_CONTENT` / `_END` | the agent replies | a chat bubble, filled as the text streams |
+| `CUSTOM ui_directive` (2.1) | the agent points at a place in the form | open tabs and accordions, scroll, highlight, show the hint |
+| `CUSTOM on_interrupt`, `type: "set_fields"` (2.2) | the agent wants to fill fields | a card with a row per field: *Fill in* / *Reject* |
+| `CUSTOM on_interrupt`, `type: "ask"` (2.5) | the agent asks a question with options | a question card: option buttons and/or a text box (a date / time / number picker when `input` is set) |
+| `CUSTOM on_interrupt`, `type: "upload"` (2.6) | the agent asks for a document | a drop zone; upload, then answer with the attachment ids |
+| `CUSTOM on_interrupt`, `type: "confirm"` (2.7) | the agent needs a yes/no before an action | a confirmation: Confirm / Cancel, with details and one consequence line |
+| `CUSTOM on_interrupt`, `type: "review"` (2.8) | the form's status, or the check before sending | sections with what is left and Continue; errors with Fix and Show, warnings with Why |
+| `CUSTOM sources` (2.8) | after an answer that used the business documents | source chips under the answer |
+| `CUSTOM receipt` (2.8) | the confirmed action returned a receipt | the confirm card turns into the receipt: number, Copy number |
+| `CUSTOM tool_progress` | a sub-step of a running tool (the document researcher) | optional: a sub-line under that tool's step |
+| `CUSTOM suggestions` | after an answer (when enabled on the server) | 2-3 chips; clicking one sends it as a message; an entry in `applies` (validated field changes) makes it an action chip that fills the fields first, with Undo |
+| `TOOL_CALL_*` + `TOOL_CALL_RESULT` | the agent used one of its own tools | optional: a step "Searching the documents" with a spinner, then a tick |
+| `TOOL_CALL_*` without a result | the agent called **your** frontend tool | anything you like: it is your own component (see Integrate in the architecture pages) |
+| `CUSTOM run_stats` | last event of every run: timings, tokens, cache hits ([Speed and tracing](../../backend/observability/)) | nothing, or a debug line |
+| `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
+| `RUN_FINISHED` / `RUN_ERROR` | the turn ended | stop the spinner, show the error |
+
+**Both cards stop the turn** until the user answers; there is at most one at a time. Look at `type` to know which card to draw. The two events that change what is on screen in the form are the directive and the field-change card; both arrive as `CUSTOM` events with a JSON value.
+## 2.1 "Look here": the `ui_directive` event
+
+Sent when the agent wants to show the user a field (or a tab, or an accordion).
+
+```json
+{
+  "type": "focus",
+  "target": "loan_amount",
+  "reveal": [
+    { "type": "tab", "tabs": "main", "tab": "tab_loan" },
+    { "type": "accordion", "name": "acc_loan_params" }
+  ],
+  "hint": "Enter the amount here"
+}
+```
+
+| Key | Meaning |
+|---|---|
+| `type` | always `"focus"` today |
+| `target` | the `name` of the element to show |
+| `reveal` | steps to make it visible, **from the outside in**. `{"type": "tab", "tabs": T, "tab": X}` means: in the tab set named `T`, open tab `X`. `{"type": "accordion", "name": A}` means: expand accordion `A` |
+| `hint` | a short sentence to show next to the element (may be empty) |
+
+What your UI does, in order:
+
+1. go through `reveal` and open each tab and accordion;
+2. wait one frame (so the element is in the DOM), then scroll the element into view;
+3. highlight it for a moment and show `hint`.
+
+The directive **never changes values**; it is safe to apply at once.
+
+```ts
+function applyDirective(d) {
+  for (const s of d.reveal) {
+    if (s.type === "tab") setActiveTab(s.tabs, s.tab)
+    else openAccordion(s.name)
+  }
+  setTimeout(() => {
+    document.querySelector(`[data-name="${d.target}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+    flash(d.target, d.hint)
+  }, 60)
+}
+```
+
+## 2.2 "Shall I fill this in?": the card (`on_interrupt`)
+
+Sent when the agent wants to set one or more fields. The run then **stops and waits** for the user's answer. The value of the event is a JSON **string**; parse it:
+
+```json
+{
+  "type": "set_fields",
+  "card_id": "cc9fefa2fb8e",
+  "changes": [
+    {
+      "name": "loan_type",
+      "label": "Loan type",
+      "value": { "id": "auto", "name": "Car loan" },
+      "display": "Car loan",
+      "reason": "You said car loan",
+      "reveal": [
+        { "type": "tab", "tabs": "main", "tab": "tab_loan" },
+        { "type": "accordion", "name": "acc_loan_params" }
+      ]
+    },
+    {
+      "name": "first_name",
+      "label": "First name",
+      "value": "Anna",
+      "display": "Anna",
+      "reason": "",
+      "reveal": [
+        { "type": "tab", "tabs": "main", "tab": "tab_applicant" },
+        { "type": "accordion", "name": "acc_personal" }
+      ]
+    }
+  ]
+}
+```
+
+| Key | Meaning | Use it for |
+|---|---|---|
+| `card_id` | id of this card | answering it; matching it after a page reload |
+| `changes[].name` | which field | the key to put into your state |
+| `changes[].label` | the field's label | the card's left column |
+| `changes[].value` | **the value in your component's own format** (table 1.3, or what you described in 1.5), already checked: the option exists, the date is valid, the field is visible and editable | what you send to your form backend, unchanged |
+| `changes[].display` | the value as text for people (`"Car loan"`, `"✓"`, `"✗"`, `"250000"`) | the card's right column |
+| `changes[].reason` | why the agent suggests it (may be empty) | a small grey line under the row |
+| `changes[].reveal` | how to make this field visible | after *Accept*, open the place of the last change so the user sees the result |
+| `changes[].previous`, `previous_display` | the field's value before the change (your format, and as text); `null` when it was empty | show "~~old~~ new"; put `previous` back for an Undo button |
+
+**Before a card is sent the agent has already checked every value.** A value for a hidden, locked or read-only field, an option that is not in `options`, or a date that does not exist never reaches a card. The agent is told the problem and has to fix it or explain it to the user. Your UI can trust `value`.
+
+With `interrupt_mode: structured` in `formguide.yaml`, the same card arrives as `RUN_FINISHED.outcome.interrupts[0]`: `id` is the `card_id`, and `metadata.changes` is the same list. Pick whichever your client library supports. CopilotKit's `useInterrupt` uses the default (`legacy`).
+
+## 2.3 Answering the card
+
+**On Accept:**
+
+1. Turn the changes into `{name: value}`: `{"loan_type": {"id": "auto", "name": "Car loan"}, "first_name": "Anna"}`.
+2. Send them to **your form backend** the same way a user's typing would go (in the demo: `POST /java/event {state, changes}`). The backend applies its rules and returns the **new config**: new values, plus fields that appeared, got unlocked or got new options because of these values.
+3. Show the new config in the form, and open the `reveal` of the last change.
+4. Resume the agent with the answer and the **new** config:
+
+```ts
+await agent.runAgent({ forwardedProps: { command: { resume: JSON.stringify(
+  { accepted: true, config: newConfig, ui: currentUi }) } } })
+// AG-UI 1.0 style instead:  resume: [{ interrupt_id: card_id, status: "resolved", payload: { accepted: true, config: newConfig } }]
+```
+
+The agent then compares the old and new config, sees what your form did ("*Loan* tab unlocked, *Car brand* appeared"), tells the user, and carries on.
+
+**Keep only some rows.** Give each row a checkbox, ticked by default. When the user unticks some and presses *Fill in*, send **only the ticked changes** to your form backend and add their names to the resume:
+
+```ts
+resume: { accepted: true, config: newConfig, names: ["first_name", "last_name"] }   // "gender" was unticked
+```
+
+The agent is told "The user applied: first_name, last_name. Declined (not applied): gender." and will not push the declined value again unless the user asks. Without `names`, *Accept* means all rows. `names: []` is the same as *Reject*.
+
+**Let the user correct a value.** If the card lets the user change a value before accepting (an Edit button), apply the corrected value and tell the agent with `edited`:
+
+```ts
+resume: { accepted: true, config: newConfig, edited: { loan_amount: 1200000 } }
+```
+
+The agent is told "The user edited before applying: loan_amount -> 1200000", so it does not "correct" the user back.
+
+**On Reject:** resume with `{accepted: false}` (or `status: "cancelled"`). Optionally add `comment: "wrong amount"`. Do not touch the form.
+
+**Why not just write the values straight into the inputs?** Because your form has rules: choosing *Car loan* may show *Car brand* and change the allowed amounts. Only your form backend knows those rules. If you skip it, the agent and the screen will disagree about the form.
+
+## 2.4 The whole round trip
+
+```
+user: "I want a car loan, my name is Anna"
+  |
+  |  POST /agent/run   messages:[user]  state:{config, jsx_hash, form_id, ui}
+  v
+agent: (thinks, looks at the form, checks values)
+  |
+  |  TEXT_MESSAGE_*  "Here is what I can fill in:"
+  |  CUSTOM ui_directive   (optional: opens the tab, highlights a field)
+  |  CUSTOM on_interrupt   {card_id, changes:[loan_type, first_name]}
+  |  RUN_FINISHED
+  v
+your UI: shows the card  ->  user presses Accept
+  |
+  |  your form backend: apply {loan_type, first_name}  ->  new config
+  |
+  |  POST /agent/run   resume {accepted:true, config:<new>}   (same thread)
+  v
+agent: "Done. The Loan tab is open now; next is the amount."
+```
+
+## 2.5 "Which one?": the question card
+
+When the user must choose between known options, or the request is ambiguous ("I want a loan": which kind?), the agent asks with a **question card** instead of listing the options in text. It is the same `on_interrupt` event with `type: "ask"`, and the turn waits for the answer:
+
+```json
+{
+  "type": "ask",
+  "card_id": "a41c09e2d7f3",
+  "question": "What kind of loan do you need?",
+  "options": [
+    { "id": "consumer", "label": "Consumer loan" },
+    { "id": "mortgage", "label": "Mortgage" },
+    { "id": "auto", "label": "Car loan" },
+    { "id": "refinance", "label": "Refinancing" }
+  ],
+  "multiple": false,
+  "allow_text": true,
+  "field": "loan_type",
+  "label": "Loan type",
+  "applies": true,
+  "previous": null
+}
+```
+
+When the question is about an editable choice field, every option also carries `value`: the option in the form's own format (the option object, or just its id, per 1.5), and the card has `applies: true` plus `previous` (the field's current value). Then **one tap fills the field**: apply `{[field]: option.value}` the way user input goes (a list of values when `multiple`), and resume with the new config. No field-change card follows.
+
+| Key | Meaning | Render |
+|---|---|---|
+| `question` | one short question | the card's title |
+| `options` | up to 12 choices, `{id, label}`; may be empty | a button per option (single choice) or a checkbox per option (multiple) |
+| `multiple` | several options may be chosen | checkboxes plus a *Send* button |
+| `allow_text` | a typed answer is allowed (default `true`) | a small text box: "or type your answer" |
+| `field` | present when the options are a field's choices | nothing required; useful to show the card next to that field |
+| `applies`, `previous`, `label`, `options[].value` | the answer may fill the field (see above) | apply the tapped option, show a check mark and "Car loan" with Undo (put `previous` back) |
+
+**Answering:**
+
+```ts
+resume: { answer: { ids: ["auto"] } }                // a clicked option
+resume: { answer: { ids: ["sms", "email"] } }        // several, when multiple
+resume: { answer: { text: "only on weekends" } }     // typed (a plain string works too)
+resume: { answer: { ids: ["auto"] }, config, ui }   // a tapped option you already applied (applies: true)
+resume: { accepted: false }                          // skipped (or AG-UI status: "cancelled")
+// AG-UI 1.0 style:  resume: [{ interrupt_id: card_id, status: "resolved", payload: { answer: { ids: ["auto"] } } }]
+```
+
+The agent gets "The user chose: Car loan (auto)" and continues in the same turn. If the resume carries `config` (and the card had `applies`), the agent takes it like an accepted field-change card: the field counts as filled and is not proposed again. Without `config` the answer only answers, and the agent may then send a field-change card for `loan_type`: a UI that does not apply answers keeps working as before. Typed text never fills the field by itself. An id that was not offered, several ids for a single-choice question, or text when `allow_text` is false counts as skipped, and the agent is told why.
+
+With `interrupt_mode: structured` the question arrives as `RUN_FINISHED.outcome.interrupts[0]` with `reason: "ask_user"`, `message` = the question, and the rest in `metadata`. A field-change card has `reason: "confirm_field_changes"` there.
+
+With `input: {type: "date" | "time" | "datetime" | "number" | "text", min?, max?}` the question expects a typed answer of that kind: show a native picker (`<input type="date" min=... max=...>`) and send the value as `{answer: {text: "2026-11-20"}}`. Dates are `YYYY-MM-DD`, times `HH:MM`. An answer of the wrong kind or out of range counts as skipped, and the agent is told why. When the agent asks about a date or number field, `input` is set for you.
+
+## 2.6 "Please upload it": the file request
+
+When a document would save typing (a passport, a payslip), the agent asks for it:
+
+```json
+{ "type": "upload", "card_id": "f2c8a1d0e4b7", "prompt": "Upload a photo of your ID",
+  "accept": ".jpg,.jpeg,.png,.pdf", "multiple": false, "field": "passport_scan" }
+```
+
+Show a drop zone and a file button limited to `accept`. Upload each file with `POST /agent/attachments` (form fields `thread_id` and `file`; the answer has `id`), then resume:
+
+```ts
+resume: { attachment_ids: ["att_1a2b3c4d"] }     // or { accepted: false } to skip
+```
+
+The agent then reads the file with `extract_from_attachment` and usually sends a field-change card with what it found. Big phone photos are fine: the server shrinks any image over 2000 px or 3.5 MB before the model sees it (`<agui-chat>` also shrinks them before upload, which is faster).
+
+## 2.7 "Are you sure?": the confirmation
+
+Before an action with side effects (submitting, cancelling), or before a tool listed in the server's `confirm_tools`, the agent asks:
+
+```json
+{ "type": "confirm", "card_id": "9b1e0c7a2d44", "title": "Submit the application?",
+  "message": "It goes to the bank and cannot be changed afterwards.", "confirm_label": "Submit", "danger": true }
+```
+
+Two buttons; make the confirm button red when `danger`. Resume `{accepted: true}` or `{accepted: false}`. For a tool held by `confirm_tools`, the payload also has `tool` and `args`, and the tool runs only after `{accepted: true}`.
+
+With `interrupt_mode: structured` the reasons are `request_file` and `confirm_action`.
+
+## 2.8 Richer looks from the same data
+
+The model asks *what*; the widget decides *how* to draw it from the payload. Every key below is optional: without it (or without the host callback) the card looks as in 2.2-2.7. The plugin announces what it can draw with every run, `forwardedProps.capabilities` (`ask.details`, `ask.compare`, `ask.search`, `ask.date`, `ask.slots`, `ask.range`, `ask.multi`, `ask.address`, `set.consent`, `set.issues`, `set.document`, `review`, `sources`, `confirm.receipt`, `upload.camera`, `feedback`), and the server sends only those.
+
+| Card | Payload | Look | Host callback |
+|---|---|---|---|
+| question | `options[].description` | two-line options ("Car loan / from 16.9% · up to 7 years") | |
+| question | 2-3 options with the same `options[].attrs`, `recommended` | a comparison in columns (stacked on phones); "From the documents" when the question has `sources` | |
+| question | more than 12 options, `suggested` | a search box; the suggested options first | |
+| question | `input: {type: "date", min?, max?}` | Today, Tomorrow and the next days, plus Other date | |
+| question | `input: {type: "time"}`, `slots?` | free slots | `getSlots(field, date)` |
+| question | `input: {type: "number", min, max, step, unit?}` | a stepper (under 10 steps) or a slider, a live line, "Set 5 years" | `preview(field, value)` |
+| question | `input: {type: "address"}` | suggestions as you type | `lookupAddress(field, query)` |
+| question | `fields: [{name, label, input?, required?}]` | 2-3 short inputs in one card; resume `{answers, config}` | |
+| field change | `changes[].kind` | values formatted by role: dates in the language, numbers grouped, ids as typed | |
+| field change | one `reason` on every row | said once under the title | |
+| field change | `changes[].consent`, `doc`, `required` | unticked consent rows with Read; the button says how many are left | |
+| field change | `changes[].issue: {severity, message, why?}` | a warning inside the row, with Why | |
+| field change | card `source: {kind: "document", title, attachment_id, found}`, `changes[].confidence: "low"` | a document header with a thumbnail; "check" on unsure values | |
+| review | `mode: "status"`, `sections: [{name, label, left, reveal}]` | what is left by section; resume `{action: "continue", section}` | |
+| review | `mode: "submit"`, `issues: [{severity, field, label, message, detail?, fix?, source?, reveal}]` | Fix applies `fix.value` with Undo, Show jumps, Why explains; "Fix 1 to send" until no error is left; resume `{action: "submit"}` or `{action: "fixed", names, config}` | |
+| confirm | `details: [{label, value}]`, `consequence` | details and one consequence line; then the thumbs | `onFeedback(value)` |
+| confirm | `CUSTOM receipt {card_id, title?, number?, eta?}` | the card becomes the receipt with Copy number | |
+| upload | `privacy` | one privacy line; on phones "Take a photo" first | |
+
+A value chosen from a day, a slot, a range or several fields fills the field right away when the question `applies` (with Undo, and the field is shown), like a tap on an option.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Custom card renderers" href="../chat-widget/#cards-the-renderer-registry" />
+  <LinkCard title="AG-UI events" href="../../reference/agui-events/" />
+</CardGrid>

@@ -1,0 +1,44 @@
+/* The ported architecture pages: notes, pills, source chips and inline SVG diagrams, on Starlight's tokens. */
+.arch {
+  --surface: var(--sl-color-gray-6); --bg: var(--sl-color-bg); --fg: var(--sl-color-white);
+  --muted: var(--sl-color-gray-3); --line: var(--sl-color-hairline-light);
+  --accent: var(--sl-color-accent-high); --accent-soft: var(--sl-color-accent-low); --warn: var(--fg-warn);
+  --f-display: var(--fg-display); --f-body: var(--sl-font); --f-mono: var(--sl-font-mono);
+}
+:root[data-theme='light'] .arch { --surface: var(--sl-color-gray-7); --accent: var(--sl-color-accent); }
+.arch-headline { font: 500 var(--sl-text-lg)/1.45 var(--sl-font); color: var(--sl-color-gray-2); margin: 0 0 1.5rem; text-wrap: pretty; }
+.arch figure { margin: 1.25rem 0 1.75rem; }
+.arch .diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; overflow-x: auto; }
+.arch .diagram svg { min-width: 640px; }
+.arch figcaption { color: var(--muted); font-size: var(--sl-text-sm); margin-top: .6rem; }
+.arch .d { display: block; width: 100%; height: auto; color: var(--fg); overflow: visible; }
+.arch .d .box { fill: var(--bg); stroke: currentColor; stroke-width: 1.2; }
+.arch .d .soft { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.arch .d .key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.6; }
+.arch .d .zone { fill: none; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.arch .d .ln { stroke: currentColor; stroke-width: 1.3; fill: none; }
+.arch .d .ln-key { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+.arch .d .ln-dash { stroke: currentColor; stroke-width: 1.2; stroke-dasharray: 4 4; fill: none; }
+.arch .d text { fill: currentColor; font: 13px var(--f-body); }
+.arch .d .t-b { font-weight: 600; }
+.arch .d .t-s { font-size: 12px; fill: var(--muted); }
+.arch .d .t-m { font: 12px var(--f-mono); fill: var(--muted); }
+.arch .d .t-k { fill: var(--accent); font-weight: 600; }
+.arch .d .t-w { fill: var(--warn); }
+.arch .d .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 6px; stroke-linejoin: round; }
+.arch .d .head { fill: currentColor; }
+.arch .d .head-key { fill: var(--accent); }
+.arch .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1rem 0 1.5rem; }
+.arch .note { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; min-width: 0; margin: 0; }
+.arch .note h3 { font: 600 var(--sl-text-base) var(--f-display); margin: 0 0 .4rem; color: var(--fg); }
+.arch .note p, .arch .note ul { margin: 0; font-size: var(--sl-text-sm); color: var(--sl-color-gray-2); }
+.arch .note ul { padding-left: 1.1rem; }
+.arch .tbl { overflow-x: auto; margin: .75rem 0 1.5rem; }
+.arch .tbl table { display: table; width: 100%; }
+.arch .pill { display: inline-block; font: var(--sl-text-2xs) var(--f-mono); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.arch .pill.ok { color: var(--accent); border-color: var(--accent); }
+.arch .src { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 0 0 1.5rem; font-size: var(--sl-text-xs); color: var(--muted); }
+.arch .src a { font: var(--sl-text-2xs) var(--f-mono); color: var(--accent); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; overflow-wrap: anywhere; }
+.arch .src a:hover { border-color: var(--accent); }
+.arch .src + * { margin-top: 0; }
+@media (max-width: 50rem) { .arch .grid2 { grid-template-columns: minmax(0, 1fr); } }

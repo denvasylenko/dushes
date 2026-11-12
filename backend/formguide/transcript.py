@@ -106,7 +106,7 @@ class FileTranscriptStore:
 
 def pending_card(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
     """The card or question still waiting for the user (its `kind` says which)."""
-    return next((e for e in reversed(entries) if e["kind"] in ("card", "question", "upload", "confirm") and e.get("status") == "pending"),
+    return next((e for e in reversed(entries) if e["kind"] in ("card", "question", "upload", "confirm", "review") and e.get("status") == "pending"),
                 None)
 
 

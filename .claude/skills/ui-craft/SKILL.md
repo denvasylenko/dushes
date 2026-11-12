@@ -1,6 +1,6 @@
 ---
 name: ui-craft
-description: The project's UI/UX standard, minimal and simple at the level of Apple, Telegram and Revolut. One main action per screen, complex tasks in one tap, Undo instead of confirmations, instant response, designed empty and error states. Load BEFORE any interface change (the <agui-chat> widget in packages/agui-chat, the demo form in frontend/, the docs pages in docs/architecture-pages.html, examples/, button and hint texts, card renderers); when designing a new card, screen or flow; and for audits ("check the UI", "make it simpler or nicer", "UX review", "why is this awkward").
+description: The project's UI/UX standard, minimal and simple at the level of Apple, Telegram and Revolut. One main action per screen, complex tasks in one tap, Undo instead of confirmations, instant response, designed empty and error states. Load BEFORE any interface change (the <agui-chat> widget in packages/agui-chat, the demo form in frontend/, the docs site in site/, examples/, button and hint texts, card renderers); when designing a new card, screen or flow; and for audits ("check the UI", "make it simpler or nicer", "UX review", "why is this awkward").
 ---
 
 # UI Craft: how we build interfaces
@@ -79,6 +79,6 @@ In detail, with examples from our code: `references/principles.md`.
 | The chat widget `<agui-chat>` | `packages/agui-chat/src/element.ts`, `styles.ts`, `formguide/cards.ts`, `i18n.ts` | end users of any host app; phone and computer | 7 languages (`STRINGS`, `FG_STRINGS`; every key in every language) | `--agui-*` on `:host`, light and dark |
 | The demo form and its page | `frontend/src/App.tsx`, `Form.tsx`, `index.css` | someone trying formguide; mostly computer | en | the demo's own `:root` variables |
 | The HTML example | `examples/widget-html/index.html` | developers trying the widget | en | its own `:root` |
-| The docs pages | `docs/architecture-pages.html` (also the GitHub Pages site and the artifact) | developers and managers | en | `--bg`, `--fg`, `--accent`… in its `:root` |
+| The docs site | `site/` (Astro Starlight): `src/styles/theme.css`, `src/components/` (the live demo `LiveDemo.astro` + `src/demo/`), pages in `src/content/docs/`, diagrams in `src/fragments/` | developers and managers; phone and computer | en | Starlight's `--sl-*` with formguide's accent in `theme.css`; diagrams map them in `arch.css` |
 
 The widget is the product: host apps restyle it only through tokens and `::part`, so everything visual in it must come from tokens. New text in the widget goes into the generated i18n files in all seven languages (non-ASCII as `\u` escapes, see CLAUDE.md).

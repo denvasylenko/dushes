@@ -10,14 +10,21 @@ Documentation is maintained continuously, in the same change as the code — nev
   - larger features or anything that needs design: start an OpenSpec change (`/opsx:propose`), implement with `/opsx:apply`, archive with `/opsx:archive` (which syncs the delta into the main specs);
   - small fixes: edit the affected main spec directly in the same change.
   - New capability → new folder under `openspec/specs/`.
-- **Architecture** — update `docs/architecture.md` when components, data flow, the turn lifecycle, or configuration change.
-- **Architecture pages** — `docs/architecture-pages.html` is the single source of the visual docs. It is published two ways: the GitHub Pages site (built by `scripts/build_docs_site.py`, which also renders `openspec/specs/` into a "Specifications" page; deployed by `.github/workflows/docs.yml` on push to `main`) and the claude.ai artifact https://claude.ai/artifact/6w26keGKcZNXqiGzk5puKN (republish with the Artifact tool, `url` = that link). When `docs/architecture.md` changes in a way the pages show, update the HTML, run `python3 scripts/build_docs_site.py` to check it builds, and republish the artifact.
+- **Docs site** — `site/` (Astro Starlight) is the single source of all documentation: guides, concepts with diagrams, the reference and a live scripted demo; deployed to GitHub Pages by `.github/workflows/docs.yml` on push to `main`. Pages are Markdown/MDX in `site/src/content/docs/`; the architecture diagrams are inline SVG in `site/src/fragments/*.html` (one per concept page); `openspec/specs/` is rendered into the Specifications section on every build (`site/scripts/specs.mjs`, output not committed).
+  - sections: `getting-started/`, `backend/` (server, configuration, models, packs, documents, skills, persistence, prefill, deploy, observability), `frontend/` (clients, widget, cards, themes, tools), `form/` (the form contract), `concepts/` (diagrams), `reference/`. Every page: a one-line `description` (shown under the title), a copyable example, tabs for variants, a diagram (Mermaid fence, or a hand-drawn SVG reused with `<ArchFigure page=… />`) where flow matters, "Next" cards;
+  - components, data flow, the turn lifecycle or configuration change → update `concepts/architecture.md` and the concept page (and its diagram fragment) that shows it;
+  - a new option, key, endpoint, event or CLI flag → the matching page under `reference/` and the guide that uses it;
+  - integration or usage changes → the guide under `backend/`, `frontend/`, `form/` or `getting-started/`;
+  - the landing demo (`site/src/demo/`) replays the real widget's events: when card payloads or event shapes change, update the script there too;
+  - the site also publishes `llms.txt`, `llms-full.txt` and `<page>.md` (built from the pages, nothing to edit); the docs assistant behind Ask AI (`backend/docs_ai/`, deployed from `deploy/docs-ai/`) reads `llms-full.txt`, so it follows the docs without changes.
+  - Check it builds: `cd site && npm run build`.
 - **README.md** — update usage, configuration or run instructions when they change.
 - Before finishing any task that touched behaviour, run:
   ```bash
   openspec validate --all --strict
   python3 scripts/check_english.py
   cd backend && uv run pytest -q
+  cd site && npm run build        # when docs changed
   ```
 
 ## UI work
@@ -28,10 +35,13 @@ Before any interface change (the `<agui-chat>` widget, its card renderers and te
 - `backend/demo/` — example integration: mock form backend, FastAPI app, `formguide.yaml`, skills, samples.
 - `backend/tests/` — offline tests (scripted model). `backend/scripts/chat_harness.py` — live scenarios against the demo server.
 - `frontend/` — optional demo UI.
+- `packages/agui-chat/` — the chat widget. `site/` — the documentation site. `backend/docs_ai/` — the docs assistant (Ask AI).
 
 ## Running
 - Demo server: `cd backend && ANTHROPIC_API_KEY=... uv run uvicorn demo.app:app --port 8000 --reload --reload-dir formguide --reload-dir demo` (`--reload` watches `.py` only).
 - Frontend build: `cd frontend && npm run build` (served by the demo server).
+- Docs site: `cd site && npm install && npm run dev` (http://localhost:4321/dushes/; `DOCS_BASE` / `DOCS_SITE` change the base path and host; `PUBLIC_ASK_AI_URL=http://localhost:8100/ask/run` turns on Ask AI).
+- Docs assistant: `cd backend && ANTHROPIC_API_KEY=... uv run uvicorn docs_ai.app:app --port 8100` (reads `site/dist/llms-full.txt` unless `DOCS_AI_CORPUS` is set).
 
 ## Git / GitHub
 The project will be pushed to a GitHub repository the user will name later. Do not create remotes, commit or push until the user asks and gives the repository.
