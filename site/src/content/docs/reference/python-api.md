@@ -1,6 +1,6 @@
 ---
 title: Python API
-description: FormGuide, its methods, the config objects and the app factories.
+description: FormGuide and Dushes, their methods, the config objects and the app factories.
 ---
 
 ```python
@@ -17,6 +17,19 @@ from formguide import FormGuide, GuideConfig, load_config, Models, KnowledgeBase
 | `FormGuide(config)` | the guide: the agent graph and everything it needs |
 | `formguide.app.create_app(config, prefix="/agent", cors=[...])` | a whole FastAPI app |
 | `formguide.server.create_router(guide, debug=False)` | the router for your own app ([HTTP API](../http-api/)) |
+
+## Dushes: the assistant for a whole site
+
+```python
+from formguide.site import Dushes, SiteMap, create_dushes_router
+```
+
+| Call | Does |
+| --- | --- |
+| `SiteMap.load(path or dict)` | the site map: pages with `path`, `title`, `description`, `keywords`, `form`, `tabs`, `accordions`, `sections` |
+| `Dushes(form_guide, site_map, model=None, ...)` | the site assistant above your `FormGuide`; `model` defaults to the form guide's agent model. Keyword options: `knowledge_namespaces`, `router_model`, `context`, `instructions`, `style`, `history`, `tools`, `suggestions`, `form_for` ([Dushes](../../backend/dushes/)) |
+| `create_dushes_router(dushes, host=None)` | its FastAPI router ([HTTP API](../http-api/#dushes-the-site-assistant)); `host(request)` builds your object for every run |
+| `SiteGuide`, `create_site_router` | the old names, kept as aliases |
 
 ## `FormGuide` methods
 

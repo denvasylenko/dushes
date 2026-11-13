@@ -23,6 +23,17 @@ description: Every endpoint of Dushes' FastAPI router, with its body and answer.
 | `POST /feedback` | `{thread_id, value: 1 \| -1, card_id?}` | 204; kept in the thread's transcript as a `feedback` entry. 422 for any other value |
 | `GET /debug/{thread_id}` | | the model's history and recent run stats; only with `debug=True` |
 
+## Dushes (the site assistant)
+
+`create_dushes_router(dushes)` mounts these under your prefix (`/site` in the demo). Errors are JSON `{"detail": "..."}`.
+
+| Method and path | Body | Answer |
+| --- | --- | --- |
+| `POST /run` | an AG-UI `RunAgentInput` with `state: {page: {path, title}, form?}` (`form` is the form state on a form page) | an AG-UI event stream: Dushes' answer, or the form agent's events on a form page; `CUSTOM site_directive` when it moves the user |
+| `GET /map` | | the site map the page renders or checks |
+| `GET /threads/{thread_id}` | `?form_id=` | the site chat for the page after a reload: its messages and, on a form page, the form's open card |
+| `POST /transcribe` | multipart: `file`, `language?` | as above, for dictation in the site chat |
+
 ## The run request
 
 `POST /run` takes the AG-UI input as is. Dushes reads:

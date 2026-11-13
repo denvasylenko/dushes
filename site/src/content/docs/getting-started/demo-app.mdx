@@ -14,13 +14,16 @@ cd frontend && npm install && npm run build && cd ..                # the demo U
 cd backend && ANTHROPIC_API_KEY=... uv run uvicorn demo.app:app --port 8000 --reload --reload-dir formguide --reload-dir demo
 ```
 
-Open http://localhost:8000. Two demo forms with nothing in common:
+Open http://localhost:8000 for the form demo, and http://localhost:8000/site.html for **Dushes** across a small site (a bank and a barbershop: loans with tabs, a FAQ, contacts and both forms; one chat follows you from page to page and hands over to the form). Both run without installing anything on the public host: **Live demo** in this site's header.
+
+The form demo has two forms with nothing in common:
 
 | Form | What it shows |
 | --- | --- |
 | `loan_application` | 221 fields, 8 tabs, nested up to 4 levels: search, "look here", prefill, dependent dropdowns |
 | `barber_booking` | A 4-step wizard: steps that unlock, question cards, a confirmation before booking |
 
+- **Trace** shows every turn as a timeline: each model call (which model, when it started, how long, tokens and cache hits) and each tool; the line under the chat sums up the last turn. It reads the run's `run_stats` ([Speed and tracing](../../backend/observability/)).
 - **Manager: documents** uploads business documents for a form (`backend/demo/samples/kb/` has examples), then compiles them into the form's rules.
 - **Attach** (the paper clip) sends a user document; `backend/demo/samples/attachments/` has scans and payslips.
 - **Dictate** (the microphone) uses the browser's speech recognition (Chrome, Edge, Safari). The language select above the chat sets the chat's language and dictation.
