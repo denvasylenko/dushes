@@ -759,7 +759,8 @@ function update() {
   style.textContent = partsCss()
   // where the chat is
   const host = document.getElementById('inline-host')
-  const inline = S.opt.mode === 'inline'
+  const inline = S.opt.mode === 'inline' || S.opt.mode === 'hero'   // hero also sits in the page
+  document.getElementById('inline-host').classList.toggle('hero', S.opt.mode === 'hero')
   if (inline && chat.parentElement !== host) host.append(chat)
   if (!inline && chat.parentElement === host) document.body.append(chat)
   document.getElementById('corner-note').hidden = inline
@@ -892,7 +893,11 @@ document.getElementById('width').addEventListener('click', (e) => {
 })
 
 // ------------------------------------------------------------------ the way back from bubble, drawer and page modes
-function setMode(m) { S.opt.mode = m; render(); update(); if (m !== 'inline') chat.open?.() }
+function setMode(m) {
+  S.opt.mode = m; render(); update()
+  if (m === 'hero') { chat.close?.(); chat.reset() }   // the field alone, as a visitor first sees it
+  else if (m !== 'inline') chat.open?.()
+}
 document.getElementById('back').addEventListener('click', () => setMode('inline'))
 for (const id of ['quick-mode', 'pv-mode']) document.getElementById(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setMode(b.dataset.v) })
 const MODE_HELP = {
@@ -900,6 +905,7 @@ const MODE_HELP = {
   floating: 'Drawer: a full-height panel from the side, the page dimmed behind it.',
   inline: 'Inline: the chat sits inside your page like any other block, as here.',
   page: 'Page: the chat takes the whole window.',
+  hero: 'Hero: a landing\'s big field; the first message grows it into the chat (a full-screen sheet on a phone).',
 }
 // every card and piece, one tap away: shown in the preview without the agent
 document.getElementById('try').append(

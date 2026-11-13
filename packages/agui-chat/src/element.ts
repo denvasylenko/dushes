@@ -278,7 +278,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private get _popup(): boolean { return this._opts.mode === 'floating' || this._opts.mode === 'bubble' }
 
   open(): void {
-    if (!this._popup) return
+    if (!this._popup && !this._hero) return
+    const was = this.$.wrap.classList.contains('open')
     this.$.wrap.classList.remove('closing')
     this.$.wrap.classList.add('open')
     this.$.fab.classList.remove('unread')
@@ -286,6 +287,18 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._hideGreeting()
     this.$.panel.setAttribute('aria-hidden', 'false')
     if (finePointer()) setTimeout(() => (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true }), 60)   // a phone would open its keyboard
+    if (!was) this.dispatchEvent(new CustomEvent('agui:open'))   // the page can hide what the open chat covers
+  }
+
+  /** hero mode: the field alone until the first message. */
+  private get _hero(): boolean { return this._opts.mode === 'hero' }
+  /** hero mode on a phone: the open chat is a full-screen sheet with a close button. */
+  private get _heroSheet(): boolean { return this._hero && typeof matchMedia === 'function' && !matchMedia('(min-width: 760px)').matches }
+
+  /** Change the composer's hint (a language switch on the page). */
+  setPlaceholder(text: string): void {
+    this._opts.placeholder = String(text ?? '')
+    if (this._built) { const input = this.$.input as HTMLTextAreaElement; input.placeholder = this._opts.placeholder || this.t('placeholder'); input.setAttribute('aria-label', input.placeholder) }
   }
 
   close(): void {
@@ -297,7 +310,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     }
     this.$.fab.setAttribute('aria-expanded', 'false')
     this.$.panel.setAttribute('aria-hidden', 'true')
-    this.$.fab?.focus()
+    if (this._hero) this.$.panel.removeAttribute('aria-hidden')   // the field stays on the page
+    else this.$.fab?.focus()
+    if (wasOpen) this.dispatchEvent(new CustomEvent('agui:close'))
   }
 
   /** The launcher: open when closed, close when open (bubble mode). */
@@ -352,6 +367,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     text = String(text ?? '').trim()
     if (!text && this._files.length) text = this.t('useAttached')
     if (!text || this._busy) return
+    if (this._hero) this.open()   // the field grows into the chat (a sheet on a phone)
     this._dropDictation()   // a chip or starter answered: the half-dictated text is stale (the composer's own send stopped it already)
     this._clearQuick()
     this.$.log.querySelector('.empty')?.remove()
@@ -473,15 +489,29 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     clip.addEventListener('click', () => picker.click())
     picker.addEventListener('change', () => { void this._upload([...(picker.files ?? [])]); picker.value = '' })
 
-    const grow = () => { input.style.height = 'auto'; input.style.height = `${Math.min(180, input.scrollHeight)}px` }
+    const grow = () => {
+      if (box.classList.contains('rec')) return   // hidden behind the wave: measured once it shows again
+      input.style.height = 'auto'; input.style.height = `${Math.min(180, input.scrollHeight)}px`
+    }
     input.addEventListener('input', () => { grow(); this._syncSend() })
+    // a screenshot or a file from the clipboard, or dropped on the composer, is attached like the paperclip's
+    const takeFiles = (files: FileList | null | undefined, e: Event) => {
+      const list = [...(files ?? [])]
+      if (!list.length || clip.hidden) return
+      e.preventDefault()
+      void this._upload(list)
+    }
+    input.addEventListener('paste', (e) => takeFiles((e as ClipboardEvent).clipboardData?.files, e))
+    box.addEventListener('dragover', (e) => { if (!clip.hidden && (e as DragEvent).dataTransfer?.types.includes('Files')) { e.preventDefault(); box.classList.add('drop') } })
+    box.addEventListener('dragleave', () => box.classList.remove('drop'))
+    box.addEventListener('drop', (e) => { box.classList.remove('drop'); takeFiles((e as DragEvent).dataTransfer?.files, e) })
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this._submit() }
     })
     send.addEventListener('click', () => (this._busy ? this.stop() : this._submit()))
     mic.addEventListener('click', () => this._toggleMic())
     panel.addEventListener('keydown', (e) => {
-      if (!this._popup) return
+      if (!this._popup && !(this._heroSheet && this.$.wrap.classList.contains('open'))) return
       if (e.key === 'Escape' && this.$.box.classList.contains('rec')) { e.preventDefault(); this._dropDictation(); return }   // drop the recording first
       if (e.key === 'Escape') { e.preventDefault(); this.close() }
       if (e.key === 'Tab') this._trapFocus(e)
@@ -583,6 +613,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
             time.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
           }, 500)
         }
+        if (s === 'off') input.dispatchEvent(new Event('input'))   // the input is shown again: fit it to the text
         if (s !== 'off' || gen !== this._micGen) return
         this._mic = null
         this._micBefore = null
@@ -703,7 +734,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   private _renderEmpty(): void {
     this.$.log.querySelector('.empty')?.remove()
-    if (this.$.log.children.length) return
+    if (this.$.log.children.length || this._hero) return   // hero: the page around the field is the empty state
     const starters = this._opts.starters.length ? this._opts.starters : this._starters
     const intro = this._opts.intro || this.t(this._opts.quickReplies && starters.length ? 'intro' : 'introAsk')
     const own = this.renderSlot('empty', { title: this._opts.title || this.t('title'), intro, starters })
@@ -843,6 +874,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     }
     if (r.interrupt) this._showInterrupt(r.interrupt, true)
     this._renderEmpty()
+    // hero: a turn still running reopens the chat; on a computer, so does a conversation to come back to
+    if (this._hero && (r.follow || r.running || (r.messages?.length && !this._heroSheet))) this.open()
     if (r.follow) void this._run({ follow: r.follow() })   // the host streams the running turn again: it goes on word by word
     else if (r.running) this._waitForTurn()
   }

@@ -125,6 +125,8 @@ export interface ChatApi {
   notice(text: string): void
   /** Add an element to the conversation, after the last message. */
   append(el: HTMLElement): void
+  /** Change the composer's hint (e.g. on a language switch). */
+  setPlaceholder(text: string): void
   /** Take back an assistant message already shown, by its message id. */
   removeMessage(id: string): boolean
   /** Redraw a shown card in place with new data. */
@@ -146,7 +148,9 @@ export interface ChatOptions {
   /** Keep the thread id in localStorage so a reload continues the chat. */
   persistThread: boolean
   /** floating: a side drawer; bubble: a launcher that grows into a chat window; inline: fills its box; page: the whole window. */
-  mode: 'floating' | 'bubble' | 'inline' | 'page'
+  /** hero: only the composer in the page (a landing's big field); the first message grows it into the chat in
+   *  place (desktop) or opens a full-screen sheet (phone, under 760 px) */
+  mode: 'floating' | 'bubble' | 'inline' | 'page' | 'hero'
   /** bubble mode: the corner of the launcher. */
   bubbleSide: 'right' | 'left'
   /** bubble mode: a short speech bubble next to the closed launcher (once per visitor until closed). */

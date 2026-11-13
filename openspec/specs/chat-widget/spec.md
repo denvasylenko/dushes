@@ -61,6 +61,20 @@ The widget SHALL build in `default`; `contrast`, `glass`, `bold` and `messenger`
 - **WHEN** a page sets `theme="glass"` with the one-script build
 - **THEN** the chat adds `agui-chat.theme-glass.js` from next to `agui-chat.iife.js` and switches to it when it loads
 
+### Requirement: Hero mode
+With `mode="hero"` the chat SHALL show only the composer until the first message (no header, no message list, no empty state). The first message SHALL grow it into the chat in place on screens 760 px wide and more (messages above the composer, at most 70% of the viewport high), and open it as a full-screen sheet with a close button on narrower screens. Closing SHALL return to the field and keep the conversation.
+
+#### Scenario: A landing's field
+- **WHEN** a visitor types "Bar Centrale, Pescara" into the hero field on a phone and sends it
+- **THEN** a full-screen chat opens with the message and the answer, and closing it shows the field again
+
+### Requirement: Hero mode for the page around it
+In hero mode a restore with a running turn SHALL open the chat, as SHALL a conversation to come back to on a wide screen. Opening and closing SHALL dispatch `agui:open` and `agui:close`, and `chat.setPlaceholder(text)` SHALL change the composer's hint.
+
+#### Scenario: Back to a running answer
+- **WHEN** the page reloads while a turn is still running
+- **THEN** the hero chat opens on its own and `agui:open` fires
+
 ### Requirement: Host control of shown messages and cards
 `chat.removeMessage(id)` SHALL take back an assistant message already shown (and from the history the chat sends), returning whether it was there. `chat.updateCard(id, patch)` SHALL redraw a shown card in place with its payload merged with `patch`, keeping what a waiting card answers to.
 
@@ -427,3 +441,10 @@ Esc or the cancel button SHALL drop a recording without sending it. An empty res
 #### Scenario: A browser without recognition
 - **WHEN** the browser has no SpeechRecognition and `dictation` is `auto`
 - **THEN** the microphone shows and records for the server
+
+### Requirement: Pasting and dropping files into the composer
+When uploads are available (the paperclip shows), files pasted into the input (a screenshot from the clipboard) or dropped on the composer SHALL be attached exactly as the paperclip attaches them; a paste without files SHALL stay plain text. The input SHALL grow with its text up to its limit, also after dictation puts text into it.
+
+#### Scenario: A pasted screenshot
+- **WHEN** the user presses Cmd+V with a screenshot in the clipboard
+- **THEN** the screenshot is uploaded and shown as an attachment of the next message

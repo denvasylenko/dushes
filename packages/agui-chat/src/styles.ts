@@ -111,6 +111,26 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 @keyframes turn { to { transform: rotate(360deg); } }
 @keyframes tick { from { transform: scale(.6); } to { transform: none; } }
 
+/* hero: a landing's big field; the first message grows it into the chat (desktop) or a full-screen sheet (phone) */
+.mode-hero .fab, .mode-hero .scrim, .mode-hero .close { display: none; }
+.mode-hero .panel { background: transparent; }
+.mode-hero:not(.open) .head, .mode-hero:not(.open) .log { display: none; }
+.mode-hero:not(.open) .foot { padding: 0; background: none; }
+.mode-hero:not(.open) .box { min-height: 60px; padding: 8px 8px 8px 16px; align-items: center; box-shadow: 0 10px 30px -14px var(--agui-shadow); }
+.mode-hero:not(.open) textarea { font-size: 17px; }
+.mode-hero.open .panel { background: var(--agui-panel-bg, var(--agui-bg)); border: 1px solid var(--agui-line); border-radius: var(--agui-radius-lg);
+  overflow: hidden; animation: hero-grow .32s var(--agui-ease) both; }
+.mode-hero.open .log { max-height: 70vh; min-height: 160px; }
+.mode-hero.open .head { display: none; }
+@keyframes hero-grow { from { opacity: .4; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 759px) {
+  .mode-hero.open .panel { position: fixed; inset: 0; z-index: 2147483001; border: 0; border-radius: 0; animation: hero-sheet .32s var(--agui-ease) both; }
+  .mode-hero.open .head { display: flex; }
+  .mode-hero.open .close { display: grid; }
+  .mode-hero.open .log { max-height: none; flex: 1; }
+  @keyframes hero-sheet { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+
 /* cards inside the conversation */
 .card { margin: 4px 0 20px; border: 1px solid var(--agui-card-border, var(--agui-line)); border-radius: var(--agui-card-radius, var(--agui-radius));
   background: var(--agui-card-bg, var(--agui-surface)); color: var(--agui-card-ink, inherit); padding: var(--agui-card-padding, 14px);
@@ -318,6 +338,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
   border-radius: var(--agui-composer-radius, var(--agui-radius-lg));
   padding: 8px 8px 8px 18px; box-shadow: 0 1px 2px color-mix(in srgb, var(--agui-shadow) 15%, transparent); transition: border-color .2s, box-shadow .2s; }
 .box:focus-within { border-color: var(--agui-ink-3); }
+.box.drop { border-color: var(--agui-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-accent) 25%, transparent); }   /* a file dragged over it */
 .box textarea { flex: 1; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 16px/1.4 var(--agui-font);
   padding: 7px 0; max-height: 180px; min-height: 24px; }
 .box textarea:placeholder-shown { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
