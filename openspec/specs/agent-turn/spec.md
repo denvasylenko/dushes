@@ -81,3 +81,15 @@ The system prompt SHALL instruct the model to ask a yes/no or pick-one decision 
 #### Scenario: A shorter term
 - **WHEN** the agent notices that a 36-month term would satisfy a rule
 - **THEN** it asks "Switch the term to 36 months?" as a question card with options, or proposes the term change, rather than ending its text with that question
+
+### Requirement: Tool rounds per turn
+The tool-round limit SHALL count the rounds since the user's last input: a new message and every card answer (a question, field changes, an upload, a confirmation, a review) SHALL start it again. When the limit is reached, the open tool calls SHALL be answered as not run and the model SHALL be asked to reply in text, so a turn never ends silently.
+
+#### Scenario: A chain of one-tap answers
+- **WHEN** the user answers five question cards in a row without typing, each answer leading to a tool call and a new card
+- **THEN** every card is shown; the limit does not cut the chain
+
+#### Scenario: The limit in one stretch
+- **WHEN** the model keeps calling tools past the limit after one message
+- **THEN** the turn ends with a short reply saying what is done and what comes next
+

@@ -61,6 +61,7 @@ class AgentState(TypedDict, total=False):
     tool_round: int
     said: bool      # the user saw some text this turn
     nudged: bool    # we already asked the model to reply with text
+    limited: bool   # the turn used up max_tool_rounds: the model was asked to reply without more tools
     system_prompt: str   # frozen for the thread: changing it would invalidate the model's earlier reasoning
     memory: str          # summary of older turns after compaction (see memory.py)
     client_tools: list[dict]     # frontend tools declared by the client: [{name, description, parameters}]
@@ -220,7 +221,7 @@ def build_graph(guide: FormGuide):
         return {
             "messages": [*(state.get("messages") or []), *new],
             "snapshot": ctx.ov.snapshot(), "version": version, "pending": None, "tool_round": 0,
-            "said": False, "nudged": False, "attachments": [], "system_prompt": frozen,
+            "said": False, "nudged": False, "limited": False, "attachments": [], "system_prompt": frozen,
             "pending_client": None, "client_results": {}, "turn_sources": None,
         }
 
@@ -342,8 +343,18 @@ def build_graph(guide: FormGuide):
                 return "nudge"
             return END
         if (state.get("tool_round") or 0) >= guide.max_tool_rounds:
-            return END
+            return END if state.get("limited") else "limit"   # never end silently in the middle of a task
         return "tools"
+
+    def limit(state: AgentState) -> dict:
+        """The turn used up its tool rounds: answer the open calls and ask for a reply in text."""
+        log.warning("turn reached max_tool_rounds (%s); asking for a reply", guide.max_tool_rounds)
+        last = state["messages"][-1]
+        open_calls = [{"id": c["id"], "content": "Not run: this turn reached its step limit.", "error": True}
+                      for c in getattr(last, "tool_calls", None) or []]
+        return {"messages": [*state["messages"], *_tool_messages(open_calls), HumanMessage(
+            content="[system] This turn reached its step limit. Do not call tools now: tell the user in one or two "
+                    "sentences what is done and what you will do next when they reply.")], "limited": True}
 
     def nudge(state: AgentState) -> dict:
         """Safety net: the model ended the turn without saying anything to the user."""
@@ -442,7 +453,9 @@ def build_graph(guide: FormGuide):
         {attachment_ids}; a confirmation {accepted}. Field changes are applied by the frontend through the
         normal pipeline (the form backend rebuilds the config)."""
         p = state["pending"]
-        upd: dict[str, Any] = {"pending": None}
+        # a card answer is the user's input: the turn's tool rounds start again (a chain of one-tap answers
+        # is one turn, and it must not run out of rounds)
+        upd: dict[str, Any] = {"pending": None, "tool_round": 0, "limited": False}
         kind = p.get("kind") or "set_fields"
         if kind != "set_fields":
             payload = p.get("payload") or p.get("question") or {}   # "question": threads from before kinds
@@ -561,12 +574,14 @@ def build_graph(guide: FormGuide):
     g.add_node("tools", tools)
     g.add_node("confirm", confirm)
     g.add_node("nudge", nudge)
+    g.add_node("limit", limit)
     g.add_node("compact", compact)
     g.add_edge(START, "sync")
     g.add_edge("sync", "compact")
     g.add_edge("compact", "llm")
-    g.add_conditional_edges("llm", route_llm, ["tools", "nudge", END])
+    g.add_conditional_edges("llm", route_llm, ["tools", "nudge", "limit", END])
     g.add_edge("nudge", "llm")
+    g.add_edge("limit", "llm")
     g.add_conditional_edges("tools", route_tools, ["llm", "confirm", END])
     g.add_edge("confirm", "llm")
     return g.compile(checkpointer=guide.checkpointer)

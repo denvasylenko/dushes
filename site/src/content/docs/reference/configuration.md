@@ -106,7 +106,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `memory.model` | the research model | the summarizer |
 | `checkpointer` | in memory | `{sqlite: path}` keeps the model's history across restarts (extra `sqlite`); Postgres / Redis savers in code |
 | `transcripts` | files under `<data_dir>/transcripts` | `{dir: path}`, or `memory` |
-| `max_tool_rounds` | `10` | model ⇄ tool rounds per turn |
+| `max_tool_rounds` | `10` | model ⇄ tool rounds since the user's last input (a message or a card answer); at the limit the agent stops calling tools and replies in text |
 | `learn_dependencies` | `true` | persist observed field dependencies per form |
 | `interrupt_mode` | `legacy` | cards as `CUSTOM on_interrupt` (CopilotKit), `structured` (AG-UI 1.0 interrupts), or `both` |
 | `actions` | all on | switch agent actions off for this deployment: `{ask_user, request_file, confirm_action, focus_field, review_form, ask_documents, extract_from_attachment}`, each `true`, `false` or `auto`. An action that is off is not offered to the model and its prompt rules are left out. `auto` (the default for `ask_documents`, `request_file`, `extract_from_attachment`): documents only when the form has some, files only when attachments are enabled. The client narrows it further with `forwardedProps.capabilities` ([AG-UI events](../agui-events/#capabilities)) |
