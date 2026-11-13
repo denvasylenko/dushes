@@ -281,6 +281,20 @@ describe('our own date and time pickers', () => {
     expect(applyChanges).toHaveBeenCalledWith({ founded: '2020-03-10' })
   })
 
+  it('a date of birth (any day up to today) opens on the years, about 30 years back', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const { el, applyChanges } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Date of birth?', field: 'birth_date',
+      applies: true, input: { type: 'date', max: today }, allow_text: true })))
+    const back = new Date().getFullYear() - 30
+    const years = $$(el, '.cal-y').map((b) => Number(b.textContent))
+    expect(years).toContain(back)                                         // the year grid, not this month
+    ;($$(el, '.cal-y').find((b) => Number(b.textContent) === back) as HTMLButtonElement).click()
+    ;($$(el, '.cal-y')[4] as HTMLButtonElement).click()                     // May
+    ;($$(el, '.cal-d').find((b) => b.textContent === '12') as HTMLButtonElement).click()
+    await tick(5)
+    expect(applyChanges).toHaveBeenCalledWith({ birth_date: `${back}-05-12` })   // three taps
+  })
+
   it('the title switches to years, then months', async () => {
     const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Born?', input: { type: 'date', max: '2008-01-01' }, allow_text: true })))
     ;($(el, '.cal-title') as HTMLButtonElement).click()

@@ -27,6 +27,13 @@ const COLORS = [
 const PRESETS = {
   default: { name: 'Default', desc: 'the widget\'s own quiet black and white; the accent is near-black in light and near-white in dark.', light: {}, dark: {} },
   contrast: { name: 'Contrast', desc: 'pure black and white with stronger lines and text and a thicker focus ring, for accessibility.', base: 'contrast', light: {}, dark: {} },
+  // built-in theme packs (loaded on demand); sw: the swatches shown on the preset button
+  glass: { name: 'Glass', desc: 'translucent frosted cards over a soft gradient, blue accents and bubbles, large radii: in the spirit of iOS.', base: 'glass', light: {}, dark: {},
+    sw: ['#007aff', 'linear-gradient(160deg,#eef3ff,#fdf3ee)', 'rgba(255,255,255,.7)', '#007aff'] },
+  bold: { name: 'Bold', desc: 'large radii, strong type and a vivid blue on clean cards; in dark, glassy cards over a deep glow: in the spirit of a fintech app.', base: 'bold', light: {}, dark: {},
+    sw: ['#0a5cff', '#f2f3f5', '#ffffff', '#121214'] },
+  messenger: { name: 'Messenger', desc: 'bubbles for both sides on a wallpaper, a light blue accent: in the spirit of a messenger.', base: 'messenger', light: {}, dark: {},
+    sw: ['#3390ec', 'linear-gradient(135deg,#d4e6ad,#92c3d8)', '#e7fdd5', '#ffffff'] },
   ocean: { name: 'Ocean', desc: 'a calm blue accent.', light: { accent: '#0a66c2', link: '#0a66c2', soft: '#eaf2fb', surface: '#f7fafd' }, dark: { accent: '#4c9cf0', 'on-accent': '#071a2e', link: '#7cb7ff', bg: '#0f1720', surface: '#16212d', soft: '#1d2a38' } },
   forest: { name: 'Forest', desc: 'a fresh green accent.', light: { accent: '#0a7f6f', link: '#0a7f6f', soft: '#e7f4f1', surface: '#f7fbfa' }, dark: { accent: '#4fd1c1', 'on-accent': '#06201d', link: '#4fd1c1', bg: '#0f1514', surface: '#151d1c', soft: '#1b2726' } },
   sunset: { name: 'Sunset', desc: 'a warm orange accent.', light: { accent: '#e8590c', link: '#d9480f', soft: '#fff1e6', surface: '#fffaf5' }, dark: { accent: '#ff922b', 'on-accent': '#2b1300', link: '#ffa94d', bg: '#1d1611', surface: '#251c15', soft: '#2e231a' } },
@@ -38,7 +45,7 @@ const FONTS = { system: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inte
 // ------------------------------------------------------------------ state
 const S = {
   opt: { mode: 'inline', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, mic: true, micAutoSend: false,
-    attach: true, attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: 'Want me to book you a haircut?', motion: 'spring',
+    dictation: 'browser', attach: true, attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: 'Want me to book you a haircut?', motion: 'spring',
     title: 'Barbershop', subtitle: 'formguide · playground', intro: '', placeholder: '' },
   preset: 'default', light: {}, dark: {},
   shape: { radius: 14, 'radius-sm': 10, 'radius-lg': 20, 'radius-pill': 999, font: 'system', 'panel-width': 460 },
@@ -135,7 +142,7 @@ const group = (title, ...rows) => [title ? el('div', { class: 'group-title' }, t
 const SAMPLES = [
   ['Field changes', { type: 'set_fields', changes: [
     { name: 'client_name', label: 'Your name', kind: 'text', value: 'Anna', display: 'Anna', reason: 'From your message', reveal: [] },
-    { name: 'visit_date', label: 'Date', kind: 'date', value: '2026-11-20', display: '2026-11-20', reason: 'From your message', reveal: [] }] }],
+    { name: 'visit_date', label: 'Date', kind: 'date', value: '2026-11-20', display: '2026-11-20', previous: '2026-11-18', previous_display: '2026-11-18', reason: 'You moved the visit', reveal: [] }] }],
   ['Options with details', { type: 'ask', question: 'Which service?', allow_text: false, options: [
     { id: 'cut', label: 'Haircut', description: '45 min · from 1 500 ₽' }, { id: 'beard', label: 'Beard trim', description: '30 min · from 900 ₽' },
     { id: 'combo', label: 'Haircut and beard', description: '75 min · from 2 200 ₽' }] }],
@@ -158,6 +165,36 @@ const SAMPLES = [
   ['File request', { type: 'upload', prompt: 'A photo of the haircut you want', accept: 'image/*', privacy: 'Only the barber sees it.' }],
   ['Confirmation', { type: 'confirm', title: 'Book the visit?', confirm_label: 'Book', details: [{ label: 'Service', value: 'Haircut' }, { label: 'When', value: 'Fri, 16:30' }],
     consequence: 'Maria gets a notification.' }],
+  // cards from blocks: the developer lays them out, the model fills the data (formguide.yaml `cards:`)
+  ['Blocks: your barber?', { type: 'blocks', name: 'barber_match', blocks: [
+    { type: 'title', text: 'Is this your barber?', subtitle: 'From your last visit' },
+    { type: 'place', title: 'Maria Ivanova', subtitle: 'Barbershop on Arbat · 12 years', rating: 4.9 },
+    { type: 'row', label: 'Next free slot', value: 'Today, 16:30', icon: 'calendar' },
+    { type: 'row', label: 'Haircut', value: 'from 1 500 ₽' },
+    { type: 'buttons', items: [{ id: 'yes', label: 'Yes, book her', style: 'primary' }, { id: 'no', label: 'Another barber' }] }] }],
+  ['Blocks: pick a style', { type: 'blocks', name: 'styles', blocks: [
+    { type: 'title', text: 'Pick a style for your site' },
+    { type: 'swatches', name: 'palette', items: [
+      { id: 'calm', label: 'Calm', colors: ['#1d1d1f', '#f5f5f7', '#0071e3'] },
+      { id: 'warm', label: 'Warm', colors: ['#3b2a20', '#fbf3ea', '#e8590c'] },
+      { id: 'fresh', label: 'Fresh', colors: ['#0f2e28', '#eefaf6', '#0a7f6f'] }] },
+    { type: 'choice', name: 'mood', options: [{ id: 'lighter', label: 'Lighter' }, { id: 'darker', label: 'Darker' }, { id: 'warmer', label: 'Warmer' }] },
+    { type: 'buttons', items: [{ id: 'use', label: 'Use it', style: 'primary' }, { id: 'skip', label: 'Not now', style: 'plain' }] }] }],
+  ['Blocks: steps left', { type: 'blocks', name: 'todo', blocks: [
+    { type: 'steps', title: '{left} steps left before you share', items: [
+      { label: 'Phone number', done: true }, { label: 'Opening hours', done: false }, { label: 'Address', done: false }, { label: 'Prices', done: false }] },
+    { type: 'progress', value: 1, max: 4 },
+    { type: 'buttons', items: [{ id: 'hours', label: 'Add opening hours', style: 'primary' }, { id: 'later', label: 'Not now', style: 'plain' }] }] }],
+  ['Blocks: booked', { type: 'blocks', name: 'visit', blocks: [
+    { type: 'stat', value: 'Fri, 16:30', label: 'Haircut with Maria', tone: 'ok' },
+    { type: 'diff', label: 'Moved', from: 'Thu, 12:00', to: 'Fri, 16:30' },
+    { type: 'links', items: [
+      { kind: 'calendar', label: 'Add to calendar', value: { title: 'Haircut with Maria', start: '2026-11-20T16:30:00', minutes: 45, place: 'Arbat 12' } },
+      { kind: 'route', label: 'Route to the barbershop', value: 'Arbat 12, Moscow' },
+      { kind: 'call', label: 'Call the barbershop', value: '+7 495 000 00 00' },
+      { kind: 'share', label: 'Share with a friend', value: 'https://example.com/booking/123' }] },
+    { type: 'field', name: 'wish', label: 'A wish for Maria', placeholder: 'Shorter on the sides' },
+    { type: 'buttons', items: [{ id: 'ok', label: 'Done', style: 'primary' }] }] }],
 ]
 const sample = (name) => SAMPLES.find(([n]) => n === name)[1]
 /** The answer, short: the form state the backend sends back is replaced by a note (it is your form, not the card's answer). */
@@ -307,6 +344,151 @@ function partsCss() {
 }
 
 // ------------------------------------------------------------------ sections
+
+// ------------------------------------------------------------------ the card builder: cards from blocks
+// Every block, with the fields it takes. Text fields accept {placeholders}: the model fills them from `data`.
+// List fields are edited as lines: "id | label | style" for buttons, "kind | label | value" for links,
+// "[x] label" for done steps, "id | label | #hex #hex #hex" for swatches, "a, b, c" for choice options.
+const BLOCK_CATALOG = {
+  title: { name: 'Title', help: 'the card’s question or heading, with a grey line under it', make: () => ({ type: 'title', text: 'Is this your barber?', subtitle: '' }),
+    fields: [['text', 'Text'], ['subtitle', 'Subtitle']] },
+  text: { name: 'Text', help: 'a paragraph; **bold** works', make: () => ({ type: 'text', text: 'A short paragraph.' }), fields: [['text', 'Text', 'area'], ['tone', 'Tone', 'tone']] },
+  note: { name: 'Note', help: 'a small grey line', make: () => ({ type: 'note', text: 'Free cancellation up to 2 hours before.' }), fields: [['text', 'Text']] },
+  row: { name: 'Row', help: 'label and value; rows next to each other form one list', make: () => ({ type: 'row', label: 'Next free slot', value: 'Today, 16:30', icon: 'calendar' }),
+    fields: [['label', 'Label'], ['value', 'Value'], ['icon', 'Icon', 'icon'], ['tone', 'Tone', 'tone']] },
+  place: { name: 'Place or person', help: 'photo or initial, name, a line, a rating', make: () => ({ type: 'place', title: 'Maria Ivanova', subtitle: 'Barbershop on Arbat', rating: 4.9 }),
+    fields: [['title', 'Name'], ['subtitle', 'Line'], ['image', 'Photo URL (https)'], ['rating', 'Rating', 'number']] },
+  image: { name: 'Image', help: 'a photo with rounded corners', make: () => ({ type: 'image', src: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800', alt: 'Barbershop', ratio: '16:9' }),
+    fields: [['src', 'Image URL (https)'], ['alt', 'Description'], ['ratio', 'Shape', 'ratio']] },
+  stat: { name: 'Big number', help: 'a balance, a date, a price', make: () => ({ type: 'stat', value: 'Fri, 16:30', label: 'Haircut with Maria', tone: 'ok' }),
+    fields: [['value', 'Value'], ['label', 'Label'], ['tone', 'Tone', 'tone']] },
+  diff: { name: 'Was → now', help: 'the old value struck through, then the new one', make: () => ({ type: 'diff', label: 'Moved', from: 'Thu, 12:00', to: 'Fri, 16:30' }),
+    fields: [['label', 'Label'], ['from', 'Was'], ['to', 'Now']] },
+  steps: { name: 'Steps', help: 'a checklist; {left} in the title counts the open steps', make: () => ({ type: 'steps', title: '{left} steps left', items: [{ label: 'Phone number', done: true }, { label: 'Opening hours' }, { label: 'Address' }] }),
+    fields: [['title', 'Title'], ['items', 'Steps, one per line, [x] for done', 'steps']] },
+  progress: { name: 'Progress', help: 'a thin bar', make: () => ({ type: 'progress', value: 1, max: 3, label: '' }), fields: [['value', 'Value', 'number'], ['max', 'Max', 'number'], ['label', 'Label']] },
+  swatches: { name: 'Palettes', help: 'colour sets to pick; the pick comes back in values', make: () => ({ type: 'swatches', name: 'palette', items: [
+    { id: 'calm', label: 'Calm', colors: ['#1d1d1f', '#f5f5f7', '#0071e3'] }, { id: 'warm', label: 'Warm', colors: ['#3b2a20', '#fbf3ea', '#e8590c'] }] }),
+    fields: [['name', 'Answer name'], ['items', 'One per line: id | label | #hex #hex #hex', 'swatches']] },
+  choice: { name: 'Choice', help: 'chips to pick; the pick comes back in values', make: () => ({ type: 'choice', name: 'slot', options: ['16:30', '18:00', '19:30'] }),
+    fields: [['name', 'Answer name'], ['options', 'Options, comma separated', 'csv'], ['multiple', 'Several at once', 'bool']] },
+  field: { name: 'Field', help: 'an input; its text comes back in values', make: () => ({ type: 'field', name: 'wish', label: 'A wish for the barber', input: 'text', placeholder: 'Shorter on the sides' }),
+    fields: [['name', 'Answer name'], ['label', 'Label'], ['input', 'Keyboard', 'input'], ['placeholder', 'Placeholder']] },
+  buttons: { name: 'Buttons', help: 'the answers; one primary', make: () => ({ type: 'buttons', items: [{ id: 'yes', label: 'Yes, book her', style: 'primary' }, { id: 'no', label: 'Another barber' }] }),
+    fields: [['items', 'One per line: id | label | primary, secondary, plain or danger', 'buttons']] },
+  links: { name: 'Links', help: 'act at once: call, route, web, calendar, share, copy, chat', make: () => ({ type: 'links', items: [
+    { kind: 'route', label: 'Route to the barbershop', value: 'Arbat 12, Moscow' }, { kind: 'call', label: 'Call the barbershop', value: '+7 495 000 00 00' }] }),
+    fields: [['items', 'One per line: kind | label | value', 'links']] },
+  divider: { name: 'Divider', help: 'a hairline', make: () => ({ type: 'divider' }), fields: [] },
+}
+const TEMPLATES = Object.fromEntries(SAMPLES.filter(([, p]) => p.type === 'blocks').map(([n, p]) => [n.replace(/^Blocks: /, ''), p]))
+S.builder = { name: 'barber_match', wait: true, blocks: structuredClone(TEMPLATES['your barber?']?.blocks ?? [BLOCK_CATALOG.title.make()]) }
+let builderTab = 'yaml'
+
+const lines = {
+  steps: [(v) => (v ?? []).map((s) => `${s.done ? '[x] ' : ''}${s.label}`).join('\n'),
+    (t) => t.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => (/^\[x\]\s*/i.test(l) ? { label: l.replace(/^\[x\]\s*/i, ''), done: true } : { label: l }))],
+  buttons: [(v) => (v ?? []).map((b) => [b.id, b.label, b.style ?? 'secondary'].join(' | ')).join('\n'),
+    (t) => t.split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((p) => p[0]).map(([id, label, style]) => ({ id, label: label || id, style: style || 'secondary' }))],
+  links: [(v) => (v ?? []).map((b) => [b.kind, b.label, typeof b.value === 'object' ? JSON.stringify(b.value) : b.value].join(' | ')).join('\n'),
+    (t) => t.split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((p) => p[0]).map(([kind, label, value]) => {
+      let v = value ?? ''
+      if (v.startsWith('{')) { try { v = JSON.parse(v) } catch { /* keep the text */ } }
+      return { kind, label: label || kind, value: v }
+    })],
+  swatches: [(v) => (v ?? []).map((s) => [s.id, s.label, (s.colors ?? []).join(' ')].join(' | ')).join('\n'),
+    (t) => t.split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((p) => p[0]).map(([id, label, cols]) => ({ id, label: label || id, colors: (cols ?? '').split(/\s+/).filter(Boolean) }))],
+  csv: [(v) => (v ?? []).map((o) => (typeof o === 'string' ? o : o.label)).join(', '), (t) => t.split(',').map((x) => x.trim()).filter(Boolean)],
+}
+const CHOICES = {
+  tone: [['', 'Default'], ['accent', 'Accent'], ['ok', 'Success'], ['danger', 'Danger'], ['muted', 'Muted']],
+  icon: [['', 'None'], ['calendar', 'Calendar'], ['route', 'Pin'], ['call', 'Phone'], ['web', 'Globe'], ['chat', 'Chat'], ['check', 'Tick']],
+  ratio: [['16:9', '16:9'], ['4:3', '4:3'], ['1:1', 'Square']],
+  input: [['text', 'Text'], ['tel', 'Phone'], ['email', 'Email'], ['number', 'Number'], ['date', 'Date'], ['url', 'Link']],
+}
+
+/** The spec for formguide.yaml: blocks as JSON flow mappings (valid YAML), data from the placeholders used. */
+function builderSpec() {
+  const used = [...new Set(JSON.stringify(S.builder.blocks).match(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g) ?? [])].map((m) => m.slice(1, -1)).filter((n) => n !== 'left')
+  const data = used.length ? `{${used.map((n) => `${n}: string`).join(', ')}}` : '{}'
+  return ['cards:', `  - type: ${S.builder.name || 'my_card'}`, '    description: Say when the model should show this card.',
+    ...(S.builder.wait ? [] : ['    wait: false']), `    data: ${data}   # what the model fills: {name} in the blocks`, '    blocks:',
+    ...S.builder.blocks.map((b) => `      - ${JSON.stringify(b)}`)].join('\n')
+}
+function builderJs() {
+  return `// the same card from your own code; the answer is {action, label, values}\nconst answer = await chat.showCard(${JSON.stringify({ type: 'blocks', name: S.builder.name, blocks: S.builder.blocks }, null, 2)})`
+}
+let previewTimer = 0
+function previewCard() {
+  clearTimeout(previewTimer)
+  previewTimer = setTimeout(() => void showSample({ type: 'blocks', name: S.builder.name, blocks: structuredClone(S.builder.blocks) }, { fresh: true }), 250)
+}
+function loadIntoBuilder(name, payload) {
+  S.builder = { name: payload.name ?? name, wait: true, blocks: structuredClone(payload.blocks) }
+  render(); update()
+  document.getElementById('builder')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function builderSection() {
+  const b = S.builder
+  const changed = () => { drawBuilderCode(); previewCard() }
+  const templates = el('div', { class: 'chips', style: 'padding:12px 14px' },
+    ...Object.entries(TEMPLATES).map(([n, p]) => el('button', { class: 'pill gray', type: 'button', onclick: () => { loadIntoBuilder(n, p); previewCard() } }, n)),
+    el('button', { class: 'pill gray', type: 'button', onclick: () => { S.builder = { name: 'my_card', wait: true, blocks: [BLOCK_CATALOG.title.make(), BLOCK_CATALOG.buttons.make()] }; render(); previewCard() } }, 'Empty'))
+  const list = el('div', { class: 'blocks-list' })
+  b.blocks.forEach((blk, i) => {
+    const cat = BLOCK_CATALOG[blk.type] ?? { name: blk.type, fields: [] }
+    const move = (d) => { const j = i + d; if (j < 0 || j >= b.blocks.length) return; [b.blocks[i], b.blocks[j]] = [b.blocks[j], b.blocks[i]]; render(); changed() }
+    const head = el('div', { class: 'block-head' }, el('b', {}, cat.name), el('span', { class: 'muted' }, ` ${blk.type}`),
+      el('span', { class: 'block-tools' },
+        el('button', { class: 'icon-x', type: 'button', 'aria-label': 'Move up', disabled: i === 0, onclick: () => move(-1) }, '↑'),
+        el('button', { class: 'icon-x', type: 'button', 'aria-label': 'Move down', disabled: i === b.blocks.length - 1, onclick: () => move(1) }, '↓'),
+        el('button', { class: 'icon-x', type: 'button', 'aria-label': 'Remove', onclick: () => { b.blocks.splice(i, 1); render(); changed() } }, '×')))
+    const fields = cat.fields.map(([key, label, kind]) => {
+      let ctl
+      if (kind === 'tone' || kind === 'icon' || kind === 'ratio' || kind === 'input') {
+        ctl = el('select', { onchange: (e) => { if (e.target.value) blk[key] = e.target.value; else delete blk[key]; changed() } },
+          CHOICES[kind].map(([v, l]) => el('option', { value: v, selected: String(blk[key] ?? '') === v }, l)))
+      } else if (kind === 'bool') {
+        ctl = el('input', { type: 'checkbox', class: 'switch', checked: !!blk[key], onchange: (e) => { blk[key] = e.target.checked; changed() } })
+      } else if (lines[kind] || kind === 'area') {
+        const [show, read] = lines[kind] ?? [(v) => v ?? '', (t) => t]
+        ctl = el('textarea', { rows: kind === 'area' ? 2 : 3, oninput: (e) => { blk[key] = read(e.target.value); changed() } }, show(blk[key]))
+      } else {
+        ctl = el('input', { type: kind === 'number' ? 'number' : 'text', value: blk[key] ?? '', step: 'any',
+          oninput: (e) => { const v = e.target.value; if (v === '') delete blk[key]; else blk[key] = kind === 'number' && !/[{]/.test(v) ? Number(v) : v; changed() } })
+      }
+      return el('label', { class: 'block-field' }, el('span', { class: 'muted' }, label), ctl)
+    })
+    list.append(el('div', { class: 'block-card' }, head, el('div', { class: 'help', style: 'margin:0 0 6px' }, cat.help ?? ''), ...fields))
+  })
+  const addSel = el('select', {}, Object.entries(BLOCK_CATALOG).map(([k, c]) => el('option', { value: k }, c.name)))
+  const add = el('div', { class: 'row' }, el('span', { class: 'name' }, 'Add a block'), el('span', { class: 'ctl' }, addSel,
+    el('button', { class: 'pill', type: 'button', onclick: () => { b.blocks.push(BLOCK_CATALOG[addSel.value].make()); render(); changed() } }, 'Add')))
+  const name = row('Card type', 'snake_case; the model gets a tool show_<type>.', text(() => b.name, (v) => { b.name = v.replace(/[^a-z0-9_]/gi, '_').toLowerCase(); drawBuilderCode() }))
+  const wait = choice('Kind', '', [['true', 'Question', 'the turn waits; a button answers the model.'], ['false', 'Display', 'shown while the turn goes on (a route, a receipt); buttons send their label.']],
+    () => String(b.wait), (v) => { b.wait = v === 'true'; drawBuilderCode() })
+  const codeTabs = seg([['yaml', 'formguide.yaml'], ['js', 'chat.showCard']], () => builderTab, (v) => { builderTab = v; drawBuilderCode() })
+  const copy = el('button', { class: 'pill', type: 'button', onclick: async (e) => {
+    try { await navigator.clipboard.writeText(document.getElementById('builder-code').textContent); e.target.textContent = 'Copied' } catch { e.target.textContent = 'Select and copy' }
+    setTimeout(() => { e.target.textContent = 'Copy' }, 1500)
+  } }, 'Copy')
+  const code = el('pre', { id: 'builder-code', class: 'builder-code' })
+  setTimeout(drawBuilderCode)
+  return [
+    ...group('Start from', templates),
+    ...group('The card', name, wait),
+    el('div', { class: 'group-title' }, 'Blocks (top to bottom)'), list, el('div', { class: 'group' }, add,
+      el('div', { class: 'row' }, el('span', { class: 'name' }, 'Preview'), el('span', { class: 'ctl' }, el('button', { class: 'pill gray', type: 'button', onclick: () => previewCard() }, 'Show in chat')),
+        el('span', { class: 'help' }, 'Every edit redraws it in the preview.'))),
+    ...group('The configuration', el('div', { class: 'row wide' }, el('span', { class: 'ctl', style: 'justify-content:space-between' }, codeTabs, copy)), el('div', { style: 'padding:0 14px 14px' }, code)),
+  ]
+}
+function drawBuilderCode() {
+  const pre = document.getElementById('builder-code')
+  if (pre) pre.textContent = builderTab === 'yaml' ? builderSpec() : builderJs()
+}
+
 const sections = [
   ['behaviour', 'Layout and behaviour', 'Where the chat sits and how it talks.', () => [
     ...group('Layout (the mode is switched above the preview)',
@@ -326,6 +508,11 @@ const sections = [
       row('Tool steps', 'A collapsible list of what the assistant did ("Looked up 3 fields"). Off hides it.', sw(() => S.opt.toolSteps, (v) => { S.opt.toolSteps = v })),
       row('Quick replies', 'Tap-to-send suggestions under each answer and on the empty chat ("What next?").', sw(() => S.opt.quickReplies, (v) => { S.opt.quickReplies = v })),
       row('Microphone', 'Dictate instead of typing.', sw(() => S.opt.mic, (v) => { S.opt.mic = v })),
+      choice('Speech recognition', 'Who turns the voice into text.', [
+        ['browser', 'Browser', "the browser's own recognition, live as you speak. Works in Chrome and Safari; not in some in-app browsers."],
+        ['server', 'Server', 'the chat records, shows a wave and a timer, then sends the recording to your server (POST transcribe, Whisper in the demo). Works everywhere, the text comes after you stop.'],
+        ['auto', 'Auto', 'the browser where it works, the server where it does not. Recommended when your server can transcribe.']],
+        () => S.opt.dictation, (v) => { S.opt.dictation = v }),
       row('Send when dictation stops', 'Sends right after you stop talking.', sw(() => S.opt.micAutoSend, (v) => { S.opt.micAutoSend = v })),
       row('Attachments', 'The paperclip: send photos and PDFs with a message.', sw(() => S.opt.attach, (v) => { S.opt.attach = v })),
       row('Several files at once', '', sw(() => S.opt.attachMultiple, (v) => { S.opt.attachMultiple = v })),
@@ -344,7 +531,7 @@ const sections = [
       const l = { ...LIGHT, ...p.light }
       presets.append(el('button', { class: 'preset', type: 'button', 'aria-pressed': String(S.preset === id), onclick: () => {
         S.preset = id; S.light = { ...p.light }; S.dark = { ...p.dark }; render(); update()
-      } }, el('span', { class: 'sw' }, ...[l.accent, l.soft, l.surface, l.link].map((c) => css(el('i'), `background:${c}`))), el('b', {}, p.name)))
+      } }, el('span', { class: 'sw' }, ...(p.sw ?? [l.accent, l.soft, l.surface, l.link]).map((c) => css(el('i'), `background:${c}`))), el('b', {}, p.name)))
     }
     const pdesc = el('div', { class: 'help', style: 'padding:0 14px 12px' },
       el('b', {}, PRESETS[S.preset].name), ` — ${PRESETS[S.preset].desc} Pick one, then change any colour below: your changes make your own theme ("my-brand").`)
@@ -397,7 +584,12 @@ const sections = [
       return row(name, '', ...slider(min, max, () => cur, (v) => { S.comp[key] = `${v}px` }, 'px', PARTS_OF[key]))
     }
     return [
-      ...group('Cards', tok('card-bg', 'Background', 'color', LIGHT.surface), tok('card-border', 'Border', 'color', LIGHT.line), tok('card-radius', 'Corners', 'px', 14), tok('card-padding', 'Padding', 'px', 14)),
+      ...group('Cards', tok('card-bg', 'Background', 'color', LIGHT.surface), tok('card-border', 'Border', 'color', LIGHT.line), tok('card-radius', 'Corners', 'px', 14), tok('card-padding', 'Padding', 'px', 14),
+        choice('Frosted glass', 'Blurs what is behind the card; pair it with a translucent background (the Glass and Bold themes do).', [
+          ['', 'None', 'a solid card.'],
+          ['blur(16px) saturate(160%)', 'Soft', 'a light frost, like a widget on the iOS home screen.'],
+          ['blur(28px) saturate(180%)', 'Strong', 'a deep frost, like Control Center.']],
+          () => S.comp['card-blur'] ?? '', (v) => { if (v) S.comp['card-blur'] = v; else delete S.comp['card-blur']; setTimeout(() => flash(['card'])) })),
       ...group('Your messages', tok('bubble-user-bg', 'Bubble', 'color', LIGHT.soft), tok('bubble-user-ink', 'Text', 'color', LIGHT.ink), tok('bubble-radius', 'Corners', 'px', 20)),
       ...group('Chips and options', tok('chip-bg', 'Chip background', 'color', LIGHT.bg), tok('chip-ink', 'Chip text', 'color', LIGHT['ink-2']), tok('chip-on-bg', 'Selected chip', 'color', LIGHT.accent),
         tok('chip-radius', 'Chip corners', 'px', 20), tok('option-radius', 'Option corners', 'px', 10)),
@@ -440,7 +632,7 @@ const sections = [
       ...group('Field-change card ("Fill in these fields?")',
         row('The card', 'Each switch below redraws it in the preview. Undo appears after you tap Fill in.', showBtn('Field changes')),
         flag('select', 'Tick rows', 'The checkbox on the left of each row: fill in only some of them.'),
-        flag('diff', 'Old → new', 'The previous value struck through above the new one (when the field had a value).'),
+        flag('diff', 'Old → new', 'When a field already had a value, the old one is shown struck through above the new one (in the sample: the Date, 18 → 20 November). Off: only the new value.'),
         flag('reason', 'Reason', 'The grey line under the value: why the assistant proposes it ("From your message").'),
         flag('edit', 'Edit', 'The Edit link on each row: change the value before filling it in.'),
         flag('jump', 'Show', 'The Show link on each row: scroll to the field in your form.'),
@@ -458,6 +650,7 @@ const sections = [
       ...group('Steps', flag('cardSteps', 'Show card steps', '"Preparing a question" as a step, although the card follows.')),
     ]
   }],
+  ['builder', 'Your own cards', 'Compose a card from blocks: add, edit, reorder. The preview shows it live in your theme; the code below is the card spec for formguide.yaml (the model fills the {placeholders}) and the same card for chat.showCard().', () => builderSection()],
   ['replace', 'Replace components', 'Put your own component in place of any piece, or replace a whole card. Your function returns an element; return nothing to keep ours.', () => {
     // turning a piece on (or off) shows it in the preview at once
     const DEMO_OF = { empty: DEMOS.empty, user: DEMOS.conversation, assistant: DEMOS.conversation, suggestions: DEMOS.conversation, error: DEMOS.error,
@@ -532,7 +725,7 @@ function themeObject() {
   return t
 }
 const changedOptions = () => {
-  const base = { mode: 'floating', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, mic: true, micAutoSend: false, attach: true,
+  const base = { mode: 'floating', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, mic: true, micAutoSend: false, dictation: 'browser', attach: true,
     attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: '', motion: 'spring', title: '', subtitle: '', intro: '', placeholder: '' }
   return Object.fromEntries(Object.entries(S.opt).filter(([k, v]) => v !== base[k]))
 }
@@ -545,9 +738,13 @@ const renderSlots = () => {
 let lastPlugin = ''
 function update() {
   // the theme
-  if (themed()) { AguiChat.defineTheme('my-brand', themeObject()) }
+  // a built-in theme pack loads on first use; my-brand extends it, so define it once the pack is there
+  const base = PRESETS[S.preset]?.base
+  const waiting = base && !AguiChat.themes().includes(base)
+  if (waiting) void AguiChat.loadTheme(base).then(() => update())
+  if (themed() && !waiting) AguiChat.defineTheme('my-brand', themeObject())
   // the chat's options (attributes in the HTML code)
-  const opts = { ...S.opt, theme: themed() ? 'my-brand' : 'default', render: renderSlots(), icons: ICONS[S.icon] ? { logo: ICONS[S.icon] } : {} }
+  const opts = { ...S.opt, theme: waiting ? base : themed() ? 'my-brand' : 'default', render: renderSlots(), icons: ICONS[S.icon] ? { logo: ICONS[S.icon] } : {} }
   if (opts.scheme === 'auto') opts.scheme = ''
   chat.options = opts
   // the plugin: rebuilt when card options change
@@ -706,7 +903,12 @@ const MODE_HELP = {
 }
 // every card and piece, one tap away: shown in the preview without the agent
 document.getElementById('try').append(
-  ...SAMPLES.map(([name, p]) => el('button', { class: 'pill gray', type: 'button', onclick: () => void showSample(p) }, name)),
+  ...SAMPLES.filter(([, p]) => p.type !== 'blocks').map(([name, p]) => el('button', { class: 'pill gray', type: 'button', onclick: () => void showSample(p) }, name)),
+  // cards composed from blocks are custom: a tap shows one and opens how it is configured
+  el('span', { class: 'try-label' }, 'Custom, from blocks'),
+  ...SAMPLES.filter(([, p]) => p.type === 'blocks').map(([name, p]) => el('button', { class: 'pill gray custom', type: 'button',
+    title: 'A custom card: shows it and opens its configuration in Your own cards',
+    onclick: () => { loadIntoBuilder(name, p); void showSample(p, { fresh: true }) } }, el('span', { class: 'tag' }, 'Custom'), name.replace(/^Blocks: /, ''))),
   el('button', { class: 'pill gray', type: 'button', onclick: () => void DEMOS.conversation() }, 'Conversation'),
   el('button', { class: 'pill gray', type: 'button', onclick: () => void DEMOS.error() }, 'Error'),
   el('button', { class: 'pill gray', type: 'button', onclick: () => { DEMOS.empty(); document.getElementById('answer').hidden = true } }, 'Clear'))

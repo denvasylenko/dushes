@@ -480,9 +480,8 @@ export function uploadCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLEle
       }
       fill.style.width = '100%'
       acts.replaceWith(h('div', { class: 'ok-line' }, h('i', null, '✓'), h('span', null, `${c.t('uploaded')}: ${files.map((f) => f.name).join(', ')}`)))
-      zone.remove()
-      phoneActs?.remove()
-      msg.textContent = ''
+      // the card folds like the others: the request and its result line, nothing else (no full progress bar)
+      zone.remove(); phoneActs?.remove(); bar.remove(); msg.remove(); privacy?.remove()
       c.resolve({ attachment_ids: ids })
     } catch (e) {
       msg.textContent = `${c.t('uploadFailed')}: ${e instanceof Error ? e.message : e}`

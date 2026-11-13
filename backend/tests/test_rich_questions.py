@@ -1,6 +1,8 @@
 """Richer question payloads: option details, comparisons, long lists, ranges, address, several fields."""
 from __future__ import annotations
 
+from datetime import date
+
 from .conftest import say
 from .test_agent import collect, start
 from .test_questions import LOAN, interrupt_value, tool_result
@@ -75,6 +77,7 @@ def test_several_fields_in_one_question(guide, model):
 def test_a_typed_date_answer_fills_its_field(guide, model):
     v, state = ask(guide, model, "r13", {"question": "When were you born?", "field": "birth_date"})
     assert v["input"]["type"] == "date" and v["applies"] is True and v["label"] == "Date of birth"
+    assert v["input"]["max"] == date.today().isoformat()      # a date of birth is in the past: the picker opens on the years
     cfg = {**state["config"], "state": {**state["config"]["state"], "birth_date": "1990-03-12"}}
     model.script = [say("Thanks.")]
     collect(guide, "r13", resume={"answer": {"text": "1990-03-12"}, "config": cfg})

@@ -115,6 +115,13 @@ When the form's new config flags an error on the field a typed answer filled, th
 - **WHEN** the user types 44 and the form answers with "Series: 4 digits" on that field
 - **THEN** the previous value is put back and the agent gets the answer "44" to handle
 
+### Requirement: A date of birth opens on the years
+A date question whose `max` is today (or within the last days) and that has no value yet SHALL open the calendar on the year grid, around 30 years back, so a year, a month and a day are three taps. A `max` further in the past SHALL open on that month.
+
+#### Scenario: Date of birth
+- **WHEN** the card asks for a date of birth with `max` today
+- **THEN** the calendar shows years, including the year 30 years ago, and year, month, day fill the field
+
 ### Requirement: Fill-in labels count the fields
 A field-change card's main button SHALL say how many fields it fills, with the language's plural form: "Fill in 1 field", "Fill in 3 fields". When some rows are unticked, it SHALL say "Fill in 2 of 3".
 

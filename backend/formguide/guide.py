@@ -27,6 +27,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
 from .agent.graph import build_graph
+from .cards import answer_text as card_answer_text, parse_cards
 from .agent.actions import parse_config as parse_actions, resolve as resolve_actions
 from .attachments.extract import AttachmentStore
 from .otel import setup as otel_setup
@@ -59,6 +60,7 @@ class FormGuide:
         cfg = config or GuideConfig()
         self.config = cfg
         self._turns: dict[str, asyncio.Task] = {}   # thread id -> its running turn (see run_detached)
+        self.cards = {c.tool: c for c in parse_cards(cfg.cards)}   # show_<type> -> CardSpec (cards from blocks)
         self.models = cfg.models.resolve()
         from .models import build_model
         self.models.memory = build_model(cfg.memory.model) if cfg.memory.model else self.models.research
@@ -194,6 +196,10 @@ class FormGuide:
                           **({"files": files} if files else {}))
             elif card and card["kind"] == "confirm":
                 tx.update(thread_id, card["id"], status="accepted" if read_confirm(resume) else "rejected")
+            elif card and card["kind"] == "blocks":
+                chosen = isinstance(resume, dict) and bool(resume.get("action")) and resume.get("accepted") is not False
+                tx.update(thread_id, card["id"], status="answered" if chosen else "dismissed",
+                          **({"answer": {k: resume.get(k) for k in ("action", "label", "values")}} if chosen else {}))
             elif card and card["kind"] == "review":
                 action, det = read_review(resume)
                 tx.update(thread_id, card["id"], status="dismissed" if action == "closed" else "answered",
@@ -532,6 +538,8 @@ class FormGuide:
                     yield {"type": "CUSTOM", "name": "sources", "value": {"items": chunk["items"]}}
                 elif k == "receipt":
                     yield {"type": "CUSTOM", "name": "receipt", "value": chunk["receipt"]}
+                elif k == "card":   # a display card from blocks: shown, the turn goes on
+                    yield {"type": "CUSTOM", "name": "card", "value": chunk["card"]}
                 elif k == "memory":
                     yield {"type": "CUSTOM", "name": "memory_compacted", "value": chunk}
                 elif k == "tool" and chunk.get("parent_id"):   # a sub-step of a running tool
@@ -616,7 +624,7 @@ def _track_stop(ev: dict, span: Any, stop: str, open_calls: set[str]) -> str:
 
 
 _CARD_KIND = {"ask": "question", "upload": "upload", "confirm": "confirm",   # interrupt type -> transcript kind
-              "review": "review"}
+              "review": "review", "blocks": "blocks"}
 
 
 def _outcome(v: dict[str, Any]) -> dict[str, Any]:

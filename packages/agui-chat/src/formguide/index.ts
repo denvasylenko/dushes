@@ -7,6 +7,7 @@
  *     applyChanges: (changes) => formBackend.apply(changes),     // -> the new config
  *   }))
  */
+import { blocksCard, blocksRenderer } from './blocks'
 import type { AguiEvent, ChatApi, Interrupt, Plugin, RendererContext, Restored, RunAgentInput } from '../types'
 import { appliedLine, askCard, confirmCard, fieldCard, undoLine, uploadCard } from './cards'
 import { CAPABILITIES, receiptEl, reviewCard, sourcesEl } from './pickers'
@@ -63,7 +64,7 @@ export interface FormguideOptions {
 }
 
 /** The cards every formguide client draws, besides the variants in CAPABILITIES. */
-const BASE_CARDS = ['ask', 'upload', 'confirm', 'review']
+const BASE_CARDS = ['ask', 'upload', 'confirm', 'review', 'blocks']
 
 /** What this client announces: the base cards and variants, minus `exclude` (a card takes its variants along). */
 export function capabilitiesFor(exclude: string[] = []): string[] {
@@ -101,18 +102,23 @@ export function formguide(opts: FormguideOptions): Plugin {
   for (const [lang, m] of Object.entries(TOOL_LABELS)) for (const [tool, label] of Object.entries(m)) (labels[tool] ??= {})[lang] = label
   // the card that follows already shows what these tools did: no separate step for them
   const toolLabels: Record<string, Record<string, string> | string> = { ...labels }
-  if (!opts.cardSteps) for (const t of ['propose_changes', 'ask_user', 'request_file', 'confirm_action']) toolLabels[t] = ''
+  if (!opts.cardSteps) for (const t of ['propose_changes', 'ask_user', 'request_file', 'confirm_action', 'show_*']) toolLabels[t] = ''
   const caps = capabilitiesFor(opts.exclude)
   return {
     name: 'formguide',
     i18n: FG_STRINGS,
     toolLabels,
+    // looking at the form and showing a field are routine (the form shows the latter): no "Steps: 1" for them
+    quietSteps: ['get_outline', 'get_fields', 'get_field', 'search_fields', 'get_options', 'focus_field'],
     renderers: {
       set_fields: (it, c) => fieldCard(it, c, ctx),
       ask: (it, c) => askCard(it, c, ctx),
       upload: (it, c) => uploadCard(it, c, ctx),
       confirm: (it, c) => confirmCard(it, c, ctx),
       review: (it, c) => reviewCard(it, c, ctx, (line, fields) => undoLine(line, c, ctx, fields)),
+      // cards composed from blocks (formguide.yaml `cards:`, or showCard); a button's `fills` go through the form
+      blocks: (it, c) => blocksRenderer(it, c, { apply: (ch) => Promise.resolve(ctx.applyChanges(ch)), state: async () => await ctx.getState(),
+        undo: (line, fields) => undoLine(line, c, ctx, fields) }),
     },
     /** An action chip: fill its fields at once (Undo on the line). A chip whose fields changed since is out of date. */
     async applySuggestion(raw: unknown[], chat: ChatApi) {
@@ -147,6 +153,14 @@ export function formguide(opts: FormguideOptions): Plugin {
     },
     onEvent(ev: AguiEvent, chat: ChatApi) {
       if (ev.type !== 'CUSTOM') return false
+      if (ev.name === 'card') {   // a display card (route, share, "3 steps left"): shown, nobody waits for it
+        const v = (ev.value ?? {}) as Record<string, unknown>
+        const rc = { chat, t: chat.t.bind(chat), resolve: () => {}, flags: {}, restored: false }
+        const el = blocksCard(v, rc, null)
+        el.classList.add('card'); el.setAttribute('part', `card card-blocks blocks-${String(v.name ?? 'card')}`)
+        chat.append(el)
+        return true
+      }
       if (ev.name === 'ui_directive') {
         ctx.onDirective!(ev.value as Directive)
         return true

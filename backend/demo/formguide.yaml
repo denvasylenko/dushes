@@ -25,6 +25,35 @@ skills:
 
 max_tool_rounds: 10
 
+# Cards from blocks: cards of your own, laid out here, filled by the model (docs: Backend > Cards from blocks).
+# Each becomes a tool show_<type>; the widget draws it with its blocks, so it looks like the built-in cards.
+cards:
+  - type: barber_match
+    description: >-
+      Barbershop booking only. When the user names a barber or asks for "my usual barber", show the barber you mean
+      (name, shop, rating). "Yes" fills the Barber field itself: do not propose it in a card as well.
+      barber: the Barber field's option (its id or name, from get_options).
+    data: {barber: string, name: string, shop: string, rating: "number?", next_slot: "string?"}
+    blocks:
+      - {type: title, text: "Is this your barber?"}
+      - {type: place, title: "{name}", subtitle: "{shop}", rating: "{rating}"}
+      - {type: row, label: Next free slot, value: "{next_slot}", icon: calendar, if: next_slot}
+      - type: buttons
+        items: [{id: "yes", label: "Yes, book {name}", style: primary, fills: {barber: "{barber}"}}, {id: "no", label: Another barber}]
+  - type: visit
+    wait: false
+    description: >-
+      Barbershop booking only. After the booking is confirmed, show the visit with links to add it to the calendar,
+      get a route and call the shop.
+    data: {when: string, service: string, start: string, address: string, phone: "string?"}
+    blocks:
+      - {type: stat, value: "{when}", label: "{service}", tone: ok}
+      - type: links
+        items:
+          - {kind: calendar, label: Add to calendar, value: {title: "{service}", start: "{start}", minutes: 45, place: "{address}"}}
+          - {kind: route, label: Route to the barbershop, value: "{address}"}
+          - {kind: call, label: Call the barbershop, value: "{phone}"}
+
 transcription: {provider: faster_whisper, model: small}   # dictation where the browser cannot (dictation: auto)
 suggestions: {enabled: true, max: 3}   # quick replies after each answer (the memory model: Haiku)
 

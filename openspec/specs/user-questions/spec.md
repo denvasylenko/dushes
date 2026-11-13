@@ -90,6 +90,20 @@ The system prompt SHALL tell the model:
 - **WHEN** the answer is a date before `min`
 - **THEN** the question counts as skipped and the model is told the date is out of range
 
+### Requirement: Several values are asked as cards, one at a time
+The system prompt SHALL tell the model to ask for several values (a person's details) with one card at a time in the form's order (2-3 short text fields together, a question per date, choice or number field), never as a list in prose, without promising a confirmation; and to open a section or show a field without asking for permission.
+
+#### Scenario: The spouse's details
+- **WHEN** the user says "Fill the spouse fields now" and six fields are empty
+- **THEN** the model asks for the names in one card, not for all six in a paragraph
+
+### Requirement: Dates of birth and issue are in the past
+When `ask_user` names a date field whose name says it is in the past (birth, born, dob, issue, issued) and gives no `max`, the question's `input` SHALL carry `max`: today.
+
+#### Scenario: The spouse's date of birth
+- **WHEN** the model asks for `spouse_birth_date` with `field` and no input bounds
+- **THEN** the card's input is `{type: "date", max: <today>}`
+
 ### Requirement: Questions that fill their field
 When `ask_user` names a `field` that is a dropdown, radio group or multi-select and is editable now, the question card SHALL carry:
 - `applies: true`;

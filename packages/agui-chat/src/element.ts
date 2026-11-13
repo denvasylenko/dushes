@@ -5,7 +5,7 @@ import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, recognitionBlocked, record, recordingSupported, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
-import { hasTheme, themeCss } from './themes'
+import { hasTheme, themeCss, THEME_PACKS, loadTheme } from './themes'
 import { watchParts } from './parts'
 import { runAgent, runHttp, uid, type AgentLike } from './transport'
 import { fadeWords, newState, step, visible, type TypewriterState } from './typewriter'
@@ -71,8 +71,9 @@ function styles(root: ShadowRoot): (css: string) => void {
 const darkNow = (scheme: string): boolean => scheme === 'dark' ||
   (scheme !== 'light' && typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches)
 
-interface AiItem { id: string; text: string; el: HTMLElement; body: HTMLElement; st: TypewriterState; done: boolean; raf: number }
+interface AiItem { id: string; text: string; el: HTMLElement; body: HTMLElement; st: TypewriterState; done: boolean; raf: number; typed: () => void }
 interface StepsItem { el: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement; steps: Map<string, HTMLElement>; count: number }
+// a step list with only routine look-ups (plugins' quietSteps) stays hidden: class "quiet"
 interface PendingCall { id: string; name: string; args: string }
 
 /** After this long with only the dots, a quiet "Still working…" appears. */
@@ -260,6 +261,11 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.classList.toggle('dark', dark)
     this.dataset.scheme = dark ? 'dark' : 'light'
     this.dataset.theme = typeof theme === 'string' ? (hasTheme(theme) ? theme : 'default') : 'custom'
+    if (typeof theme === 'string' && !hasTheme(theme) && THEME_PACKS.includes(theme)) {
+      void loadTheme(theme)   // defineTheme fires agui:themes, which applies it
+      if (this._themeKey !== 'default') { this._themeKey = 'default'; this._setThemeCss(themeCss('default')) }
+      return
+    }
     const key = typeof theme === 'string' ? theme : JSON.stringify(theme)
     if (key !== this._themeKey) { this._themeKey = key; this._setThemeCss(themeCss(theme)) }
   }
@@ -688,7 +694,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const accept = o.attachAccept || attach?.accept || ''
     if (accept) this.$.picker.setAttribute('accept', accept); else this.$.picker.removeAttribute('accept')
     ;(this.$.picker as HTMLInputElement).multiple = o.attachMultiple
-    this.$.log.querySelectorAll('.steps').forEach((s) => ((s as HTMLElement).hidden = !o.toolSteps))
+    this.$.log.querySelectorAll('.steps').forEach((s) => ((s as HTMLElement).hidden = !o.toolSteps || s.classList.contains('quiet')))
     if (this._quick) this._quick.hidden = !o.quickReplies
     const empty = this.$.log.querySelector('.empty')
     if (empty || !this.$.log.children.length) this._renderEmpty()
@@ -934,7 +940,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     }
     this.dispatchEvent(new CustomEvent('agui:run-end', { detail: { threadId: this._thread } }))
     if (this._pendingCalls.length && !this._interrupted) await this._runFrontendTools()
-    else if (!this._interrupted) this._renderQuick()
+    else if (!this._interrupted) { const thread = this._thread; void this._typing.then(() => { if (this._thread === thread) this._renderQuick() }) }   // quick replies last
   }
 
   private _setBusy(on: boolean): void {
@@ -1016,9 +1022,16 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._showDots(false)
     const body = h('div', { class: 'body' })
     const el = h('div', { class: 'msg ai', part: 'message assistant' }, body)
-    this._ai = { id, text: '', el, body, st: newState(), done: false, raf: 0 }
+    let typed = () => {}
+    // cards and quick replies wait for this text to finish typing (they appear after it, never under a half sentence)
+    const before = this._typing
+    this._typing = Promise.all([before, new Promise<void>((r) => { typed = r })]).then(() => {})
+    this._ai = { id, text: '', el, body, st: newState(), done: false, raf: 0, typed }
     this._append(el)
   }
+
+  /** Resolves when the assistant's text on screen has finished typing (at once when nothing is typing). */
+  private _typing: Promise<void> = Promise.resolve()
 
   private get _animate(): boolean { return this._opts.typing === 'words' && !reducedMotion() }
 
@@ -1026,7 +1039,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const ai = this._ai
     if (!ai) return
     if (this._opts.typing === 'off') return
-    if (!this._animate) { ai.body.innerHTML = this._html(ai.text); if (ai.done) this._assistantDone(ai.body, ai.text); this._scroll(); return }
+    // a hidden tab gets the text at once (no frames there, and nobody watches the typing)
+    if (!this._animate || document.hidden) { ai.body.innerHTML = this._html(ai.text); if (ai.done) { this._assistantDone(ai.body, ai.text); ai.typed() } this._scroll(); return }
     if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
   }
 
@@ -1039,7 +1053,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (log.scrollHeight - log.scrollTop - log.clientHeight < 120) log.scrollTop = log.scrollHeight
     const fading = ai.st.marks.length > 0 && now - ai.st.marks[ai.st.marks.length - 1][1] < this._opts.fadeMs
     if (ai.st.shown < ai.text.length || fading) ai.raf = requestAnimationFrame((t) => this._tick(ai, t))
-    else if (ai.done) { ai.body.innerHTML = this._html(ai.text); this._assistantDone(ai.body, ai.text) }   // all typed and faded in: the plain text stays
+    else if (ai.done) { ai.body.innerHTML = this._html(ai.text); this._assistantDone(ai.body, ai.text); ai.typed() }   // all typed and faded in: the plain text stays
   }
 
   /** The message ended: the typewriter finishes on its own; other modes show the full text now. */
@@ -1048,15 +1062,18 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (!ai) return
     ai.done = true
     this._ai = null
-    if (!ai.text.trim()) { ai.el.remove(); return }
-    if (!this._animate || this._abort?.signal.aborted) { cancelAnimationFrame(ai.raf); ai.body.innerHTML = this._html(ai.text); this._assistantDone(ai.body, ai.text); return }
+    if (!ai.text.trim()) { ai.el.remove(); ai.typed(); return }
+    if (!this._animate || document.hidden || this._abort?.signal.aborted) {
+      cancelAnimationFrame(ai.raf); ai.body.innerHTML = this._html(ai.text); this._assistantDone(ai.body, ai.text); ai.typed(); return
+    }
     if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
   }
 
   // ------------------------------------------------------------------ steps
   private _label(name: string): string {
     if (name in this._opts.toolLabels) return this._opts.toolLabels[name]   // '' hides the step
-    const l = this._labels[name]
+    // a key ending in * labels every tool with that prefix ("show_*": the cards from blocks)
+    const l = this._labels[name] ?? Object.entries(this._labels).find(([k]) => k.endsWith('*') && name.startsWith(k.slice(0, -1)))?.[1]
     if (typeof l === 'string') return l
     if (l) return l[this.lang] ?? PACKS[this.lang]?.tools?.[name] ?? l.en ?? Object.values(l)[0]
     const sub = name.includes('.') ? name.split('.').pop()! : name
@@ -1068,13 +1085,13 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (this._steps) return this._steps
     const list = h('ul')
     const toggle = h('button', { type: 'button', 'aria-expanded': 'true' }, this.t('working')) as HTMLButtonElement
-    const el = h('div', { class: 'steps openlist', part: 'steps' }, toggle, list)
+    const el = h('div', { class: 'steps openlist quiet', part: 'steps' }, toggle, list)
     toggle.addEventListener('click', () => {
       const closed = el.classList.toggle('collapsed')
       el.classList.toggle('openlist', !closed)
       toggle.setAttribute('aria-expanded', String(!closed))
     })
-    el.hidden = !this._opts.toolSteps
+    el.hidden = true   // shown with the first step that is not a routine look-up
     this._steps = { el, list, toggle, steps: new Map(), count: 0 }
     this._append(el)
     return this._steps
@@ -1085,6 +1102,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const li = h('li', { class: 'run' }, h('span', { class: 'mark' }), h('span', null, label ?? this._label(name)))
     s.steps.set(id, li)
     s.count++
+    if (!this._plugins.some((p) => p.quietSteps?.includes(name))) {   // a real step: the list shows
+      s.el.classList.remove('quiet')
+      s.el.hidden = !this._opts.toolSteps
+    }
     s.list.appendChild(li)
     this._scroll()
   }
@@ -1156,6 +1177,12 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (this._shown.has(it.card_id)) return
     this._shown.add(it.card_id)
     if (!local) this._interrupted = true
+    // a card from the agent appears after the text above it has finished typing, like a message after its sentence
+    if (!restored && !local) { const thread = this._thread; void this._typing.then(() => { if (this._thread === thread) this._renderCard(it, restored, local) }); return }
+    this._renderCard(it, restored, local)
+  }
+
+  private _renderCard(it: Interrupt, restored: boolean, local?: (value: unknown) => void): void {
     this._showDots(false)
     const renderer = this.renderers.get(it.type) ?? fallback
     let done = false

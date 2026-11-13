@@ -47,6 +47,7 @@ FORMGUIDE_MODEL environment variable does the same without a file. Everything el
     # tracing: {otel: {exporter: otlp, endpoint: "http://collector:4317"}}   # OpenTelemetry (formguide[otel])
 """
 from __future__ import annotations
+from .cards import parse_cards
 
 import os
 from dataclasses import dataclass, field
@@ -115,6 +116,7 @@ class GuideConfig:
     # ag-ui-langgraph), "structured" = RUN_FINISHED.outcome interrupts (AG-UI 1.0), or "both".
     interrupt_mode: str = "legacy"
     confirm_tools: list[str] = field(default_factory=list)   # tools that always ask the user first
+    cards: list = field(default_factory=list)   # cards from blocks: specs (dicts or CardSpec), see formguide/cards.py
     suggestions: SuggestionsConfig = field(default_factory=SuggestionsConfig)
     tracing: TracingConfig = field(default_factory=TracingConfig)
     # Which agent actions exist: {action: True | False | "auto"} (see agent/actions.py); missing = default.
@@ -208,6 +210,7 @@ def load_config(path: str | Path) -> GuideConfig:
     if not isinstance(ct, list) or not all(isinstance(x, str) for x in ct):
         raise ValueError("confirm_tools must be a list of tool names")
     cfg.confirm_tools = list(ct)
+    cfg.cards = parse_cards(raw.get("cards"))   # refused here when a spec is wrong
     tr = raw.get("tracing") or {}
     unknown = set(tr) - {"callbacks", "tags", "otel"}
     if unknown:

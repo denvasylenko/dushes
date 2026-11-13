@@ -19,7 +19,8 @@
   "bugs": "https://github.com/denvasylenko/dushes/issues",
   "type": "module",
   "imports": {
-    "#lang-loader": "./src/lang-loader.ts"
+    "#lang-loader": "./src/lang-loader.ts",
+    "#theme-loader": "./src/theme-loader.ts"
   },
   "files": [
     "dist"

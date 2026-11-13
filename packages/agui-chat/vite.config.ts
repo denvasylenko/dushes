@@ -5,7 +5,8 @@ import { minifyCss } from './scripts/minify-css.mjs'
 export default defineConfig({
   plugins: [minifyCss()],
   // language packs: chunks loaded with import() (the one-script build swaps in a <script> loader)
-  resolve: { alias: { '#lang-loader': new URL('./src/lang-loader.ts', import.meta.url).pathname } },
+  resolve: { alias: { '#lang-loader': new URL('./src/lang-loader.ts', import.meta.url).pathname,
+    '#theme-loader': new URL('./src/theme-loader.ts', import.meta.url).pathname } },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

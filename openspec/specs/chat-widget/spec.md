@@ -54,6 +54,34 @@ Steps SHALL be collapsible, and `tool-steps="off"` SHALL hide them.
 - **WHEN** the agent calls `search_fields` and it returns
 - **THEN** a labelled step appears with a spinner and turns into a tick
 
+### Requirement: Built-in themes load on demand
+The widget SHALL build in `default`; `contrast`, `glass`, `bold` and `messenger` SHALL ship as packs loaded the first time a chat uses one, showing the default look until the pack arrives.
+
+#### Scenario: A page with the glass theme
+- **WHEN** a page sets `theme="glass"` with the one-script build
+- **THEN** the chat adds `agui-chat.theme-glass.js` from next to `agui-chat.iife.js` and switches to it when it loads
+
+### Requirement: Cards come after their text
+A card from the agent SHALL appear after the assistant's text above it has finished typing, and quick replies after both. A card restored after a reload, or shown with `showCard`, SHALL appear at once. In a hidden tab the text SHALL be written at once (no typing).
+
+#### Scenario: A question after a sentence
+- **WHEN** the agent writes a sentence and then asks a question card
+- **THEN** the card appears below the sentence once its last word is typed, never under a half-typed sentence
+
+### Requirement: Frosted glass cards
+The `card-blur` token SHALL set a backdrop blur on cards, so a translucent `card-bg` shows a frosted background (the `glass` and `bold` themes use it).
+
+#### Scenario: Glass
+- **WHEN** the page sets `theme="glass"`
+- **THEN** cards are translucent with a blur over the conversation's gradient
+
+### Requirement: Routine look-ups show no step list
+A plugin MAY name tools as `quietSteps`. A turn whose steps are all such tools SHALL show no step list (the typing dots show the wait); the first other step SHALL show the list with every step of the turn.
+
+#### Scenario: Only looking at the form
+- **WHEN** the formguide agent calls `get_fields` and answers
+- **THEN** no "Steps: 1" line appears above the answer
+
 ### Requirement: Sub-steps
 `CUSTOM tool_progress` events SHALL add sub-steps under their parent step. Frontend tool calls SHALL appear as steps only when they have a label.
 
@@ -235,7 +263,7 @@ An empty chat SHALL show the title, an intro and the starters. "New chat" SHALL 
 - **THEN** the empty chat shows those starters
 
 ### Requirement: Themes
-A theme SHALL be an object with optional `extends`, `tokens` (for both schemes), `light`, `dark` and `css` (scoped to the widget). `defineTheme(name, theme)` SHALL register it, and the `theme` option or attribute SHALL apply a registered name or an object. The widget SHALL ship `default` and `contrast`. An unknown name SHALL fall back to `default` with one console warning.
+A theme SHALL be an object with optional `extends`, `tokens` (for both schemes), `light`, `dark` and `css` (scoped to the widget). `defineTheme(name, theme)` SHALL register it, and the `theme` option or attribute SHALL apply a registered name or an object. An unknown name SHALL fall back to `default` with one console warning.
 
 #### Scenario: A brand theme
 - **WHEN** a page calls `defineTheme("acme", {tokens: {accent: "#0a7f6f"}, dark: {accent: "#4fd1c1"}})` and sets `theme="acme"`

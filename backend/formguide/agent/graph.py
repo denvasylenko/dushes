@@ -11,6 +11,7 @@ The model is any LangChain chat model with tool calling (configured per FormGuid
 History is stored as LangChain messages in the checkpointer.
 """
 from __future__ import annotations
+from ..cards import answer_text as card_answer_text
 
 import json
 import logging
@@ -35,7 +36,7 @@ from .prompts import context_block, system_prompt
 from .interaction import (answer_text, read_answer, read_field_answers, read_review, read_confirm, read_decision, read_edits, read_upload,
                           upload_text)
 from .actions import capabilities as parse_caps
-from .tools import BUILTIN, WAITING, ToolCtx, ToolError, run_tool, tool_schemas
+from .tools import card_schemas, BUILTIN, WAITING, ToolCtx, ToolError, run_tool, tool_schemas
 
 if TYPE_CHECKING:
     from ..guide import FormGuide
@@ -164,7 +165,7 @@ def build_graph(guide: FormGuide):
                        thread_id=state.get("thread_id") or "", guide=guide,
                        extra_tools={t.name: t for t in guide.tools_for(pack.form_id)},
                        confirm_tools=frozenset(guide.config.confirm_tools or ()),
-                       actions=actions_of(state), caps=caps_of(state),
+                       actions=actions_of(state), caps=caps_of(state), cards=guide.cards,
                        last_extraction=state.get("last_extraction"), turn_sources=state.get("turn_sources"))
 
     # ------------------------------------------------------------------ nodes
@@ -250,8 +251,8 @@ def build_graph(guide: FormGuide):
         base = guide.models.agent
         server = guide.tools_for(pack.form_id)
         actions = actions_of(state)
-        model = base.bind_tools(tool_schemas(server, actions) + client_tool_schemas(
-            state.get("client_tools"), server_tool_names(pack.form_id)))
+        model = base.bind_tools(tool_schemas(server, actions) + card_schemas(guide.cards, caps_of(state))
+                                + client_tool_schemas(state.get("client_tools"), server_tool_names(pack.form_id)))
         sys_text = state.get("system_prompt") or system_prompt(pack, guide.skills.for_form(pack.form_id),
                                                                actions=actions)
         history = state["messages"]
@@ -374,7 +375,7 @@ def build_graph(guide: FormGuide):
         frontend = client_names(state)
         calls = getattr(last, "tool_calls", None) or []
         waiting_tools = {"propose_changes", "ask_user", "request_file", "confirm_action", "review_form",
-                         *ctx.confirm_tools}
+                         *ctx.confirm_tools, *(n for n, c in guide.cards.items() if c.wait)}
         has_card_call = any(c["name"] in waiting_tools for c in calls)
         results: list[dict] = []
         client_ids: list[str] = []
@@ -524,6 +525,23 @@ def build_graph(guide: FormGuide):
                 tid = state.get("thread_id") or ""
                 files = read_upload(answer, lambda i: (guide.attachments.load(tid, i) or (None,))[0])
                 text = upload_text(files)
+            elif kind == "blocks":   # a card from blocks: which button, which values
+                spec = guide.cards.get(f"show_{payload.get('name')}")
+                text = card_answer_text(spec, answer) if spec else "The user answered the card."
+                chosen = next((it for b in payload.get("blocks") or [] if b.get("type") == "buttons"
+                               for it in b.get("items") or [] if str(it.get("id")) == str(answer.get("action"))), None)
+                filled = list((chosen or {}).get("fills") or {})
+                if filled and answer.get("config"):   # the tap filled form fields: like an accepted card
+                    new_cfg = answer["config"]
+                    upd["config"] = new_cfg
+                    ctx = ctx_for({**state, "config": new_cfg, "ui": answer.get("ui") or state.get("ui")})
+                    diff = compute_diff(ctx.ov, state.get("snapshot"), agent_names=set(filled))
+                    ctx.deps.observe(diff, ctx.ov)
+                    v = (state.get("version") or 0) + 1
+                    upd.update(snapshot=ctx.ov.snapshot(), version=v)
+                    labels = ", ".join(f"{ctx.ov[n].label or n} ({n})" for n in filled)
+                    text += (f" This filled {labels}; do not propose these fields again.\n"
+                             + render_changes(ctx.ov, diff, v - 1, v))
             elif read_confirm(answer) and payload.get("held"):
                 stats, t_tool, failed = current_stats(), RunStats.now(), False
                 try:

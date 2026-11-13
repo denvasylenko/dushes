@@ -17,8 +17,10 @@ The agent cannot "write" the config: the config belongs to the form backend.
 The frontend applies changes through the same path as user input.
 """
 from __future__ import annotations
+from ..cards import build as card_build
 
 import json
+from datetime import date
 import re
 
 from collections.abc import Callable
@@ -289,6 +291,7 @@ class ToolCtx:
     turn_sources: list[dict] | None = None       # documents the researcher cited this turn: [{title, section?}]
     pending_source: dict | None = None           # the card's source header (values from a document)
     caps: frozenset[str] | None = None           # what the client renders; None = everything
+    cards: dict[str, Any] = field(default_factory=dict)   # show_<type> -> CardSpec (cards from blocks)
 
     def can(self, variant: str) -> bool:
         return self.caps is None or variant in self.caps
@@ -317,7 +320,63 @@ def _need(ctx: ToolCtx, name: str):
     return n
 
 
+def card_schemas(cards: dict[str, Any], caps: frozenset[str] | None) -> list[dict]:
+    """The tools of the cards from blocks, for a client that draws them (or sends no capability list)."""
+    if caps is not None and "blocks" not in caps:
+        return []
+    return [{"type": "function", "function": {"name": c.tool, "description": c.description + (
+        " The user answers in the card; you get the answer." if c.wait else " Shown to the user; the turn goes on."),
+        "parameters": c.schema()}} for c in cards.values()]
+
+
+def _card_fills(payload: dict, ctx: ToolCtx, tool: str) -> None:
+    """Buttons with `fills: {field: value}` fill form fields when tapped (one tap, no second card): each value is
+    checked and written in the form's own format now; the card carries each field's label and previous value
+    (for Undo) in `fill_meta`. A value the field does not take is an error for the model to fix."""
+    meta: dict[str, dict] = {}
+    for b in payload["blocks"]:
+        if b.get("type") != "buttons":
+            continue
+        for item in b.get("items") or []:
+            fills = item.get("fills")
+            if not isinstance(fills, dict) or not fills:
+                item.pop("fills", None)
+                continue
+            out: dict[str, Any] = {}
+            for field_name, value in fills.items():
+                n = _need(ctx, str(field_name))
+                e = ctx.ov[n.name]
+                if not e.editable:
+                    raise ToolError(f"{tool}: {n.name} cannot be filled now ({disabled_reason(ctx.ov, ctx.deps, n.name) or 'locked'})")
+                out[n.name] = form_value(ctx, n.name, _norm_value(ctx, n.name, value))
+                meta[n.name] = {"label": e.label or n.name, **previous_of(ctx, n.name)}
+            item["fills"] = out
+    if meta:
+        payload["fill_meta"] = meta
+
+
+def _show_card(name: str, raw_args: Any, ctx: ToolCtx) -> str:
+    spec = ctx.cards[name]
+    if not ctx.can("blocks"):
+        raise ToolError(f"{name} is not available in this chat (the client cannot draw cards from blocks).")
+    try:
+        payload = card_build(spec, raw_args)
+    except ValueError as e:
+        raise ToolError(f"{name}: {e}") from None
+    _card_fills(payload, ctx, name)
+    if spec.wait:
+        if _waiting(ctx):
+            raise ToolError(WAITING)
+        ctx.pending_interaction = {"kind": "blocks", **{k: v for k, v in payload.items() if k != "type"}}
+        return ""
+    if ctx.emit:
+        ctx.emit({"kind": "card", "card": payload})
+    return f"The {spec.type} card is shown to the user."
+
+
 async def run_tool(name: str, raw_args: Any, ctx: ToolCtx) -> str:
+    if name in ctx.cards and name not in BUILTIN:   # a card from blocks (formguide.yaml `cards:`)
+        return _show_card(name, raw_args, ctx)
     if ctx.actions is not None and name in switchable_off(ctx.actions):
         return f"ERROR: {name} is not available in this chat (switched off, or the client cannot show it)."
     if name not in BUILTIN and name in ctx.extra_tools:
@@ -545,6 +604,8 @@ WAITING = "a card or question is already waiting for the user. One at a time: ca
 MAX_QUESTION_OPTIONS = 12      # options the model writes itself
 MAX_FIELD_OPTIONS = 500        # a field's own options attached by the server (a searchable list)
 MAX_QUESTION_FIELDS = 3
+# field names of dates that are always in the past (field names are identifiers, so English)
+_PAST_DATE = re.compile(r"birth|born|dob|issue|issued", re.I)
 
 
 def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
@@ -566,6 +627,9 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
         e = ctx.ov[n.name]
         if n.role in ("date", "number") and not raw:   # a typed answer with a picker of the field's type
             a = {**a, "input": a.get("input") or {"type": n.role}}
+            if n.role == "date" and _PAST_DATE.search(n.name) and not (a["input"] or {}).get("max"):
+                # a date of birth or an issue date is in the past: the picker opens on the years, not on today
+                a = {**a, "input": {**a["input"], "max": date.today().isoformat()}}
         elif n.role == "text" and not raw:   # a typed answer fills the text field (one tap, no second card)
             a = {**a, "input": a.get("input") or {"type": "text"}}
         elif n.role == "bool":   # yes / no: the first option means yes; the model's labels are kept (its language)

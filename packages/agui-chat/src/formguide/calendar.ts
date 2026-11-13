@@ -26,7 +26,7 @@ function firstDay(lang: string): number {
 const CHEV = (d: string) => `<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
 
 export function calendar(opts: { lang: string; value?: string | null; limits?: DateLimits; t: (k: string) => string;
-  onPick: (iso: string, label: string) => void }): HTMLElement {
+  onPick: (iso: string, label: string) => void; past?: boolean }): HTMLElement {
   const lang = opts.lang || undefined
   const min = parse(opts.limits?.min), max = parse(opts.limits?.max)
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -36,6 +36,14 @@ export function calendar(opts: { lang: string; value?: string | null; limits?: D
   let year = start.getFullYear(), month = start.getMonth()
   let mode: 'days' | 'years' | 'months' = 'days'
   let yearPage = year - (year % 12)
+  // a date in the past with nothing chosen yet (a date of birth): start on the years, a page around 30 years back,
+  // like a birthday picker, instead of today's month: year, month, day in three taps
+  if (opts.past && !chosen) {
+    mode = 'years'
+    const around = Math.max(min ? min.getFullYear() : -Infinity, start.getFullYear() - 30)
+    yearPage = around - (around % 12)
+    year = around
+  }
   const label = (d: Date) => new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long', year: 'numeric' }).format(d)
   const out = (d: Date) => (min && d < min) || (max && d > max)
   const title = h('button', { type: 'button', class: 'cal-title', 'aria-live': 'polite' })

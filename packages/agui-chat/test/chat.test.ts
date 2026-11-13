@@ -489,6 +489,7 @@ describe('formguide plugin', () => {
     await tick(20)
     expect(bodies[1].forwardedProps.command.resume).toEqual({ attachment_ids: ['att_12345678'] })
     expect($(el, '.card .ok-line').textContent).toContain('passport.pdf')
+    expect($(el, '.card .bar')).toBeNull()                         // folded: no progress bar left behind
   })
 
   it('shows no separate step for the tool that made the card', async () => {
@@ -500,6 +501,17 @@ describe('formguide plugin', () => {
     await tick(5)
     expect($$(el, '.card .chip')).toHaveLength(0)                // the answered card shrinks
     expect($(el, '.card .ok-line').textContent).toContain('A')
+  })
+
+  it('shows no step list for a turn that only looked at the form', async () => {
+    const step = (id: string, name: string): AguiEvent[] => [{ type: 'TOOL_CALL_START', toolCallId: id, toolCallName: name }, { type: 'TOOL_CALL_END', toolCallId: id }]
+    let { el } = await withPlugin(run(...step('g', 'get_fields'), ...step('s', 'search_fields'), ...text('m', 'Here.')))
+    expect(($(el, '.steps') as HTMLElement).hidden).toBe(true)
+    el.options = { toolSteps: true }                             // re-applying options keeps it hidden
+    expect(($(el, '.steps') as HTMLElement).hidden).toBe(true)
+    ;({ el } = await withPlugin(run(...step('g', 'get_fields'), ...step('x', 'extract_from_attachment'), ...text('m', 'Read it.'))))
+    expect(($(el, '.steps') as HTMLElement).hidden).toBe(false)  // a real step: the list shows, with both
+    expect($$(el, '.steps li')).toHaveLength(2)
   })
 
   it('passes directives to the host', async () => {

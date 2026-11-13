@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import '../src/index'
 import type { AguiChatElement } from '../src/element'
-import { defineTheme, themeCss, themes, tokenName } from '../src/themes'
+import { defineTheme, themeCss, themes, tokenName, THEME_PACKS, loadTheme } from '../src/themes'
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
@@ -40,8 +40,12 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('themes', () => {
-  it('ships default and contrast, and normalises token keys', () => {
-    expect(themes()).toEqual(expect.arrayContaining(['default', 'contrast']))
+  it('ships default, loads the built-in packs on demand, and normalises token keys', async () => {
+    expect(themes()).toContain('default')
+    for (const name of THEME_PACKS) expect(await loadTheme(name)).toBe(true)   // contrast, glass, bold, messenger
+    expect(themes()).toEqual(expect.arrayContaining(['default', 'contrast', 'glass', 'bold', 'messenger']))
+    expect(themeCss('glass')).toContain('--agui-card-blur: blur(')     // translucent cards
+    expect(await loadTheme('nope')).toBe(false)
     expect(tokenName('accent')).toBe('--agui-accent')
     expect(tokenName('--accent')).toBe('--agui-accent')
     expect(tokenName('--agui-radius-sm')).toBe('--agui-radius-sm')

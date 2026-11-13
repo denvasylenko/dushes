@@ -11,6 +11,8 @@
  * Layers, lowest first: the widget's defaults, the theme, then CSS on the element from the page
  * (agui-chat { --agui-accent: ... }, agui-chat[data-scheme="dark"] { ... }, ::part()).
  */
+import { loadThemePack } from '#theme-loader'
+
 export type Tokens = Record<string, string>
 
 export interface Theme {
@@ -32,7 +34,7 @@ export const TOKENS = [
   // component tokens: each falls back to the globals above
   'panel-bg', 'panel-ink', 'header-bg', 'header-ink', 'header-border', 'log-bg',
   'bubble-user-bg', 'bubble-user-ink', 'bubble-ai-ink', 'bubble-radius',
-  'card-bg', 'card-ink', 'card-border', 'card-radius', 'card-padding',
+  'card-bg', 'card-ink', 'card-border', 'card-radius', 'card-padding', 'card-blur',
   'button-bg', 'button-ink', 'button-radius', 'button-secondary-bg', 'button-secondary-ink', 'button-secondary-border',
   'chip-bg', 'chip-ink', 'chip-border', 'chip-radius', 'chip-on-bg', 'chip-on-ink',
   'option-bg', 'option-ink', 'option-border', 'option-radius',
@@ -112,26 +114,30 @@ export function themeCss(theme: string | Theme | undefined): string {
   if (!t) return ''
   const r = resolve(t)
   const both = declarations(r.tokens)
-  return `:host { ${both} ${declarations(r.light)} }\n:host(.dark) { ${both} ${declarations(r.dark)} }\n${r.css}`
+  // the light tokens only for the light scheme: a light-only token (a light panel) must not leak into dark
+  return `:host { ${both} } :host(:not(.dark)) { ${declarations(r.light)} }\n:host(.dark) { ${both} ${declarations(r.dark)} }\n${r.css}`
 }
 
 // ---------------------------------------------------------------- built-in themes
 
+/** Built-in themes that ship as packs (src/theme/<name>.json), loaded the first time a chat uses one:
+ *  glass (translucent cards and a soft gradient, like iOS), bold (large radii and strong type, like a fintech app),
+ *  messenger (bubbles on a wallpaper, like a messenger), contrast (pure black and white, stronger lines). "default" is built in. */
+export const THEME_PACKS = ['contrast', 'glass', 'bold', 'messenger']
+const loadingThemes = new Map<string, Promise<boolean>>()
+
+/** Load a built-in theme pack once; resolves true when the theme is defined. */
+export function loadTheme(name: string): Promise<boolean> {
+  if (registry.has(name)) return Promise.resolve(true)
+  if (!THEME_PACKS.includes(name)) return Promise.resolve(false)
+  let p = loadingThemes.get(name)
+  if (!p) {
+    p = loadThemePack(name).then((t) => { if (t) defineTheme(name, t); return registry.has(name) }, () => false)
+    loadingThemes.set(name, p)
+  }
+  return p
+}
+
 /** Today's look: the defaults in styles.ts, nothing to add. */
 defineTheme('default', {})
 
-/** High contrast: pure black and white, stronger lines and text, a thicker focus ring. */
-defineTheme('contrast', {
-  extends: 'default',
-  light: {
-    accent: '#000', 'on-accent': '#fff', link: '#0040c0', ink: '#000', 'ink-2': '#1d1d1f', 'ink-3': '#3a3a3c',
-    line: '#6e6e73', 'line-2': '#3a3a3c', ok: '#1b7f32', danger: '#c4001a', surface: '#fff', soft: '#ececf0',
-  },
-  dark: {
-    accent: '#fff', 'on-accent': '#000', link: '#8cc4ff', bg: '#000', surface: '#0a0a0a', soft: '#1c1c1e', ink: '#fff',
-    'ink-2': '#e5e5ea', 'ink-3': '#c7c7cc', line: '#8e8e93', 'line-2': '#aeaeb2', ok: '#4cd964', 'on-ok': '#000',
-    danger: '#ff6961', 'on-danger': '#000',
-  },
-  css: `.card, .box, .chip, .btn.sec { border-width: 2px; }
-button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { box-shadow: 0 0 0 3px var(--agui-link); }`,
-})

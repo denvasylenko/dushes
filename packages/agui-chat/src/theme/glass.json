@@ -1,0 +1,53 @@
+{
+  "tokens": {
+    "radius": "18px",
+    "radius-sm": "12px",
+    "radius-lg": "20px",
+    "card-radius": "22px",
+    "bubble-radius": "20px",
+    "card-blur": "blur(28px) saturate(190%)",
+    "log-bg": "transparent",
+    "composer-area-bg": "transparent"
+  },
+  "light": {
+    "accent": "#007aff",
+    "on-accent": "#ffffff",
+    "link": "#007aff",
+    "bubble-user-bg": "#007aff",
+    "bubble-user-ink": "#ffffff",
+    "panel-bg": "radial-gradient(60% 45% at 12% 8%, #c9dcff 0%, transparent 70%), radial-gradient(55% 40% at 95% 30%, #f5d0ec 0%, transparent 70%), radial-gradient(70% 50% at 40% 100%, #ffe3cc 0%, transparent 70%), #f4f5fb",
+    "card-bg": "rgba(255, 255, 255, 0.55)",
+    "card-border": "rgba(255, 255, 255, 0.9)",
+    "header-bg": "rgba(255, 255, 255, 0.55)",
+    "header-border": "rgba(60, 60, 67, 0.1)",
+    "composer-bg": "rgba(255, 255, 255, 0.7)",
+    "composer-border": "rgba(255, 255, 255, 0.9)",
+    "chip-bg": "rgba(255, 255, 255, 0.6)",
+    "chip-border": "rgba(255, 255, 255, 0.9)",
+    "option-bg": "rgba(255, 255, 255, 0.5)",
+    "option-border": "rgba(255, 255, 255, 0.85)",
+    "input-bg": "rgba(118, 118, 128, 0.12)",
+    "shadow": "0 12px 32px -14px rgba(40, 50, 110, 0.3)"
+  },
+  "dark": {
+    "accent": "#0a84ff",
+    "on-accent": "#ffffff",
+    "link": "#4da3ff",
+    "bubble-user-bg": "#0a84ff",
+    "bubble-user-ink": "#ffffff",
+    "panel-bg": "radial-gradient(60% 45% at 10% 5%, #1e3a8a 0%, transparent 70%), radial-gradient(55% 40% at 95% 35%, #6b2160 0%, transparent 70%), radial-gradient(70% 50% at 35% 100%, #7a3a12 0%, transparent 70%), #0b0b10",
+    "card-bg": "rgba(40, 40, 48, 0.42)",
+    "card-border": "rgba(255, 255, 255, 0.12)",
+    "header-bg": "rgba(20, 20, 26, 0.45)",
+    "header-border": "rgba(255, 255, 255, 0.08)",
+    "composer-bg": "rgba(40, 40, 48, 0.5)",
+    "composer-border": "rgba(255, 255, 255, 0.12)",
+    "chip-bg": "rgba(255, 255, 255, 0.08)",
+    "chip-border": "rgba(255, 255, 255, 0.12)",
+    "option-bg": "rgba(255, 255, 255, 0.06)",
+    "option-border": "rgba(255, 255, 255, 0.1)",
+    "input-bg": "rgba(118, 118, 128, 0.24)",
+    "shadow": "0 12px 32px -14px rgba(0, 0, 0, 0.7)"
+  },
+  "css": ".head, .foot .box { -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); }\n.card { box-shadow: var(--agui-shadow); }"
+}

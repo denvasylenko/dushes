@@ -79,6 +79,8 @@ export interface Plugin {
   beforeRun?: (input: RunAgentInput, chat: ChatApi) => void | Promise<void>
   /** See every event; return true to stop the chat's own handling of it. */
   onEvent?: (ev: AguiEvent, chat: ChatApi) => boolean | void
+  /** tools whose steps are routine look-ups: a turn with only these shows no step list (the dots show the wait) */
+  quietSteps?: string[]
   /** the user pressed Stop: e.g. tell the server, since a closed connection need not end the turn there */
   onStop?: (chat: ChatApi) => void
   /** Files in the composer: the paperclip button uploads them here; they go with the next message. */

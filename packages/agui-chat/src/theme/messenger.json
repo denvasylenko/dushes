@@ -1,0 +1,23 @@
+{
+  "tokens": {
+    "radius": "14px", "radius-lg": "18px", "card-radius": "16px", "bubble-radius": "18px"
+  },
+  "light": {
+    "accent": "#3390ec", "on-accent": "#ffffff", "link": "#3390ec",
+    "panel-bg": "#ffffff", "header-bg": "#ffffff",
+    "log-bg": "linear-gradient(135deg, #d4e6ad 0%, #a9d3b3 50%, #92c3d8 100%)",
+    "bubble-user-bg": "#e7fdd5", "bubble-user-ink": "#000000",
+    "card-bg": "rgba(255, 255, 255, 0.94)", "card-border": "transparent", "chip-bg": "rgba(255, 255, 255, 0.85)",
+    "shadow": "0 1px 2px rgba(16, 35, 47, 0.16)"
+  },
+  "dark": {
+    "accent": "#5eb5f7", "on-accent": "#0e1621", "link": "#6ab3f3", "ink": "#f5f5f5", "bg": "#17212b",
+    "panel-bg": "#17212b", "header-bg": "#17212b", "header-border": "#0e1621",
+    "log-bg": "linear-gradient(160deg, #0e1621 0%, #111c27 100%)",
+    "bubble-user-bg": "#2b5278", "bubble-user-ink": "#ffffff",
+    "card-bg": "rgba(24, 37, 51, 0.96)", "card-border": "transparent", "chip-bg": "rgba(255, 255, 255, 0.06)",
+    "composer-bg": "#17212b", "input-bg": "#242f3d",
+    "shadow": "0 1px 2px rgba(0, 0, 0, 0.4)"
+  },
+  "css": ".msg.ai > .body { display: inline-block; max-width: 85%; background: var(--agui-card-bg); padding: 8px 12px; border-radius: 6px var(--agui-bubble-radius) var(--agui-bubble-radius) var(--agui-bubble-radius); box-shadow: var(--agui-shadow); }\n.msg.me > div { box-shadow: var(--agui-shadow); border-bottom-right-radius: 6px; }\n.card { box-shadow: var(--agui-shadow); }"
+}

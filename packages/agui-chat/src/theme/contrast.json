@@ -1,0 +1,34 @@
+{
+  "light": {
+    "accent": "#000",
+    "on-accent": "#fff",
+    "link": "#0040c0",
+    "ink": "#000",
+    "ink-2": "#1d1d1f",
+    "ink-3": "#3a3a3c",
+    "line": "#6e6e73",
+    "line-2": "#3a3a3c",
+    "ok": "#1b7f32",
+    "danger": "#c4001a",
+    "surface": "#fff",
+    "soft": "#ececf0"
+  },
+  "dark": {
+    "accent": "#fff",
+    "on-accent": "#000",
+    "link": "#8cc4ff",
+    "bg": "#000",
+    "surface": "#0a0a0a",
+    "soft": "#1c1c1e",
+    "ink": "#fff",
+    "ink-2": "#e5e5ea",
+    "ink-3": "#c7c7cc",
+    "line": "#8e8e93",
+    "line-2": "#aeaeb2",
+    "ok": "#4cd964",
+    "on-ok": "#000",
+    "danger": "#ff6961",
+    "on-danger": "#000"
+  },
+  "css": ".card, .box, .chip, .btn.sec { border-width: 2px; }\nbutton:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { box-shadow: 0 0 0 3px var(--agui-link); }"
+}

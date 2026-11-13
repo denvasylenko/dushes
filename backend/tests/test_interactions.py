@@ -84,7 +84,8 @@ def test_question_with_a_date_input(guide, model):
 
 def test_question_input_from_a_date_field_and_bad_bounds(guide, model):
     v, _ = pause(guide, model, "d4", "ask_user", {"question": "Your birth date?", "field": "birth_date"})
-    assert v["input"] == {"type": "date"} and v["options"] == []
+    assert v["input"]["type"] == "date" and v["options"] == []
+    assert v["input"]["max"]   # a date of birth is in the past
     model.script = [say("", ("t1", "ask_user", {"question": "?", "input": {"type": "date", "min": "soon"}})),
                     say("Ok.")]
     collect(guide, "d5", message="go", state=start(guide, LOAN))

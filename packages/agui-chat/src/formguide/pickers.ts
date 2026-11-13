@@ -123,10 +123,11 @@ function dayStrip(it: Interrupt, c: RendererContext, commit: Commit, input: HTML
     days.push(d)
   }
   if (input) input.hidden = true   // no browser picker: quick days, then our own calendar
-  const cal = () => calendar({ lang, limits: { min: it.input?.min, max: it.input?.max }, t: c.t, value: typeof it.previous === 'string' ? it.previous : null,
-    onPick: (d, label) => commit(d, label) })
-  // a date in the past (a birthday, a founding date): the calendar right away, opened on the right month
-  if (days.length < 3) return h('div', { class: 'strip' }, cal())
+  const cal = (past = false) => calendar({ lang, limits: { min: it.input?.min, max: it.input?.max }, t: c.t, value: typeof it.previous === 'string' ? it.previous : null,
+    onPick: (d, label) => commit(d, label), past })
+  // a date in the past: the calendar right away. "Any day up to today" (a date of birth) opens on the years;
+  // a limit further back (founded before 2020-03-15) opens on that month, where the answer most likely is
+  if (days.length < 3) return h('div', { class: 'strip' }, cal(!!max && Date.now() - max.getTime() < 3 * 86400000))
   const today = iso(new Date())
   const tomorrow = iso(new Date(Date.now() + 86400000))
   const name = (d: Date) => iso(d) === today ? c.t('today') : iso(d) === tomorrow ? c.t('tomorrow')
