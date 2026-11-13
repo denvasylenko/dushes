@@ -58,10 +58,19 @@ The site map is both what the site agent knows (a search index over every tab, a
 | --- | --- | --- |
 | on a page without a form | anything | the site agent |
 | on a form page | about the form ("my name is Anna") | the form agent |
-| on a form page | about another page or about moving ("open contacts", "when is the bank open?") | the site agent |
+| on a form page | about moving ("open the contacts page", "take me to the FAQ") | the site agent |
+| on a form page | naming another page's words ("when is the bank open?", "a car loan please" on the loan form) | the router model decides: form or site |
 | anywhere | a card's answer | the form agent (only it shows cards) |
 
-On a form page the router checks navigation words and the other pages' titles and `keywords`. A page's own keywords stay with its form: on the booking page, "book a haircut" is the form's.
+A page's own keywords stay with its form: on the booking page, "book a haircut" is the form's.
+
+## Knowledge
+
+The site agent reads the site map and the business documents of its own knowledge scope: by default the `site` namespace (site-wide documents such as partners, a glossary, policies) plus every form on the map. Facts about the business come only from those; general concepts (what a co-borrower is) may come from general knowledge, said to be general. The form agent keeps its own form's documents.
+
+## One conversation, after a reload too
+
+The site thread's transcript holds every turn the user saw, the site agent's and the form agents' (their text), and the hand-off note, so nothing lives only in memory. `GET /site/threads/{id}?form_id=` returns `{messages, pending_card}`; the page's `restore` uses it, so a reload shows the whole conversation and the form's open card.
 
 ## The hand-off
 
@@ -104,8 +113,10 @@ SiteGuide(
     guide,                           # your FormGuide: the form agent for form pages
     SiteMap.load("site.yaml"),
     model=None,                      # the site agent's model; None: the form guide's agent model
+    knowledge_namespaces=None,       # the documents it reads; None: "site" + every form on the map
+    router_model=None,               # one word, form or site, for unclear messages; None: the memory model
 )
-create_site_router(site)             # POST /run (AG-UI), GET /map; mount it under any prefix
+create_site_router(site)             # POST /run (AG-UI), GET /map, GET /threads/{id}?form_id=; any prefix
 ```
 
 | `forwardedProps` key | Default | What it does |

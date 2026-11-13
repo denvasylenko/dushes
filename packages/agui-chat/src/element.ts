@@ -724,7 +724,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const p = this._plugins.find((x) => x.restore)
     if (!p?.restore) { this._renderEmpty(); return }
     let r = null
+    const seen = this._messages.length
     try { r = await p.restore(this._thread, this) } catch { r = null }
+    // a message sent while the history was loading: the live conversation wins over the late history
+    if (this._messages.length !== seen || (this._busy && !seen)) return
     if (!r) { this._renderEmpty(); return }
     this._starters = r.starters ?? []
     if (r.messages?.length) {

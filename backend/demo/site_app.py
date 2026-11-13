@@ -12,8 +12,15 @@ from formguide.site import SiteGuide, SiteMap, create_site_router
 SITE_MAP = Path(__file__).with_name("site.yaml")
 
 
+SITE_DOCS = Path(__file__).parent / "samples" / "kb" / "site"
+
+
 def mount(app, guide) -> SiteGuide:
     site = SiteGuide(guide, SiteMap.load(SITE_MAP))
+    # the site's own documents (partners, glossary) for the site agent; the forms keep theirs
+    if not guide.knowledge.list_documents("site"):
+        for doc in sorted(SITE_DOCS.glob("*.md")):
+            guide.add_document("site", doc.name, doc.read_bytes())
     app.include_router(create_site_router(site), prefix="/site")
     app.state.site = site
     return site

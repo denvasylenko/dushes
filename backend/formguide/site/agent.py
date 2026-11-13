@@ -2,6 +2,7 @@
 
 Tools:
   search_site(query)                 more passages when the first ones do not answer
+  ask_documents(question)            the document researcher over the site's business documents (when it has any)
   navigate(path, tab?, section?)     open a page (and a tab, accordion or section on it)
   open_form(form_id, note)           open the page with that form and hand the request to the form agent
 
@@ -13,7 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
@@ -25,7 +26,9 @@ log = logging.getLogger("formguide.site")
 MAX_ROUNDS = 4
 
 SYSTEM = """You are the assistant of the site "{title}". You help people find things on the site and get things done.
-- Answer in one to three short sentences, from the site's passages only. Name the page you used. If the passages do not answer, say so and offer the closest page.
+- Answer in one to three short sentences. Facts about this business (its products, prices, rules, partners, opening hours) come only from the site's passages, the document passages and ask_documents; name the page or document you used. Never invent such facts: if none of them answers, say so and offer the closest page.
+- General concepts that are not about this business (what a co-borrower is, what an independent valuation means) you may explain from general knowledge, briefly, and say it is general: the business's own terms may differ.
+- For a question about a term, a partner, a condition or a policy that the passages below do not settle, call ask_documents before answering.
 - When the user wants to go somewhere or would be helped by seeing a page, call navigate (a page path from the site contents, plus a tab, accordion or section id on it when that is where the answer is).
 - When the user wants to do something a form on the site does (apply, book), call open_form with that form and a note: one or two sentences of everything the user already said that the form needs (amounts, dates, names, choices), in their words. Do not ask for those details yourself: the form's own assistant takes over on that page.
 - Never invent pages, tabs or forms: use only what the site contents list.
@@ -36,8 +39,11 @@ Site contents (path | title | description | form | tabs, accordions, sections):
 
 The user is on: {page}
 
-Passages:
-{passages}"""
+Site passages:
+{passages}
+
+Document passages:
+{doc_passages}"""
 
 TOOLS: list[dict[str, Any]] = [
     {"name": "search_site", "description": "Search the site's pages again with other words.",
@@ -48,6 +54,9 @@ TOOLS: list[dict[str, Any]] = [
          "tab": {"type": "string", "description": "a tab or accordion id on that page"},
          "section": {"type": "string", "description": "a section id on that page"}},
          "required": ["path"]}},
+    {"name": "ask_documents", "description": "Ask the document researcher a question about the business's documents "
+                                      "(terms, partners, conditions, policies). Returns a short answer with sources.",
+     "parameters": {"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}},
     {"name": "open_form", "description": "Open the page with this form and hand the request to the form's assistant.",
      "parameters": {"type": "object", "properties": {
          "form_id": {"type": "string"},
@@ -87,20 +96,24 @@ def _text(content: Any) -> str:
 
 
 async def answer(model: BaseChatModel, site: SiteMap, question: str, history: list[tuple[str, str]], page_path: str,
-                 thread_id: str, run_id: str, on_handoff: Callable[[str, str], None]) -> AsyncIterator[dict]:
-    """One site turn as AG-UI events. `on_handoff(form_id, note)` keeps the note for the form page's first run."""
+                 thread_id: str, run_id: str, on_handoff: Callable[[str, str], None], doc_passages: str = "",
+                 ask_docs: Callable[[str], Awaitable[str]] | None = None) -> AsyncIterator[dict]:
+    """One site turn as AG-UI events. `on_handoff(form_id, note)` keeps the note for the form page's first run;
+    `doc_passages` are the business documents that match the question, `ask_docs` the document researcher."""
     yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
     found = site.search(question, k=5)
     seen = {c.id for c in found}
     here = site.page(page_path)
     system = SYSTEM.format(title=site.title, contents=site.contents(), passages=passages(site, found),
+                           doc_passages=doc_passages or "(none matched)",
                            page=f"{here.path} ({here.title})" if here else page_path or "/")
     msgs: list[Any] = [SystemMessage(system)]
     for role, text in history:
         msgs.append(HumanMessage(text) if role == "user" else AIMessage(text))
     msgs.append(HumanMessage(question))
+    tools = TOOLS if ask_docs else [t for t in TOOLS if t["name"] != "ask_documents"]
     try:
-        bound = model.bind_tools(TOOLS)
+        bound = model.bind_tools(tools)
     except NotImplementedError:
         bound = model
     mid = f"msg_{uuid.uuid4().hex[:12]}"
@@ -137,6 +150,11 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                     result, d = directive(site, args)
                     if d:
                         directives.append(d)
+                elif name == "ask_documents" and ask_docs:
+                    try:
+                        result = await ask_docs(str(args.get("question") or question))
+                    except Exception as e:  # noqa: BLE001 — a failed lookup must not break the turn
+                        result = f"The document lookup failed ({type(e).__name__}); answer from the passages or say you do not know."
                 elif name == "open_form":
                     page = site.form_page(str(args.get("form_id") or ""))
                     if not page:

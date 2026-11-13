@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { capabilitiesFor, formguide } from '@formguide/agui-chat/formguide'
+import { capabilitiesFor, entryToInterrupt, formguide } from '@formguide/agui-chat/formguide'
 import { AguiChat } from '@formguide/agui-chat/react'
 import type { AguiChatElement } from '@formguide/agui-chat'
 import { FormProvider, Render } from '../Form'
@@ -97,7 +97,15 @@ export default function Site() {
         input.forwardedProps = { ...(input.forwardedProps ?? {}), capabilities: capabilitiesFor() }
       }
     }
-    fg.restore = async () => null   // the site chat lives in this page session (a single-page app)
+    // after a reload: the whole site conversation, and the open card of the form on this page
+    fg.restore = async (id) => {
+      const m: SiteMap = await (await fetch('/site/map')).json()
+      const form = m.pages.find((p) => p.path === pathOf())?.form
+      const r = await fetch(`/site/threads/${encodeURIComponent(id)}${form ? `?form_id=${form}` : ''}`)
+      if (!r.ok) return null
+      const d = await r.json()
+      return { messages: d.messages ?? [], interrupt: entryToInterrupt(d.pending_card) }
+    }
     const onEvent = fg.onEvent!
     fg.onEvent = (ev, chat) => {
       if (ev.type === 'CUSTOM' && ev.name === 'site_directive') { go(ev.value as SiteDirective); return true }
