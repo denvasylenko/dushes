@@ -68,6 +68,52 @@ A page's own keywords stay with its form: on the booking page, "book a haircut" 
 
 `instructions:` at the top of the site map is your brief for the site agent: tone, what to recommend, what to say first. The prompt ranks it below truth (business facts only from the site and its documents) and below the map (only its pages, tabs, sections and forms), and above the agent's own defaults. If the agent runs out of tool rounds without a word, it gets one more call without tools, so the user always gets a reply.
 
+## Extend it for your app
+
+A site with live data of its own (an admin cabinet, a shop, a booking system) gives the site agent what it needs without replacing it:
+
+```python title="app.py"
+from formguide.site import SiteGuide, SiteMap, SiteTool, create_site_router
+
+async def live(ctx):                                  # in the prompt on every turn, no search in between
+    site = ctx.host["site"]
+    return f"Open today {site.hours_today}. New requests: {site.new_requests}."
+
+def stats(args, ctx):                                 # the model gets the text you return
+    return ctx.host["site"].stats(days=int(args["days"])).summary()
+
+def build_form(form_id, ctx):                         # the form's state on the server: same-run hand-off
+    return my_forms.state(form_id, ctx.host["site"])  # None: the page's own hand-off run, as before
+
+site = SiteGuide(guide, SiteMap.load("cabinet.yaml"),
+                 context=live,
+                 instructions="You help the owner run their website. Never publish for them.",
+                 style="Reply in one to four short sentences, warm and plain.",
+                 history=10,
+                 tools=[SiteTool("site_stats", "Visits, calls and requests for 7 or 30 days.",
+                                 {"type": "object", "properties": {"days": {"type": "string", "enum": ["7", "30"]}},
+                                  "required": ["days"]}, stats)],
+                 suggestions=True,
+                 form_for=build_form)
+
+app.include_router(create_site_router(site, host=lambda request: {"site": current_site(request)}), prefix="/site")
+```
+
+| Option | What it changes |
+| --- | --- |
+| `context(ctx)` | live facts in the prompt on every turn; the model trusts them over the site map's passages |
+| `instructions` | your brief, added to the site map's `instructions:` |
+| `style` | replaces the default "one to three short sentences" |
+| `history` | how many past turns the site agent sees (default 6) |
+| `tools` | your `SiteTool`s next to its own; a tool that raises tells the model, the turn goes on |
+| `suggestions` | a `suggest_next` tool: its options arrive as CUSTOM `suggestions {items}`, the chat's quick replies |
+| `form_for(form_id, ctx)` | the form's state on the server: after `open_form` the form agent answers in the same run, and the directive says `handoff: "done"` so the page does not run again |
+| `create_site_router(site, host=fn)` | `fn(request)` builds `ctx.host` for each run: one guide serves every site and user |
+
+Every callback gets `ctx`, a `SiteRunCtx(thread_id, page, state, message, host)`, and may be sync or async. `open_form` also passes the language the user writes in, so the form agent replies in it.
+
+On a form page the router also looks at who spoke last: when the site agent did, the message has navigation words in German, Spanish, French, Italian, Russian or Ukrainian, or it asks where the business is (address, phone, opening hours), a cheap router model decides between the form and the site, so a reply to the site agent's question stays with the site agent.
+
 ## Knowledge
 
 The site agent reads the site map and the business documents of its own knowledge scope: by default the `site` namespace (site-wide documents such as partners, a glossary, policies) plus every form on the map. Facts about the business come only from those; general concepts (what a co-borrower is) may come from general knowledge, said to be general. The form agent keeps its own form's documents.
@@ -90,7 +136,7 @@ curl -N -X POST http://localhost:8000/site/run -H "Content-Type: application/jso
 }'
 ```
 
-`POST /site/run` is AG-UI like `/agent/run`. Its `state` is `{page: {path, title}, form?}`, where `form` is the usual [form state](../../form/state/) on a form page. Besides the form agent's events it sends `CUSTOM site_directive {type: "navigate", path, tab?, section?, form_id?}`.
+`POST /site/run` is AG-UI like `/agent/run`. Its `state` is `{page: {path, title}, form?}`, where `form` is the usual [form state](../../form/state/) on a form page. Besides the form agent's events it sends `CUSTOM site_directive {type: "navigate", path, tab?, section?, form_id?, handoff?}` (`handoff: "done"`: the form agent already answered in this run, so the page opens the form and does not run the hand-off itself) and, with `suggestions`, `CUSTOM suggestions {items}`.
 
 <Aside>The form agent keeps its own conversation per form inside the site's thread (`<site thread>-<form id>`), with its history, cards and Undo, exactly as on a page of its own.</Aside>
 
@@ -121,8 +167,16 @@ SiteGuide(
     model=None,                      # the site agent's model; None: the form guide's agent model
     knowledge_namespaces=None,       # the documents it reads; None: "site" + every form on the map
     router_model=None,               # one word, form or site, for unclear messages; None: the memory model
+    context=None,                    # fn(ctx) -> str: live facts in the prompt every turn (sync or async)
+    instructions="",                 # added to the site map's instructions
+    style=None,                      # replaces "one to three short sentences"
+    history=6,                       # past turns the site agent sees
+    tools=[],                        # SiteTool(name, description, parameters, handler(args, ctx) -> str)
+    suggestions=False,               # suggest_next -> CUSTOM suggestions {items}
+    form_for=None,                   # fn(form_id, ctx) -> form state | None: the form agent answers in the same run
 )
-create_site_router(site)             # POST /run (AG-UI), GET /map, GET /threads/{id}?form_id=; any prefix
+site.run(thread_id, message=..., state=..., host=obj)   # obj -> ctx.host in every callback
+create_site_router(site, host=None)  # POST /run (AG-UI), GET /map, GET /threads/{id}?form_id=; host(request) -> ctx.host
 ```
 
 | `forwardedProps` key | Default | What it does |

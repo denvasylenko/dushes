@@ -6,6 +6,10 @@ Tools:
   navigate(path, tab?, section?)     open a page (and a tab, accordion or section on it)
   open_form(form_id, note)           open the page with that form and hand the request to the form agent
 
+Host extensions (SiteGuide passes them in): live facts and instructions in the prompt, the host's own
+tools (`SiteTool`), `suggest_next` (CUSTOM suggestions after the answer), and a same-run hand-off (the turn
+ends after open_form and the form agent answers in the same stream).
+
 `navigate` and `open_form` are checked against the site map. A valid call becomes a
 CUSTOM `site_directive {type: "navigate", path, tab?, section?, form_id?}` for the page.
 """
@@ -14,7 +18,9 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+import inspect
 from collections.abc import AsyncIterator, Awaitable, Callable
+from dataclasses import dataclass, field
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
@@ -24,14 +30,42 @@ from .sitemap import SiteMap
 
 log = logging.getLogger("formguide.site")
 MAX_ROUNDS = 4
+STYLE = "Reply in one to three short sentences, in the user's language."
+
+
+@dataclass
+class SiteRunCtx:
+    """What a host callback (context, a tool's handler, form_for) gets about the turn."""
+    thread_id: str
+    page: str
+    state: dict[str, Any] = field(default_factory=dict)
+    message: str = ""
+    host: Any = None   # the host's own object for this request: run(host=...) / create_site_router(host=fn)
+
+
+@dataclass
+class SiteTool:
+    """A tool of the host's for the site agent. `handler(args, ctx)` returns the text the model gets."""
+    name: str
+    description: str
+    parameters: dict[str, Any]
+    handler: Callable[[dict[str, Any], SiteRunCtx], str | Awaitable[str]]
+
+    def schema(self) -> dict[str, Any]:
+        return {"name": self.name, "description": self.description, "parameters": self.parameters}
+
+
+async def maybe_await(v: Any) -> Any:
+    return await v if inspect.isawaitable(v) else v
 
 SYSTEM = """You are the assistant of the site "{title}". You help people find things on the site, understand what
 they read there and get things done: you answer, you take them to the right page, and you hand them to a
 form's own assistant when they want to apply, book or sign up.
-{instructions}
+{instructions}{live}
 Priorities (the higher one wins)
 1. Truth. Facts about this business (products, prices, rates, rules, partners, opening hours, addresses) come
-   only from the site passages, the document passages and ask_documents. Never invent or estimate them.
+   only from the live facts, the site passages, the document passages and your tools. Never invent or
+   estimate them.
 2. The site as it is. Use only the pages, tabs, sections and forms in the site contents.
 3. The business's instructions above, when there are any: tone, what to recommend, what to say first.
 4. The defaults below.
@@ -48,9 +82,10 @@ Each turn
 4. Somewhere to go, or an answer that sits on a page they would be helped to see: call navigate (a page path
    from the site contents, plus the tab, accordion or section id where the answer is).
 5. Something a form does (apply, book): call open_form with that form and a note of everything the user
-   already said that the form needs (amounts, dates, names, choices), in their words. Do not ask for the
-   rest yourself: the form's assistant takes over on that page. If two forms could fit, ask which one.
-6. Reply in one to three short sentences, in the user's language. After a tool, say what you did in one
+   already said that the form needs (amounts, dates, names, choices), in their words, and the language the
+   user writes in. Do not ask for the rest yourself: the form takes over on that page, in this same chat.
+   If two forms could fit, ask which one.
+6. {style} After a tool, say what you did in one
    sentence ("Here is the Contacts page: on Saturday the branch is open 10:00 to 16:00.").
 
 Never
@@ -71,6 +106,11 @@ Site passages:
 Document passages:
 {doc_passages}"""
 
+SUGGEST = {"name": "suggest_next", "description": "Two or three short next requests the user is likely to make, "
+           "shown as buttons under your answer (in the user's language, written as they would type them).",
+           "parameters": {"type": "object", "properties": {"options": {"type": "array", "items": {"type": "string"},
+                                                                       "maxItems": 3}}, "required": ["options"]}}
+
 TOOLS: list[dict[str, Any]] = [
     {"name": "search_site", "description": "Search the site's pages again with other words.",
      "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
@@ -86,7 +126,8 @@ TOOLS: list[dict[str, Any]] = [
     {"name": "open_form", "description": "Open the page with this form and hand the request to the form's assistant.",
      "parameters": {"type": "object", "properties": {
          "form_id": {"type": "string"},
-         "note": {"type": "string", "description": "what the user already said that the form needs"}},
+         "note": {"type": "string", "description": "what the user already said that the form needs"},
+         "language": {"type": "string", "description": "the language the user writes in, e.g. Russian"}},
          "required": ["form_id", "note"]}},
 ]
 
@@ -125,30 +166,45 @@ def _text(content: Any) -> str:
 
 
 async def answer(model: BaseChatModel, site: SiteMap, question: str, history: list[tuple[str, str]], page_path: str,
-                 thread_id: str, run_id: str, on_handoff: Callable[[str, str], None], doc_passages: str = "",
-                 ask_docs: Callable[[str], Awaitable[str]] | None = None) -> AsyncIterator[dict]:
-    """One site turn as AG-UI events. `on_handoff(form_id, note)` keeps the note for the form page's first run;
-    `doc_passages` are the business documents that match the question, `ask_docs` the document researcher."""
+                 thread_id: str, run_id: str, on_handoff: Callable[..., Any], doc_passages: str = "",
+                 ask_docs: Callable[[str], Awaitable[str]] | None = None, *, live: str = "", instructions: str = "",
+                 style: str | None = None, tools: list[SiteTool] | None = None, ctx: SiteRunCtx | None = None,
+                 suggestions: bool = False, finish: bool = True) -> AsyncIterator[dict]:
+    """One site turn as AG-UI events.
+
+    `on_handoff(form_id, note, language)` keeps the note; when it returns True the form agent answers right after
+    in this same run, so the turn ends after that round and the directive says `handoff: "done"`.
+    `doc_passages` are the business documents that match the question, `ask_docs` the document researcher;
+    `live` and `instructions` come from the host, `tools` are the host's; `finish=False` leaves RUN_FINISHED
+    to the caller."""
     yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
+    ctx = ctx or SiteRunCtx(thread_id=thread_id, page=page_path, message=question)
     found = site.search(question, k=5)
     seen = {c.id for c in found}
     here = site.page(page_path)
-    own = f"\nThe business's instructions\n{site.instructions.strip()}\n" if site.instructions.strip() else ""
-    system = SYSTEM.format(title=site.title, instructions=own, contents=site.contents(), passages=passages(site, found),
+    brief = "\n".join(x.strip() for x in (site.instructions, instructions) if x and x.strip())
+    own = f"\nThe business's instructions\n{brief}\n" if brief else ""
+    facts = f"\nLive facts from the business (current, trust them over the site passages)\n{live.strip()}\n" if live.strip() else ""
+    system = SYSTEM.format(title=site.title, instructions=own, live=facts, style=style or STYLE,
+                           contents=site.contents(), passages=passages(site, found),
                            doc_passages=doc_passages or "(none matched)",
                            page=f"{here.path} ({here.title})" if here else page_path or "/")
     msgs: list[Any] = [SystemMessage(system)]
     for role, text in history:
-        msgs.append(HumanMessage(text) if role == "user" else AIMessage(text))
-    msgs.append(HumanMessage(question))
-    tools = TOOLS if ask_docs else [t for t in TOOLS if t["name"] != "ask_documents"]
+        if text.strip():
+            msgs.append(HumanMessage(text) if role == "user" else AIMessage(text))
+    msgs.append(HumanMessage(question or "(the user opened the assistant)"))
+    host_tools = {t.name: t for t in tools or []}
+    schemas = [t for t in TOOLS if ask_docs or t["name"] != "ask_documents"]
+    schemas += [t.schema() for t in host_tools.values()] + ([SUGGEST] if suggestions else [])
     try:
-        bound = model.bind_tools(tools)
+        bound = model.bind_tools(schemas)
     except NotImplementedError:
         bound = model
     mid = f"msg_{uuid.uuid4().hex[:12]}"
-    started = said = False
+    started = said = handed = False
     directives: list[dict] = []
+    suggested: list[str] = []
     try:
         for _ in range(MAX_ROUNDS):
             full: AIMessageChunk | None = None
@@ -191,15 +247,32 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                     if not page:
                         result = f"There is no form {args.get('form_id')!r} on the site."
                     else:
-                        on_handoff(page.form or "", str(args.get("note") or "").strip()[:600])
-                        directives.append({"type": "navigate", "path": page.path, "form_id": page.form})
-                        result = f"Opened {page.title}; the form's assistant takes over there. Say so in one short sentence."
+                        now = await maybe_await(on_handoff(page.form or "", str(args.get("note") or "").strip()[:600],
+                                                           str(args.get("language") or "").strip()[:40]))
+                        d = {"type": "navigate", "path": page.path, "form_id": page.form}
+                        if now:
+                            d["handoff"] = "done"
+                            handed = True
+                        directives.append(d)
+                        result = ("Opened {t}; the form answers the user now in this chat. Say nothing more."
+                                  if now else "Opened {t}; the form takes over there. Say so in one short sentence.").format(t=page.title)
+                elif name == "suggest_next" and suggestions:
+                    suggested = [str(o).strip()[:60] for o in (args.get("options") or [])[:3] if str(o).strip()]
+                    result = "Shown under your answer."
+                elif name in host_tools:
+                    try:
+                        result = str(await maybe_await(host_tools[name].handler(args, ctx)))
+                    except Exception as e:  # noqa: BLE001 — one failing host tool must not end the answer
+                        log.exception("site tool %s failed", name)
+                        result = f"The tool failed ({type(e).__name__}); answer without it or say what you could not check."
                 else:
                     result = f"Unknown tool {name}."
                 msgs.append(ToolMessage(content=result, tool_call_id=cid))
                 yield {"type": "TOOL_CALL_RESULT", "toolCallId": cid, "messageId": f"tool_{uuid.uuid4().hex[:12]}",
                        "content": result[:200], "role": "tool"}
-        if not said:   # the rounds ran out, or the model gave no text: one last reply, its tool calls ignored
+            if handed:   # the form agent answers next, in this run
+                break
+        if not said and not handed:   # the rounds ran out, or the model gave no text: one last reply, its tool calls ignored
             msgs.append(HumanMessage("[system] Do not call tools now. Answer the user in one to three sentences "
                                      "with what you found, or say what you could not find."))
             async for chunk in bound.astream(msgs):
@@ -219,4 +292,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
         yield {"type": "TEXT_MESSAGE_END", "messageId": mid}
     if directives:   # the last move wins: one page at a time
         yield {"type": "CUSTOM", "name": "site_directive", "value": directives[-1]}
-    yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
+    if suggested and not handed:
+        yield {"type": "CUSTOM", "name": "suggestions", "value": {"items": suggested}}
+    if finish:
+        yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}

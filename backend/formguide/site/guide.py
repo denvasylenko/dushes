@@ -11,7 +11,12 @@ Each turn goes to one of two agents:
   site rather than the form (navigation, another page).
 
 A hand-off: the site agent's open_form keeps a note of what the user wants; the next run on the form page
-with `forwardedProps.handoff` gives the form agent that note as its first message.
+with `forwardedProps.handoff` gives the form agent that note as its first message. With `form_for` (the
+host builds the form's state on the server) the form agent answers at once, in the same run.
+
+Host extensions: `context` (live facts in the prompt every turn), `instructions`, `style`, `history`,
+`tools` (SiteTool), `suggestions` and `form_for`; each callback gets a SiteRunCtx whose `host` is the
+object passed to run(host=...) (create_site_router(host=fn) builds it per request).
 
 Knowledge: the site agent reads the site map and the business documents of the site's own namespaces
 (`knowledge_namespaces`, default: "site" plus every form on the map), through a search and the document
@@ -23,6 +28,7 @@ and the note survive a reload or a restart. `GET /threads/{id}` returns it for t
 """
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from collections.abc import AsyncIterator
@@ -36,6 +42,7 @@ try:   # module level: the router's annotations are resolved here (postponed ann
 except ImportError:  # pragma: no cover - the HTTP layer is optional
     Request = StreamingResponse = Any  # type: ignore[assignment,misc]
 from . import agent
+from .agent import SiteRunCtx, SiteTool, maybe_await
 from .sitemap import SiteMap
 
 if TYPE_CHECKING:
@@ -43,15 +50,62 @@ if TYPE_CHECKING:
 
 # a message that is about moving around the site, not about the form on the page
 SCOPE = "site"   # the knowledge scope of the site agent
+log = logging.getLogger("formguide.site")
 _NAV = re.compile(r"\b(go to|go back to|take me|open (the|my|a|an|up)|show me the|navigate|switch to|back to|where (is|can i find)|"
                   r"which page|another page|home ?page|main page)\b", re.I)
+# navigation words of other languages (written as escapes: the repository is English-only); they send the
+# message to the router model rather than straight to the site agent, since "open" may mean a form section too
+_NAV_OTHER = re.compile("|".join([
+    r"\bgeh(e)? zu\b", r"\b\u00f6ffne\b", r"\bzeig mir die seite\b", r"\bwo finde ich\b",            # German
+    r"\bve a\b", r"\bll\u00e9vame\b", r"\babre la p\u00e1gina\b", r"\bd\u00f3nde est\u00e1\b",      # Spanish
+    r"\bva \u00e0\b", r"\bemm\u00e8ne-moi\b", r"\bouvre la page\b", r"\bo\u00f9 est\b",             # French
+    r"\bvai a\b", r"\bportami\b", r"\bapri la pagina\b", r"\bdov'\u00e8\b",                         # Italian
+    "\u043e\u0442\u043a\u0440\u043e\u0439", "\u043f\u0435\u0440\u0435\u0439\u0434\u0438",                    # Russian: open, go to
+    "\u0441\u0442\u0440\u0430\u043d\u0438\u0446", "\u0433\u0434\u0435 \u043d\u0430\u0445\u043e\u0434",     # page, where is
+    "\u0432\u0456\u0434\u043a\u0440\u0438\u0439", "\u0441\u0442\u043e\u0440\u0456\u043d\u043a",            # Ukrainian: open, page
+]), re.I)
+# questions about the business itself (where it is, how to reach it, when it is open): a form page's form
+# rarely holds those, so the router model decides
+_BUSINESS = re.compile("|".join([
+    r"\bwhere are you\b", r"\blocated\b", r"\baddress\b", r"\bphone number\b", r"\bopening hours\b",
+    r"\bwhen (are|is) (you|it|the \w+) open\b", r"\bhow (do|can) i (get|reach)\b", r"\bcontact (you|us)\b",
+    "\u0433\u0434\u0435 \u0432\u044b", "\u0430\u0434\u0440\u0435\u0441", "\u0442\u0435\u043b\u0435\u0444\u043e\u043d",   # Russian: where are you, address, phone
+    "\u0447\u0430\u0441\u044b \u0440\u0430\u0431\u043e\u0442",                                         # Russian: opening hours
+    "\u0434\u0435 \u0432\u0438", "\u0430\u0434\u0440\u0435\u0441\u0430",                               # Ukrainian: where are you, address
+    r"\bwo (seid|sind) (ihr|sie)\b", r"\badresse\b", r"\bd\u00f3nde est\u00e1n\b", r"\bdirecci\u00f3n\b",
+    r"\bo\u00f9 \u00eates-vous\b", r"\bdove siete\b", r"\bindirizzo\b", r"\borari\b",
+]), re.I)
 HISTORY = 6
+HANDED = "[Handed over by the site assistant]"
+
+
+def _text_of(out: Any) -> str:
+    """A model reply's text (a string, or content blocks with reasoning first)."""
+    c = getattr(out, "content", out)
+    if isinstance(c, list):
+        return "".join(b.get("text", "") for b in c if isinstance(b, dict) and b.get("type", "text") == "text")
+    return str(c or "")
+
+
+def handoff_message(note: str, language: str = "") -> str:
+    """The form agent's first message after a hand-off."""
+    say = f" Reply to the user in {language}." if language else ""
+    return f"{HANDED} On the site the user said: {note}{say}"
 
 
 class SiteGuide:
     def __init__(self, form_guide: FormGuide, site: SiteMap, model: Any = None,
-                 knowledge_namespaces: list[str] | None = None, router_model: Any = None):
+                 knowledge_namespaces: list[str] | None = None, router_model: Any = None, *,
+                 context: Any = None, instructions: str = "", style: str | None = None, history: int = HISTORY,
+                 tools: list[SiteTool] | None = None, suggestions: bool = False, form_for: Any = None):
         self.forms = form_guide
+        self.context = context            # (ctx) -> str | Awaitable[str]: live facts, in the prompt every turn
+        self.instructions = instructions  # added to the site map's own instructions
+        self.style = style                # replaces the default reply length rule
+        self.history = history            # past turns the site agent sees
+        self.tools = list(tools or [])    # the host's SiteTools
+        self.suggestions = suggestions    # suggest_next -> CUSTOM suggestions
+        self.form_for = form_for          # (form_id, ctx) -> form state | None: the same-run hand-off
         self.site = site
         self.model = model   # the site agent's model; default: the form guide's agent model
         self.router_model = router_model or form_guide.models.memory   # a cheap model for unclear messages
@@ -72,19 +126,21 @@ class SiteGuide:
                                             self.forms.models.research)
 
     # ------------------------------------------------------------ the hand-off note, kept in the transcript
-    def _keep_note(self, thread_id: str, form_id: str, note: str) -> None:
-        self.forms.transcripts.append(thread_id, new_entry("handoff", form_id=form_id, note=note, status="pending"))
+    def _keep_note(self, thread_id: str, form_id: str, note: str, language: str = "", status: str = "pending") -> None:
+        self.forms.transcripts.append(thread_id, new_entry("handoff", form_id=form_id, note=note, language=language,
+                                                           status=status))
 
-    def _take_note(self, thread_id: str, form_id: str) -> str | None:
+    def _take_note(self, thread_id: str, form_id: str) -> tuple[str, str] | None:
         tx = self.forms.transcripts
         e = next((x for x in reversed(tx.list(thread_id)) if x["kind"] == "handoff" and x.get("status") == "pending"), None)
         if not e:
             return None
         tx.update(thread_id, e["id"], status="used")
-        return e.get("note") if e.get("form_id") == form_id else None
+        return (e.get("note") or "", e.get("language") or "") if e.get("form_id") == form_id else None
 
     # ------------------------------------------------------------ routing
-    def route(self, message: str | None, state: dict[str, Any], resume: Any = None, handoff: bool = False) -> str:
+    def route(self, message: str | None, state: dict[str, Any], resume: Any = None, handoff: bool = False,
+              thread_id: str | None = None) -> str:
         """'form', 'site', or 'unclear' (a form page and a message that names another page's words, without
         asking to go anywhere: a cheap model decides, see classify)."""
         form = state.get("form") or None
@@ -94,13 +150,26 @@ class SiteGuide:
             return "site"
         if handoff or not message:
             return "form"
-        return self._about_site(message, state)
+        return self._about_site(message, state, thread_id)
 
-    def _about_site(self, message: str, state: dict[str, Any]) -> str:
+    def _last_speaker(self, thread_id: str | None) -> tuple[str, str]:
+        """('site' | 'form' | '', what they said last) from the site transcript (form turns carry form_id)."""
+        if not thread_id:
+            return "", ""
+        e = next((x for x in reversed(self.forms.transcripts.list(thread_id)) if x["kind"] == "assistant"), None)
+        if not e:
+            return "", ""
+        return ("form" if e.get("form_id") else "site"), str(e.get("text") or "")
+
+    def _about_site(self, message: str, state: dict[str, Any], thread_id: str | None = None) -> str:
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
         text = message.lower()
         if _NAV.search(text):
             return "site"   # an explicit move: go to, open, take me ...
+        if _NAV_OTHER.search(text):
+            return "unclear"   # a move in another language, or a form section: the model decides
+        if _BUSINESS.search(text):
+            return "unclear"   # where the business is, how to reach it: rarely the form's
         own = set(here.keywords) | {here.title.lower()} if here else set()   # the form page's own words stay with the form
         for p in self.site.pages:   # another page named by its title or keywords
             if here and p.path == here.path:
@@ -108,9 +177,11 @@ class SiteGuide:
             words = [w for w in (p.title.lower(), *p.keywords) if w not in own]
             if any(re.search(rf"(?<!\w){re.escape(w)}(?!\w)", text) for w in words if len(w) > 2):
                 return "unclear"   # "a car loan" on the loan form is the form's; "the barbershop prices" is not
+        if self._last_speaker(thread_id)[0] == "site":
+            return "unclear"   # the site agent spoke last: the message may answer it
         return "form"
 
-    async def classify(self, message: str, state: dict[str, Any]) -> str:
+    async def classify(self, message: str, state: dict[str, Any], thread_id: str | None = None) -> str:
         """One word from a cheap model for an unclear message on a form page; 'form' when it cannot tell."""
         import asyncio
 
@@ -118,17 +189,31 @@ class SiteGuide:
 
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
         form = (state.get("form") or {}).get("form_id") or (here.form if here else "")
-        prompt = (f"A user of the site \"{self.site.title}\" is on the page \"{here.title if here else '?'}\", which "
-                  f"holds the form \"{form}\". They wrote: \"{message[:500]}\"\n"
-                  "Answer with one word. form: it is about filling in or understanding this form (its fields, choices, "
-                  "values, what it needs). site: it asks about something else on the site (another page, service, "
-                  "opening hours, prices of something the form is not for).")
+        prompt = (f"Decide who answers a chat message on the site \"{self.site.title}\". The user is on the page "
+                  f"\"{here.title if here else '?'}\" with the form \"{form}\". {self._spoke_line(thread_id)}"
+                  f"The message: \"{message[:500]}\"\n"
+                  "form: the message gives a value for this form, asks about its fields or choices, or answers the "
+                  "form assistant's question.\n"
+                  "site: the message asks about the business or the site itself: where it is (address, location, how "
+                  "to get there), contacts, opening hours, another page or service, or it answers the site "
+                  "assistant's question. A question about where the business is or when it is open is site even "
+                  "right after the form assistant spoke.\n"
+                  "Answer with one word: form or site.")
         try:
             out = await asyncio.wait_for(self.router_model.ainvoke([HumanMessage(prompt)]), timeout=4)
-        except Exception:  # noqa: BLE001 — never block a turn on the router
+        except Exception as e:  # noqa: BLE001 — never block a turn on the router
+            log.warning("site router failed (%s): the turn stays with the form", type(e).__name__)
             return "form"
-        word = str(getattr(out, "content", out)).strip().lower()
+        word = _text_of(out).strip().lower()
+        log.info("site router: %r -> %s", message[:60], word[:20])
         return "site" if word.startswith("site") else "form"
+
+    def _spoke_line(self, thread_id: str | None) -> str:
+        who, said = self._last_speaker(thread_id)
+        if not who:
+            return ""
+        name = "the site assistant" if who == "site" else "the form assistant"
+        return f"The last to speak was {name}: \"{said[-300:]}\". "
 
     def _carry_files(self, site_thread: str, form_thread: str, form: dict[str, Any], resume: Any) -> None:
         """The chat uploads under the site's conversation; the form agent reads files from its own."""
@@ -153,23 +238,23 @@ class SiteGuide:
     # ------------------------------------------------------------ a turn
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None, handoff: bool = False,
-                  **form_kwargs: Any) -> AsyncIterator[dict]:
+                  host: Any = None, **form_kwargs: Any) -> AsyncIterator[dict]:
         check_thread_id(thread_id)
         state = state or {}
         run_id = run_id or str(uuid.uuid4())
-        mode = self.route(message, state, resume, handoff)
+        mode = self.route(message, state, resume, handoff, thread_id)
         if mode == "unclear":
-            mode = await self.classify(message or "", state)
+            mode = await self.classify(message or "", state, thread_id)
         if mode == "form":
             form = state["form"]
             fid = str(form.get("form_id") or "form")
             kw: dict[str, Any] = dict(form_kwargs)
-            note = self._take_note(thread_id, fid) if handoff and not message else None
+            taken = self._take_note(thread_id, fid) if handoff and not message else None
             typed = message
-            if note:
+            if taken:
                 # the request the user made elsewhere on the site, as the form agent's first message: it then
                 # proposes what the note covers with its usual tools and cards
-                message = f"[Handed over by the site assistant] On the site the user said: {note}"
+                message = handoff_message(*taken)
             form_thread = f"{thread_id}-{fid}"[:100]
             self._carry_files(thread_id, form_thread, form, resume)
             tx = self.forms.transcripts
@@ -185,28 +270,71 @@ class SiteGuide:
                 tx.append(thread_id, new_entry("assistant", text="".join(said), form_id=fid))
             return
         tx = self.forms.transcripts
-        history = [(e["kind"], e.get("text", "")) for e in tx.list(thread_id) if e["kind"] in ("user", "assistant")][-HISTORY:]
+        history = [(e["kind"], e.get("text", "")) for e in tx.list(thread_id)
+                   if e["kind"] in ("user", "assistant")][-self.history:] if self.history > 0 else []
         if message:
             tx.append(thread_id, new_entry("user", text=message))
         said: list[str] = []
-
-        def keep(form_id: str, note: str) -> None:
-            self._keep_note(thread_id, form_id, note)
-
         page = ((state.get("page") or {}).get("path")) or "/"
+        ctx = SiteRunCtx(thread_id=thread_id, page=page, state=state, message=message or "", host=host)
+        live = ""
+        if self.context:
+            try:
+                live = str(await maybe_await(self.context(ctx)) or "")
+            except Exception:  # noqa: BLE001 — the turn goes on without the host's facts
+                log.exception("site context failed")
+        handed: dict[str, Any] = {}
+
+        async def keep(form_id: str, note: str, language: str = "") -> bool:
+            """The note for the form; True when the form agent answers now, in this run (form_for built it)."""
+            form = None
+            if self.form_for:
+                try:
+                    form = await maybe_await(self.form_for(form_id, ctx))
+                except Exception:  # noqa: BLE001 — fall back to the page's hand-off run
+                    log.exception("form_for failed")
+            self._keep_note(thread_id, form_id, note, language, status="used" if form else "pending")
+            if form:
+                handed.update(form_id=form_id, note=note, language=language, form=form)
+            return bool(form)
+
         has_docs = bool(self.forms.knowledge.documents_for(SCOPE))
+        failed = False
         async for ev in agent.answer(self.model or self.forms.models.agent, self.site, message or "", history, page,
                                      thread_id, run_id, keep, doc_passages=self.doc_passages(message or "") if has_docs else "",
-                                     ask_docs=self.ask_documents if has_docs else None):
+                                     ask_docs=self.ask_documents if has_docs else None, live=live,
+                                     instructions=self.instructions, style=self.style, tools=self.tools, ctx=ctx,
+                                     suggestions=self.suggestions, finish=False):
             if ev["type"] == "TEXT_MESSAGE_CONTENT":
                 said.append(ev["delta"])
+            elif ev["type"] == "RUN_ERROR":
+                failed = True
             yield ev
         if said:
             tx.append(thread_id, new_entry("assistant", text="".join(said)))
+        if failed:
+            return
+        if not handed:
+            yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
+            return
+        # the form agent answers now, in this same run: its words and cards follow the site agent's open_form
+        fid, form = handed["form_id"], handed["form"]
+        form_thread = f"{thread_id}-{fid}"[:100]
+        out: list[str] = []
+        async for ev in self.forms.run(form_thread, message=handoff_message(handed["note"], handed["language"]),
+                                       state=form, run_id=run_id, **form_kwargs):
+            if ev["type"] == "RUN_STARTED":
+                continue
+            if ev["type"] == "TEXT_MESSAGE_CONTENT":
+                out.append(ev["delta"])
+            yield ev
+        if "".join(out).strip():
+            tx.append(thread_id, new_entry("assistant", text="".join(out), form_id=fid))
 
 
-def create_site_router(site: SiteGuide):
-    """FastAPI router: POST /run (AG-UI RunAgentInput; state {page, form?}), GET /map (the site map for the page)."""
+def create_site_router(site: SiteGuide, host: Any = None):
+    """FastAPI router: POST /run (AG-UI RunAgentInput; state {page, form?}), GET /map (the site map for the page).
+    `host(request)` (sync or async) builds the host's object for each run: SiteRunCtx.host in every callback."""
     from fastapi import APIRouter, HTTPException
     from pydantic import ValidationError
 
@@ -239,6 +367,8 @@ def create_site_router(site: SiteGuide):
         form = state.get("form") if isinstance(state.get("form"), dict) else None
         if form and kw["resume"] is None and not site.forms.layout(form.get("jsx_hash", "")):
             raise HTTPException(409, "unknown jsx_hash: POST /layouts first")
+        if host is not None:
+            kw["host"] = await maybe_await(host(request))
         enc = agui.encoder(request.headers.get("accept"))
 
         async def events():

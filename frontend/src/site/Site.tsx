@@ -13,7 +13,7 @@ type Part = { id: string; title: string; text: string }
 type SitePage = { path: string; title: string; description: string; form: string | null
   tabs: Part[]; accordions: Part[]; sections: Part[] }
 type SiteMap = { title: string; pages: SitePage[] }
-type SiteDirective = { type: 'navigate'; path: string; tab?: string; section?: string; form_id?: string }
+type SiteDirective = { type: 'navigate'; path: string; tab?: string; section?: string; form_id?: string; handoff?: 'done' }
 
 // stable props: a new array on every render would reapply the chat's options and cut the answer being typed
 const STARTERS = ['I want a car loan of 900 000 for 3 years', 'When is the bank open on Saturday?', 'Book me a haircut tomorrow at 3 pm']
@@ -58,7 +58,7 @@ export default function Site() {
   }, [demo.form])
 
   const go = useCallback((d: SiteDirective) => {
-    if (d.form_id) pendingHandoff.current = d.form_id
+    if (d.form_id && d.handoff !== 'done') pendingHandoff.current = d.form_id   // 'done': the form agent already answered in this run
     location.hash = d.path
     const target = d.tab ?? d.section
     if (d.tab) {
