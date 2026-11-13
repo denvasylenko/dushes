@@ -75,6 +75,13 @@ Attached files SHALL show inside the composer box, above the text: an image as a
 - **WHEN** the user pastes a screenshot into the composer
 - **THEN** its thumbnail appears in the composer; a tap shows it large
 
+### Requirement: Marking up an attached image
+An image still in the composer SHALL offer a pencil in its large view. It SHALL load the markup editor on demand (pen, rectangle, text, a colour, a line width, undo, redo, clear, Save, close) and Save SHALL replace the attachment with the marked-up copy, uploaded like any file, in the same place in the row. A sent image SHALL only be viewed.
+
+#### Scenario: Circling a button
+- **WHEN** the user opens a pasted screenshot, taps the pencil, circles a button and taps Save
+- **THEN** the composer shows the marked-up copy in place of the screenshot
+
 ### Requirement: Hero mode
 With `mode="hero"` the chat SHALL show only the composer until the first message (no header, no message list, no empty state). The first message SHALL grow it into the chat in place on screens 760 px wide and more (messages above the composer, at most 70% of the viewport high), and open it as a full-screen sheet with a close button on narrower screens. Closing SHALL return to the field and keep the conversation.
 

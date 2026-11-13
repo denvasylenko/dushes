@@ -18,7 +18,7 @@ COPY openspec openspec
 COPY site site
 COPY frontend frontend
 # the one-script build and its language and theme packs (agui-chat.lang-*.js, agui-chat.theme-*.js) next to it
-RUN cd packages/agui-chat && npx vite build --config vite.iife.config.ts && node scripts/lang-files.mjs
+RUN cd packages/agui-chat && npx vite build --config vite.iife.config.ts && npx vite build --config vite.editor.config.ts && node scripts/lang-files.mjs
 RUN cd site && DOCS_SITE=$SITE_URL DOCS_BASE=/ PUBLIC_ASK_AI_URL=/ai/ask/run PUBLIC_DEMO_URL=/demo/ \
     PUBLIC_PLAYGROUND_URL=/examples/widget/ npm run build
 RUN cd frontend && npx vite build --base /demo/

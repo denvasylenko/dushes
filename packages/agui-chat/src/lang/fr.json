@@ -40,7 +40,16 @@
   "slow": "Je travaille encore\u2026",
   "introAsk": "Posez une question sur ce formulaire.",
   "replaced": "Remplac\u00e9 par votre message",
-  "fills": "Remplit le formulaire"
+  "fills": "Remplit le formulaire",
+  "markup": "Annoter",
+  "save": "Enregistrer",
+  "pen": "Stylo",
+  "rect": "Rectangle",
+  "text": "Texte",
+  "colour": "Couleur",
+  "lineWidth": "\u00c9paisseur",
+  "redo": "R\u00e9tablir",
+  "clearAll": "Effacer"
  },
  "formguide": {
   "fillTitle": "Remplir ces champs ?",

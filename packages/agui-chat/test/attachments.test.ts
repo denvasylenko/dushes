@@ -40,6 +40,21 @@ describe('attachments in the composer', () => {
     expect(box.querySelectorAll('.files .att')).toHaveLength(1)
   })
 
+  it('offers markup (the pencil) for an image still in the composer only', async () => {
+    const el = await mount()
+    await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])
+    ;(el.shadowRoot!.querySelector('.files .att-open') as HTMLButtonElement).click()
+    expect(el.shadowRoot!.querySelector('dialog.zoom .zoom-edit')!.getAttribute('aria-label')).toBe('Mark up')
+    ;(el.shadowRoot!.querySelector('dialog.zoom .zoom-x') as HTMLButtonElement).click()
+    await tick()
+    el.agent = { run: () => ({ subscribe: (o: { next: (e: unknown) => void; complete: () => void }) => { setTimeout(() => { o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' }); o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }); return { unsubscribe() {} } } }) } as never
+    await el.send('look')
+    await tick(5)
+    ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()   // a sent image: view only
+    expect(el.shadowRoot!.querySelector('dialog.zoom')).not.toBeNull()
+    expect(el.shadowRoot!.querySelector('dialog.zoom .zoom-edit')).toBeNull()
+  })
+
   it('opens an image large, and closes it', async () => {
     const el = await mount()
     await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])

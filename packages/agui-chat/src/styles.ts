@@ -358,7 +358,8 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .box { flex-wrap: wrap; }
 .box > .files { order: -1; flex: 1 0 100%; display: flex; gap: 8px; overflow-x: auto; margin: 2px 0 4px -10px; padding: 2px; scrollbar-width: none; }
 .att { position: relative; flex: none; width: 64px; height: 64px; border-radius: 12px; overflow: hidden; background: var(--agui-soft);
-  border: 1px solid var(--agui-line); animation: att-in .2s var(--agui-ease) both; }
+  border: 1px solid var(--agui-line); }
+.att-new { animation: att-in .2s var(--agui-ease) both; }
 .att img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .att-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
 /* many attachments: the row scrolls, and the edge with more behind it fades */
@@ -375,6 +376,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .zoom-x { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: 12px; width: 44px; height: 44px; border: 0; border-radius: 50%;
   display: grid; place-items: center; background: color-mix(in srgb, white 18%, transparent); color: white; cursor: pointer; }
 .zoom-x svg { width: 20px; height: 20px; }
+.zoom-edit { top: calc(max(12px, env(safe-area-inset-top, 0px)) + 52px); }   /* the pencil under the close button */
 @keyframes zoom-in { from { opacity: 0; } to { opacity: 1; } }
 .att.doc { width: auto; min-width: 120px; max-width: 200px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 28px 8px 10px; }
 .att-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -391,7 +393,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .att-row .att.doc { width: auto; height: auto; min-height: 52px; padding: 8px 12px; background: var(--agui-bg); }
 @keyframes att-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
 @keyframes att-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .att, .att.busy::after, .zoom { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .att-new, .att.busy::after, .zoom { animation: none; } }
 .chip.file { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 11px; cursor: default; }
 .chip.file .btn { padding: 2px 7px; }
 .hint { text-align: center; font-size: 12px; color: var(--agui-ink-3); margin-top: 7px; min-height: 1em; }

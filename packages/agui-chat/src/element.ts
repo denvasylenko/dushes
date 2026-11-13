@@ -1,6 +1,7 @@
 /** <agui-chat>: an AG-UI chat as a Web Component. Every option: site/src/content/docs/reference/agui-chat.md. */
 import { h, md, reducedMotion, store } from './dom'
 import { STRINGS } from './i18n'
+import { loadEditor } from '#editor-loader'
 import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, recognitionBlocked, record, recordingSupported, speechSupported, type Dictation } from './speech'
@@ -768,7 +769,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       own ?? h('div', null, files.length ? h('div', { class: 'att-row' }, files.map((f, i) => this._tile(f, previews[i]))) : null, text)))
   }
 
-  private async _upload(list: File[]): Promise<void> {
+  private async _upload(list: File[], at?: number): Promise<void> {
     const upload = this._opts.upload ?? this._plugins.find((p) => p.attach)?.attach?.upload
     if (!upload || !list.length) return
     if (!this._opts.attachMultiple) { list = list.slice(0, 1); this._files = [] }
@@ -787,7 +788,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         const att = await upload(list[i], this)
         const preview = this._uploading[0]?.preview
         if (preview) this._previews.set(att.id, preview)
-        this._files.push(att)
+        if (at === undefined) this._files.push(att); else this._files.splice(at + i, 0, att)
         this._uploading.shift()
         this._renderFiles()
       }
@@ -800,27 +801,51 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   /** A tile for an attachment: an image's thumbnail, or a document's name and type; × removes it from the message. */
-  private _tile(name: string, preview: string | undefined, remove?: () => void, busy = false): HTMLElement {
+  private _tile(name: string, preview: string | undefined, remove?: () => void, busy = false, edit?: number): HTMLElement {
     const ext = (name.match(/\.([a-z0-9]{1,5})$/i)?.[1] ?? '').toUpperCase()
     const tile = h('span', { class: `att${preview ? '' : ' doc'}${busy ? ' busy' : ''}`, part: 'attachment', title: name },
-      preview ? h('button', { class: 'att-open', type: 'button', 'aria-label': name, onclick: () => this._zoom(preview, name) }, h('img', { src: preview, alt: '' }))
+      preview ? h('button', { class: 'att-open', type: 'button', 'aria-label': name, onclick: (e: Event) => this._zoom(e.currentTarget as HTMLElement, edit === undefined ? undefined : (blob) => this._replaceFile(edit, blob, name)) }, h('img', { src: preview, alt: '' }))
         : [h('span', { class: 'att-name' }, name), ext ? h('span', { class: 'att-ext' }, ext) : null])
     if (remove) tile.append(h('button', { class: 'att-x', type: 'button', 'aria-label': `${this.t('remove')} ${name}`, onclick: remove }, '\u00d7'))
     return tile
   }
 
   /** The image, large, over the chat: × or Esc or a tap beside it closes it. */
-  private _zoom(src: string, name: string): void {
+  private _zoom(opener: HTMLElement, edit?: (image: Blob) => void): void {
+    const row = [{ src: opener.querySelector('img')?.getAttribute('src') ?? '', name: opener.getAttribute('aria-label') ?? '' }]
+    const at = 0
     // a modal <dialog>: the browser puts it above everything on the page (no stacking context can cover it), Esc closes it
     const x = h('button', { class: 'zoom-x', type: 'button', 'aria-label': this.t('close') }); this._icon(x, 'close')
-    const view = h('dialog', { class: 'zoom', part: 'zoom', 'aria-label': name }, h('img', { src, alt: name }), x) as HTMLDialogElement
+    const img = h('img', { src: row[at]?.src, alt: row[at]?.name }) as HTMLImageElement
+    const view = h('dialog', { class: 'zoom', part: 'zoom', 'aria-label': row[at]?.name }, img, x) as HTMLDialogElement
+    let swiped = false   // (no paging yet: one image)
     const close = (): void => { view.close() }
     x.addEventListener('click', close)
-    view.addEventListener('click', (e) => { if (e.target === view) close() })   // a tap beside the picture
+    view.addEventListener('click', (e) => { if (swiped) { swiped = false; return } if (e.target === view) close() })   // a tap beside the picture
     view.addEventListener('close', () => view.remove())
+    // an image still in the composer can be marked up (the editor loads now): Save puts the marked-up copy in its place
+    if (edit) {
+      const pencil = h('button', { class: 'zoom-x zoom-edit', type: 'button', 'aria-label': this.t('markup') })
+      pencil.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20zM14 7l3 3"/></svg>'
+      pencil.addEventListener('click', (e) => {
+        e.stopPropagation()
+        void loadEditor().then((open) => {
+          img.hidden = true; x.hidden = true; pencil.hidden = true
+          open({ src: row[at].src, name: row[at].name, mount: view, t: (k) => this.t(k), onSave: (blob) => { edit(blob); close() }, onClose: close })
+        }).catch(() => { pencil.hidden = true })   // no editor file next to the script: the view stays
+      })
+      view.append(pencil)
+    }
     this.$.wrap.append(view)
     if (typeof view.showModal === 'function') view.showModal(); else view.setAttribute('open', '')
     x.focus({ preventScroll: true })
+  }
+
+  /** Put a marked-up copy in place of an attachment: uploaded like any file, at the same place in the row. */
+  private _replaceFile(i: number, image: Blob, name: string): void {
+    const file = new File([image], `${name.replace(/\.[a-z0-9]{1,5}$/i, '')}-markup.png`, { type: 'image/png' })
+    this._files.splice(i, 1)
+    void this._upload([file], i)
   }
 
   /** Many attachments: the row scrolls sideways, and its edges fade where there is more. */
@@ -831,10 +856,14 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   private _renderFiles(): void {
+    // only a tile that was not there before plays its entrance: removing or adding one leaves the others still
+    const before = new Set([...this.$.files.querySelectorAll<HTMLElement>('.att')].map((t) => t.title))
+    queueMicrotask(() => this.$.files.querySelectorAll<HTMLElement>('.att').forEach((t) => { if (!before.has(t.title)) t.classList.add('att-new') }))
     this.$.files.replaceChildren(
       ...this._files.map((f, i) => this._tile(f.filename, this._previews.get(f.id), () => {
         this._files.splice(i, 1); this._renderFiles(); this._syncSend()
-      })),
+        if (finePointer()) (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true })   // the composer keeps its focus: no border flash
+      }, false, i)),
       ...this._uploading.map((u) => this._tile(u.name, u.preview, undefined, true)))
     this.$.files.hidden = !this._files.length && !this._uploading.length
     requestAnimationFrame(() => this._fadeFiles())

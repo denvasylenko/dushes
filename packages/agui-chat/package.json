@@ -20,7 +20,8 @@
   "type": "module",
   "imports": {
     "#lang-loader": "./src/lang-loader.ts",
-    "#theme-loader": "./src/theme-loader.ts"
+    "#theme-loader": "./src/theme-loader.ts",
+    "#editor-loader": "./src/editor-loader.ts"
   },
   "files": [
     "dist"
@@ -50,7 +51,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit && vite build && vite build --config vite.iife.config.ts && node scripts/lang-files.mjs && tsc -p tsconfig.types.json && node scripts/size.mjs",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && vite build --config vite.iife.config.ts && vite build --config vite.editor.config.ts && node scripts/lang-files.mjs && tsc -p tsconfig.types.json && node scripts/size.mjs",
     "test": "vitest run",
     "dev": "vite build --watch",
     "prepublishOnly": "npm run build && npm test"

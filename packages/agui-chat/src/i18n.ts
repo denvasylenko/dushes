@@ -42,6 +42,15 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "slow": "Still working\u2026",
     "introAsk": "Ask anything about this form.",
     "replaced": "Replaced by your message",
-    "fills": "Fills in the form"
+    "fills": "Fills in the form",
+    "markup": "Mark up",
+    "save": "Save",
+    "pen": "Pen",
+    "rect": "Rectangle",
+    "text": "Text",
+    "colour": "Colour",
+    "lineWidth": "Line width",
+    "redo": "Redo",
+    "clearAll": "Clear"
   }
 }

@@ -40,7 +40,16 @@
   "slow": "Sto ancora lavorando\u2026",
   "introAsk": "Chiedi qualcosa su questo modulo.",
   "replaced": "Sostituito dal tuo messaggio",
-  "fills": "Compila il modulo"
+  "fills": "Compila il modulo",
+  "markup": "Annota",
+  "save": "Salva",
+  "pen": "Penna",
+  "rect": "Rettangolo",
+  "text": "Testo",
+  "colour": "Colore",
+  "lineWidth": "Spessore",
+  "redo": "Ripristina",
+  "clearAll": "Cancella"
  },
  "formguide": {
   "fillTitle": "Compilare questi campi?",

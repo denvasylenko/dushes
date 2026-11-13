@@ -40,7 +40,16 @@
   "slow": "Sigo trabajando\u2026",
   "introAsk": "Pregunta lo que quieras sobre este formulario.",
   "replaced": "Sustituido por tu mensaje",
-  "fills": "Rellena el formulario"
+  "fills": "Rellena el formulario",
+  "markup": "Marcar",
+  "save": "Guardar",
+  "pen": "L\u00e1piz",
+  "rect": "Rect\u00e1ngulo",
+  "text": "Texto",
+  "colour": "Color",
+  "lineWidth": "Grosor",
+  "redo": "Rehacer",
+  "clearAll": "Borrar"
  },
  "formguide": {
   "fillTitle": "\u00bfRellenar estos campos?",

@@ -40,7 +40,16 @@
   "slow": "Arbeite noch\u2026",
   "introAsk": "Frag etwas zu diesem Formular.",
   "replaced": "Durch deine Nachricht ersetzt",
-  "fills": "F\u00fcllt das Formular aus"
+  "fills": "F\u00fcllt das Formular aus",
+  "markup": "Markieren",
+  "save": "Sichern",
+  "pen": "Stift",
+  "rect": "Rechteck",
+  "text": "Text",
+  "colour": "Farbe",
+  "lineWidth": "Linienst\u00e4rke",
+  "redo": "Wiederholen",
+  "clearAll": "L\u00f6schen"
  },
  "formguide": {
   "fillTitle": "Diese Felder ausf\u00fcllen?",
