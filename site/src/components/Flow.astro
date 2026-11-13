@@ -10,16 +10,16 @@ const steps = [
 ---
 <ol class="flow not-content">
   {steps.map(([id, verb, text], i) => (
-    <li data-step={id}><span class="flow-n">{String(i + 1).padStart(2, '0')}</span><b>/{verb.toLowerCase()}</b><p>{text}</p></li>
+    <li class="ui-tile ui-tile--sm" data-step={id}><span class="flow-n">{String(i + 1).padStart(2, '0')}</span><b>/{verb.toLowerCase()}</b><p>{text}</p></li>
   ))}
 </ol>
 <style>
+  /* each step is a small Tile (ui.css); this lays them out and draws the arrows between them */
   .flow { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-  li { position: relative; padding: 16px; border: 1px solid var(--sl-color-hairline-light); border-radius: 14px; background: var(--sl-color-bg-nav); margin: 0; }
-  .flow-n { display: block; font: 500 var(--sl-text-2xs) var(--sl-font-mono); color: var(--sl-color-gray-3); }
-  b { display: block; margin: 6px 0 4px; font: 600 var(--sl-text-lg) var(--sl-font-mono); color: var(--sl-color-accent-high); letter-spacing: -0.01em; }
-  :root[data-theme='light'] b { color: var(--sl-color-accent); }
-  p { margin: 0; font-size: var(--sl-text-sm); color: var(--sl-color-gray-2); }
+  li { position: relative; margin: 0; }
+  .flow-n { display: block; font: 500 var(--fg-fs-footnote) var(--sl-font-mono); color: var(--fg-ink-3); }
+  b { display: block; margin: 6px 0 4px; font: 600 var(--sl-text-lg) var(--sl-font-mono); color: var(--fg-accent-ink); letter-spacing: -0.01em; }
+  p { margin: 0; font-size: var(--sl-text-sm); color: var(--fg-ink-2); }
   li:not(:last-child)::after {
     content: ''; position: absolute; right: -9px; top: 50%; width: 6px; height: 6px; border-top: 1.5px solid var(--sl-color-gray-4);
     border-right: 1.5px solid var(--sl-color-gray-4); transform: translateY(-50%) rotate(45deg);

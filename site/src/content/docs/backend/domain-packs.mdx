@@ -3,6 +3,9 @@ title: Domain packs
 description: One JSON per form tells the agent who it is, how the form flows, what fields mean and what to never repeat.
 ---
 import { Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"One JSON per form: the agent's voice, the flow, the terms"} when={"The agent should sound like your business and know your terms."} write={"`domain_packs/<form_id>.json` with `persona`, `glossary`, `rules`, `starters`."} />
 
 The core knows nothing about loans or haircuts. A domain pack is everything form-specific, picked by `form_id`.
 

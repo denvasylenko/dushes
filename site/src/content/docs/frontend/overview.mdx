@@ -4,6 +4,9 @@ description: formguide speaks plain AG-UI. Use the ready-made chat, wrap it in R
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 import ArchFigure from '../../../components/ArchFigure.astro';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Which client to put next to your form."} when={"Before writing any frontend code."} write={"Pick one row of the table; every client speaks the same protocol."} />
 
 | You have | Use | Effort |
 | --- | --- | --- |
@@ -17,7 +20,7 @@ import ArchFigure from '../../../components/ArchFigure.astro';
 
 | Framework | Today | How |
 | --- | --- | --- |
-| **React** | supported | `<AguiChat>` and hooks from `@formguide/agui-chat/react`; `useFormguide` for react-hook-form and Formik |
+| **React** | supported | `<AguiChat>` from `@formguide/agui-chat/react`; `useFormguide` from `@formguide/agui-chat/react-hook-form` for react-hook-form and Formik |
 | **Any page** (server-rendered, Vue, Angular, Svelte, none) | works | `<agui-chat>` is a standard Web Component: one script tag, set `chat.options` and `chat.use(formguide({...}))` from your code |
 | **Angular** | coming | a module with an `<agui-chat>` component, inputs and outputs, and a form-control bridge |
 | **Vue** | coming | a component and a `useFormguide` composable |

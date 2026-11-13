@@ -1,0 +1,10 @@
+---
+/** Code panel: a label bar with Copy over monospace text, on the sunken surface. `wrap` wraps long lines (prompts). */
+import CopyButton from './CopyButton.astro'
+interface Props { label?: string; code?: string; copy?: boolean; wrap?: boolean; maxHeight?: string; class?: string; [attr: string]: unknown }
+const { label, code, copy = true, wrap = false, maxHeight, class: cls, ...rest } = Astro.props
+---
+<div class:list={['ui-code', { 'ui-code--wrap': wrap }, cls]} style={maxHeight ? `--ui-code-max:${maxHeight}` : undefined} {...rest}>
+  {(label || copy) && <div class="ui-code-bar"><span class="ui-code-label">{label}</span>{copy && <CopyButton variant="quiet" />}</div>}
+  <pre class="ui-code-pre"><code>{code}<slot /></code></pre>
+</div>

@@ -3,6 +3,9 @@ title: 'Frontend tools'
 description: 'Tools that run in the browser: the model calls them, your code answers.'
 ---
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Tools that run in the browser, called by the agent."} when={"The agent should do something on the page (open a map, read the locale)."} write={"`chat.registerTool({ name, description, parameters, handler })`."} />
 
 Tools that run in the browser. They are sent as `tools` with each run; when the agent calls one, the widget runs your handler and continues the run with the result.
 

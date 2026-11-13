@@ -1,0 +1,24 @@
+---
+/**
+ * Menu: a quiet trigger with a chevron and a popover of rows (a title and one line), like a macOS pull-down.
+ * Esc and an outside tap close it; arrow keys move between rows. Slot "icon" goes before the label.
+ */
+interface Item { href: string; title: string; text?: string; external?: boolean; attrs?: Record<string, string> }
+interface Props { label: string; items: Item[]; caption?: string; variant?: 'quiet' | 'gray'; align?: 'end' | 'start'; open?: boolean; class?: string; [attr: string]: unknown }
+const { label, items, caption, variant = 'quiet', align = 'end', open = false, class: cls, ...rest } = Astro.props
+---
+<div class:list={['ui-menu', cls]} data-ui-menu {...rest}>
+  <button type="button" class:list={['ui-btn', `ui-btn--${variant}`, 'ui-btn--sm', 'ui-menu-trigger']} aria-haspopup="menu" aria-expanded={String(open)} data-ui-menu-trigger>
+    <slot name="icon" />{label}<svg class="ui-disc-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5" /></svg>
+  </button>
+  <div class:list={['ui-pop', { 'ui-pop--start': align === 'start' }]} role="menu" hidden={!open}>
+    {caption && <p class="ui-pop-caption">{caption}</p>}
+    {items.map((it) => (
+      <a role="menuitem" class="ui-menu-item" href={it.href} target={it.external ? '_blank' : undefined} rel={it.external ? 'noopener' : undefined} {...(it.attrs ?? {})}>
+        <b>{it.title}</b>{it.text && <span>{it.text}</span>}
+      </a>
+    ))}
+  </div>
+</div>
+
+<script>import './ui.ts'</script>

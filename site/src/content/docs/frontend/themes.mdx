@@ -4,6 +4,9 @@ description: 'Named themes, tokens on the element and ::part(), in light and dar
 ---
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 import ThemePlayground from '../../../components/ThemePlayground.astro';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Colours, corners and fonts of the chat, light and dark."} when={"The chat should look like your product."} write={"`defineTheme('mine', { tokens: {...} })` and `<agui-chat theme=\"mine\">`."} />
 
 Try it first: pick a colour, drag the corners, switch the scheme. The chat below is the real widget with a real card, and the code under it is your theme, ready to paste. Every other setting (modes, ::part rules, component tokens, render slots) is in the [Playground](../playground/).
 
@@ -30,7 +33,23 @@ Or `chat.options = { theme: 'acme' }`, `<AguiChat theme="acme" />`, or an object
 
 - Token keys may drop the prefix: `accent`, `--accent` and `--agui-accent` are the same. An unknown key, or a value containing `;`, `{` or `}`, is ignored with a console warning.
 - `extends: 'contrast'` starts from another theme (default: `default`).
-- Built in: `default` (the standard look) and `contrast` (black and white, stronger lines and text, a thicker focus ring).
+- Built in: `default` (the standard look). Four more ship as packs the chat loads the first time a page uses one (a few hundred bytes each; English pages with the default theme download none):
+
+| Theme | Looks like |
+| --- | --- |
+| `glass` | translucent frosted cards over a soft gradient, blue accent and bubbles, large radii, in the spirit of iOS |
+| `bold` | large radii, strong type and a vivid blue on clean cards; in dark, glassy cards over a deep glow, in the spirit of a fintech app |
+| `messenger` | bubbles for both sides on a wallpaper, a light blue accent, in the spirit of a messenger |
+| `contrast` | pure black and white, stronger lines and text, a thicker focus ring, for accessibility |
+
+`<agui-chat theme="glass">` is all it takes; with a bundler each pack is its own chunk, with the one-script build the chat adds `agui-chat.theme-<name>.js` from next to `agui-chat.iife.js`. `extends: 'glass'` builds your theme on one (load it first with `await loadTheme('glass')`). Try them all in the [Playground](../playground/).
+
+Frosted glass on any theme is one token: a translucent `card-bg` plus `card-blur`:
+
+```js
+defineTheme('frost', { extends: 'default', light: { 'card-bg': 'rgba(255,255,255,.6)', 'log-bg': 'linear-gradient(160deg,#eef3ff,#fdf3ee)' },
+  tokens: { 'card-blur': 'blur(24px) saturate(180%)' } })
+```
 - A theme can be defined after the element appears: elements that use its name switch to it at once. Until then, and for an unknown name, the default theme is used.
 - `themes()` lists the registered names.
 

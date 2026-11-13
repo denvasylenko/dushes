@@ -3,6 +3,9 @@ title: Persistence and history
 description: Two histories, two stores. The model's history for the agent, the transcript for what the user saw.
 ---
 import { Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Where conversations are kept so they survive a restart."} when={"Before production: by default history lives in memory."} write={"`checkpointer: {sqlite: data/checkpoints.sqlite}`, or any LangGraph saver."} />
 
 | | The model's history | The transcript |
 | --- | --- | --- |
@@ -66,7 +69,7 @@ A turn runs on the server as a background task, apart from the response that str
 curl -X POST http://localhost:8000/agent/stop -H 'Content-Type: application/json' -d '{"thread_id": "t1"}'   # {"stopped": true}
 ```
 
-Without the router, `guide.run_detached(...)` gives the same: stream it, and the turn outlives the stream; `guide.running(thread_id)` and `guide.stop(thread_id)` go with it. Running turns live in the server process: restarting it ends them. The page side of this is one attribute on the widget: [restore after a reload](../../frontend/chat-widget/#restore-after-a-reload).
+Without the router, `guide.run_detached(...)` gives the same: stream it, and the turn outlives the stream; `guide.running(thread_id)` and `guide.stop(thread_id)` go with it. Running turns live in the server process: restarting it ends them. A host with its own server can do better than "Still working…": return `follow` from the plugin's `restore` (a function giving the turn's events again, from its start) and the chat plays them live, so the answer goes on word by word. The page side of this is one attribute on the widget: [restore after a reload](../../frontend/chat-widget/#restore-after-a-reload).
 
 ## Every option
 

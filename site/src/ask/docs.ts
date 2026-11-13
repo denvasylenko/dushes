@@ -23,6 +23,7 @@ const GALLERY = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}frontend/card-g
 const ICON_COPY = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="2"/><path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>'
 const ICON_DOC = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.75h5.25L12.5 5v9.25H4z"/><path d="M9 1.75V5.25h3.5M6 8.25h4.5M6 10.75h3"/></svg>'
 const CHEVRON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg>'
+const ICON_CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5"/></svg>'
 
 const icon = (svg: string, cls = 'dc-i') => { const s = h('span', { class: cls, 'aria-hidden': 'true' }); s.innerHTML = svg; return s }
 const inline = (text: string) => {
@@ -31,13 +32,16 @@ const inline = (text: string) => {
   return span
 }
 
+/** The docs design system's Copy button (site/src/components/ui/CopyButton.astro), drawn with the widget's tokens. */
 function copyButton(get: () => string): HTMLButtonElement {
   const label = h('span', null, 'Copy')
   const b = h('button', { class: 'dc-copy', type: 'button', 'data-keep': true, onclick: async () => {
-    try { await navigator.clipboard.writeText(get()); label.textContent = 'Copied' } catch { label.textContent = 'Select and copy' }
-    b.classList.add('done')
-    setTimeout(() => { label.textContent = 'Copy'; b.classList.remove('done') }, 1600)
-  } }, icon(ICON_COPY), label) as HTMLButtonElement
+    let ok = true
+    try { await navigator.clipboard.writeText(get()) } catch { ok = false }
+    label.textContent = ok ? 'Copied' : 'Select and copy'
+    b.classList.toggle('done', ok)
+    setTimeout(() => { label.textContent = 'Copy'; b.classList.remove('done') }, ok ? 1800 : 2400)
+  } }, icon(ICON_COPY, 'dc-i dc-idle'), icon(ICON_CHECK, 'dc-i dc-done'), label) as HTMLButtonElement
   return b
 }
 
@@ -116,7 +120,12 @@ export function docs(): Plugin {
   }
 }
 
-/** The docs theme: the default look plus the cards above, from the widget's tokens (light and dark follow). */
+/**
+ * The docs theme: the default look plus the cards above, from the widget's tokens (light and dark follow).
+ * The cards follow the docs design system (site/src/components/ui, reference/design-system): the same Copy button,
+ * segmented tabs, rows with a chevron, focus ring, type scale (11 / 12 / 13 / 15) and 44 px targets on touch; the
+ * site's CSS is never imported here, the shadow DOM only sees --agui-* tokens.
+ */
 defineTheme('docs', {
   css: `
 .dc { margin: 10px 0 12px; border-radius: var(--agui-radius); background: var(--agui-soft); color: var(--agui-ink); overflow: hidden;
@@ -133,13 +142,18 @@ defineTheme('docs', {
 .dc-label { font-size: 12px; font-weight: 600; color: var(--agui-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dc-tabs { display: flex; gap: 2px; padding: 2px; border-radius: var(--agui-radius-pill); background: var(--agui-bg); overflow-x: auto; scrollbar-width: none; margin-left: -8px; }
 .dc-tabs::-webkit-scrollbar { display: none; }
-.dc-tabs button { flex: none; border: 0; background: none; color: var(--agui-ink-2); font: 500 12px/1 var(--agui-font); padding: 7px 11px;
-  border-radius: var(--agui-radius-pill); cursor: pointer; transition: background .18s, color .18s; white-space: nowrap; }
+.dc-tabs button { flex: none; border: 0; background: none; color: var(--agui-ink-2); font: 500 12px/1 var(--agui-font); padding: 0 12px; min-height: 28px;
+  border-radius: var(--agui-radius-pill); cursor: pointer; transition: background .12s, color .12s; white-space: nowrap; }
+.dc-tabs button:hover { color: var(--agui-ink); }
+.dc-tabs button[aria-selected=true] { font-weight: 600; }
 .dc-tabs button[aria-selected=true] { background: var(--agui-surface); color: var(--agui-ink); box-shadow: 0 1px 2px color-mix(in srgb, var(--agui-ink) 12%, transparent); }
-.dc-copy { flex: none; display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: var(--agui-radius-pill); background: var(--agui-bg);
-  color: var(--agui-ink-2); font: 500 12px/1 var(--agui-font); padding: 7px 11px; min-height: 30px; cursor: pointer; transition: color .18s, background .18s; }
+.dc-copy { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: var(--agui-radius-pill); background: var(--agui-bg);
+  color: var(--agui-ink-2); font: 500 12px/1 var(--agui-font); padding: 0 12px; min-height: 32px; cursor: pointer; transition: color .12s, background .12s, transform .12s; }
 .dc-copy:hover { color: var(--agui-ink); }
+.dc-copy:active { transform: scale(.97); }
 .dc-copy.done { color: var(--agui-ok); }
+.dc-copy .dc-done, .dc-copy.done .dc-idle { display: none; }
+.dc-copy.done .dc-done { display: inline-flex; }
 .dc-code pre, .dc-mini pre { margin: 0; padding: 10px 14px 12px; overflow-x: auto; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .dc-code code, .dc-mini code { white-space: pre; background: none; padding: 0; }
 .dc-from { display: flex; align-items: center; gap: 6px; padding: 9px 14px 11px; border-top: 1px solid var(--agui-line); font-size: 12px;
@@ -151,32 +165,37 @@ defineTheme('docs', {
 .dc-page { display: flex; align-items: center; gap: 12px; padding: 11px 12px; min-height: 52px; border-radius: calc(var(--agui-radius) - 4px);
   color: var(--agui-ink); text-decoration: none; transition: background .18s; }
 .dc-page:hover { background: var(--agui-bg); }
-.dc-page:focus-visible, .dc-tabs button:focus-visible, .dc-copy:focus-visible, .dc-link:focus-visible { outline: 2px solid var(--agui-accent); outline-offset: 1px; }
+.dc-page:hover .dc-chev { transform: translateX(2px); color: var(--agui-ink); }
+.dc-page:focus-visible, .dc-tabs button:focus-visible, .dc-copy:focus-visible, .dc-link:focus-visible, .dc-from:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--agui-accent) 55%, transparent); outline-offset: 2px; }
+.dc-page:focus-visible { outline-offset: -3px; }
 .dc-pi { width: 32px; height: 32px; border-radius: 10px; align-items: center; justify-content: center; background: var(--agui-bg); color: var(--agui-link); }
 .dc-pt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .dc-pt small { font-size: 11px; font-weight: 600; color: var(--agui-ink-3); text-transform: uppercase; letter-spacing: .04em; }
-.dc-pt b { font-size: 14px; font-weight: 600; }
+.dc-pt b { font-size: 15px; font-weight: 600; }
 .dc-pt span { font-size: 12px; color: var(--agui-ink-3); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.dc-chev { color: var(--agui-ink-3); }
+.dc-chev { color: var(--agui-ink-3); transition: transform .2s var(--agui-ease, ease-out), color .12s; }
 
 .dc-steps ol { list-style: none; margin: 0; padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 12px; }
 .dc-steps li { display: flex; gap: 12px; align-items: flex-start; }
 .dc-n { flex: none; width: 24px; height: 24px; border-radius: 999px; background: var(--agui-accent); color: var(--agui-on-accent);
   font: 600 12px/24px var(--agui-font); text-align: center; }
-.dc-st { flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; padding-top: 2px; }
+.dc-st { flex: 1; min-width: 0; font-size: 15px; line-height: 1.45; padding-top: 1px; }
 .dc-st code { font-size: 13px; background: var(--agui-bg); padding: 1px 5px; border-radius: 6px; }
 .dc-mini { position: relative; margin-top: 8px; border-radius: 10px; background: var(--agui-bg); }
 .dc-mini pre { padding: 10px 12px; padding-right: 84px; }
 .dc-mini .dc-copy { position: absolute; top: 6px; right: 6px; background: var(--agui-soft); }
 
-.dc-live { background: none; border: 1px solid var(--agui-line); }
+.dc-live { background: none; box-shadow: inset 0 0 0 1px var(--agui-line); }
 .dc-stage { height: 380px; }
 .dc-stage agui-chat { display: block; height: 100%; }
 .dc-stage agui-chat::part(header), .dc-stage agui-chat::part(composer) { display: none; }
 .dc-stage agui-chat::part(panel) { border: 0; box-shadow: none; border-radius: 0; }
 .dc-foot { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--agui-line); font-size: 12px; color: var(--agui-ink-3); }
 .dc-foot span { flex: 1; min-width: 0; }
-.dc-link { border: 0; background: none; padding: 6px 2px; color: var(--agui-link); font: 500 12px var(--agui-font); cursor: pointer; text-decoration: none; }
-@media (pointer: coarse) { .dc-copy, .dc-tabs button { min-height: 36px; } .dc-link { padding: 12px 4px; } }
+.dc-link { border: 0; background: none; padding: 6px 4px; border-radius: 6px; color: var(--agui-link); font: 500 12px var(--agui-font); cursor: pointer; text-decoration: none; }
+.dc-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+@media (pointer: coarse) { .dc-copy { min-height: 44px; } .dc-tabs button { min-height: 40px; } .dc-link { padding: 14px 6px; } }
+@media (prefers-reduced-motion: reduce) { .dc-copy, .dc-chev, .dc-tabs button { transition: none; } .dc-copy:active { transform: none; } }
 `,
 })

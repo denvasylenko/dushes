@@ -1,0 +1,247 @@
+/*
+ * formguide docs design system: the only styles docs UI uses (loaded globally through customCss).
+ * Each block is one primitive with an Astro component next to this file and a specimen on
+ * reference/design-system. Values come from the --fg-* tokens in src/styles/theme.css.
+ * Script-built DOM (in a component's <script>) uses the same classes.
+ */
+
+/* ---------- shared ---------- */
+.ui-btn, .ui-chip, .ui-seg > button, .ui-swatch, .ui-disc > summary, .ui-menu-item, .ui-linkcard {
+  -webkit-tap-highlight-color: transparent;
+}
+:is(.ui-btn, .ui-chip, .ui-seg > button, .ui-swatch, .ui-disc > summary, .ui-menu-item, .ui-linkcard, .ui-range):focus-visible {
+  outline: 3px solid var(--fg-focus); outline-offset: 2px;
+}
+.ui-icon { display: inline-block; flex: none; width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+.ui-icon.is-fill { fill: currentColor; stroke: none; }
+
+/* ---------- Button: filled (the one main action), gray (secondary), plain (a text link), quiet (toolbar) ---------- */
+.ui-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none;
+  min-height: var(--fg-h-md); padding: 0 16px; border: 0; border-radius: var(--fg-r-pill);
+  font: 600 var(--fg-fs-sub)/1.2 var(--sl-font); white-space: nowrap; text-decoration: none; cursor: pointer;
+  background: var(--fg-fill); color: var(--fg-ink);
+  transition: background var(--fg-dur-instant), color var(--fg-dur-instant), filter var(--fg-dur-instant), transform var(--fg-dur-instant);
+}
+.ui-btn:active { transform: scale(.97); }
+.ui-btn .ui-icon { font-size: 16px; }
+.ui-btn--sm { min-height: var(--fg-h-sm); padding: 0 12px; gap: 6px; font-weight: 500; }
+.ui-btn--sm .ui-icon { font-size: 14px; }
+.ui-btn--lg { min-height: var(--fg-h-lg); padding: 0 22px; font-size: var(--fg-fs-callout); }
+.ui-btn--filled { background: var(--fg-accent); color: var(--fg-on-accent); }
+@media (hover: hover) { .ui-btn--filled:hover { filter: brightness(1.08); } }
+.ui-btn--gray { background: var(--fg-fill); color: var(--fg-ink); }
+@media (hover: hover) { .ui-btn--gray:hover { background: var(--fg-fill-2); } }
+.ui-btn--plain { background: none; color: var(--fg-accent-ink); padding-inline: 4px; font-weight: 500; }
+@media (hover: hover) { .ui-btn--plain:hover { text-decoration: underline; text-underline-offset: 3px; } }
+.ui-btn--quiet { background: none; color: var(--fg-ink-2); font-weight: 500; }
+.ui-btn--quiet[aria-expanded='true'] { background: var(--fg-fill); color: var(--fg-ink); }
+@media (hover: hover) { .ui-btn--quiet:hover { background: var(--fg-fill); color: var(--fg-ink); } }
+.ui-btn--quiet[aria-pressed='true'] { color: var(--fg-accent-ink); }
+.ui-btn--icon { padding: 0; width: var(--fg-h-md); border-radius: var(--fg-r-ctl); }
+.ui-btn--icon.ui-btn--sm { width: var(--fg-h-sm); }
+.ui-btn--icon .ui-icon { font-size: 20px; }
+.ui-btn--block { display: flex; width: 100%; }
+.ui-btn:disabled, .ui-btn[aria-disabled='true'] { opacity: .4; cursor: default; transform: none; filter: none; }
+/* Copy button: the label and icon swap to "Copied" with a check, in the ok colour, then back */
+.ui-btn[data-state='copied'] { color: var(--fg-ok); }
+.ui-btn--filled[data-state='copied'] { color: var(--fg-on-accent); }
+.ui-btn .ui-icon-done { display: none; }
+.ui-btn[data-state='copied'] .ui-icon-done { display: inline-block; }
+.ui-btn[data-state='copied'] .ui-icon-idle { display: none; }
+
+/* ---------- Field label (above a group of chips, a segmented control, a slider) ---------- */
+.ui-field { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.ui-label, .ui-field > legend { padding: 0; margin: 0 0 8px; font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-3); }
+.ui-field > .ui-label { margin: 0; }
+.ui-field--tight { gap: 4px; }
+
+/* ---------- Chip: one choice of a few (role=radio), or a pill link ---------- */
+.ui-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ui-chip {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--fg-h-md); padding: 0 14px; border: 0; border-radius: var(--fg-r-pill);
+  background: var(--fg-fill); color: var(--fg-ink-2); font: 500 var(--fg-fs-sub)/1.2 var(--sl-font);
+  text-decoration: none; cursor: pointer; white-space: nowrap;
+  transition: background var(--fg-dur-instant), color var(--fg-dur-instant), transform var(--fg-dur-instant);
+}
+@media (hover: hover) { .ui-chip:hover { background: var(--fg-fill-2); color: var(--fg-ink); } }
+.ui-chip:active { transform: scale(.97); }
+.ui-chip:is([aria-checked='true'], [aria-pressed='true'], [aria-current='true']) {
+  background: var(--fg-accent-soft); color: var(--fg-accent-ink); box-shadow: inset 0 0 0 1px var(--fg-accent);
+}
+
+/* ---------- Segmented control: two to five exclusive views (role=radiogroup) ---------- */
+.ui-seg { display: flex; padding: 2px; gap: 2px; border-radius: var(--fg-r-pill); background: var(--fg-fill); }
+.ui-seg > button {
+  flex: 1; min-width: 0; min-height: calc(var(--fg-h-sm) - 4px); padding: 0 12px; border: 0; border-radius: var(--fg-r-pill);
+  background: none; color: var(--fg-ink-2); font: 500 var(--fg-fs-sub)/1.2 var(--sl-font); cursor: pointer; white-space: nowrap;
+  transition: background var(--fg-dur-quick) var(--fg-ease), color var(--fg-dur-instant), box-shadow var(--fg-dur-quick);
+}
+@media (hover: hover) { .ui-seg > button:hover { color: var(--fg-ink); } }
+.ui-seg > button[aria-checked='true'] { background: var(--fg-thumb); color: var(--fg-ink); font-weight: 600; box-shadow: var(--fg-thumb-shadow); }
+.ui-seg--inline { display: inline-flex; }
+.ui-seg--inline > button { flex: none; }
+
+/* ---------- Disclosure: <details> with our chevron, centred on the summary's first text line ---------- */
+.ui-disc > summary {
+  display: flex; align-items: center; gap: 6px; width: fit-content; max-width: 100%;
+  list-style: none; cursor: pointer; border-radius: var(--fg-r-sm);
+  font: 500 var(--fg-fs-sub)/20px var(--sl-font); color: var(--fg-ink-2);
+  transition: color var(--fg-dur-instant);
+}
+.ui-disc > summary::-webkit-details-marker { display: none; }
+.ui-disc > summary::marker { content: ''; }
+@media (hover: hover) { .ui-disc > summary:hover { color: var(--fg-ink); } }
+.ui-disc-chev { flex: none; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform var(--fg-dur-quick) var(--fg-ease); }
+.ui-disc[open] > summary .ui-disc-chev { transform: rotate(90deg); }
+.ui-disc-body { margin-top: 12px; }
+/* panel: the whole row is the target, in a sunken box (code in a tile) */
+.ui-disc--panel { border-radius: var(--fg-r-card); background: var(--fg-sunken); }
+.ui-disc--panel > summary { width: auto; min-height: 40px; padding: 10px 14px; border-radius: var(--fg-r-card); font-size: var(--fg-fs-footnote); }
+.ui-disc--panel > summary:focus-visible { outline-offset: -3px; }
+.ui-disc--panel > .ui-disc-body { margin: 0; padding: 0 14px 14px; }
+.ui-disc--panel .ui-code-pre { padding: 0; background: none; }
+.ui-disc-extra { margin-left: auto; }
+@media (pointer: coarse) { .ui-disc > summary { min-height: 44px; } }
+
+/* ---------- Tile: soft fill, 24 px corners (20 on a phone); sunken and tinted variants ---------- */
+.ui-tile { border-radius: var(--fg-r-tile); background: var(--fg-surface); padding: 20px; box-shadow: inset 0 0 0 1px var(--fg-line); }
+.ui-tile--lg { border-radius: 28px; padding: 24px; }
+.ui-tile--sm { border-radius: var(--fg-r-panel); padding: 16px; }
+.ui-tile--flush { padding: 0; overflow: hidden; }
+.ui-tile--sunken { background: var(--fg-sunken); box-shadow: none; border-radius: var(--fg-r-card); }
+.ui-tile--tint { background: var(--fg-accent-soft); box-shadow: none; }
+.ui-stack { display: flex; flex-direction: column; gap: 16px; }
+@media (max-width: 50rem) {
+  .ui-tile { padding: 16px; border-radius: var(--fg-r-panel); }
+  .ui-tile--flush { padding: 0; }
+  .ui-tile--sunken { border-radius: var(--fg-r-card); }
+}
+
+/* ---------- Callout: an icon in a rounded square, a title, one line ---------- */
+.ui-callout { display: flex; gap: 14px; align-items: flex-start; }
+.ui-callout-icon { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--fg-accent-soft); color: var(--fg-accent-ink); font-size: 20px; }
+.ui-callout-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ui-callout-title { font: 600 var(--fg-fs-headline)/1.3 var(--sl-font); color: var(--fg-ink); }
+.ui-callout-body { font-size: var(--sl-text-sm); line-height: 1.5; color: var(--fg-ink-3); }
+
+/* ---------- Link card: a whole tile that goes somewhere, with a chevron ---------- */
+.ui-linkcard {
+  display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: var(--fg-r-panel);
+  background: var(--fg-surface); box-shadow: inset 0 0 0 1px var(--fg-line); color: var(--fg-ink); text-decoration: none;
+  transition: background var(--fg-dur-instant), transform var(--fg-dur-instant);
+}
+@media (hover: hover) { .ui-linkcard:hover { background: color-mix(in srgb, var(--fg-surface), var(--sl-color-white) 4%); } }
+.ui-linkcard:active { transform: scale(.99); }
+.ui-linkcard--tint { background: var(--fg-accent-soft); box-shadow: none; }
+@media (hover: hover) { .ui-linkcard--tint:hover { background: color-mix(in srgb, var(--fg-accent-soft), var(--sl-color-white) 5%); } }
+.ui-linkcard-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ui-linkcard-title { font: 600 var(--sl-text-base)/1.35 var(--sl-font); color: var(--fg-ink); }
+.ui-linkcard-body { font-size: var(--sl-text-sm); line-height: 1.5; color: var(--fg-ink-2); }
+.ui-linkcard > .ui-icon { font-size: 18px; color: var(--fg-ink-3); transition: transform var(--fg-dur-quick) var(--fg-ease); }
+@media (hover: hover) { .ui-linkcard:hover > .ui-icon { transform: translateX(2px); color: var(--fg-ink); } }
+
+/* ---------- Menu / popover: a trigger and a floating list of rows (title + one line) ---------- */
+.ui-menu { position: relative; display: flex; }
+.ui-pop {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: min(20rem, calc(100vw - 32px)); padding: 6px;
+  border-radius: 18px; background: var(--fg-elevated); box-shadow: var(--fg-shadow-pop);
+  display: flex; flex-direction: column; gap: 2px;
+  transform-origin: top right; animation: ui-pop-in var(--fg-dur-quick) var(--fg-ease);
+}
+.ui-pop[hidden] { display: none; }
+.ui-pop--start { right: auto; left: 0; transform-origin: top left; }
+.ui-pop--static { position: static; animation: none; }
+.ui-pop-caption { margin: 6px 12px 4px; font-size: var(--fg-fs-footnote); line-height: 1.4; color: var(--fg-ink-3); }
+.ui-menu-item {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; min-height: 40px; border-radius: 12px;
+  color: var(--fg-ink); text-decoration: none; transition: background var(--fg-dur-instant);
+}
+@media (hover: hover) { .ui-menu-item:hover { background: var(--fg-fill); } }
+.ui-menu-item:focus-visible { outline: none; background: var(--fg-fill); box-shadow: inset 0 0 0 2px var(--fg-focus); }
+.ui-menu-item b { font: 600 var(--sl-text-sm)/1.35 var(--sl-font); color: var(--fg-ink); }
+.ui-menu-item span { font-size: var(--fg-fs-footnote); line-height: 1.45; color: var(--fg-ink-3); }
+.ui-menu-trigger .ui-disc-chev { transform: rotate(90deg); }
+.ui-menu-trigger[aria-expanded='true'] .ui-disc-chev { transform: rotate(-90deg); }
+@keyframes ui-pop-in { from { opacity: 0; transform: scale(.96) translateY(-4px); } }
+
+/* ---------- Range slider: Apple's slider, an accent track up to the thumb ---------- */
+.ui-range-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ui-range-row output { font: 500 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); font-variant-numeric: tabular-nums; }
+.ui-range { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 28px; margin: 0; background: transparent; cursor: pointer; --p: 50%; border-radius: var(--fg-r-pill); }
+.ui-range::-webkit-slider-runnable-track { height: 4px; border-radius: var(--fg-r-pill); background: linear-gradient(to right, var(--fg-accent) var(--p), var(--fg-fill-2) var(--p)); }
+.ui-range::-moz-range-track { height: 4px; border-radius: var(--fg-r-pill); background: var(--fg-fill-2); }
+.ui-range::-moz-range-progress { height: 4px; border-radius: var(--fg-r-pill); background: var(--fg-accent); }
+.ui-range::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px hsla(0, 0%, 0%, .35), 0 0 0 .5px hsla(0, 0%, 0%, .08); transition: transform var(--fg-dur-instant); }
+.ui-range::-moz-range-thumb { width: 24px; height: 24px; border: 0; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px hsla(0, 0%, 0%, .35); }
+.ui-range:active::-webkit-slider-thumb { transform: scale(1.08); }
+.ui-range:focus-visible { outline: none; }
+.ui-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--fg-focus); }
+.ui-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px var(--fg-focus); }
+
+/* ---------- Colour swatch: a round colour, a ring when chosen; "any colour" opens the system picker ---------- */
+.ui-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.ui-swatch {
+  position: relative; flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; cursor: pointer; background: var(--c);
+  box-shadow: 0 0 0 2px var(--fg-surface), 0 0 0 3px transparent, inset 0 0 0 1px hsla(0, 0%, 50%, .25);
+  transition: box-shadow var(--fg-dur-quick) var(--fg-ease), transform var(--fg-dur-instant);
+}
+.ui-swatch:active { transform: scale(.92); }
+.ui-swatch[aria-checked='true'], .ui-swatch[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--fg-surface), 0 0 0 4px var(--c), inset 0 0 0 1px hsla(0, 0%, 50%, .25); }
+.ui-swatch--any { overflow: hidden; background: conic-gradient(#ff375f, #ff9f0a, #ffd60a, #30d158, #0a84ff, #bf5af2, #ff375f); }
+.ui-swatch--any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.ui-swatch--any:focus-within { outline: 3px solid var(--fg-focus); outline-offset: 2px; }
+@media (pointer: coarse) { .ui-swatch::after { content: ''; position: absolute; inset: -6px; } }
+
+/* ---------- Code panel: a label bar with Copy over monospace text ---------- */
+.ui-code { border-radius: var(--fg-r-card); background: var(--fg-sunken); overflow: hidden; }
+.ui-code-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 40px; padding: 4px 6px 0 16px; }
+.ui-code-label { font: 500 var(--fg-fs-footnote)/1.3 var(--sl-font-mono); color: var(--fg-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-code-pre {
+  margin: 0; padding: 10px 16px 16px; max-height: var(--ui-code-max, 360px); overflow: auto; background: none;
+  font: var(--fg-fs-footnote)/1.6 var(--sl-font-mono); color: var(--fg-ink-2); tab-size: 2;
+}
+.ui-code-pre code { font: inherit; background: none; padding: 0; color: inherit; }
+.ui-code--wrap .ui-code-pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ui-code:not(:has(.ui-code-bar)) .ui-code-pre { padding-top: 14px; }
+
+/* ---------- Badge: a short status word or count ---------- */
+.ui-badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; min-height: 20px; border-radius: var(--fg-r-pill);
+  font: 600 var(--fg-fs-caption)/1.2 var(--sl-font); letter-spacing: .01em; white-space: nowrap; vertical-align: middle;
+  background: var(--fg-fill); color: var(--fg-ink-2);
+}
+.ui-badge--accent { background: var(--fg-accent-soft); color: var(--fg-accent-ink); }
+.ui-badge--ok { background: color-mix(in srgb, var(--sl-color-green) 18%, transparent); color: var(--fg-ok); }
+.ui-badge--warn { background: color-mix(in srgb, var(--sl-color-orange) 18%, transparent); color: var(--fg-warn); }
+.ui-badge--mono { font: 500 var(--fg-fs-footnote)/1.2 var(--sl-font-mono); letter-spacing: 0; }
+.ui-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 999px; background: var(--fg-accent); }
+
+/* ---------- Summary: "at a glance" rows at the top of a guide (label column muted, value column text) ---------- */
+.ui-summary { margin: 1.5rem 0 0; padding: 4px 20px; border-radius: var(--fg-r-panel); background: var(--fg-surface); box-shadow: inset 0 0 0 1px var(--fg-line); }
+.ui-summary dl { margin: 0; }
+.ui-summary-row { display: grid; grid-template-columns: 9rem minmax(0, 1fr); column-gap: 20px; padding: 12px 0; }
+.ui-summary-row + .ui-summary-row, .ui-summary-jump { box-shadow: 0 -1px 0 var(--fg-line); }
+.ui-summary dt, .ui-summary dd { margin: 0; }
+.ui-summary dt { font: 600 var(--fg-fs-footnote)/22px var(--sl-font); color: var(--fg-ink-3); }
+.ui-summary dd { font-size: var(--fg-fs-callout); line-height: 22px; color: var(--fg-ink); text-wrap: pretty; }
+.ui-summary dd code { font-size: .88em; padding: .1em .35em; border-radius: var(--fg-r-sm); background: var(--fg-fill); color: var(--fg-ink); overflow-wrap: anywhere; }
+.ui-summary-jump { display: flex; padding: 4px 0 6px; }
+.ui-summary-jump .ui-btn { padding-inline: 0; }
+.ui-summary-jump .ui-icon { transform: rotate(90deg); font-size: 14px; }
+@media (max-width: 50rem) {
+  .ui-summary { padding: 4px 16px; }
+  .ui-summary-row { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+  .ui-summary dt { line-height: 18px; }
+}
+
+/* ---------- motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn, .ui-chip, .ui-seg > button, .ui-disc-chev, .ui-linkcard, .ui-linkcard > .ui-icon, .ui-menu-item, .ui-swatch, .ui-range::-webkit-slider-thumb { transition: none; }
+  .ui-btn:active, .ui-chip:active, .ui-swatch:active, .ui-linkcard:active { transform: none; }
+  .ui-pop { animation: none; }
+}

@@ -24,7 +24,7 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `url` | `/agent/run` | the AG-UI run endpoint (POST, server-sent events) |
 | `threadId` (`thread-id`) | a new id, kept per page | the conversation; the same id brings the chat back after a reload |
 | `persistThread` (`persist-thread`) | `true` | keep the thread id in localStorage |
-| `mode` | `floating` | `bubble`: a round launcher that grows into a chat window (a bottom sheet on phones); `floating`: a button and a side panel; `inline`: fills its box; `page`: the whole window |
+| `mode` | `floating` | `bubble`: a round launcher that grows into a chat window (a bottom sheet on phones); `floating`: a button and a side panel; `inline`: fills its box; `page`: the whole window; `hero`: only the field until the first message, then the chat grows in place (a full-screen sheet on a phone) |
 | `bubbleSide`, `greeting`, `greetingDelay`, `motion` | `right`, —, `4`, `spring` | bubble mode: the launcher's corner, a greeting speech bubble and its delay, the opening motion (`spring`, `gentle`, `none`) |
 | `open` | `false` | open the floating panel on load |
 | `typing` | `words` | `words`: typewriter with words fading in; `plain`: text as it arrives; `off`: the whole message at the end |
@@ -48,7 +48,7 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `title`, `subtitle`, `intro`, `placeholder` | localized defaults | the header, the empty-chat text, the composer hint |
 | `lang` | the page's `lang` | UI language: `en` (built in), `ru`, `uk`, `de`, `fr`, `it`, `es` (packs loaded on first use, English until then; your own with `addLanguage`); also used for dictation |
 | `i18n` | — | override any UI string: `{ send: "Go" }` |
-| `theme` | `default` | a theme name (`default`, `contrast`, or one from `defineTheme`) or a theme object; see [Themes](../../frontend/themes/#themes). `auto`, `light` and `dark` still work and set the scheme |
+| `theme` | `default` | a theme name (`default`; the packs `glass`, `bold`, `messenger`, `contrast`, loaded on first use; or one from `defineTheme`) or a theme object; see [Themes](../../frontend/themes/#themes). `auto`, `light` and `dark` still work and set the scheme |
 | `scheme` | `auto` | `auto` (follows the system, also when it changes), `light`, `dark` |
 | `icons` | — | replace built-in icons: `{logo, send, stop, mic, clip, plus, close}`, each an SVG string or an element; see [Themes](../../frontend/themes/#icons) |
 | `render` | — | your own components in place of pieces: `{markdown, assistant, user, empty, header, error, suggestions, sources, composer}`; see [Themes](../../frontend/themes/#your-own-components-slots) |
@@ -76,6 +76,11 @@ Unknown option names are ignored with a console warning.
 | `chat.open()`, `chat.close()`, `chat.toggle()` | the floating panel or the bubble |
 | `await chat.showCard(payload)` | shows any card without the agent and resolves with the user's answer; see [Calling components](../../frontend/cards/#calling-components-from-your-code) |
 | `chat.reset()` | a new conversation (new thread id) |
+| `chat.setPlaceholder(text)` | change the composer's hint (a language switch) |
+| `agui:open`, `agui:close` | the chat opened or closed (bubble, drawer, hero) |
+| `chat.removeMessage(id)` | take back an assistant message already shown (and from the history) |
+| `chat.updateCard(id, patch)` | redraw a shown card in place: `{blocks}` for a card from blocks |
+| `agui:applied` | the plugin filled fields: `{fields, values, undo}` (also after Undo) |
 | `chat.stop()` | abort the running turn |
 | `chat.use(plugin)`, `chat.plugins = [...]` | add plugins |
 | `chat.registerTool(tool)`, `chat.renderers.set(type, fn)` | frontend tools, card renderers |
@@ -85,6 +90,6 @@ Unknown option names are ignored with a console warning.
 | `agui:run-start`, `agui:run-end`, `agui:error` | run lifecycle |
 | `agui:thread` | the thread id changed (`event.detail`) |
 
-A plugin is `{ name, renderers?, tools?, toolLabels?, i18n?, beforeRun?(input, chat), onEvent?(event, chat), restore?(threadId, chat), attach? }`; `onEvent` returning `true` stops the chat's own handling of that event.
+A plugin is `{ name, renderers?, tools?, toolLabels?, quietSteps?, i18n?, beforeRun?(input, chat), onEvent?(event, chat), onStop?(chat), restore?(threadId, chat), attach? }` (`quietSteps`: tools whose steps alone show no step list; `onStop`: the user pressed Stop); `onEvent` returning `true` stops the chat's own handling of that event.
 
 

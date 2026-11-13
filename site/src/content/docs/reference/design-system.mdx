@@ -1,0 +1,263 @@
+---
+title: 'Design system'
+description: 'Every control the docs use, live in light and dark, with the snippet to copy.'
+---
+import { LinkCard as SlLinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Badge, Button, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
+
+Every piece of interface on this site comes from one folder, `site/src/components/ui/`. Each primitive is shaped like its Apple counterpart, built from the tokens in `site/src/styles/theme.css`, and shown below working. A new pattern is added there first and shown on this page, then used.
+
+<Specimen caption="Switches the whole site, so every specimen on this page can be checked in both themes.">
+  <Segmented label="Preview in" options={[['light', 'Light'], ['dark', 'Dark']]} inline data-ds-theme />
+</Specimen>
+
+```astro
+---
+import { Button, ChipGroup, Tile } from '../components/ui'
+---
+<Tile>
+  <ChipGroup label="Model" options={[['anthropic', 'Anthropic'], ['openai', 'OpenAI']]} />
+  <Button variant="filled" size="lg">Copy prompt</Button>
+</Tile>
+```
+
+## Button
+
+One **filled** button per view: the main action. **Gray** for secondary actions, **plain** for a text link, **quiet** for toolbars (a fill on hover). Three heights: 32, 36, 44 px; every one is 44 px on a touch screen. An `href` makes it a link.
+
+<Specimen>
+  <Button variant="filled" size="lg" icon="copy">Copy prompt</Button>
+  <Button variant="gray">Replay</Button>
+  <Button variant="gray" size="sm" icon="replay">Replay</Button>
+  <Button variant="plain" href="#button">Open in Claude</Button>
+  <Button variant="quiet" size="sm">Start over</Button>
+  <Button variant="quiet" iconOnly icon="sidebar" aria-label="Hide the sidebar" />
+  <Button variant="gray" disabled>Disabled</Button>
+</Specimen>
+
+```astro
+<Button variant="filled" size="lg" icon="copy">Copy prompt</Button>
+<Button variant="gray" size="sm" icon="replay">Replay</Button>
+<Button variant="plain" href="https://claude.ai/new">Open in Claude</Button>
+<Button variant="quiet" iconOnly icon="sidebar" aria-label="Hide the sidebar" />
+```
+
+A disabled button always has a line next to it saying why and how to enable it.
+
+## Copy button
+
+Copies, then says **Copied** with a check for a moment. With `target` it copies that element's text; inside a code panel it copies the panel's code; a script that builds the text calls `copyText(button, text)` (it may be async, like Copy page).
+
+<Specimen>
+  <CopyButton target="#ds-copy-src" />
+  <CopyButton label="Copied" data-state="copied" auto={false} />
+  <CopyButton variant="filled" size="lg" label="Copy prompt" target="#ds-copy-src" />
+  <code id="ds-copy-src">npm i @formguide/agui-chat</code>
+</Specimen>
+
+```astro
+<CopyButton target="#install" />
+
+<script>
+  import { copyText } from '../components/ui/ui'
+  button.addEventListener('click', () => copyText(button, () => buildPrompt()))
+</script>
+```
+
+## Chips
+
+One choice among a few short options: a radio group, so arrow keys move the choice and Tab leaves the group. The group fires `ui-change` with the value. A chip can also be a link (`<a class="ui-chip">`) for a row of jump links.
+
+<Specimen layout="col">
+  <ChipGroup label="Your app" options={[['widget', 'Any page'], ['react', 'React'], ['rhf', 'react-hook-form'], ['copilotkit', 'CopilotKit']]} value="react" />
+  <div class="ui-chips"><a class="ui-chip" href="#chips">Questions</a><a class="ui-chip" href="#chips">Field changes</a><a class="ui-chip" href="#chips">Documents</a></div>
+</Specimen>
+
+```astro
+<ChipGroup label="Model" options={[['anthropic', 'Anthropic'], ['openai', 'OpenAI']]} data-k="provider" />
+
+<script>
+  group.addEventListener('ui-change', (e) => use(e.detail.value))
+</script>
+```
+
+## Segmented control
+
+Two to five exclusive views or modes, like iOS: a track with a raised thumb. Use it when the choice switches what you see; use chips when it picks a value.
+
+<Specimen layout="col">
+  <Segmented label="Scheme" options={[['light', 'Light'], ['dark', 'Dark']]} value="dark" />
+  <Segmented options={[['inline', 'Inline'], ['floating', 'Floating'], ['sheet', 'Sheet']]} inline />
+</Specimen>
+
+```astro
+<Segmented label="Scheme" options={[['light', 'Light'], ['dark', 'Dark']]} value="dark" />
+```
+
+## Disclosure
+
+A `<details>` with our chevron: it sits on the centre of the summary's text line and turns down when open. **Panel** puts it in a sunken box where the whole row is the target, for code inside a tile.
+
+<Specimen layout="col">
+  <Disclosure summary="See the prompt">The text that was hidden.</Disclosure>
+  <Disclosure summary="Open by default" open>Starts open.</Disclosure>
+  <Disclosure panel summary="The event the server sends" open>
+    <pre class="ui-code-pre"><code>{`{ "type": "CUSTOM", "name": "ask_user" }`}</code></pre>
+  </Disclosure>
+  <Disclosure panel summary="What the card sent back"><span slot="extra" class="ui-dot ui-disc-extra" aria-hidden="true"></span><pre class="ui-code-pre"><code>{`{ "answer": "Yes" }`}</code></pre></Disclosure>
+</Specimen>
+
+```astro
+<Disclosure summary="See the prompt">
+  <CodePanel copy={false} wrap code={prompt} />
+</Disclosure>
+<Disclosure panel summary="The event the server sends">…</Disclosure>
+```
+
+## Tile
+
+The surface everything sits on: a soft fill and 24 px corners (20 on a phone; 28 for a large gallery tile). **Sunken** holds code inside a tile, **tint** is the page's one invitation. Separate with space and fill, not lines.
+
+<Specimen>
+  <Tile size="sm"><b>Default</b><br/>A soft-filled surface.</Tile>
+  <Tile variant="sunken"><b>Sunken</b><br/>Code inside a tile.</Tile>
+  <Tile variant="tint" size="sm"><b>Tint</b><br/>One invitation per page.</Tile>
+</Specimen>
+
+```astro
+<Tile>…</Tile>
+<Tile size="lg" flush as="article">…</Tile>
+<Tile variant="sunken">…</Tile>
+```
+
+## Callout and link card
+
+A **callout** opens a tile with an icon, a title and a line. A **link card** is a whole tile that goes somewhere; the chevron moves when you point at it.
+
+<Specimen layout="col">
+  <Tile><Callout title="Set it up with your AI agent">Pick what you have, copy one prompt into Claude Code, Cursor or any coding agent.</Callout></Tile>
+  <LinkCard href="#callout-and-link-card" title="Try it live" tint>A small site with loans, a barbershop, a FAQ and two forms. One chat across all of it.</LinkCard>
+  <LinkCard href="#callout-and-link-card" title="The chat widget">Every attribute, event and slot of the widget.</LinkCard>
+</Specimen>
+
+```astro
+<Callout title="Set it up with your AI agent" icon="sparkle">One line of why.</Callout>
+<LinkCard href={url} title="Try it live" tint>One line of what is there.</LinkCard>
+```
+
+## Menu
+
+A quiet trigger with a chevron and a popover of rows, like a macOS pull-down: a title and one line per row. Esc and a tap outside close it; arrow keys move between rows.
+
+<Specimen>
+  <Menu label="Live demo" align="start" items={[
+    { href: '#menu', title: 'Site assistant', text: 'One chat for a whole site.' },
+    { href: '#menu', title: 'Form assistant', text: 'A big loan form with the agent next to it.' },
+  ]} />
+  <Menu label="Ask AI" variant="gray" align="start" caption="Ask about this page in your AI assistant:" items={[
+    { href: '#menu', title: 'Open in Claude' }, { href: '#menu', title: 'Open in ChatGPT' },
+  ]} />
+  <div class="ui-pop ui-pop--static" role="presentation">
+    <a class="ui-menu-item" href="#menu"><b>Open</b><span>The popover as it looks when open.</span></a>
+    <a class="ui-menu-item" href="#menu"><b>Second row</b><span>Rows highlight on hover and focus.</span></a>
+  </div>
+</Specimen>
+
+```astro
+<Menu label="Live demo" items={[
+  { href: '/demo/site.html', title: 'Site assistant', text: 'One chat for a whole site.' },
+  { href: '/demo/', title: 'Form assistant', text: 'A big loan form with the agent.' },
+]} />
+```
+
+## Range slider and colour swatches
+
+Apple's slider: the track fills with the accent up to the thumb, the value sits on the label's line. Swatches are a radio group of colours; `any` adds the system colour picker.
+
+<Specimen layout="col">
+  <div class="ui-specimen-narrow">
+    <Range id="ds-range" label="Corners" min={0} max={24} value={14} unit=" px" />
+    <Swatches label="Accent" colors={['#0a84ff', '#30a46c', '#ff9f0a', '#ff375f', '#bf5af2', '#1c1c1e']} any />
+  </div>
+</Specimen>
+
+```astro
+<Range id="radius" label="Corners" min={0} max={24} value={14} unit=" px" data-token="radius" />
+<Swatches label="Accent" colors={['#0a84ff', '#30a46c']} any />
+```
+
+## Code panel
+
+A label bar with Copy over monospace text on the sunken surface. `wrap` wraps long lines (a prompt); `copy={false}` drops the bar's button.
+
+<Specimen layout="col">
+  <CodePanel label="theme.js" code={`import { defineTheme } from '@formguide/agui-chat'\n\ndefineTheme('mine', { tokens: { accent: '#0a84ff' } })`} />
+</Specimen>
+
+```astro
+<CodePanel label="theme.js" code={source} />
+```
+
+Docs pages keep Markdown code fences for code in prose; the code panel is for code inside a component (a playground, a card, a prompt).
+
+## Badge
+
+A short status word or a count. **Accent** for "new", **ok** and **warn** only when they carry meaning; **mono** for a code name.
+
+<Specimen>
+  <Badge>3 fields</Badge>
+  <Badge variant="accent">New</Badge>
+  <Badge variant="ok">Filled</Badge>
+  <Badge variant="warn">Needs a look</Badge>
+  <Badge mono>ask_user</Badge>
+  <span class="ui-dot" aria-hidden="true"></span>
+</Specimen>
+
+```astro
+<Badge variant="accent">New</Badge>
+<Badge mono>ask_user</Badge>
+```
+
+## Summary
+
+The first block of a guide, right under the title, the lead and the page actions: what the page is about, when you need it and what you write, so a hurried reader knows in ten seconds whether to stay. Values may hold `inline code` in backticks; `jump` adds a link to the example on the page. On a phone the label sits above its value.
+
+<Specimen layout="col">
+  <Summary what="A chat agent next to your form, served from your own Python server." when="You have a form with more than a screen of fields and want people to finish it." write="`formguide.yaml`, one `include_router` line, `<agui-chat>` on the page." jump="#summary" />
+</Specimen>
+
+```mdx
+import { Summary } from '../../../components/ui';
+
+<Summary
+  what="A chat agent next to your form, served from your own Python server."
+  when="You have a form with more than a screen of fields."
+  write="`formguide.yaml` and one `include_router` line."
+  jump="#example"
+/>
+```
+
+For links or emphasis inside a value, use the slots of the same names: `<Fragment slot="write">…</Fragment>`.
+
+## Tokens
+
+Use the tokens, never a raw colour, size or radius. The full scales are in the `ui-craft` skill (`references/tokens.md`); the docs' names:
+
+| Token | For |
+| --- | --- |
+| `--fg-ink`, `--fg-ink-2`, `--fg-ink-3` | text: main, secondary, captions |
+| `--fg-surface`, `--fg-sunken` | a tile, code inside a tile |
+| `--fg-fill`, `--fg-fill-2` | chips, gray buttons, tracks; their hover |
+| `--fg-accent`, `--fg-on-accent`, `--fg-accent-ink`, `--fg-accent-soft` | the one accent: fills, text on it, accent text, a tinted surface |
+| `--fg-focus` | the focus ring (`:focus-visible` only) |
+| `--fg-fs-caption` … `--fg-fs-title` | 11 · 12 · 13 · 15 · 17 · 22 px |
+| `--fg-r-sm` … `--fg-r-pill` | 6 · 10 · 14 · 20 · 24 · 999 px |
+| `--fg-h-sm`, `--fg-h-md`, `--fg-h-lg` | 32 · 36 · 44 px (all 44 on touch) |
+| `--fg-dur-instant`, `--fg-dur-quick`, `--fg-ease` | 120 ms, 200 ms, the entering curve |
+
+## Next
+
+<CardGrid>
+  <SlLinkCard title="Themes and styling" description="The widget's own tokens, which Ask AI's cards follow." href="../../frontend/themes/" />
+  <SlLinkCard title="Card gallery" description="The design system at work on a whole page." href="../../frontend/card-gallery/" />
+</CardGrid>

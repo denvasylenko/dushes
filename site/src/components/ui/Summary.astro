@@ -1,0 +1,24 @@
+---
+/**
+ * Summary: a guide's "at a glance" block, first under the title, lead and page actions. Three labelled rows
+ * (What / When you need it / You write) and an optional jump to the example. Values may hold `inline code`
+ * in backticks; for richer text use the slots of the same names (what, when, write).
+ */
+import Button from './Button.astro'
+interface Props { what?: string; when?: string; write?: string; jump?: string; jumpLabel?: string; labels?: [string, string, string]; class?: string }
+const { what, when, write, jump, jumpLabel = 'Skip to the example', labels = ['What', 'When you need it', 'You write'], class: cls } = Astro.props
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const inline = (t?: string) => t ? esc(t).replace(/`([^`]+)`/g, '<code>$1</code>') : ''
+const value = async (slot: 'what' | 'when' | 'write', text?: string) => Astro.slots.has(slot) ? await Astro.slots.render(slot) : inline(text)
+const rows = [
+  [labels[0], await value('what', what)],
+  [labels[1], await value('when', when)],
+  [labels[2], await value('write', write)],
+].filter(([, html]) => html)
+---
+<section class:list={['ui-summary', 'not-content', cls]} aria-label="At a glance">
+  <dl>
+    {rows.map(([label, html]) => <div class="ui-summary-row"><dt>{label}</dt><dd set:html={html} /></div>)}
+  </dl>
+  {jump && <div class="ui-summary-jump"><Button variant="plain" size="sm" href={jump} icon="chevron">{jumpLabel}</Button></div>}
+</section>

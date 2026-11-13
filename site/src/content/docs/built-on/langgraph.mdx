@@ -3,6 +3,9 @@ title: LangGraph
 description: One turn is a LangGraph graph of six nodes. A card is a LangGraph interrupt; the history lives in a LangGraph checkpointer.
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"The agent's turn as a LangGraph graph."} when={"You want to know what happens inside a turn."} write={"Nothing; a checkpointer is the one LangGraph object you may pass in."} />
 
 Every message runs the same graph. The form arrives with the message, the graph decides what to say, which tools to run and when to stop for the user.
 

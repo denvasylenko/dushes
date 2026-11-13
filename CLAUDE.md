@@ -30,6 +30,7 @@ Documentation is maintained continuously, in the same change as the code — nev
 
 ## UI work
 Before any interface change (the `<agui-chat>` widget, its card renderers and texts, the demo form, the examples, the docs pages), load the `ui-craft` skill (`.claude/skills/ui-craft/`): Apple is the anchor (every component looks and behaves like its iOS / macOS counterpart, `references/apple-components.md`), a five-line mini-brief, the eleven laws (one main action, complex in one tap, Undo instead of confirmations, instant, every state designed, like Apple), the type / spacing / radius scales, text rules and the check in the browser (390 px and desktop, light and dark). Known UI debt is in its `references/audit.md`; update it when you fix or find something.
+Docs UI uses only the design system in `site/src/components/ui/` (Button, Copy button, Chips, Segmented, Disclosure, Tile, Callout, Link card, Menu, Range, Swatches, Code panel, Badge, Summary; tokens `--fg-*` in `site/src/styles/theme.css`): a new pattern is added there first and shown on the Reference → Design system page (`reference/design-system.mdx`), then used. Rules and the Apple counterpart of each primitive: `.claude/skills/ui-craft/references/docs-components.md`.
 
 ## Layout
 - `backend/formguide/` — the library (form core, agent graph, domain packs, knowledge, attachments, models, skills, config, optional FastAPI router).

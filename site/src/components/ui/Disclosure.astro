@@ -1,0 +1,13 @@
+---
+/**
+ * Disclosure: a <details> with our chevron, centred on the summary's text line; it turns down when open.
+ * `panel` puts it in a sunken box with the whole row as the target (code inside a tile).
+ * Slot "extra" sits at the end of the summary row (a dot, a badge).
+ */
+interface Props { summary: string; open?: boolean; panel?: boolean; class?: string; [attr: string]: unknown }
+const { summary, open = false, panel = false, class: cls, ...rest } = Astro.props
+---
+<details class:list={['ui-disc', { 'ui-disc--panel': panel }, cls]} open={open} {...rest}>
+  <summary><svg class="ui-disc-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5" /></svg><span>{summary}</span><slot name="extra" /></summary>
+  <div class="ui-disc-body"><slot /></div>
+</details>

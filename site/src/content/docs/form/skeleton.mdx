@@ -3,6 +3,9 @@ title: 'Register the skeleton'
 description: "Send the form's JSX once; keep the jsx_hash it returns for every run."
 ---
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"The form's structure (JSX), registered once."} when={"Wiring a form: step one."} write={"`POST /agent/layouts {jsx, form_id}` and keep the `jsx_hash`."} />
 
 ## 1.1 The skeleton (JSX) — sent once
 

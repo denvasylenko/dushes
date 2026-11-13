@@ -1,0 +1,11 @@
+---
+/** Callout: an icon in a rounded square, a title and one or two lines. Put it in a Tile, or on its own. */
+import Icon from './Icon.astro'
+import type { IconName } from './icons'
+interface Props { title: string; icon?: IconName; class?: string }
+const { title, icon = 'sparkle', class: cls } = Astro.props
+---
+<div class:list={['ui-callout', cls]}>
+  <span class="ui-callout-icon" aria-hidden="true"><Icon name={icon} /></span>
+  <div class="ui-callout-text"><b class="ui-callout-title">{title}</b><span class="ui-callout-body"><slot /></span></div>
+</div>

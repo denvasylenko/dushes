@@ -4,6 +4,9 @@ description: "One chat for a whole site: it answers about any page, takes the us
 ---
 import { LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
 import SiteDemoLink from '../../../components/SiteDemoLink.astro';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"One chat for a whole site, above the form agent."} when={"Your site has many pages and the forms are only some of them."} write={"A site map (`site.yaml`) and `create_site_router(SiteGuide(guide, site_map))`."} />
 
 `SiteGuide` sits above the form agent. On a page without a form, the **site agent** answers from the site's content and moves the user around. On a page with a form, the turn goes to the **form agent**: the same `FormGuide` as everywhere else, unchanged. One chat follows the user from page to page.
 
@@ -51,6 +54,60 @@ app.include_router(create_site_router(site), prefix="/site")    # POST /site/run
 ```
 
 The site map is both what the site agent knows (a search index over every tab, accordion and section) and where it may go: `navigate` and `open_form` accept only its pages, tabs, sections and forms, so the model cannot invent a page.
+
+## What the assistant knows
+
+The **site map** and the site's **business documents**. It does not crawl the site or read the page's HTML: you describe the pages once, and that description is both its knowledge (it answers from the `text` of tabs, accordions and sections) and its map (it may open only those pages, tabs, sections and forms). That is why it never invents a page or a link. Deeper facts (partners, terms, policies) come from the documents of its knowledge scope; see [Knowledge](#knowledge) below.
+
+The map does not have to be a hand-written file. `SiteMap.load()` takes a dict too, so build it from what you already have when the server starts:
+
+```python title="app.py"
+from formguide.site import SiteGuide, SiteMap
+
+def site_map_from_cms() -> dict:
+    pages = []
+    for p in cms.pages(published=True):                       # your CMS, database or routes
+        pages.append({
+            "path": p.url, "title": p.title, "description": p.summary,
+            "form": p.form_id,                                 # None on a content page
+            "sections": [{"id": b.anchor, "title": b.heading, "text": b.plain_text} for b in p.blocks],
+        })
+    return {"title": "Main Street", "pages": pages}
+
+site = SiteGuide(guide, SiteMap.load(site_map_from_cms()))
+```
+
+| Source | When it fits |
+| --- | --- |
+| `site.yaml` by hand | a small site, or the pages that matter most (FAQ, prices, hours) |
+| built from your CMS or database at start-up | content that editors change; restart (or rebuild the `SiteGuide`) after publishing |
+| built from your app's routes plus short texts | an app where the pages are screens rather than articles |
+
+The forms on form pages need nothing new: they are the same forms the form agent already knows (`form: loan_application`).
+
+## How a turn works on the server
+
+```mermaid
+sequenceDiagram
+  participant P as Page
+  participant R as SiteGuide (router)
+  participant S as Site agent
+  participant F as Form agent (FormGuide)
+  P->>R: POST /site/run {page, form?}, message
+  alt a page without a form, or a message about the site
+    R->>S: the message + the best sections of the site map
+    S-->>P: a short answer, CUSTOM site_directive (navigate / open_form)
+  else a form page, or a card's answer
+    R->>F: FormGuide.run, thread "site thread - form id"
+    F-->>P: the form agent's events, cards as usual
+  end
+```
+
+1. **The router** looks at the page and the message. A card's answer always goes to the form agent. On a page without a form the turn goes to the site agent. On a form page, words about moving ("open the …", "go to", "where is") send it to the site agent. Another page's title or keywords without a move are unclear: a cheap router model answers one word, form or site, and on any failure the turn stays with the form. Everything else goes to the form agent.
+2. **The site agent** gets the message, the last few turns, the sections of the site map that match it best (a BM25 search) and the best matching passages of the site's business documents. It answers in one to three sentences and may call four tools: `search_site` (look again), `ask_documents` (the document researcher), `navigate` (a page, tab or section; the result tells it what that part says) and `open_form` (a form, with a note of what the user already said).
+3. **Each move is checked** against the site map. A valid one becomes a `site_directive` event for the page; an unknown path is refused and the model is told so.
+4. **The hand-off.** After `open_form` the page opens the form and runs once with `handoff: true`. The router gives the form agent the note as its first message, so it proposes those fields at once.
+5. **The form agent** is the same `FormGuide` as on a page of its own, with its own conversation per form inside the site's thread: its history, cards and Undo work as everywhere else.
 
 ## How a turn is routed
 

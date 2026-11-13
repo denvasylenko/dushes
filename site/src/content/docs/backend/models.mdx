@@ -4,6 +4,9 @@ description: Any LangChain chat model, from YAML or from Python. Four roles; uns
 ---
 import { Tabs, TabItem, LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
 import ArchFigure from '../../../components/ArchFigure.astro';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Which LLM the agent uses, and how to switch provider."} when={"Choosing Anthropic, OpenAI, Azure, Gemini, Bedrock, Ollama or your gateway."} write={"`model: \"anthropic:claude-opus-5-5\"`, or `Models(agent=ChatOpenAI(...))` in Python."} />
 
 Where the model sits:
 

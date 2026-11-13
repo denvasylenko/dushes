@@ -3,6 +3,9 @@ title: 'The chat widget'
 description: '<agui-chat>: one tag gives a streaming chat with steps, cards, dictation, attachments and quick replies.'
 ---
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"The ready-made chat: one HTML element that draws every card."} when={"You want a chat without building one."} write={"`<agui-chat url=\"/agent/run\">` and `chat.use(formguide({ getState, applyChanges }))`."} />
 
 A ready-made chat for any AG-UI agent, as one HTML element. It streams the agent's answer with a smooth typewriter, shows what the agent is doing step by step, renders cards (field changes, questions, file requests, confirmations) and lets the user dictate, attach files and pick suggested replies. Every part can be switched off or restyled.
 
@@ -95,7 +98,7 @@ It does five things:
    | `confirm`: a confirmation | Confirm (red when `danger`) or Cancel | `{accepted}` |
 
 4. **Restores the chat** after a reload: `GET {baseUrl}/threads/{id}?format=agui&form_id=…` gives the messages, a pending card and the form's starters.
-5. **Labels the steps** of formguide's tools in seven languages ("Looking at the form", "Reading your document", …). The tools that produce a card (`propose_changes`, `ask_user`, `request_file`, `confirm_action`) get no step of their own, since the card shows the result; `cardSteps: true` shows them.
+5. **Labels the steps** of formguide's tools in seven languages; a turn that only looked at the form or showed a field (`get_fields`, `search_fields`, `focus_field`, …) shows no step list: the dots show the wait and the form shows the field (a plugin's `quietSteps`) ("Looking at the form", "Reading your document", …). The tools that produce a card (`propose_changes`, `ask_user`, `request_file`, `confirm_action`) get no step of their own, since the card shows the result; `cardSteps: true` shows them.
 
 The fill button counts the fields ("Fill in 3 fields", "Fill in 2 of 3" when some are unticked), with the plural form of the chat's language.
 
@@ -200,6 +203,8 @@ Some things appear only when the backend enables them; the widget draws them whe
 <!-- the browser's recognition where it works; else the chat records and the server transcribes -->
 <agui-chat url="/agent/run" dictation="auto"></agui-chat>
 ```
+
+Files work like in a messenger: the paperclip, a screenshot pasted with Cmd+V / Ctrl+V, or a file dropped on the composer (when uploads are on).
 
 With server dictation the microphone records: a live wave and a timer take the input's place, × or Esc drops the recording, the microphone again stops it, "Transcribing…" shows while the server works, and the text lands in the input to check and send.
 

@@ -4,6 +4,7 @@
  * Copy page (its Markdown), Open in Claude, Open in ChatGPT. Replaces Starlight's PageTitle.
  */
 import Default from '@astrojs/starlight/components/PageTitle.astro';
+import { Button, CopyButton } from './ui';
 const { entry } = Astro.locals.starlightRoute;
 const desc = entry.data.description;
 // pages with their own header: the landing (a hero) and the card gallery
@@ -16,17 +17,15 @@ const isSpec = entry.id.startsWith('specifications/') && entry.id !== 'specifica
   <>
     {desc && !isSpec && <p class="pt-lead">{desc}</p>}
     <div class="pt-actions" data-page-actions>
-      <button type="button" class="pt-btn" data-copy-page>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
-        <span>Copy page</span>
-      </button>
-      <a class="pt-btn" data-open="claude" href="https://claude.ai/new" target="_blank" rel="noopener">Open in Claude</a>
-      <a class="pt-btn" data-open="chatgpt" href="https://chatgpt.com/" target="_blank" rel="noopener">Open in ChatGPT</a>
+      <CopyButton label="Copy page" auto={false} data-copy-page />
+      <Button size="sm" href="https://claude.ai/new" target="_blank" rel="noopener" data-open="claude">Open in Claude</Button>
+      <Button size="sm" href="https://chatgpt.com/" target="_blank" rel="noopener" data-open="chatgpt">Open in ChatGPT</Button>
     </div>
   </>
 )}
 
 <script>
+  import { copyText } from './ui/ui'
   const mdUrl = () => {
     const p = location.pathname.replace(/\/$/, '')
     const base = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -37,30 +36,12 @@ const isSpec = entry.id.startsWith('specifications/') && entry.id !== 'specifica
     box.querySelector<HTMLAnchorElement>('[data-open="claude"]')!.href = `https://claude.ai/new?q=${encodeURIComponent(ask())}`
     box.querySelector<HTMLAnchorElement>('[data-open="chatgpt"]')!.href = `https://chatgpt.com/?q=${encodeURIComponent(ask())}`
     const btn = box.querySelector<HTMLButtonElement>('[data-copy-page]')!
-    const label = btn.querySelector('span')!
-    btn.addEventListener('click', async () => {
-      try {
-        const text = await (await fetch(mdUrl())).text()
-        await navigator.clipboard.writeText(text)
-        label.textContent = 'Copied'
-      } catch {
-        label.textContent = 'Could not copy'
-      }
-      setTimeout(() => { label.textContent = 'Copy page' }, 2000)
-    })
+    btn.dataset.fail = 'Could not copy'
+    btn.addEventListener('click', () => { void copyText(btn, async () => (await fetch(mdUrl())).text()) })
   }
 </script>
 
 <style>
-  .pt-lead { font-size: var(--sl-text-lg); line-height: 1.5; color: var(--sl-color-gray-2); margin: .5rem 0 0; max-width: 60ch; text-wrap: pretty; }
+  .pt-lead { font-size: var(--sl-text-lg); line-height: 1.5; color: var(--fg-ink-2); margin: .5rem 0 0; max-width: 60ch; text-wrap: pretty; }
   .pt-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem; }
-  .pt-btn {
-    display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border-radius: 999px;
-    border: 1px solid var(--sl-color-hairline-light); background: transparent; color: var(--sl-color-gray-2);
-    font: 500 var(--sl-text-xs) var(--sl-font); text-decoration: none; cursor: pointer;
-  }
-  .pt-btn:hover { color: var(--sl-color-white); border-color: var(--sl-color-gray-4); }
-  .pt-btn:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 2px; }
-  .pt-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
-  @media (max-width: 50rem) { .pt-btn { min-height: 40px; } }
 </style>

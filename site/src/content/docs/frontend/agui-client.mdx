@@ -3,6 +3,9 @@ title: Any AG-UI client
 description: Bring your own chat UI. One HttpAgent, the form in state, cards as interrupts.
 ---
 import { Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Talk to formguide from your own chat UI."} when={"You already have a chat and want only the agent."} write={"`new HttpAgent({ url: '/agent/run' })`, then draw the events."} />
 
 ```mermaid
 sequenceDiagram

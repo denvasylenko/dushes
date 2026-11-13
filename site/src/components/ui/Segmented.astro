@@ -1,0 +1,15 @@
+---
+/** Segmented control: two to five exclusive views or modes, like iOS. Fires `ui-change` with {value}. */
+interface Props { label?: string; options: readonly (readonly [string, string])[]; value?: string; name?: string; inline?: boolean; class?: string; [attr: string]: unknown }
+const { label, options, value, name, inline = false, class: cls, ...rest } = Astro.props
+const current = value ?? options[0]?.[0]
+const id = `ui-l-${Math.random().toString(36).slice(2, 8)}`
+---
+<div class:list={['ui-field', cls]}>
+  {label && <span class="ui-label" id={id}>{label}</span>}
+  <div class:list={['ui-seg', { 'ui-seg--inline': inline }]} role="radiogroup" aria-labelledby={label ? id : undefined} data-ui-choice={name ?? ''} {...rest}>
+    {options.map(([v, l]) => <button type="button" role="radio" data-value={v} aria-checked={String(v === current)} tabindex={v === current ? 0 : -1}>{l}</button>)}
+  </div>
+</div>
+
+<script>import './ui.ts'</script>

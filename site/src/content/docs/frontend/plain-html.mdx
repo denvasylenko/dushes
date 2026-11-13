@@ -2,6 +2,9 @@
 title: Plain HTML
 description: The chat from one script tag on any page, with no build step.
 ---
+import { Summary } from '../../../components/ui';
+
+<Summary what={"The chat on any page from one script tag, no build step."} when={"Server-rendered pages, Vue, Angular, or no framework."} write={"`<script src=\"agui-chat.iife.js\">` and `<agui-chat url=\"/agent/run\">`."} />
 
 Every attribute and option, live, with the HTML to copy: the [Playground](../playground/).
 
@@ -33,6 +36,7 @@ Serve the whole `dist` folder: next to `agui-chat.iife.js` lie `agui-chat.lang-r
 | `floating` (default) | a round button in the corner that opens a side panel |
 | `inline` | fills its box: put it in a sidebar or a column next to the form |
 | `page` | the whole window |
+| `hero` | a landing's big field alone; the first message grows it into the chat in place (a full-screen sheet on a phone). `chat.send(text)` sends a preset, `chat.setPlaceholder(text)` changes the hint, `agui:open` / `agui:close` tell the page |
 
 ## Try every option live
 

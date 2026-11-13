@@ -4,6 +4,9 @@ description: Managers upload policies and price lists; formguide compiles them i
 ---
 import { Steps, Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
 import ArchFigure from '../../../components/ArchFigure.astro';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Your policies and price lists, uploaded once, answered from with citations."} when={"Users ask questions the form itself cannot answer."} write={"Upload files to `/agent/kb/...`; optionally `knowledge: {index: ...}` for a vector store."} />
 
 <ArchFigure page="knowledge" />
 

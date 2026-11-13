@@ -3,6 +3,9 @@ title: Types and the contract
 description: Every message between your page and formguide, as TypeScript types. What jsx_hash, config, ui and card_id are, who creates them and when they change.
 ---
 import { Tabs, TabItem, LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Every message between the page and the server, as TypeScript types."} when={"You write your own client, or debug the wire."} write={"Nothing: a reference of `FormState`, `Card`, `Answer`, ..."} />
 
 Your page and formguide exchange six kinds of messages. This page types all of them. The widget and the formguide plugin build and read these for you; you need the types when you write your own client, your own cards, or debug what crosses the wire.
 

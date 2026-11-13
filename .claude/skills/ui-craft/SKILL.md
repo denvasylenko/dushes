@@ -36,6 +36,8 @@ Controls are the letter; this is the spirit. It applies to every surface we ship
 - **Calm motion.** Things fade and move 150-200 ms to show where they came from; nothing bounces for fun; reduced motion respected.
 - **Plain, warm words.** Short sentences, verbs on buttons, no jargon for users; for developers, the exact name of the type or key, once, with a link.
 
+**The docs site has one component system:** `site/src/components/ui/` (Button, Copy button, Chips, Segmented control, Disclosure, Tile, Callout, Link card, Menu, Range, Swatches, Code panel, Badge, Summary), styled from the `--fg-*` tokens in `site/src/styles/theme.css` and shown live on **Reference → Design system** (`site/src/content/docs/reference/design-system.mdx`). Docs UI uses only these; a new pattern is added there first (component, `ui.css` block, specimen on the page), then used. Component files keep only layout. Ask AI's cards (`site/src/ask/docs.ts`, shadow DOM) follow the same look through `--agui-*` tokens. Rules, the Apple counterpart of each primitive and how to add one: `references/docs-components.md`.
+
 On the docs site this means: a page opens with its one-line promise and the example; tiles (`border-radius` 20-28 px, soft fill) for galleries and choices; tabs for variants instead of repeated blocks; navigation always one tap away (every page keeps the sidebar; no page is a dead end). Check against Apple's product and developer pages: if ours looks busier, remove until it does not.
 
 ## Before the first line of code: a mini-brief (required)
@@ -102,6 +104,6 @@ In detail, with examples from our code: `references/principles.md`.
 | The chat widget `<agui-chat>` | `packages/agui-chat/src/element.ts`, `styles.ts`, `formguide/cards.ts`, `i18n.ts` | end users of any host app; phone and computer | 7 languages: English in `i18n.ts` (`STRINGS`, `FG_STRINGS`), the others in `src/lang/<lang>.json` packs (every English key in every pack) | `--agui-*` on `:host`, light and dark |
 | The demo form and its page | `frontend/src/App.tsx`, `Form.tsx`, `index.css` | someone trying formguide; mostly computer | en | the demo's own `:root` variables |
 | The HTML example | `examples/widget-html/index.html` | developers trying the widget | en | its own `:root` |
-| The docs site | `site/` (Astro Starlight): `src/styles/theme.css`, `src/components/` (the live demo `LiveDemo.astro` + `src/demo/`), pages in `src/content/docs/`, diagrams in `src/fragments/` | developers and managers; phone and computer | en | Starlight's `--sl-*` with formguide's accent in `theme.css`; diagrams map them in `arch.css` |
+| The docs site | `site/` (Astro Starlight): `src/styles/theme.css`, the design system `src/components/ui/` (every docs control), `src/components/` (the live demo `LiveDemo.astro` + `src/demo/`), pages in `src/content/docs/`, diagrams in `src/fragments/` | developers and managers; phone and computer | en | `--fg-*` (built on Starlight's `--sl-*` with formguide's accent) in `theme.css`; diagrams map them in `arch.css` |
 
 The widget is the product: host apps restyle it only through tokens and `::part`, so everything visual in it must come from tokens. New text in the widget goes into English (`i18n.ts`, `formguide/i18n.ts`) and into every pack in `src/lang/*.json` (non-ASCII as `\u` escapes, see CLAUDE.md); `test/langs.test.ts` fails when a pack misses a key.

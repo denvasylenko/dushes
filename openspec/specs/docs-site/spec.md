@@ -34,7 +34,7 @@ The landing page SHALL show the real `<agui-chat>` widget next to a real form, d
 - **THEN** the workflow builds the site and fails on a broken build, without deploying
 
 ### Requirement: Page anatomy
-Every guide page SHALL open with a one-line summary, show at least one complete example that can be copied as is, and end with links to the next steps. Where a choice has variants (model provider, client), the variants SHALL be tabs of the same example.
+Every guide page SHALL open with a one-line summary and an at-a-glance block (what it is, when you need it, what you write), show at least one complete example that can be copied as is, and end with links to the next steps. Where a choice has variants (model provider, client), the variants SHALL be tabs of the same example.
 
 #### Scenario: Choosing a provider
 - **WHEN** a reader opens the models guide
@@ -104,7 +104,14 @@ The themes guide SHALL have an inline theme playground (accent, radii, font, sch
 - **THEN** the card in the live chat changes its radius at once and the generated code shows the new `card-radius`
 
 ### Requirement: One public host
-The docs site, Ask AI and a live demo SHALL be servable from one app (`docs_ai.host`): the site at `/`, the assistant at `/ai`, the demo page at `/demo/` with formguide at `/agent`. The demo SHALL use an inexpensive model, limit messages per conversation (default 15), per address per day and per site per day, and refuse document uploads; answering a card SHALL not count as a message.
+The docs site, Ask AI and a live demo SHALL be servable from one app (`docs_ai.host`): the site at `/`, the assistant at `/ai`, the demo page at `/demo/` with formguide at `/agent`, and the site assistant's demo at `/demo/site.html` with `/site`.
+
+#### Scenario: One address for everything
+- **WHEN** a reader opens the public host
+- **THEN** the docs are at `/`, Ask AI answers at `/ai/ask/run`, and "Live demo" offers the site assistant and the form assistant
+
+### Requirement: Public demo limits
+The public demo SHALL use an inexpensive model and limit messages per conversation (default 15), per address per day and per site per day, on `/agent/run` and `/site/run` alike, and SHALL refuse document uploads. Answering a card or the hand-off run SHALL not count as a message.
 
 #### Scenario: The sixteenth demo message
 - **WHEN** a visitor sends a sixteenth message in one demo chat
@@ -120,3 +127,39 @@ The configuration guide SHALL have one section with every configuration key in o
 #### Scenario: Looking for one place
 - **WHEN** a reader opens the configuration guide
 - **THEN** "Every key in one file" shows the complete file, and it parses with `load_config`
+
+### Requirement: Setup prompt for coding agents
+The quick start and the landing SHALL offer "Set it up with your AI agent": the reader picks the app (any page, React, react-hook-form, CopilotKit, a whole site), the model provider and where the server runs, and copies one prompt for a coding agent.
+
+#### Scenario: No clipboard
+- **WHEN** the browser refuses clipboard access
+- **THEN** the prompt opens below the button to copy by hand
+
+### Requirement: The setup prompt follows the docs
+The copied prompt SHALL list the exact steps and link the relevant pages as Markdown (`<page>.md`) and `llms.txt`, and SHALL tell the agent to follow them without inventing keys, endpoints or options.
+
+#### Scenario: Azure and react-hook-form
+- **WHEN** a reader picks react-hook-form and Azure OpenAI and taps "Copy prompt"
+- **THEN** the clipboard holds a prompt with the Azure model block for `formguide.yaml`, `useFormguide` from `@formguide/agui-chat/react-hook-form`, and links to the react-hook-form and models pages as Markdown
+
+### Requirement: One design system for docs UI
+Every component on the docs site SHALL be built from the primitives in `site/src/components/ui/`, styled only from the `--fg-*` tokens in `site/src/styles/theme.css` in light and dark. A new pattern SHALL be added to that folder before a component uses it. Ask AI's cards, inside the widget's shadow DOM, SHALL follow the same look through the widget's `--agui-*` tokens.
+
+#### Scenario: A disclosure on any page
+- **WHEN** a reader opens "See the prompt" under the setup prompt, or a code disclosure in the card gallery
+- **THEN** both use the Disclosure primitive: the same chevron, centred on the summary's text line, turning down when open
+
+#### Scenario: Pressable on a phone
+- **WHEN** the site is used on a touch screen
+- **THEN** every Button, Chip, segment and Copy button is at least 44 px tall, and hover styles do not stick after a tap
+
+### Requirement: Design system page
+The Reference section SHALL have a "Design system" page that shows every primitive live, with its states and a usage snippet, and a switch that previews the page in light and dark.
+
+#### Scenario: A guide at a glance
+- **WHEN** a reader opens a guide page that starts with a Summary
+- **THEN** it shows What, When you need it and You write as labelled rows in one soft tile, stacked label-above-value on a phone, with an optional link to the example
+
+#### Scenario: Checking a component in both themes
+- **WHEN** a reader switches "Preview in" to Light or Dark on the design-system page
+- **THEN** the whole site's theme changes and every specimen shows that theme

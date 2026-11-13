@@ -1,0 +1,14 @@
+---
+/**
+ * Copy button: copies the text of `target` (a CSS selector), or the code of the panel it sits in,
+ * and says "Copied" with a check for a moment. Scripts that build the text call copyText(button, text) from ui.ts.
+ */
+import Icon from './Icon.astro'
+interface Props { label?: string; done?: string; target?: string; variant?: 'filled' | 'gray' | 'quiet'; size?: 'sm' | 'md' | 'lg'; auto?: boolean; class?: string; [attr: string]: unknown }
+const { label = 'Copy', done = 'Copied', target, variant = 'gray', size = 'sm', auto = true, class: cls, ...rest } = Astro.props
+---
+<button type="button" class:list={['ui-btn', `ui-btn--${variant}`, size !== 'md' && `ui-btn--${size}`, cls]} data-ui-copy={auto ? (target ?? '') : undefined} data-done={done} {...rest}>
+  <Icon name="copy" class="ui-icon-idle" /><Icon name="check" class="ui-icon-done" /><span data-ui-copy-label>{label}</span>
+</button>
+
+<script>import './ui.ts'</script>

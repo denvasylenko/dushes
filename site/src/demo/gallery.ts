@@ -34,6 +34,8 @@ export const GROUPS = [
   { id: 'pick', title: 'Dates, times and numbers', blurb: 'Our own pickers: the right control for the value, never the browser’s.' },
   { id: 'finish', title: 'Files and finishing', blurb: 'Ask for a document, show what is left, confirm what cannot be undone.' },
   { id: 'reply', title: 'In the reply', blurb: 'Not cards, but part of the answer: where it came from, and what to tap next.' },
+  { id: 'catalog', title: 'Every block, live', blurb: 'Each tile is one block in a card, drawn by the shipped widget. Replay draws it again; the event shows its keys.' },
+  { id: 'blocks', title: 'Your own cards', blurb: 'Cards composed from small blocks: you lay them out in formguide.yaml, the model fills the data, they look like ours.' },
 ]
 
 const ask = (v: Record<string, unknown>) => ({ name: 'on_interrupt', value: { type: 'ask', card_id: 'q1', allow_text: false, ...v } })
@@ -43,7 +45,7 @@ const BANKS = ['Atlas Bank', 'Baltic Savings', 'Cedar Trust', 'Delta Credit', 'E
   'Ironwood Credit', 'Juniper Bank', 'Keystone Savings', 'Lakeside Bank', 'Meridian Trust', 'Northgate Bank', 'Oakridge Credit', 'Pioneer Bank',
   'Quarry Savings', 'Riverside Bank', 'Summit Trust', 'Tidewater Bank']
 
-export const SPECIMENS: Specimen[] = [
+const GALLERY: Specimen[] = [
   // ------------------------------------------------------------ fill
   {
     id: 'set-fields', group: 'fill', tag: 'set_fields',
@@ -264,7 +266,99 @@ export const SPECIMENS: Specimen[] = [
     event: { name: 'suggestions', value: { items: ['Set the loan type to Car loan', 'What does security mean?'],
       applies: [[{ name: 'loan_type', label: 'Loan type', value: 'car', previous: null }], null] } },
   },
+  {
+    id: 'blocks-question', group: 'blocks', tag: 'blocks · place, row, buttons',
+    title: 'A question of your own',
+    blurb: 'Declared as `barber_match` in `cards:` (wait: true): the model calls show_barber_match with the data, the turn waits, a tap answers {action, label, values}.',
+    user: 'Book me with my usual barber',
+    lead: 'Your last visit was with Maria.',
+    event: { name: 'on_interrupt', value: { type: 'blocks', card_id: 'b1', name: 'barber_match', blocks: [
+      { type: 'title', text: 'Is this your barber?' },
+      { type: 'place', title: 'Maria Ivanova', subtitle: 'Barbershop on Arbat', rating: 4.9 },
+      { type: 'row', label: 'Next free slot', value: 'Today, 16:30', icon: 'calendar' },
+      { type: 'buttons', items: [{ id: 'yes', label: 'Yes, book Maria', style: 'primary' }, { id: 'no', label: 'Another barber' }] }] } },
+  },
+  {
+    id: 'blocks-pick', group: 'blocks', tag: 'blocks · swatches, choice',
+    title: 'A palette to pick',
+    blurb: 'Swatches and chips return their choice in `values` with the button.',
+    user: 'Make my site look nicer',
+    event: { name: 'on_interrupt', value: { type: 'blocks', card_id: 'b2', name: 'styles', blocks: [
+      { type: 'title', text: 'Pick a style for your site' },
+      { type: 'swatches', name: 'palette', items: [
+        { id: 'calm', label: 'Calm', colors: ['#1d1d1f', '#f5f5f7', '#0071e3'] },
+        { id: 'warm', label: 'Warm', colors: ['#3b2a20', '#fbf3ea', '#e8590c'] },
+        { id: 'fresh', label: 'Fresh', colors: ['#0f2e28', '#eefaf6', '#0a7f6f'] }] },
+      { type: 'choice', name: 'mood', options: ['Lighter', 'Darker', 'Warmer'] },
+      { type: 'buttons', items: [{ id: 'use', label: 'Use it', style: 'primary' }, { id: 'skip', label: 'Not now', style: 'plain' }] }] } },
+  },
+  {
+    id: 'blocks-progress', group: 'blocks', tag: 'blocks · steps, progress',
+    title: 'Steps left',
+    blurb: 'A checklist with a progress bar; `{left}` in the title counts the open steps.',
+    user: 'What is left before I share it?',
+    event: { name: 'on_interrupt', value: { type: 'blocks', card_id: 'b3', name: 'todo', blocks: [
+      { type: 'steps', title: '{left} steps left', items: [{ label: 'Phone number', done: true }, { label: 'Opening hours' }, { label: 'Address' }] },
+      { type: 'progress', value: 1, max: 3 },
+      { type: 'buttons', items: [{ id: 'hours', label: 'Add opening hours', style: 'primary' }, { id: 'later', label: 'Not now', style: 'plain' }] }] } },
+  },
+  {
+    id: 'blocks-display', group: 'blocks', tag: 'CUSTOM card · stat, diff, links',
+    title: 'A card to show',
+    blurb: 'Declared with wait: false, it comes as a CUSTOM card event while the turn goes on. Links call, route, add to the calendar, share.',
+    user: 'Move my haircut to Friday',
+    lead: 'Done, you are booked for Friday.',
+    event: { name: 'card', value: { type: 'blocks', name: 'visit', blocks: [
+      { type: 'stat', value: 'Fri, 16:30', label: 'Haircut with Maria', tone: 'ok' },
+      { type: 'diff', label: 'Moved', from: 'Thu, 12:00', to: 'Fri, 16:30' },
+      { type: 'links', items: [
+        { kind: 'calendar', label: 'Add to calendar', value: { title: 'Haircut with Maria', start: '2026-11-20T16:30:00', minutes: 45 } },
+        { kind: 'route', label: 'Route to the barbershop', value: 'Arbat 12, Moscow' },
+        { kind: 'call', label: 'Call the barbershop', value: '+7 495 000 00 00' }] }] } },
+  },
 ]
+
+/** One specimen per block, for the Blocks page (group "catalog"); the card gallery leaves them out. */
+const block = (id: string, title: string, blurb: string, blocks: Record<string, unknown>[]): Specimen => ({
+  id: `block-${id}`, group: 'catalog', tag: `block · ${id}`, title, blurb, user: `Show the ${id} block`,
+  event: { name: 'on_interrupt', value: { type: 'blocks', card_id: `bk-${id}`, name: id, blocks } },
+})
+const done = { type: 'buttons', items: [{ id: 'ok', label: 'Done', style: 'primary' }] }
+export const CATALOG: Specimen[] = [
+  block('title', 'Title', '`text`, `subtitle?`: the card’s question.', [{ type: 'title', text: 'Is this your barber?', subtitle: 'From your last visit' }, done]),
+  block('text', 'Text', '`text` with inline **markdown**, `tone?`.', [{ type: 'text', text: 'Your booking is **confirmed**. Maria will meet you at the door.' }, { type: 'text', text: 'Cancelled by the shop.', tone: 'danger' }, done]),
+  block('note', 'Note', '`text`: a small grey line.', [{ type: 'title', text: 'Haircut' }, { type: 'note', text: 'Free cancellation up to 2 hours before.' }, done]),
+  block('row', 'Rows', '`label`, `value`, `icon?`, `tone?`. Rows next to each other form one list.', [
+    { type: 'row', label: 'Date', value: 'Fri, 20 Nov', icon: 'calendar' }, { type: 'row', label: 'Barber', value: 'Maria' },
+    { type: 'row', label: 'Paid', value: '1 500 \u20bd', tone: 'ok' }, done]),
+  block('place', 'Place or person', '`title`, `subtitle?`, `image?`, `rating?`.', [{ type: 'place', title: 'Maria Ivanova', subtitle: 'Barbershop on Arbat · 12 years', rating: 4.9 }, done]),
+  block('image', 'Image', '`src` (https), `alt?`, `ratio?`.', [{ type: 'image', src: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800', alt: 'A barbershop chair', ratio: '16:9' }, done]),
+  block('stat', 'Big number', '`value`, `label?`, `tone?`.', [{ type: 'stat', value: '1 500 \u20bd', label: 'To pay at the shop' }, done]),
+  block('diff', 'Was → now', '`label?`, `from`, `to`.', [{ type: 'diff', label: 'Moved', from: 'Thu, 12:00', to: 'Fri, 16:30' }, done]),
+  block('steps', 'Steps', '`title?` ({left} counts open steps), `items: [{label, done?}]`.', [{ type: 'steps', title: '{left} steps left', items: [{ label: 'Phone number', done: true }, { label: 'Opening hours' }, { label: 'Address' }] }, done]),
+  block('progress', 'Progress', '`value`, `max?`, `label?`.', [{ type: 'progress', value: 2, max: 3, label: 'Profile 2 of 3' }, done]),
+  block('swatches', 'Palettes', '`name`, `items: [{id, label?, colors}]`; the pick comes back in `values`.', [{ type: 'swatches', name: 'palette', items: [
+    { id: 'calm', label: 'Calm', colors: ['#1d1d1f', '#f5f5f7', '#0071e3'] }, { id: 'warm', label: 'Warm', colors: ['#3b2a20', '#fbf3ea', '#e8590c'] }] },
+    { type: 'buttons', items: [{ id: 'use', label: 'Use it', style: 'primary' }] }]),
+  block('choice', 'Choice', '`name`, `options` (objects or strings), `multiple?`.', [{ type: 'choice', name: 'slot', options: ['16:30', '18:00', '19:30'] }, { type: 'buttons', items: [{ id: 'book', label: 'Book', style: 'primary' }] }]),
+  block('field', 'Field', '`name`, `label?`, `input?`, `placeholder?`; the text comes back in `values`.', [{ type: 'field', name: 'wish', label: 'A wish for Maria', placeholder: 'Shorter on the sides' }, { type: 'buttons', items: [{ id: 'send', label: 'Send', style: 'primary' }] }]),
+  block('buttons', 'Buttons', '`items: [{id, label, style?}]`: primary, secondary, plain, danger.', [{ type: 'buttons', items: [
+    { id: 'yes', label: 'Book', style: 'primary' }, { id: 'later', label: 'Later' }, { id: 'skip', label: 'Skip', style: 'plain' }, { id: 'cancel', label: 'Cancel visit', style: 'danger' }] }]),
+  block('links', 'Links', '`items: [{kind, label, value}]`: call, route, web, calendar, share, copy, chat.', [{ type: 'links', items: [
+    { kind: 'calendar', label: 'Add to calendar', value: { title: 'Haircut', start: '2026-11-20T16:30:00', minutes: 45 } },
+    { kind: 'route', label: 'Route', value: 'Arbat 12, Moscow' }, { kind: 'call', label: 'Call', value: '+7 495 000 00 00' },
+    { kind: 'copy', label: 'Copy the booking number', value: 'B-20431' }] }]),
+  block('divider', 'Divider', 'A hairline between parts.', [{ type: 'text', text: 'Above' }, { type: 'divider' }, { type: 'text', text: 'Below' }, done]),
+]
+
+/** Every block alone, for the one-sheet overview at the top of the Blocks page: [type, blocks]. */
+export const SHEET: [string, Record<string, unknown>[]][] = CATALOG.map((s) => {
+  const blocks = ((s.event.value as { blocks: Record<string, unknown>[] }).blocks)
+  const own = blocks.filter((b) => b !== done && !(b.type === 'buttons' && s.id !== 'block-buttons') && !(b.type === 'title' && s.id !== 'block-title'))
+  return [s.id.replace(/^block-/, ''), own.length ? own : blocks]
+})
+
+export const SPECIMENS: Specimen[] = [...GALLERY, ...CATALOG]
 
 let seq = 0
 const nid = (p: string) => `${p}-${++seq}`

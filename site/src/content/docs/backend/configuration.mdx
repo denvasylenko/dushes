@@ -3,6 +3,9 @@ title: Configuration
 description: Start with one line, add what you need step by step. Every key has a default except the model.
 ---
 import { Steps, Tabs, TabItem, LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Every server setting, step by step, in YAML and the same in Python."} when={"You want more than the defaults: models per role, documents, history."} write={"`formguide.yaml` (or `GuideConfig(...)`); only `model` is required."} />
 
 The whole backend is configured from one YAML file. It becomes a plain `GuideConfig` you can still edit in Python, and `FormGuide(config)` builds everything from it.
 
@@ -186,6 +189,7 @@ knowledge:
 skills: {dir: skills}                # skills/<name>/SKILL.md; default: none
 tools: ["my_app.tools:check_credit_score"]   # LangChain tools for every form; default: none
 confirm_tools: [check_credit_score]  # these always ask the user first (a confirm card); default: none
+cards: []                           # cards from blocks, each a tool show_<type> (Backend > Cards from blocks)
 max_tool_rounds: 10                  # model <-> tool rounds per turn
 actions:                             # the agent's built-in actions: true | false | auto
   ask_user: true

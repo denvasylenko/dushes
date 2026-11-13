@@ -3,6 +3,9 @@ title: Overview
 description: What formguide is, the parts you install, and which page to read next.
 ---
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"A chat next to your form that points, explains and fills fields"} when={"You have a long form people get stuck on."} write={"A YAML file on the server and five lines next to your form."} />
 
 formguide is a chat agent that sits next to a large form (a loan application with 200 fields, an insurance claim, a booking wizard) and helps the person fill it in. The core knows nothing about your domain or model provider; everything specific is configured.
 

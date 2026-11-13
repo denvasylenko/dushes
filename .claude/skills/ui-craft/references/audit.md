@@ -66,12 +66,28 @@ Found while adopting this standard. Strike out what is fixed, add new findings w
 | The upload card shows its prompt as raw text: markdown (`**payslip**`) is not rendered, unlike question cards (2026-11-12) | 8 | the same inline markdown as `.card-q` in `uploadCard` | S | small |
 | The card gallery's tiles scroll each chat to its bottom on mount, so a tall card (comparison) opens mid-way | 6 | the log-follow fix above; meanwhile the gallery could scroll each log to the card's top | S | small |
 
+## The docs design system (`site/src/components/ui/`, 2026-11-13)
+
+| What is wrong | Law | How to fix | Cost | Effect |
+| --- | --- | --- | --- | --- |
+| ~~"See the prompt" in the setup prompt: a text chevron (`\203a` / `\2304`) that sits below the text line and changes glyph instead of turning~~ | 10, 11 | the Disclosure primitive: an SVG chevron centred on the summary line, rotating 90° (fixed 2026-11-13) | S | small, seen on every visit |
+| ~~Each docs component styled its own controls: four chip looks (bordered, filled, pressed grey), three menu radii (14 / 18 px), outlined vs filled pill buttons, 2 px focus rings with different offsets, `#fff` on the accent~~ | 10, 11 | one system in `site/src/components/ui/`, tokens `--fg-*`, the design-system page; the 11 components moved onto it (fixed 2026-11-13) | M | big: one look everywhere |
+| ~~Hover fills stuck after a tap on phones (chips, segments, menu rows)~~ | 9 | hover rules inside `@media (hover: hover)` (fixed 2026-11-13) | S | medium on phones |
+| ~~Page actions, chips and the Replay button 32-40 px on touch~~ | 9 | `--fg-h-*` heights become 44 px on `pointer: coarse` (fixed 2026-11-13) | S | medium on phones |
+| ~~In dark mode the Live demo menu had the same fill as the tile under it~~ | 11 | `--fg-elevated`: menus are lighter than the page in dark, like macOS (fixed 2026-11-13) | S | small |
+| ~~Ask AI's Copy said "Copied" without a check; its rows and steps used 14 px (off the scale); focus ring 2 px~~ | 10 | the Copy button's check and timing, 15 px rows, the system's 3 px ring, 44 px Copy on touch (fixed 2026-11-13) | S | small |
+| The demo form on the landing (`site/src/demo/form.ts`) builds its own `df-*` controls; the select keeps the browser's arrow and the fields are not the system's | 10, 11 | build them from `ui-chip` / a Select primitive (a select with our chevron, like `frontend/src/controls.tsx`) | S | medium: the first thing people try |
+| Ask AI's card CSS (`site/src/ask/docs.ts`) keeps hover rules ungated, so they can stick after a tap | 9 | `@media (hover: hover)` as in `ui.css` | S | small |
+| `Stats.astro` and the concept diagrams (`arch.css`, `src/fragments/`) still use raw `--sl-*` colours and their own sizes | 10 | move to `--fg-*` tokens; Stats onto Tile / type tokens | S | small |
+| Starlight's own controls (theme select with a native arrow, search button, pagination) do not match the system | 11 | override them in `theme.css` with the `--fg-*` tokens, or replace the theme select with a Segmented / Menu | M | medium: in the header of every page |
+
 ## Bigger ideas (2026-11-11)
 
 - **Fix-it chips on errors.** When the agent reports a field error it can fix (format, range), the reply carries one intent chip ("Use +7 999 555 01 00") that applies the value with Undo.
 - **Bulk start.** First message: "Fill everything I can from my profile and documents" as one card with all fields grouped by tab and one "Fill in 23 fields".
 - **Phone layout.** At 390 px the form and the chat each get half the screen and the highlight lands off-screen. Make the chat a bottom sheet (peek / half / full) that drops to peek when the agent highlights a field.
 - **Final review.** Before submit: a summary card by tab, "Submit" as the one confirm action, empty required fields as jump links.
+- **Composer like Claude's (2026-11-13).** Done: the input grows with its text (also after server dictation), a pasted screenshot or a file dropped on the composer is attached like the paperclip's. Still to do: image attachments as thumbnails with an x (like iMessage / Claude), not a "📎 name" chip; a taller limit than 180 px on a computer (about a third of the panel).
 | ~~Field card: ISO dates, passport numbers digit-grouped (123,456), the same reason on every row, small checkbox targets, actions out of reach on phones~~ | 8, 9 | values by field `kind`, one shared reason, 22 px checkbox in a 44 px row on touch, sticky actions under 520 px | S | big (fixed 2026-11-12, chat-card-kit) |
 | ~~The one-script bundle carries the UI text of all seven languages~~ Fixed 2026-11-13: English built in, the rest packs loaded on first use (48.2 -> 39.4 KB, budget 42 KB) | | | | |
 | ~~Native browser pickers: the date popup, time spinners, number spin buttons, select arrows, 13 px checkboxes, the default slider~~ | 10 | our calendar, time grid, number stepper, select chevron, Apple-style checkbox and slider (references/controls.md) | M | big (fixed 2026-11-12) |

@@ -1,0 +1,20 @@
+---
+/**
+ * Chips: one choice of a few short options (a radiogroup). The group fires `ui-change` with {value}.
+ * With `label`, the group sits under a field label. Options: [value, label] or {value, label, style}.
+ */
+type Opt = readonly [string, string] | { value: string; label: string; style?: string }
+interface Props { label?: string; options: readonly Opt[]; value?: string; name?: string; class?: string; [attr: string]: unknown }
+const { label, options, value, name, class: cls, ...rest } = Astro.props
+const opts = options.map((o) => Array.isArray(o) ? { value: o[0], label: o[1] } : o as { value: string; label: string; style?: string })
+const current = value ?? opts[0]?.value
+const id = `ui-l-${Math.random().toString(36).slice(2, 8)}`
+---
+<div class:list={['ui-field', cls]}>
+  {label && <span class="ui-label" id={id}>{label}</span>}
+  <div class="ui-chips" role="radiogroup" aria-labelledby={label ? id : undefined} data-ui-choice={name ?? ''} {...rest}>
+    {opts.map((o) => <button type="button" role="radio" class="ui-chip" data-value={o.value} aria-checked={String(o.value === current)} tabindex={o.value === current ? 0 : -1} style={o.style}>{o.label}</button>)}
+  </div>
+</div>
+
+<script>import './ui.ts'</script>

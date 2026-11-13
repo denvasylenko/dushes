@@ -1,0 +1,16 @@
+---
+/** Colour swatches: a radiogroup of round colours; `any` adds the system colour picker as the last one. Fires `ui-change`. */
+interface Props { label?: string; colors: readonly string[]; value?: string; any?: boolean; name?: string; class?: string; [attr: string]: unknown }
+const { label, colors, value, any = false, name, class: cls, ...rest } = Astro.props
+const current = value ?? colors[0]
+const id = `ui-l-${Math.random().toString(36).slice(2, 8)}`
+---
+<div class:list={['ui-field', cls]}>
+  {label && <span class="ui-label" id={id}>{label}</span>}
+  <div class="ui-swatches" role="radiogroup" aria-labelledby={label ? id : undefined} data-ui-choice={name ?? ''} {...rest}>
+    {colors.map((c) => <button type="button" role="radio" class="ui-swatch" style={`--c:${c}`} data-value={c} aria-label={c} aria-checked={String(c === current)} tabindex={c === current ? 0 : -1} />)}
+    {any && <label class="ui-swatch ui-swatch--any" aria-label="Any colour"><input type="color" value={current} data-ui-any /></label>}
+  </div>
+</div>
+
+<script>import './ui.ts'</script>

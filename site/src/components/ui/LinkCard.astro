@@ -1,0 +1,10 @@
+---
+/** Link card: a whole tile that goes somewhere, a title, one line and a chevron. `tint` for the page's one invitation. */
+import Icon from './Icon.astro'
+interface Props { href: string; title: string; tint?: boolean; class?: string; [attr: string]: unknown }
+const { href, title, tint = false, class: cls, ...rest } = Astro.props
+---
+<a class:list={['ui-linkcard', 'not-content', { 'ui-linkcard--tint': tint }, cls]} href={href} {...rest}>
+  <span class="ui-linkcard-text"><b class="ui-linkcard-title">{title}</b><span class="ui-linkcard-body"><slot /></span></span>
+  <Icon name="chevron" />
+</a>

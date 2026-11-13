@@ -1,0 +1,12 @@
+---
+/** Range slider: a label with the current value, Apple's slider below it (accent track up to the thumb). */
+interface Props { id: string; label: string; min?: number; max?: number; step?: number; value: number; unit?: string; class?: string; [attr: string]: unknown }
+const { id, label, min = 0, max = 100, step = 1, value, unit = '', class: cls, ...rest } = Astro.props
+const p = ((value - min) / (max - min || 1)) * 100
+---
+<div class:list={['ui-field', 'ui-field--tight', cls]}>
+  <label class="ui-range-row" for={id}><span class="ui-label">{label}</span><output data-ui-out-for={id} data-unit={unit}>{value}{unit}</output></label>
+  <input id={id} class="ui-range" type="range" min={min} max={max} step={step} value={value} style={`--p:${p}%`} {...rest} />
+</div>
+
+<script>import './ui.ts'</script>

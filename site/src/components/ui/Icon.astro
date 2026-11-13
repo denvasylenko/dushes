@@ -1,0 +1,7 @@
+---
+/** The docs' icons: one stroke style, sized by font-size (1em), coloured by currentColor. Names in icons.ts. */
+import { ICONS, FILLED, type IconName } from './icons'
+interface Props { name: IconName; class?: string; label?: string }
+const { name, class: cls, label } = Astro.props
+---
+<svg class:list={['ui-icon', { 'is-fill': FILLED.has(name) }, cls]} viewBox="0 0 16 16" aria-hidden={label ? undefined : 'true'} role={label ? 'img' : undefined} aria-label={label} set:html={ICONS[name]} />

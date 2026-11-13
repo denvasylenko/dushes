@@ -3,6 +3,9 @@ title: React
 description: <AguiChat> is the widget as a React component. Pass the formguide plugin, and your form backend stays in charge.
 ---
 import { LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"The chat widget as a React component."} when={"Your form is a React app."} write={"`<AguiChat url=\"/agent/run\" plugins={[formguide({...})]} />`."} />
 
 ```tsx title="LoanPage.tsx"
 import { useMemo, useRef } from 'react'

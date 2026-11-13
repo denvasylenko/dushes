@@ -3,6 +3,9 @@ title: 'Send the form with every message'
 description: 'Each run carries {config, jsx_hash, form_id, ui}: props, values and what the user is looking at.'
 ---
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"The form's current props and values, sent with every message."} when={"Wiring a form: step two."} write={"`state: {config, jsx_hash, form_id, ui}` on every run."} />
 
 With **every** chat message the frontend sends the current form in `state` (the AG-UI field of that name):
 

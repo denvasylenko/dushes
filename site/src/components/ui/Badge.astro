@@ -1,0 +1,6 @@
+---
+/** Badge: a short status word or a count. `mono` for a code name. */
+interface Props { variant?: 'neutral' | 'accent' | 'ok' | 'warn'; mono?: boolean; class?: string }
+const { variant = 'neutral', mono = false, class: cls } = Astro.props
+---
+<span class:list={['ui-badge', variant !== 'neutral' && `ui-badge--${variant}`, { 'ui-badge--mono': mono }, cls]}><slot /></span>

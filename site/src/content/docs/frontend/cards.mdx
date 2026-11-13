@@ -3,6 +3,25 @@ title: 'Cards and answers'
 description: 'What the agent sends back (directives and four kinds of cards) and how the client answers each.'
 ---
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Every event the agent sends, and how to answer each card."} when={"You draw cards yourself, or want to know what the widget does."} write={"A renderer per card `type`; `resolve(answer)` when the user decides."} />
+
+**Using `<agui-chat>`? It draws every card for you: you can skip this page.** It is for your own client, or to know exactly what arrives.
+
+The whole job, in one handler:
+
+```ts
+onCustomEvent: ({ event }) => {
+  if (event.name === 'ui_directive') return focusField(event.value)          // "look here": open the tab, scroll, ring
+  if (event.name !== 'on_interrupt') return
+  const card = JSON.parse(event.value)                                        // the run stops until it is answered
+  if (card.type === 'set_fields') showFieldCard(card, (names) => answer({ accepted: true, config: newConfig, names }))
+  if (card.type === 'ask')        showQuestion(card, (ids) => answer({ answer: { ids } }))
+  // upload, confirm, review: the same pattern, see below
+}
+const answer = (resume) => agent.runAgent({ forwardedProps: { command: { resume } } })
+```
 
 The agent streams AG-UI events. Here is **everything the frontend can receive**, and what to draw for it. To see each card working before you read its payload, open the [card gallery](../card-gallery/): every card live, with the event that produces it and the answer it sends back.
 
@@ -279,7 +298,7 @@ The model asks *what*; the widget decides *how* to draw it from the payload. Eve
 | question | `options[].description` | two-line options ("Car loan / from 16.9% · up to 7 years") | |
 | question | 2-3 options with the same `options[].attrs`, `recommended` | a comparison in columns (stacked on phones); "From the documents" when the question has `sources` | |
 | question | more than 12 options, `suggested` | a search box; the suggested options first | |
-| question | `input: {type: "date", min?, max?}` | Today, Tomorrow and the next days, plus Other date (our own calendar, no browser popup); a date in the past opens the calendar on the right month | |
+| question | `input: {type: "date", min?, max?}` | Today, Tomorrow and the next days, plus Other date (our own calendar, no browser popup); a date in the past opens the calendar: on the years when `max` is today (a date of birth: year, month, day in three taps), else on the month of `max`; the server sets `max` to today for date fields named like `birth_date` or `issue_date` | |
 | question | `input: {type: "time", min?, max?}`, `slots?` | free slots, else times every 30 minutes | `getSlots(field, date)` |
 | question | `input: {type: "number", min, max, step, unit?}` | a stepper (under 10 steps) or a slider, a live line, "Set 5 years" | `preview(field, value)` |
 | question | `input: {type: "address"}` | suggestions as you type | `lookupAddress(field, query)` |

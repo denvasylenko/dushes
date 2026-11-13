@@ -18,6 +18,7 @@ import { Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/comp
 import LiveDemo from '../../components/LiveDemo.astro';
 import Stats from '../../components/Stats.astro';
 import Flow from '../../components/Flow.astro';
+import SetupPrompt from '../../components/SetupPrompt.astro';
 
 <Tabs syncKey="pkg">
   <TabItem label="pip">
@@ -36,6 +37,8 @@ import Flow from '../../components/Flow.astro';
     ```
   </TabItem>
 </Tabs>
+
+<SetupPrompt />
 
 <LiveDemo />
 

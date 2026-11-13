@@ -18,6 +18,71 @@
   --fg-glow: hsla(175, 79%, 30%, 0.12);
 }
 
+/*
+ * The docs design system's tokens (site/src/components/ui/, shown on reference/design-system).
+ * Colours are built from Starlight's --sl-* so both themes follow; --sl-color-white is the ink in either theme,
+ * so a fill mixed from it is a translucent grey that works on any surface (like Apple's system fills).
+ */
+:root {
+  /* ink and surfaces */
+  --fg-ink: var(--sl-color-white);
+  --fg-ink-2: var(--sl-color-gray-2);
+  --fg-ink-3: var(--sl-color-gray-3);
+  --fg-surface: var(--sl-color-bg-nav);                                   /* a tile on the page */
+  --fg-sunken: var(--sl-color-bg);                                        /* code inside a tile */
+  --fg-elevated: color-mix(in srgb, var(--sl-color-gray-6), var(--sl-color-white) 6%); /* a menu over the page */
+  --fg-fill: color-mix(in srgb, var(--sl-color-white) 8%, transparent);   /* chips, grey buttons, the segmented track */
+  --fg-fill-2: color-mix(in srgb, var(--sl-color-white) 14%, transparent);/* their hover */
+  --fg-line: var(--sl-color-hairline-light);
+  --fg-thumb: color-mix(in srgb, var(--sl-color-white) 26%, var(--sl-color-gray-6));
+  --fg-thumb-shadow: 0 1px 3px hsla(0, 0%, 0%, .35);
+  /* the one accent */
+  --fg-accent: var(--sl-color-accent);
+  --fg-on-accent: var(--sl-color-black);
+  --fg-accent-ink: var(--sl-color-text-accent);                           /* accent-coloured text and links */
+  --fg-accent-soft: var(--sl-color-accent-low);                           /* a selected chip, a tinted tile */
+  --fg-focus: color-mix(in srgb, var(--sl-color-accent) 55%, transparent);
+  --fg-ok: var(--sl-color-green-high);
+  /* depth */
+  --fg-shadow-pop: 0 18px 50px -18px hsla(0, 0%, 0%, .55), 0 0 0 1px var(--sl-color-hairline-light);
+  --fg-shadow-lift: 0 18px 50px -24px hsla(0, 0%, 0%, .45);
+  /* type (px steps of the ui-craft scale) */
+  --fg-fs-caption: 11px;
+  --fg-fs-footnote: 12px;
+  --fg-fs-sub: 13px;
+  --fg-fs-callout: 15px;
+  --fg-fs-headline: 17px;
+  --fg-fs-title: 22px;
+  /* radii */
+  --fg-r-sm: 6px;
+  --fg-r-ctl: 10px;
+  --fg-r-card: 14px;
+  --fg-r-panel: 20px;
+  --fg-r-tile: 24px;
+  --fg-r-pill: 999px;
+  /* motion */
+  --fg-dur-instant: 120ms;
+  --fg-dur-quick: 200ms;
+  --fg-ease: cubic-bezier(.2, .8, .2, 1);
+  /* pressable heights: dense computer UI, regular, touch */
+  --fg-h-sm: 32px;
+  --fg-h-md: 36px;
+  --fg-h-lg: 44px;
+}
+:root[data-theme='light'] {
+  --fg-fill: color-mix(in srgb, var(--sl-color-white) 6%, transparent);
+  --fg-fill-2: color-mix(in srgb, var(--sl-color-white) 11%, transparent);
+  --fg-thumb: var(--sl-color-black);
+  --fg-elevated: var(--sl-color-black);
+  --fg-thumb-shadow: 0 1px 3px hsla(224, 20%, 20%, .18), 0 0 0 .5px hsla(224, 20%, 20%, .08);
+  --fg-on-accent: hsl(0, 0%, 100%);
+  --fg-ok: var(--sl-color-green-high);
+  --fg-shadow-pop: 0 18px 50px -18px hsla(224, 30%, 20%, .28), 0 0 0 1px var(--sl-color-hairline-light);
+  --fg-shadow-lift: 0 18px 50px -24px hsla(224, 30%, 20%, .25);
+}
+/* touch screens: every pressable is at least 44 px */
+@media (pointer: coarse) { :root { --fg-h-sm: 44px; --fg-h-md: 44px; } }
+
 .sl-markdown-content :is(h1, h2, h3, h4), h1#_top, .site-title, .hero h1 {
   font-family: var(--fg-display);
   letter-spacing: -0.02em;

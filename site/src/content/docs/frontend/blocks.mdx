@@ -1,0 +1,100 @@
+---
+title: Blocks
+description: The small parts every card of your own is made of; they follow the theme, so your cards look like the chat's own.
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import CardGallery from '../../../components/CardGallery.astro';
+import BlocksSheet from '../../../components/BlocksSheet.astro';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"The small parts your own cards are built from."} when={"You declared a card and want to see how it looks"} write={"A list of blocks: `title`, `row`, `place`, `buttons`, ..."} />
+
+Every card of your own is made of these 16 blocks, stacked top to bottom. The label over each is its `type`:
+
+<BlocksSheet />
+
+A card of type `blocks` is a list of blocks, drawn in order. The server sends it from a [card spec](../../backend/cards/); you can also show one from your own code:
+
+```js
+const answer = await chat.showCard({ type: 'blocks', blocks: [
+  { type: 'title', text: 'Is this your barber?' },
+  { type: 'place', title: 'Maria Ivanova', subtitle: 'Barbershop on Arbat', rating: 4.9 },
+  { type: 'row', label: 'Next free slot', value: 'Today, 16:30', icon: 'calendar' },
+  { type: 'buttons', items: [{ id: 'yes', label: 'Yes, book her', style: 'primary' }, { id: 'no', label: 'Another barber' }] },
+] })
+// { action: 'yes', label: 'Yes, book her', values: {} }
+```
+
+Colours come only from the theme and a block's `tone` (`accent`, `ok`, `danger`, `muted`), so a card follows light and dark and every [theme](../themes/). Below, every block live; build cards from them in the [Playground](../playground/) (Your own cards).
+
+<CardGallery groups={['catalog']} intro={false} />
+
+Compose your own card from these in the [Playground](../playground/) (Your own cards): add blocks, edit them, reorder, copy the spec.
+
+## The blocks
+
+| Block | Keys | Looks like |
+| --- | --- | --- |
+| `title` | `text`, `subtitle?` | the card's question and a grey line |
+| `text` | `text` (inline markdown), `tone?` | a paragraph |
+| `note` | `text` | a small grey line |
+| `row` | `label`, `value`, `icon?`, `tone?` | a row of an iOS grouped list; rows next to each other form one list |
+| `image` | `src` (https or data:image), `alt?`, `ratio?` (`16:9`, `4:3`, `1:1`) | a photo with rounded corners |
+| `place` | `title`, `subtitle?`, `image?`, `rating?` | a person or a place: a photo or an initial, a name, a line, ★ 4.9 |
+| `stat` | `value`, `label?`, `tone?` | a big number or date, like a balance |
+| `diff` | `label?`, `from`, `to` | the old value struck through → the new one |
+| `steps` | `title?` (`{left}` counts open steps), `items: [{label, done?}]` | a checklist with round ticks |
+| `progress` | `value`, `max?` (100), `label?` | a thin bar |
+| `swatches` | `name`, `items: [{id, label?, colors: [hex]}]`, `multiple?` | palettes to pick |
+| `choice` | `name`, `options: [{id, label}]` or `["a", "b"]`, `multiple?` | chips to pick |
+| `field` | `name`, `label?`, `input?` (`text`, `tel`, `email`, `number`, `date`, `url`), `placeholder?`, `value?` | a field |
+| `buttons` | `items: [{id, label, style?, fills?}]`, styles `primary`, `secondary`, `plain`, `danger` | the card's actions; one primary. `fills: {field: value}` fills form fields on the tap, with Undo |
+| `links` | `items: [{kind, label, value}]` | actions that work at once, see below |
+| `divider` | | a hairline |
+
+An unknown block is skipped, so a newer server never breaks an older chat.
+
+## Answers
+
+A button with an `id` resolves the card with `{action, label, values}`: `values` has the choices, swatches and fields by `name`. The card folds into its result line ("✓ Yes, book her"), like the built-in cards.
+
+## Links
+
+| `kind` | `value` | Does |
+| --- | --- | --- |
+| `call` | a phone number | `tel:` |
+| `route` | an address | opens Maps |
+| `web` | an https URL | opens it in a new tab |
+| `calendar` | `{title, start (ISO), minutes?, place?}` | downloads an .ics: Add to calendar |
+| `share` | a text or URL | the share sheet (copies where there is none) |
+| `copy` | a text | copies it, the link says "Copied" |
+| `chat` | a text | sends it as the user's message |
+
+A link without a value (no phone given) is left out. Images and links from data accept only https (and data: images): `javascript:` and the like are dropped.
+
+## Handle a button yourself
+
+For a button your code handles without the model (save a step, apply a style, send a booking to your server), give the plugin `onAction`; return true and the chat does nothing more. Redraw the card in place with `updateCard`:
+
+```js
+chat.use(AguiChat.formguide({ getState, applyChanges,
+  onAction: async (card, action, chat) => {
+    if (action.id !== 'save_hours') return false
+    await fetch('/api/hours', { method: 'POST', body: JSON.stringify(action.values) })
+    chat.updateCard(card.card_id, { blocks: [{ type: 'steps', title: 'All set', items: [{ label: 'Opening hours', done: true }] }] })
+    return true
+  },
+}))
+chat.addEventListener('agui:applied', (e) => scrollPreviewTo(e.detail.fields))   // what a card filled
+```
+
+A card of your own that blocks cannot express: `chat.renderers.set('booking', (card, ctx) => …)` draws it inside the chat, so the theme's tokens and classes apply; `AguiChat.blocksCard(payload, ctx, answer)` builds blocks inside it.
+
+## Style them
+
+Each block has a part, `block-<type>` (`agui-chat::part(block-place)`), and the card `blocks blocks-<name>`, so the page can restyle one kind of card. See [Themes and styling](../themes/).
+
+<CardGrid>
+  <LinkCard title="Cards from blocks" description="Declare a card on the server; the model fills it." href="../../backend/cards/" />
+  <LinkCard title="Card gallery" description="Every card, live." href="../card-gallery/" />
+</CardGrid>

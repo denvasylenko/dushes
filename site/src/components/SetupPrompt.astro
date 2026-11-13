@@ -1,0 +1,136 @@
+---
+/**
+ * "Set it up with your AI agent": pick the client, the model provider and where the server runs, copy one prompt
+ * for Claude Code, Cursor or any coding agent. The prompt names the exact steps and links the docs pages as Markdown,
+ * so the agent reads the real instructions instead of guessing. One main action: Copy prompt.
+ */
+import { Button, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, Tile } from './ui'
+
+const CLIENTS = [
+  ['widget', 'Any page'],
+  ['react', 'React'],
+  ['rhf', 'react-hook-form'],
+  ['copilotkit', 'CopilotKit'],
+  ['site', 'A whole site'],
+]
+const PROVIDERS = [['anthropic', 'Anthropic'], ['openai', 'OpenAI'], ['azure', 'Azure OpenAI'], ['gemini', 'Gemini'], ['ollama', 'Ollama']]
+const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAPI app']]
+---
+<Tile class="sp not-content" data-sp>
+  <Callout title="Set it up with your AI agent">Pick what you have, copy one prompt into Claude Code, Cursor or any coding agent. It follows these docs step by step.</Callout>
+
+  <ChipGroup label="Your app" options={CLIENTS} data-k="client" />
+  <ChipGroup label="Model" options={PROVIDERS} data-k="provider" />
+  <ChipGroup label="Server" options={SERVERS} data-k="server" />
+
+  <div class="sp-acts">
+    <CopyButton variant="filled" size="lg" label="Copy prompt" done="Copied. Paste it into your agent" auto={false} data-copy />
+    <Button variant="plain" href="https://claude.ai/new" target="_blank" rel="noopener" data-open-claude>Open in Claude</Button>
+  </div>
+
+  <Disclosure summary="See the prompt" data-preview>
+    <CodePanel copy={false} wrap maxHeight="320px" data-prompt />
+  </Disclosure>
+</Tile>
+
+<script>
+  import { copyText } from './ui/ui'
+  type Choice = { client: string; provider: string; server: string }
+  const PROVIDER: Record<string, { pkg: string; key: string; yaml: string }> = {
+    anthropic: { pkg: 'langchain-anthropic (in formguide[all])', key: 'ANTHROPIC_API_KEY', yaml: 'model: "anthropic:claude-haiku-5-5"' },
+    openai: { pkg: 'langchain-openai (in formguide[all])', key: 'OPENAI_API_KEY', yaml: 'model: "openai:gpt-5"' },
+    azure: { pkg: 'langchain-openai (in formguide[all])', key: 'AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT',
+      yaml: 'models:\n  agent: {class: "langchain_openai:AzureChatOpenAI", azure_deployment: <your deployment>, api_version: "2025-04-01-preview", azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}' },
+    gemini: { pkg: 'langchain-google-genai', key: 'GOOGLE_API_KEY', yaml: 'model: "google_genai:gemini-2.5-pro"' },
+    ollama: { pkg: 'langchain-ollama', key: 'none (a local model)', yaml: 'models:\n  agent: {provider: ollama, model: llama3.1, base_url: "http://localhost:11434"}' },
+  }
+  const CLIENT: Record<string, { name: string; pages: string[]; steps: string[] }> = {
+    widget: { name: 'the <agui-chat> Web Component on any page', pages: ['frontend/plain-html', 'frontend/chat-widget', 'form/contract'], steps: [
+      'Add <agui-chat url="/agent/run"> and the widget script to the page that has the form.',
+      'Register the form once (POST /agent/layouts with the form\'s JSX skeleton) and keep the returned jsx_hash.',
+      'chat.use(formguide({ getState, applyChanges })): getState returns {config, jsx_hash, form_id, ui}; applyChanges sends the accepted values to my form backend and returns the new config.',
+    ] },
+    react: { name: 'React with <AguiChat>', pages: ['frontend/react', 'frontend/chat-widget', 'form/contract'], steps: [
+      'Install @formguide/agui-chat and render <AguiChat url="/agent/run" plugins={[formguide({...})]} /> next to the form.',
+      'Register the form once (POST /agent/layouts) and keep the jsx_hash.',
+      'getState returns {config, jsx_hash, form_id, ui}; applyChanges sends accepted values to my form backend and returns the new config.',
+    ] },
+    rhf: { name: 'a react-hook-form form', pages: ['frontend/react-hook-form', 'form/contract'], steps: [
+      'Install @formguide/agui-chat and use useFormguide(form, schema) from @formguide/agui-chat/react-hook-form with my existing useForm(); render <AguiChat plugins={plugins} /> from @formguide/agui-chat/react.',
+      'Describe the fields in the schema (name, label, type, options, sections) exactly as the guide shows.',
+    ] },
+    copilotkit: { name: 'CopilotKit', pages: ['frontend/copilotkit', 'form/contract', 'frontend/cards'], steps: [
+      'Add a CopilotRuntime endpoint (Express or Next.js) with an HttpAgent pointing at <formguide>/agent/run; no model key there.',
+      'Point CopilotKitProvider at the runtime (runtimeUrl, agentId "formguide"); do not use agents__unsafe_dev_only.',
+      'Register the form, send it with every run via agent.setState, and draw the cards with useInterrupt.',
+    ] },
+    site: { name: 'a site assistant across the whole site', pages: ['backend/site-assistant', 'frontend/site-assistant', 'form/contract'], steps: [
+      'Write a site map (site.yaml, or build it from my CMS or routes with SiteMap.load(dict)) with pages, sections and which page holds which form.',
+      'Mount create_site_router(SiteGuide(guide, site_map)) under /site next to formguide\'s /agent router.',
+      'In the page: <agui-chat url="/site/run">, send {page, form?} as state, follow CUSTOM site_directive, and run once with forwardedProps.handoff after a form opens.',
+    ] },
+  }
+  const SERVER: Record<string, { pages: string[]; steps: string[] }> = {
+    standalone: { pages: ['backend/install'], steps: ['Run it: formguide serve --config formguide.yaml --port 8000 --cors <my app origin>.'] },
+    fastapi: { pages: ['backend/install', 'backend/deploy'], steps: [
+      'Mount it in my FastAPI app: app.include_router(create_router(FormGuide(load_config("formguide.yaml"))), prefix="/agent", dependencies=[Depends(<my auth>)]).',
+    ] },
+  }
+
+  const docs = new URL(import.meta.env.BASE_URL.replace(/\/?$/, '/'), location.origin).href
+  const md = (slug: string) => `${docs}${slug}.md`
+
+  function prompt(c: Choice): string {
+    const p = PROVIDER[c.provider], cl = CLIENT[c.client], sv = SERVER[c.server]
+    const pages = [...new Set(['getting-started/quick-start', 'backend/configuration', 'backend/models', ...sv.pages, ...cl.pages])]
+    let n = 0
+    const step = (s: string) => `${++n}. ${s}`
+    return [
+      `Add formguide to this project: a chat agent next to my form that shows where to click, answers from my documents and fills fields after the user confirms. Use ${cl.name}.`,
+      ``,
+      `Read these pages first and follow them exactly; do not invent keys, endpoints or options they do not show:`,
+      ...pages.map((s) => `- ${md(s)}`),
+      `The index of all pages: ${docs}llms.txt`,
+      ``,
+      `Backend (Python):`,
+      step(`pip install "formguide[all] @ git+https://github.com/denvasylenko/dushes.git#subdirectory=backend"${c.provider === 'gemini' || c.provider === 'ollama' ? ` and ${p.pkg}` : ''}.`),
+      step(`Create formguide.yaml with:\n   ${p.yaml.replace(/\n/g, '\n   ')}`),
+      step(`Put the key in the server's environment, never in the browser: ${p.key}.`),
+      ...sv.steps.map(step),
+      step(`Check the config without calling a model: formguide check --config formguide.yaml.`),
+      ``,
+      `Frontend:`,
+      ...cl.steps.map(step),
+      ``,
+      `Finally, show me what you changed and how to try it: send a message like "Where do I start?" in the chat.`,
+    ].join('\n')
+  }
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-sp]')) {
+    const choice: Choice = { client: 'widget', provider: 'anthropic', server: 'standalone' }
+    const code = root.querySelector<HTMLElement>('[data-prompt] code')!
+    const claude = root.querySelector<HTMLAnchorElement>('[data-open-claude]')!
+    const render = () => {
+      const text = prompt(choice)
+      code.textContent = text
+      claude.href = `https://claude.ai/new?q=${encodeURIComponent(text)}`
+    }
+    // the chips are ChipGroups: each fires ui-change with the picked value
+    root.querySelectorAll<HTMLElement>('[data-k]').forEach((g) => g.addEventListener('ui-change', (e) => {
+      choice[g.dataset.k as keyof Choice] = (e as CustomEvent<{ value: string }>).detail.value
+      render()
+    }))
+    const copy = root.querySelector<HTMLElement>('[data-copy]')!
+    copy.addEventListener('click', async () => {
+      if (!(await copyText(copy, code.textContent ?? ''))) root.querySelector<HTMLDetailsElement>('[data-preview]')!.open = true   // no clipboard: show it to copy by hand
+    })
+    render()
+  }
+</script>
+
+<style>
+  /* layout only: every control is a primitive from ./ui */
+  .sp { margin: 1.5rem 0 2rem; display: flex; flex-direction: column; gap: 20px; }
+  .sp-acts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  @media (max-width: 50rem) { .sp-acts { justify-content: center; gap: 8px; } .sp-acts > .ui-btn--filled { width: 100%; } }
+</style>

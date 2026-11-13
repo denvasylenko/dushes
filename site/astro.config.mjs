@@ -22,7 +22,7 @@ export default defineConfig({
 			lastUpdated: false,
 			components: { PageTitle: './src/components/PageTitle.astro', SiteTitle: './src/components/SiteTitle.astro', SocialIcons: './src/components/SocialIcons.astro' },
 			head: [{ tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', title: 'llms.txt', href: `${process.env.DOCS_BASE ?? '/dushes'}/llms.txt` } }],
-			customCss: ['@fontsource-variable/space-grotesk', '@fontsource/ibm-plex-mono/400.css', '@fontsource/ibm-plex-mono/500.css', './src/styles/theme.css'],
+			customCss: ['@fontsource-variable/space-grotesk', '@fontsource/ibm-plex-mono/400.css', '@fontsource/ibm-plex-mono/500.css', './src/styles/theme.css', './src/components/ui/ui.css'],
 			expressiveCode: { themes: ['github-dark-default', 'github-light'], styleOverrides: { borderRadius: '10px' } },
 			sidebar: [
 				{ label: 'Get started', items: [
@@ -37,6 +37,7 @@ export default defineConfig({
 					{ label: 'Domain packs', slug: 'backend/domain-packs' },
 					{ label: 'Business documents', slug: 'backend/knowledge' },
 					{ label: 'Skills and tools', slug: 'backend/skills' },
+					{ label: 'Cards from blocks', slug: 'backend/cards' },
 					{ label: 'Site assistant', slug: 'backend/site-assistant' },
 					{ label: 'Persistence and history', slug: 'backend/persistence' },
 					{ label: 'Prefill', slug: 'backend/prefill' },
@@ -53,6 +54,7 @@ export default defineConfig({
 					{ label: 'Plain HTML', slug: 'frontend/plain-html' },
 					{ label: 'Cards and answers', slug: 'frontend/cards' },
 					{ label: 'Card gallery', slug: 'frontend/card-gallery', badge: { text: 'live', variant: 'tip' } },
+					{ label: 'Blocks', slug: 'frontend/blocks' },
 					{ label: 'Themes and styling', slug: 'frontend/themes' },
 					{ label: 'Playground', slug: 'frontend/playground' },
 					{ label: 'Frontend tools', slug: 'frontend/frontend-tools' },
@@ -89,6 +91,7 @@ export default defineConfig({
 					{ label: 'Python API', slug: 'reference/python-api' },
 					{ label: 'CLI', slug: 'reference/cli' },
 					{ label: '<agui-chat> API', slug: 'reference/agui-chat' },
+					{ label: 'Design system', slug: 'reference/design-system' },
 				] },
 				{ label: 'Specifications', collapsed: true, items: [{ autogenerate: { directory: 'specifications' } }] },
 			],

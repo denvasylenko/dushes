@@ -3,8 +3,29 @@ title: 'Build the components'
 description: 'What every element, field, container and the page must do so "look here" and cards work.'
 ---
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
 
-You can use any UI library. What matters is the behaviour below.
+<Summary what={"How each form component must behave so the agent can work with it."} when={"You build or adapt the form's components."} write={"A `name` on every element and props from your form backend."} />
+
+You can use any UI library. What matters is the behaviour below. A field that does all of it, in React:
+
+```tsx title="Field.tsx"
+function Field({ name, props, state, onChange, highlighted, hint }) {
+  const p = props[name] ?? { visible: false }             // no props entry: treat it as hidden
+  if (p.visible === false) return null
+  return (
+    <label data-name={name} className={highlighted ? 'field ring' : 'field'}>   {/* data-name: "look here" finds it */}
+      <span>{p.label ?? name}{p.required && ' *'}</span>
+      <input value={state[name] ?? ''} disabled={p.disabled || p.readonly}
+             placeholder={p.placeholder} onChange={(e) => onChange(name, e.target.value)} />
+      {p.error && <small className="error">{p.error}</small>}     {/* the agent reads the same text */}
+      {hint && <small className="hint">{hint}</small>}            {/* the agent's note, from a directive */}
+    </label>
+  )
+}
+```
+
+The rules behind it, element by element:
 
 ## Every element
 

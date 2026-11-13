@@ -1,0 +1,6 @@
+---
+/** Tile: a soft-filled surface, 24 px corners (20 on a phone). `sunken` for code inside a tile, `tint` for the accent. */
+interface Props { as?: 'div' | 'section' | 'article' | 'aside'; variant?: 'default' | 'sunken' | 'tint'; size?: 'sm' | 'md' | 'lg'; flush?: boolean; class?: string; [attr: string]: unknown }
+const { as: Tag = 'div', variant = 'default', size = 'md', flush = false, class: cls, ...rest } = Astro.props
+---
+<Tag class:list={['ui-tile', variant !== 'default' && `ui-tile--${variant}`, size !== 'md' && `ui-tile--${size}`, { 'ui-tile--flush': flush }, cls]} {...rest}><slot /></Tag>

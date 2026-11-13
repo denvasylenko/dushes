@@ -28,6 +28,10 @@ function mdxToMd(body: string): string {
     .replace(/^(?:\s*import .*\n)+/, '')   // the MDX imports at the top only; imports inside code blocks stay
     .replace(/<Arch[^>]*?fragment="([a-z]+)"[^>]*\/>/g, (_m, p) => htmlToText(fragments[`../fragments/${p}.html`] ?? ''))
     .replace(/<ArchFigure[^>]*\/>/g, '')
+    // the "at a glance" block: three plain lines (the attributes are JSON strings)
+    .replace(/<Summary\s+what=\{("(?:[^"\\]|\\.)*")\}\s+when=\{("(?:[^"\\]|\\.)*")\}\s+write=\{("(?:[^"\\]|\\.)*")\}[^>]*\/>/g,
+      (_m, a, b, c) => `- **What:** ${JSON.parse(a)}\n- **When you need it:** ${JSON.parse(b)}\n- **You write:** ${JSON.parse(c)}`)
+    .replace(/<[A-Z][A-Za-z]*(\s[^>]*)?\/>/g, '')   // any other self-closing component (live widgets)
     .replace(/<LinkCard\s+title="([^"]+)"(?:\s+description="([^"]*)")?\s+href="([^"]+)"\s*\/>/g, (_m, t, d, h) => `- [${t}](${h})${d ? `: ${d}` : ''}`)
     .replace(/<Card\s+title="([^"]+)"[^>]*>/g, '**$1.** ')
     .replace(/<TabItem\s+label="([^"]+)"[^>]*>/g, '\n**$1**\n')

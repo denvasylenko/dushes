@@ -4,6 +4,9 @@ description: One <agui-chat> for the whole site. Send the page with every run, f
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 import SiteDemoLink from '../../../components/SiteDemoLink.astro';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"The page side of the site assistant."} when={"You set up the site assistant on the server."} write={"`url=\"/site/run\"`, the page in `state`, and follow `site_directive`."} />
 
 The server side is [Site assistant](../../backend/site-assistant/). In the page, the chat points at `/site/run` instead of `/agent/run`, and three things change.
 

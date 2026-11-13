@@ -3,6 +3,9 @@ title: Prefill
 description: Turn data your app already has (a profile, a note, a scan) into checked values for this form, before the user types anything.
 ---
 import { Tabs, TabItem, LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Turn data your app already has into checked values for the form."} when={"You know the user's profile, or they uploaded a document."} write={"`POST /agent/prefill` with `data`, `text` or `attachment_ids`."} />
 
 Your app often knows half the form already: the user's profile, what they typed on an earlier screen, a document they uploaded. Prefill maps that onto **this** form's fields and validates every value the way the agent's own proposals are validated. It does not write to the form: it tells you what can be filled and you decide.
 

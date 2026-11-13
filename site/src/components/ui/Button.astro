@@ -1,0 +1,22 @@
+---
+/**
+ * Button. `filled` is the one main action in view; `gray` a secondary action; `plain` a text link;
+ * `quiet` a toolbar button (a fill on hover). An `href` makes it a link. 44 px on touch screens.
+ */
+import Icon from './Icon.astro'
+import type { IconName } from './icons'
+interface Props {
+  variant?: 'filled' | 'gray' | 'plain' | 'quiet'
+  size?: 'sm' | 'md' | 'lg'
+  href?: string
+  icon?: IconName
+  iconOnly?: boolean
+  block?: boolean
+  class?: string
+  [attr: string]: unknown
+}
+const { variant = 'gray', size = 'md', href, icon, iconOnly = false, block = false, class: cls, ...rest } = Astro.props
+const Tag = href ? 'a' : 'button'
+const classes = ['ui-btn', `ui-btn--${variant}`, size !== 'md' && `ui-btn--${size}`, { 'ui-btn--icon': iconOnly, 'ui-btn--block': block }, cls]
+---
+<Tag class:list={classes} href={href} type={href ? undefined : 'button'} {...rest}>{icon && <Icon name={icon} />}<slot /></Tag>

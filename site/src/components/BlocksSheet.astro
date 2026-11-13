@@ -1,0 +1,61 @@
+---
+/**
+ * Every block of a card on one sheet: the shipped widget draws each block alone, labelled with its `type`,
+ * with no chat around it, so you see what you compose a card from at a glance.
+ */
+import { SHEET } from '../demo/gallery'
+---
+<div class="bs not-content" aria-label="Every block">
+  {SHEET.map(([type, blocks]) => (
+    <figure class="bs-cell">
+      <figcaption><code>{type}</code></figcaption>
+      <agui-chat mode="inline" persist-thread="off" attach="off" typing="plain" lang="en" data-blocks={JSON.stringify(blocks)}></agui-chat>
+    </figure>
+  ))}
+</div>
+
+<script>
+  import '../../../packages/agui-chat/src/index'
+  import { formguide } from '../../../packages/agui-chat/src/formguide/index'
+  import type { AguiChatElement } from '../../../packages/agui-chat/src/element'
+
+  const scheme = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
+  // a block alone: no motion, no scrolling, the chat as tall as its card
+  const QUIET = '.log { overflow: hidden !important; padding: 0 !important; background: transparent !important; } .card { animation: none !important; opacity: 1 !important; margin: 0 !important; }'
+
+  for (const chat of document.querySelectorAll<AguiChatElement>('.bs agui-chat')) {
+    chat.setAttribute('scheme', scheme())
+    const plugin = formguide({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'sheet' }), applyChanges: async () => ({}) })
+    delete plugin.restore
+    chat.use(plugin)
+    requestAnimationFrame(() => {
+      const style = document.createElement('style')
+      style.textContent = QUIET
+      chat.shadowRoot?.append(style)
+      void chat.showCard({ type: 'blocks', blocks: JSON.parse(chat.dataset.blocks ?? '[]') })
+      // the chat follows its card's height (an image loads later, a font arrives): no gap, nothing cut
+      const fit = () => {
+        const card = chat.shadowRoot?.querySelector('.card')
+        if (!card) return void requestAnimationFrame(fit)
+        const size = () => { chat.style.height = `${Math.ceil((card as HTMLElement).offsetHeight)}px` }
+        size()
+        new ResizeObserver(size).observe(card)
+      }
+      requestAnimationFrame(fit)
+    })
+  }
+  new MutationObserver(() => document.querySelectorAll('.bs agui-chat').forEach((c) => c.setAttribute('scheme', scheme())))
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+</script>
+
+<style is:global>
+  .bs { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 12px; margin: 1.5rem 0 2rem; align-items: start; }
+  .bs-cell { margin: 0; padding: 10px 10px 10px; border-radius: var(--fg-r-panel, 16px); background: var(--fg-fill, var(--sl-color-gray-6)); }
+  .bs-cell figcaption { margin: 0 4px 6px; }
+  .bs-cell figcaption code { font-size: .8rem; color: var(--fg-accent-ink, var(--sl-color-accent)); background: none; padding: 0; }
+  .bs agui-chat { display: block; height: 120px; background: transparent; --agui-accent: var(--sl-color-accent); --agui-on-accent: #fff; --agui-link: var(--sl-color-accent); border-radius: 12px; overflow: hidden; }
+  :root[data-theme='dark'] .bs agui-chat { --agui-accent: var(--sl-color-accent-high); --agui-on-accent: var(--sl-color-black); --agui-link: var(--sl-color-accent-high); }
+  .bs agui-chat::part(header), .bs agui-chat::part(composer) { display: none; }
+  /* one frame only: the card on the tile, not the chat's own frame around it */
+  .bs agui-chat::part(panel) { border: 0; border-radius: 0; background: transparent; }
+</style>

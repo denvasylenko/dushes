@@ -2,6 +2,9 @@
 title: react-hook-form
 description: An ordinary react-hook-form form with the formguide chat next to it. The glue is a schema and one hook.
 ---
+import { Summary } from '../../../components/ui';
+
+<Summary what={"formguide for a react-hook-form or Formik form, without a form backend."} when={"Your form is react-hook-form, Formik or plain `useState`."} write={"A short schema and `useFormguide(form, schema)`."} />
 
 A form built with react-hook-form (or Formik, or `useState`) has no JSX skeleton or `{props, state}` config for formguide to read. The schema bridge builds both from a short declarative schema, and `useFormguide` wires it to the chat. The form itself knows nothing about the chat.
 
