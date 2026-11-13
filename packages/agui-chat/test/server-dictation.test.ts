@@ -58,6 +58,7 @@ describe('server dictation', () => {
     await tick()
     expect($(el, '.box').classList.contains('rec')).toBe(true)
     expect(mic.classList.contains('on')).toBe(true)
+    expect(mic.innerHTML).not.toContain('M5 11')                   // a stop square on red, not the mic glyph
     mic.click()                                                    // stop: transcribe
     await tick(); await tick()
     expect(calls[0].url).toMatch(/\/agent\/transcribe$/)

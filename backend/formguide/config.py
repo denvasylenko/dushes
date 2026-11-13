@@ -122,6 +122,7 @@ class GuideConfig:
     attachments_enabled: bool = True                 # False: no uploads and no reading of attached files
     privacy_note: str = ""                           # shown on upload requests (`privacy`)
     transcription: Any = None                        # TranscriptionConfig: server-side dictation (POST /transcribe)
+    prompt_cache: str = "auto"                       # auto: cache breakpoints where the provider needs them; off
 
 
 # ===================================================================== YAML
@@ -230,6 +231,11 @@ def load_config(path: str | Path) -> GuideConfig:
         cfg.privacy_note = str(at.get("privacy_note") or "").strip()[:200]
     from .transcribe import TranscriptionConfig
     cfg.transcription = TranscriptionConfig.parse(raw.get("transcription"))
+    pc = raw.get("prompt_cache", "auto")
+    pc = {True: "auto", False: "off"}.get(pc, pc)
+    if pc not in ("auto", "off"):
+        raise ValueError("prompt_cache must be auto or off")
+    cfg.prompt_cache = pc
     sg = raw.get("suggestions")
     if sg is not None:
         sg = {"enabled": sg} if isinstance(sg, bool) else sg

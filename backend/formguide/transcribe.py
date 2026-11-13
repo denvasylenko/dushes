@@ -8,6 +8,7 @@
       language: null                # null: the request's language, else detected
       max_seconds: 120              # longer recordings are cut
       max_bytes: 10000000           # a larger upload gets 413
+      warm: true                    # load the model when the server starts
     # or provider: openai (model: whisper-1 | gpt-4o-transcribe, OPENAI_API_KEY)
     # or provider: "my_app.speech:transcribe"   # fn(data: bytes, filename, language) -> str (sync or async)
 
@@ -24,7 +25,7 @@ import threading
 from dataclasses import dataclass
 from typing import Any
 
-KEYS = {"provider", "model", "device", "compute_type", "language", "max_seconds", "max_bytes"}
+KEYS = {"provider", "model", "device", "compute_type", "language", "max_seconds", "max_bytes", "warm"}
 
 
 @dataclass
@@ -36,6 +37,7 @@ class TranscriptionConfig:
     language: str | None = None
     max_seconds: int = 120
     max_bytes: int = 10_000_000
+    warm: bool = True   # load the local model when the server starts, so the first recording does not wait
 
     @classmethod
     def parse(cls, raw: Any) -> TranscriptionConfig | None:
@@ -82,6 +84,19 @@ class Transcriber:
             text = await out if inspect.isawaitable(out) else out
             return {"text": str(text or "").strip(), "language": lang}
         raise ValueError(f"transcription.provider: unknown {p!r} (faster_whisper, openai or module:function)")
+
+    def warm_up(self) -> None:
+        """Load the local model in the background (faster_whisper only); a failure is logged, never raised."""
+        if self.cfg.provider != "faster_whisper" or not self.cfg.warm or self._model is not None:
+            return
+
+        def load() -> None:
+            try:
+                self._load()
+            except Exception:  # noqa: BLE001 — the first request will try again and report it
+                import logging
+                logging.getLogger("formguide").warning("transcription warm-up failed", exc_info=True)
+        threading.Thread(target=load, name="whisper-warm-up", daemon=True).start()
 
     def _load(self) -> Any:
         with self._lock:

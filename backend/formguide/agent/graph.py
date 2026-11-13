@@ -26,7 +26,7 @@ from langgraph.types import interrupt
 
 from ..form.overlay import Overlay, compute_diff
 from ..form.render import locate, render_changes, render_focus, render_outline
-from ..models import missing_key, system_message
+from ..models import cache_history, missing_key, system_message
 from ..stats import RunStats
 from ..stats import current as current_stats
 from .memory import compact as compact_history
@@ -255,6 +255,7 @@ def build_graph(guide: FormGuide):
         sys_text = state.get("system_prompt") or system_prompt(pack, guide.skills.for_form(pack.form_id),
                                                                actions=actions)
         history = state["messages"]
+        cached = guide.config.prompt_cache != "off"   # see models.cache_history
         msg_id = str(uuid.uuid4())
         started = False
         held = ""
@@ -301,14 +302,14 @@ def build_graph(guide: FormGuide):
         stripped = False
         try:
             try:
-                await stream([system_message(sys_text, base), *history])
+                await stream([system_message(sys_text, base, cached), *cache_history(history, base, cached)])
             except Exception as e:  # noqa: BLE001
                 if full is not None or not _is_reasoning_binding_error(e):
                     raise
                 # The provider rejected earlier reasoning blocks (their context changed): drop them, retry once.
                 log.warning("reasoning blocks rejected (%s); retrying without them", e)
                 history, stripped = strip_reasoning(history), True
-                await stream([system_message(sys_text, base), *history])
+                await stream([system_message(sys_text, base, cached), *cache_history(history, base, cached)])
             flush()
         except Exception as e:  # noqa: BLE001 — provider errors vary; surface them in the chat
             if stats:

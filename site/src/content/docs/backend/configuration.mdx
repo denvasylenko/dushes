@@ -203,6 +203,8 @@ transcription:                       # dictation on the server (POST /transcribe
   language: null                     # null: the chat's language (sent with the recording)
   max_seconds: 120                   # a longer recording is cut
   max_bytes: 10000000                # a larger upload gets 413
+  warm: true                         # load the model when the server starts, not on the first recording
+prompt_cache: auto                   # auto: cache breakpoints where the provider needs them (Anthropic); off
 attachments:                         # or just: false
   enabled: true
   privacy_note: "Your file stays on our server; only the values reach the chat."   # shown on file requests

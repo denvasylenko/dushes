@@ -99,6 +99,12 @@ class FormGuide:
         self.graph = build_graph(self)
 
     # ------------------------------------------------------------------ forms
+    def warm_up(self) -> None:
+        """Load what the first request would otherwise wait for, in the background (the Whisper model).
+        create_app calls it at startup; call it yourself when you mount the router on your own app."""
+        if self.transcriber:
+            self.transcriber.warm_up()
+
     def register_form(self, jsx: str, form_id: str | None = None, domain: dict[str, Any] | None = None,
                       config: dict[str, Any] | None = None) -> dict:
         """Parse and cache the layout (once per JSX); optionally register a domain pack shipped with the form.

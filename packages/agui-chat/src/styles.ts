@@ -300,7 +300,10 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .box.busy .bars, .box.busy .rec-time { display: none; }
 .box.busy .rec-busy { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--agui-ink-2); }
 .box.busy .rec-busy .dots { padding: 0; }
-.box.busy .mic { opacity: .4; cursor: default; }
+/* one control at a time, like iOS: while recording only the red mic stops it (no dimmed send next to it);
+   while transcribing there is nothing to tap but the cancel on the left */
+.box.rec .send { display: none; }
+.box.busy .mic { display: none; }
 @media (prefers-reduced-motion: reduce) { .wave .bars i { transition: none; } }
 
 /* phones: fingers need 44 px */

@@ -118,11 +118,32 @@ def provider_of(model: BaseChatModel) -> str:
     return name
 
 
-def system_message(text: str, model: BaseChatModel) -> SystemMessage:
-    """Anthropic: mark the (stable) system prompt cacheable. Others: plain text."""
-    if provider_of(model) == "anthropic":
+def system_message(text: str, model: BaseChatModel, cache: bool = True) -> SystemMessage:
+    """Anthropic: mark the (stable) system prompt cacheable. Others: plain text (OpenAI, Azure OpenAI and
+    Gemini cache a stable prefix by themselves)."""
+    if cache and provider_of(model) == "anthropic":
         return SystemMessage(content=[{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}])
     return SystemMessage(content=text)
+
+
+def cache_history(messages: list, model: BaseChatModel, cache: bool = True) -> list:
+    """Anthropic: a cache breakpoint on the latest user message too, so every earlier turn is read from the
+    cache (the history is append-only, so the prefix never changes). The messages are copied, never edited.
+    Other providers: unchanged; their caching needs only the stable prefix the history already is."""
+    if not cache or provider_of(model) != "anthropic":
+        return messages
+    from langchain_core.messages import HumanMessage
+
+    i = next((k for k in range(len(messages) - 1, -1, -1) if isinstance(messages[k], HumanMessage)), None)
+    if i is None:
+        return messages
+    m = messages[i]
+    blocks = [{"type": "text", "text": m.content}] if isinstance(m.content, str) else [dict(b) if isinstance(b, dict) else b for b in m.content]
+    last = next((k for k in range(len(blocks) - 1, -1, -1) if isinstance(blocks[k], dict) and blocks[k].get("type") == "text"), None)
+    if last is None:
+        return messages
+    blocks[last] = {**blocks[last], "cache_control": {"type": "ephemeral"}}
+    return [*messages[:i], m.model_copy(update={"content": blocks}), *messages[i + 1:]]
 
 
 # Model APIs cap one image (Anthropic: 10 MB as base64, i.e. about 7.5 MB of bytes) and gain nothing from

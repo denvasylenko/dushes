@@ -39,3 +39,18 @@ When a configured model has no API key (its provider's key field is empty and th
 #### Scenario: Started without a key
 - **WHEN** the server starts with Anthropic models and `ANTHROPIC_API_KEY` is not set
 - **THEN** the log says which models have no key and to set `ANTHROPIC_API_KEY`, and a chat message ends with "model error: no API key (set ANTHROPIC_API_KEY on the server)"
+
+### Requirement: Prompt caching for any provider
+With `prompt_cache: auto` (the default) the agent SHALL mark cache breakpoints where the provider needs them: for Anthropic the system prompt and the latest user message, so every earlier turn is read from the cache; messages in the thread's state SHALL never be edited for it. Other providers SHALL get the messages unchanged (they cache a stable prefix by themselves). `prompt_cache: off` SHALL send no breakpoints.
+
+#### Scenario: A long Anthropic conversation
+- **WHEN** the third turn of a conversation calls an Anthropic model
+- **THEN** the latest user message carries `cache_control` and the earlier turns are read from the cache
+
+### Requirement: Warm-up at startup
+`FormGuide.warm_up()` SHALL load the local transcription model in the background (unless `transcription.warm` is false); `create_app` SHALL call it when the server starts, so the first recording does not wait for the model.
+
+#### Scenario: The first recording after a restart
+- **WHEN** the server starts with `transcription: {provider: faster_whisper}`
+- **THEN** the model is loading in the background while the server already answers
+

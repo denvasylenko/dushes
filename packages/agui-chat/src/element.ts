@@ -529,6 +529,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     }, (on, error) => {
       if (gen !== this._micGen && on) return
       this.$.mic.classList.toggle('on', on)
+      this._icon(this.$.mic, on ? 'stop' : 'mic')
       this.$.mic.setAttribute('aria-label', on ? this.t('micStop') : this.t('mic'))
       if (!on && gen === this._micGen) {
         this._mic = null
@@ -565,6 +566,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         box.classList.toggle('rec', s !== 'off')
         box.classList.toggle('busy', s === 'busy')
         mic.classList.toggle('on', s === 'rec')
+        this._icon(mic, s === 'rec' ? 'stop' : 'mic')   // a stop square on red while recording, as on iOS
         mic.setAttribute('aria-label', s === 'rec' ? this.t('micStop') : this.t('mic'))
         window.clearInterval(this._recClock)
         if (s === 'rec') {
@@ -624,6 +626,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._mic = null
     m?.abort()
     this.$.mic.classList.remove('on')
+    this._icon(this.$.mic, 'mic')
   }
 
   private _syncSend(): void {

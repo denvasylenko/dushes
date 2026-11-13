@@ -45,6 +45,10 @@ def create_app(config: GuideConfig | FormGuide | str | Path | None = None, *, pr
     guide = resolve_guide(config)
     app = FastAPI(title="formguide")
     app.state.guide = guide
+
+    @app.on_event("startup")
+    async def _warm_up() -> None:   # the Whisper model loads while the server already answers
+        guide.warm_up()
     if cors:
         app.add_middleware(CORSMiddleware, allow_origins=cors, allow_methods=["*"], allow_headers=["*"])
     app.include_router(create_router(guide, debug=debug), prefix=prefix)
