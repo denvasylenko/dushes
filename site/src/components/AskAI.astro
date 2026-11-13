@@ -22,9 +22,10 @@ const url = import.meta.env.PUBLIC_ASK_AI_URL as string | undefined;
 
 <script>
   const STARTERS = [
-    'How do I use Azure OpenAI for the agent and a cheaper model for research?',
-    'Show me the smallest page with the chat next to my form',
-    'How do I answer a field-change card from my own React UI?',
+    'Connect formguide to my React form',
+    'Use Azure OpenAI with a cheaper model for research',
+    'What does a date question look like?',
+    'What is jsx_hash?',
   ]
   const box = document.querySelector<HTMLElement>('[data-ask-ai]')
   const url = box?.dataset.askAi
@@ -34,6 +35,7 @@ const url = import.meta.env.PUBLIC_ASK_AI_URL as string | undefined;
     const make = async () => {
       if (chat) return chat
       await import('../../../packages/agui-chat/src/index')
+      const { docs } = await import('../ask/docs')
       if (chat) return chat
       const el = document.createElement('agui-chat')
       el.setAttribute('url', url)
@@ -42,9 +44,11 @@ const url = import.meta.env.PUBLIC_ASK_AI_URL as string | undefined;
       el.setAttribute('attach', 'off')
       el.setAttribute('title', 'Ask the docs')
       el.setAttribute('subtitle', 'Answers from these pages, with code')
+      el.setAttribute('theme', 'docs')
       el.className = 'ask-chat'
       document.body.appendChild(el)
-      el.options = { starters: STARTERS, intro: 'Ask anything about formguide. Answers cite the pages they come from.', toolLabels: { search_docs: 'Searching the docs' } }
+      el.options = { starters: STARTERS, intro: 'Ask anything about formguide. Code comes straight from these pages.' }
+      el.use(docs())
       const scheme = () => el.setAttribute('scheme', document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
       scheme()
       new MutationObserver(scheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
@@ -52,7 +56,11 @@ const url = import.meta.env.PUBLIC_ASK_AI_URL as string | undefined;
     }
     // the floating button (also on phones, where the header has no room) appears once the page is idle
     ;(window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 800)))(() => void make())
-    btn.addEventListener('click', async () => (await make()).open())
+    // the header button toggles: a second tap closes the panel, like the panel's own close button
+    btn.addEventListener('click', async () => {
+      const c = await make()
+      if (c.shadowRoot?.querySelector('.wrap')?.classList.contains('open')) c.close(); else c.open()
+    })
   } else if (box && btn) {
     const menu = box.querySelector<HTMLElement>('[data-ask-menu]')!
     const md = () => {
@@ -75,6 +83,8 @@ const url = import.meta.env.PUBLIC_ASK_AI_URL as string | undefined;
 </script>
 
 <style is:global>
+  /* on a computer the header's Ask AI opens the panel: no second launcher in the corner */
+  @media (min-width: 50rem) { agui-chat.ask-chat::part(fab) { display: none; } }
   .ask { position: relative; display: flex; }
   .ask-btn {
     display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px 4px 10px; border-radius: 999px;

@@ -9,7 +9,9 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noUnusedLocals": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "paths": { "#lang-loader": ["./src/lang-loader.ts"] }
   },
   "include": ["src", "test"]
 }

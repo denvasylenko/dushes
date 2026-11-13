@@ -1,7 +1,19 @@
 ---
-/** The header's right side: "Ask AI" before Starlight's social icons. */
+/** The header's right side: "Live demo" (when the site is built with PUBLIC_DEMO_URL), "Ask AI", Starlight's icons. */
 import Default from '@astrojs/starlight/components/SocialIcons.astro';
 import AskAI from './AskAI.astro';
+const demo = import.meta.env.PUBLIC_DEMO_URL as string | undefined;
 ---
+{demo && <a class="demo-link" href={demo}>Live demo</a>}
 <AskAI />
 <Default />
+
+<style>
+  .demo-link {
+    display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px; border-radius: 999px;
+    font: 500 var(--sl-text-sm) var(--sl-font); color: var(--sl-color-gray-2); text-decoration: none; transition: color .18s, background .18s;
+  }
+  .demo-link:hover { color: var(--sl-color-white); background: var(--sl-color-gray-6); }
+  .demo-link:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 2px; }
+  @media (max-width: 50rem) { .demo-link { display: none; } }
+</style>

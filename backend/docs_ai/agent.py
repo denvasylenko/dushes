@@ -32,6 +32,10 @@ log = logging.getLogger("formguide.docs_ai")
 
 MAX_ROUNDS = 4
 
+# a question about the whole configuration (every key, all options, the full file)
+WHOLE_CONFIG = re.compile(r"(?i)\b(whole|full|complete|entire|every|all)\b.{0,40}\b(config|configuration|keys|options|settings|yaml)\b"
+                          r"|\b(config|configuration)\b.{0,30}\b(whole|full|complete|entire|every key|all keys)\b")
+
 # The card gallery's specimens (site/src/demo/gallery.ts): id -> what it shows.
 SPECIMENS = {
     "set-fields": "field changes: values with reasons, one Fill in button, Undo",
@@ -70,6 +74,9 @@ the passages; add a second or third id only when it is the same thing in another
 become tabs; when the question names a language or stack, Python or the browser, pick that one first), show_steps for a how-to with more than one \
 step, show_pages for where it is documented (always, 1-3 pages you used), show_card when the question is about what a \
 card looks like.
+- Asked for the whole configuration, every key or all options: search_docs "Every key in one file" if needed, then \
+one show_code with BOTH blocks of that section, the YAML block first and the Python block second (they become tabs; \
+this is the one exception to a single block). Never answer it with a page link only.
 - Always finish with suggest_next: 2-3 short follow-up questions the reader is likely to ask next, in their language.
 - Use only the passages, the table of contents and what search_docs returns. If they do not answer the question, \
 say so in one sentence, call search_docs once with other words, and if still nothing, show the closest page.
@@ -140,7 +147,20 @@ def _page(corpus: Corpus, url: str) -> dict[str, Any] | None:
         return None
     title, desc = known
     section = corpus.section_of.get(url, "") if anchor else ""
-    return {"url": url, "title": title, "section": section if section != title else "", "description": desc}
+    return {"url": url, "title": title, "group": _group(base), "section": section if section != title else "",
+            "description": desc}
+
+
+# the site's sidebar groups, by the first part of a page's path: "Reference · Configuration" vs "Backend · Configuration"
+GROUPS = {"getting-started": "Get started", "backend": "Backend", "frontend": "Frontend", "form": "Your form",
+          "built-on": "Built on", "concepts": "Concepts", "reference": "Reference", "specifications": "Specifications"}
+
+
+def _group(url: str) -> str:
+    for part in url.split("/"):
+        if part in GROUPS:
+            return GROUPS[part]
+    return ""
 
 
 # ---------------------------------------------------------------- the cards a reader sees
@@ -216,6 +236,14 @@ def compose(cards: list[dict[str, Any]], question: str = "") -> list[dict[str, A
     return out[:MAX_CARDS]
 
 
+def whole_config_card(corpus: Corpus) -> dict[str, Any] | None:
+    """The configuration guide's one-file section as a code card: the YAML first, then the same in Python."""
+    blocks = [b for b in corpus.blocks.values() if b.section == "Every key in one file"]
+    blocks.sort(key=lambda b: b.lang != "yaml")
+    picked = [x for x in (_block(corpus, b.id) for b in blocks[:2]) if x]
+    return {"kind": "code", "caption": "Every key, with its default", "blocks": picked} if picked else None
+
+
 def run_tool(name: str, args: dict[str, Any], corpus: Corpus, seen: set[str]) -> tuple[str, dict[str, Any] | None]:
     """(what the model is told, the card to show or None)."""
     if name == "show_code":
@@ -258,6 +286,9 @@ async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: l
     yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
     prev = " ".join(t for r, t in history if r == "user")[-400:]
     found = corpus.search(f"{question} {prev}".strip(), k=7)
+    if WHOLE_CONFIG.search(question):   # "the whole config": the one-file section, whatever the ranking says
+        whole = [c for c in corpus.chunks if c.section == "Every key in one file"]
+        found = whole + [c for c in found if c not in whole][:5]
     seen = {c.id for c in found}
     call = f"call_{uuid.uuid4().hex[:12]}"   # the first lookup, shown as a step
     yield {"type": "TOOL_CALL_START", "toolCallId": call, "toolCallName": "search_docs"}
@@ -275,14 +306,17 @@ async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: l
     msgs: list[Any] = [SystemMessage(system)]
     for role, text in history:
         msgs.append(HumanMessage(text) if role == "user" else AIMessage(text))
-    msgs.append(HumanMessage(question))
+    whole = whole_config_card(corpus) if WHOLE_CONFIG.search(question) else None
+    msgs.append(HumanMessage(question if not whole else question + "\n\n(The complete configuration file, YAML and "
+                             "Python, is already shown to the reader as a code card. Write one sentence about it, "
+                             "do not call show_code, and finish with suggest_next.)"))
     try:
         bound = model.bind_tools(TOOLS)
     except NotImplementedError:
         bound = model
     mid = f"msg_{uuid.uuid4().hex[:12]}"
     started = False
-    cards: list[dict[str, Any]] = []
+    cards: list[dict[str, Any]] = [whole] if whole else []
     suggest: list[str] = []
     try:
         for _ in range(MAX_ROUNDS):

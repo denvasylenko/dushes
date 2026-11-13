@@ -89,6 +89,32 @@ These endpoints change what the agent tells users: protect them with your manage
 
 </details>
 
+## Every option
+
+```yaml title="formguide.yaml"
+knowledge:
+  dir: data/kb                             # default: <data_dir>/kb
+  index: bm25                              # default; or a vector store:
+  # index: {factory: "my_app.vectors:make_store", filter: "my_app.vectors:ns_filter", fetch_factor: 5}
+  scopes:                                  # default: each form sees only its own documents
+    loan_application: [loan_application, bank_common]
+models:
+  compile: "anthropic:claude-opus-5-5"     # compiles documents into rules; default: agent
+  research: "anthropic:claude-sonnet-5-5"  # answers from documents; default: agent
+```
+```python title="app.py"
+from formguide import KnowledgeBase, BM25Index, VectorStoreIndex
+
+KnowledgeBase(
+    "data/kb",
+    index=BM25Index(),                                   # or VectorStoreIndex(store, filter_builder=ns_filter, fetch_factor=5)
+    scopes={"loan_application": ["loan_application", "bank_common"]},
+)
+```
+
+
+`make_store()` returns any LangChain `VectorStore`; `ns_filter(namespaces)` returns that store's metadata filter, so a form searches only its scopes.
+
 ## Next
 
 <CardGrid>

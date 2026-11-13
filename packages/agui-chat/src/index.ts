@@ -12,6 +12,8 @@ export { h, md, esc } from './dom'
 export { sseEvents, runHttp, runAgent, uid } from './transport'
 export { shrinkImage } from './image'
 export { defineTheme, themes, themeCss, TOKENS } from './themes'
+export { addLanguage, loadLanguage, LANGUAGES } from './langs'
+export type { LangPack } from './langs'
 export type { Theme, Tokens } from './themes'
 export type * from './types'
 

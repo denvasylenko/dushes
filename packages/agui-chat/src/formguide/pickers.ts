@@ -4,9 +4,10 @@
  * several short fields, the form review, sources, receipts and the thumbs rating.
  * Each view falls back to the plain controls when its data or the host's callback is missing.
  */
-import { h } from '../dom'
+import { h, numberBox } from '../dom'
 import type { ChatApi, Interrupt, RendererContext } from '../types'
 import type { Ctx } from './index'
+import { calendar, dateField, timeGrid } from './calendar'
 
 export interface Opt { id: string; label: string; value?: unknown; description?: string; attrs?: Record<string, string> }
 
@@ -19,9 +20,14 @@ const FIRST_SHOWN = 5
 
 // ---------------------------------------------------------------- values
 
-/** A value for a card row, formatted by the field's role. Without a role: large plain numbers only. */
-export function formatValue(display: unknown, kind: string | undefined, lang: string): string {
+/** A value for a card row, formatted by the field's role. Without a role: large plain numbers only.
+ * Yes/no fields arrive as the server's language-neutral marks (\u2713 / \u2717): shown as words. */
+export function formatValue(display: unknown, kind: string | undefined, lang: string, words?: { yes: string; no: string }): string {
   const v = String(display ?? '')
+  if (words && (kind === 'bool' || v === '\u2713' || v === '\u2717' || v === '\u2715')) {
+    if (v === '\u2713' || v === 'true') return words.yes
+    if (v === '\u2717' || v === '\u2715' || v === 'false') return words.no
+  }
   try {
     if (kind === 'number' && /^-?\d+(\.\d+)?$/.test(v)) return new Intl.NumberFormat(lang || undefined).format(Number(v))
     if (kind === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
@@ -49,13 +55,14 @@ export function optionsView(it: Interrupt, c: RendererContext, options: Opt[], o
   chipFor: (o: Opt, i: number) => HTMLButtonElement): { el: HTMLElement | null; buttons: HTMLButtonElement[] } {
   if (!options.length) return { el: null, buttons: [] }
   const look = optionsLook(options)
+  const numeric = options.some((o) => /\d/.test(o.label))   // hints 1-9 would read as part of the answer
   if (look === 'chips') {
     const buttons = options.map(chipFor)
     return { el: h('div', { class: 'chips' }, buttons), buttons }
   }
   const optButton = (o: Opt, i: number) => {
     const b = h('button', { class: 'opt', part: 'chip', type: 'button' },
-      i < 9 && look !== 'search' ? h('kbd', null, String(i + 1)) : null,
+      i < 9 && look !== 'search' && !numeric ? h('kbd', null, String(i + 1)) : null,
       h('b', null, o.label), o.description ? h('span', { class: 'muted' }, o.description) : null) as HTMLButtonElement
     b.addEventListener('click', () => onPick(o, b))
     return b
@@ -67,7 +74,7 @@ export function optionsView(it: Interrupt, c: RendererContext, options: Opt[], o
         it.recommended === o.id ? h('span', { class: 'tag' }, c.t('recommended')) : null,
         h('b', null, o.label),
         keys.map((k) => h('span', { class: 'cmp-v' }, h('span', { class: 'muted' }, k), h('span', null, o.attrs![k]))),
-        i < 9 ? h('kbd', null, String(i + 1)) : null) as HTMLButtonElement
+        i < 9 && !numeric ? h('kbd', null, String(i + 1)) : null) as HTMLButtonElement
       b.addEventListener('click', () => onPick(o, b))
       return b
     })
@@ -115,26 +122,35 @@ function dayStrip(it: Interrupt, c: RendererContext, commit: Commit, input: HTML
     if (max && d > max) break
     days.push(d)
   }
+  if (input) input.hidden = true   // no browser picker: quick days, then our own calendar
+  const cal = () => calendar({ lang, limits: { min: it.input?.min, max: it.input?.max }, t: c.t, value: typeof it.previous === 'string' ? it.previous : null,
+    onPick: (d, label) => commit(d, label) })
+  // a date in the past (a birthday, a founding date): the calendar right away, opened on the right month
+  if (days.length < 3) return h('div', { class: 'strip' }, cal())
   const today = iso(new Date())
   const tomorrow = iso(new Date(Date.now() + 86400000))
   const name = (d: Date) => iso(d) === today ? c.t('today') : iso(d) === tomorrow ? c.t('tomorrow')
     : new Intl.DateTimeFormat(lang || undefined, { weekday: 'short', day: 'numeric', month: 'short' }).format(d)
   const chips = days.map((d) => h('button', { class: 'chip', part: 'chip', type: 'button', onclick: () => commit(iso(d), name(d)) }, name(d)))
-  const other: HTMLElement | null = input ? h('button', { class: 'btn link', type: 'button', onclick: () => { input.hidden = false; other?.remove(); input.focus() } }, c.t('otherDate')) : null
-  if (input) input.hidden = true
+  const other: HTMLElement = h('button', { class: 'btn link', type: 'button', onclick: () => { other.replaceWith(cal()) } }, c.t('otherDate'))
   return h('div', { class: 'strip' }, h('div', { class: 'chips' }, chips), other)
 }
 
-/** Free time slots: from the payload, or the host's getSlots; nothing to show -> the plain time input stays. */
+/** Free time slots: from the payload or the host's getSlots; without them, times every 30 minutes (input min / max). */
 function timeSlots(it: Interrupt, c: RendererContext, ctx: Ctx | undefined, commit: Commit, input: HTMLInputElement | null): HTMLElement {
-  const wrap = h('div', { class: 'chips slots' })
+  if (input) input.hidden = true   // no browser time picker
+  const grid = () => timeGrid({ from: it.input?.min, to: it.input?.max, step: Number(it.input?.step) || 30, onPick: (t) => commit(t, t) })
+  const wrap = h('div', null)
   const draw = (slots: string[]) => {
-    if (!slots.length) return
-    wrap.replaceChildren(...slots.map((s) => h('button', { class: 'chip', part: 'chip', type: 'button', onclick: () => commit(s, s) }, s)))
-    if (input) input.placeholder = c.t('orType')
+    wrap.replaceChildren(slots.length
+      ? h('div', { class: 'chips slots' }, slots.map((s) => h('button', { class: 'chip', part: 'chip', type: 'button', onclick: () => commit(s, s) }, s)))
+      : grid())
   }
   if (Array.isArray(it.slots)) draw(it.slots.map(String))
-  else if (ctx?.getSlots && it.field) void Promise.resolve(ctx.getSlots(it.field, it.date ?? null)).then((s) => draw(s ?? [])).catch(() => {})
+  else if (ctx?.getSlots && it.field) {
+    void Promise.resolve(ctx.getSlots(it.field, it.date ?? null)).then((s) => draw(s ?? [])).catch(() => draw([]))
+  } else draw([])
+  void c
   return wrap
 }
 
@@ -156,7 +172,7 @@ function rangeView(it: Interrupt, c: RendererContext, ctx: Ctx | undefined, comm
     value = Math.min(max, Math.max(min, Math.round((value - min) / step) * step + min))
     shown.textContent = `${fmt.format(value)}${unit}`
     set.textContent = c.t('setValue', { value: `${fmt.format(value)}${unit}` })
-    if (slider) slider.value = String(value)
+    if (slider) { slider.value = String(value); slider.style.setProperty('--p', `${((value - min) / (max - min)) * 100}%`) }
     if (ctx?.preview && it.field) {
       const n = ++seq
       void Promise.resolve(ctx.preview(it.field, value)).then((p) => { if (n === seq) preview.textContent = p ?? '' }).catch(() => {})
@@ -216,7 +232,7 @@ export function fieldsView(it: Interrupt, c: RendererContext, ctx: Ctx | undefin
   done: (values: Record<string, unknown>, labels: string) => Promise<void>): HTMLElement {
   const fields: { name: string; label?: string; input?: { type?: string }; required?: boolean }[] = it.fields ?? []
   const inputs = fields.map((f) => h('input', { class: 'text-in', type: INPUT_TYPES[f.input?.type ?? 'text'] ?? 'text',
-    placeholder: f.label ?? f.name, 'aria-label': f.label ?? f.name, oninput: () => sync() }) as HTMLInputElement)
+    'aria-label': f.label ?? f.name, oninput: () => sync() }) as HTMLInputElement)   // the label above says what it is
   const btn = h('button', { class: 'btn pri', type: 'button' }) as HTMLButtonElement
   const filled = () => inputs.filter((i) => i.value.trim()).length
   const missing = () => fields.filter((f, i) => f.required !== false && !inputs[i].value.trim()).length
@@ -240,7 +256,13 @@ export function fieldsView(it: Interrupt, c: RendererContext, ctx: Ctx | undefin
   }))
   sync()
   void ctx
-  return h('div', { class: 'fields' }, inputs, h('div', { class: 'acts' }, btn))
+  // a label above each input: date and time inputs show no placeholder
+  return h('div', { class: 'fields' }, fields.map((f, i) => h('label', { class: 'fld' }, h('span', { class: 'muted' }, f.label ?? f.name),
+    inputs[i].type === 'number' ? numberBox(inputs[i])
+      : inputs[i].type === 'date' ? dateField({ lang: c.chat.lang, label: f.label ?? f.name, t: c.t, limits: { min: (f.input as { min?: string })?.min, max: (f.input as { max?: string })?.max },
+          onChange: (d) => { inputs[i].value = d; inputs[i].dispatchEvent(new Event('input')) } }).el
+        : inputs[i])),
+    h('div', { class: 'acts' }, btn))
 }
 
 // ---------------------------------------------------------------- review

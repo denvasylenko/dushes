@@ -3,7 +3,8 @@
  * The form knows nothing about the chat; the only glue is the schema and one hook.
  */
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
+import { DateInput, NumberInput, Select } from './controls'
 import { AguiChat } from '@formguide/agui-chat/react'
 import { useFormguide, type FormSchema } from '@formguide/agui-chat/react-hook-form'
 
@@ -56,7 +57,7 @@ const TABS = schema.sections.map((s) => ({ name: s.name, label: s.label ?? s.nam
 
 export function App() {
   const form = useForm<CarLoan>({ mode: 'onChange', defaultValues: { extras: [], consent: false } })
-  const { register, watch, handleSubmit, formState: { errors } } = form
+  const { register, watch, handleSubmit, control, formState: { errors } } = form
   const [tab, setTab] = useState('applicant')
   const [sent, setSent] = useState(false)
   const make = watch('car_make')
@@ -84,33 +85,37 @@ export function App() {
         </nav>
         <form onSubmit={handleSubmit(() => setSent(true))}>
           <section hidden={tab !== 'applicant'}>
-            {field('first_name', 'First name', <input {...register('first_name', { required: 'Required' })} />)}
-            {field('last_name', 'Last name', <input {...register('last_name', { required: 'Required' })} />)}
-            {field('phone', 'Phone', <input inputMode="numeric" {...register('phone', { required: 'Required', pattern: { value: /^\d{10}$/, message: 'Must be 10 digits' } })} />)}
-            {field('birth_date', 'Date of birth', <input type="date" {...register('birth_date', { required: 'Required' })} />)}
+            {field('first_name', 'First name', <input className="ctl-field" {...register('first_name', { required: 'Required' })} />)}
+            {field('last_name', 'Last name', <input className="ctl-field" {...register('last_name', { required: 'Required' })} />)}
+            {field('phone', 'Phone', <input className="ctl-field" inputMode="numeric" {...register('phone', { required: 'Required', pattern: { value: /^\d{10}$/, message: 'Must be 10 digits' } })} />)}
+            {field('birth_date', 'Date of birth', <Controller name="birth_date" control={control} rules={{ required: 'Required' }} render={({ field: f }) => (
+              <DateInput id="birth_date" value={f.value} max={new Date().toISOString().slice(0, 10)} onChange={f.onChange} invalid={!!errors.birth_date} />)} />)}
             <fieldset className="field" data-name="employment">
               <span>Employment</span>
               <div className="row">{['Employed', 'Self-employed', 'Retired'].map((o) => (
                 <label key={o} className="radio"><input type="radio" value={o} {...register('employment')} /> {o}</label>
               ))}</div>
             </fieldset>
-            {field('income', 'Monthly income', <input type="number" {...register('income', { valueAsNumber: true })} />)}
+            {field('income', 'Monthly income', <Controller name="income" control={control} render={({ field: f }) => (
+              <NumberInput name="income" value={f.value ?? ''} step={1000} min={0} onChange={(v) => f.onChange(v === '' ? null : Number(v))} />)} />)}
           </section>
           <section hidden={tab !== 'car'}>
             {field('car_make', 'Make', (
-              <select {...register('car_make', { required: 'Required' })}>
+              <Select {...register('car_make', { required: 'Required' })}>
                 <option value="">Choose…</option>
                 {MAKES.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
+              </Select>
             ))}
             {field('car_model', 'Model', (
-              <select disabled={!make} {...register('car_model', { required: 'Required' })}>
+              <Select disabled={!make} {...register('car_model', { required: 'Required' })}>
                 <option value="">{make ? 'Choose…' : 'Choose the make first'}</option>
                 {(MODELS[make] ?? []).map((m) => <option key={m}>{m}</option>)}
-              </select>
+              </Select>
             ))}
-            {field('car_year', 'Year', <input type="number" {...register('car_year', { valueAsNumber: true })} />)}
-            {field('car_price', 'Price', <input type="number" {...register('car_price', { valueAsNumber: true, required: 'Required' })} />)}
+            {field('car_year', 'Year', <Controller name="car_year" control={control} render={({ field: f }) => (
+              <NumberInput name="car_year" value={f.value ?? ''} min={1990} max={new Date().getFullYear()} onChange={(v) => f.onChange(v === '' ? null : Number(v))} />)} />)}
+            {field('car_price', 'Price', <Controller name="car_price" control={control} rules={{ required: 'Required' }} render={({ field: f }) => (
+              <NumberInput name="car_price" value={f.value ?? ''} step={50000} min={0} invalid={!!errors.car_price} onChange={(v) => f.onChange(v === '' ? null : Number(v))} />)} />)}
             <fieldset className="field" data-name="extras">
               <span>Extras</span>
               <div className="row">{EXTRAS.map((o) => (
@@ -120,10 +125,10 @@ export function App() {
           </section>
           <section hidden={tab !== 'loan'}>
             {field('term', 'Term, months', (
-              <select {...register('term', { required: 'Required' })}>
+              <Select {...register('term', { required: 'Required' })}>
                 <option value="">Choose…</option>
                 {TERMS.map((t) => <option key={t}>{t}</option>)}
-              </select>
+              </Select>
             ))}
             <label className="field check" data-name="consent">
               <input type="checkbox" {...register('consent', { required: 'Required' })} /> I agree to a credit check

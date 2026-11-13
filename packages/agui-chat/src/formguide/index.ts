@@ -14,6 +14,7 @@ import { FG_STRINGS, TOOL_LABELS } from './i18n'
 import { lookAt } from './hint'
 
 export { schemaForm, normOption } from './schema'
+export { calendar, dateField, timeGrid, isoOf } from './calendar'
 export type { FormSchema, FieldSchema, SectionSchema, FormAccess, SchemaBridge, Option } from './schema'
 
 export interface FormState { config: { props?: Record<string, any>; state?: Record<string, unknown> }; jsx_hash: string; form_id?: string; ui?: unknown; [k: string]: unknown } // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -147,7 +148,7 @@ export function formguide(opts: FormguideOptions): Plugin {
       }
       if (ev.name === 'sources') {   // chips under the answer: where it came from
         const items = (ev.value as { items?: { title: string; section?: string; quote?: string }[] })?.items ?? []
-        if (items.length) chat.append(sourcesEl(items))
+        if (items.length) chat.append(chat.renderSlot('sources', items) ?? sourcesEl(items))   // render.sources replaces the chips
         return true
       }
       if (ev.name === 'receipt') {   // the confirmed card turns into its receipt
@@ -160,13 +161,18 @@ export function formguide(opts: FormguideOptions): Plugin {
       }
       return false
     },
+    /** The server's turn runs on after the connection closes (a reload must not lose it): Stop ends it there. */
+    onStop(chat: ChatApi) {
+      void chat.request('stop', `${ctx.base(chat)}/stop`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thread_id: chat.threadId }) }).catch(() => {})
+    },
     async restore(threadId: string, chat: ChatApi): Promise<Restored | null> {
       const st = await opts.getState()
       const q = new URLSearchParams({ format: 'agui', ...(st.form_id ? { form_id: st.form_id } : {}) })
       const r = await chat.request('thread', `${ctx.base(chat)}/threads/${encodeURIComponent(threadId)}?${q}`)
       if (!r.ok) return null
       const d = await r.json()
-      return { messages: d.messages ?? [], interrupt: entryToInterrupt(d.pending_card), starters: d.starters ?? [] }
+      return { messages: d.messages ?? [], interrupt: entryToInterrupt(d.pending_card), starters: d.starters ?? [], running: !!d.running }
     },
   }
 }

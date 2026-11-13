@@ -1,0 +1,43 @@
+---
+title: LangChain
+description: Every model, tool, document index and tracer in formguide is a LangChain object. Bring the ones you already have.
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+| LangChain | In formguide | Guide |
+| --- | --- | --- |
+| chat models (`BaseChatModel`, `init_chat_model`) | the model of each role: agent, research, compile, extract, memory | [Models and providers](../../backend/models/) |
+| tools (`BaseTool`, `@tool`) | your APIs the agent may call, per form or for all forms | [Skills and tools](../../backend/skills/) |
+| vector stores (`VectorStore`) | the index of business documents instead of the built-in BM25 | [Business documents](../../backend/knowledge/) |
+| callbacks (`BaseCallbackHandler`) | tracing every model and tool call (LangSmith, Langfuse, your own) | [Speed and tracing](../../backend/observability/) |
+
+A tool is a plain LangChain tool:
+
+```python
+from langchain_core.tools import tool
+from formguide import FormGuide, GuideConfig
+
+@tool
+def check_credit_score(tax_id: str) -> str:
+    """The applicant's credit score from the bureau."""
+    return bureau.score(tax_id)
+
+guide = FormGuide(GuideConfig(tools=[check_credit_score], confirm_tools=["check_credit_score"]))   # asks the user first
+```
+
+A model is any LangChain chat model with tool calling, as an object or a string:
+
+```python
+from langchain_openai import AzureChatOpenAI
+from formguide import Models
+
+models = Models(agent=AzureChatOpenAI(azure_deployment="gpt-5", api_version="2025-04-01-preview"),
+                research="openai:gpt-5-mini")          # a string goes through init_chat_model
+```
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Models and providers" href="../../backend/models/" />
+  <LinkCard title="AG-UI" description="The events on the wire." href="../ag-ui/" />
+</CardGrid>

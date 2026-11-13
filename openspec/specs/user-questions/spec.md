@@ -100,6 +100,13 @@ When `ask_user` names a `field` that is a dropdown, radio group or multi-select 
 - **WHEN** the field's component stores only the option id
 - **THEN** each option's `value` is its id
 
+### Requirement: Typed answers that fill a text field
+When `ask_user` names an editable text field and gives no options, the question card SHALL carry `input: {type: "text"}`, `applies: true`, the field's `label`, `previous` and `previous_display`. Options for a text field SHALL be refused. A resume with `{answer: {text}, config}` SHALL count as the user filling the field (as for an option), and the model SHALL be told not to propose it again; without `config` the text only answers.
+
+#### Scenario: A passport series in one tap
+- **WHEN** the model asks "What is your passport series?" with `field: passport_series`, the user types 4444 and the client resumes with the new config
+- **THEN** the model's tool result says the user wrote 4444 and that this filled Passport series, and no field-change card follows
+
 ### Requirement: An applied answer counts as filling the field
 A resume with `{answer: {ids}, config}` SHALL count as the user filling the question's field. The model SHALL be told the field was filled with the chosen option, with the form's reaction (the diff), and SHALL be told not to propose that field again.
 
@@ -111,7 +118,7 @@ A resume with `{answer: {ids}, config}` SHALL count as the user filling the ques
 A question SHALL keep today's behaviour, where the answer is returned and the model proposes the value in a card, when:
 - the question has no `field`;
 - its field is locked, hidden or read-only;
-- the answer is typed text;
+- the answer is typed text for a choice field;
 - the resume carries no `config`.
 
 #### Scenario: A client that does not apply

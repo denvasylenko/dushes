@@ -1,0 +1,177 @@
+---
+/**
+ * Every formguide card as a live specimen: the shipped <agui-chat> renderer replaying one recorded server event.
+ * Specimens mount when scrolled into view; Replay starts one again; "Sent back" shows the widget's answer.
+ */
+import { GROUPS, SPECIMENS } from '../demo/gallery'
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const inline = (s: string) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>')
+const TALL = new Set(['set-fields', 'document', 'compare', 'search', 'date-past', 'review', 'confirm', 'time'])
+const payload = (s: (typeof SPECIMENS)[number]) => JSON.stringify({ type: 'CUSTOM', name: s.event.name, value: s.event.value }, null, 2)
+---
+<div class="cg not-content">
+  <header class="cg-intro">
+    <p class="cg-eyebrow">Card gallery</p>
+    <h1 class="cg-h1" id="_top">Every card, <span>live.</span></h1>
+    <p class="cg-lead">What the chat shows when the agent needs a decision. These are the shipped renderers of <code>&lt;agui-chat&gt;</code> and the formguide plugin, each replaying one recorded server event. Tap them: nothing leaves the page.</p>
+    <nav class="cg-nav" aria-label="Card groups">
+      {GROUPS.map((g) => <a href={`#${g.id}`}>{g.title}</a>)}
+    </nav>
+  </header>
+
+  {GROUPS.map((g) => (
+    <section class="cg-group" id={g.id} aria-labelledby={`${g.id}-h`}>
+      <h2 id={`${g.id}-h`} class="cg-h2">{g.title}</h2>
+      <p class="cg-gblurb">{g.blurb}</p>
+      <div class="cg-grid">
+        {SPECIMENS.filter((s) => s.group === g.id).map((s) => (
+          <article class="cg-tile" id={s.id} data-spec={s.id}>
+            <div class:list={['cg-stage', { tall: TALL.has(s.id) }]}>
+              <agui-chat mode="inline" persist-thread="off" attach="off" typing="plain" lang="en" title={s.title}></agui-chat>
+            </div>
+            <div class="cg-meta">
+              <div class="cg-row">
+                <code class="cg-tag">{s.tag}</code>
+                <button type="button" class="cg-replay" data-replay aria-label={`Replay ${s.title}`}>
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.8h2.8" /></svg>Replay
+                </button>
+              </div>
+              <h3 class="cg-h3"><a href={`#${s.id}`}>{s.title}</a></h3>
+              <p class="cg-blurb" set:html={inline(s.blurb)} />
+              <details class="cg-code">
+                <summary>The event the server sends</summary>
+                <pre><code>{payload(s)}</code></pre>
+              </details>
+              <details class="cg-code" data-answer hidden>
+                <summary>What the card sent back <span class="cg-new" aria-hidden="true"></span></summary>
+                <pre><code data-answer-code></code></pre>
+              </details>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  ))}
+</div>
+
+<script>
+  import '../../../packages/agui-chat/src/index'
+  import { formguide } from '../../../packages/agui-chat/src/formguide/index'
+  import type { AguiChatElement } from '../../../packages/agui-chat/src/element'
+  import { SPECIMENS, playSpecimen } from '../demo/gallery'
+
+  const scheme = () => document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
+
+  function mount(tile: HTMLElement): void {
+    const s = SPECIMENS.find((x) => x.id === tile.dataset.spec)
+    if (!s || tile.dataset.mounted) return
+    tile.dataset.mounted = '1'
+    const chat = tile.querySelector('agui-chat') as AguiChatElement
+    const answer = tile.querySelector<HTMLDetailsElement>('[data-answer]')!
+    const code = tile.querySelector<HTMLElement>('[data-answer-code]')!
+    chat.setAttribute('scheme', scheme())
+    const play = playSpecimen(chat, s, formguide, (r) => {
+      const { config: _c, ui: _u, ...shown } = r     // the new config is the host's own form: left out to stay short
+      void _c; void _u
+      code.textContent = JSON.stringify({ forwardedProps: { command: { resume: { ...shown, ...('config' in r ? { config: '\u2026' } : {}) } } } }, null, 2)
+      answer.hidden = false
+      answer.classList.remove('flash'); void answer.offsetWidth; answer.classList.add('flash')
+    })
+    tile.querySelector('[data-replay]')!.addEventListener('click', () => {
+      answer.hidden = true; answer.open = false
+      play.replay()
+    })
+  }
+
+  const tiles = [...document.querySelectorAll<HTMLElement>('[data-spec]')]
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { mount(e.target as HTMLElement); io.unobserve(e.target) }
+    }), { rootMargin: '300px 0px' })
+    tiles.forEach((t) => io.observe(t))
+  } else tiles.forEach(mount)
+
+  new MutationObserver(() => document.querySelectorAll('.cg agui-chat').forEach((c) => c.setAttribute('scheme', scheme())))
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+</script>
+
+<style is:global>
+  .cg { --cg-w: min(72rem, 100%); max-width: var(--cg-w); margin: 0 auto; }
+  .cg-intro { text-align: center; padding: 3.5rem 0 1rem; max-width: 46rem; margin: 0 auto; }
+  .cg-eyebrow { font: 600 var(--sl-text-sm) var(--sl-font); color: var(--sl-color-accent-high); margin: 0 0 .75rem; letter-spacing: .01em; }
+  .cg-h1 {
+    font: 700 clamp(2.5rem, 6vw, 4.25rem)/1.03 var(--fg-display, var(--sl-font)); letter-spacing: -0.035em; color: var(--sl-color-white); margin: 0;
+  }
+  .cg-h1 span { color: var(--sl-color-gray-3); }
+  .cg-lead { font-size: var(--sl-text-lg); line-height: 1.5; color: var(--sl-color-gray-2); margin: 1.25rem auto 0; max-width: 38rem; }
+  .cg-lead code, .cg-blurb code { font-size: .88em; background: var(--sl-color-gray-6); padding: .1em .35em; border-radius: 6px; }
+  .cg-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 2rem; }
+  .cg-nav a {
+    font: 500 var(--sl-text-sm) var(--sl-font); color: var(--sl-color-gray-2); text-decoration: none; padding: 8px 16px; min-height: 36px;
+    border-radius: 999px; background: var(--sl-color-gray-6); transition: background .18s, color .18s;
+  }
+  .cg-nav a:hover { color: var(--sl-color-white); background: var(--sl-color-gray-5); }
+  .cg-nav a:focus-visible, .cg-replay:focus-visible, .cg-h3 a:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 2px; }
+
+  .cg-group { padding-top: 4.5rem; scroll-margin-top: 4rem; }
+  .cg-h2 { font: 700 clamp(1.75rem, 3.5vw, 2.5rem)/1.1 var(--fg-display, var(--sl-font)); letter-spacing: -0.03em; color: var(--sl-color-white); margin: 0; text-align: center; }
+  .cg-gblurb { text-align: center; color: var(--sl-color-gray-3); font-size: var(--sl-text-base); margin: .6rem auto 2rem; max-width: 34rem; }
+  .cg-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .cg-tile {
+    display: flex; flex-direction: column; border-radius: 28px; background: var(--sl-color-bg-nav); overflow: hidden; scroll-margin-top: 5rem;
+    border: 1px solid var(--sl-color-hairline-light);
+  }
+  .cg-stage {
+    height: 440px; padding: 14px 14px 0;
+    background: radial-gradient(120% 80% at 50% 0%, var(--sl-color-accent-low) 0%, transparent 60%);
+  }
+  .cg-stage.tall { height: 560px; }
+  .cg-stage agui-chat {
+    display: block; height: 100%; --agui-accent: var(--sl-color-accent); --agui-on-accent: #fff; --agui-link: var(--sl-color-accent);
+    border-radius: 20px 20px 0 0; overflow: hidden; box-shadow: 0 -1px 0 var(--sl-color-hairline-light), 0 18px 50px -24px hsla(0, 0%, 0%, .35);
+  }
+  :root[data-theme='dark'] .cg-stage agui-chat { --agui-accent: var(--sl-color-accent-high); --agui-on-accent: var(--sl-color-black); --agui-link: var(--sl-color-accent-high); }
+  .cg-stage agui-chat::part(header), .cg-stage agui-chat::part(composer) { display: none; }
+  .cg-stage agui-chat::part(panel) { border: 0; border-radius: 0; box-shadow: none; }
+  .cg-meta { padding: 18px 22px 20px; border-top: 1px solid var(--sl-color-hairline-light); display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .cg-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .cg-tag { font: var(--sl-text-xs) var(--sl-font-mono); color: var(--sl-color-gray-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cg-replay {
+    display: inline-flex; align-items: center; gap: 6px; flex: none; font: 500 var(--sl-text-xs) var(--sl-font); color: var(--sl-color-gray-2);
+    background: var(--sl-color-gray-6); border: 0; border-radius: 999px; padding: 6px 12px; min-height: 32px; cursor: pointer; transition: background .18s, color .18s;
+  }
+  .cg-replay:hover { color: var(--sl-color-white); background: var(--sl-color-gray-5); }
+  .cg-replay svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .cg-h3 { font: 600 var(--sl-text-xl)/1.25 var(--sl-font); letter-spacing: -0.015em; margin: 2px 0 0; }
+  .cg-h3 a { color: var(--sl-color-white); text-decoration: none; }
+  .cg-blurb { color: var(--sl-color-gray-2); font-size: var(--sl-text-sm); line-height: 1.55; margin: 0; }
+  .cg-code { border-radius: 14px; background: var(--sl-color-bg); }
+  .cg-code:first-of-type { margin-top: 4px; }
+  .cg-code summary {
+    cursor: pointer; list-style: none; padding: 10px 14px; min-height: 40px; font: 500 var(--sl-text-xs) var(--sl-font); color: var(--sl-color-gray-2);
+    display: flex; align-items: center; gap: 8px; border-radius: 14px;
+  }
+  .cg-code summary::-webkit-details-marker { display: none; }
+  .cg-code summary::before {
+    content: ''; width: 7px; height: 7px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: rotate(-45deg); transition: transform .18s; flex: none;
+  }
+  .cg-code[open] summary::before { transform: rotate(45deg); }
+  .cg-code summary:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: -2px; }
+  .cg-code pre { margin: 0; padding: 0 14px 14px; max-height: 300px; overflow: auto; font: var(--sl-text-xs)/1.55 var(--sl-font-mono); color: var(--sl-color-gray-2); }
+  .cg-new { width: 7px; height: 7px; border-radius: 999px; background: var(--sl-color-accent); margin-left: auto; }
+  [data-answer][open] .cg-new { display: none; }
+  [data-answer].flash { animation: cg-flash 1.2s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes cg-flash { 0% { background: var(--sl-color-accent-low); } 100% { background: var(--sl-color-bg); } }
+  @media (prefers-reduced-motion: reduce) { [data-answer].flash { animation: none; } .cg-code summary::before { transition: none; } }
+
+  @media (max-width: 50rem) {
+    .cg-intro { padding-top: 2rem; }
+    .cg-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .cg-tile { border-radius: 22px; }
+    .cg-stage { height: 420px; padding: 10px 10px 0; }
+    .cg-stage.tall { height: 520px; }
+    .cg-meta { padding: 16px 18px 18px; }
+    .cg-group { padding-top: 3.5rem; }
+  }
+</style>

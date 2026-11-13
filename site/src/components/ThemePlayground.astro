@@ -1,0 +1,195 @@
+---
+/**
+ * The theme playground: pick an accent, radii, a font and the scheme, and watch a real <agui-chat> (with a
+ * field-change card from the gallery) change as you drag. The defineTheme() call for what you see is below it.
+ */
+const ACCENTS = ['#0a84ff', '#30a46c', '#ff9f0a', '#ff375f', '#bf5af2', '#1c1c1e']
+const FONTS = [
+  ['System', 'system-ui, -apple-system, "Segoe UI", sans-serif'],
+  ['Rounded', 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif'],
+  ['Serif', 'ui-serif, Georgia, serif'],
+  ['Mono', 'ui-monospace, SFMono-Regular, Menlo, monospace'],
+]
+---
+<div class="tp not-content" data-tp>
+  <div class="tp-controls">
+    <fieldset class="tp-group">
+      <legend>Accent</legend>
+      <div class="tp-swatches">
+        {ACCENTS.map((c, i) => <button type="button" class="tp-sw" style={`--c:${c}`} data-accent={c} aria-label={`Accent ${c}`} aria-pressed={i === 0 ? 'true' : 'false'} />)}
+        <label class="tp-sw tp-custom" aria-label="Any colour"><input type="color" value="#0a84ff" data-accent-input /></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="tp-group">
+      <legend>Scheme</legend>
+      <div class="tp-seg" role="radiogroup">
+        <button type="button" role="radio" data-scheme="light" aria-checked="false">Light</button>
+        <button type="button" role="radio" data-scheme="dark" aria-checked="true">Dark</button>
+      </div>
+    </fieldset>
+
+    <div class="tp-group">
+      <label class="tp-row" for="tp-radius"><span>Corners</span><output data-out="radius">14 px</output></label>
+      <input id="tp-radius" class="tp-range" type="range" min="0" max="24" value="14" data-token="radius" />
+      <label class="tp-row" for="tp-card"><span>Cards</span><output data-out="card-radius">14 px</output></label>
+      <input id="tp-card" class="tp-range" type="range" min="0" max="28" value="14" data-token="card-radius" />
+      <label class="tp-row" for="tp-bubble"><span>Bubbles</span><output data-out="bubble-radius">18 px</output></label>
+      <input id="tp-bubble" class="tp-range" type="range" min="4" max="26" value="18" data-token="bubble-radius" />
+    </div>
+
+    <fieldset class="tp-group">
+      <legend>Font</legend>
+      <div class="tp-chips">
+        {FONTS.map(([name, stack], i) => <button type="button" class="tp-chip" data-font={stack} aria-pressed={i === 0 ? 'true' : 'false'} style={`font-family:${stack}`}>{name}</button>)}
+      </div>
+    </fieldset>
+
+    <button type="button" class="tp-reset" data-reset>Reset</button>
+  </div>
+
+  <div class="tp-stage">
+    <agui-chat mode="inline" persist-thread="off" attach="off" typing="plain" lang="en" title="Loan assistant" subtitle="Your theme, live"></agui-chat>
+  </div>
+
+  <div class="tp-code">
+    <div class="tp-codebar"><span>theme.js</span><button type="button" class="tp-copy" data-copy>Copy</button></div>
+    <pre><code data-code></code></pre>
+  </div>
+</div>
+
+<script>
+  import '../../../packages/agui-chat/src/index'
+  import { formguide } from '../../../packages/agui-chat/src/formguide/index'
+  import type { AguiChatElement } from '../../../packages/agui-chat/src/element'
+  import { SPECIMENS, playSpecimen } from '../demo/gallery'
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tp]')) {
+    const chat = root.querySelector('agui-chat') as AguiChatElement
+    const code = root.querySelector<HTMLElement>('[data-code]')!
+    const DEFAULT = { accent: '#0a84ff', radius: 14, 'card-radius': 14, 'bubble-radius': 18, font: 'system-ui, -apple-system, "Segoe UI", sans-serif', scheme: 'dark' }
+    const t = { ...DEFAULT }
+
+    // readable text on the accent: black on light colours, white on dark ones
+    const onAccent = (hex: string) => {
+      const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? '#000000' : '#ffffff'
+    }
+    const apply = () => {
+      const s = chat.style
+      s.setProperty('--agui-accent', t.accent)
+      s.setProperty('--agui-on-accent', onAccent(t.accent))
+      s.setProperty('--agui-link', t.accent)
+      s.setProperty('--agui-radius', `${t.radius}px`)
+      s.setProperty('--agui-radius-sm', `${Math.max(0, Math.round(t.radius * 0.7))}px`)
+      s.setProperty('--agui-card-radius', `${t['card-radius']}px`)
+      s.setProperty('--agui-bubble-radius', `${t['bubble-radius']}px`)
+      s.setProperty('--agui-font', t.font)
+      chat.setAttribute('scheme', t.scheme)
+      for (const k of ['radius', 'card-radius', 'bubble-radius'] as const) root.querySelector(`[data-out="${k}"]`)!.textContent = `${t[k]} px`
+      root.querySelectorAll<HTMLElement>('[data-accent]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.accent === t.accent)))
+      root.querySelectorAll<HTMLElement>('[data-font]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.font === t.font)))
+      root.querySelectorAll<HTMLElement>('[data-scheme]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.scheme === t.scheme)))
+      code.textContent = `import { defineTheme } from '@formguide/agui-chat'
+
+defineTheme('mine', {
+  tokens: {
+    accent: '${t.accent}', 'on-accent': '${onAccent(t.accent)}', link: '${t.accent}',
+    radius: '${t.radius}px', 'card-radius': '${t['card-radius']}px', 'bubble-radius': '${t['bubble-radius']}px',
+    font: '${t.font.replace(/'/g, "\\'")}',
+  },
+})
+
+// <agui-chat theme="mine" scheme="${t.scheme}"></agui-chat>`
+    }
+
+    root.querySelectorAll<HTMLElement>('[data-accent]').forEach((b) => b.addEventListener('click', () => { t.accent = b.dataset.accent!; apply() }))
+    root.querySelector<HTMLInputElement>('[data-accent-input]')!.addEventListener('input', (e) => { t.accent = (e.target as HTMLInputElement).value; apply() })
+    root.querySelectorAll<HTMLElement>('[data-font]').forEach((b) => b.addEventListener('click', () => { t.font = b.dataset.font!; apply() }))
+    root.querySelectorAll<HTMLElement>('[data-scheme]').forEach((b) => b.addEventListener('click', () => { t.scheme = b.dataset.scheme!; apply() }))
+    root.querySelectorAll<HTMLInputElement>('[data-token]').forEach((r) => r.addEventListener('input', () => {
+      (t as Record<string, unknown>)[r.dataset.token!] = Number(r.value)
+      r.style.setProperty('--p', `${(Number(r.value) - Number(r.min)) / (Number(r.max) - Number(r.min)) * 100}%`)
+      apply()
+    }))
+    root.querySelector('[data-reset]')!.addEventListener('click', () => {
+      Object.assign(t, DEFAULT)
+      root.querySelectorAll<HTMLInputElement>('[data-token]').forEach((r) => { r.value = String(t[r.dataset.token as 'radius']); r.dispatchEvent(new Event('input')) })
+      apply()
+    })
+    const copy = root.querySelector<HTMLButtonElement>('[data-copy]')!
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(code.textContent ?? ''); copy.textContent = 'Copied' } catch { copy.textContent = 'Select and copy' }
+      setTimeout(() => { copy.textContent = 'Copy' }, 1600)
+    })
+    root.querySelectorAll<HTMLInputElement>('[data-token]').forEach((r) => r.style.setProperty('--p', `${(Number(r.value) - Number(r.min)) / (Number(r.max) - Number(r.min)) * 100}%`))
+    apply()
+
+    const s = SPECIMENS.find((x) => x.id === 'set-fields')!
+    const start = () => { playSpecimen(chat, s, formguide) }
+    'IntersectionObserver' in window
+      ? new IntersectionObserver((es, io) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); start() } }).observe(root)
+      : start()
+  }
+</script>
+
+<style is:global>
+  .tp {
+    display: grid; grid-template-columns: 17rem minmax(0, 1fr); grid-template-areas: 'controls stage' 'code code'; gap: 16px;
+    margin: 1.5rem 0 2rem; padding: 16px; border-radius: 28px; background: var(--sl-color-bg-nav); border: 1px solid var(--sl-color-hairline-light);
+  }
+  .tp-controls { grid-area: controls; display: flex; flex-direction: column; gap: 18px; padding: 8px 6px; }
+  .tp-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .tp-group legend, .tp-row span { font: 600 var(--sl-text-xs) var(--sl-font); color: var(--sl-color-gray-3); text-transform: none; padding: 0; margin-bottom: 10px; }
+  .tp-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .tp-row span { margin: 0; }
+  .tp-row output { font: 500 var(--sl-text-xs) var(--sl-font); color: var(--sl-color-gray-2); font-variant-numeric: tabular-nums; }
+
+  .tp-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tp-sw {
+    width: 30px; height: 30px; border-radius: 999px; border: 0; padding: 0; cursor: pointer; background: var(--c);
+    box-shadow: 0 0 0 2px var(--sl-color-bg-nav), 0 0 0 3px transparent; transition: box-shadow .18s, transform .18s;
+  }
+  .tp-sw:hover { transform: scale(1.06); }
+  .tp-sw[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--sl-color-bg-nav), 0 0 0 4px var(--c); }
+  .tp-sw:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 3px; }
+  .tp-custom { position: relative; overflow: hidden; background: conic-gradient(#ff375f, #ff9f0a, #ffd60a, #30d158, #0a84ff, #bf5af2, #ff375f); }
+  .tp-custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+  .tp-seg { display: flex; padding: 2px; border-radius: 999px; background: var(--sl-color-gray-6); }
+  .tp-seg button {
+    flex: 1; border: 0; background: none; color: var(--sl-color-gray-2); font: 500 var(--sl-text-sm) var(--sl-font); padding: 7px 0; min-height: 34px;
+    border-radius: 999px; cursor: pointer; transition: background .18s, color .18s;
+  }
+  .tp-seg button[aria-checked='true'] { background: var(--sl-color-bg); color: var(--sl-color-white); box-shadow: 0 1px 3px hsla(0, 0%, 0%, .25); }
+
+  .tp-range { -webkit-appearance: none; appearance: none; width: 100%; height: 26px; background: transparent; margin: -4px 0 6px; cursor: pointer; --p: 50%; }
+  .tp-range::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(to right, var(--sl-color-accent) var(--p), var(--sl-color-gray-5) var(--p)); }
+  .tp-range::-moz-range-track { height: 4px; border-radius: 999px; background: var(--sl-color-gray-5); }
+  .tp-range::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--sl-color-accent); }
+  .tp-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -9px; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px hsla(0, 0%, 0%, .35); }
+  .tp-range::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px hsla(0, 0%, 0%, .35); }
+  .tp-range:focus-visible { outline: none; }
+  .tp-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--fg-glow, hsla(200, 80%, 60%, .35)); }
+
+  .tp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tp-chip {
+    border: 1px solid var(--sl-color-hairline-light); background: none; color: var(--sl-color-gray-2); font-size: var(--sl-text-sm);
+    padding: 6px 12px; min-height: 34px; border-radius: 999px; cursor: pointer; transition: background .18s, color .18s, border-color .18s;
+  }
+  .tp-chip[aria-pressed='true'] { color: var(--sl-color-white); background: var(--sl-color-gray-6); border-color: var(--sl-color-gray-4); }
+  .tp-chip:focus-visible, .tp-seg button:focus-visible, .tp-reset:focus-visible, .tp-copy:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 2px; }
+  .tp-reset { align-self: flex-start; border: 0; background: none; color: var(--sl-color-accent-high); font: 500 var(--sl-text-sm) var(--sl-font); padding: 6px 0; cursor: pointer; }
+
+  .tp-stage { grid-area: stage; height: 540px; border-radius: 20px; overflow: hidden; }
+  .tp-stage agui-chat { display: block; height: 100%; }
+  .tp-code { grid-area: code; border-radius: 18px; background: var(--sl-color-bg); overflow: hidden; }
+  .tp-codebar { display: flex; justify-content: space-between; align-items: center; padding: 8px 8px 0 16px; font: 500 var(--sl-text-xs) var(--sl-font-mono); color: var(--sl-color-gray-3); }
+  .tp-copy { border: 0; border-radius: 999px; background: var(--sl-color-gray-6); color: var(--sl-color-gray-2); font: 500 var(--sl-text-xs) var(--sl-font); padding: 6px 12px; min-height: 30px; cursor: pointer; }
+  .tp-code pre { margin: 0; padding: 10px 16px 16px; overflow-x: auto; font: var(--sl-text-xs)/1.6 var(--sl-font-mono); color: var(--sl-color-gray-2); }
+
+  @media (max-width: 50rem) {
+    .tp { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'stage' 'controls' 'code'; padding: 12px; border-radius: 22px; }
+    .tp-stage { height: 480px; }
+  }
+</style>

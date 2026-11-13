@@ -4,7 +4,13 @@ description: 'What the agent sends back (directives and four kinds of cards) and
 ---
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
-The agent streams AG-UI events. Here is **everything the frontend can receive**, and what to draw for it:
+The agent streams AG-UI events. Here is **everything the frontend can receive**, and what to draw for it. To see each card working before you read its payload, open the [card gallery](../card-gallery/): every card live, with the event that produces it and the answer it sends back.
+
+<CardGrid>
+  <LinkCard title="Card gallery" description="All 23 cards and variants, live, light and dark." href="../card-gallery/" />
+  <LinkCard title="Playground" description="Every widget setting, card flags and your own cards, with code to copy." href="../playground/" />
+</CardGrid>
+
 
 | Event | When | What to render |
 |---|---|---|
@@ -20,12 +26,12 @@ The agent streams AG-UI events. Here is **everything the frontend can receive**,
 | `CUSTOM tool_progress` | a sub-step of a running tool (the document researcher) | optional: a sub-line under that tool's step |
 | `CUSTOM suggestions` | after an answer (when enabled on the server) | 2-3 chips; clicking one sends it as a message; an entry in `applies` (validated field changes) makes it an action chip that fills the fields first, with Undo |
 | `TOOL_CALL_*` + `TOOL_CALL_RESULT` | the agent used one of its own tools | optional: a step "Searching the documents" with a spinner, then a tick |
-| `TOOL_CALL_*` without a result | the agent called **your** frontend tool | anything you like: it is your own component (see Integrate in the architecture pages) |
+| `TOOL_CALL_*` without a result | the agent called **your** frontend tool | anything you like: it is your own component ([Frontend tools](../frontend-tools/)) |
 | `CUSTOM run_stats` | last event of every run: timings, tokens, cache hits ([Speed and tracing](../../backend/observability/)) | nothing, or a debug line |
 | `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
 | `RUN_FINISHED` / `RUN_ERROR` | the turn ended | stop the spinner, show the error |
 
-**Both cards stop the turn** until the user answers; there is at most one at a time. Look at `type` to know which card to draw. The two events that change what is on screen in the form are the directive and the field-change card; both arrive as `CUSTOM` events with a JSON value.
+**Every card stops the turn** until the user answers; there is at most one at a time. Look at `type` to know which card to draw. The two events that change what is on screen in the form are the directive and the field-change card; both arrive as `CUSTOM` events with a JSON value.
 ## 2.1 "Look here": the `ui_directive` event
 
 Sent when the agent wants to show the user a field (or a tab, or an accordion).
@@ -226,7 +232,7 @@ resume: { accepted: false }                          // skipped (or AG-UI status
 // AG-UI 1.0 style:  resume: [{ interrupt_id: card_id, status: "resolved", payload: { answer: { ids: ["auto"] } } }]
 ```
 
-The agent gets "The user chose: Car loan (auto)" and continues in the same turn. If the resume carries `config` (and the card had `applies`), the agent takes it like an accepted field-change card: the field counts as filled and is not proposed again. Without `config` the answer only answers, and the agent may then send a field-change card for `loan_type`: a UI that does not apply answers keeps working as before. Typed text never fills the field by itself. An id that was not offered, several ids for a single-choice question, or text when `allow_text` is false counts as skipped, and the agent is told why.
+The agent gets "The user chose: Car loan (auto)" and continues in the same turn. If the resume carries `config` (and the card had `applies`), the agent takes it like an accepted field-change card: the field counts as filled and is not proposed again. Without `config` the answer only answers, and the agent may then send a field-change card for `loan_type`: a UI that does not apply answers keeps working as before. For a question about a **text field** (no options, `input: {type: "text"}`, `applies: true`), a typed answer that reads like a value (one line, not a question) fills the field the same way: apply `{[field]: text}`, resume with `{answer: {text}, config}`. If the form flags an error on the field after applying ("Series: 4 digits"), put the previous value back and resume with `{answer: {text}}` only, so the agent explains. Typed text for a choice field never fills it by itself. An id that was not offered, several ids for a single-choice question, or text when `allow_text` is false counts as skipped, and the agent is told why.
 
 With `interrupt_mode: structured` the question arrives as `RUN_FINISHED.outcome.interrupts[0]` with `reason: "ask_user"`, `message` = the question, and the rest in `metadata`. A field-change card has `reason: "confirm_field_changes"` there.
 
@@ -271,8 +277,8 @@ The model asks *what*; the widget decides *how* to draw it from the payload. Eve
 | question | `options[].description` | two-line options ("Car loan / from 16.9% · up to 7 years") | |
 | question | 2-3 options with the same `options[].attrs`, `recommended` | a comparison in columns (stacked on phones); "From the documents" when the question has `sources` | |
 | question | more than 12 options, `suggested` | a search box; the suggested options first | |
-| question | `input: {type: "date", min?, max?}` | Today, Tomorrow and the next days, plus Other date | |
-| question | `input: {type: "time"}`, `slots?` | free slots | `getSlots(field, date)` |
+| question | `input: {type: "date", min?, max?}` | Today, Tomorrow and the next days, plus Other date (our own calendar, no browser popup); a date in the past opens the calendar on the right month | |
+| question | `input: {type: "time", min?, max?}`, `slots?` | free slots, else times every 30 minutes | `getSlots(field, date)` |
 | question | `input: {type: "number", min, max, step, unit?}` | a stepper (under 10 steps) or a slider, a live line, "Set 5 years" | `preview(field, value)` |
 | question | `input: {type: "address"}` | suggestions as you type | `lookupAddress(field, query)` |
 | question | `fields: [{name, label, input?, required?}]` | 2-3 short inputs in one card; resume `{answers, config}` | |
@@ -306,6 +312,36 @@ chat.use(formguide({
 - Field-change cards cannot be left out: they are how the agent fills the form.
 
 The server can switch the same actions off for every client with `actions` in its config ([Configuration](../../reference/configuration/)); the model gets only what both allow.
+
+## Calling components from your code
+
+Every card can also be shown without the agent: `chat.showCard(payload)` renders it in the conversation with the same renderer (and your replacements) and resolves with what the user answered, the same value a resume would carry. Use it for a host-driven step ("pick a delivery day"), a demo, or a test.
+
+```js
+// a question with two-line options
+const { answer } = await chat.showCard({ type: 'ask', question: 'Which loan?', allow_text: false,
+  options: [{ id: 'auto', label: 'Car loan', description: 'from 16.9%' }, { id: 'cash', label: 'Cash loan' }] })
+
+// a date (our calendar), a number range (stepper / slider), several short fields
+await chat.showCard({ type: 'ask', question: 'When should we call?', input: { type: 'date' }, allow_text: true })
+await chat.showCard({ type: 'ask', question: 'Loan term', input: { type: 'number', min: 1, max: 7, step: 1, unit: 'years' }, allow_text: true })
+await chat.showCard({ type: 'ask', question: 'Your name', allow_text: true, fields: [{ name: 'first', label: 'First name' }, { name: 'last', label: 'Last name' }] })
+
+// field changes, a file request, a confirmation, the review
+await chat.showCard({ type: 'set_fields', changes: [{ name: 'email', label: 'Email', value: 'anna@example.com', display: 'anna@example.com' }] })
+await chat.showCard({ type: 'upload', prompt: 'A photo of your passport', accept: 'image/*,.pdf' })
+const { accepted } = await chat.showCard({ type: 'confirm', title: 'Send the application?', confirm_label: 'Send application' })
+await chat.showCard({ type: 'review', mode: 'status', sections: [{ name: 'car', label: 'Car', left: 2 }] })
+```
+
+| `type` | Card | Variants by payload |
+| --- | --- | --- |
+| `set_fields` | field changes (2.2) | `kind`, consent rows, row issues, a document header, dependent rows (2.8) |
+| `ask` | question (2.5) | chips, two-line options, comparison, search, days, slots, range, address, several fields (2.8) |
+| `upload` | file request (2.6) | camera first on phones, privacy line |
+| `confirm` | confirmation (2.7) | details, consequence, receipt, thumbs |
+| `review` | form status / check before sending (2.8) | `mode: "status"` or `"submit"` |
+| your own | anything you register: `chat.renderers.set('my_card', (payload, ctx) => element)`; call `ctx.resolve(value)` with the answer | |
 
 ## Next
 

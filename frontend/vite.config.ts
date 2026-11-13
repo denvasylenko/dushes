@@ -8,6 +8,8 @@ const widget = fileURLToPath(new URL('../packages/agui-chat/src', import.meta.ur
 
 export default defineConfig({
   plugins: [react()],
+  // two pages: the form demo (index.html) and the multi-page site demo (site.html)
+  build: { rollupOptions: { input: { main: 'index.html', site: 'site.html' } } },
   resolve: {
     dedupe: ['react', 'react-dom'],   // one React, also for the widget sources
     alias: [
@@ -21,6 +23,7 @@ export default defineConfig({
     proxy: {
       '/java': 'http://127.0.0.1:8000',
       '/agent': 'http://127.0.0.1:8000',
+      '/site': 'http://127.0.0.1:8000',
     },
   },
 })

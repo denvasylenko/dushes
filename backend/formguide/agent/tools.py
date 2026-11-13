@@ -109,7 +109,9 @@ TOOLS: list[dict[str, Any]] = [
                            "items": {"type": "object", "properties": {"name": {"type": "string"},
                                                                        "required": {"type": "boolean"}},
                                      "required": ["name"]}},
-                "field": {"type": "string", "description": "a dropdown, radio or multi-select field"},
+                "field": {"type": "string", "description": "the field this question is about: a dropdown, radio, multi-select "
+                          "or checkbox (options from the field), or a text, date or number field (the typed answer "
+                          "fills it at once)"},
                 "multiple": {"type": "boolean", "description": "several choices allowed"},
                 "allow_text": {"type": "boolean", "description": "a typed answer allowed; default true"},
                 "input": {"type": "object", "description": "the kind of typed answer, shown as a picker",
@@ -531,6 +533,8 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
         e = ctx.ov[n.name]
         if n.role in ("date", "number") and not raw:   # a typed answer with a picker of the field's type
             a = {**a, "input": a.get("input") or {"type": n.role}}
+        elif n.role == "text" and not raw:   # a typed answer fills the text field (one tap, no second card)
+            a = {**a, "input": a.get("input") or {"type": "text"}}
         elif n.role == "bool":   # yes / no: the first option means yes; the model's labels are kept (its language)
             given = [x for x in raw if isinstance(x, (str, dict))][:2]
             for oid, val, x, default in (("yes", True, given[0] if given else None, "Yes"),
@@ -608,8 +612,8 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
         payload["suggested"] = list(dict.fromkeys(sug))
     if field_name and opts:
         payload.update(_applying(ctx, field_name, opts))
-    elif field_name and inp and inp.get("type") in ("date", "number", "time") and ctx.ov[field_name].editable:
-        # a typed answer about a date / number field fills it as written (ISO date, HH:MM, a number)
+    elif field_name and inp and inp.get("type") in ("date", "number", "time", "text") and ctx.ov[field_name].editable:
+        # a typed answer about a date / number / text field fills it as written (ISO date, HH:MM, a number, the text)
         payload.update(applies=True, label=ctx.ov[field_name].label or field_name, **previous_of(ctx, field_name))
     if field_name:   # where the field is: the client shows it once the answer fills it
         payload["reveal"] = reveal_chain(ctx, field_name)

@@ -11,7 +11,11 @@ import { Steps, Tabs, TabItem, LinkCard, CardGrid, Aside } from '@astrojs/starli
 1. **Auth in front.** Mount the router behind your own dependency, or a gateway. A thread id is the only key to a conversation.
 
    ```python
-   app.include_router(create_router(guide), prefix="/agent", dependencies=[Depends(require_user)])
+   from fastapi import Depends, FastAPI
+   from formguide.server import create_router
+
+   app = FastAPI()
+   app.include_router(create_router(guide), prefix="/agent", dependencies=[Depends(require_user)])   # require_user: your auth
    ```
 
 2. **Protect the manager endpoints** harder than the chat: `/kb/*` changes what the agent tells every user.

@@ -117,6 +117,24 @@ A suggestion with changes in `applies` SHALL be marked as filling fields. Clicki
 - **WHEN** the user clicks "Change term to 48 months", which carries a change of the term
 - **THEN** the term is filled at once, a "✓ Filled in · Loan term · Undo" line appears, and the text is sent
 
+### Requirement: Languages load on demand
+English SHALL be built into the widget; the other shipped languages (`ru`, `uk`, `de`, `fr`, `it`, `es`) SHALL be packs loaded the first time a chat needs one: a separate chunk in ES module builds, `agui-chat.lang-<lang>.js` next to `agui-chat.iife.js` in the one-script build. Until the pack arrives, or when it cannot be loaded, the chat SHALL show English, and SHALL switch its texts without a reload when it arrives.
+
+#### Scenario: A chat in Russian
+- **WHEN** a page with `lang="ru"` loads the one-script build
+- **THEN** the widget adds `agui-chat.lang-ru.js` from the folder of `agui-chat.iife.js`, and the composer's placeholder turns Russian when it loads
+
+#### Scenario: No pack for the language
+- **WHEN** the chat's language is `pt` and the host registered no pack
+- **THEN** the chat stays in English
+
+### Requirement: Language packs of the host's own
+`addLanguage(lang, pack)` SHALL register a pack (`{core, formguide, tools}`) for any language; texts missing from it SHALL stay English. Texts from `options.i18n` and plugins SHALL win over a pack.
+
+#### Scenario: Portuguese from the host
+- **WHEN** the host calls `addLanguage('pt', {core: {placeholder: 'Escreva ao assistente'}})` and sets `lang: 'pt'`
+- **THEN** the placeholder is Portuguese and the Send button still reads Send
+
 ### Requirement: Configurable from the UI
 Every feature SHALL be configurable through attributes, an options object, CSS custom properties and an i18n dictionary:
 - `mode`: `floating` (a button and a side panel over a scrim), `inline` or `page`;
@@ -258,6 +276,62 @@ The widget SHALL render fenced code blocks (```` ```lang ````) in assistant mess
 #### Scenario: Copying a snippet
 - **WHEN** an answer contains a ```` ```yaml ```` block and the user taps its copy button
 - **THEN** the clipboard holds exactly the YAML, and the button reads "Copied" for a moment
+
+### Requirement: A part on every element
+Every element the widget draws SHALL carry a `part` from a documented vocabulary, including card content (questions, rows, options, calendar days, steppers, review rows, receipts) and the chrome (header, empty chat, messages, steps, suggestions, composer). Parts SHALL be added to elements that appear later, such as a card's result line.
+
+#### Scenario: Styling an option from the page
+- **WHEN** the page has `agui-chat::part(option) { border-radius: 0 }` and a question with descriptions arrives
+- **THEN** its options have square corners
+
+### Requirement: Component tokens
+Cards, bubbles, chips, buttons, inputs, the header, the composer and the calendar SHALL read component tokens (for example `--agui-card-bg`, `--agui-bubble-user-bg`, `--agui-chip-radius`, `--agui-button-bg`) that fall back to the global tokens. Themes SHALL accept them as short keys.
+
+#### Scenario: Only the cards
+- **WHEN** a theme sets `card-bg` and nothing else
+- **THEN** cards change background and the panel keeps its own
+
+### Requirement: Replaceable icons
+The `icons` option SHALL replace any built-in icon (send, stop, mic, clip, plus, close, logo) with an SVG string or an element.
+
+#### Scenario: A brand logo
+- **WHEN** `icons: {logo: '<svg ...>'}` is set
+- **THEN** the header and the floating button show that logo
+
+### Requirement: Slots for the host's own components
+The `render` option SHALL let the host replace pieces with its own elements: `markdown` (the answer's HTML, also while streaming), `assistant`, `user`, `empty`, `header`, `error`, `suggestions`, `sources` and `composer`. A slot that returns nothing, or throws, SHALL fall back to the default, with one console warning for a throw.
+
+#### Scenario: A custom answer component
+- **WHEN** `render.assistant` returns an element for a finished answer
+- **THEN** that element replaces the bubble's content, and the default is used for answers it returns nothing for
+
+### Requirement: Bubble mode
+`mode: "bubble"` SHALL show a round launcher in a corner (`bubbleSide`, default right). Opening SHALL grow the chat window out of the launcher with a spring (or a fade with `motion: "none"` or reduced motion), and the launcher's icon SHALL turn into a close mark. On a computer the page SHALL stay usable; under 520 px the window SHALL be a bottom sheet with a dimmed page.
+
+#### Scenario: Open and close
+- **WHEN** the user taps the launcher, then taps it again
+- **THEN** the window opens next to the launcher, then shrinks back into it, and focus returns to the launcher
+
+### Requirement: Greeting and unread mark
+With `greeting`, a small speech bubble SHALL appear next to the closed launcher after `greetingDelay` seconds (default 4), open the chat when tapped, and not come back once closed. An answer arriving while the bubble is closed SHALL put a dot on the launcher until it is opened.
+
+#### Scenario: An answer while closed
+- **WHEN** the bubble is closed and an answer arrives
+- **THEN** the launcher shows the unread dot, and opening the chat clears it
+
+### Requirement: Launcher slot
+`render.launcher` SHALL replace the launcher's content with the host's element; the widget SHALL keep the click, the open state and the unread dot.
+
+#### Scenario: A custom launcher
+- **WHEN** `render.launcher` returns an avatar image
+- **THEN** the launcher shows the avatar and still opens the chat
+
+### Requirement: Calling a card from code
+`chat.showCard(payload)` SHALL render any card type the chat has a renderer for, without the agent, and SHALL return a promise that resolves with the user's answer (the same value a resume would carry).
+
+#### Scenario: A date from the host
+- **WHEN** the host calls `await chat.showCard({type: "ask", question: "When?", input: {type: "date"}})`
+- **THEN** the calendar card appears, and the promise resolves with `{answer: {text: "<date>"}}` when the user picks a day
 
 ### Requirement: Dictation ends with any chat action
 Any chat action other than sending the composer (a chip or starter, a card answer or Skip, a run started by the host, New chat) SHALL end a running dictation and drop the dictated words, keeping only the text typed before it. Results that arrive afterwards SHALL be ignored.

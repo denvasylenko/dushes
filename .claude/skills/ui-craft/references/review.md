@@ -3,6 +3,7 @@
 ## Quick self-check (after every UI change)
 
 - [ ] The mini-brief is done: one main action, the tap ladder did not grow.
+- [ ] Like Apple: each component matches its iOS / macOS counterpart in look and behaviour (`apple-components.md`); no browser chrome left (`controls.md`).
 - [ ] No `confirm/alert/prompt`, no hex colours in renderers or new CSS rules, no font sizes or radii off the scale.
 - [ ] Every state: empty, loading (> 150 ms), error with "Try again", no access, too many, after a reload.
 - [ ] Text: a verb and an object, no jargon, correct plurals, all seven widget languages.
@@ -22,9 +23,9 @@ The demo server: `cd backend && uv run uvicorn demo.app:app --port 8000 --reload
 - The widget's own tests: `cd packages/agui-chat && npm test` (behaviour and speed budgets).
 - Reset the window size to `desktop` afterwards.
 
-## Audit: scoring a surface on the ten laws
+## Audit: scoring a surface on the eleven laws
 
-Each law 0–2 (0 broken, 1 partly, 2 exemplary), out of 20. ≥ 17: the level of the references; 12–16: good, with quick wins; < 12: redesign (a new mini-brief).
+Each law 0–2 (0 broken, 1 partly, 2 exemplary), out of 22. ≥ 19: the level of the references; 13–18: good, with quick wins; < 13: redesign (a new mini-brief). Law 11 (like Apple) is checked against `apple-components.md`.
 
 Report format:
 

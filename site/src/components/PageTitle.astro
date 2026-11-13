@@ -6,10 +6,12 @@
 import Default from '@astrojs/starlight/components/PageTitle.astro';
 const { entry } = Astro.locals.starlightRoute;
 const desc = entry.data.description;
-const splash = entry.data.template === 'splash';
+// pages with their own header: the landing (a hero) and the card gallery
+const custom = entry.id === 'frontend/card-gallery';
+const splash = entry.data.template === 'splash' || !!entry.data.hero || custom;
 const isSpec = entry.id.startsWith('specifications/') && entry.id !== 'specifications';
 ---
-<Default />
+{!custom && <Default />}
 {!splash && (
   <>
     {desc && !isSpec && <p class="pt-lead">{desc}</p>}

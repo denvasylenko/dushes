@@ -3,6 +3,11 @@ title: 'Themes and styling'
 description: 'Named themes, tokens on the element and ::part(), in light and dark.'
 ---
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import ThemePlayground from '../../../components/ThemePlayground.astro';
+
+Try it first: pick a colour, drag the corners, switch the scheme. The chat below is the real widget with a real card, and the code under it is your theme, ready to paste. Every other setting (modes, ::part rules, component tokens, render slots) is in the [Playground](../playground/).
+
+<ThemePlayground />
 
 ## Themes
 
@@ -54,14 +59,91 @@ Avoid setting colours with `style.setProperty` on the element: inline values app
 
 Each is `--agui-<name>` in CSS.
 
-## Parts
+## Parts: every element has a name
 
-For changes tokens do not cover, use parts: `panel`, `header`, `log`, `message`, `user`, `assistant`, `steps`, `card`, `card-<type>`, `chip`, `composer`, `input`, `send`, `fab`, `notice`.
+Every element the chat draws has a `part`: the header, each message, every card piece (questions, rows, options, calendar days, steppers, review rows, receipts), the composer. Style any of them from the page with `::part()`, or inside a theme's `css` with `[part~="..."]`. These names are the stable API; the widget's class names are internal and may change.
 
 ```css
 agui-chat::part(card) { border-width: 2px; }
-agui-chat::part(fab) { bottom: 90px; }
+agui-chat::part(option) { border-radius: 0; }
+agui-chat::part(calendar-day-selected) { background: #0a7f6f; }
+agui-chat::part(button-primary) { text-transform: uppercase; }
 ```
+
+```js
+defineTheme('square', { css: '[part~="chip"], [part~="option"], [part~="button"] { border-radius: 4px; }' })
+```
+
+Cards also carry `card-<type>` (`card-set_fields`, `card-ask`, `card-review`, ...). All names: `panel`, `scrim`, `fab`, `header`, `logo`, `title`, `subtitle`, `icon-button`, `close`, `log`, `empty`, `empty-title`, `empty-intro`, `message`, `user`, `assistant`, `message-body`, `steps`, `steps-toggle`, `step`, `suggestions`, `typing`, `notice`, `error`, `composer`, `composer-box`, `input`, `send`, `mic`, `attach`, `attachments`, `hint`, `chip`, `action-chip`, `chip-selected`, `button`, `button-primary`, `button-secondary`, `button-link`, `button-danger`, `actions`, `result`, `tag`, `text-input`, `number`, `number-stepper`, `number-step`, `select`, `editor`, `card-question`, `card-title`, `card-message`, `row`, `row-label`, `row-value`, `row-tools`, `row-previous`, `row-issue`, `card-reason`, `document`, `fold`, `option`, `options`, `comparison`, `comparison-column`, `search`, `day-strip`, `slots`, `range`, `slider`, `range-preview`, `stepper`, `fields`, `fields-item`, `date-field`, `calendar`, `calendar-title`, `calendar-nav`, `calendar-weekday`, `calendar-day`, `calendar-day-selected`, `calendar-today`, `calendar-cell`, `review`, `review-section`, `review-issue`, `sources`, `source`, `receipt`, `feedback`, `details`, `consequence`, `dropzone`, `progress`, `privacy`.
+
+## Component tokens
+
+Each component reads its own tokens first, falling back to the global ones, so you can change one kind of element without touching the rest. They work as CSS variables on the element and as short keys in a theme.
+
+| Component | Tokens |
+| --- | --- |
+| panel, header, log | `panel-bg`, `panel-ink`, `header-bg`, `header-ink`, `header-border`, `log-bg` |
+| messages | `bubble-user-bg`, `bubble-user-ink`, `bubble-ai-ink`, `bubble-radius` |
+| cards | `card-bg`, `card-ink`, `card-border`, `card-radius`, `card-padding` |
+| buttons | `button-bg`, `button-ink`, `button-radius`, `button-secondary-bg`, `button-secondary-ink`, `button-secondary-border` |
+| chips and options | `chip-bg`, `chip-ink`, `chip-border`, `chip-radius`, `chip-on-bg`, `chip-on-ink`, `option-bg`, `option-ink`, `option-border`, `option-radius` |
+| inputs | `input-bg`, `input-ink`, `input-border`, `input-radius`, `input-height` |
+| composer | `composer-bg`, `composer-border`, `composer-radius`, `composer-area-bg` |
+| calendar | `calendar-on-bg`, `calendar-on-ink` |
+| bubble mode | `bubble-width` (400px), `bubble-height` (680px), `bubble-offset` (20px), `bubble-window-radius` (24px), `launcher-size` (60px) |
+
+```js
+defineTheme('acme', { tokens: { 'card-bg': '#f7faf9', 'card-radius': '18px', 'bubble-user-bg': '#0a7f6f', 'bubble-user-ink': '#fff' } })
+```
+
+## Icons
+
+Replace any built-in icon with an SVG string or an element: `logo` (header and floating button), `send`, `stop`, `mic`, `clip`, `plus`, `close`.
+
+```js
+chat.options = { icons: { logo: '<svg viewBox="0 0 24 24">...</svg>', send: mySendIcon } }
+```
+
+## Your own components (slots)
+
+`render` puts your own element in place of any piece; return nothing to keep the default for that case. A slot that throws falls back to the default with one console warning.
+
+| Slot | Gets | Replaces |
+| --- | --- | --- |
+| `markdown(text, chat)` | the answer text | the answer's HTML, also while it streams (return an HTML string) |
+| `assistant(text, chat)` | the finished answer | the answer bubble's content (also restored answers) |
+| `user(text, files, chat)` | the message | the user bubble's content |
+| `empty({title, intro, starters}, chat)` | | the empty chat |
+| `header({title, subtitle, newChat, close}, chat)` | | the header |
+| `error({message, kind, text, retry}, chat)` | the failure | the error line and its Try again |
+| `suggestions(items, chat)` | quick replies | the chips under the answer |
+| `launcher({open, unread}, chat)` | | the bubble's launcher content (an avatar, a brand mark); the click, the unread dot and the open state stay the widget's |
+| `sources(items, chat)` | `{title, section, quote}[]` | the source chips (formguide plugin) |
+| `composer(chat)` | | the whole composer; call `chat.send(text)` |
+
+<Tabs>
+  <TabItem label="Plain JS">
+```js
+chat.options = { render: {
+  markdown: (text) => marked.parse(text),                    // your markdown and code highlighting
+  assistant: (text) => text.startsWith('{') ? myJsonView(JSON.parse(text)) : null,
+  empty: ({ starters }, chat) => myWelcome(starters, (s) => chat.send(s)),
+} }
+```
+  </TabItem>
+  <TabItem label="React">
+```tsx
+import { createRoot } from 'react-dom/client'
+import { AguiChat, reactSlot, type SlotProps } from '@formguide/agui-chat/react'
+
+function Answer({ data }: SlotProps<string>) { return <MyMarkdown source={data} /> }
+
+<AguiChat url="/agent/run" render={{ assistant: reactSlot(createRoot, Answer) }} />
+```
+  </TabItem>
+</Tabs>
+
+Cards are replaced the same way through the renderer registry (`chat.renderers.set('ask', myCard)`, see [Cards and answers](../cards/)), and their building blocks are exported from `@formguide/agui-chat/formguide` for your own cards: `calendar`, `dateField`, `timeGrid`, `schemaForm`.
 
 With the system setting "reduce motion", nothing animates.
 

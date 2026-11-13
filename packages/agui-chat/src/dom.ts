@@ -37,7 +37,8 @@ export const mdInline = (s: string): string => esc(s)
   .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
 
 /** Minimal markdown: paragraphs, line breaks, **bold**, *italic*, `code`, [links](https://...), "- " lists and
- *  fenced code blocks (```lang) with a copy button. An unclosed fence (text still streaming) is shown as code too. */
+ *  fenced code blocks (```lang, or ```lang title="file") with a copy button. An unclosed fence (text still streaming)
+ *  is shown as code too. */
 export function md(src: string, labels: { copy?: string } = {}): string {
   const inline = mdInline
   const out: string[] = []
@@ -45,23 +46,30 @@ export function md(src: string, labels: { copy?: string } = {}): string {
   let para: string[] = []
   let code: string[] | null = null
   let lang = ''
+  let title = ''
   const flushPara = () => { if (para.length) out.push(`<p>${para.map(inline).join('<br>')}</p>`); para = [] }
   const flushList = () => { if (list) out.push(`<ul>${list.map((x) => `<li>${inline(x)}</li>`).join('')}</ul>`); list = null }
   const flushCode = () => {
     if (!code) return
-    out.push(`<div class="code" part="code"${lang ? ` data-lang="${esc(lang)}"` : ''}>`
+    const label = title || lang
+    out.push(`<div class="code" part="code"${label ? ` data-lang="${esc(label)}"` : ''}>`
       + `<button type="button" class="code-copy" data-copy data-keep>${esc(labels.copy ?? 'Copy')}</button>`
       + `<pre><code>${esc(code.join('\n'))}</code></pre></div>`)
     code = null
   }
   for (const line of String(src).split('\n')) {
-    const fence = line.match(/^\s*```\s*([\w+#.-]*)\s*$/)
+    // an info string may carry attributes after the language: ```yaml title="formguide.yaml"
+    const fence = line.match(/^\s*```\s*([\w+#.-]*)(?:\s+(.*?))?\s*$/)
     if (code) {
-      if (fence && !fence[1]) { flushCode(); continue }
+      if (fence && !fence[1] && !fence[2]) { flushCode(); continue }
       code.push(line)
       continue
     }
-    if (fence) { flushPara(); flushList(); code = []; lang = fence[1]; continue }
+    if (fence) {
+      flushPara(); flushList(); code = []; lang = fence[1]
+      title = (fence[2] ?? '').match(/title=["']?([^"']+)["']?/)?.[1] ?? ''
+      continue
+    }
     const item = line.match(/^\s*(?:[-*\u2022]|\d+[.)])\s+(.*)$/)
     if (item) { flushPara(); (list ??= []).push(item[1]); continue }
     if (!line.trim()) { flushPara(); flushList(); continue }
@@ -81,3 +89,34 @@ export function store<T>(key: string): { get(): T | null; set(v: T): void } {
     set(v) { try { localStorage.setItem(key, JSON.stringify(v)) } catch { /* private mode */ } },
   }
 }
+
+const CHEVRON = (d: string) => `<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
+
+/** A number input with an Apple-style stepper: two halves on the right edge, full height, chevrons up and down.
+ * The browser's own spin buttons are hidden (styles.ts); typing still works. Returns the wrapper. */
+export function numberBox(input: HTMLInputElement, labels: { up: string; down: string } = { up: '+', down: '-' }): HTMLElement {
+  const nudge = (dir: 1 | -1) => {
+    try { if (dir > 0) input.stepUp(); else input.stepDown() } catch {
+      const step = Number(input.step) || 1
+      input.value = String((Number(input.value) || 0) + dir * step)
+    }
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+  const btn = (dir: 1 | -1) => {
+    const b = h('button', { type: 'button', class: 'num-b', tabindex: -1, 'aria-label': dir > 0 ? labels.up : labels.down,
+      onclick: () => { nudge(dir); input.focus({ preventScroll: true }) } })
+    b.innerHTML = CHEVRON(dir > 0 ? 'M3 7.5 6 4.5l3 3' : 'M3 4.5 6 7.5l3-3')
+    return b
+  }
+  input.addEventListener('keydown', (e) => {   // arrows step like the native control did
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); nudge(e.key === 'ArrowUp' ? 1 : -1) }
+  })
+  return h('div', { class: 'num' }, input, h('div', { class: 'num-step' }, btn(1), btn(-1)))
+}
+
+/** A select with its own chevron (the native arrow is hidden), matching the inputs. */
+export function selectBox(select: HTMLSelectElement): HTMLElement {
+  return h('div', { class: 'sel' }, select)
+}
+

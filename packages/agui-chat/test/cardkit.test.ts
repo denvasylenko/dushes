@@ -250,3 +250,71 @@ describe('card kit: field card, review, confirm', () => {
     expect($(el, '.quote').textContent).toContain('free after 3 months')
   })
 })
+
+describe('Apple-style controls', () => {
+  it('a number field has its own stepper on the right edge', async () => {
+    const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'How much?', allow_text: true,
+      fields: [{ name: 'amount', label: 'Amount', input: { type: 'number' } }, { name: 'extra', label: 'Extra', input: { type: 'number' } }] })))
+    const boxes = $$(el, '.fields .num')
+    expect(boxes).toHaveLength(2)
+    const input = boxes[0].querySelector('input') as HTMLInputElement
+    const [up, down] = [...boxes[0].querySelectorAll('.num-b')] as HTMLButtonElement[]
+    up.click(); up.click(); down.click()
+    expect(input.value).toBe('1')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }))
+    expect(input.value).toBe('2')
+    expect(($(el, '.fields .btn.pri') as HTMLButtonElement).textContent).toBe('Required fields left: 1')
+  })
+})
+
+describe('our own date and time pickers', () => {
+  it('a past date opens the calendar on the right month; a tap answers', async () => {
+    const { el, applyChanges } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'When was the company founded?', field: 'founded',
+      applies: true, input: { type: 'date', max: '2020-03-15' }, allow_text: true })))
+    expect($(el, '.cal-title').textContent).toContain('March 2020')
+    expect($$(el, '.strip .chip')).toHaveLength(0)                       // no quick days for the past
+    expect(($(el, 'input[type=date]') as HTMLInputElement).hidden).toBe(true)   // no browser picker
+    const later = $$(el, '.cal-d').find((b) => b.textContent === '20') as HTMLButtonElement
+    expect(later.disabled).toBe(true)                                     // after max
+    ;($$(el, '.cal-d').find((b) => b.textContent === '10') as HTMLButtonElement).click()
+    await tick(5)
+    expect(applyChanges).toHaveBeenCalledWith({ founded: '2020-03-10' })
+  })
+
+  it('the title switches to years, then months', async () => {
+    const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Born?', input: { type: 'date', max: '2008-01-01' }, allow_text: true })))
+    ;($(el, '.cal-title') as HTMLButtonElement).click()
+    expect($(el, '.cal-title').textContent).toBe('2004 – 2015')
+    ;($$(el, '.cal-nav')[0] as HTMLButtonElement).click()                 // the previous 12 years
+    ;($$(el, '.cal-y').find((b) => b.textContent === '1999') as HTMLButtonElement).click()
+    ;($$(el, '.cal-y')[4] as HTMLButtonElement).click()                  // May
+    expect($(el, '.cal-title').textContent).toContain('May 1999')
+  })
+
+  it('a date among several fields uses the calendar field', async () => {
+    const { el, applyChanges } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Children', allow_text: true,
+      fields: [{ name: 'c1', label: 'Child #1 date of birth', input: { type: 'date', max: '2026-01-01' } }] })))
+    const face = $(el, '.date-face') as HTMLButtonElement
+    expect(face.textContent).toContain('Choose a date')
+    face.click()
+    ;($$(el, '.cal-d').find((b) => !(b as HTMLButtonElement).disabled) as HTMLButtonElement).click()
+    expect(face.textContent).not.toContain('Choose a date')
+    ;($(el, '.fields .btn.pri') as HTMLButtonElement).click()
+    await tick(5)
+    expect(Object.keys(applyChanges.mock.calls[0][0])).toEqual(['c1'])
+  })
+
+  it('a time without slots shows a time grid, not the browser picker', async () => {
+    const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'What time?', input: { type: 'time', min: '10:00', max: '12:00' }, allow_text: true })))
+    expect($$(el, '.times .chip').map((b) => b.textContent)).toEqual(['10:00', '10:30', '11:00', '11:30', '12:00'])
+    $$(el, '.times .chip')[2].click()
+    await tick(5)
+    expect(resume()).toEqual({ answer: { text: '11:00' } })
+  })
+
+  it('number options carry no number-key hints', async () => {
+    const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'How many?', allow_text: false,
+      options: [{ id: '0', label: 'None' }, { id: '1', label: '1' }, { id: '2', label: '2' }] })))
+    expect($$(el, '.chip kbd')).toHaveLength(0)
+  })
+})

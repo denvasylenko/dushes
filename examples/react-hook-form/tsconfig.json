@@ -22,6 +22,9 @@
       ],
       "@formguide/agui-chat/react-hook-form": [
         "../../packages/agui-chat/src/rhf.ts"
+      ],
+      "@formguide/agui-chat/formguide": [
+        "../../packages/agui-chat/src/formguide/index.ts"
       ]
     }
   },

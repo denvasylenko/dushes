@@ -62,6 +62,9 @@ Found while adopting this standard. Strike out what is fixed, add new findings w
 | ~~Answers in the widget showed fenced code as raw text~~ | 8 | code blocks with a language label and Copy (2026-11-12, docs-redesign) | S | large for the docs assistant |
 | Mermaid diagrams use `<small>` for secondary labels: below the type scale at phone width | 10 | move secondary text into the edge labels, or drop it on narrow screens | S | small |
 | On a phone the three page actions (Copy page, Open in Claude, Open in ChatGPT) wrap onto two lines above the content | 5 | one "Page" menu button on narrow screens | S | small |
+| ~~No way to see the cards without running the demo and steering the agent to each~~ | 7 | the card gallery: every card and variant live, with its event and answer (2026-11-12, docs-card-gallery) | M | big for developers |
+| The upload card shows its prompt as raw text: markdown (`**payslip**`) is not rendered, unlike question cards (2026-11-12) | 8 | the same inline markdown as `.card-q` in `uploadCard` | S | small |
+| The card gallery's tiles scroll each chat to its bottom on mount, so a tall card (comparison) opens mid-way | 6 | the log-follow fix above; meanwhile the gallery could scroll each log to the card's top | S | small |
 
 ## Bigger ideas (2026-11-11)
 
@@ -70,3 +73,9 @@ Found while adopting this standard. Strike out what is fixed, add new findings w
 - **Phone layout.** At 390 px the form and the chat each get half the screen and the highlight lands off-screen. Make the chat a bottom sheet (peek / half / full) that drops to peek when the agent highlights a field.
 - **Final review.** Before submit: a summary card by tab, "Submit" as the one confirm action, empty required fields as jump links.
 | ~~Field card: ISO dates, passport numbers digit-grouped (123,456), the same reason on every row, small checkbox targets, actions out of reach on phones~~ | 8, 9 | values by field `kind`, one shared reason, 22 px checkbox in a 44 px row on touch, sticky actions under 520 px | S | big (fixed 2026-11-12, chat-card-kit) |
+| ~~The one-script bundle carries the UI text of all seven languages~~ Fixed 2026-11-13: English built in, the rest packs loaded on first use (48.2 -> 39.4 KB, budget 42 KB) | | | | |
+| ~~Native browser pickers: the date popup, time spinners, number spin buttons, select arrows, 13 px checkboxes, the default slider~~ | 10 | our calendar, time grid, number stepper, select chevron, Apple-style checkbox and slider (references/controls.md) | M | big (fixed 2026-11-12) |
+| ~~Number-key hints 1-9 shown on number options ("2 1", "3 2") and on touch screens~~ | 8 | hints only with keyboard focus and never on options with digits | S | medium (fixed 2026-11-12) |
+| ~~Demo form and react-hook-form example: browser date popups, spin buttons, select arrows, 13 px checkboxes, a browser file button~~ | 10 | frontend/src/controls.tsx + controls.css (copied into the example): DateInput with the widget's calendar in a popover, NumberInput with the joined stepper, Select with a chevron, Apple checkboxes, radios and file pill | M | big (fixed 2026-11-12) |
+| ~~Hosts could style only a few elements (14 parts), had no per-component tokens, fixed icons, and could not put their own component in place of a message, the header, the empty chat, an error or the composer~~ | 10 | parts on every element (src/parts.ts), component tokens, options.icons, options.render slots, reactSlot | M | big for hosts (fixed 2026-11-12, chat-customization) |
+| ~~The floating chat is a full-height side drawer that dims the page; no bubble launcher, no grabber on phones~~ | 11 | mode: bubble - a launcher that grows into a window with a spring, a bottom sheet with a grabber on phones, unread dot, greeting | M | big (fixed 2026-11-12, chat-bubble) |

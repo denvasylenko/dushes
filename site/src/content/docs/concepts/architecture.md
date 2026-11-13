@@ -48,6 +48,10 @@ Principles:
 - **Small context.** The model sees a collapsed outline, the open section and the changes: about 1K tokens instead of about 16K for the loan demo's raw config.
 - **Append-only history.** The system prompt is frozen per thread; updates arrive in new messages. This keeps prompt caching effective and keeps models that bind reasoning to the exact prefix working.
 
+### Above the form agent: the site assistant
+
+[`formguide/site/`](https://github.com/denvasylenko/dushes/tree/main/backend/formguide/site) adds `SiteGuide`, one chat for a whole site. A router sends each turn either to the site agent (answers from the site map's sections, `navigate`, `open_form`) or to the form agent (`FormGuide.run`, unchanged, one conversation per form: thread `<site thread>-<form id>`). `open_form` keeps a note that becomes the form agent's first message on the form page. See [Site assistant](../../backend/site-assistant/).
+
 ## 2. One turn
 
 ```
@@ -76,6 +80,8 @@ message + config
 | `nudge` | Asks the model to answer if it ended the turn silently | At most once per turn |
 
 After a card is accepted, the model receives the diff (for example "+ appeared tab_collateral") and continues dependent steps: service → barber → date → slot.
+
+The turn runs as a background task, apart from the HTTP response that streams it: if the tab closes or reloads mid-answer, the turn still finishes and its result lands in the transcript; `GET /threads/{id}` reports `running` meanwhile, and `POST /stop` ends a turn (see [Persistence](../../backend/persistence/#a-reload-does-not-lose-the-answer)).
 
 ## 3. What the model sees
 

@@ -15,7 +15,8 @@ Documentation is maintained continuously, in the same change as the code — nev
   - components, data flow, the turn lifecycle or configuration change → update `concepts/architecture.md` and the concept page (and its diagram fragment) that shows it;
   - a new option, key, endpoint, event or CLI flag → the matching page under `reference/` and the guide that uses it;
   - integration or usage changes → the guide under `backend/`, `frontend/`, `form/` or `getting-started/`;
-  - the landing demo (`site/src/demo/`) replays the real widget's events: when card payloads or event shapes change, update the script there too;
+  - the landing demo (`site/src/demo/`) replays the real widget's events: when card payloads or event shapes change, update the script there too; the card gallery (`site/src/demo/gallery.ts`, page `frontend/card-gallery`) has one specimen per card and variant: a new card or variant gets a specimen there;
+  - backend pages show server code only (YAML and Python tabs, HTTP calls), frontend pages browser code only; each backend and widget page ends with "Every option";
   - the site also publishes `llms.txt`, `llms-full.txt` and `<page>.md` (built from the pages, nothing to edit); the docs assistant behind Ask AI (`backend/docs_ai/`, deployed from `deploy/docs-ai/`) reads `llms-full.txt`, so it follows the docs without changes.
   - Check it builds: `cd site && npm run build`.
 - **README.md** — update usage, configuration or run instructions when they change.
@@ -28,7 +29,7 @@ Documentation is maintained continuously, in the same change as the code — nev
   ```
 
 ## UI work
-Before any interface change (the `<agui-chat>` widget, its card renderers and texts, the demo form, the examples, the docs pages), load the `ui-craft` skill (`.claude/skills/ui-craft/`): a five-line mini-brief, the ten laws (one main action, complex in one tap, Undo instead of confirmations, instant, every state designed), the type / spacing / radius scales, text rules and the check in the browser (390 px and desktop, light and dark). Known UI debt is in its `references/audit.md`; update it when you fix or find something.
+Before any interface change (the `<agui-chat>` widget, its card renderers and texts, the demo form, the examples, the docs pages), load the `ui-craft` skill (`.claude/skills/ui-craft/`): Apple is the anchor (every component looks and behaves like its iOS / macOS counterpart, `references/apple-components.md`), a five-line mini-brief, the eleven laws (one main action, complex in one tap, Undo instead of confirmations, instant, every state designed, like Apple), the type / spacing / radius scales, text rules and the check in the browser (390 px and desktop, light and dark). Known UI debt is in its `references/audit.md`; update it when you fix or find something.
 
 ## Layout
 - `backend/formguide/` — the library (form core, agent graph, domain packs, knowledge, attachments, models, skills, config, optional FastAPI router).
@@ -42,6 +43,7 @@ Before any interface change (the `<agui-chat>` widget, its card renderers and te
 - Frontend build: `cd frontend && npm run build` (served by the demo server).
 - Docs site: `cd site && npm install && npm run dev` (http://localhost:4321/dushes/; `DOCS_BASE` / `DOCS_SITE` change the base path and host; `PUBLIC_ASK_AI_URL=http://localhost:8100/ask/run` turns on Ask AI).
 - Docs assistant: `cd backend && ANTHROPIC_API_KEY=... uv run uvicorn docs_ai.app:app --port 8100` (reads `site/dist/llms-full.txt` unless `DOCS_AI_CORPUS` is set).
+- Public host (site + Ask AI + demo in one app, as on Fly): build `site` with `DOCS_BASE=/ PUBLIC_ASK_AI_URL=/ai/ask/run PUBLIC_DEMO_URL=/demo/` and `frontend` with `vite build --base /demo/`, then `cd backend && ANTHROPIC_API_KEY=... uv run uvicorn docs_ai.host:app --port 8080`; deploy: `deploy/docs-ai/` (app `formguide-docs-ai`).
 
 ## Git / GitHub
 The project will be pushed to a GitHub repository the user will name later. Do not create remotes, commit or push until the user asks and gives the repository.

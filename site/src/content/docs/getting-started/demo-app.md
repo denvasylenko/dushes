@@ -21,7 +21,7 @@ Open http://localhost:8000. Two demo forms with nothing in common:
 - **Manager: documents** uploads business documents for a form (`backend/demo/samples/kb/` has examples), then compiles them into the form's rules.
 - **Attach** (the paper clip) sends a user document; `backend/demo/samples/attachments/` has scans and payslips.
 - **Dictate** (the microphone) uses the browser's speech recognition (Chrome, Edge, Safari). The language select above the chat sets the chat's language and dictation.
-- http://localhost:8000/examples/widget/ shows the widget from one script tag, with a panel that switches every option live.
+- http://localhost:8000/examples/widget/ is the **playground**: every setting of the chat in sections (layout and behaviour, colours and theme presets for light and dark, shape and type, component tokens, CSS for any element, cards, replacing components and icons), a live preview with desktop and phone widths, buttons that show every card with `chat.showCard()`, and the code to copy.
 
 `--reload` watches `.py` files only: after editing `formguide.yaml`, touch a `.py` file or restart.
 

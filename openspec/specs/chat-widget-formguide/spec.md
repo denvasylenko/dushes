@@ -97,6 +97,24 @@ If `applyChanges` fails, the card SHALL stay open with the error. Undo SHALL put
 - **WHEN** the user taps "Car loan" on a question card that applies to `loan_type`
 - **THEN** `applyChanges` gets `{loan_type: <the option's value>}`, the run resumes with the new config, and the card shows "✓ Car loan" with Undo
 
+### Requirement: One-tap typed answers for text fields
+For a question card with `applies: true`, a field and no options, typed text that reads like a value SHALL call `applyChanges({field: text})`, resume with `{answer: {text}, config, ui}` and shrink the card to the answer with Undo. A value is one line, at most 120 characters, not ending in a question mark; other text SHALL be sent as a plain answer without touching the field.
+
+#### Scenario: A passport series
+- **WHEN** the card asks for the passport series and the user types 4444
+- **THEN** `applyChanges` gets `{passport_series: "4444"}`, the run resumes with the new config, and no "Fill in these fields?" card follows
+
+#### Scenario: A question back
+- **WHEN** the user types "Where do I find it?"
+- **THEN** the field is not touched and the agent gets the text as the answer
+
+### Requirement: A typed value the form refuses is put back
+When the form's new config flags an error on the field a typed answer filled, the widget SHALL put the previous value back and resume with `{answer: {text}}` only, so the agent handles the answer.
+
+#### Scenario: The form refuses the value
+- **WHEN** the user types 44 and the form answers with "Series: 4 digits" on that field
+- **THEN** the previous value is put back and the agent gets the answer "44" to handle
+
 ### Requirement: Fill-in labels count the fields
 A field-change card's main button SHALL say how many fields it fills, with the language's plural form: "Fill in 1 field", "Fill in 3 fields". When some rows are unticked, it SHALL say "Fill in 2 of 3".
 
@@ -149,3 +167,17 @@ The formguide plugin SHALL send its attachment uploads (kind `attachments`), thr
 #### Scenario: Behind authentication
 - **WHEN** `headers` adds an Authorization header and the user attaches a file
 - **THEN** the upload to `{base}/attachments` carries the header
+
+### Requirement: A running turn after a reload
+When a restore reports `running: true`, the chat SHALL show the restored messages and a "Still answering…" line, check the thread again every 2 seconds, and when the turn has ended SHALL restore again, showing the answer and any pending card, without a reload.
+
+#### Scenario: Back after a reload
+- **WHEN** the user reloads while the agent is answering
+- **THEN** the chat shows the conversation with "Still answering…", and the answer appears when the turn ends
+
+### Requirement: Stop reaches the server
+The chat's Stop SHALL also post `/stop` with the thread id, so the turn ends on the server and not only in the browser.
+
+#### Scenario: Stop
+- **WHEN** the user presses Stop while the agent answers
+- **THEN** the plugin posts `{thread_id}` to `<base>/stop`

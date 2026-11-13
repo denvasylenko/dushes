@@ -1,0 +1,38 @@
+---
+/**
+ * The widget playground (examples/widget-html: every <agui-chat> setting, a live preview, the code to copy), embedded.
+ * It needs the demo server for the widget script and for chatting: PUBLIC_PLAYGROUND_URL points at it
+ * (/examples/widget/ on the public host, http://localhost:8000/examples/widget/ locally).
+ */
+const url = import.meta.env.PUBLIC_PLAYGROUND_URL as string | undefined
+---
+<div class="pg not-content">
+  {url ? (
+    <>
+      <div class="pg-bar">
+        <span>Changes apply as you make them. Chatting talks to the demo agent (Claude Haiku, 15 messages a chat).</span>
+        <a href={url} target="_blank" rel="noopener">Open full screen</a>
+      </div>
+      <iframe class="pg-frame" src={url} title="agui-chat playground" loading="lazy"></iframe>
+    </>
+  ) : (
+    <div class="pg-off">
+      <p><b>The playground runs next to the demo server.</b> Start it and open the playground there:</p>
+      <pre><code>cd backend && ANTHROPIC_API_KEY=... uv run uvicorn demo.app:app --port 8000
+cd packages/agui-chat && npm run build      # the one-script widget the playground loads
+open http://localhost:8000/examples/widget/</code></pre>
+      <p>Or build this site with <code>PUBLIC_PLAYGROUND_URL=http://localhost:8000/examples/widget/</code> to embed it here.</p>
+    </div>
+  )}
+</div>
+
+<style is:global>
+  :root:has(.pg) { --sl-content-width: 76rem; }
+  .pg { margin-top: 1rem; }
+  .pg-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 12px; font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); }
+  .pg-bar a { flex: none; font-weight: 500; color: var(--sl-color-accent-high); text-decoration: none; }
+  .pg-frame { display: block; width: 100%; height: min(86vh, 900px); border: 1px solid var(--sl-color-hairline-light); border-radius: 22px; background: var(--sl-color-bg-nav); }
+  .pg-off { padding: 24px; border-radius: 22px; background: var(--sl-color-bg-nav); }
+  .pg-off pre { margin: 12px 0; padding: 14px 16px; border-radius: 14px; background: var(--sl-color-bg); overflow-x: auto; font-size: var(--sl-text-xs); }
+  @media (max-width: 50rem) { .pg-bar { flex-direction: column; align-items: flex-start; } .pg-frame { height: 80vh; border-radius: 16px; } }
+</style>

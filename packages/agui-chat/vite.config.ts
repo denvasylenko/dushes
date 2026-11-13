@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite'
+import { minifyCss } from './scripts/minify-css.mjs'
 
 // ES modules for bundlers: the element, the formguide plugin and the React wrapper.
 export default defineConfig({
+  plugins: [minifyCss()],
+  // language packs: chunks loaded with import() (the one-script build swaps in a <script> loader)
+  resolve: { alias: { '#lang-loader': new URL('./src/lang-loader.ts', import.meta.url).pathname } },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

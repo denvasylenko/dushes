@@ -1,14 +1,16 @@
 /** <agui-chat>: an AG-UI chat as a Web Component. Every option: site/src/content/docs/reference/agui-chat.md. */
 import { h, md, reducedMotion, store } from './dom'
 import { STRINGS } from './i18n'
+import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
 import { hasTheme, themeCss } from './themes'
+import { watchParts } from './parts'
 import { runAgent, runHttp, uid, type AgentLike } from './transport'
 import { fadeWords, newState, step, visible, type TypewriterState } from './typewriter'
 import type {
-  AguiEvent, Attachment, ChatApi, ChatOptions, RequestKind, FrontendTool, Interrupt, Message, Plugin, Renderer, RunAgentInput, ToolCall,
+  AguiEvent, Attachment, ChatApi, ChatOptions, FrontendTool, IconName, Interrupt, Message, Plugin, Renderer, RequestKind, RunAgentInput, Slots, ToolCall,
 } from './types'
 
 export const DEFAULTS: ChatOptions = {
@@ -17,7 +19,8 @@ export const DEFAULTS: ChatOptions = {
   history: 'full', headers: {}, credentials: undefined, fetch: undefined, request: undefined, transport: undefined,
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, attach: true, attachAccept: '', attachMultiple: true,
-  attachMaxMb: 20, imageMaxPx: 2000, upload: undefined,
+  attachMaxMb: 20, imageMaxPx: 2000, upload: undefined, icons: {}, render: {},
+  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring',
 }
 
 /** attribute -> [option, parser] */
@@ -30,6 +33,7 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   history: ['history', String], open: ['open', bool], attach: ['attach', bool], 'mic-lang': ['micLang', String],
   'mic-auto-send': ['micAutoSend', bool], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
   'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
+  'bubble-side': ['bubbleSide', String], greeting: ['greeting', String], 'greeting-delay': ['greetingDelay', Number], motion: ['motion', String],
 }
 
 /** Interrupt reasons of RUN_FINISHED.outcome (AG-UI 1.0) -> the `type` renderers are registered for. */
@@ -173,14 +177,28 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   t(key: string, vars?: Record<string, string | number>): string {
     const lang = this.lang
-    let s = this._opts.i18n[key] ?? this._i18n[lang]?.[key] ?? STRINGS[lang]?.[key] ?? this._i18n.en?.[key] ?? STRINGS.en[key] ?? key
+    const pack = PACKS[lang]
+    let s = this._opts.i18n[key] ?? this._i18n[lang]?.[key] ?? pack?.formguide?.[key] ?? pack?.core?.[key] ?? STRINGS[lang]?.[key]
+      ?? this._i18n.en?.[key] ?? STRINGS.en[key] ?? key
     for (const [k, v] of Object.entries(vars ?? {})) s = s.replaceAll(`{${k}}`, String(v))
     return s
   }
 
   get lang(): string {
-    const l = (this._opts.lang || document.documentElement.lang || navigator.language || 'en').slice(0, 2).toLowerCase()
-    return STRINGS[l] || this._i18n[l] ? l : 'en'
+    const l = this._wantLang()
+    return STRINGS[l] || this._i18n[l] || PACKS[l] ? l : 'en'
+  }
+  private _wantLang(): string {
+    return (this._opts.lang || document.documentElement.lang || navigator.language || 'en').slice(0, 2).toLowerCase()
+  }
+  /** The language's pack is loaded the first time it is needed; the texts switch when it arrives (English until then). */
+  private _ensureLang(): void {
+    const l = this._wantLang()
+    if (PACKS[l] || STRINGS[l] || this._i18n[l] || !LANGUAGES.includes(l)) return
+    void loadLanguage(l).then((ok) => {
+      if (!ok || !this._built || this._wantLang() !== l) return
+      this._apply()   // titles, placeholders and the empty chat in the new language
+    })
   }
 
   // ------------------------------------------------------------------ lifecycle
@@ -192,6 +210,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._setThemeCss = styles(this.root)
     this.root.addEventListener('click', (e) => this._copyCode(e))
     this._build()
+    watchParts(this.root)   // every element gets its part name (parts.ts), also those added later
     this._setThread(this._opts.threadId || this._savedThread() || uid(), false)
     this._apply()
     void this._restore()
@@ -247,17 +266,53 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (a) this.options = { [a[0]]: value === null && name !== 'open' ? DEFAULTS[a[0]] : a[1](value) } as Partial<ChatOptions>
   }
 
+  private get _popup(): boolean { return this._opts.mode === 'floating' || this._opts.mode === 'bubble' }
+
   open(): void {
-    if (this._opts.mode !== 'floating') return
+    if (!this._popup) return
+    this.$.wrap.classList.remove('closing')
     this.$.wrap.classList.add('open')
+    this.$.fab.classList.remove('unread')
+    this.$.fab.setAttribute('aria-expanded', 'true')
+    this._hideGreeting()
     this.$.panel.setAttribute('aria-hidden', 'false')
     if (finePointer()) setTimeout(() => (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true }), 60)   // a phone would open its keyboard
   }
 
   close(): void {
+    const wasOpen = this.$.wrap.classList.contains('open')
     this.$.wrap.classList.remove('open')
+    if (wasOpen && this._opts.mode === 'bubble') {   // a quick shrink back into the launcher
+      this.$.wrap.classList.add('closing')
+      setTimeout(() => this.$.wrap.classList.remove('closing'), 240)
+    }
+    this.$.fab.setAttribute('aria-expanded', 'false')
     this.$.panel.setAttribute('aria-hidden', 'true')
     this.$.fab?.focus()
+  }
+
+  /** The launcher: open when closed, close when open (bubble mode). */
+  toggle(): void { if (this.$.wrap.classList.contains('open')) this.close(); else this.open() }
+
+  // ------------------------------------------------------------------ the bubble's greeting
+  private _greetTimer = 0
+  private _greetKey(): string { return `agui-chat:greeting:${location.pathname}` }
+  private _scheduleGreeting(): void {
+    clearTimeout(this._greetTimer)
+    const o = this._opts
+    if (o.mode !== 'bubble' || !o.greeting || store<boolean>(this._greetKey()).get()) { this._hideGreeting(); return }
+    this._greetTimer = window.setTimeout(() => {
+      if (this.$.wrap.classList.contains('open')) return
+      this.$.greetText.textContent = o.greeting
+      this.$.greet.hidden = false
+      requestAnimationFrame(() => this.$.greet.classList.add('show'))
+    }, Math.max(0, o.greetingDelay) * 1000)
+  }
+  private _hideGreeting(forever = false): void {
+    clearTimeout(this._greetTimer)
+    this.$.greet?.classList.remove('show')
+    if (this.$.greet) this.$.greet.hidden = true
+    if (forever) store<boolean>(this._greetKey()).set(true)
   }
 
   /** Start a new conversation (a new thread id). */
@@ -280,6 +335,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   /** Abort the running turn. */
   stop(): void {
     if (!this._abort) return
+    for (const p of this._plugins) p.onStop?.(this)
     this._abort.abort()
   }
 
@@ -290,6 +346,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._dropDictation()   // a chip or starter answered: the half-dictated text is stale (the composer's own send stopped it already)
     this._clearQuick()
     this.$.log.querySelector('.empty')?.remove()
+    this.$.log.querySelector('.resumed')?.remove()   // a new message: the server runs it after the turn it is finishing
     this._closePendingCards()
     this._sending = this._files
     this._files = []
@@ -326,32 +383,77 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   /** Add an element to the conversation (plugins: sources under an answer, a receipt). */
   append(el: HTMLElement): void { this._append(el) }
 
+  /** A slot from options.render: its element, or null for the default (a throwing slot warns once). */
+  renderSlot(name: keyof Slots, ...args: unknown[]): HTMLElement | null {
+    const f = this._opts.render?.[name] as ((...a: unknown[]) => unknown) | undefined
+    if (!f) return null
+    try {
+      const out = f(...args, this)
+      return out instanceof HTMLElement ? out : null
+    } catch (e) {
+      if (!this._slotWarned.has(name)) { this._slotWarned.add(name); console.warn(`agui-chat: render.${name} failed, using the default`, e) }
+      return null
+    }
+  }
+  private _slotWarned = new Set<string>()
+  private _defaultHead: Node[] | null = null
+  private _defaultFoot: Node[] | null = null
+
+  /** An icon from options.icons (an SVG string or an element) or the built-in one. */
+  private _icon(el: HTMLElement, name: IconName): void {
+    const own = this._opts.icons?.[name]
+    const label = el.querySelector('.fab-label')
+    if (own instanceof HTMLElement) el.replaceChildren(own.cloneNode(true))
+    else el.innerHTML = typeof own === 'string' ? own : ICON[name === 'logo' ? 'spark' : name]
+    if (label) el.appendChild(label)
+  }
+
+  /** The answer's HTML: options.render.markdown or the built-in minimal markdown. */
+  private _html(text: string): string {
+    const f = this._opts.render?.markdown
+    if (f) { try { return f(text, this) } catch (e) { if (!this._slotWarned.has('markdown')) { this._slotWarned.add('markdown'); console.warn('agui-chat: render.markdown failed', e) } } }
+    return md(text, { copy: this.t('copy') })
+  }
+
+  /** A finished answer: render.assistant may replace its content. */
+  private _assistantDone(body: HTMLElement, text: string): void {
+    const own = this.renderSlot('assistant', text)
+    if (own) body.replaceChildren(own)
+  }
+
   // ------------------------------------------------------------------ DOM
   private _build(): void {
     const wrap = h('div', { class: 'wrap' })
-    const fab = h('button', { class: 'fab', part: 'fab', type: 'button', onclick: () => this.open() })
-    fab.innerHTML = ICON.spark
-    fab.appendChild(h('span', { class: 'fab-label' }))
+    const fabIco = h('span', { class: 'fab-ico', 'aria-hidden': 'true' })
+    const fabX = h('span', { class: 'fab-x', 'aria-hidden': 'true' })
+    const fabOwn = h('span', { class: 'fab-own' })
+    const fab = h('button', { class: 'fab', part: 'fab', type: 'button', 'aria-expanded': 'false', onclick: () => this.toggle() },
+      fabIco, fabX, fabOwn, h('span', { class: 'fab-label' }), h('span', { class: 'fab-dot', 'aria-hidden': 'true' }))
+    this._icon(fabIco, 'logo'); this._icon(fabX, 'close')
+    const greetText = h('span')
+    const greet = h('div', { class: 'greet', part: 'greeting', hidden: true, role: 'status' },
+      h('button', { class: 'greet-body', type: 'button', onclick: () => this.open() }, greetText),
+      h('button', { class: 'greet-x', type: 'button', 'aria-label': this.t('close'), onclick: () => this._hideGreeting(true) }, '\u00d7'))
     const scrim = h('div', { class: 'scrim', onclick: () => this.close() })
-    const logo = h('div', { class: 'logo' }); logo.innerHTML = ICON.spark
+    const logo = h('div', { class: 'logo' }); this._icon(logo, 'logo')
     const title = h('div', { class: 'title' }), sub = h('div', { class: 'sub' })
-    const btnNew = h('button', { class: 'icon', type: 'button', onclick: () => this.reset() }); btnNew.innerHTML = ICON.plus
-    const btnClose = h('button', { class: 'icon close', type: 'button', onclick: () => this.close() }); btnClose.innerHTML = ICON.close
+    const btnNew = h('button', { class: 'icon', type: 'button', onclick: () => this.reset() }); this._icon(btnNew, 'plus')
+    const btnClose = h('button', { class: 'icon close', type: 'button', onclick: () => this.close() }); this._icon(btnClose, 'close')
     const head = h('div', { class: 'head', part: 'header' }, logo, h('div', null, title, sub), btnNew, btnClose)
     const log = h('div', { class: 'log', part: 'log', role: 'log', 'aria-live': 'polite', 'aria-relevant': 'additions' })
     const input = h('textarea', { rows: 1, part: 'input' }) as HTMLTextAreaElement
-    const mic = h('button', { class: 'ib mic', type: 'button' }); mic.innerHTML = ICON.mic
-    const clip = h('button', { class: 'ib clip', type: 'button' }); clip.innerHTML = ICON.clip
+    const mic = h('button', { class: 'ib mic', type: 'button' }); this._icon(mic, 'mic')
+    const clip = h('button', { class: 'ib clip', type: 'button' }); this._icon(clip, 'clip')
     const picker = h('input', { type: 'file', multiple: true, hidden: true }) as HTMLInputElement
-    const send = h('button', { class: 'send', type: 'button', part: 'send' }); send.innerHTML = ICON.send
+    const send = h('button', { class: 'send', type: 'button', part: 'send' }); this._icon(send, 'send')
     const box = h('div', { class: 'box' }, clip, input, mic, send)
     const files = h('div', { class: 'files chips' })
     const hint = h('div', { class: 'hint', 'aria-live': 'polite' })
     const foot = h('div', { class: 'foot', part: 'composer' }, files, box, hint, picker)
     const panel = h('section', { class: 'panel', part: 'panel', role: 'dialog' }, head, log, foot)
-    wrap.append(scrim, panel, fab)
+    wrap.append(scrim, panel, greet, fab)
     this.root.appendChild(wrap)
-    this.$ = { wrap, fab, scrim, panel, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, fabLabel: fab.lastElementChild as HTMLElement }
+    this.$ = { wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, fabLabel: fab.lastElementChild as HTMLElement }
     files.hidden = true
     clip.addEventListener('click', () => picker.click())
     picker.addEventListener('change', () => { void this._upload([...(picker.files ?? [])]); picker.value = '' })
@@ -364,7 +466,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     send.addEventListener('click', () => (this._busy ? this.stop() : this._submit()))
     mic.addEventListener('click', () => this._toggleMic())
     panel.addEventListener('keydown', (e) => {
-      if (this._opts.mode !== 'floating') return
+      if (!this._popup) return
       if (e.key === 'Escape') { e.preventDefault(); this.close() }
       if (e.key === 'Tab') this._trapFocus(e)
     })
@@ -435,7 +537,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   private _syncSend(): void {
     const send = this.$.send as HTMLButtonElement
-    send.innerHTML = this._busy ? ICON.stop : ICON.send
+    this._icon(send, this._busy ? 'stop' : 'send')
     send.setAttribute('aria-label', this._busy ? this.t('stop') : this.t('send'))
     // never disabled: an empty send nudges the composer instead of doing nothing
     send.classList.toggle('idle', !this._busy && !(this.$.input as HTMLTextAreaElement).value.trim() && !this._files.length)
@@ -452,19 +554,35 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   private _apply(): void {
     if (!this._built) return
+    this._ensureLang()
     const o = this._opts
     const wrap = this.$.wrap
-    wrap.className = `wrap mode-${o.mode}${wrap.classList.contains('open') ? ' open' : ''}`
+    wrap.className = `wrap mode-${o.mode} side-${o.bubbleSide === 'left' ? 'left' : 'right'} motion-${o.motion}${wrap.classList.contains('open') ? ' open' : ''}`
     this._applyTheme()
     this.classList.toggle('calm', reducedMotion())
     this.style.setProperty('--agui-fade', `${o.fadeMs}ms`)
     this.$.title.textContent = o.title || this.t('title')
     this.$.sub.textContent = o.subtitle || this.t('subtitle')
     this.$.fabLabel.textContent = this.t('open')
+    // icons (options.icons) and the host's own header and composer (options.render)
+    this._icon(this.$.logo, 'logo'); this._icon(this.$.fabIco, 'logo'); this._icon(this.$.fabX, 'close'); this._icon(this.$.btnNew, 'plus'); this._icon(this.$.btnClose, 'close')
+    this._icon(this.$.mic, 'mic'); this._icon(this.$.clip, 'clip'); this._icon(this.$.send, this._busy ? 'stop' : 'send')
+    const launcher = this.renderSlot('launcher', { open: wrap.classList.contains('open'), unread: this.$.fab.classList.contains('unread') })
+    this.$.fabOwn.replaceChildren(...(launcher ? [launcher] : []))
+    this.$.fab.classList.toggle('own', !!launcher)
+    this._scheduleGreeting()
+    this._defaultHead ??= [...this.$.head.childNodes]
+    const head = this.renderSlot('header', { title: o.title || this.t('title'), subtitle: o.subtitle || this.t('subtitle'),
+      newChat: () => this.reset(), close: () => this.close() })
+    this.$.head.replaceChildren(...(head ? [head] : this._defaultHead))
+    this._defaultFoot ??= [...this.$.foot.childNodes]
+    const foot = this.renderSlot('composer')
+    this.$.foot.replaceChildren(...(foot ? [foot] : this._defaultFoot))
     this.$.btnNew.setAttribute('aria-label', this.t('newChat'))
     this.$.btnClose.setAttribute('aria-label', this.t('close'))
     this.$.panel.setAttribute('aria-label', o.title || this.t('title'))
     if (o.mode === 'floating') this.$.panel.setAttribute('aria-modal', 'true'); else this.$.panel.removeAttribute('aria-modal')
+    if (o.mode === 'bubble') this.$.fab.setAttribute('aria-label', this.t('open'))
     const input = this.$.input as HTMLTextAreaElement
     input.placeholder = o.placeholder || this.t('placeholder')
     input.setAttribute('aria-label', input.placeholder)
@@ -487,6 +605,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.log.querySelector('.empty')?.remove()
     if (this.$.log.children.length) return
     const starters = this._opts.starters.length ? this._opts.starters : this._starters
+    const intro = this._opts.intro || this.t(this._opts.quickReplies && starters.length ? 'intro' : 'introAsk')
+    const own = this.renderSlot('empty', { title: this._opts.title || this.t('title'), intro, starters })
+    if (own) { this.$.log.appendChild(h('div', { class: 'empty' }, own)); return }
     const el = h('div', { class: 'empty' },
       h('h3', null, this._opts.title || this.t('title')),
       h('p', null, this._opts.intro || this.t(this._opts.quickReplies && starters.length ? 'intro' : 'introAsk')),
@@ -510,8 +631,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   private _userBubble(text: string, files: string[] = []): void {
+    const own = this.renderSlot('user', text, files)
     this._append(h('div', { class: 'msg me', part: 'message user' },
-      h('div', null, files.length ? h('div', { class: 'muted' }, files.map((f) => `\u{1F4CE} ${f}`).join('  ')) : null, text)))
+      own ?? h('div', null, files.length ? h('div', { class: 'muted' }, files.map((f) => `\u{1F4CE} ${f}`).join('  ')) : null, text)))
   }
 
   private async _upload(list: File[]): Promise<void> {
@@ -583,7 +705,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       })
       return b
     })
-    this._quick = this._append(h('div', { class: 'quick' }, h('div', { class: 'chips' }, chips), err))
+    const own = this.renderSlot('suggestions', this._suggestions)
+    this._quick = this._append(h('div', { class: 'quick' }, ...(own ? [own] : [h('div', { class: 'chips' }, chips), err])))
     this._quick.hidden = !this._opts.quickReplies
   }
 
@@ -610,13 +733,33 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       for (const m of r.messages) {
         if (m.role === 'user' && m.content) this._userBubble(m.content)
         else if (m.role === 'assistant' && m.content) {
-          const body = h('div', { class: 'body' }); body.innerHTML = md(m.content, { copy: this.t('copy') })
+          const body = h('div', { class: 'body' }); body.innerHTML = this._html(m.content); this._assistantDone(body, m.content)
           this._append(h('div', { class: 'msg ai', part: 'message assistant' }, body))
         }
       }
     }
     if (r.interrupt) this._showInterrupt(r.interrupt, true)
     this._renderEmpty()
+    if (r.running) this._waitForTurn()
+  }
+
+  /** The page was reloaded mid-answer and the server's turn runs on: "Still answering…", then its result. */
+  private _waitForTurn(): void {
+    const thread = this._thread
+    const line = h('div', { class: 'msg ai wait resumed', 'aria-label': this.t('working') },
+      h('span', { class: 'dots' }, h('i'), h('i'), h('i')), h('span', { class: 'slow', role: 'status' }, this.t('slow')))
+    this.$.log.appendChild(line)
+    const check = async () => {
+      if (this._thread !== thread || !line.isConnected) return
+      const p = this._plugins.find((x) => x.restore)
+      let r = null
+      try { r = await p!.restore!(thread, this) } catch { r = null }
+      if (this._thread !== thread || !line.isConnected) return
+      if (r?.running !== false) { setTimeout(check, 2000); return }
+      line.remove()
+      void this._restore()   // the answer and the card it left
+    }
+    setTimeout(check, 2000)
   }
 
   // ------------------------------------------------------------------ runs
@@ -686,8 +829,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (aborted) { this.notice(this.t('stopped')); return }
     if (failed) {
       this.dispatchEvent(new CustomEvent('agui:error', { detail: failed }))
-      const retry = h('button', { class: 'btn sec', type: 'button', onclick: () => { el.remove(); if (this._lastRun) void this._run(this._lastRun) } }, this.t('retry'))
-      const el = this._append(h('div', { class: 'error', role: 'alert' }, h('span', { title: failed }, this.t(errorKind(failed))), retry))
+      const again = () => { el.remove(); if (this._lastRun) void this._run(this._lastRun) }
+      const retry = h('button', { class: 'btn sec', type: 'button', onclick: again }, this.t('retry'))
+      const own = this.renderSlot('error', { message: failed, kind: errorKind(failed), text: this.t(errorKind(failed)), retry: again })
+      const el = this._append(h('div', { class: 'error', role: 'alert' }, ...(own ? [own] : [h('span', { title: failed }, this.t(errorKind(failed))), retry])))
       return
     }
     this.dispatchEvent(new CustomEvent('agui:run-end', { detail: { threadId: this._thread } }))
@@ -715,6 +860,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         if (this._ai && this._ai.id === ev.messageId) {
           if (this._ai.text.trim()) this._messages.push({ id: this._ai.id, role: 'assistant', content: this._ai.text })
           this._finishText()
+          this._markUnread()
         }
         break
       case 'TOOL_CALL_START': {
@@ -783,20 +929,20 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const ai = this._ai
     if (!ai) return
     if (this._opts.typing === 'off') return
-    if (!this._animate) { ai.body.innerHTML = md(ai.text, { copy: this.t('copy') }); this._scroll(); return }
+    if (!this._animate) { ai.body.innerHTML = this._html(ai.text); if (ai.done) this._assistantDone(ai.body, ai.text); this._scroll(); return }
     if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
   }
 
   private _tick(ai: AiItem, now: number): void {
     ai.raf = 0
     step(ai.st, ai.text, now, this._opts.typingSpeed)
-    ai.body.innerHTML = md(visible(ai.text, ai.st.shown), { copy: this.t('copy') })
+    ai.body.innerHTML = this._html(visible(ai.text, ai.st.shown))
     fadeWords(ai.body, ai.st, now, this._opts.fadeMs)
     const log = this.$.log
     if (log.scrollHeight - log.scrollTop - log.clientHeight < 120) log.scrollTop = log.scrollHeight
     const fading = ai.st.marks.length > 0 && now - ai.st.marks[ai.st.marks.length - 1][1] < this._opts.fadeMs
     if (ai.st.shown < ai.text.length || fading) ai.raf = requestAnimationFrame((t) => this._tick(ai, t))
-    else if (ai.done) ai.body.innerHTML = md(ai.text, { copy: this.t('copy') })   // all typed and faded in: the plain text stays
+    else if (ai.done) { ai.body.innerHTML = this._html(ai.text); this._assistantDone(ai.body, ai.text) }   // all typed and faded in: the plain text stays
   }
 
   /** The message ended: the typewriter finishes on its own; other modes show the full text now. */
@@ -806,7 +952,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     ai.done = true
     this._ai = null
     if (!ai.text.trim()) { ai.el.remove(); return }
-    if (!this._animate || this._abort?.signal.aborted) { cancelAnimationFrame(ai.raf); ai.body.innerHTML = md(ai.text, { copy: this.t('copy') }); return }
+    if (!this._animate || this._abort?.signal.aborted) { cancelAnimationFrame(ai.raf); ai.body.innerHTML = this._html(ai.text); this._assistantDone(ai.body, ai.text); return }
     if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
   }
 
@@ -815,7 +961,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (name in this._opts.toolLabels) return this._opts.toolLabels[name]   // '' hides the step
     const l = this._labels[name]
     if (typeof l === 'string') return l
-    if (l) return l[this.lang] ?? l.en ?? Object.values(l)[0]
+    if (l) return l[this.lang] ?? PACKS[this.lang]?.tools?.[name] ?? l.en ?? Object.values(l)[0]
     const sub = name.includes('.') ? name.split('.').pop()! : name
     const s = sub.replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim()
     return s.charAt(0).toUpperCase() + s.slice(1)
@@ -892,10 +1038,27 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   // ------------------------------------------------------------------ interrupts
-  private _showInterrupt(it: Interrupt, restored: boolean): void {
+  /** An answer while the bubble is closed: a dot on the launcher and a short bounce. */
+  private _markUnread(): void {
+    if (this._opts.mode !== 'bubble' || this.$.wrap.classList.contains('open')) return
+    const fab = this.$.fab
+    fab.classList.remove('bounce'); void fab.offsetWidth; fab.classList.add('unread', 'bounce')
+  }
+
+  /** Show any card without the agent; the promise resolves with the user's answer. */
+  showCard(payload: Partial<Interrupt> & { type: string }): Promise<unknown> {
+    return new Promise((ok) => {
+      const it = { ...payload, card_id: payload.card_id ?? uid() } as Interrupt
+      this._shown.delete(it.card_id)
+      this._showInterrupt(it, false, ok)
+      this._markUnread()
+    })
+  }
+
+  private _showInterrupt(it: Interrupt, restored: boolean, local?: (value: unknown) => void): void {
     if (this._shown.has(it.card_id)) return
     this._shown.add(it.card_id)
-    this._interrupted = true
+    if (!local) this._interrupted = true
     this._showDots(false)
     const renderer = this.renderers.get(it.type) ?? fallback
     let done = false
@@ -910,6 +1073,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         el.querySelectorAll<HTMLElement>('button, input, select, textarea').forEach((x) => {
           if (!x.hasAttribute('data-keep')) x.setAttribute('disabled', '')
         })
+        if (local) { local(value); return }   // showCard(): the host gets the answer, no run
         void this._run({ resume: { card_id: it.card_id, value } })
       },
     }

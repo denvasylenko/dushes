@@ -4,6 +4,7 @@ A chat agent that guides users through large configurable forms: it shows where 
 
 Documentation: **https://denvasylenko.github.io/dushes/** — guides for the backend and the frontend with copyable examples and diagrams, the API reference, the specs, a live demo of the chat filling a form (no server needed), and **Ask AI** on every page. Every page is also Markdown (`<page>.md`), with `llms.txt` for AI tools. The site's source is [`site/`](site) (Astro Starlight; `cd site && npm install && npm run dev`); the pages are Markdown under [`site/src/content/docs/`](site/src/content/docs), and the specs are rendered from [`openspec/specs/`](openspec/specs) on every build. Start with:
 - [Quickstart](https://denvasylenko.github.io/dushes/getting-started/quick-start/), then [Backend](https://denvasylenko.github.io/dushes/backend/configuration/) (configuration step by step, models, documents, skills, deploy) and [Frontend](https://denvasylenko.github.io/dushes/frontend/overview/) (the widget, React, react-hook-form, CopilotKit, any AG-UI client);
+- [Card gallery](https://denvasylenko.github.io/dushes/frontend/card-gallery/) — every card the chat can show, live, with the event behind it and the answer it sends back;
 - [How the form and the agent talk](https://denvasylenko.github.io/dushes/form/overview/) — what the form sends, what comes back, how each component must behave;
 - [Configuration keys](https://denvasylenko.github.io/dushes/reference/configuration/) — every YAML key with its default;
 - [System overview](https://denvasylenko.github.io/dushes/concepts/overview/) and [Architecture in text](https://denvasylenko.github.io/dushes/concepts/architecture/);
@@ -51,7 +52,7 @@ await agent.runAgent({ tools: frontendTools }, {
 ```
 
 - **CopilotKit 1.86**: [`examples/copilotkit/`](examples/copilotkit) — `CopilotKitProvider` with an `HttpAgent` (no CopilotKit runtime server), cards with `useInterrupt`, a frontend tool with `useFrontendTool`, prefill.
-- **`<agui-chat>`**: the demo UI ([`frontend/src/App.tsx`](frontend/src/App.tsx), React wrapper) and a plain-HTML page with live settings ([`examples/widget-html/`](examples/widget-html), served at http://localhost:8000/examples/widget/).
+- **`<agui-chat>`**: the demo UI ([`frontend/src/App.tsx`](frontend/src/App.tsx), React wrapper) and a plain-HTML playground that configures everything live and gives the code to copy ([`examples/widget-html/`](examples/widget-html), served at http://localhost:8000/examples/widget/).
 - **Cards**: field-change cards (a checkbox per row; `names` keeps a subset) and question cards (`ask_user`: options from the model or from a field, single or multiple choice, typed answers); payloads in [Cards and answers](https://denvasylenko.github.io/dushes/frontend/cards/#25-which-one-the-question-card). `interrupt_mode: legacy` (default; `CUSTOM on_interrupt`, what CopilotKit reads), `structured` (AG-UI 1.0 `RUN_FINISHED.outcome` + `resume[]`) or `both`.
 - **Restore a chat**: `GET /agent/threads/{id}?format=agui` returns AG-UI messages for `setMessages`.
 
@@ -112,7 +113,7 @@ backend/
 packages/agui-chat/ the chat widget: <agui-chat> Web Component, formguide plugin, React wrapper (npm run build / test)
 frontend/           demo UI (React) using the widget; the library does not need it
 site/               the documentation site (Astro Starlight) with a live scripted demo
-backend/docs_ai/    the docs assistant behind the site's Ask AI (deploy: deploy/docs-ai/)
+backend/docs_ai/    the docs assistant behind the site's Ask AI, and host.py: the site + Ask AI + the live demo in one app (deploy: deploy/docs-ai/)
 examples/copilotkit CopilotKit 1.86 client
 examples/widget-html the widget from one script tag, with a live settings panel
 ```

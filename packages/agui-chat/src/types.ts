@@ -63,6 +63,8 @@ export interface Restored {
   messages?: Message[]
   interrupt?: Interrupt | null
   starters?: string[]
+  /** a turn is still running on the server (the page was reloaded mid-answer): the chat checks back until it ends */
+  running?: boolean
 }
 
 export interface Attachment { id: string; filename: string; [k: string]: unknown }
@@ -77,6 +79,8 @@ export interface Plugin {
   beforeRun?: (input: RunAgentInput, chat: ChatApi) => void | Promise<void>
   /** See every event; return true to stop the chat's own handling of it. */
   onEvent?: (ev: AguiEvent, chat: ChatApi) => boolean | void
+  /** the user pressed Stop: e.g. tell the server, since a closed connection need not end the turn there */
+  onStop?: (chat: ChatApi) => void
   /** Files in the composer: the paperclip button uploads them here; they go with the next message. */
   attach?: { accept?: string; upload: (file: File, chat: ChatApi) => Promise<Attachment> }
   /** Apply a suggestion's field changes (`CUSTOM suggestions` `applies`); return a result line to show, or throw. */
@@ -116,6 +120,10 @@ export interface ChatApi {
   notice(text: string): void
   /** Add an element to the conversation, after the last message. */
   append(el: HTMLElement): void
+  /** Show any card without the agent; resolves with the user's answer (the value a resume would carry). */
+  showCard(payload: Partial<Interrupt> & { type: string }): Promise<unknown>
+  /** Run a slot from options.render safely: its element, or null for the default. */
+  renderSlot(name: keyof Slots, ...args: unknown[]): HTMLElement | null
   t(key: string, vars?: Record<string, string | number>): string
   host: HTMLElement
 }
@@ -126,7 +134,16 @@ export interface ChatOptions {
   threadId?: string
   /** Keep the thread id in localStorage so a reload continues the chat. */
   persistThread: boolean
-  mode: 'floating' | 'inline' | 'page'
+  /** floating: a side drawer; bubble: a launcher that grows into a chat window; inline: fills its box; page: the whole window. */
+  mode: 'floating' | 'bubble' | 'inline' | 'page'
+  /** bubble mode: the corner of the launcher. */
+  bubbleSide: 'right' | 'left'
+  /** bubble mode: a short speech bubble next to the closed launcher (once per visitor until closed). */
+  greeting: string
+  /** Seconds before the greeting appears. */
+  greetingDelay: number
+  /** spring (a small overshoot), gentle, or none (fades only). */
+  motion: 'spring' | 'gentle' | 'none'
   /** words: typewriter + fade-in; plain: text as it arrives; off: text when the message ends. */
   typing: 'words' | 'plain' | 'off'
   toolSteps: boolean
@@ -184,4 +201,36 @@ export interface ChatOptions {
   imageMaxPx: number
   /** Your own uploader (overrides the plugin's): file -> {id, filename}. */
   upload?: (file: File, chat: ChatApi) => Promise<Attachment>
+  /** Replace any built-in icon: an SVG string or an element. */
+  icons: Partial<Record<IconName, string | HTMLElement>>
+  /** Your own components in place of the chat's pieces; return nothing to keep the default. */
+  render: Slots
+}
+
+export type IconName = 'logo' | 'send' | 'stop' | 'mic' | 'clip' | 'plus' | 'close'
+
+type Out = HTMLElement | null | undefined | void
+
+/** Slots: each returns the host's element for that piece, or nothing for the default. */
+export interface Slots {
+  /** The answer's HTML, also while it streams (default: the built-in minimal markdown). */
+  markdown?: (text: string, chat: ChatApi) => string
+  /** A finished answer (and restored ones): replaces the bubble's content. */
+  assistant?: (text: string, chat: ChatApi) => Out
+  /** The user's message bubble content. */
+  user?: (text: string, files: string[], chat: ChatApi) => Out
+  /** The empty chat. */
+  empty?: (data: { title: string; intro: string; starters: string[] }, chat: ChatApi) => Out
+  /** The header (logo, title, New chat, Close). */
+  header?: (data: { title: string; subtitle: string; newChat: () => void; close: () => void }, chat: ChatApi) => Out
+  /** A failed turn: the message and a retry. */
+  error?: (data: { message: string; kind: string; text: string; retry: () => void }, chat: ChatApi) => Out
+  /** Quick replies under the last answer. */
+  suggestions?: (items: string[], chat: ChatApi) => Out
+  /** Sources under an answer (from plugins such as formguide). */
+  sources?: (items: { title: string; section?: string; quote?: string }[], chat: ChatApi) => Out
+  /** The bubble's launcher content (the widget keeps the click and the unread dot). */
+  launcher?: (data: { open: boolean; unread: boolean }, chat: ChatApi) => Out
+  /** The composer: build your own and call chat.send(text). */
+  composer?: (chat: ChatApi) => Out
 }

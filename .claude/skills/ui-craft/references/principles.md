@@ -1,4 +1,4 @@
-# The ten laws in detail
+# The eleven laws in detail
 
 For each law: the idea, how the references do it, what we already do well, where we break it, and the rule to check.
 
@@ -70,3 +70,9 @@ See `copy.md`. In short: a verb and an object; the person's language, not the pr
 **Idea.** Beauty = consistency. Fewer values, more order.
 **We break it.** The widget uses 12 font sizes (including 11.5, 12.5, 13.5, 14.5, 15.5) and 9 radii (4, 5, 9, 12, 24 among them), and the card renderers have about a dozen inline styles. Scales to converge on: `tokens.md`.
 **Rule.** A value not on the scale: first ask why the nearest scale value does not fit.
+
+## 11. Like Apple
+
+**Idea.** People already know how Apple's components work: a capsule button fires on release, a sheet comes from the bottom and goes away with a swipe down, a stepper sits next to the number, a date is picked from a month grid. Matching that costs them nothing to learn. We follow Apple's spirit too: clarity, deference to the content, depth through layers, one obvious action.
+**We break it.** Where a browser default is still visible, or a control behaves in a way of its own (see the known gaps in `apple-components.md`).
+**Rule.** Before shipping a component, answer three questions: how does Apple do it, what happens on tap, hold, swipe and key, and what did I do differently, and why. No answer to the last one: redo it.

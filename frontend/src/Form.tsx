@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef } from 'react'
 import type { Config, JsxNode, Option, Props, UiState } from './types'
+import { DateInput, NumberInput, Select } from './controls'
 
 export type Highlight = { target: string; hint: string; ts: number } | null
 
@@ -107,9 +108,10 @@ function Field({ node, props }: { node: JsxNode; props: Props }) {
       const cur = value as Option | null
       const known = !cur || opts.some((o) => o.id === cur.id)
       input = (
-        <select
+        <Select
           {...common}
           disabled={off || ro}
+          invalid={!!props.error}
           value={cur?.id ?? ''}
           onChange={(e) => {
             const o = opts.find((x) => x.id === e.target.value) ?? null
@@ -121,7 +123,7 @@ function Field({ node, props }: { node: JsxNode; props: Props }) {
           {opts.map((o) => (
             <option key={o.id} value={o.id}>{o.name}</option>
           ))}
-        </select>
+        </Select>
       )
       break
     }
@@ -140,17 +142,23 @@ function Field({ node, props }: { node: JsxNode; props: Props }) {
     case 'FileUpload': {
       const f = value as { name: string } | null
       input = (
-        <div className="file">
+        <div className="file ctl-file">
           <input type="file" {...common}
             onChange={(e) => c.setValue(node.name, e.target.files?.[0] ? { name: e.target.files[0].name } : null, true)} />
+          <label htmlFor={node.name}>{f ? 'Replace file' : 'Choose a file'}</label>
           {f && <span className="muted">{f.name}</span>}
         </div>
       )
       break
     }
     case 'DatePicker':
-      input = <input type="date" {...common} value={(value as string) ?? ''}
-        onChange={(e) => c.setValue(node.name, e.target.value, true)} />
+      input = <DateInput id={node.name} value={value as string} disabled={off} readOnly={ro} invalid={!!props.error}
+        min={(props as Record<string, unknown>).min as string | undefined} max={(props as Record<string, unknown>).max as string | undefined} onFocus={common.onFocus}
+        onChange={(iso) => c.setValue(node.name, iso, true)} />
+      break
+    case 'NumberInput':
+      input = <NumberInput {...common} placeholder={props.placeholder} invalid={!!props.error} value={value as string}
+        onChange={(v) => c.setValue(node.name, v, false)} />
       break
     default:
       input = (

@@ -32,3 +32,14 @@ def test_a_demo_chat_has_a_limit_and_card_answers_do_not_count(monkeypatch):
 def test_the_docs_assistant_is_mounted():
     with TestClient(host.app) as c:
         assert c.get("/ai/health").status_code == 200
+
+
+def test_the_site_demo_shares_the_limit(monkeypatch):
+    monkeypatch.setattr(host, "PER_THREAD", 1)
+    host._threads.clear()
+    body = {"threadId": "site1", "runId": "r", "state": {"page": {"path": "/"}}, "messages": [{"id": "m", "role": "user", "content": "hi"}],
+            "tools": [], "context": [], "forwardedProps": {}}
+    with TestClient(host.app) as c:
+        assert c.post("/site/run", json=body).status_code != 429
+        assert c.post("/site/run", json=body).status_code == 429
+        assert c.get("/site/map").status_code == 200

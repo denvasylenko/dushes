@@ -3,7 +3,9 @@ title: Plain HTML
 description: The chat from one script tag on any page, with no build step.
 ---
 
-`<agui-chat>` is a Web Component with no runtime dependencies (about 23 KB gzipped as one script), so it works on any page: server-rendered templates, Vue, Angular, or none at all.
+Every attribute and option, live, with the HTML to copy: the [Playground](../playground/).
+
+`<agui-chat>` is a Web Component with no runtime dependencies (about 40 KB gzipped as one script, English built in), so it works on any page: server-rendered templates, Vue, Angular, or none at all.
 
 ```html
 <agui-chat url="/agent/run" title="Assistant"></agui-chat>
@@ -20,7 +22,9 @@ description: The chat from one script tag on any page, with no build step.
 </script>
 ```
 
-The script defines the element and `window.AguiChat` (`AguiChat.formguide`, `AguiChat.h`, `AguiChat.defineTheme`). Without the plugin it is a chat for any AG-UI endpoint.
+The script defines the element and `window.AguiChat` (`AguiChat.formguide`, `AguiChat.h`, `AguiChat.defineTheme`, `AguiChat.addLanguage`). Without the plugin it is a chat for any AG-UI endpoint.
+
+Serve the whole `dist` folder: next to `agui-chat.iife.js` lie `agui-chat.lang-ru.js`, `-uk`, `-de`, `-fr`, `-it`, `-es`, and the chat adds the one for its language when it needs it (a few KB; English needs none).
 
 ## Floating, inline or full page
 
@@ -32,6 +36,6 @@ The script defines the element and `window.AguiChat` (`AguiChat.formguide`, `Agu
 
 ## Try every option live
 
-The demo server serves [`examples/widget-html/`](https://github.com/denvasylenko/dushes/blob/main/examples/widget-html/index.html) at http://localhost:8000/examples/widget/: one script tag and a settings panel that switches mode, theme, scheme, language, typing, steps, dictation, attachments and quick replies while you chat.
+The demo server serves [`examples/widget-html/`](https://github.com/denvasylenko/dushes/blob/main/examples/widget-html/index.html) at http://localhost:8000/examples/widget/: the playground: one script tag and every setting in sections (layout, colours and theme presets, shape, component tokens, CSS for any element, cards, replacing components, icons), each with a one-line explanation, a live preview, buttons that show every card with `chat.showCard()`, and the generated code (HTML, JavaScript, CSS) to copy.
 
 Every attribute and event: [`<agui-chat>` API](../../reference/agui-chat/). Themes, tokens and parts: [The chat widget](../themes/).

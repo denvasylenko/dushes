@@ -1,0 +1,106 @@
+# The demo site's map: a portal of two local businesses, a bank and a barbershop. It is both the
+# site's content (what the site assistant knows) and its navigation (the only pages, tabs, sections
+# and forms the assistant may open). The demo page (frontend/site.html) renders the same file.
+title: Main Street
+pages:
+  - path: /
+    title: Home
+    description: Main Street, the local services portal. Loans from Aster Bank and haircuts at Barber & Co.
+    sections:
+      - id: welcome
+        title: Welcome to Main Street
+        text: Main Street brings two local businesses to one place. Aster Bank lends for cars, homes and everyday needs. Barber & Co cuts hair and trims beards. Ask the assistant anything about either one, or tell it what you want to do and it takes you there.
+      - id: services
+        title: What you can do here
+        text: Compare Aster Bank's loans on the Loans page and apply online on the Apply for a loan page. See Barber & Co's services and prices on the Barbershop page and book a visit on the Book a visit page. Opening hours and addresses are on the Contacts page; common questions on the FAQ page.
+
+  - path: /loans
+    title: Loans
+    keywords: [car loan, mortgage, cash loan, interest rate]
+    description: Aster Bank's car loans, mortgages and cash loans, with rates and terms.
+    tabs:
+      - id: car
+        title: Car loan
+        text: A car loan from 18.9% a year, for up to 7 years, from 300 000 to 5 000 000. The car is the collateral. A used car must be at most 10 years old at the end of the loan and needs an independent valuation.
+      - id: mortgage
+        title: Mortgage
+        text: A mortgage from 16.5% a year, for up to 30 years. The down payment is at least 20% of the price; families with two or more children under 18 can pay 15%. If you are married without a prenuptial agreement, your spouse joins as a co-borrower.
+      - id: cash
+        title: Cash loan
+        text: A cash loan from 21.9% a year, for up to 5 years, up to 3 000 000 without collateral. Above 3 000 000 you need proof of income.
+    sections:
+      - id: discounts
+        title: Rate discounts
+        text: Your rate goes 1 point down if your salary is paid into an Aster Bank account, and 2 points down with life insurance on a consumer loan. The rate never goes below 14.9%. Early repayment, in part or in full, is free.
+      - id: documents
+        title: Documents you need
+        text: A passport for every loan. Employees bring a 2-NDFL tax certificate or the bank's income form; sole proprietors bring last year's tax return; pensioners a pension certificate. A car loan also needs the car's papers; a mortgage the property's papers.
+
+  - path: /apply
+    title: Apply for a loan
+    keywords: [apply, application, loan application]
+    description: Aster Bank's online loan application, with the assistant filling it in with you.
+    form: loan_application
+    sections:
+      - id: how
+        title: How applying works
+        text: Fill in the application tab by tab; the assistant can fill fields from what you tell it or from a photo of your passport. The bank answers within one working day by SMS.
+
+  - path: /barbershop
+    title: Barbershop
+    keywords: [barbers, prices, price list]
+    description: Barber & Co's services, barbers and prices.
+    tabs:
+      - id: services
+        title: Services and prices
+        text: Haircut, 30 minutes, $40. Beard trim, 20 minutes, $25. Haircut and beard, 50 minutes, $60. Kids haircut, 25 minutes, $25. Maria is our senior barber; her prices are 20% higher.
+      - id: barbers
+        title: Our barbers
+        text: Alex and Ivan cut hair; Ivan and Omar trim beards; only Ivan does haircut and beard together. Maria does haircuts and is the only one who cuts kids' hair.
+    sections:
+      - id: first-visit
+        title: First visit
+        text: First-time clients get 10% off, applied at the salon.
+
+  - path: /book
+    title: Book a visit
+    keywords: [haircut, beard, barber, book, booking, appointment, visit]
+    description: Book a haircut or beard trim at Barber & Co.
+    form: barber_booking
+    sections:
+      - id: policy
+        title: Cancellation policy
+        text: Cancel for free up to 2 hours before your visit; a later cancellation costs 50% of the price.
+
+  - path: /faq
+    title: FAQ
+    keywords: [questions, cancel a booking, my data]
+    description: Common questions about loans, bookings and your data.
+    accordions:
+      - id: approval
+        title: How fast does the bank decide?
+        text: Aster Bank answers a loan application within one working day, by SMS.
+      - id: early
+        title: Can I repay a loan early?
+        text: Yes, in part or in full, at no charge.
+      - id: cancel
+        title: How do I cancel a barbershop booking?
+        text: Call Barber & Co or reply to the confirmation SMS. Free up to 2 hours before the visit, 50% of the price later.
+      - id: pay
+        title: How do I pay at the barbershop?
+        text: Card or cash at the salon. Nothing is charged when you book.
+      - id: data
+        title: What happens to my data?
+        text: Your answers go only to the business whose form you fill in. The assistant never sees values you mark as private, and it shows every value before it fills it in.
+
+  - path: /contacts
+    title: Contacts
+    keywords: [opening hours, open, hours, address, phone, branch]
+    description: Opening hours, addresses and phones of Aster Bank and Barber & Co.
+    sections:
+      - id: bank
+        title: Aster Bank, Main Street branch
+        text: 12 Main Street. Monday to Friday 9:00 to 19:00, Saturday 10:00 to 16:00, closed on Sunday. Phone 8 800 100 20 30.
+      - id: barber
+        title: Barber & Co
+        text: 21 Main Street. Every day 10:00 to 21:00. Phone 8 800 400 50 60.

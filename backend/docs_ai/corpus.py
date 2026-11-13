@@ -76,6 +76,7 @@ class Corpus:
     blocks: dict[str, Block] = field(default_factory=dict)   # code blocks by id, quoted verbatim by show_code
     pages_by_url: dict[str, tuple[str, str]] = field(default_factory=dict)   # url -> (title, description)
     section_of: dict[str, str] = field(default_factory=dict)   # section address -> its heading
+    chunks: list[Chunk] = field(default_factory=list)
 
     def correct(self, query: str) -> str:
         """Add the closest docs word for every word the docs never use (typos, misspellings)."""
@@ -129,11 +130,12 @@ def _pieces(text: str, size: int = 2400) -> list[str]:
     """Long sections in pieces of about `size` characters, cut at blank lines (never inside a code block)."""
     out, cur, in_code = [], "", False
     for block in text.split("\n\n"):
-        if block.count("```") % 2:
-            in_code = not in_code
+        # cut only between blocks outside code: the state before this block counts, so a long code block stays whole
         if len(cur) + len(block) > size and cur and not in_code:
             out.append(cur.strip())
             cur = ""
+        if block.count("```") % 2:
+            in_code = not in_code
         cur += block + "\n\n"
     if cur.strip():
         out.append(cur.strip())
@@ -186,4 +188,4 @@ def load(source: str) -> Corpus:
     idx.add(chunks)
     return Corpus(index=idx, pages=len({c.doc_id.split('#')[0] for c in chunks}), sections=len(chunks), source=source,
                   toc=contents(text), blocks=blocks, pages_by_url=page_index(text),
-                  section_of={c.doc_id: c.section for c in chunks})
+                  section_of={c.doc_id: c.section for c in chunks}, chunks=chunks)

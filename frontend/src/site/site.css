@@ -1,0 +1,19 @@
+/* The demo site: a page of content next to one chat. Uses the demo's tokens (index.css). */
+.site-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.site-nav a { color: var(--muted); text-decoration: none; padding: 6px 2px; font-size: 14px; }
+.site-nav a.on { color: var(--text); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+.site-nav .site-logo { color: var(--text); font-weight: 700; margin-right: 12px; }
+.site-main p { line-height: 1.55; max-width: 64ch; }
+.site-section { margin: 20px 0; padding: 4px 0; border-radius: 10px; }
+.site-section h2 { font-size: 17px; margin: 0 0 6px; }
+.site-tabs { margin-bottom: 20px; }
+.site-acc-body { padding: 0 14px 12px 36px; }
+.site-form { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
+.ring { outline: 2px solid var(--hl); outline-offset: 6px; transition: outline-color .6s; }
+@media (max-width: 760px) {
+  .page.site { height: auto; }
+  .site .app { display: flex; flex-direction: column; height: auto; }
+  .site .chat-pane { border-left: 0; border-top: 1px solid var(--line); height: 80vh; }
+  .site-nav { padding: 8px 16px; }
+}
+.site-nav .back-docs { margin-right: 4px; }

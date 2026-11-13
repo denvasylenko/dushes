@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "An installable AG-UI chat: a framework-free Web Component (<agui-chat>) with a formguide plugin and a React wrapper",
   "type": "module",
+  "imports": {
+    "#lang-loader": "./src/lang-loader.ts"
+  },
   "files": [
     "dist"
   ],
@@ -29,7 +32,7 @@
     "./standalone": "./dist/agui-chat.iife.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit && vite build && vite build --config vite.iife.config.ts && tsc -p tsconfig.types.json && node scripts/size.mjs",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && vite build --config vite.iife.config.ts && node scripts/lang-files.mjs && tsc -p tsconfig.types.json && node scripts/size.mjs",
     "test": "vitest run",
     "dev": "vite build --watch"
   },

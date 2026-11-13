@@ -67,7 +67,7 @@ def test_question_from_a_field(guide, model):
 
 def test_question_refusals(guide, model):
     for thread, args, needle in [
-        ("r1", {"question": "?", "field": "first_name"}, "not a dropdown"),
+        ("r1", {"question": "?", "field": "first_name", "options": ["Anna"]}, "not a dropdown"),   # a text field takes a typed answer, not options
         ("r2", {"question": "?", "field": "loan_type", "options": ["boat"]}, "no option 'boat'"),
         ("r3", {"question": "?", "options": [str(i) for i in range(13)]}, "too many options"),
         ("r4", {"question": "?", "allow_text": False}, "must allow a typed answer"),

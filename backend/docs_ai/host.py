@@ -5,6 +5,7 @@
     /demo/       the demo page with the loan form (frontend/dist, built with --base /demo/)
     /agent/...   formguide for the demo (demo.app with formguide.hosted.yaml: Claude Haiku)
     /java/...    the demo's mock form backend
+    /site/...    the site assistant over a small demo site (/demo/site.html; demo/site_app.py)
 
 The demo is public, so it is limited (environment):
     DEMO_PER_THREAD     messages per conversation (default 15)
@@ -65,13 +66,13 @@ async def public_demo(request, call_next):
     path, method = request.url.path, request.method
     if path.startswith("/agent/kb") and method in ("POST", "DELETE"):
         return JSONResponse({"detail": "Uploading documents is off in the public demo."}, status_code=403)
-    if path == "/agent/run" and method == "POST":
+    if path in ("/agent/run", "/site/run") and method == "POST":   # the form demo and the site demo
         try:
             body = json.loads(await request.body() or b"{}")
         except ValueError:
             body = {}
         props = body.get("forwardedProps") or {}
-        if not props.get("command") and not body.get("resume"):   # a new message, not a card's answer
+        if not props.get("command") and not props.get("handoff") and not body.get("resume"):   # a new message only
             ip = request.headers.get("fly-client-ip") or (request.client.host if request.client else "?")
             why = demo_limit(str(body.get("threadId") or "?"), ip)
             if why:

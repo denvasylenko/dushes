@@ -3,6 +3,7 @@
  * The landing page's live demo: a real <agui-chat> and a real form, driven by a scripted in-browser agent.
  * Nothing leaves the page; the script replays the events formguide's server would send.
  */
+const live = import.meta.env.PUBLIC_DEMO_URL as string | undefined;
 ---
 <div class="demo not-content" data-demo>
   <div class="demo-bar">
@@ -18,7 +19,7 @@
       <agui-chat mode="inline" persist-thread="off" attach="off" title="Loan assistant" subtitle="Replays recorded turns · no server"></agui-chat>
     </div>
   </div>
-  <p class="demo-cap">The real <code>&lt;agui-chat&gt;</code> widget and the formguide plugin. Only the agent is scripted: tap a suggestion.</p>
+  <p class="demo-cap">The real <code>&lt;agui-chat&gt;</code> widget and the formguide plugin. Only the agent is scripted: tap a suggestion.{live && <> <a href={live}>Try the real agent</a>, on a bigger form.</>}</p>
 </div>
 
 <script>

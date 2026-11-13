@@ -1,6 +1,6 @@
 ---
 name: ui-craft
-description: The project's UI/UX standard, minimal and simple at the level of Apple, Telegram and Revolut. One main action per screen, complex tasks in one tap, Undo instead of confirmations, instant response, designed empty and error states. Load BEFORE any interface change (the <agui-chat> widget in packages/agui-chat, the demo form in frontend/, the docs site in site/, examples/, button and hint texts, card renderers); when designing a new card, screen or flow; and for audits ("check the UI", "make it simpler or nicer", "UX review", "why is this awkward").
+description: The project's UI/UX standard, anchored on Apple: every component looks and behaves like its iOS / macOS counterpart, in Apple's spirit on every surface (the docs site included); minimal and simple, with Telegram's speed and Revolut's one-tap flows. One main action per screen, complex tasks in one tap, Undo instead of confirmations, instant response, designed empty and error states. Load BEFORE any interface change (the <agui-chat> widget in packages/agui-chat, the demo form in frontend/, the docs site in site/, examples/, button and hint texts, card renderers); when designing a new card, screen or flow; and for audits ("check the UI", "make it simpler or nicer", "UX review", "why is this awkward").
 ---
 
 # UI Craft: how we build interfaces
@@ -13,9 +13,30 @@ The references, and what we learn from each:
 
 | | What we learn |
 | --- | --- |
-| **Apple** | Quiet and hierarchy: a large title, lots of air, one accent colour, the system font, properties instead of settings. A gesture or action answers at once, and animation explains where things came from. |
+| **Apple** (the anchor) | Every component like its Apple counterpart, and Apple's spirit: clarity, deference to the content, depth through layers. Quiet and hierarchy: a large title, lots of air, one accent colour, the system font, properties instead of settings. A gesture or action answers at once, and animation explains where things came from. |
 | **Telegram** | Speed and density without noise: everything is instant, optimistic, tolerant of a bad network. Power gestures for experts, a plain tap for everyone. It never asks for no reason. |
 | **Revolut** | The complex in one tap: a transfer, freezing a card, splitting a bill are one button, with the details filled in by defaults. The main screen shows what matters now, not a menu. Numbers are large and clear. |
+
+## Apple experience (always)
+
+**Apple is our anchor.** Every component looks and behaves like its counterpart in iOS / macOS, so that someone with an iPhone recognises it and knows what it does without a hint; where Apple has nothing similar, we design by the same principles (clarity, deference to the content, depth, one obvious action, an answer at once). Models per surface: the chat is **iMessage** (an iOS sheet on phones), cards are **iOS grouped lists and sheets**, the demo form is **macOS / iOS Settings**, the docs are **developer.apple.com**. Component by component, with our classes: `references/apple-components.md`; the controls themselves (fields, steppers, pickers, calendar): `references/controls.md`.
+
+
+Every component, in the widget and on every page we ship, should feel like Apple made it: soft filled fields, joined controls (a number field's stepper sits on its right edge, full height, with chevrons), our own chevrons instead of browser arrows, pill buttons, 44 px targets on touch, quiet 150-200 ms transitions, light and dark. Native behaviour stays (keyboards, pickers, accessibility); the browser's look goes. Control by control: `references/controls.md`. If a control looks like a default browser widget, it is not done.
+
+## The Apple spirit (everywhere, not only controls)
+
+Controls are the letter; this is the spirit. It applies to every surface we ship: the widget, every card, the demo form, the examples, **and every page of the docs site** (guides, reference, landing, gallery).
+
+- **Clarity.** One idea per screen, section or card, said in its headline. Large, confident type with a clear hierarchy (a statement headline, a quiet one-line subhead, then the thing itself). If a heading needs a second line to explain it, the section does too much.
+- **Deference.** The content is the interface: the real chat, the real card, the real code. Chrome (borders, boxes, badges, labels) recedes; whitespace and soft fills separate things instead of lines.
+- **Show, then tell.** Lead with the real thing working (a live card, a copyable snippet that runs), then one or two sentences of why. Never a wall of text before the first example.
+- **Depth with restraint.** Soft layers (a tile on the page, a card in the tile), gentle radial light, one shadow style; no gradients for decoration, no more than one accent colour.
+- **Every detail finished.** Aligned edges, consistent radii, no orphaned words in headlines, no raw ids or JSON shown to end users, empty and error states as considered as the happy path, light and dark equally good.
+- **Calm motion.** Things fade and move 150-200 ms to show where they came from; nothing bounces for fun; reduced motion respected.
+- **Plain, warm words.** Short sentences, verbs on buttons, no jargon for users; for developers, the exact name of the type or key, once, with a link.
+
+On the docs site this means: a page opens with its one-line promise and the example; tiles (`border-radius` 20-28 px, soft fill) for galleries and choices; tabs for variants instead of repeated blocks; navigation always one tap away (every page keeps the sidebar; no page is a dead end). Check against Apple's product and developer pages: if ours looks busier, remove until it does not.
 
 ## Before the first line of code: a mini-brief (required)
 
@@ -29,7 +50,7 @@ Answer in writing, in the reply to the user or in the OpenSpec change's `design.
 
 If you cannot name one main action, the screen or card does too much. Split it, or hide the secondary.
 
-## The ten laws
+## The eleven laws
 
 In detail, with examples from our code: `references/principles.md`.
 
@@ -43,6 +64,7 @@ In detail, with examples from our code: `references/principles.md`.
 8. **Words are interface too.** A verb and an object on a button ("Fill in 2 fields", not "OK"). No jargon (jsx_hash, interrupt, AG-UI, SSE are not for users). Numbers with separators and correct plurals. Rules: `references/copy.md`.
 9. **Fingers and keyboard.** Tap targets ≥ 44×44 on a phone; nothing important only on hover. On a computer: `Esc` closes, `Enter` confirms, number keys pick options, `Tab` moves in a sensible order.
 10. **Quiet and system.** Only tokens (`--agui-*` in `packages/agui-chat/src/styles.ts`), one type scale, one spacing scale, one radius scale, one accent colour, motion with meaning, `prefers-reduced-motion` respected. Scales: `references/tokens.md`.
+11. **Like Apple.** Every component looks and behaves like its counterpart at Apple (iOS / macOS): the same shape, the same press, swipe and keyboard behaviour, the same words for the same action. Before you ship a component, answer: how does Apple do it, what happens on tap, hold, swipe and key, and what did I do differently, and why. Reference: `references/apple-components.md`.
 
 ## What we never do (hard rules)
 
@@ -56,6 +78,7 @@ In detail, with examples from our code: `references/principles.md`.
 - Horizontal page scroll at 390 px; text cut off without a `title` or a way to expand it.
 - Two buttons with the same meaning, or two items with the same name.
 - A "Saving…" indicator flashing on every action. Success is silent or a short fact; only errors stand out.
+- Browser-default chrome left in place: spin buttons on number inputs, native select arrows next to our styles, bare 13 px checkboxes as the only tap target (see `references/controls.md`).
 
 ## How to work
 
@@ -76,9 +99,9 @@ In detail, with examples from our code: `references/principles.md`.
 
 | Surface | Files | Who | Language | Tokens |
 | --- | --- | --- | --- | --- |
-| The chat widget `<agui-chat>` | `packages/agui-chat/src/element.ts`, `styles.ts`, `formguide/cards.ts`, `i18n.ts` | end users of any host app; phone and computer | 7 languages (`STRINGS`, `FG_STRINGS`; every key in every language) | `--agui-*` on `:host`, light and dark |
+| The chat widget `<agui-chat>` | `packages/agui-chat/src/element.ts`, `styles.ts`, `formguide/cards.ts`, `i18n.ts` | end users of any host app; phone and computer | 7 languages: English in `i18n.ts` (`STRINGS`, `FG_STRINGS`), the others in `src/lang/<lang>.json` packs (every English key in every pack) | `--agui-*` on `:host`, light and dark |
 | The demo form and its page | `frontend/src/App.tsx`, `Form.tsx`, `index.css` | someone trying formguide; mostly computer | en | the demo's own `:root` variables |
 | The HTML example | `examples/widget-html/index.html` | developers trying the widget | en | its own `:root` |
 | The docs site | `site/` (Astro Starlight): `src/styles/theme.css`, `src/components/` (the live demo `LiveDemo.astro` + `src/demo/`), pages in `src/content/docs/`, diagrams in `src/fragments/` | developers and managers; phone and computer | en | Starlight's `--sl-*` with formguide's accent in `theme.css`; diagrams map them in `arch.css` |
 
-The widget is the product: host apps restyle it only through tokens and `::part`, so everything visual in it must come from tokens. New text in the widget goes into the generated i18n files in all seven languages (non-ASCII as `\u` escapes, see CLAUDE.md).
+The widget is the product: host apps restyle it only through tokens and `::part`, so everything visual in it must come from tokens. New text in the widget goes into English (`i18n.ts`, `formguide/i18n.ts`) and into every pack in `src/lang/*.json` (non-ASCII as `\u` escapes, see CLAUDE.md); `test/langs.test.ts` fails when a pack misses a key.

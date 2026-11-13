@@ -1,0 +1,90 @@
+/* Apple-style controls for the demo pages (controls.tsx). Each page maps the --c-* variables to its own colours:
+   --c-fill (field fill), --c-bg (focused field, popover), --c-text, --c-muted, --c-line, --c-accent, --c-on-accent, --c-bad. */
+.ctl-field, .field input[type='text'], .field select, .field textarea {
+  width: 100%; min-height: 44px; box-sizing: border-box; border: 1px solid transparent; border-radius: 10px; padding: 10px 14px;
+  background: var(--c-fill); color: var(--c-text); font-family: inherit; font-size: 16px; line-height: 1.3; transition: background .15s, border-color .15s, box-shadow .15s;
+}
+.ctl-field::placeholder, .field input::placeholder { color: var(--c-muted); }
+.ctl-field:focus, .ctl-field:focus-visible, .field input[type='text']:focus, .field select:focus {
+  outline: none; background: var(--c-bg); border-color: var(--c-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-accent) 22%, transparent);
+}
+.ctl-field.bad, .field.has-err .ctl-field, .field.has-err input[type='text'] { border-color: var(--c-bad); }
+.ctl-field:disabled { opacity: .55; cursor: default; }
+/* read-only (computed by the form): no fill, a dashed outline, so it does not look editable */
+.field.ro input, .field.ro .ctl-field, .ctl-field[readonly] { background: transparent; border: 1px dashed var(--c-line); box-shadow: none; }
+
+/* number: the stepper joined to the right edge, two halves on the full height */
+.ctl-num { position: relative; }
+.ctl-num > .ctl-field { padding-right: 52px; }
+.ctl-step { position: absolute; top: 1px; right: 1px; bottom: 1px; width: 38px; display: grid; grid-template-rows: 1fr 1fr;
+  border-left: 1px solid var(--c-line); border-radius: 0 9px 9px 0; overflow: hidden; }
+.ctl-step button { display: grid; place-items: center; border: 0; padding: 0; background: transparent; color: var(--c-muted); cursor: pointer; transition: background .15s, color .15s; }
+.ctl-step button + button { border-top: 1px solid var(--c-line); }
+.ctl-step button:hover { background: color-mix(in srgb, var(--c-text) 6%, transparent); color: var(--c-text); }
+.ctl-step button:active { background: color-mix(in srgb, var(--c-text) 12%, transparent); }
+@media (pointer: coarse) { .ctl-step { width: 44px; } .ctl-num > .ctl-field { padding-right: 58px; } }
+
+/* select: our chevron, the native arrow hidden */
+.ctl-sel { position: relative; }
+.ctl-sel select { appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer; }
+.ctl-sel::after { content: ''; position: absolute; right: 16px; top: 50%; width: 7px; height: 7px; border-right: 1.8px solid var(--c-muted);
+  border-bottom: 1.8px solid var(--c-muted); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+
+/* a compact select for toolbars */
+.ctl-sel.small { display: inline-block; }
+.ctl-sel.small select { min-height: 32px; padding: 4px 32px 4px 12px; font-size: 13px; border-radius: 999px; }
+.ctl-sel.small::after { right: 13px; width: 6px; height: 6px; }
+
+/* date: a field face and our calendar in a popover */
+.ctl-date { position: relative; }
+.ctl-face { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
+.ctl-face .ph { color: var(--c-muted); }
+.ctl-face svg { color: var(--c-muted); flex: none; }
+.ctl-pop { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; }
+.ctl-pop .cal { width: 300px; border: 1px solid var(--c-line); border-radius: 14px; padding: 10px; background: var(--c-bg); color: var(--c-text);
+  box-shadow: 0 12px 32px -12px color-mix(in srgb, var(--c-text) 35%, transparent); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cal-title { border: 0; background: none; font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1.2; color: var(--c-text); padding: 6px 8px; border-radius: 10px; cursor: pointer;
+  display: inline-flex; gap: 6px; align-items: center; }
+.cal-title:hover { background: var(--c-fill); }
+.cal-caret { color: var(--c-accent); transition: transform .2s; }
+.cal[data-mode=years] .cal-caret, .cal[data-mode=months] .cal-caret { transform: rotate(90deg); }
+.cal-navs { display: inline-flex; gap: 2px; }
+.cal-nav { width: 36px; height: 36px; border: 0; border-radius: 999px; background: none; color: var(--c-accent); cursor: pointer; display: grid; place-items: center; }
+.cal-nav:hover { background: var(--c-fill); }
+.cal-nav:disabled { color: var(--c-muted); opacity: .5; cursor: default; background: none; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.cal-wd { font-size: 11px; font-weight: 600; color: var(--c-muted); padding: 4px 0; }
+.cal-d { aspect-ratio: 1; border: 0; border-radius: 999px; background: none; color: var(--c-text); font-family: inherit; font-size: 15px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.cal-d:hover { background: var(--c-fill); }
+.cal-d.today { color: var(--c-accent); font-weight: 600; }
+.cal-d.on { background: var(--c-accent); color: var(--c-on-accent); font-weight: 600; }
+.cal-d:disabled { color: var(--c-muted); opacity: .45; cursor: default; background: none; }
+.cal-years { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cal-y { min-height: 40px; border: 0; border-radius: 10px; background: var(--c-fill); color: var(--c-text); font-family: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+.cal-y.on { background: var(--c-accent); color: var(--c-on-accent); font-weight: 600; }
+.cal-y:disabled { opacity: .4; cursor: default; }
+
+/* checkbox and radio: soft rounded square / circle, the accent when on */
+.field input[type='checkbox'], .ctl-check, .radio input[type='checkbox'] {
+  appearance: none; -webkit-appearance: none; width: 20px; height: 20px; flex: none; margin: 0; border-radius: 6px; border: 1.5px solid var(--c-muted);
+  background: var(--c-bg); display: inline-grid; place-items: center; cursor: pointer; transition: background .15s, border-color .15s;
+}
+.field input[type='checkbox']::after, .ctl-check::after, .radio input[type='checkbox']::after {
+  content: ''; width: 5px; height: 10px; border: solid var(--c-on-accent); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg) scale(0); transition: transform .15s;
+}
+.field input[type='checkbox']:checked, .ctl-check:checked, .radio input[type='checkbox']:checked { background: var(--c-accent); border-color: var(--c-accent); }
+.field input[type='checkbox']:checked::after, .ctl-check:checked::after, .radio input[type='checkbox']:checked::after { transform: translateY(-1px) rotate(45deg) scale(1); }
+input[type='radio'] { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; flex: none; margin: 0; border-radius: 50%;
+  border: 1.5px solid var(--c-muted); background: var(--c-bg); display: inline-grid; place-items: center; cursor: pointer; transition: border-color .15s; }
+input[type='radio']::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--c-accent); transform: scale(0); transition: transform .15s; }
+input[type='radio']:checked { border-color: var(--c-accent); }
+input[type='radio']:checked::after { transform: scale(1); }
+input[type='checkbox']:focus-visible, input[type='radio']:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-accent) 30%, transparent); }
+
+/* file: a pill button instead of the browser's "Choose file" */
+.ctl-file { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ctl-file input[type='file'] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.ctl-file label { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--c-line);
+  background: var(--c-bg); color: var(--c-text); font-size: 13px; font-weight: 500; cursor: pointer; }
+.ctl-file label:hover { border-color: var(--c-muted); }

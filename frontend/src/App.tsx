@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formguide } from '@formguide/agui-chat/formguide'
+import { Select } from './controls'
 import { AguiChat } from '@formguide/agui-chat/react'
 import type { AguiChatElement } from '@formguide/agui-chat'
 import { javaEvent, javaForm, javaForms, registerLayout, FRONTEND_TOOLS, type FormState } from './api'
@@ -14,6 +15,8 @@ type AgentCtx = { text: string; stats: { context_tokens: number; config_tokens: 
 type RunStats = { ttft_ms: number | null; total_ms: number; model_ms: number; tool_ms: number; tools: unknown[];
   tokens: { input: number | null; output: number | null }; cache_hit_rate: number | null } | null
 
+/** Served under /demo/ on the public docs host: a way back to the docs, and no document uploads (they are off there). */
+const HOSTED = import.meta.env.BASE_URL !== '/'
 const sec = (ms: number | null) => (ms == null ? '-' : `${(ms / 1000).toFixed(1)} s`)
 
 type LoadedForm = { formId: string; jsx: string; tree: JsxNode; hash: string; title: string }
@@ -223,13 +226,14 @@ export default function App() {
 
   const header = (
     <div className="topbar">
+      {HOSTED && <a className="back-docs" href="/">{'‹'} Docs</a>}
       <div className="seg" role="tablist">
         <button className={view === 'form' ? 'on' : ''} onClick={() => setView('form')}>Form + assistant</button>
-        <button className={view === 'manager' ? 'on' : ''} onClick={() => setView('manager')}>Manager: documents</button>
+        {!HOSTED && <button className={view === 'manager' ? 'on' : ''} onClick={() => setView('manager')}>Manager: documents</button>}
       </div>
-      <select value={formId} onChange={(e) => setFormId(e.target.value)} aria-label="Demo form">
+      <Select className="ctl-field small" value={formId} onChange={(e) => setFormId(e.target.value)} aria-label="Demo form">
         {forms.map((f) => <option key={f} value={f}>{f}</option>)}
-      </select>
+      </Select>
     </div>
   )
 
@@ -262,9 +266,9 @@ export default function App() {
           </button>
           <button className="link" onClick={prefill} disabled={busy || !PROFILES[form.formId]}
             title="Start from data the app already has (AG-UI forwardedProps.prefill)">Prefill from profile</button>
-          <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Chat language" title="Chat and dictation language">
+          <Select className="ctl-field small" value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Chat language" title="Chat and dictation language">
             {LANGS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
+          </Select>
         </div>
         {showCtx && runStats && (
           <div className="ctx stats">

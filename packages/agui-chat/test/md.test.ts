@@ -19,4 +19,12 @@ describe('md: fenced code blocks', () => {
   it('shows an unclosed fence (still streaming) as code', () => {
     expect(md('```bash\nformguide serve')).toContain('<code>formguide serve</code>')
   })
+
+  it('reads a fence with a title, and the blocks after it stay apart', () => {
+    const html = md('```yaml title="formguide.yaml"\nmodels: {}\n```\n\nIn Python:\n\n```python\nguide = 1\n```')
+    expect(html).toContain('data-lang="formguide.yaml"')
+    expect(html).toContain('<code>models: {}</code>')
+    expect(html).toContain('<p>In Python:</p>')
+    expect(html).toContain('<code>guide = 1</code>')
+  })
 })

@@ -27,8 +27,19 @@ export interface Theme {
 /** Every token the widget reads (without the --agui- prefix). */
 export const TOKENS = [
   'accent', 'on-accent', 'link', 'bg', 'surface', 'soft', 'ink', 'ink-2', 'ink-3', 'line', 'line-2',
-  'ok', 'on-ok', 'danger', 'on-danger', 'shadow', 'scrim',
+  'ok', 'on-ok', 'danger', 'on-danger', 'shadow', 'scrim', 'knob',
   'radius', 'radius-sm', 'radius-lg', 'radius-pill', 'panel-width', 'font', 'ease', 'fade',
+  // component tokens: each falls back to the globals above
+  'panel-bg', 'panel-ink', 'header-bg', 'header-ink', 'header-border', 'log-bg',
+  'bubble-user-bg', 'bubble-user-ink', 'bubble-ai-ink', 'bubble-radius',
+  'card-bg', 'card-ink', 'card-border', 'card-radius', 'card-padding',
+  'button-bg', 'button-ink', 'button-radius', 'button-secondary-bg', 'button-secondary-ink', 'button-secondary-border',
+  'chip-bg', 'chip-ink', 'chip-border', 'chip-radius', 'chip-on-bg', 'chip-on-ink',
+  'option-bg', 'option-ink', 'option-border', 'option-radius',
+  'input-bg', 'input-ink', 'input-border', 'input-radius', 'input-height',
+  'composer-bg', 'composer-border', 'composer-radius', 'composer-area-bg',
+  'calendar-on-bg', 'calendar-on-ink',
+  'bubble-width', 'bubble-height', 'bubble-offset', 'bubble-window-radius', 'launcher-size',
 ] as const
 
 const KNOWN = new Set<string>(TOKENS)

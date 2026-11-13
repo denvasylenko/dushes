@@ -197,3 +197,40 @@ def test_a_conversation_has_a_limit(tmp_path):
     with client as c:
         assert [_ask(c, "q").status_code for _ in range(3)] == [200, 200, 429]
         assert "limit" in _ask(c, "q").json()["detail"]
+
+
+def test_page_cards_name_their_sidebar_group():
+    from docs_ai.agent import _group
+
+    assert _group("https://x.example/reference/configuration/") == "Reference"
+    assert _group("https://x.example/dushes/backend/configuration/") == "Backend"
+    assert _group("https://x.example/") == ""
+
+
+def test_a_long_code_block_is_never_cut():
+    from docs_ai.corpus import _pieces
+
+    code = "```yaml\n" + "\n\n".join(f"key{i}: value  # a comment long enough to fill the piece {'x' * 60}" for i in range(60)) + "\n```"
+    pieces = _pieces("Intro.\n\n" + code + "\n\nAfter.", size=600)
+    assert sum(p.count("```") for p in pieces) == 2 and any(p.count("```") == 2 for p in pieces)
+
+
+def test_whole_config_questions_match():
+    from docs_ai.agent import WHOLE_CONFIG
+
+    for q in ["Show me the whole configuration with every key", "all config options", "full yaml please",
+              "the complete config file"]:
+        assert WHOLE_CONFIG.search(q), q
+    assert not WHOLE_CONFIG.search("How do I use Azure OpenAI?")
+
+
+def test_whole_config_card_puts_yaml_first():
+    from docs_ai.agent import whole_config_card
+    from docs_ai.corpus import Block, Corpus
+    from formguide import BM25Index
+
+    c = Corpus(BM25Index(), 1, 1, "x", blocks={
+        "b1": Block("b1", "python", "app.py", "GuideConfig()", "u#every-key-in-one-file", "Configuration", "Every key in one file"),
+        "b2": Block("b2", "yaml", "formguide.yaml", "model: x", "u#every-key-in-one-file", "Configuration", "Every key in one file")})
+    card = whole_config_card(c)
+    assert [b["lang"] for b in card["blocks"]] == ["yaml", "python"]

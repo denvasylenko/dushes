@@ -1,0 +1,52 @@
+---
+/**
+ * The site title with a sidebar toggle before it (computers only; phones use Starlight's menu button).
+ * The choice is kept in localStorage, so the sidebar stays collapsed from page to page.
+ */
+import Default from '@astrojs/starlight/components/SiteTitle.astro';
+---
+<button type="button" class="sb-toggle" data-sb-toggle aria-label="Hide the sidebar" aria-pressed="false" title="Hide the sidebar">
+  <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="13" rx="3" /><path d="M7.5 3.5v13" /></svg>
+</button>
+<Default />
+
+<script is:inline>
+  (function () {
+    var key = 'fg-sidebar', root = document.documentElement
+    var set = function (collapsed) {
+      if (collapsed) root.dataset.sidebar = 'collapsed'; else delete root.dataset.sidebar
+      document.querySelectorAll('[data-sb-toggle]').forEach(function (b) {
+        b.setAttribute('aria-pressed', String(collapsed))
+        var label = collapsed ? 'Show the sidebar' : 'Hide the sidebar'
+        b.setAttribute('aria-label', label); b.title = label
+      })
+    }
+    var saved = false
+    try { saved = localStorage.getItem(key) === 'collapsed' } catch (e) {}
+    set(saved)
+    document.querySelectorAll('[data-sb-toggle]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var next = root.dataset.sidebar !== 'collapsed'
+        set(next)
+        try { localStorage.setItem(key, next ? 'collapsed' : 'open') } catch (e) {}
+      })
+    })
+  })()
+</script>
+
+<style is:global>
+  .sb-toggle {
+    display: none; flex: none; align-items: center; justify-content: center; width: 36px; height: 36px; margin-inline-end: 6px;
+    border: 0; border-radius: 10px; background: none; color: var(--sl-color-gray-3); cursor: pointer; transition: background .18s, color .18s;
+  }
+  .sb-toggle:hover { color: var(--sl-color-white); background: var(--sl-color-gray-6); }
+  .sb-toggle:focus-visible { outline: 2px solid var(--sl-color-accent); outline-offset: 2px; }
+  .sb-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+  .sb-toggle[aria-pressed='true'] { color: var(--sl-color-accent-high); }
+  @media (min-width: 50rem) {
+    .sb-toggle { display: inline-flex; }
+    :root[data-sidebar='collapsed'] { --sl-content-inline-start: 0rem; }
+    :root[data-sidebar='collapsed'] .sidebar-pane { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .sb-toggle { transition: none; } }
+</style>

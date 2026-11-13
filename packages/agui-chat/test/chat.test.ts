@@ -3,6 +3,7 @@ import '../src/index'
 import type { AguiChatElement } from '../src/element'
 import { errorKind } from '../src/element'
 import { formguide } from '../src/formguide/index'
+import { loadLanguage } from '../src/langs'
 import { parseBlock, sseEvents } from '../src/transport'
 import { newState, step, visible } from '../src/typewriter'
 import type { AguiEvent } from '../src/types'
@@ -404,6 +405,37 @@ describe('formguide plugin', () => {
     expect(bodies[2].messages.at(-1).content).toContain('Loan type')
   })
 
+  it('fills a text field from the typed answer in one tap, unless the form refuses it or it is a question', async () => {
+    const q = { type: 'ask', card_id: 'q1', question: 'Your passport series?', field: 'series', label: 'Passport series', applies: true,
+      previous: null, options: [], allow_text: true, input: { type: 'text' }, reveal: [] }
+    const type = (el: AguiChatElement, v: string) => {
+      const inp = $(el, '.card .text-in') as HTMLInputElement
+      inp.value = v
+      inp.dispatchEvent(new Event('input'))
+      ;($(el, '.card .btn.pri') as HTMLButtonElement).click()
+    }
+    let { el, applyChanges } = await withPlugin(run(interrupt(q)))
+    type(el, '4444')
+    await tick(5)
+    expect(applyChanges).toHaveBeenCalledWith({ series: '4444' })
+    expect(bodies[1].forwardedProps.command.resume).toMatchObject({ answer: { text: '4444' }, config: { state: { series: '4444' } } })
+    expect(($(el, '.card .ok-line .btn') as HTMLButtonElement).textContent).toBe('Undo')
+    // the form flags it ("4 digits"): the old value comes back and the assistant gets a plain answer
+    const refusing = vi.fn(async (ch: Record<string, unknown>) => ({ state: ch, props: { series: { error: ch.series ? 'Series: 4 digits' : null } } }))
+    ;({ el } = await withPlugin(run(interrupt({ ...q, card_id: 'q2' })), { applyChanges: refusing }))
+    type(el, '44')
+    await tick(5)
+    expect(refusing).toHaveBeenLastCalledWith({ series: null })
+    expect(bodies.at(-1).forwardedProps.command.resume).toEqual({ answer: { text: '44' } })
+    // a question back is not a value: it goes to the assistant, the field is untouched
+    const untouched = vi.fn(async () => ({ state: {} }))
+    ;({ el } = await withPlugin(run(interrupt({ ...q, card_id: 'q3' })), { applyChanges: untouched }))
+    type(el, 'Where do I find it?')
+    await tick(5)
+    expect(untouched).not.toHaveBeenCalled()
+    expect(bodies.at(-1).forwardedProps.command.resume).toEqual({ answer: { text: 'Where do I find it?' } })
+  })
+
   it('fills a multiple-choice field with a list, and keeps the card when apply fails', async () => {
     const q = { type: 'ask', card_id: 'q1', question: 'Which?', field: 'extras', applies: true, previous: [], multiple: true, allow_text: false,
       options: [{ id: 'a', label: 'A', value: 'a' }, { id: 'b', label: 'B', value: 'b' }] }
@@ -425,6 +457,7 @@ describe('formguide plugin', () => {
     expect(($(el, '.card .btn.pri') as HTMLButtonElement).textContent).toBe('Fill in 3 fields')
     ;({ el } = await withPlugin(run(interrupt({ type: 'set_fields', card_id: 'c2', changes: CHANGES.slice(0, 1) }))))
     expect(($(el, '.card .btn.pri') as HTMLButtonElement).textContent).toBe('Fill in 1 field')
+    await loadLanguage('ru')   // other languages are packs, loaded on demand
     el.options = { lang: 'ru' }
     expect(el.t('fillFields', { n: 5, fields: el.t('field_many') })).toBe('\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c 5 \u043f\u043e\u043b\u0435\u0439')
   })

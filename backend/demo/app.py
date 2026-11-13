@@ -84,6 +84,11 @@ _RHF = HERE.parents[1] / "examples" / "react-hook-form" / "dist"
 if _RHF.exists():
     app.mount("/examples/react-hook-form", StaticFiles(directory=_RHF, html=True), name="rhf-example")
 
+# The site assistant over a multi-page demo site (frontend/site.html, demo/site.yaml): /site/run, /site/map.
+from .site_app import mount as mount_site  # noqa: E402
+
+mount_site(app, guide)
+
 # The demo page at "/" (DEMO_PATH moves it, e.g. "/demo" on the docs host, built with `vite build --base /demo/`).
 _DIST = HERE.parents[1] / "frontend" / "dist"
 if _DIST.exists():

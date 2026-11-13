@@ -58,14 +58,50 @@ flowchart LR
     ```
   </TabItem>
   <TabItem label="With the form">
-    ```ts
-    await fetch('/agent/layouts', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsx, form_id: 'barber_booking', domain: { title: 'Booking', persona: 'You are a friendly receptionist.' } }),
-    })
+    The page can send a pack when it registers the form (handy for forms built by users). The request:
+    ```bash
+    curl -X POST http://localhost:8000/agent/layouts -H "Content-Type: application/json" -d '{
+      "jsx": "<Form>...</Form>", "form_id": "barber_booking",
+      "domain": {"title": "Booking", "persona": "You are a friendly receptionist."}
+    }'
     ```
   </TabItem>
 </Tabs>
+
+## Every option
+
+Where packs come from. Combine them freely; for each form the first that has it wins: a pack sent with the form, then `provider`, then `packs`, then `dir`.
+
+```yaml title="formguide.yaml"
+domain_packs:
+  dir: domain_packs                        # <form_id>.json files
+  provider: "my_app.packs:load_pack"       # function(form_id) -> dict or None
+  packs:                                   # inline
+    barber_booking: {title: Booking, persona: "You are a friendly receptionist."}
+```
+```python title="app.py"
+from formguide import DomainPackRegistry
+
+DomainPackRegistry(
+    directory="domain_packs",
+    provider=load_pack,                                  # (form_id) -> dict | None
+    packs={"barber_booking": {"title": "Booking", "persona": "You are a friendly receptionist."}},
+)
+```
+
+
+Every key of a pack:
+
+| Key | Type | Default |
+| --- | --- | --- |
+| `title` | the form's name, used in prompts and the page title | `"Form"` |
+| `persona` | the agent's voice and role | a neutral helpful assistant |
+| `flow_hints` | list of strings | none |
+| `glossary` | `{field: explanation}` | none |
+| `rules` | list of business rules; compiled documents are merged in | none |
+| `pii` | list of field names masked in the model's context | none |
+| `starters` | up to 6 opening messages for an empty chat | none |
+| `consents` | `{bool_field: {required?, doc?}}`: checkboxes shown as consents, never pre-ticked | none |
 
 ## Next
 

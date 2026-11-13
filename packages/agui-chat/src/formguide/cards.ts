@@ -1,9 +1,10 @@
 /** formguide's cards: field changes, questions, upload requests and confirmations. */
-import { h, mdInline } from '../dom'
+import { h, mdInline, numberBox, selectBox } from '../dom'
 import { shrinkImage } from '../image'
 import type { ChatApi, Interrupt, RendererContext } from '../types'
 import type { Ctx, Directive, FieldCardFlags } from './index'
 import { feedbackEl, fieldsView, formatValue, optionsView, typedView, type Opt } from './pickers'
+import { dateField } from './calendar'
 
 interface Change {
   name: string; label: string; value: unknown; display: string; reason?: string
@@ -52,7 +53,7 @@ function fieldOptions(props: Record<string, any> | undefined): { id: unknown; la
 }
 
 /** An editor for one change; returns the element and a getter of [value, display]. */
-function editor(ch: Change, props: Record<string, any> | undefined): { el: HTMLElement; read: () => [unknown, string] } { // eslint-disable-line @typescript-eslint/no-explicit-any
+function editor(ch: Change, props: Record<string, any> | undefined, c: RendererContext): { el: HTMLElement; read: () => [unknown, string] } { // eslint-disable-line @typescript-eslint/no-explicit-any
   const v = ch.value
   const opts = fieldOptions(props)
   if (opts && opts.length) {
@@ -60,7 +61,7 @@ function editor(ch: Change, props: Record<string, any> | undefined): { el: HTMLE
     const current = opts.findIndex((o) => o.raw === v || String(o.id) === String((v as any)?.id ?? (v as any)?.value ?? v) || o.label === v) // eslint-disable-line @typescript-eslint/no-explicit-any
     opts.forEach((o, i) => sel.appendChild(h('option', { value: String(i), selected: i === current }, o.label)))
     return {
-      el: sel,
+      el: selectBox(sel),
       read: () => {
         const o = opts[Number(sel.value)]
         // the same shape as the proposed value: the option object, its id, or its label
@@ -75,8 +76,12 @@ function editor(ch: Change, props: Record<string, any> | undefined): { el: HTMLE
   }
   const type = typeof v === 'number' ? 'number' : typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? 'date' : 'text'
   const inp = h('input', { type, value: String(v ?? ''), 'aria-label': ch.label }) as HTMLInputElement
+  if (type === 'date') {   // our own calendar, not the browser's
+    const f = dateField({ lang: c.chat.lang, value: String(v ?? ''), label: ch.label, t: c.t, onChange: (d) => { inp.value = d } })
+    return { el: f.el, read: () => [inp.value || f.value(), inp.value || f.value()] }
+  }
   return {
-    el: inp,
+    el: type === 'number' ? numberBox(inp) : inp,
     read: () => {
       const raw = inp.value
       const val = type === 'number' ? (raw === '' ? null : Number(raw)) : raw
@@ -156,7 +161,8 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
 
   const rows = changes.map((ch) => {
     const lang = c.chat.lang
-    const valueEl = h('b', null, ch.consent ? '' : formatValue(ch.display, ch.kind, lang))
+    const yesNo = { yes: c.t('yes'), no: c.t('no') }
+    const valueEl = h('b', null, ch.consent ? '' : formatValue(ch.display, ch.kind, lang, yesNo))
     const row = h('label', { class: `row${ch.consent ? ' consent' : ''}` })   // the whole row toggles its checkbox
     const check = (flags.select && many) || ch.consent
       ? h('input', { type: 'checkbox', checked: !ch.consent, 'aria-label': ch.label, onchange: (e: Event) => {
@@ -166,7 +172,7 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
         } })
       : null
     const prev = flags.diff && ch.previous_display && ch.previous_display !== ch.display
-      ? h('s', { class: 'muted was' }, formatValue(ch.previous_display, ch.kind, lang)) : null
+      ? h('s', { class: 'muted was' }, formatValue(ch.previous_display, ch.kind, lang, yesNo)) : null
     const afterLabels = (ch.after ?? []).map((n) => changes.find((x) => x.name === n)?.label ?? n).join(', ')
     const docText = ch.doc?.text ? h('div', { class: 'muted doc', hidden: true }, ch.doc.text) : null
     const why = ch.issue?.why ? h('div', { class: 'muted why', hidden: true }, ch.issue.why) : null
@@ -193,18 +199,18 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
     }
     if (flags.edit && !ch.deferred && !ch.consent) {
       tools.appendChild(h('button', { class: 'btn link', type: 'button', onclick: () => {
-        const ed = editor(ch, props[ch.name])
+        const ed = editor(ch, props[ch.name], c)
         const done = h('button', { class: 'btn sec', type: 'button', onclick: () => {
           const [val, shown] = ed.read()
           if (JSON.stringify(val) !== JSON.stringify(ch.value)) edits.set(ch.name, [val, shown]); else edits.delete(ch.name)
-          valueEl.textContent = shown
+          valueEl.textContent = formatValue(shown, ch.kind, lang, yesNo)
           box.replaceWith(line)
           tools.hidden = false
         } }, 'OK')
         const box = h('div', { class: 'field' }, ed.el, done)
         line.replaceWith(box)
         tools.hidden = true
-        ed.el.focus()
+        ;(ed.el.querySelector<HTMLElement>('input, select') ?? ed.el).focus()
       } }, c.t('edit')))
     }
     if (flags.jump && ch.reveal && !ch.consent) {
@@ -234,7 +240,8 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
     const toggle = h('button', { class: 'fold', type: 'button', 'data-keep': true, 'aria-expanded': 'false', title: names || null, onclick: () => {
       const open = card.classList.toggle('unfolded')
       toggle.setAttribute('aria-expanded', String(open))
-    } }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, ok && names ? `${word} \u00b7 ${names}` : word))
+    } }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, ok && names ? `${word} \u00b7 ${names}` : word),
+      h('span', { class: 'chev', 'aria-hidden': 'true' }, '\u203a'))   // the line opens to show the rows again
     const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, toggle)
     if (ok) undoButton(line, c, ctx, applied.map((x) => ({ name: x.name, label: x.label, previous: x.previous ?? null })))
     acts.replaceWith(line)
@@ -290,6 +297,9 @@ const INPUT: Record<string, string> = { date: 'date', time: 'time', datetime: 'd
 /** A question line with inline markdown (**bold** from the model). */
 const qText = (s: unknown): HTMLElement => { const el = h('div', { class: 'card-q' }); el.innerHTML = mdInline(String(s ?? '')); return el }
 
+/** Typed text that reads like a field's value, not a question or a story. */
+const valueLike = (t: string): boolean => t.length <= 120 && !t.includes('\n') && !/[?\u061f\uff1f]\s*$/.test(t)   // ? in Latin, Arabic, CJK
+
 export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLElement {
   const options: Opt[] = it.options ?? []
   const multiple = !!it.multiple
@@ -299,18 +309,26 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
   const answered = (labels: string, ok = true) => {   // the card shrinks to the question and the answer
     const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, labels))
     acts.replaceWith(line)
-    card.querySelectorAll('.chips, .opts, .cmp, .strip, .range, .fields, .search, .note').forEach((x) => x.remove())
+    card.querySelectorAll('.chips, .opts, .cmp, .strip, .range, .fields, .search, .note, .num').forEach((x) => x.remove())
     text?.remove()
     err.remove()
     return line
   }
   /** Values that fill fields directly (a day, a slot, a range, several fields): applied with Undo, then resumed. */
-  const applyValues = async (values: Record<string, unknown>, labels: string, answer: Record<string, unknown>) => {
+  const applyValues = async (values: Record<string, unknown>, labels: string, answer: Record<string, unknown>, strict = false) => {
     card.querySelectorAll<HTMLButtonElement>('.chip, .btn, .opt').forEach((b) => { b.disabled = true })
     err.textContent = ''
     try {
       const prev = (await ctx!.getState()).config?.state ?? {}
       const config = await ctx!.applyChanges(values)
+      // a typed text the form rejects ("4 digits"): put the old value back and let the assistant handle the answer
+      const rejected = strict && Object.keys(values).some((n) => (config as { props?: Record<string, { error?: unknown }> })?.props?.[n]?.error)
+      if (rejected) {
+        await ctx!.applyChanges(Object.fromEntries(Object.keys(values).map((n) => [n, n === it.field ? it.previous ?? prev[n] ?? null : prev[n] ?? null])))
+        answered(labels)
+        c.resolve(answer)
+        return
+      }
       const state = await ctx!.getState()
       const line = answered(labels)
       const names = Object.keys(values)
@@ -351,6 +369,11 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
   const send = (ids: string[], text: string) => {
     const labels = [...ids.map((i) => options.find((o) => o.id === i)?.label ?? i), ...(text ? [`"${text}"`] : [])].join(', ')
     if (applies && ids.length && !text) return void fill(ids, labels)
+    // a question about a text field: the typed value fills it at once (one tap); a question back ("why?") or a
+    // long story goes to the assistant instead
+    if (applies && !ids.length && text && !options.length && !it.input?.type?.match(/^(date|time|number)$/) && valueLike(text)) {
+      return void applyValues({ [it.field]: text }, labels, { answer: { text } }, true)
+    }
     answered(labels)
     c.resolve({ answer: { ...(ids.length ? { ids } : {}), ...(text ? { text } : {}) } })
   }
@@ -361,9 +384,11 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
     b.setAttribute('aria-pressed', String(picked.has(o.id)))
     sync()
   }
+  // keyboard hints 1-9 would read as part of the answer when the options are numbers ("2 1", "3 2")
+  const numeric = options.some((o) => /\d/.test(o.label))
   const chipFor = (o: Opt, i: number) => {
     const b = h('button', { class: 'chip', part: 'chip', type: 'button', 'aria-pressed': multiple ? 'false' : null },
-      i < 9 ? h('kbd', null, String(i + 1)) : null, o.label) as HTMLButtonElement
+      i < 9 && !numeric ? h('kbd', null, String(i + 1)) : null, o.label) as HTMLButtonElement
     b.addEventListener('click', () => pick(o, b))
     return b
   }
@@ -392,7 +417,7 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
     h('button', { class: 'btn link', type: 'button', onclick: () => { answered(c.t('skipped'), false); c.resolve({ accepted: false }) } }, c.t('skip')))
   const card = h('div', { tabindex: 0, 'aria-label': String(it.question ?? '').replace(/[*`]/g, '') },
     qText(it.question),
-    view.el, typed, several ? null : text, several, err, acts)
+    view.el, typed, several || !text ? null : text.type === 'number' ? numberBox(text) : text, several, err, acts)
   card.addEventListener('keydown', (e) => {   // 1..9 picks an option
     if (e.target instanceof HTMLInputElement) return
     const n = Number(e.key)

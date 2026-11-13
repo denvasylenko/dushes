@@ -90,3 +90,10 @@ Answer recipes SHALL be Markdown files (`docs_ai/recipes/`, or `DOCS_AI_RECIPES`
 - **WHEN** the question is "hello"
 - **THEN** no recipe is added
 
+
+### Requirement: The whole configuration
+Asked for the whole configuration (every key, all options, the full file), the assistant SHALL show the configuration guide's one-file section as a code card, the YAML first and the same in Python second, regardless of how the search ranks it.
+
+#### Scenario: Every key
+- **WHEN** a reader asks "Show me the whole configuration with every key"
+- **THEN** the answer has a code card with the complete `formguide.yaml` and its Python equivalent as tabs

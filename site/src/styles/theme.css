@@ -50,3 +50,6 @@ h1#_top { text-wrap: balance; }
 :root[data-theme='light'] .sl-markdown-content h3[id^='scenario-'] { color: var(--sl-color-accent); }
 .works { font: var(--sl-text-sm)/1.9 var(--sl-font-mono); color: var(--sl-color-gray-2); max-width: 60rem; }
 [data-has-hero] .sl-markdown-content > .tablist-wrapper:first-child, [data-has-hero] starlight-tabs:first-of-type { max-width: 44rem; }
+
+/* the landing and the card gallery: a wider canvas next to the sidebar */
+:root:has(.cg), :root:has([data-demo]) { --sl-content-width: 68rem; }

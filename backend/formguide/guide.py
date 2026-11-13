@@ -12,6 +12,7 @@ and the LangGraph graph. Transport-agnostic: `run()` yields AG-UI-shaped events;
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -57,6 +58,7 @@ class FormGuide:
     def __init__(self, config: GuideConfig | None = None):
         cfg = config or GuideConfig()
         self.config = cfg
+        self._turns: dict[str, asyncio.Task] = {}   # thread id -> its running turn (see run_detached)
         self.models = cfg.models.resolve()
         from .models import build_model
         self.models.memory = build_model(cfg.memory.model) if cfg.memory.model else self.models.research
@@ -361,11 +363,61 @@ class FormGuide:
                 continue
         return out or ("done" if same else None)
 
+    # ------------------------------------------------------------------ turns that outlive the connection
+    RUN_WAIT_S = 120   # a new turn waits this long for the thread's running turn, then gives up
+
+    async def run_detached(self, **kw: Any) -> AsyncIterator[dict]:
+        """`run()` as a background task: the caller streams its events, and when the caller goes away
+        (the tab closed, the page reloaded) the turn still finishes and records its result in the transcript.
+        A turn for a thread whose turn is still running waits for it first (a RUN_ERROR after RUN_WAIT_S)."""
+        thread_id = check_thread_id(kw["thread_id"])
+        running = self._turns.get(thread_id)
+        if running and not running.done():
+            try:
+                await asyncio.wait_for(asyncio.shield(running), self.RUN_WAIT_S)
+            except asyncio.TimeoutError:
+                yield {"type": "RUN_ERROR", "message": "The previous turn of this thread is still running.", "code": "busy"}
+                return
+            except BaseException:   # it failed or was stopped: the new turn may start
+                pass
+        queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+        async def turn() -> None:
+            try:
+                async for ev in self.run(**kw):
+                    queue.put_nowait(ev)
+            finally:
+                queue.put_nowait(None)
+                if self._turns.get(thread_id) is task:
+                    del self._turns[thread_id]
+
+        task = asyncio.create_task(turn())
+        task.add_done_callback(lambda t: t.cancelled() or t.exception())   # read, so nobody waiting is not a warning
+        self._turns[thread_id] = task
+        while (ev := await queue.get()) is not None:   # cancelled here when the client goes away; the turn goes on
+            yield ev
+        if not task.cancelled() and task.exception():
+            raise task.exception()
+
+    def running(self, thread_id: str) -> bool:
+        t = self._turns.get(thread_id)
+        return bool(t and not t.done())
+
+    def stop(self, thread_id: str) -> bool:
+        """Stop the thread's running turn (the chat's Stop: closing the connection no longer does it)."""
+        t = self._turns.get(check_thread_id(thread_id))
+        if not t or t.done():
+            return False
+        t.cancel()
+        return True
+
     def thread(self, thread_id: str, form_id: str | None = None) -> dict[str, Any]:
-        """What a client needs to restore a conversation: the transcript and the pending card, if any.
+        """What a client needs to restore a conversation: the transcript and the pending card, if any, and
+        whether a turn is still running (the client checks back until it ends).
         For an empty thread of a form whose domain pack has `starters`, those opening messages too."""
         entries = self.transcripts.list(check_thread_id(thread_id))
-        out = {"thread_id": thread_id, "transcript": entries, "pending_card": pending_card(entries)}
+        out = {"thread_id": thread_id, "transcript": entries, "pending_card": pending_card(entries),
+               "running": self.running(thread_id)}
         if not entries and form_id:
             out["starters"] = starters_of(self.packs.get(form_id))
         return out

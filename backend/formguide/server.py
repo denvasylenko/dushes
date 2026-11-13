@@ -10,7 +10,8 @@ GET  /kb/{form_id}                   documents in the form's scope + compiled kn
 POST /kb/{namespace}/documents       multipart files            managers upload documents
 DELETE /kb/{namespace}/documents/{doc_id}
 POST /kb/{form_id}/compile           {jsx, config}              documents -> domain pack
-GET  /threads/{thread_id}            transcript + pending card, to restore a conversation
+GET  /threads/{thread_id}            transcript + pending card + running, to restore a conversation
+POST /stop                           stop a thread's running turn {thread_id}
                                      (?format=agui: AG-UI messages for agent.setMessages)
 DELETE /threads/{thread_id}          forget a conversation (transcript + model history)
 GET  /debug/{thread_id}              history as the model sees it (only with debug=True)
@@ -89,7 +90,8 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
         enc = agui.encoder(request.headers.get("accept"))
 
         async def events():
-            async for ev in guide.run(**kw):
+            # the turn runs on when the client goes away (a reload, a closed tab); POST /stop ends it
+            async for ev in guide.run_detached(**kw):
                 yield agui.encode(ev, enc)
 
         return StreamingResponse(events(), media_type=enc.get_content_type(),
@@ -157,6 +159,14 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
         except (ValueError, RuntimeError) as e:
             raise bad(e) from None
 
+    @r.post("/stop")
+    def stop(body: dict) -> dict:
+        """Stop the thread's running turn: the chat's Stop button (closing the connection no longer stops it)."""
+        try:
+            return {"stopped": guide.stop(str(body.get("thread_id") or ""))}
+        except ValueError as e:
+            raise bad(e) from None
+
     @r.get("/threads/{thread_id}")
     def get_thread(thread_id: str, format: str | None = None, form_id: str | None = None) -> dict:  # noqa: A002
         """`form_id`: for an empty thread, also return that form's `starters` (opening messages)."""
@@ -164,7 +174,7 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
             t = guide.thread(thread_id, form_id)
             if format == "agui":
                 return {"thread_id": thread_id, "messages": guide.thread_messages(thread_id),
-                        "pending_card": t["pending_card"], **({"starters": t["starters"]} if "starters" in t else {})}
+                        "pending_card": t["pending_card"], "running": t["running"], **({"starters": t["starters"]} if "starters" in t else {})}
             return t
         except ValueError as e:
             raise bad(e) from None

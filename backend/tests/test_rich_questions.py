@@ -83,6 +83,23 @@ def test_a_typed_date_answer_fills_its_field(guide, model):
     assert q["applied"] is True
 
 
+def test_a_typed_text_answer_fills_its_field(guide, model):
+    # one tap: the answer fills the text field, no second "Fill in these fields?" card
+    v, state = ask(guide, model, "r16", {"question": "Your first name?", "field": "first_name"})
+    assert v["input"]["type"] == "text" and v["applies"] is True and v["label"] == "First name" and v["options"] == []
+    cfg = {**state["config"], "state": {**state["config"]["state"], "first_name": "Anna"}}
+    model.script = [say("Thanks.")]
+    collect(guide, "r16", resume={"answer": {"text": "Anna"}, "config": cfg})
+    out = tool_result(model, "q1")
+    assert "The user wrote: Anna" in out and "This filled the field First name" in out and "do not propose it again" in out
+    # without the config (the client did not fill it: the form refused it, or a question back) it is a plain answer
+    v, _ = ask(guide, model, "r17", {"question": "Your first name?", "field": "first_name"})
+    model.script = [say("Ok.")]
+    collect(guide, "r17", resume={"answer": {"text": "why do you need it?"}})
+    out = tool_result(model, "q1")
+    assert "The user wrote: why do you need it?" in out and "This filled" not in out
+
+
 def test_a_yes_no_question_fills_a_checkbox_field(guide, model):
     v, state = ask(guide, model, "r14", {"question": "Messaging apps fine?", "field": "contact_messenger",
                                          "options": ["Sure", "Rather not"]})

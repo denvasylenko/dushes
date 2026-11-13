@@ -13,6 +13,18 @@ import ArchFigure from '../../../components/ArchFigure.astro';
 | CopilotKit already | [`HttpAgent` + `useInterrupt`](../copilotkit/) | your own cards |
 | your own chat UI | [any AG-UI client](../agui-client/) | the wire format |
 
+## Frameworks
+
+| Framework | Today | How |
+| --- | --- | --- |
+| **React** | supported | `<AguiChat>` and hooks from `@formguide/agui-chat/react`; `useFormguide` for react-hook-form and Formik |
+| **Any page** (server-rendered, Vue, Angular, Svelte, none) | works | `<agui-chat>` is a standard Web Component: one script tag, set `chat.options` and `chat.use(formguide({...}))` from your code |
+| **Angular** | coming | a module with an `<agui-chat>` component, inputs and outputs, and a form-control bridge |
+| **Vue** | coming | a component and a `useFormguide` composable |
+| **Svelte** | coming | a component and a store bridge |
+
+The server does not change with the framework: every client speaks the same [AG-UI contract](../../form/contract/).
+
 ## What every client does
 
 <ArchFigure page="integrate" />
@@ -22,7 +34,7 @@ import ArchFigure from '../../../components/ArchFigure.astro';
 3. **Draw what comes back**: streamed text, "look here" directives, cards.
 4. **Answer a card** after applying accepted values through your form backend; the agent continues with the new config.
 
-The chat widget's formguide plugin does 2 to 4 for you: you give it `getState()` and `applyChanges()`.
+The chat widget's formguide plugin does 2 to 4 for you: you give it `getState()` and `applyChanges()`. Every message as a TypeScript type: [Types and the contract](../../form/contract/).
 
 ## Next
 
