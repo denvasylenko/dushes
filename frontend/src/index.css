@@ -83,8 +83,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .chat-widget { flex: 1; min-height: 0; }
 .chat-widget::part(panel) { border: 0; border-radius: 0; }
 .ctx.stats { max-height: none; font-family: ui-monospace, Menlo, monospace; color: var(--muted); }
-.chat-tools { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 13px; }
-.chat-tools button { border: 0; padding: 0; background: none; }
+.chat-tools { display: flex; flex-wrap: wrap; row-gap: 6px; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.chat-tools button { border: 0; padding: 0; background: none; white-space: nowrap; }
 .chat-tools select { margin-left: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; font-size: 12px; padding: 2px 4px; }
 .link { border: 0; background: none; color: var(--accent); }
 .link:disabled { color: var(--muted); cursor: default; }
@@ -128,3 +128,25 @@ table.docs th { color: var(--muted); font-weight: 500; }
 .row button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 /* voice input */
 /* message box: a textarea that grows with the text */
+
+/* the trace (Trace.tsx): where each turn's time and tokens went */
+.trace-line > span::before { content: " \00b7\00a0"; }
+.trace { max-height: 45vh; overflow: auto; padding: 8px 12px 10px; background: var(--bg); border-bottom: 1px solid var(--line); font-size: 12px; }
+.trace-sum { margin: 2px 0 8px; color: var(--muted); }
+.trace-empty { margin: 4px 0; }
+.trace-turn { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin-bottom: 6px; }
+.trace-turn summary { display: flex; gap: 8px; align-items: baseline; padding: 8px 10px; cursor: pointer; list-style: none; min-height: 32px; }
+.trace-turn summary::-webkit-details-marker { display: none; }
+.trace-turn summary::before { content: "\203a"; color: var(--muted); transition: transform .15s; display: inline-block; }
+.trace-turn[open] summary::before { transform: rotate(90deg); }
+.trace-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.trace-meta { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.trace-fall { padding: 2px 10px 10px; display: grid; gap: 6px; }
+.trace-row { display: grid; grid-template-columns: minmax(70px, 30%) 1fr; grid-template-areas: "name track" "num num"; gap: 2px 8px; align-items: center; }
+.trace-name { grid-area: name; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+.trace-track { grid-area: track; position: relative; height: 8px; border-radius: 4px; background: var(--c-fill); }
+.trace-bar { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--accent); }
+.trace-bar.tool { background: var(--ok); }
+.trace-bar.bad { background: var(--err); }
+.trace-num { grid-area: num; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { .trace-turn summary::before { transition: none; } }

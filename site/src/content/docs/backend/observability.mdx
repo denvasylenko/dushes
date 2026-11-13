@@ -10,7 +10,7 @@ How to see where a turn's time goes, follow a conversation in a tracer, and catc
 
 | Question | Where to look |
 |---|---|
-| How long did this turn take, and why? | the `run_stats` event of the run (the demo shows it under "What the agent sees") |
+| How long did this turn take, and why? | the `run_stats` event of the run (the demo's Trace panel: every turn as a timeline of model calls and tools, tokens and cache hits) |
 | What did the model and the tools do, step by step? | a tracer: LangSmith, Langfuse or any LangChain callback handler |
 | Did my change make things slower? | the offline speed tests (every `pytest` run) and the live benchmark |
 | What happened in that user's last turns? | `GET /agent/debug/{thread_id}` (development) or the `formguide.stats` log lines |
@@ -29,8 +29,9 @@ The last event of every run, right before `RUN_FINISHED` (or `RUN_ERROR`):
   "ttft_ms": 1609,            // until the first word of the answer reached the stream
   "total_ms": 5585,           // the whole run; time waiting for the user on a card is never included
   "model_ms": 5012, "tool_ms": 41,
-  "models": [ { "kind": "agent", "ms": 2310, "ttft_ms": 980, "input_tokens": 11205, "output_tokens": 96, "cache_read_tokens": 8120 }, … ],
-  "tools":  [ { "name": "search_fields", "ms": 12, "error": false }, … ],
+  "models": [ { "kind": "agent", "model": "claude-haiku-5-5", "at_ms": 12, "ms": 2310, "ttft_ms": 980, "input_tokens": 11205,
+                "output_tokens": 96, "cache_read_tokens": 8120, "cache_write_tokens": 0 }, … ],   // at_ms: started after the run began
+  "tools":  [ { "name": "search_fields", "at_ms": 2330, "ms": 12, "error": false }, … ],
   "tokens": { "input": 23062, "output": 259, "cache_read": 16604 },
   "cache_hit_rate": 0.72
 } }

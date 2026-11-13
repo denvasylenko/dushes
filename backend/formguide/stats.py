@@ -47,16 +47,18 @@ class RunStats:
                 "gen_ai.usage.input_tokens": u.get("input_tokens"), "gen_ai.usage.output_tokens": u.get("output_tokens"),
                 "formguide.usage.cache_read_tokens": details.get("cache_read")})
         self.models.append({
-            "kind": kind, "ms": self._ms(started),
+            "kind": kind, "model": model, "at_ms": round((started - self.t0) * 1000), "ms": self._ms(started),
             "ttft_ms": round((first_chunk - started) * 1000) if first_chunk else None,
             "input_tokens": u.get("input_tokens"), "output_tokens": u.get("output_tokens"),
             "cache_read_tokens": details.get("cache_read"),
+            "cache_write_tokens": details.get("cache_creation"),
         })
 
     def tool_call(self, name: str, started: float, error: bool = False) -> None:
         if self.span is not None:
             self.span.child("formguide.tool", started, {"formguide.tool.name": name}, error=bool(error))
-        self.tools.append({"name": name, "ms": self._ms(started), "error": bool(error)})
+        self.tools.append({"name": name, "at_ms": round((started - self.t0) * 1000), "ms": self._ms(started),
+                           "error": bool(error)})
 
     def as_event(self) -> dict[str, Any]:
         def total(key: str) -> int | None:
