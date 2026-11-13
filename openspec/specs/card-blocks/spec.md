@@ -47,6 +47,20 @@ The resume of a blocks card SHALL be given to the model as text naming the butto
 - **WHEN** the user taps "Yes, that's my barber" (id `yes`)
 - **THEN** the tool result says the user chose "Yes, that's my barber" (yes)
 
+### Requirement: The host handles a button itself
+The formguide plugin's `onAction(card, {id, label, values}, chat)` SHALL be called first when a blocks card's button is tapped; when it returns true, the chat SHALL do nothing more (no message, no answer). Display cards SHALL be redrawable with `chat.updateCard(card.card_id, patch)`.
+
+#### Scenario: Saving a step
+- **WHEN** the host's onAction saves the opening hours for "Save hours" and returns true
+- **THEN** no message is sent, and the host's updateCard shows the step done in the same card
+
+### Requirement: The page learns what was filled
+Every fill through the plugin (a field card, a one-tap answer, a button's `fills`, an action chip) and every Undo SHALL dispatch `agui:applied` on the chat with `{fields, values, undo}`.
+
+#### Scenario: Scrolling a preview
+- **WHEN** a button fills `barber`
+- **THEN** the page gets `agui:applied` with `fields: ["barber"]`
+
 ### Requirement: Blocks only for clients that draw them
 The card tools SHALL be offered only when the client lists the `blocks` capability, or sends no capability list.
 

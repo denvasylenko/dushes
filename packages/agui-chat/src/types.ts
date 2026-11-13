@@ -65,6 +65,9 @@ export interface Restored {
   starters?: string[]
   /** a turn is still running on the server (the page was reloaded mid-answer): the chat checks back until it ends */
   running?: boolean
+  /** the running turn's events again (the host's follow stream, from the start of the turn): the chat plays them
+   *  as a live run, so the answer goes on word by word after a reload; preferred over `running` */
+  follow?: () => AsyncIterable<AguiEvent>
 }
 
 export interface Attachment { id: string; filename: string; [k: string]: unknown }
@@ -122,6 +125,12 @@ export interface ChatApi {
   notice(text: string): void
   /** Add an element to the conversation, after the last message. */
   append(el: HTMLElement): void
+  /** Take back an assistant message already shown, by its message id. */
+  removeMessage(id: string): boolean
+  /** Redraw a shown card in place with new data. */
+  updateCard(id: string, patch: Record<string, unknown>): boolean
+  /** Make a card the host or a plugin drew redrawable by updateCard. */
+  registerCard(id: string, payload: Record<string, unknown>, draw: (payload: Record<string, unknown>) => HTMLElement): void
   /** Show any card without the agent; resolves with the user's answer (the value a resume would carry). */
   showCard(payload: Partial<Interrupt> & { type: string }): Promise<unknown>
   /** Run a slot from options.render safely: its element, or null for the default. */

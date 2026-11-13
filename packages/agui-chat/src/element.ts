@@ -837,13 +837,14 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         if (m.role === 'user' && m.content) this._userBubble(m.content)
         else if (m.role === 'assistant' && m.content) {
           const body = h('div', { class: 'body' }); body.innerHTML = this._html(m.content); this._assistantDone(body, m.content)
-          this._append(h('div', { class: 'msg ai', part: 'message assistant' }, body))
+          this._append(h('div', { class: 'msg ai', part: 'message assistant', 'data-message-id': m.id }, body))
         }
       }
     }
     if (r.interrupt) this._showInterrupt(r.interrupt, true)
     this._renderEmpty()
-    if (r.running) this._waitForTurn()
+    if (r.follow) void this._run({ follow: r.follow() })   // the host streams the running turn again: it goes on word by word
+    else if (r.running) this._waitForTurn()
   }
 
   /** The page was reloaded mid-answer and the server's turn runs on: "Still answering…", then its result. */
@@ -883,8 +884,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     return this._messages.slice(i)
   }
 
-  private async _run(args: { resume?: { card_id: string; value: unknown }; forwardedProps?: Record<string, unknown> }): Promise<void> {
-    this._lastRun = args
+  private async _run(args: { resume?: { card_id: string; value: unknown }; forwardedProps?: Record<string, unknown>; follow?: AsyncIterable<AguiEvent> }): Promise<void> {
+    if (!args.follow) this._lastRun = args   // Try again re-runs a request, never a followed stream
     const extra: Parameters<AguiChatElement['_input']>[0] = { forwardedProps: args.forwardedProps }
     if (args.resume) {
       if (this._opts.resumeStyle === 'resume') {
@@ -897,7 +898,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       }
     }
     const input = this._input(extra)
-    for (const p of this._plugins) await p.beforeRun?.(input, this)
+    if (!args.follow) for (const p of this._plugins) await p.beforeRun?.(input, this)
     this._setBusy(true)
     this._interrupted = false
     this._pendingCalls = []
@@ -911,9 +912,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     let failed: string | null = null
     try {
       const o = this._opts
-      const events = o.transport ? o.transport(input, { signal, chat: this })
+      const events = args.follow ?? (o.transport ? o.transport(input, { signal, chat: this })
         : this.agent ? runAgent(this.agent, input, signal)
-          : runHttp(o.url, input, { signal, fetch: (url, init) => this.request('run', url, init) })
+          : runHttp(o.url, input, { signal, fetch: (url, init) => this.request('run', url, init) }))
       for await (const ev of events) {
         this.dispatchEvent(new CustomEvent('agui:event', { detail: ev }))
         if (this._plugins.some((p) => p.onEvent?.(ev, this) === true)) continue
@@ -1021,7 +1022,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._finishText()
     this._showDots(false)
     const body = h('div', { class: 'body' })
-    const el = h('div', { class: 'msg ai', part: 'message assistant' }, body)
+    const el = h('div', { class: 'msg ai', part: 'message assistant', 'data-message-id': id }, body)
     let typed = () => {}
     // cards and quick replies wait for this text to finish typing (they appear after it, never under a half sentence)
     const before = this._typing
@@ -1164,6 +1165,36 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   /** Show any card without the agent; the promise resolves with the user's answer. */
+  /** Take back an assistant message already shown (e.g. a host's "cut" when an action follows the text). */
+  removeMessage(id: string): boolean {
+    const el = [...this.$.log.querySelectorAll<HTMLElement>('[data-message-id]')].find((x) => x.dataset.messageId === id)
+    if (this._ai?.id === id) { cancelAnimationFrame(this._ai.raf); this._ai.typed(); this._ai = null }
+    this._messages = this._messages.filter((m) => m.id !== id)
+    if (!el) return false
+    el.remove()
+    return true
+  }
+
+  /** Redraw a shown card in place with new data (a host saved a step, applied a style, undid a change). */
+  updateCard(id: string, patch: Record<string, unknown>): boolean {
+    const rec = this._cardViews.get(id)
+    const old = [...this.$.log.querySelectorAll<HTMLElement>('[data-card-id]')].find((x) => x.dataset.cardId === id)
+    if (!rec || !old) return false
+    const payload = { ...rec.payload, ...patch }
+    const el = rec.draw(payload)
+    el.dataset.cardId = id
+    old.replaceWith(el)
+    this._cardViews.set(id, { payload, draw: rec.draw })
+    return true
+  }
+
+  /** A card that can be redrawn by updateCard: its payload and how to draw it (plugins register display cards). */
+  registerCard(id: string, payload: Record<string, unknown>, draw: (payload: Record<string, unknown>) => HTMLElement): void {
+    this._cardViews.set(id, { payload, draw })
+  }
+
+  private _cardViews = new Map<string, { payload: Record<string, unknown>; draw: (payload: Record<string, unknown>) => HTMLElement }>()
+
   showCard(payload: Partial<Interrupt> & { type: string }): Promise<unknown> {
     return new Promise((ok) => {
       const it = { ...payload, card_id: payload.card_id ?? uid() } as Interrupt
@@ -1209,6 +1240,14 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     el.dataset.pending = ''
     const orig = ctx.resolve
     ctx.resolve = (v: unknown) => { delete el.dataset.pending; orig(v) }
+    // updateCard() redraws it in place, still answering the same question
+    this.registerCard(it.card_id, it as unknown as Record<string, unknown>, (p) => {
+      const next = renderer(p as unknown as Interrupt, ctx)
+      next.classList.add('card'); next.setAttribute('part', `card card-${it.type}`)
+      if (!done) next.dataset.pending = ''
+      el = next
+      return next
+    })
     this._append(el)
     if (finePointer()) el.querySelector<HTMLElement>('[autofocus], .chip, .btn.pri')?.focus({ preventScroll: true })
   }

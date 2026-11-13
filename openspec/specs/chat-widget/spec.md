@@ -61,6 +61,20 @@ The widget SHALL build in `default`; `contrast`, `glass`, `bold` and `messenger`
 - **WHEN** a page sets `theme="glass"` with the one-script build
 - **THEN** the chat adds `agui-chat.theme-glass.js` from next to `agui-chat.iife.js` and switches to it when it loads
 
+### Requirement: Host control of shown messages and cards
+`chat.removeMessage(id)` SHALL take back an assistant message already shown (and from the history the chat sends), returning whether it was there. `chat.updateCard(id, patch)` SHALL redraw a shown card in place with its payload merged with `patch`, keeping what a waiting card answers to.
+
+#### Scenario: A host takes back a sentence
+- **WHEN** the host calls `removeMessage("m1")` after an action followed that text
+- **THEN** the message disappears and the next run's history leaves it out
+
+### Requirement: Following a running turn after a reload
+A restore MAY return `follow`, a function giving the running turn's events again. The chat SHALL play them as a live run (typing, steps, cards, quick replies), so the answer goes on word by word after a reload; `follow` SHALL take precedence over `running`.
+
+#### Scenario: Back mid-answer
+- **WHEN** a host's restore returns the messages so far and `follow`
+- **THEN** the rest of the answer types out in the restored chat
+
 ### Requirement: Cards come after their text
 A card from the agent SHALL appear after the assistant's text above it has finished typing, and quick replies after both. A card restored after a reload, or shown with `showCard`, SHALL appear at once. In a hidden tab the text SHALL be written at once (no typing).
 

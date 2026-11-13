@@ -95,13 +95,16 @@ function linkEl(it: Item, c: RendererContext): HTMLElement {
  * A blocks card. `answer(action, label, values)` is called by a button with an id; null for a display card
  * (its buttons send their label as a message instead).
  */
-export function blocksCard(it: Interrupt | Record<string, unknown>, c: RendererContext, answer: Answer | null): HTMLElement {
+/** A host's own handling of a button: resolves true when handled (the chat then does nothing more). */
+export type OnAction = (id: string, label: string, values: Record<string, unknown>) => Promise<boolean>
+
+export function blocksCard(it: Interrupt | Record<string, unknown>, c: RendererContext, answer: Answer | null, onAction?: OnAction): HTMLElement {
   const values: Record<string, unknown> = {}
   const card = h('div', { class: 'bk', part: `blocks blocks-${str(it.name) || 'card'}` })
   let group: HTMLElement | null = null
   for (const b of list(it.blocks) as Block[]) {
     if (b.type !== 'row') group = null
-    const el = block(b, c, values, answer, card)
+    const el = block(b, c, values, answer, card, onAction)
     if (!el) continue
     if (b.type === 'row') {
       if (!group) { group = h('div', { class: 'bk-list', part: 'block-list' }); card.append(group) }
@@ -111,7 +114,7 @@ export function blocksCard(it: Interrupt | Record<string, unknown>, c: RendererC
   return card
 }
 
-function block(b: Block, c: RendererContext, values: Record<string, unknown>, answer: Answer | null, card: HTMLElement): HTMLElement | null {
+function block(b: Block, c: RendererContext, values: Record<string, unknown>, answer: Answer | null, card: HTMLElement, onAction?: OnAction): HTMLElement | null {
   const part = `block-${b.type}`
   switch (b.type) {
     case 'title':
@@ -192,7 +195,8 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
         const style = ({ primary: 'pri', secondary: 'sec', plain: 'link', danger: 'danger' } as Record<string, string>)[str(x.style)] ?? 'sec'
         const label = str(x.label)
         const btn = h('button', { class: `btn ${style}`, part: style === 'pri' ? 'button button-primary' : 'button button-secondary', type: 'button' }, label) as HTMLButtonElement
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
+          if (onAction && await onAction(str(x.id) || label, label, { ...values })) return   // the host handled it
           if (!answer) return void c.chat.send(label)   // a display card: nobody waits, the button speaks for the user
           const need = [...card.querySelectorAll<HTMLInputElement>('input[required]')].find((i) => !i.value.trim())
           if (need && x.needs !== false && style === 'pri') { need.focus(); return }
@@ -220,7 +224,7 @@ export interface BlocksFill {
 
 /** The `blocks` renderer: a waiting card answers and folds into its result line. A button with `fills` fills those
  *  form fields first (one tap, no second card), with Undo, and the answer carries the new config. */
-export function blocksRenderer(it: Interrupt, c: RendererContext, fill?: BlocksFill): HTMLElement {
+export function blocksRenderer(it: Interrupt, c: RendererContext, fill?: BlocksFill, onAction?: OnAction): HTMLElement {
   const shell = h('div', null)
   const err = h('div', { class: 'muted err-line', role: 'alert' })
   const fold = (label: string): HTMLElement => {
@@ -249,7 +253,7 @@ export function blocksRenderer(it: Interrupt, c: RendererContext, fill?: BlocksF
         err.title = e instanceof Error ? e.message : String(e)
       }
     })()
-  })
+  }, onAction)
   shell.append(body, err)
   return shell
 }

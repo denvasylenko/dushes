@@ -33,6 +33,10 @@ export interface FormguideOptions {
   getState: () => FormState | Promise<FormState>
   /** Send {name: value} to your form backend the same way user input goes; return the new config. */
   applyChanges: (changes: Record<string, unknown>) => Promise<FormState['config']> | FormState['config']
+  /** A button of a card from blocks was tapped: return true when your code handled it (saved a step, applied a
+   *  style, sent a booking to your server), and the chat does nothing more: no message, no answer. Redraw the card
+   *  with chat.updateCard(card.card_id, {blocks}) if it should change. */
+  onAction?: (card: Record<string, unknown>, action: { id: string; label: string; values: Record<string, unknown> }, chat: ChatApi) => boolean | Promise<boolean>
   /** Put the previous values back (Undo). Default: applyChanges(previous). */
   revertChanges?: (previous: Record<string, unknown>) => Promise<unknown> | unknown
   /** "Look here": open these tabs and accordions, scroll to the field, highlight it. */
@@ -92,9 +96,18 @@ export function entryToInterrupt(e: Record<string, any> | null | undefined): Int
 }
 
 export function formguide(opts: FormguideOptions): Plugin {
+  /** The host's onAction for a card's buttons (true = handled: the chat does nothing more). */
+  const act = (card: Record<string, unknown>, chat: ChatApi) => opts.onAction
+    ? (id: string, label: string, values: Record<string, unknown>) => Promise.resolve(opts.onAction!(card, { id, label, values }, chat))
+    : undefined
   const flags: FieldCardFlags = { select: true, diff: true, reason: true, edit: true, jump: true, undo: true, ...(opts.fieldCard ?? {}) }
+  let host: HTMLElement | null = null   // the chat element, for the agui:applied event
+  const told = (changes: Record<string, unknown>, undo = false) => host?.dispatchEvent(new CustomEvent('agui:applied',
+    { detail: { fields: Object.keys(changes), values: changes, undo }, bubbles: true, composed: true }))
   const ctx: Ctx = {
     ...opts, flags,
+    applyChanges: async (changes) => { const cfg = await opts.applyChanges(changes); told(changes); return cfg },
+    revertChanges: async (previous) => { const r = await (opts.revertChanges ?? opts.applyChanges)(previous); told(previous, true); return r },
     onDirective: opts.onDirective ?? defaultDirective,   // cards show the field they filled, with or without a host callback
     base: (chat) => (opts.baseUrl ?? chat.options.url.replace(/\/run\/?$/, '')).replace(/\/$/, ''),
   }
@@ -111,14 +124,14 @@ export function formguide(opts: FormguideOptions): Plugin {
     // looking at the form and showing a field are routine (the form shows the latter): no "Steps: 1" for them
     quietSteps: ['get_outline', 'get_fields', 'get_field', 'search_fields', 'get_options', 'focus_field'],
     renderers: {
-      set_fields: (it, c) => fieldCard(it, c, ctx),
-      ask: (it, c) => askCard(it, c, ctx),
+      set_fields: (it, c) => { host = c.chat.host; return fieldCard(it, c, ctx) },
+      ask: (it, c) => { host = c.chat.host; return askCard(it, c, ctx) },
       upload: (it, c) => uploadCard(it, c, ctx),
       confirm: (it, c) => confirmCard(it, c, ctx),
       review: (it, c) => reviewCard(it, c, ctx, (line, fields) => undoLine(line, c, ctx, fields)),
       // cards composed from blocks (formguide.yaml `cards:`, or showCard); a button's `fills` go through the form
-      blocks: (it, c) => blocksRenderer(it, c, { apply: (ch) => Promise.resolve(ctx.applyChanges(ch)), state: async () => await ctx.getState(),
-        undo: (line, fields) => undoLine(line, c, ctx, fields) }),
+      blocks: (it, c) => { host = c.chat.host; return blocksRenderer(it, c, { apply: (ch) => Promise.resolve(ctx.applyChanges(ch)), state: async () => await ctx.getState(),
+        undo: (line, fields) => undoLine(line, c, ctx, fields) }, act(it, c.chat)) },
     },
     /** An action chip: fill its fields at once (Undo on the line). A chip whose fields changed since is out of date. */
     async applySuggestion(raw: unknown[], chat: ChatApi) {
@@ -126,7 +139,8 @@ export function formguide(opts: FormguideOptions): Plugin {
       const now = (await opts.getState()).config?.state ?? {}
       const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
       if (changes.some((x) => x.name in now && !same(now[x.name], x.previous))) throw new Error(chat.t('stale'))
-      await opts.applyChanges(Object.fromEntries(changes.map((x) => [x.name, x.value])))
+      host = chat.host
+      await ctx.applyChanges(Object.fromEntries(changes.map((x) => [x.name, x.value])))
       const last = changes[changes.length - 1] as { name: string; reveal?: Directive['reveal'] }
       ctx.onDirective!({ type: 'focus', target: last.name, reveal: last.reveal ?? [], hint: '' })   // show what the chip filled
       const c = { chat, t: chat.t.bind(chat), flags: {}, resolve: () => {} } as unknown as RendererContext
@@ -154,11 +168,19 @@ export function formguide(opts: FormguideOptions): Plugin {
     onEvent(ev: AguiEvent, chat: ChatApi) {
       if (ev.type !== 'CUSTOM') return false
       if (ev.name === 'card') {   // a display card (route, share, "3 steps left"): shown, nobody waits for it
-        const v = (ev.value ?? {}) as Record<string, unknown>
+        host = chat.host
+        const v = { ...(ev.value ?? {}) as Record<string, unknown> }
+        const id = String(v.card_id ?? `card-${Math.random().toString(36).slice(2, 10)}`)
+        v.card_id = id
         const rc = { chat, t: chat.t.bind(chat), resolve: () => {}, flags: {}, restored: false }
-        const el = blocksCard(v, rc, null)
-        el.classList.add('card'); el.setAttribute('part', `card card-blocks blocks-${String(v.name ?? 'card')}`)
-        chat.append(el)
+        const draw = (p: Record<string, unknown>) => {
+          const el = blocksCard(p, rc, null, act(p, chat))
+          el.classList.add('card'); el.setAttribute('part', `card card-blocks blocks-${String(p.name ?? 'card')}`)
+          el.dataset.cardId = id
+          return el
+        }
+        chat.registerCard(id, v, draw)   // chat.updateCard(id, {blocks}) redraws it in place
+        chat.append(draw(v))
         return true
       }
       if (ev.name === 'ui_directive') {
@@ -195,3 +217,7 @@ export function formguide(opts: FormguideOptions): Plugin {
     },
   }
 }
+
+/** The blocks, for a card renderer of your own (chat.renderers.set): compose with the same parts and theme. */
+export { blocksCard } from "./blocks"
+export type { Block, OnAction } from "./blocks"
