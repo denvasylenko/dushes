@@ -6,6 +6,12 @@ import { FormProvider, Render } from '../Form'
 import type { UiDirective } from '../types'
 import { useDemoForm } from './useDemoForm'
 
+// ?dictation=server tries Whisper on the server even where the browser can recognise speech (the demo's switch)
+const DICTATION = ((): 'auto' | 'server' | 'browser' => {
+  const d = new URLSearchParams(location.search).get('dictation')
+  return d === 'server' || d === 'browser' ? d : 'auto'
+})()
+
 /** The demo site: a portal of two businesses (demo/site.yaml), one chat across every page.
  * The site assistant (/site/run) answers about the site and moves around it; on a page with a form
  * it hands the turn to the form agent, which the page serves through the usual formguide plugin. */
@@ -179,7 +185,7 @@ export default function Site() {
             mode="inline"
             threadId={thread}
             persistThread={false}
-            dictation="auto"   // the browser's recognition where it works, else Whisper on the server
+            dictation={DICTATION}   // auto: the browser's recognition where it works, else Whisper on the server
             title={`${map.title} assistant`}
             subtitle="Ask about any page, or say what you want to do"
             starters={STARTERS}

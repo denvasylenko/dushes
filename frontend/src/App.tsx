@@ -9,6 +9,12 @@ import { parseJsx } from './jsx'
 import Manager from './Manager'
 import type { Config, JsxNode, RevealStep, UiDirective, UiState } from './types'
 
+// ?dictation=server tries Whisper on the server even where the browser can recognise speech (the demo's switch)
+const DICTATION = ((): 'auto' | 'server' | 'browser' => {
+  const d = new URLSearchParams(location.search).get('dictation')
+  return d === 'server' || d === 'browser' ? d : 'auto'
+})()
+
 type AgentCtx = { text: string; stats: { context_tokens: number; config_tokens: number } } | null
 
 /** The server's numbers for the last run (CUSTOM run_stats). */
@@ -287,7 +293,7 @@ export default function App() {
           threadId={thread}
           persistThread={false}
           lang={lang}
-          dictation="auto"   // the browser's recognition where it works, else Whisper on the server
+          dictation={DICTATION}   // auto: the browser's recognition where it works, else Whisper on the server
           title={form.title === form.formId ? "Form assistant" : form.title}
           subtitle="formguide · AI assistant, can make mistakes"
           plugins={plugins}
