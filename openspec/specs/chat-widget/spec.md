@@ -61,6 +61,20 @@ The widget SHALL build in `default`; `contrast`, `glass`, `bold` and `messenger`
 - **WHEN** a page sets `theme="glass"` with the one-script build
 - **THEN** the chat adds `agui-chat.theme-glass.js` from next to `agui-chat.iife.js` and switches to it when it loads
 
+### Requirement: Typing without animation frames
+When no animation frame arrives within 300 ms while an answer is typing (a hidden pane, an occluded window, some in-app web views), the widget SHALL put the text in at once and write the rest of the chat without the typewriter.
+
+#### Scenario: A hidden pane
+- **WHEN** the page gets no animation frames while a followed answer streams
+- **THEN** the full text appears in its bubble instead of an empty one
+
+### Requirement: Attachments shown in the composer
+Attached files SHALL show inside the composer box, above the text: an image as a thumbnail, a document as a tile with its name and type, each with a remove button and a spinner while it uploads. A long row SHALL scroll sideways with its edges fading where there is more. Tapping a thumbnail SHALL open the image large in a modal view that a close button, Esc or a tap beside it closes. A sent message SHALL show its images and documents the same way above the text.
+
+#### Scenario: Pasting a screenshot
+- **WHEN** the user pastes a screenshot into the composer
+- **THEN** its thumbnail appears in the composer; a tap shows it large
+
 ### Requirement: Hero mode
 With `mode="hero"` the chat SHALL show only the composer until the first message (no header, no message list, no empty state). The first message SHALL grow it into the chat in place on screens 760 px wide and more (messages above the composer, at most 70% of the viewport high), and open it as a full-screen sheet with a close button on narrower screens. Closing SHALL return to the field and keep the conversation.
 

@@ -353,7 +353,45 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 @keyframes rec { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--agui-danger) 45%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
 .nudge .box { animation: nudge .4s; }
 @keyframes nudge { 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
-.files { margin: 0 0 8px; } .files[hidden] { display: none; }
+.files[hidden] { display: none; }
+/* attachments inside the composer, above the text, like Messages: an image's thumbnail, a document's name and type */
+.box { flex-wrap: wrap; }
+.box > .files { order: -1; flex: 1 0 100%; display: flex; gap: 8px; overflow-x: auto; margin: 2px 0 4px -10px; padding: 2px; scrollbar-width: none; }
+.att { position: relative; flex: none; width: 64px; height: 64px; border-radius: 12px; overflow: hidden; background: var(--agui-soft);
+  border: 1px solid var(--agui-line); animation: att-in .2s var(--agui-ease) both; }
+.att img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.att-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+/* many attachments: the row scrolls, and the edge with more behind it fades */
+.box > .files.more-right { mask-image: linear-gradient(to right, black calc(100% - 28px), transparent); }
+.box > .files.more-left { mask-image: linear-gradient(to right, transparent, black 28px); }
+.box > .files.more-left.more-right { mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent); }
+/* the image, large: a dimmed backdrop, the picture fitted to the screen, a close button */
+.zoom { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0;
+  display: grid; place-items: center; padding: 48px 16px; box-sizing: border-box; animation: zoom-in .2s var(--agui-ease) both; cursor: zoom-out;
+  background: color-mix(in srgb, black 86%, transparent); }   /* dark in both schemes, like Photos */
+.zoom::backdrop { background: transparent; }
+.zoom:not([open]) { display: none; }
+.zoom img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--agui-radius-sm); box-shadow: 0 20px 60px -20px var(--agui-shadow); cursor: default; }
+.zoom-x { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: 12px; width: 44px; height: 44px; border: 0; border-radius: 50%;
+  display: grid; place-items: center; background: color-mix(in srgb, white 18%, transparent); color: white; cursor: pointer; }
+.zoom-x svg { width: 20px; height: 20px; }
+@keyframes zoom-in { from { opacity: 0; } to { opacity: 1; } }
+.att.doc { width: auto; min-width: 120px; max-width: 200px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 28px 8px 10px; }
+.att-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.att-ext { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--agui-ink-3); }
+.att-x { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--agui-ink) 72%, transparent); color: var(--agui-bg); font-size: 14px; line-height: 1; cursor: pointer; }
+.att-x::before { content: ''; position: absolute; inset: -10px; }   /* a finger-sized target */
+.att.busy::after { content: ''; position: absolute; inset: 0; margin: auto; width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--agui-bg) 60%, transparent); border-top-color: var(--agui-bg); animation: att-spin .8s linear infinite; }
+.att.busy { background: color-mix(in srgb, var(--agui-ink) 25%, var(--agui-soft)); }
+.att.busy img { opacity: .55; }
+.att-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; margin: -2px -6px 8px; }
+.att-row .att { width: 120px; height: 120px; border-radius: 12px; }
+.att-row .att.doc { width: auto; height: auto; min-height: 52px; padding: 8px 12px; background: var(--agui-bg); }
+@keyframes att-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes att-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .att, .att.busy::after, .zoom { animation: none; } }
 .chip.file { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 11px; cursor: default; }
 .chip.file .btn { padding: 2px 7px; }
 .hint { text-align: center; font-size: 12px; color: var(--agui-ink-3); margin-top: 7px; min-height: 1em; }

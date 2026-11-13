@@ -376,7 +376,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._sending = this._files
     this._files = []
     this._renderFiles()
-    this._userBubble(text, this._sending.map((f) => f.filename))
+    this._userBubble(text, this._sending.map((f) => f.filename), this._sending.map((f) => this._previews.get(f.id)))
     this._messages.push({ id: uid(), role: 'user', content: text })
     await this._run({})
   }
@@ -476,16 +476,17 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const clip = h('button', { class: 'ib clip', type: 'button' }); this._icon(clip, 'clip')
     const picker = h('input', { type: 'file', multiple: true, hidden: true }) as HTMLInputElement
     const send = h('button', { class: 'send', type: 'button', part: 'send' }); this._icon(send, 'send')
-    const box = h('div', { class: 'box' }, clip, recX, input, wave, mic, send)
-    const files = h('div', { class: 'files chips' })
+    const files = h('div', { class: 'files', part: 'attachments' })
+    const box = h('div', { class: 'box' }, files, clip, recX, input, wave, mic, send)
     const hint = h('div', { class: 'hint', 'aria-live': 'polite' })
-    const foot = h('div', { class: 'foot', part: 'composer' }, files, box, hint, picker)
+    const foot = h('div', { class: 'foot', part: 'composer' }, box, hint, picker)
     const panel = h('section', { class: 'panel', part: 'panel', role: 'dialog' }, head, log, foot)
     wrap.append(scrim, panel, greet, fab)
     this.root.appendChild(wrap)
     this.$ = { wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, fabLabel: fab.lastElementChild as HTMLElement }
     recX.addEventListener('click', () => { this._dropDictation(); (input as HTMLTextAreaElement).focus() })
     files.hidden = true
+    files.addEventListener('scroll', () => this._fadeFiles(), { passive: true })
     clip.addEventListener('click', () => picker.click())
     picker.addEventListener('change', () => { void this._upload([...(picker.files ?? [])]); picker.value = '' })
 
@@ -761,10 +762,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     requestAnimationFrame(() => { log.scrollTop = log.scrollHeight })
   }
 
-  private _userBubble(text: string, files: string[] = []): void {
+  private _userBubble(text: string, files: string[] = [], previews: (string | undefined)[] = []): void {
     const own = this.renderSlot('user', text, files)
     this._append(h('div', { class: 'msg me', part: 'message user' },
-      own ?? h('div', null, files.length ? h('div', { class: 'muted' }, files.map((f) => `\u{1F4CE} ${f}`).join('  ')) : null, text)))
+      own ?? h('div', null, files.length ? h('div', { class: 'att-row' }, files.map((f, i) => this._tile(f, previews[i]))) : null, text)))
   }
 
   private async _upload(list: File[]): Promise<void> {
@@ -776,24 +777,72 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const max = this._opts.attachMaxMb * 1024 * 1024
     const big = list.filter((f) => f.size > max)
     list = list.filter((f) => f.size <= max)
-    this.$.hint.textContent = big.length ? this.t('tooBig', { name: big.map((f) => f.name).join(', '), mb: this._opts.attachMaxMb }) : this.t('working')
+    this.$.hint.textContent = big.length ? this.t('tooBig', { name: big.map((f) => f.name).join(', '), mb: this._opts.attachMaxMb }) : ''
+    // the tiles appear at once, with a spinner while each file uploads
+    const view = (f: File) => (/^image\//.test(f.type) && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(f) : undefined)
+    this._uploading = list.map((f) => ({ name: f.name, preview: view(f) }))
+    this._renderFiles()
     try {
-      for (const f of list) this._files.push(await upload(f, this))
-      if (!big.length) this.$.hint.textContent = ''
+      for (let i = 0; i < list.length; i++) {
+        const att = await upload(list[i], this)
+        const preview = this._uploading[0]?.preview
+        if (preview) this._previews.set(att.id, preview)
+        this._files.push(att)
+        this._uploading.shift()
+        this._renderFiles()
+      }
     } catch (e) {
       this.$.hint.textContent = `${this.t('error')} ${e instanceof Error ? e.message : String(e)}`
     }
+    this._uploading = []
     this._renderFiles()
     this._syncSend()
   }
 
-  private _renderFiles(): void {
-    this.$.files.replaceChildren(...this._files.map((f, i) => h('span', { class: 'chip file' }, `\u{1F4CE} ${f.filename}`,
-      h('button', { class: 'btn link', type: 'button', 'aria-label': this.t('remove'), onclick: () => {
-        this._files.splice(i, 1); this._renderFiles(); this._syncSend()
-      } }, '\u00d7'))))
-    this.$.files.hidden = !this._files.length
+  /** A tile for an attachment: an image's thumbnail, or a document's name and type; × removes it from the message. */
+  private _tile(name: string, preview: string | undefined, remove?: () => void, busy = false): HTMLElement {
+    const ext = (name.match(/\.([a-z0-9]{1,5})$/i)?.[1] ?? '').toUpperCase()
+    const tile = h('span', { class: `att${preview ? '' : ' doc'}${busy ? ' busy' : ''}`, part: 'attachment', title: name },
+      preview ? h('button', { class: 'att-open', type: 'button', 'aria-label': name, onclick: () => this._zoom(preview, name) }, h('img', { src: preview, alt: '' }))
+        : [h('span', { class: 'att-name' }, name), ext ? h('span', { class: 'att-ext' }, ext) : null])
+    if (remove) tile.append(h('button', { class: 'att-x', type: 'button', 'aria-label': `${this.t('remove')} ${name}`, onclick: remove }, '\u00d7'))
+    return tile
   }
+
+  /** The image, large, over the chat: × or Esc or a tap beside it closes it. */
+  private _zoom(src: string, name: string): void {
+    // a modal <dialog>: the browser puts it above everything on the page (no stacking context can cover it), Esc closes it
+    const x = h('button', { class: 'zoom-x', type: 'button', 'aria-label': this.t('close') }); this._icon(x, 'close')
+    const view = h('dialog', { class: 'zoom', part: 'zoom', 'aria-label': name }, h('img', { src, alt: name }), x) as HTMLDialogElement
+    const close = (): void => { view.close() }
+    x.addEventListener('click', close)
+    view.addEventListener('click', (e) => { if (e.target === view) close() })   // a tap beside the picture
+    view.addEventListener('close', () => view.remove())
+    this.$.wrap.append(view)
+    if (typeof view.showModal === 'function') view.showModal(); else view.setAttribute('open', '')
+    x.focus({ preventScroll: true })
+  }
+
+  /** Many attachments: the row scrolls sideways, and its edges fade where there is more. */
+  private _fadeFiles(): void {
+    const f = this.$.files
+    f.classList.toggle('more-left', f.scrollLeft > 2)
+    f.classList.toggle('more-right', f.scrollLeft + f.clientWidth < f.scrollWidth - 2)
+  }
+
+  private _renderFiles(): void {
+    this.$.files.replaceChildren(
+      ...this._files.map((f, i) => this._tile(f.filename, this._previews.get(f.id), () => {
+        this._files.splice(i, 1); this._renderFiles(); this._syncSend()
+      })),
+      ...this._uploading.map((u) => this._tile(u.name, u.preview, undefined, true)))
+    this.$.files.hidden = !this._files.length && !this._uploading.length
+    requestAnimationFrame(() => this._fadeFiles())
+  }
+
+  /** Thumbnails of attached images (object URLs) by attachment id, and the files still uploading. */
+  private _previews = new Map<string, string>()
+  private _uploading: { name: string; preview?: string }[] = []
 
   private _showDots(on: boolean): void {
     if (on && !this._dots) {
@@ -876,6 +925,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._renderEmpty()
     // hero: a turn still running reopens the chat; on a computer, so does a conversation to come back to
     if (this._hero && (r.follow || r.running || (r.messages?.length && !this._heroSheet))) this.open()
+    else if (this._opts.mode === 'bubble' && (r.follow || r.running)) this.open()   // the answer is still coming: show it
     if (r.follow) void this._run({ follow: r.follow() })   // the host streams the running turn again: it goes on word by word
     else if (r.running) this._waitForTurn()
   }
@@ -1067,7 +1117,26 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   /** Resolves when the assistant's text on screen has finished typing (at once when nothing is typing). */
   private _typing: Promise<void> = Promise.resolve()
 
-  private get _animate(): boolean { return this._opts.typing === 'words' && !reducedMotion() }
+  private get _animate(): boolean { return this._opts.typing === 'words' && !reducedMotion() && !this._noFrames }
+
+  /** No animation frames arrive (a hidden pane, an occluded window, some in-app web views): type without them. */
+  private _noFrames = false
+
+  /** The next typing frame; if none comes within 300 ms, the text is put in at once and typing stops for this chat. */
+  private _frame(ai: AiItem): void {
+    if (ai.raf) return
+    let fired = false
+    ai.raf = requestAnimationFrame((now) => { fired = true; ai.raf = 0; this._tick(ai, now) })
+    setTimeout(() => {
+      if (fired) return
+      cancelAnimationFrame(ai.raf)
+      ai.raf = 0
+      this._noFrames = true
+      ai.body.innerHTML = this._html(ai.text)
+      if (ai.done) { this._assistantDone(ai.body, ai.text); ai.typed() }
+      this._scroll()
+    }, 300)
+  }
 
   private _renderText(): void {
     const ai = this._ai
@@ -1075,7 +1144,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (this._opts.typing === 'off') return
     // a hidden tab gets the text at once (no frames there, and nobody watches the typing)
     if (!this._animate || document.hidden) { ai.body.innerHTML = this._html(ai.text); if (ai.done) { this._assistantDone(ai.body, ai.text); ai.typed() } this._scroll(); return }
-    if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
+    this._frame(ai)
   }
 
   private _tick(ai: AiItem, now: number): void {
@@ -1086,7 +1155,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const log = this.$.log
     if (log.scrollHeight - log.scrollTop - log.clientHeight < 120) log.scrollTop = log.scrollHeight
     const fading = ai.st.marks.length > 0 && now - ai.st.marks[ai.st.marks.length - 1][1] < this._opts.fadeMs
-    if (ai.st.shown < ai.text.length || fading) ai.raf = requestAnimationFrame((t) => this._tick(ai, t))
+    if (ai.st.shown < ai.text.length || fading) this._frame(ai)
     else if (ai.done) { ai.body.innerHTML = this._html(ai.text); this._assistantDone(ai.body, ai.text); ai.typed() }   // all typed and faded in: the plain text stays
   }
 
@@ -1100,7 +1169,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (!this._animate || document.hidden || this._abort?.signal.aborted) {
       cancelAnimationFrame(ai.raf); ai.body.innerHTML = this._html(ai.text); this._assistantDone(ai.body, ai.text); ai.typed(); return
     }
-    if (!ai.raf) ai.raf = requestAnimationFrame((now) => this._tick(ai, now))
+    this._frame(ai)
   }
 
   // ------------------------------------------------------------------ steps

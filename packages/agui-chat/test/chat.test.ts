@@ -309,7 +309,7 @@ describe('dictation and attachments', () => {
     picker.dispatchEvent(new Event('change'))
     await tick(5)
     expect(upload).toHaveBeenCalledTimes(1)
-    expect($$(el, '.files .chip').map((c) => c.textContent)).toEqual([expect.stringContaining('a.pdf')])
+    expect($$(el, '.files .att').map((c) => c.textContent)).toEqual([expect.stringContaining('a.pdf')])   // a document tile
     el.setAttribute('attach', 'off')
     expect($(el, '.clip').hidden).toBe(true)
   })

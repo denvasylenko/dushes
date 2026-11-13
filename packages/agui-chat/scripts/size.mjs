@@ -9,7 +9,8 @@ import { gzipSync } from 'node:zlib'
 // 46 KB since cards from blocks (16 small parts that compose any card, formguide/blocks.ts, 2026-11-14): +3.6 KB;
 // they can move to an on-demand file like the themes if the budget gets tight again
 // 47 KB since the host hooks for Herefront (removeMessage, updateCard, onAction, follow on restore, agui:applied; 2026-11-14)
-const BUDGET = 47 * 1024
+// 48 KB since image thumbnails in the composer, the zoom view and bubble reopen on follow (2026-11-14). Next: move the blocks to an on-demand pack
+const BUDGET = 48 * 1024
 const file = new URL('../dist/agui-chat.iife.js', import.meta.url)
 const size = gzipSync(readFileSync(file)).length
 console.log(`agui-chat.iife.js: ${(size / 1024).toFixed(1)} KB gzipped (budget ${BUDGET / 1024} KB)`)
