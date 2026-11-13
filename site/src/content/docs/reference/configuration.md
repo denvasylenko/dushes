@@ -3,7 +3,7 @@ title: 'Configuration'
 description: 'Models per provider and every YAML key with its default.'
 ---
 
-formguide is configured from one YAML file (`load_config("formguide.yaml")`) or in code (`GuideConfig(...)`). Both produce the same `GuideConfig`; `FormGuide(config)` then builds the models and stores. Source: [`config.py`](https://github.com/denvasylenko/dushes/blob/main/backend/formguide/config.py), [`models.py`](https://github.com/denvasylenko/dushes/blob/main/backend/formguide/models.py); a complete working file: [`demo/formguide.yaml`](https://github.com/denvasylenko/dushes/blob/main/backend/demo/formguide.yaml); a starter file: `formguide init`.
+Dushes is configured from one YAML file (`load_config("formguide.yaml")`) or in code (`GuideConfig(...)`). Both produce the same `GuideConfig`; `FormGuide(config)` then builds the models and stores. Source: [`config.py`](https://github.com/denvasylenko/dushes/blob/main/backend/formguide/config.py), [`models.py`](https://github.com/denvasylenko/dushes/blob/main/backend/formguide/models.py); a complete working file: [`demo/formguide.yaml`](https://github.com/denvasylenko/dushes/blob/main/backend/demo/formguide.yaml); a starter file: `formguide init`.
 
 ```
 formguide.yaml ──load_config()──▶ GuideConfig ──FormGuide()──▶ models built per role, stores opened, graph compiled
@@ -22,7 +22,7 @@ Check a file without calling any model: `formguide check --config formguide.yaml
 
 ## Models
 
-formguide uses four model roles plus one optional one. Each role takes any LangChain chat model.
+Dushes uses four model roles plus one optional one. Each role takes any LangChain chat model.
 
 | Role | Used for | Needs | Falls back to |
 |---|---|---|---|
@@ -90,7 +90,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | Key | Default | Meaning |
 |---|---|---|
 | `model` / `models` | see above | the models |
-| `data_dir` | `data` | where formguide keeps its own files: learned field dependencies (`deps/`), registered layouts (`layouts/`), documents (`kb/`), attachments (`attachments/`), transcripts (`transcripts/`) unless set elsewhere |
+| `data_dir` | `data` | where Dushes keeps its own files: learned field dependencies (`deps/`), registered layouts (`layouts/`), documents (`kb/`), attachments (`attachments/`), transcripts (`transcripts/`) unless set elsewhere |
 | `components.containers` | `Tabs: tabs, Tab: tab, Accordion: accordion, Section: section, Form: form` | your component library's container tags → role. **Replaces** the default map when given |
 | `components.fields` | `Input: text, NumberInput: number, TextArea: text, DatePicker: date, Dropdown: select, RadioGroup: radio, MultiSelect: multiselect, Checkbox: bool, FileUpload: file` | field tags → role (`text`, `number`, `date`, `select`, `radio`, `multiselect`, `bool`, `file`) or a **field spec** (below). **Replaces** the default map when given |
 | `domain_packs.dir` | none | a folder of `<form_id>.json` packs (persona, flow hints, glossary, rules, PII fields, `starters`: up to 6 opening messages for an empty chat) |
@@ -115,7 +115,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `attachments` | on | `false`, or `{enabled, privacy_note}`: `enabled: false` turns off uploads and reading attached files; `privacy_note` is shown on upload requests (`privacy`) |
 | `cards` | none | cards from blocks: `[{type, description, data, blocks, wait}]`; each becomes a tool `show_<type>`; see [Cards from blocks](../../backend/cards/) |
 | `confirm_tools` | none | tool names that always need the user's confirmation: the call is held, the user sees a confirm card, and the tool runs only on yes |
-| `tracing` | none | `{callbacks: ["module:factory"], tags: [...], otel?: {exporter, endpoint?, headers?, service_name?, sample_ratio?}}`; `otel` exports formguide's spans over OpenTelemetry (`otlp`, `zipkin`, `azure_monitor`, `console`, `host` or a `module:factory`), see [Speed and tracing](../../backend/observability/#opentelemetry-azure-monitor-zipkin-jaeger-datadog-any-otlp-backend). LangChain callback handlers (Langfuse, Phoenix, your own) and extra tags for every turn. LangSmith needs only `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in the environment. See [Speed and tracing](../../backend/observability/) |
+| `tracing` | none | `{callbacks: ["module:factory"], tags: [...], otel?: {exporter, endpoint?, headers?, service_name?, sample_ratio?}}`; `otel` exports Dushes' spans over OpenTelemetry (`otlp`, `zipkin`, `azure_monitor`, `console`, `host` or a `module:factory`), see [Speed and tracing](../../backend/observability/#opentelemetry-azure-monitor-zipkin-jaeger-datadog-any-otlp-backend). LangChain callback handlers (Langfuse, Phoenix, your own) and extra tags for every turn. LangSmith needs only `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in the environment. See [Speed and tracing](../../backend/observability/) |
 | `suggestions` | off | quick replies after answers: `true`, or `{enabled, model, max, timeout}`; `model` defaults to the memory model, `max` 3 (up to 5), `timeout` 4 s. Sent as `CUSTOM suggestions {items, applies?}` (`applies`: validated field changes for chips that fill fields); a failure or timeout sends nothing |
 
 ## Field specs: how each component stores its value

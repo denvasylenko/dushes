@@ -1,13 +1,13 @@
 ---
 title: AG-UI
-description: formguide speaks strict AG-UI, so any AG-UI client connects as it is. The events it sends and how a card travels.
+description: Dushes speaks strict AG-UI, so any AG-UI client connects as it is. The events it sends and how a card travels.
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 import { Summary } from '../../../components/ui';
 
-<Summary what={"The open protocol between the page and formguide."} when={"You connect a client that is not ours."} write={"Nothing: any AG-UI client works as it is."} />
+<Summary what={"The open protocol between the page and Dushes."} when={"You connect a client that is not ours."} write={"Nothing: any AG-UI client works as it is."} />
 
-[AG-UI](https://docs.ag-ui.com) is an open protocol between an agent and a user interface: the client posts a `RunAgentInput`, the server streams events over SSE. formguide uses only standard events, so `<agui-chat>`, CopilotKit, `@ag-ui/client`'s `HttpAgent` or your own client work without adapters.
+[AG-UI](https://docs.ag-ui.com) is an open protocol between an agent and a user interface: the client posts a `RunAgentInput`, the server streams events over SSE. Dushes uses only standard events, so `<agui-chat>`, CopilotKit, `@ag-ui/client`'s `HttpAgent` or your own client work without adapters.
 
 ```mermaid
 sequenceDiagram
@@ -23,7 +23,7 @@ sequenceDiagram
   C->>F: POST /agent/run (forwardedProps.command.resume = the answer)
 ```
 
-| AG-UI | formguide uses it for |
+| AG-UI | Dushes uses it for |
 | --- | --- |
 | `RunAgentInput.state` | the form: `{config, jsx_hash, form_id, ui}` |
 | `RunAgentInput.tools` | your frontend tools |

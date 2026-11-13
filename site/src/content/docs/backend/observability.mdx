@@ -95,7 +95,7 @@ tracing:
 | `zipkin` | Zipkin | `endpoint: http://zipkin:9411/api/v2/spans`; needs `formguide[otel-zipkin]` |
 | `azure_monitor` | Application Insights | the connection string in `endpoint` or `APPLICATIONINSIGHTS_CONNECTION_STRING`; needs `formguide[otel-azure]` |
 | `console` | local debugging | prints spans to stdout |
-| `host` | an app that already configured OpenTelemetry | formguide adds its spans to the app's tracer provider, nothing else |
+| `host` | an app that already configured OpenTelemetry | Dushes adds its spans to the app's tracer provider, nothing else |
 | `"my_app.tracing:make_exporter"` | anything else | a factory returning any OTel `SpanExporter` |
 
 What you get per turn (only ids, names, types and numbers: never message text or field values):
@@ -106,7 +106,7 @@ What you get per turn (only ids, names, types and numbers: never message text or
 | `formguide.model` | `formguide.model.role`, `gen_ai.request.model`, `formguide.ttft_ms`, `gen_ai.usage.*`, `formguide.usage.cache_read_tokens` |
 | `formguide.tool` | `formguide.tool.name`; error status when the tool failed |
 
-**Joining your app's trace.** A run request with a W3C `traceparent` (and `tracestate`) header makes the turn a child of that span, so one trace runs from your page or API through formguide to the model. In Python, pass `guide.run(..., trace_context={"traceparent": ...})`.
+**Joining your app's trace.** A run request with a W3C `traceparent` (and `tracestate`) header makes the turn a child of that span, so one trace runs from your page or API through Dushes to the model. In Python, pass `guide.run(..., trace_context={"traceparent": ...})`.
 
 OpenTelemetry works next to LangSmith and `tracing.callbacks`; `run_stats` does not change.
 
@@ -114,7 +114,7 @@ OpenTelemetry works next to LangSmith and `tracing.callbacks`; `run_stats` does 
 
 ## Speed tests (offline, every `pytest` run)
 
-[`tests/test_perf.py`](https://github.com/denvasylenko/dushes/blob/main/backend/tests/test_perf.py) runs formguide's own work on the 221-field demo loan form, without a model, and fails when it gets much slower:
+[`tests/test_perf.py`](https://github.com/denvasylenko/dushes/blob/main/backend/tests/test_perf.py) runs Dushes' own work on the 221-field demo loan form, without a model, and fails when it gets much slower:
 
 | Operation | Measured (laptop) | Budget |
 |---|---|---|
@@ -125,7 +125,7 @@ OpenTelemetry works next to LangSmith and `tracing.callbacks`; `run_stats` does 
 
 The widget has the same in [`test/perf.test.ts`](https://github.com/denvasylenko/dushes/blob/main/packages/agui-chat/test/perf.test.ts): 5,000 SSE events (4.6 ms, budget 60), one typewriter frame on a long answer (5.7 ms, budget 60), 200 messages (12 ms, budget 120). `PERF_PRINT=1 npx vitest run test/perf.test.ts` prints the numbers.
 
-So formguide itself adds about 10 ms to a turn; the rest is the model and the tools you call.
+So Dushes itself adds about 10 ms to a turn; the rest is the model and the tools you call.
 
 ---
 
@@ -153,4 +153,4 @@ uv run python scripts/bench.py --prices prices.json     # adds an estimated cost
 | documents (the car loan rate) | 2.2 s | 4.6 s | 0 | 7,354 / 298 | 75% |
 | booking (service, barber, day and slot) | 4.0 s | 22.9 s | 10 | 75,526 / 888 | 65% |
 
-What it tells us: the model's time dominates (formguide adds about 10 ms); a turn that walks a dependent chain (the booking: 10 tool calls in a row) is the slowest; the prompt cache saves about two thirds of the input tokens once a conversation is going. A long conversation that sat idle for a while starts cold (cache near 0%) and its first turn is noticeably slower.
+What it tells us: the model's time dominates (Dushes adds about 10 ms); a turn that walks a dependent chain (the booking: 10 tool calls in a row) is the slowest; the prompt cache saves about two thirds of the input tokens once a conversation is going. A long conversation that sat idle for a while starts cold (cache near 0%) and its first turn is noticeably slower.

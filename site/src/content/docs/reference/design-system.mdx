@@ -3,7 +3,7 @@ title: 'Design system'
 description: 'Every control the docs use, live in light and dark, with the snippet to copy.'
 ---
 import { LinkCard as SlLinkCard, CardGrid } from '@astrojs/starlight/components';
-import { Badge, Button, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
+import { Badge, Button, Entries, Entry, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
 
 Every piece of interface on this site comes from one folder, `site/src/components/ui/`. Each primitive is shaped like its Apple counterpart, built from the tokens in `site/src/styles/theme.css`, and shown below working. A new pattern is added there first and shown on this page, then used.
 
@@ -238,6 +238,26 @@ import { Summary } from '../../../components/ui';
 ```
 
 For links or emphasis inside a value, use the slots of the same names: `<Fragment slot="write">…</Fragment>`.
+
+## Entry tiles
+
+Two or three equal ways into the product, side by side under a hero (a column on a phone): an icon, a title, one line of promise, up to three points, **Try it live** (only with `demo`) and **Read the guide**. Neither tile carries a filled button: they are equal, so neither is the page's one main action.
+
+<Specimen layout="col">
+  <Entries label="Ways in">
+    <Entry icon="compass" eyebrow="Whole product" title="Site assistant" text="One chat across every page: answers, takes people where they need to go, hands over to a form." href="#entry-tiles" demo="#entry-tiles" points={['Knows your pages from a site map', 'Opens the right page and section']} />
+    <Entry icon="form" eyebrow="One big form" title="Form assistant" text="Next to a long form: shows where to click, reads documents, fills fields after a tap." href="#entry-tiles" points={['Fills from documents with Undo', 'Works with any form via `jsx_hash`']} />
+  </Entries>
+</Specimen>
+
+```mdx
+import { Entries, Entry } from '../../components/ui';
+
+<Entries label="Ways in">
+  <Entry icon="compass" title="Site assistant" text="One chat across every page." href="backend/site-assistant/" demo={demoUrl} />
+  <Entry icon="form" title="Form assistant" text="Next to a long form." href="getting-started/quick-start/" />
+</Entries>
+```
 
 ## Tokens
 

@@ -7,7 +7,7 @@ import { Summary } from '../../../components/ui';
 
 <Summary what={"Your own cards, declared on the server and drawn by the chat"} when={"The built-in cards do not fit a decision in your flow."} write={"A `cards:` entry in `formguide.yaml`: its data and its blocks."} />
 
-Your app needs a card formguide does not have: "Is this your barber?", a palette to pick, "3 steps left", a booking with a route. Declare it once on the server: you choose the blocks and their order, the model only fills the data. The chat draws it with the same blocks as its own cards, so it follows the theme, light and dark, and never looks out of place.
+Your app needs a card Dushes does not have: "Is this your barber?", a palette to pick, "3 steps left", a booking with a route. Declare it once on the server: you choose the blocks and their order, the model only fills the data. The chat draws it with the same blocks as its own cards, so it follows the theme, light and dark, and never looks out of place.
 
 <Tabs>
 <TabItem label="YAML">
@@ -99,7 +99,7 @@ blocks:
 
 ## Only for chats that draw blocks
 
-The widget's formguide plugin announces the `blocks` capability. A client that does not (a Telegram bot, an older widget) never gets the `show_*` tools, so the model asks in text instead.
+The widget's form plugin announces the `blocks` capability. A client that does not (a Telegram bot, an older widget) never gets the `show_*` tools, so the model asks in text instead.
 
 ## Every option
 

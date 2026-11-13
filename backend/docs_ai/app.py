@@ -90,7 +90,7 @@ class Quota:
         while self.site and self.site[0] < now - 86400:
             self.site.popleft()
         if self.threads[thread_id] >= self.per_thread:
-            return "This chat has reached its limit. Start a new chat, or run formguide yourself: see the quick start."
+            return "This chat has reached its limit. Start a new chat, or run Dushes yourself: see the quick start."
         if len(self.site) >= self.site_per_day:
             return "The assistant has answered enough questions for today. Try again tomorrow."
         self.threads[thread_id] += 1
@@ -136,7 +136,7 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
         yield
         task.cancel()
 
-    app = FastAPI(title="formguide docs assistant", lifespan=lifespan)
+    app = FastAPI(title="Dushes docs assistant", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=origins or [o.strip() for o in env("DOCS_AI_ORIGINS", "http://localhost:4321").split(",")],
                        allow_methods=["POST", "GET", "OPTIONS"], allow_headers=["Content-Type", "Accept"])
 

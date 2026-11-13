@@ -23,7 +23,7 @@ const OPEN = [
 
 <script>
   const STARTERS = [
-    'Connect formguide to my React form',
+    'Connect Dushes to my React form',
     'Use Azure OpenAI with a cheaper model for research',
     'What does a date question look like?',
     'What is jsx_hash?',
@@ -48,7 +48,7 @@ const OPEN = [
       el.setAttribute('theme', 'docs')
       el.className = 'ask-chat'
       document.body.appendChild(el)
-      el.options = { starters: STARTERS, intro: 'Ask anything about formguide. Code comes straight from these pages.' }
+      el.options = { starters: STARTERS, intro: 'Ask anything about Dushes. Code comes straight from these pages.' }
       el.use(docs())
       const scheme = () => el.setAttribute('scheme', document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
       scheme()
@@ -69,7 +69,7 @@ const OPEN = [
       const base = import.meta.env.BASE_URL.replace(/\/$/, '')
       return location.origin + (p === base ? `${base}/index` : p) + '.md'
     }
-    const q = encodeURIComponent(`Read ${md()} (formguide documentation) and help me with it.`)
+    const q = encodeURIComponent(`Read ${md()} (Dushes documentation) and help me with it.`)
     box.querySelector<HTMLAnchorElement>('[data-open="claude"]')!.href = `https://claude.ai/new?q=${q}`
     box.querySelector<HTMLAnchorElement>('[data-open="chatgpt"]')!.href = `https://chatgpt.com/?q=${q}`
   }

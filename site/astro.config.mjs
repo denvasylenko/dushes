@@ -13,7 +13,7 @@ export default defineConfig({
 	integrations: [
 		mermaid({ theme: 'neutral', autoTheme: true, mermaidConfig: { fontFamily: 'system-ui, sans-serif', flowchart: { curve: 'basis', htmlLabels: true } } }),
 		starlight({
-			title: 'formguide',
+			title: 'Dushes',
 			description: 'A chat agent that guides people through large forms: shows where to click, answers from your documents, reads theirs and fills fields with their confirmation.',
 			logo: { src: './src/assets/logo.svg', replacesTitle: false },
 			favicon: '/favicon.svg',

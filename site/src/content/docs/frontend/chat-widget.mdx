@@ -22,7 +22,7 @@ Source: [`packages/agui-chat/`](https://github.com/denvasylenko/dushes/tree/main
 <script src="agui-chat.iife.js"></script>
 ```
 
-That is a working chat with any AG-UI endpoint: a round button in the corner opens a side panel. For formguide, add the plugin, which sends your form with every message and draws formguide's cards:
+That is a working chat with any AG-UI endpoint: a round button in the corner opens a side panel. For Dushes, add the plugin, which sends your form with every message and draws Dushes' cards:
 
 ```html
 <script>
@@ -60,7 +60,7 @@ Build it from this repository: `cd packages/agui-chat && npm install && npm run 
 | "Something went wrong" + Try again | `RUN_ERROR` or a network error |
 
 
-## The formguide plugin
+## The form plugin
 
 ```js
 import { formguide } from '@formguide/agui-chat/formguide'
@@ -88,7 +88,7 @@ It does five things:
 
 1. **Sends the form** (`getState()`) as `state` with every run, plus the files attached in the composer.
 2. **Applies directives** (`ui_directive`): your `onDirective`, or scrolling to `[data-name=target]` and flashing it, and ringing each field in `also` (the agent shows several fields at once, such as a section's empty required fields).
-3. **Draws formguide's cards**:
+3. **Draws Dushes' cards**:
 
    | Card | What the user can do | Resume value |
    |---|---|---|
@@ -98,7 +98,7 @@ It does five things:
    | `confirm`: a confirmation | Confirm (red when `danger`) or Cancel | `{accepted}` |
 
 4. **Restores the chat** after a reload: `GET {baseUrl}/threads/{id}?format=agui&form_id=…` gives the messages, a pending card and the form's starters.
-5. **Labels the steps** of formguide's tools in seven languages; a turn that only looked at the form or showed a field (`get_fields`, `search_fields`, `focus_field`, …) shows no step list: the dots show the wait and the form shows the field (a plugin's `quietSteps`) ("Looking at the form", "Reading your document", …). The tools that produce a card (`propose_changes`, `ask_user`, `request_file`, `confirm_action`) get no step of their own, since the card shows the result; `cardSteps: true` shows them.
+5. **Labels the steps** of Dushes' tools in seven languages; a turn that only looked at the form or showed a field (`get_fields`, `search_fields`, `focus_field`, …) shows no step list: the dots show the wait and the form shows the field (a plugin's `quietSteps`) ("Looking at the form", "Reading your document", …). The tools that produce a card (`propose_changes`, `ask_user`, `request_file`, `confirm_action`) get no step of their own, since the card shows the result; `cardSteps: true` shows them.
 
 The fill button counts the fields ("Fill in 3 fields", "Fill in 2 of 3" when some are unticked), with the plural form of the chat's language.
 
@@ -123,7 +123,7 @@ chat.renderers.set('pick_seat', (payload, ctx) => {
 
 ## Connection: headers, auth, your own fetch or transport
 
-The chat reaches the server with `url` and `headers` by default. Everything about a request can be yours, from one header to the whole transport, and the formguide plugin's own calls (attachments, restoring a thread, feedback) go through the same connection:
+The chat reaches the server with `url` and `headers` by default. Everything about a request can be yours, from one header to the whole transport, and the form plugin's own calls (attachments, restoring a thread, feedback) go through the same connection:
 
 ```js
 chat.options = {
@@ -185,7 +185,7 @@ await chat.run({
 
 ## Restore after a reload
 
-With the formguide plugin and `persist-thread` on (the default), a reload shows the same conversation, including a card the user had not answered. The thread id lives in `localStorage`; nothing else is needed. `persist-thread="off"` starts fresh every time; `chat.reset()` starts a new conversation by hand.
+With the form plugin and `persist-thread` on (the default), a reload shows the same conversation, including a card the user had not answered. The thread id lives in `localStorage`; nothing else is needed. `persist-thread="off"` starts fresh every time; `chat.reset()` starts a new conversation by hand.
 
 ## Features the server turns on
 
@@ -257,7 +257,7 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | | `i18n` | `{}` | override any UI string |
 | | `cards` | `{}` | per-card flags, e.g. `{ set_fields: { edit: false } }` |
 
-The formguide plugin's options:
+The form plugin's options:
 
 ```js
 chat.use(formguide({

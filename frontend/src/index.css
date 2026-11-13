@@ -105,8 +105,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 .page { display: flex; flex-direction: column; height: 100vh; }
 .page > .app { flex: 1; min-height: 0; height: auto; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
-.back-docs { font-size: 13px; font-weight: 500; color: var(--muted, inherit); text-decoration: none; padding: 6px 10px; border-radius: 999px; margin-right: auto; transition: background .18s, color .18s; }
-.back-docs:hover { color: var(--text); background: var(--input); }
+.back-docs { display: flex; gap: 2px; margin-right: auto; }
+.back-docs a { font-size: 13px; font-weight: 500; color: var(--muted, inherit); text-decoration: none; padding: 6px 10px; border-radius: 999px; transition: background .18s, color .18s; }
+.back-docs a:hover { color: var(--text); background: var(--input); }
 .topbar select { border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; background: var(--input); color: var(--text); font: inherit; font-size: 12px; }
 .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { border: 0; background: none; padding: 6px 12px; font-size: 13px; color: var(--muted); }

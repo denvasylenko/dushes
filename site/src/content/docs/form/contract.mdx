@@ -1,13 +1,13 @@
 ---
 title: Types and the contract
-description: Every message between your page and formguide, as TypeScript types. What jsx_hash, config, ui and card_id are, who creates them and when they change.
+description: Every message between your page and Dushes, as TypeScript types. What jsx_hash, config, ui and card_id are, who creates them and when they change.
 ---
 import { Tabs, TabItem, LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
 import { Summary } from '../../../components/ui';
 
 <Summary what={"Every message between the page and the server, as TypeScript types."} when={"You write your own client, or debug the wire."} write={"Nothing: a reference of `FormState`, `Card`, `Answer`, ..."} />
 
-Your page and formguide exchange six kinds of messages. This page types all of them. The widget and the formguide plugin build and read these for you; you need the types when you write your own client, your own cards, or debug what crosses the wire.
+Your page and Dushes exchange six kinds of messages. This page types all of them. The widget and the form plugin build and read these for you; you need the types when you write your own client, your own cards, or debug what crosses the wire.
 
 ```mermaid
 sequenceDiagram
@@ -27,14 +27,14 @@ sequenceDiagram
 | Word | What it is | Who makes it | Changes when |
 | --- | --- | --- | --- |
 | `jsx` | the form's skeleton as text: which elements exist and how they nest (`<Tab name="loan"><Input name="amount"/></Tab>`) | your form backend | you ship a new version of the form |
-| `jsx_hash` | a short id of that skeleton, so the skeleton is sent **once** and every run refers to it | formguide, in the answer to `POST /agent/layouts` | the `jsx` changes; the same `jsx` always gives the same hash |
+| `jsx_hash` | a short id of that skeleton, so the skeleton is sent **once** and every run refers to it | Dushes, in the answer to `POST /agent/layouts` | the `jsx` changes; the same `jsx` always gives the same hash |
 | `form_id` | your name for the form; picks its [domain pack](../../backend/domain-packs/) and documents | you | never |
 | `config` | the form right now: `props` (label, visible, disabled, required, options, error of every element) and `state` (every field's value) | your form backend, after every change | after every change the user or a card makes |
 | `ui` | what the user is looking at: open tab, open accordions, the focused field, the local time | your page | as the user moves around |
 | `thread_id` | one conversation; the chat history and cards belong to it | the client (the widget keeps it in `localStorage`) | "New chat" |
-| `card_id` | one card in that conversation | formguide | each new card |
+| `card_id` | one card in that conversation | Dushes | each new card |
 
-`config` is the important one: formguide never computes your form's rules. It reads `config`, proposes values, and your form backend (the one that already decides what is visible and valid) applies them and returns the next `config`.
+`config` is the important one: Dushes never computes your form's rules. It reads `config`, proposes values, and your form backend (the one that already decides what is visible and valid) applies them and returns the next `config`.
 
 ## 1. Register the form
 
@@ -87,7 +87,7 @@ interface UiState {
 }
 ```
 
-Values in `state` use your components' formats (an option object, an id, `"Y"`, `"31.05.1990"`); describe them once in [Value formats](../value-formats/). Everything formguide sends back uses the same formats.
+Values in `state` use your components' formats (an option object, an id, `"Y"`, `"31.05.1990"`); describe them once in [Value formats](../value-formats/). Everything Dushes sends back uses the same formats.
 
 ## 3. One run
 
@@ -108,7 +108,7 @@ interface RunInput {
 }
 ```
 
-The response is a stream of AG-UI events (`text/event-stream`). Besides text and tool steps, formguide sends these `CUSTOM` events:
+The response is a stream of AG-UI events (`text/event-stream`). Besides text and tool steps, Dushes sends these `CUSTOM` events:
 
 | `name` | `value` | When |
 | --- | --- | --- |
@@ -194,7 +194,7 @@ type Answer =
 | --- | --- |
 | `names` | only these rows were applied (the user unticked the others); absent = all |
 | `edited` | rows whose value the user changed on the card: `{name: value}` |
-| `config` | the form after your form backend applied the values; formguide reads what changed from it |
+| `config` | the form after your form backend applied the values; Dushes reads what changed from it |
 | `{accepted: false}` | the user rejected or skipped the card |
 
 AG-UI 1.0 clients can receive cards as `RUN_FINISHED.outcome.interrupts` and answer with `resume: [{interruptId, payload}]` instead (server option `interrupt_mode: structured`; see [Cards and answers](../../frontend/cards/)).

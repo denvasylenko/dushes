@@ -1,0 +1,6 @@
+---
+/** Entries: the row of equal Entry tiles (two or three), a column on a phone. */
+interface Props { class?: string; label?: string }
+const { class: cls, label } = Astro.props
+---
+<div class:list={['ui-entries', 'not-content', cls]} role={label ? 'group' : undefined} aria-label={label}><slot /></div>

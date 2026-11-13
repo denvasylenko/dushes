@@ -1,42 +1,51 @@
 ---
 title: Overview
-description: What formguide is, the parts you install, and which page to read next.
+description: What Dushes is, its two assistants, the parts you install, and which page to read next.
 ---
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 import { Summary } from '../../../components/ui';
 
-<Summary what={"A chat next to your form that points, explains and fills fields"} when={"You have a long form people get stuck on."} write={"A YAML file on the server and five lines next to your form."} />
+<Summary what={"An AI assistant inside your site or app"} when={"People get lost on your pages or stuck on a long form"} write={"A YAML file on the server and one `<agui-chat>` tag on the page"} />
 
-formguide is a chat agent that sits next to a large form (a loan application with 200 fields, an insurance claim, a booking wizard) and helps the person fill it in. The core knows nothing about your domain or model provider; everything specific is configured.
+Dushes is an AI assistant for your product's interface. It answers from your pages and documents, takes people to the right page, tab or field, and fills forms with them, always after they confirm. The core knows nothing about your domain or model provider; everything specific is configured.
+
+## Two assistants, one base
+
+| | Site assistant | Form assistant |
+| --- | --- | --- |
+| **For** | a whole site or app | one large form (a loan application with 200 fields, a claim, a booking wizard) |
+| **It** | answers about any page, opens the right page, tab or section, hands over to a form | shows where to click, explains fields, reads the user's documents, fills fields on a card |
+| **Knows** | your site map: pages, sections, which page holds which form | the form itself, sent with every message, and the form's documents |
+| **Server** | `SiteGuide` over the form assistant, at `/site/run` | `FormGuide`, at `/agent/run` |
+| **Start with** | [Site assistant](../../backend/site-assistant/) | [How the form and the agent talk](../../form/overview/) |
+
+Use the form assistant alone for one form; add the site assistant on top when the forms are part of a bigger site. One chat then follows the user from page to page.
 
 ```mermaid
 flowchart LR
   subgraph Browser
-    F[Your form] <--> W["&lt;agui-chat&gt;<br/><small>or any AG-UI client</small>"]
+    W["&lt;agui-chat&gt;<br/>or any AG-UI client"]
+    F[Your pages and forms]
   end
-  subgraph Your backend
-    B[Form backend<br/><small>owns the rules</small>]
+  subgraph Server["Your server: Dushes (Python package formguide)"]
+    S["Site assistant<br/>pages, navigation"] --> A["Form assistant<br/>the form, cards"]
+    A --> M[(Any LangChain model)]
+    A --> K[(Your documents)]
   end
-  subgraph formguide["formguide (Python)"]
-    A[Agent graph<br/><small>LangGraph</small>] --> M[(Any LangChain model)]
-    A --> K[(Documents)]
-    A --> P[Domain pack]
-  end
-  W -- "AG-UI: message + form state" --> A
-  A -- "text · look here · cards" --> W
-  W -- "accepted values" --> B
-  B -- "new config" --> W
+  W -- "message + page / form" --> S
+  S -- "text, go to page, cards" --> W
+  W -- "accepted values" --> F
 ```
 
-**The rule everything follows:** the form owns the config; the agent advises and proposes. It reads the form sent with every message and proposes changes on a card. Only when the user accepts does your frontend apply them, the same way user input goes.
+**The rule everything follows:** your app owns its pages and its form; the assistant advises and proposes. It reads what the page sends with every message and proposes changes on a card. Only when the user accepts does your app apply them, the same way user input goes.
 
 ## The parts
 
 <CardGrid>
-  <Card title="The library" icon="seti:python">Python: the agent graph, the form core, domain packs, documents, attachments, models, skills; a FastAPI router and a CLI. `backend/formguide/`</Card>
-  <Card title="The wire" icon="random">Strict AG-UI. Each run carries the form in `state`; cards are interrupts. `POST /agent/run`</Card>
-  <Card title="The chat" icon="laptop">`<agui-chat>`: a Web Component with a formguide plugin, a React wrapper and a react-hook-form hook. `packages/agui-chat/`</Card>
-  <Card title="The demo" icon="rocket">A mock form backend, two forms (221 fields; a 4-step wizard) and a React UI. `backend/demo/`, `frontend/`</Card>
+  <Card title="The library" icon="seti:python">Python: the agent graph, the site assistant, the form core, domain packs, documents, attachments, models, skills; a FastAPI router and a CLI. The Python package `formguide`, in `backend/formguide/`</Card>
+  <Card title="The wire" icon="random">Strict AG-UI. Each run carries the page and the form in `state`; cards are interrupts. `POST /agent/run`, `POST /site/run`</Card>
+  <Card title="The chat" icon="laptop">`<agui-chat>`: a Web Component with every card built in, a React wrapper and a react-hook-form hook. `@formguide/agui-chat`</Card>
+  <Card title="The demos" icon="rocket">A small site with a bank and a barbershop, a 221-field loan form, a booking wizard. `backend/demo/`, `frontend/`</Card>
 </CardGrid>
 
 ## Where to go
@@ -44,12 +53,13 @@ flowchart LR
 | You are | Start with |
 | --- | --- |
 | trying it | [Quickstart](../quick-start/), then [Run the demo app](../demo-app/) |
+| adding it to a whole site | [Site assistant](../../backend/site-assistant/), then [in the page](../../frontend/site-assistant/) |
+| connecting one form | [How the form and the agent talk](../../form/overview/) |
 | setting up the server | [Install and serve](../../backend/install/), [Configuration](../../backend/configuration/) |
 | putting the chat on a page | [Choose a client](../../frontend/overview/) |
-| connecting your form | [How the form and the agent talk](../../form/overview/) |
-| curious how it works | [One turn](../../concepts/turn/), [What the model sees](../../concepts/context/) |
+| curious how it works | [One turn](../../concepts/turn/), [Built on](../../built-on/overview/) |
 
 <CardGrid>
-  <LinkCard title="Quickstart" description="A running agent and a chat in five minutes." href="../quick-start/" />
-  <LinkCard title="System overview" description="The architecture on one diagram." href="../../concepts/overview/" />
+  <LinkCard title="Quickstart" description="A running assistant and a chat in five minutes." href="../quick-start/" />
+  <LinkCard title="Site assistant" description="One chat across your whole site." href="../../backend/site-assistant/" />
 </CardGrid>

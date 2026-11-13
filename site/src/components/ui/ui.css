@@ -239,6 +239,24 @@
   .ui-summary dt { line-height: 18px; }
 }
 
+/* ---------- Entry tiles: two or three equal ways in, side by side (a column on a phone) ---------- */
+.ui-entries { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 16px; margin: 2rem 0 0; }
+.ui-entry {
+  position: relative; display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: 28px; overflow: hidden;
+  background: radial-gradient(120% 90% at 0% 0%, var(--fg-accent-soft), transparent 60%), var(--fg-surface); box-shadow: inset 0 0 0 1px var(--fg-line);
+}
+.ui-entry-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px;
+  background: var(--fg-accent-soft); color: var(--fg-accent-ink); }
+.ui-entry-eyebrow { font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-accent-ink); margin: 4px 0 -8px; }
+.ui-entry-title { margin: 0; font: 700 clamp(1.5rem, 3vw, 1.9rem)/1.1 var(--fg-display, var(--sl-font)); letter-spacing: -0.03em; color: var(--fg-ink); text-wrap: balance; }
+.ui-entry-text { margin: 0; font-size: var(--sl-text-base); line-height: 1.5; color: var(--fg-ink-2); text-wrap: pretty; }
+.ui-entry :is(.ui-entry-text, .ui-entry-points) code { font-size: .88em; padding: .1em .35em; border-radius: var(--fg-r-sm); background: var(--fg-fill); }
+.ui-entry-points { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: var(--sl-text-sm); color: var(--fg-ink-2); }
+.ui-entry-points li { display: flex; gap: 8px; align-items: baseline; margin: 0; }
+.ui-entry-points li::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 999px; background: var(--fg-accent); transform: translateY(-2px); }
+.ui-entry-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: auto; padding-top: 8px; }
+@media (max-width: 50rem) { .ui-entry { padding: 20px; border-radius: var(--fg-r-tile); } }
+
 /* ---------- motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .ui-btn, .ui-chip, .ui-seg > button, .ui-disc-chev, .ui-linkcard, .ui-linkcard > .ui-icon, .ui-menu-item, .ui-swatch, .ui-range::-webkit-slider-thumb { transition: none; }

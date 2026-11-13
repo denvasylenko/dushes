@@ -1,13 +1,13 @@
 ---
 title: Open source, open standards
-description: formguide is a thin layer on LangGraph, LangChain and AG-UI. What each one does here, the packages you install, and where every class comes from.
+description: Dushes is a thin layer on LangGraph, LangChain and AG-UI. What each one does here, the packages you install, and where every class comes from.
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 import { Summary } from '../../../components/ui';
 
-<Summary what={"The open-source pieces under formguide and where every import comes from."} when={"You want to know what you are adding to your stack."} write={"Nothing: a map of LangGraph, LangChain, AG-UI and the packages."} />
+<Summary what={"The open-source pieces under Dushes and where every import comes from."} when={"You want to know what you are adding to your stack."} write={"Nothing: a map of LangGraph, LangChain, AG-UI and the packages."} />
 
-formguide is open source ([GitHub](https://github.com/denvasylenko/dushes)) and adds only what is specific to forms: reading the form, the cards, the context. Everything else is a standard you may already use.
+Dushes is open source ([GitHub](https://github.com/denvasylenko/dushes)) and adds only what is specific to forms: reading the form, the cards, the context. Everything else is a standard you may already use.
 
 ```mermaid
 flowchart TB
@@ -26,7 +26,7 @@ flowchart TB
   W --> A --> R
 ```
 
-| Layer | What it does in formguide | Read |
+| Layer | What it does in Dushes | Read |
 | --- | --- | --- |
 | **LangGraph** | runs one turn as a graph: build the context, call the model, run tools, stop for a card and resume after the answer; keeps the history in a checkpointer | [LangGraph](../langgraph/) |
 | **LangChain** | the model of every role, the tools, the document index, tracing callbacks; any provider through one interface | [LangChain](../langchain/) |

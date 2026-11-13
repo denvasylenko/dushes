@@ -1,20 +1,20 @@
 ---
 title: CopilotKit
-description: Already on CopilotKit? Keep its chat and hooks and point them at formguide. A working example is in the repository; run it in two commands.
+description: Already on CopilotKit? Keep its chat and hooks and point them at Dushes. A working example is in the repository; run it in two commands.
 ---
 import { Tabs, TabItem, Steps, Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
 import { Summary } from '../../../components/ui';
 
-<Summary what={"CopilotKit's chat and hooks talking to formguide."} when={"Only if your app already uses CopilotKit."} write={"An `HttpAgent` to `/agent/run` and a `useInterrupt` that draws the cards."} />
+<Summary what={"CopilotKit's chat and hooks talking to Dushes."} when={"Only if your app already uses CopilotKit."} write={"An `HttpAgent` to `/agent/run` and a `useInterrupt` that draws the cards."} />
 
 ## Do you need this page?
 
 | Your situation | Use |
 | --- | --- |
-| Your React app **already uses CopilotKit** (its chat, its hooks) | this page: CopilotKit talks to formguide like to any AG-UI agent |
+| Your React app **already uses CopilotKit** (its chat, its hooks) | this page: CopilotKit talks to Dushes like to any AG-UI agent |
 | You are starting fresh | [`<agui-chat>`](../chat-widget/) or [React](../react/): fewer lines, and **every card is drawn for you** |
 
-With CopilotKit you draw formguide's cards yourself (a small React component per card type). With `<agui-chat>` they are built in. That is the whole trade-off.
+With CopilotKit you draw Dushes' cards yourself (a small React component per card type). With `<agui-chat>` they are built in. That is the whole trade-off.
 
 ## Run the working example
 
@@ -36,7 +36,7 @@ All of it is one file, [`src/App.tsx`](https://github.com/denvasylenko/dushes/bl
 
 <Steps>
 
-1. **One agent, pointing at formguide.**
+1. **One agent, pointing at Dushes.**
 
    ```tsx
    import { CopilotChat, CopilotKitProvider, HttpAgent, useAgent, useFrontendTool, useInterrupt } from '@copilotkit/react-core/v2'
@@ -72,7 +72,7 @@ All of it is one file, [`src/App.tsx`](https://github.com/denvasylenko/dushes/bl
    }, [agent, config, hash])
    ```
 
-3. **Draw the cards with `useInterrupt`.** formguide sends a card as `CUSTOM on_interrupt`; answer it with `resolve(...)`.
+3. **Draw the cards with `useInterrupt`.** Dushes sends a card as `CUSTOM on_interrupt`; answer it with `resolve(...)`.
 
    ```tsx
    useInterrupt({
@@ -123,7 +123,7 @@ What each card looks like and carries: [Card gallery](../card-gallery/); every p
 
 ## In production: CopilotKit's runtime
 
-`agents__unsafe_dev_only` lets the browser call formguide directly: fine for the example, not for production. There, a small Node server of yours (CopilotKit's runtime) sits in between:
+`agents__unsafe_dev_only` lets the browser call Dushes directly: fine for the example, not for production. There, a small Node server of yours (CopilotKit's runtime) sits in between:
 
 ```mermaid
 flowchart LR
@@ -168,7 +168,7 @@ Then swap one line in step 1, and keep everything else:
 <CopilotKitProvider runtimeUrl="/api/copilotkit" agentId="formguide" headers={{ Authorization: `Bearer ${token}` }}>
 ```
 
-`npm i @copilotkit/runtime @ag-ui/client`. No model key on this server: the model runs inside formguide. The runtime forwards `Authorization` and `x-*` headers to formguide.
+`npm i @copilotkit/runtime @ag-ui/client`. No model key on this server: the model runs inside Dushes. The runtime forwards `Authorization` and `x-*` headers to Dushes.
 
 <Aside type="caution" title="What is tested">The example runs against CopilotKit 1.86 with the direct connection. The runtime setup follows CopilotKit's 1.86 documentation; it is not run in this repository's tests.</Aside>
 

@@ -20,7 +20,7 @@ const live = import.meta.env.PUBLIC_DEMO_URL as string | undefined;
       <agui-chat mode="inline" persist-thread="off" attach="off" title="Loan assistant" subtitle="Replays recorded turns · no server"></agui-chat>
     </div>
   </div>
-  <p class="demo-cap">The real <code>&lt;agui-chat&gt;</code> widget and the formguide plugin. Only the agent is scripted: tap a suggestion.{live && <> Try the real agents: <a href={live}>a big form</a> or <a href={`${live.replace(/\/?$/, '/')}site.html`}>a whole site</a>.</>}</p>
+  <p class="demo-cap">The real <code>&lt;agui-chat&gt;</code> widget and its form plugin. Only the agent is scripted: tap a suggestion.{live && <> Try the real agents: <a href={live}>a big form</a> or <a href={`${live.replace(/\/?$/, '/')}site.html`}>a whole site</a>.</>}</p>
 </div>
 
 <script>

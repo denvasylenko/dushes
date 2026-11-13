@@ -18,7 +18,7 @@ const payload = (s: (typeof SPECIMENS)[number]) => JSON.stringify({ type: 'CUSTO
   {intro && <header class="cg-intro">
     <p class="cg-eyebrow">Card gallery</p>
     <h1 class="cg-h1" id="_top">Every card, <span>live.</span></h1>
-    <p class="cg-lead">What the chat shows when the agent needs a decision. These are the shipped renderers of <code>&lt;agui-chat&gt;</code> and the formguide plugin, each replaying one recorded server event. Tap them: nothing leaves the page.</p>
+    <p class="cg-lead">What the chat shows when the agent needs a decision. These are the shipped renderers of <code>&lt;agui-chat&gt;</code> and the form plugin, each replaying one recorded server event. Tap them: nothing leaves the page.</p>
     <nav class="cg-nav" aria-label="Card groups">
       {shown.map((g) => <a class="ui-chip" href={`#${g.id}`}>{g.title}</a>)}
     </nav>

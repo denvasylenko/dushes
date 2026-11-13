@@ -37,14 +37,14 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `micAutoSend` (`mic-auto-send`) | `false` | send the message as soon as the user stops dictating (hands-free) |
 | `dictation` (`dictation`) | `'browser'` | who recognises speech: `'browser'` (the browser's own recognition), `'server'` (the chat records and posts to `transcribeUrl`: a wave and a timer in place of the input, then "Transcribing…", then the text in the input to check and send), `'auto'` (the browser where it works, the server where it is missing or blocked) |
 | `transcribeUrl` (`transcribe-url`) | `transcribe` next to `url` | where recordings go (`/agent/run` → `/agent/transcribe`); through the chat's connection (`headers`, `fetch`, `request` with kind `transcribe`) |
-| `attach` | `true` | the paperclip (only when files can be uploaded: the `upload` option or a plugin, e.g. formguide) |
+| `attach` | `true` | the paperclip (only when files can be uploaded: the `upload` option or a plugin, e.g. Dushes) |
 | `attachAccept` (`attach-accept`) | the plugin's types | file types offered, e.g. `.pdf,.jpg` |
 | `attachMultiple` (`attach-multiple`) | `true` | several files at once |
 | `attachMaxMb` (`attach-max-mb`) | `20` | the largest file; bigger ones are refused with a message |
 | `imageMaxPx` (`image-max-px`) | `2000` | photos larger than this (or 1.5 MB) are shrunk to a JPEG before upload; `0` sends them as they are |
-| `upload` | the plugin's | your own uploader: `(file, chat) => Promise<{id, filename}>` (attachments without formguide) |
+| `upload` | the plugin's | your own uploader: `(file, chat) => Promise<{id, filename}>` (attachments without Dushes) |
 | `quickReplies` (`quick-replies`) | `true` | starter chips in an empty chat and suggested replies after answers |
-| `starters` | — | opening messages for an empty chat (formguide also reads them from the domain pack) |
+| `starters` | — | opening messages for an empty chat (Dushes also reads them from the domain pack) |
 | `title`, `subtitle`, `intro`, `placeholder` | localized defaults | the header, the empty-chat text, the composer hint |
 | `lang` | the page's `lang` | UI language: `en` (built in), `ru`, `uk`, `de`, `fr`, `it`, `es` (packs loaded on first use, English until then; your own with `addLanguage`); also used for dictation |
 | `i18n` | — | override any UI string: `{ send: "Go" }` |
@@ -54,13 +54,13 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `render` | — | your own components in place of pieces: `{markdown, assistant, user, empty, header, error, suggestions, sources, composer}`; see [Themes](../../frontend/themes/#your-own-components-slots) |
 | `cards` | — | feature flags per card type, e.g. `{ set_fields: { edit: false } }` |
 | `resumeStyle` (`resume-style`) | `command` | how a card answer is sent: `forwardedProps.command.resume` (CopilotKit, ag-ui-langgraph) or AG-UI 1.0 `resume[]` |
-| `history` | `full` | send the whole conversation each run (AG-UI default) or `last` (only the new messages; formguide keeps history on the server either way) |
+| `history` | `full` | send the whole conversation each run (AG-UI default) or `last` (only the new messages; Dushes keeps history on the server either way) |
 | `headers` | — | request headers: an object, or `({kind, url}) => headers` (sync or async) called before every request |
 | `credentials` | — | `fetch` credentials for every request (`include`, `same-origin`, `omit`) |
 | `fetch` | global `fetch` | your fetch-compatible function, used for every request |
 | `request` | — | `({kind, url, init}) => {url, init}`: change any request last; `kind` is `run`, `attachments`, `thread` or `feedback` |
 | `transport` | HTTP | `(input, {signal, chat}) => AsyncIterable<AguiEvent>`: runs without HTTP; takes precedence over `agent` and `url` |
-| `forwardedProps`, `state` | — | sent with every run (the formguide plugin fills `state` for you) |
+| `forwardedProps`, `state` | — | sent with every run (the form plugin fills `state` for you) |
 
 Unknown option names are ignored with a console warning.
 

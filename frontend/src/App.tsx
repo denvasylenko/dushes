@@ -232,7 +232,7 @@ export default function App() {
 
   const header = (
     <div className="topbar">
-      {HOSTED && <a className="back-docs" href="/">{'‹'} Docs</a>}
+      {HOSTED && <span className="back-docs"><a href="/">{'‹'} Docs</a><a href="site.html">Site assistant demo {'›'}</a></span>}
       <div className="seg" role="tablist">
         <button className={view === 'form' ? 'on' : ''} onClick={() => setView('form')}>Form + assistant</button>
         {!HOSTED && <button className={view === 'manager' ? 'on' : ''} onClick={() => setView('manager')}>Manager: documents</button>}

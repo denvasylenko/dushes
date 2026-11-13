@@ -31,7 +31,7 @@ const isSpec = entry.id.startsWith('specifications/') && entry.id !== 'specifica
     const base = import.meta.env.BASE_URL.replace(/\/$/, '')
     return location.origin + (p === base ? `${base}/index` : p) + '.md'
   }
-  const ask = () => `Read ${mdUrl()} (formguide documentation; the whole site is at ${location.origin}${import.meta.env.BASE_URL.replace(/\/?$/, '/')}llms.txt) and help me with it.`
+  const ask = () => `Read ${mdUrl()} (Dushes documentation; the whole site is at ${location.origin}${import.meta.env.BASE_URL.replace(/\/?$/, '/')}llms.txt) and help me with it.`
   for (const box of document.querySelectorAll<HTMLElement>('[data-page-actions]')) {
     box.querySelector<HTMLAnchorElement>('[data-open="claude"]')!.href = `https://claude.ai/new?q=${encodeURIComponent(ask())}`
     box.querySelector<HTMLAnchorElement>('[data-open="chatgpt"]')!.href = `https://chatgpt.com/?q=${encodeURIComponent(ask())}`

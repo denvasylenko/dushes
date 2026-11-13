@@ -1,13 +1,13 @@
 ---
 title: LangChain
-description: Every model, tool, document index and tracer in formguide is a LangChain object. Bring the ones you already have.
+description: Every model, tool, document index and tracer in Dushes is a LangChain object. Bring the ones you already have.
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 import { Summary } from '../../../components/ui';
 
-<Summary what={"The LangChain objects formguide accepts: models, tools, vector stores, callbacks."} when={"You already have LangChain pieces to reuse."} write={"Pass them in: `Models(agent=...)`, `tools=[...]`, `VectorStoreIndex(store)`."} />
+<Summary what={"The LangChain objects Dushes accepts: models, tools, vector stores, callbacks."} when={"You already have LangChain pieces to reuse."} write={"Pass them in: `Models(agent=...)`, `tools=[...]`, `VectorStoreIndex(store)`."} />
 
-| LangChain | In formguide | Guide |
+| LangChain | In Dushes | Guide |
 | --- | --- | --- |
 | chat models (`BaseChatModel`, `init_chat_model`) | the model of each role: agent, research, compile, extract, memory | [Models and providers](../../backend/models/) |
 | tools (`BaseTool`, `@tool`) | your APIs the agent may call, per form or for all forms | [Skills and tools](../../backend/skills/) |

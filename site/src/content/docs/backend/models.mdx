@@ -18,10 +18,10 @@ flowchart LR
 ```
 
 - The **configuration** (`formguide.yaml`, or the same `GuideConfig` in Python: pick one) sets up **your server**: which model it calls for each role. The chat is not configured here.
-- The **API key** is the model provider's key. It stays in the server's environment; formguide calls the model with it through LangChain.
+- The **API key** is the model provider's key. It stays in the server's environment; Dushes calls the model with it through LangChain.
 - The **chat in the browser** only knows your server's address (`url="/agent/run"`). It never sees the key or the model.
 
-formguide does not ship a model client: it takes **any LangChain chat model**, from Anthropic, OpenAI, Azure, Gemini, Bedrock, a local Ollama, a gateway, or your own class.
+Dushes does not ship a model client: it takes **any LangChain chat model**, from Anthropic, OpenAI, Azure, Gemini, Bedrock, a local Ollama, a gateway, or your own class.
 
 ## Pick a provider
 

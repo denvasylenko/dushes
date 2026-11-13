@@ -87,7 +87,7 @@ Copy this into your ticket.
 - [ ] Card *Reject*: resume `{accepted: false}`; the form is not touched.
 - [ ] Card rows have checkboxes; a partial *Accept* sends only the ticked changes and `names`.
 - [ ] `on_interrupt` is drawn by `type`: `set_fields` → field-change card, `ask` → question card answered with `{answer: {ids?, text?}}`, `upload` → file request answered with `{attachment_ids}`, `confirm` → `{accepted}`; *Skip* → `{accepted: false}`.
-- [ ] Or skip all of this and use [`<agui-chat>`](../../frontend/chat-widget/) with the formguide plugin.
+- [ ] Or skip all of this and use [`<agui-chat>`](../../frontend/chat-widget/) with the form plugin.
 - [ ] After a page reload, `GET /agent/threads/{id}` returns `pending_card` (`kind: "card"` or `"question"`); show it again so the user can still answer.
 
 ## Next

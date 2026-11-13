@@ -1,6 +1,6 @@
 ---
 title: HTTP API
-description: Every endpoint of formguide's FastAPI router, with its body and answer.
+description: Every endpoint of Dushes' FastAPI router, with its body and answer.
 ---
 
 `create_router(guide)` mounts these under your prefix (`/agent` with `create_app` and `formguide serve`). Errors are JSON `{"detail": "..."}`. Nothing here authenticates: put your own auth in front.
@@ -25,7 +25,7 @@ description: Every endpoint of formguide's FastAPI router, with its body and ans
 
 ## The run request
 
-`POST /run` takes the AG-UI input as is. formguide reads:
+`POST /run` takes the AG-UI input as is. Dushes reads:
 
 | Field | Meaning |
 | --- | --- |

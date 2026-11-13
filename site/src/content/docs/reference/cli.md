@@ -1,6 +1,6 @@
 ---
 title: CLI
-description: formguide init, check and serve.
+description: Dushes init, check and serve.
 ---
 
 The package installs a `formguide` command.

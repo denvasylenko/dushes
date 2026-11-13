@@ -1,0 +1,26 @@
+---
+/**
+ * Entry tile: one of two or three equal ways into the product (e.g. Site assistant / Form assistant), placed in
+ * <Entries>. An icon, an optional eyebrow, a title, one line of promise (`inline code` in backticks), up to three
+ * short points, and two actions: "Try it live" (a gray pill, only when `demo` is set) and "Read the guide" (a link).
+ * No filled button: the tiles are equal, so neither is the page's main action.
+ */
+import Button from './Button.astro'
+import Icon from './Icon.astro'
+import type { IconName } from './icons'
+interface Props { title: string; text: string; href: string; demo?: string; icon?: IconName; eyebrow?: string; points?: string[]; guideLabel?: string; demoLabel?: string; class?: string }
+const { title, text, href, demo, icon, eyebrow, points = [], guideLabel = 'Read the guide', demoLabel = 'Try it live', class: cls } = Astro.props
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const inline = (t: string) => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>')
+---
+<article class:list={['ui-entry', cls]}>
+  {icon && <span class="ui-entry-icon" aria-hidden="true"><Icon name={icon} /></span>}
+  {eyebrow && <p class="ui-entry-eyebrow">{eyebrow}</p>}
+  <h3 class="ui-entry-title">{title}</h3>
+  <p class="ui-entry-text" set:html={inline(text)} />
+  {points.length > 0 && <ul class="ui-entry-points">{points.map((p) => <li set:html={inline(p)} />)}</ul>}
+  <div class="ui-entry-acts">
+    {demo && <Button variant="gray" href={demo}>{demoLabel}</Button>}
+    <Button variant="plain" href={href}>{guideLabel}<Icon name="chevron" /></Button>
+  </div>
+</article>
