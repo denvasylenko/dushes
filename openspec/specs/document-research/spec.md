@@ -25,3 +25,10 @@ The researcher SHALL answer only from the documents, say plainly when they do no
 #### Scenario: Not covered
 - **WHEN** no document mentions penalties
 - **THEN** the answer says the documents do not cover it, and the main agent does not invent one
+
+### Requirement: Sources name real documents
+The sources sent under an answer SHALL be resolved against the documents of the form's scope: a part of the researcher's "Sources:" line that names a section id, a document path or a file name SHALL become `{title: file name, section?}`, and a part that names no document (a note, "none") SHALL be dropped.
+
+#### Scenario: A messy Sources line
+- **WHEN** the researcher writes "Sources: /docs/loan_application/a7d8e573.md, section a7d8e573#2 (tariffs_2026.md › Limits); none"
+- **THEN** the answer carries one source, `tariffs_2026.md › Limits`

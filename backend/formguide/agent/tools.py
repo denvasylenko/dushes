@@ -935,7 +935,7 @@ async def _ta_ask_documents(a: dict, ctx: ToolCtx) -> str:
 
         answer = await research.ask_documents(ctx.guide.knowledge, ctx.pack.form_id, ctx.pack.title,
                                               str(a["question"]), ctx.guide.models.research, step)
-        items = research.parse_sources(answer)
+        items = research.parse_sources(answer, ctx.guide.knowledge, ctx.pack.form_id)
         if items:
             ctx.turn_sources = [*(ctx.turn_sources or []), *[i for i in items if i not in (ctx.turn_sources or [])]][:6]
             if ctx.emit and ctx.can("sources"):

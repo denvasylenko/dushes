@@ -79,3 +79,15 @@ def test_privacy_note_on_upload_requests(guide, model):
     model.script = [say("", ("u1", "request_file", {"prompt": "A photo of your passport"}))]
     v = interrupt_value(collect(guide, "e5", message="hi", state=start(guide, LOAN)))
     assert v["privacy"] == "Your file stays on our server."
+
+
+def test_sources_are_resolved_against_the_documents(guide):
+    meta = guide.add_document("loan_application", "tariffs_2026.md", b"# Tariffs\n## Limits\nUp to 5 million.")
+    doc_id = meta["doc_id"] if isinstance(meta, dict) and "doc_id" in meta else guide.knowledge.list_documents("loan_application")[0]["doc_id"]
+    kb, fid = guide.knowledge, "loan_application"
+    messy = (f"x\nSources: /docs/loan_application/{doc_id}.md, section {doc_id}#1 (tariffs_2026.md › Limits); "
+             "none (the documents do not answer this; /docs/ is empty)")
+    got = parse_sources(messy, kb, fid)
+    assert got == [{"title": "tariffs_2026.md", "section": "Limits"}]            # a real document; the note is dropped
+    assert parse_sources("x\nSources: tariffs_2026.md > Limits", kb, fid) == [{"title": "tariffs_2026.md", "section": "Limits"}]
+    assert parse_sources("x\nSources: none", kb, fid) == []
