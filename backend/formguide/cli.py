@@ -15,10 +15,10 @@ STARTER_YAML = """\
 # formguide configuration. Paths are relative to this file; ${ENV_VARS} are expanded.
 # Only `model` is needed; everything else has a default.
 
-model: "anthropic:claude-opus-5-5"     # any init_chat_model string: "openai:gpt-5", "azure_openai:<deployment>", ...
+model: "anthropic:claude-haiku-5-5"     # any init_chat_model string: "openai:gpt-5", "azure_openai:<deployment>", ...
 # models:                              # or one model per role
-#   agent: {provider: anthropic, model: claude-opus-5-5, max_tokens: 16000}
-#   research: "anthropic:claude-sonnet-5-5"
+#   agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}
+#   research: "anthropic:claude-haiku-5-5"
 #   extract: {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, api_version: "2025-04-01-preview"}
 
 data_dir: data

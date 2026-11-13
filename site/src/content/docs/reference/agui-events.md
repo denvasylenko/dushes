@@ -10,7 +10,7 @@ A run starts with `RUN_STARTED` and ends with exactly one `RUN_FINISHED` or `RUN
 | `TEXT_MESSAGE_START` / `CONTENT` / `END` | the answer, streamed | show it (the widget types it out) |
 | `TOOL_CALL_START` / `ARGS` / `END` / `RESULT` | a server tool ran | show a step ("Searching the form") |
 | `TOOL_CALL_*` without a result | a frontend tool was called; the run ends | run the tool, send its result as a `tool` message |
-| `CUSTOM ui_directive` | "look here": `{type: "focus", target, reveal: [...], hint}` | open the tabs and accordions in `reveal`, scroll to `target`, highlight it |
+| `CUSTOM ui_directive` | "look here": `{type: "focus", target, reveal: [...], hint, also?: [names]}` | open the tabs and accordions in `reveal`, scroll to `target`, highlight it; ring each field in `also` too (several fields shown at once, all inside `reveal`) |
 | `CUSTOM on_interrupt` | a card (legacy mode): a JSON string `{type, card_id, ...}` | render the card, resume with the answer |
 | `CUSTOM tool_progress` | a sub-step of a running tool `{parent_id, name, input}` | nest it under the step |
 | `CUSTOM sources` | after an answer that used the business documents: `{items: [{title, section?}]}`, once, before `RUN_FINISHED` | show source chips under the answer |

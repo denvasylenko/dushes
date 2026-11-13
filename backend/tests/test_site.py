@@ -206,3 +206,21 @@ def test_an_unclear_message_is_decided_by_the_router_model(site, guide, model, m
     assert seen == ["form"]                                            # the model said site: the site agent answered
     prompt = model.calls[-2][0].content
     assert "Answer with one word" in prompt and "loan_application" in prompt
+
+
+def test_the_business_instructions_and_a_last_reply(guide, model):
+    m = SiteMap.load({"title": "Shop", "instructions": "Always mention the spring sale.",
+                      "pages": [{"path": "/", "title": "Home", "description": "The shop."}]})
+    s = SiteGuide(guide, m)
+    loop = [say("", (f"q{i}", "search_site", {"query": "sale"})) for i in range(4)]
+    model.script = [*loop, say("I could not find more about the sale.")]
+    ev = run(s, "k5", message="tell me about the sale", state={"page": {"path": "/"}})
+    system = model.calls[0][0].content
+    assert "Always mention the spring sale." in system and "Priorities" in system
+    assert "could not find more" in "".join(e.get("delta", "") for e in ev)       # the rounds ran out: a reply anyway
+    assert "Do not call tools now" in model.calls[-1][-1].content
+
+
+def test_navigate_tells_the_model_what_the_part_shows():
+    told, _d = directive(SiteMap.load(SITE), {"path": "/contacts", "section": "barber"})
+    assert "10:00 to 21:00" in told

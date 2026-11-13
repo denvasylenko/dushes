@@ -3,8 +3,8 @@ AzureChatOpenAI, ChatGoogleGenerativeAI, a local model, or your own BaseChatMode
 
 A model can be given as
 - an instance:  AzureChatOpenAI(azure_deployment="gpt-5", api_version=...)
-- a string:     "anthropic:claude-opus-5-5", "openai:gpt-5", "azure_openai:my-deployment"
-- a dict:       {"provider": "anthropic", "model": "claude-opus-5-5", "max_tokens": 16000}
+- a string:     "anthropic:claude-haiku-5-5", "openai:gpt-5", "azure_openai:my-deployment"
+- a dict:       {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 16000}
 - a class dict: {"class": "langchain_openai:AzureChatOpenAI", "azure_deployment": "gpt-5", ...}
 Strings and dicts go through langchain.chat_models.init_chat_model; the provider's
 LangChain package must be installed (langchain-anthropic, langchain-openai, ...).
@@ -44,13 +44,10 @@ def build_model(spec: ModelSpec) -> BaseChatModel:
 def anthropic_defaults() -> dict[str, ModelSpec]:
     """Defaults when nothing is configured (needs ANTHROPIC_API_KEY)."""
     return {
-        "agent": {"provider": "anthropic", "model": "claude-opus-5-5", "max_tokens": 16000,
-                  "output_config": {"effort": "low"}},
-        "research": {"provider": "anthropic", "model": "claude-sonnet-5-5", "max_tokens": 8000},
-        "compile": {"provider": "anthropic", "model": "claude-opus-5-5", "max_tokens": 16000,
-                    "output_config": {"effort": "medium"}},
-        "extract": {"provider": "anthropic", "model": "claude-opus-5-5", "max_tokens": 8000,
-                    "output_config": {"effort": "low"}},
+        "agent": {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 16000},
+        "research": {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 8000},
+        "compile": {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 16000},
+        "extract": {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 8000},
     }
 
 
@@ -180,7 +177,7 @@ def file_block(filename: str, media_type: str, data: bytes) -> dict[str, Any]:
 def structured(model: BaseChatModel, schema: type) -> Any:
     """Structured output via the provider's native JSON-schema mode.
 
-    Not via forced tool calling: some models (e.g. Claude Opus 5.5) reject a forced tool_choice.
+    Not via forced tool calling: some models (e.g. Claude Haiku 5.5) reject a forced tool_choice.
     """
     try:
         return model.with_structured_output(schema, method="json_schema")

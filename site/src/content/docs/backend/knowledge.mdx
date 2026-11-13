@@ -99,8 +99,8 @@ knowledge:
   scopes:                                  # default: each form sees only its own documents
     loan_application: [loan_application, bank_common]
 models:
-  compile: "anthropic:claude-opus-5-5"     # compiles documents into rules; default: agent
-  research: "anthropic:claude-sonnet-5-5"  # answers from documents; default: agent
+  compile: "anthropic:claude-haiku-5-5"     # compiles documents into rules; default: agent
+  research: "anthropic:claude-haiku-5-5"  # answers from documents; default: agent
 ```
 ```python title="app.py"
 from formguide import KnowledgeBase, BM25Index, VectorStoreIndex

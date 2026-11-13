@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef } from 'react'
 import type { Config, JsxNode, Option, Props, UiState } from './types'
 import { DateInput, NumberInput, Select } from './controls'
 
-export type Highlight = { target: string; hint: string; ts: number } | null
+export type Highlight = { target: string; hint: string; ts: number; also?: string[] } | null
 
 type Ctx = {
   config: Config
@@ -88,6 +88,7 @@ function Field({ node, props }: { node: JsxNode; props: Props }) {
   const ref = useRef<HTMLDivElement>(null)
   const value = c.config.state[node.name]
   const lit = c.highlight?.target === node.name
+  const ringed = lit || !!c.highlight?.also?.includes(node.name)   // one of several fields shown together
   const off = !!props.disabled
   const ro = !!props.readonly
 
@@ -129,7 +130,7 @@ function Field({ node, props }: { node: JsxNode; props: Props }) {
     }
     case 'Checkbox':
       return (
-        <div ref={ref} data-name={node.name} className={`field check ${lit ? 'pulse' : ''} ${off ? 'off' : ''}`}>
+        <div ref={ref} data-name={node.name} className={`field check ${ringed ? 'pulse' : ''} ${off ? 'off' : ''}`}>
           <label>
             <input type="checkbox" {...common} checked={value === true}
               onChange={(e) => c.setValue(node.name, e.target.checked, true)} />
@@ -173,7 +174,7 @@ function Field({ node, props }: { node: JsxNode; props: Props }) {
       )
   }
   return (
-    <div ref={ref} data-name={node.name} className={`field ${lit ? 'pulse' : ''} ${off ? 'off' : ''} ${ro ? 'ro' : ''} ${props.error ? 'has-err' : ''}`}>
+    <div ref={ref} data-name={node.name} className={`field ${ringed ? 'pulse' : ''} ${off ? 'off' : ''} ${ro ? 'ro' : ''} ${props.error ? 'has-err' : ''}`}>
       <label htmlFor={node.name}>
         {props.label ?? node.name}{props.required && <b className="req">*</b>}
       </label>

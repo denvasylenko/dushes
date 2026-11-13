@@ -36,18 +36,33 @@ export function showHint(field: HTMLElement, text: string): void {
 }
 
 /** Find a field by data-name (or an input's name), scroll to it, focus it, ring it, show the hint. */
+function find(name: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`[data-name="${CSS.escape(name)}"], [name="${CSS.escape(name)}"]`)
+}
+
+function pulse(el: HTMLElement): void {
+  const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+  const ring = { outline: '3px solid Highlight', outlineOffset: '4px' }
+  const frames = reduce ? [ring, ring] : [{ ...ring, outlineColor: 'transparent' }, ring, ring, ring, { ...ring, outlineColor: 'transparent' }]
+  el.animate?.(frames, { duration: 2500, easing: 'ease-out' })   // reduced motion: the ring just stays, no fade
+}
+
+/** Ring a field without scrolling or focusing: one of several shown together with lookAt's target. */
+export function ring(name: string): boolean {
+  const el = find(name)
+  if (el) pulse(el)
+  return !!el
+}
+
 export function lookAt(name: string, hint = ''): boolean {
-  const sel = `[data-name="${CSS.escape(name)}"], [name="${CSS.escape(name)}"]`
-  const el = document.querySelector<HTMLElement>(sel)
+  const el = find(name)
   if (!el) return false
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
   const input = el.matches('input, select, textarea') ? el : el.querySelector<HTMLElement>('input, select, textarea')
   if (input && !touch) input.focus({ preventScroll: true })   // a phone would open its keyboard
+  pulse(el)
   const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-  const ring = { outline: '3px solid Highlight', outlineOffset: '4px' }
-  const frames = reduce ? [ring, ring] : [{ ...ring, outlineColor: 'transparent' }, ring, ring, ring, { ...ring, outlineColor: 'transparent' }]
-  el.animate?.(frames, { duration: 2500, easing: 'ease-out' })   // reduced motion: the ring just stays, no fade
   // the bubble goes where the field ends up after the smooth scroll
   window.setTimeout(() => showHint(el, hint), reduce ? 0 : 350)
   return true

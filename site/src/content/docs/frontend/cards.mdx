@@ -59,7 +59,8 @@ What your UI does, in order:
 
 1. go through `reveal` and open each tab and accordion;
 2. wait one frame (so the element is in the DOM), then scroll the element into view;
-3. highlight it for a moment and show `hint`.
+3. highlight it for a moment and show `hint`;
+4. ring each field in `also`, when there is one: the agent shows several fields at once ("show me the required fields"), all inside the opened sections.
 
 The directive **never changes values**; it is safe to apply at once.
 
@@ -72,6 +73,7 @@ function applyDirective(d) {
   setTimeout(() => {
     document.querySelector(`[data-name="${d.target}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })
     flash(d.target, d.hint)
+    for (const name of d.also ?? []) flash(name, "")   // several fields shown together
   }, 60)
 }
 ```

@@ -84,7 +84,7 @@ chat.use(formguide({
 It does five things:
 
 1. **Sends the form** (`getState()`) as `state` with every run, plus the files attached in the composer.
-2. **Applies directives** (`ui_directive`): your `onDirective`, or scrolling to `[data-name=target]` and flashing it.
+2. **Applies directives** (`ui_directive`): your `onDirective`, or scrolling to `[data-name=target]` and flashing it, and ringing each field in `also` (the agent shows several fields at once, such as a section's empty required fields).
 3. **Draws formguide's cards**:
 
    | Card | What the user can do | Resume value |

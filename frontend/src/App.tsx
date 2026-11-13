@@ -168,7 +168,7 @@ export default function App() {
 
   const applyDirective = useCallback((d: UiDirective) => {
     reveal(d.reveal)
-    setHighlight({ target: d.target, hint: d.hint, ts: Date.now() })
+    setHighlight({ target: d.target, hint: d.hint, ts: Date.now(), also: d.also })
     window.setTimeout(() => {
       document.querySelector(`[data-name="${d.target}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 60)

@@ -64,6 +64,10 @@ The site map is both what the site agent knows (a search index over every tab, a
 
 A page's own keywords stay with its form: on the booking page, "book a haircut" is the form's.
 
+## Your instructions
+
+`instructions:` at the top of the site map is your brief for the site agent: tone, what to recommend, what to say first. The prompt ranks it below truth (business facts only from the site and its documents) and below the map (only its pages, tabs, sections and forms), and above the agent's own defaults. If the agent runs out of tool rounds without a word, it gets one more call without tools, so the user always gets a reply.
+
 ## Knowledge
 
 The site agent reads the site map and the business documents of its own knowledge scope: by default the `site` namespace (site-wide documents such as partners, a glossary, policies) plus every form on the map. Facts about the business come only from those; general concepts (what a co-borrower is) may come from general knowledge, said to be general. The form agent keeps its own form's documents.
@@ -94,6 +98,8 @@ curl -N -X POST http://localhost:8000/site/run -H "Content-Type: application/jso
 
 ```yaml title="site.yaml"
 title: Main Street                   # the site's name, in the site agent's prompt
+instructions: |                      # optional: your own rules for the site agent (tone, what to recommend)
+  Aster Bank and Barber & Co are separate businesses: never mix their prices.
 pages:
   - path: /apply                     # required: the page's route, the navigation target
     title: Apply for a loan          # default: the path

@@ -179,12 +179,16 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "focus_field",
         "description": "Show a field or section to the user: the frontend opens the needed tabs and accordions, "
-                       "scrolls and highlights the element with a hint. Works only for visible elements.",
+                       "scrolls and highlights the element with a hint. Works only for visible elements. To show "
+                       "several fields at once (the required fields of a section, the ones still empty), pass the "
+                       "section as `name` and the fields as `fields`: all of them are highlighted together.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "name": {"type": "string"},
-                "hint": {"type": "string", "description": "a short hint shown next to the field, in the user's language"},
+                "name": {"type": "string", "description": "the field, or the section that holds `fields`"},
+                "hint": {"type": "string", "description": "a short hint shown next to it, in the user's language"},
+                "fields": {"type": "array", "items": {"type": "string"}, "maxItems": 20,
+                           "description": "more fields to highlight together, inside the same section"},
             },
             "required": ["name"],
         },
@@ -425,10 +429,39 @@ def _t_focus_field(a: dict, ctx: ToolCtx) -> str:
         raise ToolError(f"{n.name} is hidden right now (hidden by {hr.name if hr else n.name})."
                         + (f" {why}." if why else " The condition for it to appear is not known yet."))
     d = {"type": "focus", "target": n.name, "reveal": reveal_chain(ctx, n.name), "hint": a.get("hint") or ""}
+    also, skipped = _also_shown(ctx, n.name, d["reveal"], a.get("fields"))
+    if also:
+        d["also"] = also
     ctx.ui_directives.append(d)
     path = " › ".join(f"{s['type']} {s.get('tab') or s.get('name')}" for s in d["reveal"])
     note = f" (currently not editable: {disabled_reason(ctx.ov, ctx.deps, n.name)})" if e.disabled else ""
-    return f"ok: shown {n.name} to the user{note}; opened: {path}"
+    out = f"ok: shown {n.name} to the user{note}; opened: {path}"
+    if also:
+        out += f"; also highlighted: {', '.join(also)}"
+    if skipped:
+        out += f"; not highlighted (hidden, unknown or in another section: show them separately): {', '.join(skipped)}"
+    return out
+
+
+def _also_shown(ctx: ToolCtx, target: str, reveal: list[dict], names: Any) -> tuple[list[str], list[str]]:
+    """The extra fields of a focus that the user sees once `target`'s tabs and accordions are open (the
+    chain includes `target` itself when it is a section); the rest are skipped."""
+    if not isinstance(names, list):
+        return [], []
+
+    def keys(chain: list[dict]) -> set:
+        return {(s["tabs"], s["tab"]) if s["type"] == "tab" else s["name"] for s in chain}
+
+    opened = keys(reveal)
+    also, skipped = [], []
+    for name in dict.fromkeys(str(x) for x in names[:20]):
+        if name == target:
+            continue
+        if name in ctx.ov.layout.nodes and ctx.ov[name].visible and keys(reveal_chain(ctx, name)) <= opened:
+            also.append(name)
+        else:
+            skipped.append(name)
+    return also, skipped
 
 
 # ---------------------------------------------------------------- changes

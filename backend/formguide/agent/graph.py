@@ -63,6 +63,7 @@ class AgentState(TypedDict, total=False):
     nudged: bool    # we already asked the model to reply with text
     limited: bool   # the turn used up max_tool_rounds: the model was asked to reply without more tools
     system_prompt: str   # frozen for the thread: changing it would invalidate the model's earlier reasoning
+    prompt_sent: str     # the instructions the model last got as <updated_instructions> (empty: none since compaction)
     memory: str          # summary of older turns after compaction (see memory.py)
     client_tools: list[dict]     # frontend tools declared by the client: [{name, description, parameters}]
     capabilities: list[str] | None   # what the client renders (forwardedProps.capabilities); None = all
@@ -206,7 +207,8 @@ def build_graph(guide: FormGuide):
         # changed since (documents recompiled, skills edited), deliver it as an update here.
         current = system_prompt(ctx.pack, guide.skills.for_form(ctx.pack.form_id), actions=ctx.actions)
         frozen = state.get("system_prompt") or current
-        if current != frozen:
+        sent = state.get("prompt_sent") or frozen
+        if current != sent:   # once per change: the update stays in the history
             content.append({"type": "text", "text": "<updated_instructions>\nThe form's instructions changed during this "
                                                     "conversation. These replace the earlier ones:\n" + current
                                                     + "\n</updated_instructions>"})
@@ -222,6 +224,7 @@ def build_graph(guide: FormGuide):
             "messages": [*(state.get("messages") or []), *new],
             "snapshot": ctx.ov.snapshot(), "version": version, "pending": None, "tool_round": 0,
             "said": False, "nudged": False, "limited": False, "attachments": [], "system_prompt": frozen,
+            "prompt_sent": current if current != frozen else "",
             "pending_client": None, "client_results": {}, "turn_sources": None,
         }
 
@@ -239,7 +242,7 @@ def build_graph(guide: FormGuide):
         history, memory = res
         get_stream_writer()({"kind": "memory", "memory": memory,
                              "dropped_messages": len(state["messages"]) - len(history)})
-        return {"messages": history, "memory": memory}
+        return {"messages": history, "memory": memory, "prompt_sent": ""}   # an update may be summarized away
 
     async def llm(state: AgentState) -> dict:
         w = get_stream_writer()

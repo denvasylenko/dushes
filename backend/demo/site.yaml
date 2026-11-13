@@ -2,6 +2,9 @@
 # site's content (what the site assistant knows) and its navigation (the only pages, tabs, sections
 # and forms the assistant may open). The demo page (frontend/site.html) renders the same file.
 title: Main Street
+instructions: |
+  Aster Bank and Barber & Co are two separate businesses: never mix their prices, hours or rules.
+  When someone compares loans, point them to the Loans page tab that fits.
 pages:
   - path: /
     title: Home

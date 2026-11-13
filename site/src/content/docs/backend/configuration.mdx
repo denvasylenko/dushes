@@ -24,12 +24,12 @@ Each step twice: first as YAML, then the same in Python. Pick one; you never nee
 1. **The minimum: a model.** Everything else has a default: history in memory, documents in `data/kb`, no domain pack.
 
    ```yaml title="formguide.yaml"
-   model: "anthropic:claude-opus-5-5"
+   model: "anthropic:claude-haiku-5-5"
    ```
    ```python title="app.py"
    from formguide import FormGuide, GuideConfig, Models
 
-   guide = FormGuide(GuideConfig(models=Models(agent="anthropic:claude-opus-5-5")))
+   guide = FormGuide(GuideConfig(models=Models(agent="anthropic:claude-haiku-5-5")))
    ```
 
 
@@ -39,8 +39,8 @@ Each step twice: first as YAML, then the same in Python. Pick one; you never nee
 
    ```yaml title="formguide.yaml"
    models:
-     agent: {provider: anthropic, model: claude-opus-5-5, max_tokens: 16000}
-     research: "anthropic:claude-sonnet-5-5"
+     agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}
+     research: "anthropic:claude-haiku-5-5"
    memory: {model: "anthropic:claude-haiku-5-5"}
    ```
    ```python title="app.py"
@@ -48,8 +48,8 @@ Each step twice: first as YAML, then the same in Python. Pick one; you never nee
    from formguide.config import MemoryConfig
    from langchain_anthropic import ChatAnthropic       # pip install langchain-anthropic
 
-   cfg.models = Models(agent=ChatAnthropic(model="claude-opus-5-5", max_tokens=16000),
-                       research="anthropic:claude-sonnet-5-5")
+   cfg.models = Models(agent=ChatAnthropic(model="claude-haiku-5-5", max_tokens=16000),
+                       research="anthropic:claude-haiku-5-5")
    cfg.memory = MemoryConfig(model="anthropic:claude-haiku-5-5")
    ```
 
@@ -142,12 +142,12 @@ All of formguide's configuration on one screen: every key, its default, and what
 data_dir: data                       # formguide's own files: deps/, layouts/, kb/, attachments/, transcripts/
 
 # --- Models --------------------------------------------------------------------------------------
-model: "anthropic:claude-opus-5-5"   # one model for every role; or per role (wins over model:):
+model: "anthropic:claude-haiku-5-5"   # one model for every role; or per role (wins over model:):
 models:
-  agent: {provider: anthropic, model: claude-opus-5-5, max_tokens: 16000}   # required: the conversation
-  research: "anthropic:claude-sonnet-5-5"     # the document researcher        default: agent
-  compile: "anthropic:claude-opus-5-5"        # documents -> domain pack rules default: agent
-  extract: {provider: anthropic, model: claude-opus-5-5, max_tokens: 8000}  # scans, prefill   default: agent
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}   # required: the conversation
+  research: "anthropic:claude-haiku-5-5"     # the document researcher        default: agent
+  compile: "anthropic:claude-haiku-5-5"        # documents -> domain pack rules default: agent
+  extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}  # scans, prefill   default: agent
   # any form: "provider:model" | {provider, model, ...kwargs} | {class: "pkg.module:Class", ...kwargs}
 
 # --- Your form's components ----------------------------------------------------------------------
@@ -236,10 +236,10 @@ from my_app.tools import check_credit_score                  # yours: a LangChai
 guide = FormGuide(GuideConfig(
     data_dir="data",
     models=Models(
-        agent=ChatAnthropic(model="claude-opus-5-5", max_tokens=16000),   # an object, or a string / dict as in YAML
-        research="anthropic:claude-sonnet-5-5",          # None: agent
+        agent=ChatAnthropic(model="claude-haiku-5-5", max_tokens=16000),   # an object, or a string / dict as in YAML
+        research="anthropic:claude-haiku-5-5",          # None: agent
         compile=None,                                    # None: agent
-        extract={"provider": "anthropic", "model": "claude-opus-5-5", "max_tokens": 8000},
+        extract={"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 8000},
     ),
     components=ComponentMap(                             # default: the tags in the YAML above
         containers={"Form": "form", "Tabs": "tabs", "Tab": "tab", "Accordion": "accordion", "Section": "section"},

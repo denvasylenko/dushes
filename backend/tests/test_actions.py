@@ -78,3 +78,13 @@ def test_yaml_actions_and_attachments(tmp_path):
     p.write_text("model: anthropic:claude-haiku-5-5\nattachments: {size: 3}\n")
     with pytest.raises(ValueError, match="attachments"):
         load_config(p)
+
+
+def test_prompt_puts_the_business_after_the_priorities():
+    pack = DomainPack(form_id="f", title="F", persona="You are Max. Always greet the client by name.",
+                      rules=["No loans under 18."])
+    text = system_prompt(pack)
+    assert text.startswith("You are Max.") and text.index("Priorities") < text.index("No loans under 18.")
+    assert "The business's instructions for \"F\"" in text
+    bare = system_prompt(pack, actions=frozenset())
+    assert "Showing where" not in bare and "Each turn" in bare      # a section with no rules left is dropped

@@ -51,8 +51,9 @@ class Page:
 
 
 class SiteMap:
-    def __init__(self, title: str, pages: list[Page]):
+    def __init__(self, title: str, pages: list[Page], instructions: str = ""):
         self.title = title
+        self.instructions = instructions   # the business's own instructions for the site assistant
         self.pages = pages
         self.by_path = {p.path: p for p in pages}
         self.index = BM25Index()
@@ -72,7 +73,7 @@ class SiteMap:
                               keywords=[str(k).lower() for k in p.get("keywords") or []], parts=parts))
         if not pages:
             raise ValueError("the site map has no pages")
-        return cls(str(raw.get("title") or "Site"), pages)
+        return cls(str(raw.get("title") or "Site"), pages, str(raw.get("instructions") or ""))
 
     # ------------------------------------------------------------ lookups
     def page(self, path: str) -> Page | None:

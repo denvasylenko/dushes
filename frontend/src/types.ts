@@ -35,7 +35,7 @@ export type UiState = {
 
 export type RevealStep = { type: 'tab'; tabs: string; tab: string } | { type: 'accordion'; name: string }
 
-export type UiDirective = { type: 'focus'; target: string; reveal: RevealStep[]; hint: string }
+export type UiDirective = { type: 'focus'; target: string; reveal: RevealStep[]; hint: string; also?: string[] }   // also: more fields ringed with it
 
 export type ProposedChange = {
   name: string

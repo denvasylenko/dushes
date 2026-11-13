@@ -39,7 +39,7 @@ A cheaper model is fine for `research` and `memory`; `extract` needs a model tha
 | Form | Example | What happens |
 |---|---|---|
 | string `provider:model` | `"openai:gpt-5"` | `init_chat_model("openai:gpt-5")` |
-| dict with `provider` + `model` | `{provider: anthropic, model: claude-opus-5-5, max_tokens: 16000}` | `init_chat_model(model, model_provider=provider, **rest)`; the other keys are constructor arguments of the provider's class |
+| dict with `provider` + `model` | `{provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}` | `init_chat_model(model, model_provider=provider, **rest)`; the other keys are constructor arguments of the provider's class |
 | dict with `class` | `{class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, ...}` | imports the class and calls it with the other keys; use this for any class `init_chat_model` does not know, including your own `BaseChatModel` |
 
 In code, also an instance: `Models(agent=AzureChatOpenAI(...))`.
@@ -52,11 +52,11 @@ model: "openai:gpt-5"              # every role uses it
 
 ```yaml
 models:                            # per role; unset roles fall back as in the table above
-  agent: {provider: anthropic, model: claude-opus-5-5, max_tokens: 16000}
-  research: "anthropic:claude-sonnet-5-5"
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}
+  research: "anthropic:claude-haiku-5-5"
 ```
 
-`models: "openai:gpt-5"` (a string) is the same as `model:`. If both `model` and `models` are present, `models` wins. With neither, the model comes from `FORMGUIDE_MODEL`, else the built-in Anthropic defaults (Claude Opus 5.5 for agent / compile / extract, Claude Sonnet 5.5 for research).
+`models: "openai:gpt-5"` (a string) is the same as `model:`. If both `model` and `models` are present, `models` wins. With neither, the model comes from `FORMGUIDE_MODEL`, else the built-in Anthropic defaults (Claude Haiku 5.5, the cheapest, for every role).
 
 ### Providers
 
@@ -64,7 +64,7 @@ Install the provider's LangChain package (the extras `anthropic` and `openai` co
 
 | Provider | YAML | Package | Credentials |
 |---|---|---|---|
-| Anthropic | `"anthropic:claude-opus-5-5"` | `langchain-anthropic` | `ANTHROPIC_API_KEY` |
+| Anthropic | `"anthropic:claude-haiku-5-5"` | `langchain-anthropic` | `ANTHROPIC_API_KEY` |
 | OpenAI | `"openai:gpt-5"` | `langchain-openai` | `OPENAI_API_KEY` |
 | Azure OpenAI | `{class: "langchain_openai:AzureChatOpenAI", azure_deployment: <name>, api_version: "2025-04-01-preview", azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}` | `langchain-openai` | `AZURE_OPENAI_API_KEY` (or `api_key: "${...}"`) |
 | Google Gemini | `"google_genai:gemini-2.5-pro"` | `langchain-google-genai` | `GOOGLE_API_KEY` |
@@ -81,7 +81,7 @@ models:
   agent: {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, api_version: "2025-04-01-preview",
           azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}
   research: "openai:gpt-5-mini"
-  extract: {provider: anthropic, model: claude-opus-5-5, max_tokens: 8000}   # vision for scans
+  extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}   # vision for scans
 memory: {model: "anthropic:claude-haiku-5-5"}
 ```
 

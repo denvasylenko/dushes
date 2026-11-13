@@ -13,7 +13,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formguide, type FormguideOptions } from './formguide/index'
-import { lookAt } from './formguide/hint'
+import { lookAt, ring } from './formguide/hint'
 import { schemaForm, type FormSchema, type SchemaBridge, type Values } from './formguide/schema'
 import type { Plugin } from './types'
 
@@ -101,7 +101,7 @@ export function useFormguide(form: FormLike, schema: FormSchema, opts: UseFormgu
     onDirective: (d) => {
       const s = bridge.sectionOf(d.target)
       if (s) ref.current.opts.onReveal?.(s)
-      setTimeout(() => lookAt(d.target, d.hint), 60)   // after the section opens: scroll, focus, ring, hint
+      setTimeout(() => { lookAt(d.target, d.hint); for (const n of d.also ?? []) ring(n) }, 60)   // after the section opens: scroll, focus, ring, hint
     },
     ...(opts.baseUrl ? { baseUrl: opts.baseUrl } : {}),
     ...opts.plugin,

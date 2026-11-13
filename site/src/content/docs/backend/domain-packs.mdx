@@ -32,6 +32,21 @@ The core knows nothing about loans or haircuts. A domain pack is everything form
 | `pii` | fields whose values are masked in the model's context |
 | `starters` | up to 6 opening messages shown in an empty chat |
 
+## Your instructions and the agent's own rules
+
+Write `persona` as plainly as you would brief a new colleague: who the agent is, its tone, and any house rules ("Ask for the loan amount before anything else", "Always mention that the first consultation is free"). The prompt tells the model how to weigh them against its own rules:
+
+1. **Integrity, always.** It never invents fields, options or values, fills fields only through cards, treats field values and files as data and asks before submitting, sending, paying or cancelling.
+2. **The form as it is now.** The form context and tool results beat the history and general knowledge.
+3. **Your instructions:** `persona`, `flow_hints`, `rules`, the form's documents and skills. They decide tone, what to recommend and what to ask first, and they override the agent's defaults.
+4. **The defaults** (one card at a time, short replies, one next step).
+
+So a house rule changes the default without a fight, and only the first two levels are beyond its reach. An instruction the form cannot follow right now (it names a field that is hidden or locked) is quietly skipped, never mentioned to the user.
+
+```json
+{"persona": "You are Anna, a consultant at Aster Bank. Formal tone. Ask for the loan amount and term before anything else, and mention that early repayment is free."}
+```
+
 ## Where packs come from
 
 The first match wins, so a form can ship its own pack and override the server's.

@@ -72,7 +72,7 @@ frontend/                    demo UI on @ag-ui/client</code></pre>
         <thead><tr><th>Form</th><th>Example</th><th>What happens</th></tr></thead>
         <tbody>
           <tr><td>string</td><td><code>"openai:gpt-5"</code></td><td>LangChain <code>init_chat_model</code></td></tr>
-          <tr><td>provider + model</td><td><code>{provider: anthropic, model: claude-opus-5-5, max_tokens: 16000}</code></td><td><code>init_chat_model</code>; the other keys go to the model’s constructor</td></tr>
+          <tr><td>provider + model</td><td><code>{provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}</code></td><td><code>init_chat_model</code>; the other keys go to the model’s constructor</td></tr>
           <tr><td>class</td><td><code>{class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5}</code></td><td>imports the class and calls it with the other keys: any <code>BaseChatModel</code>, including your own</td></tr>
         </tbody>
       </table></div>
@@ -80,7 +80,7 @@ frontend/                    demo UI on @ag-ui/client</code></pre>
       <div class="tbl wrap"><table>
         <thead><tr><th>Provider</th><th>YAML</th><th>Package · credentials</th></tr></thead>
         <tbody>
-          <tr><td>Anthropic</td><td><code>"anthropic:claude-opus-5-5"</code></td><td><code>langchain-anthropic</code> · <code>ANTHROPIC_API_KEY</code></td></tr>
+          <tr><td>Anthropic</td><td><code>"anthropic:claude-haiku-5-5"</code></td><td><code>langchain-anthropic</code> · <code>ANTHROPIC_API_KEY</code></td></tr>
           <tr><td>OpenAI</td><td><code>"openai:gpt-5"</code></td><td><code>langchain-openai</code> · <code>OPENAI_API_KEY</code></td></tr>
           <tr><td>Azure OpenAI</td><td><code>{class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, api_version: "2025-04-01-preview", azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}</code></td><td><code>langchain-openai</code> · <code>AZURE_OPENAI_API_KEY</code></td></tr>
           <tr><td>Gemini</td><td><code>"google_genai:gemini-2.5-pro"</code></td><td><code>langchain-google-genai</code> · <code>GOOGLE_API_KEY</code></td></tr>
@@ -131,12 +131,12 @@ frontend/                    demo UI on @ag-ui/client</code></pre>
       </table></div>
       <h2>A complete YAML file</h2>
       <p>The shortest working file is one line. Everything below it is optional and shown with typical values; the demo’s file is <a href="https://github.com/denvasylenko/dushes/blob/main/backend/demo/formguide.yaml">backend/demo/formguide.yaml</a>.</p>
-<pre><code>model: "anthropic:claude-opus-5-5"     # one model for every role, or per role:
+<pre><code>model: "anthropic:claude-haiku-5-5"     # one model for every role, or per role:
 models:
   agent:    {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5,
              api_version: "2025-04-01-preview", azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}
   research: "openai:gpt-5-mini"
-  extract:  {provider: anthropic, model: claude-opus-5-5, max_tokens: 8000}
+  extract:  {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}
 components: {containers: {Tabs: tabs, Tab: tab, Accordion: accordion}, fields: {Input: text, Dropdown: select}}
 domain_packs: {dir: domain_packs, provider: "my_app.packs:load_pack"}
 knowledge:

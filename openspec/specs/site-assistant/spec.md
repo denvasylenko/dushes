@@ -55,6 +55,17 @@ Files the chat uploads on a form page SHALL reach the form agent: before a form 
 - **WHEN** the user attaches a photo in the site chat on the loan application page
 - **THEN** the form agent can read it with extract_from_attachment
 
+### Requirement: The business's instructions for the site agent
+The site map MAY carry `instructions`: the business's own text for the site agent. The site agent's prompt SHALL rank truth (business facts only from the site and its documents) and the site map above those instructions, and the instructions above its defaults. When the site agent ends its tool rounds without any text, it SHALL make one more call without tools so the user always gets a reply.
+
+#### Scenario: A brief from the business
+- **WHEN** the site map has `instructions: "Always mention the spring sale."`
+- **THEN** the site agent's prompt carries that text under the business's instructions
+
+#### Scenario: The rounds run out
+- **WHEN** the site agent calls tools in every round and says nothing
+- **THEN** it is asked once to answer without tools, and the user gets that reply
+
 ### Requirement: The site agent's knowledge
 The site agent SHALL read the business documents of the site's knowledge scope (by default the "site" namespace and every form on the map): the best matching passages with every question, and the document researcher as a tool. Facts about the business SHALL come only from the site, the documents and the researcher; general concepts MAY come from general knowledge, said to be general.
 

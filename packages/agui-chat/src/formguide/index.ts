@@ -11,7 +11,7 @@ import type { AguiEvent, ChatApi, Interrupt, Plugin, RendererContext, Restored, 
 import { appliedLine, askCard, confirmCard, fieldCard, undoLine, uploadCard } from './cards'
 import { CAPABILITIES, receiptEl, reviewCard, sourcesEl } from './pickers'
 import { FG_STRINGS, TOOL_LABELS } from './i18n'
-import { lookAt } from './hint'
+import { lookAt, ring } from './hint'
 
 export { schemaForm, normOption } from './schema'
 export { calendar, dateField, timeGrid, isoOf } from './calendar'
@@ -19,7 +19,11 @@ export type { FormSchema, FieldSchema, SectionSchema, FormAccess, SchemaBridge, 
 
 export interface FormState { config: { props?: Record<string, any>; state?: Record<string, unknown> }; jsx_hash: string; form_id?: string; ui?: unknown; [k: string]: unknown } // eslint-disable-line @typescript-eslint/no-explicit-any
 
-export interface Directive { type: 'focus'; target: string; reveal: ({ type: 'tab'; tabs: string; tab: string } | { type: 'accordion'; name: string })[]; hint: string }
+export interface Directive {
+  type: 'focus'; target: string; reveal: ({ type: 'tab'; tabs: string; tab: string } | { type: 'accordion'; name: string })[]; hint: string
+  /** More fields to ring with the target (the required fields of a section), all visible once `reveal` is open. */
+  also?: string[]
+}
 
 export interface FieldCardFlags { select: boolean; diff: boolean; reason: boolean; edit: boolean; jump: boolean; undo: boolean }
 
@@ -74,6 +78,7 @@ export interface Ctx extends FormguideOptions { base: (chat: ChatApi) => string;
  * onDirective to open them first. */
 export function defaultDirective(d: Directive): void {
   lookAt(d.target, d.hint)
+  for (const n of d.also ?? []) ring(n)
 }
 
 /** A pending card or question from GET /threads/{id} (a transcript entry) -> an interrupt payload. */

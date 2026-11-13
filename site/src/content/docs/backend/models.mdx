@@ -28,13 +28,13 @@ Each tab has the same model in both ways: as a line in `formguide.yaml`, or as a
   <TabItem label="Anthropic">
     `pip install langchain-anthropic` · key in `ANTHROPIC_API_KEY`
     ```yaml title="formguide.yaml"
-    model: "anthropic:claude-opus-5-5"
+    model: "anthropic:claude-haiku-5-5"
     ```
     ```python title="app.py"
     from formguide import Models
     from langchain_anthropic import ChatAnthropic
 
-    models = Models(agent=ChatAnthropic(model="claude-opus-5-5", max_tokens=16000))
+    models = Models(agent=ChatAnthropic(model="claude-haiku-5-5", max_tokens=16000))
     ```
   </TabItem>
   <TabItem label="OpenAI">
@@ -174,7 +174,7 @@ models:
   agent: {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, api_version: "2025-04-01-preview",
           azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}
   research: "openai:gpt-5-mini"                                   # cheaper, for the long tail of documents
-  extract: {provider: anthropic, model: claude-opus-5-5, max_tokens: 8000}   # reads scans
+  extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}   # reads scans
 memory: {model: "anthropic:claude-haiku-5-5"}
 ```
 ```python title="app.py"
@@ -187,7 +187,7 @@ guide = FormGuide(GuideConfig(
     models=Models(
         agent=AzureChatOpenAI(azure_deployment="gpt-5", api_version="2025-04-01-preview"),
         research=ChatOpenAI(model="gpt-5-mini"),
-        extract=ChatAnthropic(model="claude-opus-5-5", max_tokens=8000),
+        extract=ChatAnthropic(model="claude-haiku-5-5", max_tokens=8000),
     ),
     memory=MemoryConfig(model="anthropic:claude-haiku-5-5"),   # a string works anywhere a model does
 ))
@@ -200,7 +200,7 @@ guide = FormGuide(GuideConfig(
 | --- | --- | --- |
 | an object (Python only) | `ChatOpenAI(model="gpt-5")` | used as it is |
 | `"provider:model"` | `"openai:gpt-5"` | `init_chat_model("openai:gpt-5")` |
-| `{provider, model, ...}` | `{provider: anthropic, model: claude-opus-5-5, max_tokens: 16000}` | `init_chat_model(model, model_provider=provider, **rest)` |
+| `{provider, model, ...}` | `{provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}` | `init_chat_model(model, model_provider=provider, **rest)` |
 | `{class, ...}` | `{class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5}` | the class, called with the other keys |
 
 The strings and dicts work in Python too (`Models(research="openai:gpt-5-mini")`). Extra keys go to the model's constructor unchanged: `temperature`, `max_tokens`, `timeout`, `max_retries`, Anthropic's `output_config: {effort: low}`.
@@ -209,7 +209,7 @@ The strings and dicts work in Python too (`Models(research="openai:gpt-5-mini")`
 <summary>Which wins: `model`, `models` or the environment?</summary>
 
 - `models:` wins over `model:`; `models: "openai:gpt-5"` (a string) is the same as `model:`.
-- With neither, `FORMGUIDE_MODEL` is used (`FORMGUIDE_MODEL=openai:gpt-5 formguide serve`), else the built-in Anthropic defaults: Claude Opus 5.5 for agent, compile and extract, Claude Sonnet 5.5 for research.
+- With neither, `FORMGUIDE_MODEL` is used (`FORMGUIDE_MODEL=openai:gpt-5 formguide serve`), else the built-in Anthropic defaults: Claude Haiku 5.5, the cheapest, for every role.
 - A missing provider package fails at `FormGuide(...)` with the package name to install.
 
 </details>
@@ -219,12 +219,12 @@ The strings and dicts work in Python too (`Models(research="openai:gpt-5-mini")`
 ## Every option
 
 ```yaml title="formguide.yaml"
-model: "anthropic:claude-opus-5-5"        # one model for every role, or per role:
+model: "anthropic:claude-haiku-5-5"        # one model for every role, or per role:
 models:                                   # wins over model:
-  agent: {provider: anthropic, model: claude-opus-5-5, max_tokens: 16000}   # required when models: is a map
-  research: "anthropic:claude-sonnet-5-5" # default: agent
-  compile: "anthropic:claude-opus-5-5"    # default: agent
-  extract: {provider: anthropic, model: claude-opus-5-5, max_tokens: 8000}  # default: agent
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}   # required when models: is a map
+  research: "anthropic:claude-haiku-5-5" # default: agent
+  compile: "anthropic:claude-haiku-5-5"    # default: agent
+  extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}  # default: agent
 memory:
   model: "anthropic:claude-haiku-5-5"     # default: research
 suggestions:

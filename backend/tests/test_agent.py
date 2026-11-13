@@ -147,6 +147,10 @@ def test_system_prompt_frozen_and_updates_appended(guide, model):
     assert _system_text(model.calls[0]) == _system_text(model.calls[1])       # never edited mid-thread
     last_user = model.calls[1][-1].content
     assert "<updated_instructions>" in last_user[0]["text"] and "No pets" in last_user[0]["text"]
+    model.script = [say("three")]
+    collect(guide, "f", message="and again", state=state)
+    texts = [b["text"] for b in model.calls[-1][-1].content if isinstance(b, dict)]
+    assert not any("<updated_instructions>" in t for t in texts)                  # delivered once per change
 
 
 def test_retry_without_reasoning_blocks(guide, model):
@@ -193,3 +197,15 @@ def test_compaction_keeps_recent_turns_and_memory(guide, model):
     first_block = humans[0].content[0]["text"]
     assert first_block.startswith("<conversation_memory>") and "Barsik" in first_block
     assert guide.graph.get_state({"configurable": {"thread_id": "m"}}).values["memory"].startswith("## Facts")
+
+
+def test_focus_field_highlights_several_fields_of_a_section(guide):
+    from formguide.form.layout import LayoutIndex
+    lay = LayoutIndex(LOAN.jsx)
+    ov = Overlay(lay, LOAN.compute({}))
+    ctx = ToolCtx(ov=ov, deps=DepStore(), pack=guide.packs.get("loan_application"), loc=locate(ov, {}), guide=guide)
+    out = asyncio.run(run_tool("focus_field", {"name": "acc_personal", "hint": "Required here",
+                                               "fields": ["last_name", "first_name", "loan_amount", "nope"]}, ctx))
+    d = ctx.ui_directives[-1]
+    assert d["target"] == "acc_personal" and d["also"] == ["last_name", "first_name"]
+    assert "also highlighted: last_name, first_name" in out and "loan_amount, nope" in out   # another section, unknown
