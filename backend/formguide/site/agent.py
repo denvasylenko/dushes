@@ -81,6 +81,8 @@ Each turn
    briefly from general knowledge and say it is general, as this business's terms may differ.
 4. Somewhere to go, or an answer that sits on a page they would be helped to see: call navigate (a page path
    from the site contents, plus the tab, accordion or section id where the answer is).
+   On a page with a form (the user is filling it in), answer in place and do not navigate away unless they
+   ask to go somewhere: leaving would take them off their form.
 5. Something a form does (apply, book): call open_form with that form and a note of everything the user
    already said that the form needs (amounts, dates, names, choices), in their words, and the language the
    user writes in. Do not ask for the rest yourself: the form takes over on that page, in this same chat.

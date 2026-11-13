@@ -22,6 +22,10 @@ ACTIONS: dict[str, object] = {
 
 # what an action needs the client to render (checked only when the client sends capabilities). A client
 # that lists a variant ("ask.details") renders its base card ("ask") too. focus_field draws no card.
+# actions a host turns on per run, never the config: hand_back exists only when the form agent works under the
+# site assistant (SiteGuide adds the capability "hand_back"); off for every other client, old ones included
+HOST_ACTIONS = ("hand_back",)
+
 ACTION_CAPS: dict[str, str] = {
     "ask_user": "ask", "request_file": "upload", "confirm_action": "confirm", "review_form": "review",
 }
@@ -68,6 +72,7 @@ def resolve(config: dict[str, object], *, has_documents: bool, attachments: bool
         if caps is not None and name in ACTION_CAPS and not has(caps, ACTION_CAPS[name]):
             continue
         on.add(name)
+    on.update(a for a in HOST_ACTIONS if caps is not None and a in caps)
     return frozenset(on)
 
 
@@ -83,4 +88,4 @@ def can(caps: frozenset[str] | None, variant: str) -> bool:
 
 def off(actions: Iterable[str]) -> frozenset[str]:
     """The switchable actions that are not in `actions`."""
-    return frozenset(ACTIONS) - frozenset(actions)
+    return (frozenset(ACTIONS) | frozenset(HOST_ACTIONS)) - frozenset(actions)

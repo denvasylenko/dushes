@@ -76,6 +76,47 @@ _BUSINESS = re.compile("|".join([
     r"\bwo (seid|sind) (ihr|sie)\b", r"\badresse\b", r"\bd\u00f3nde est\u00e1n\b", r"\bdirecci\u00f3n\b",
     r"\bo\u00f9 \u00eates-vous\b", r"\bdove siete\b", r"\bindirizzo\b", r"\borari\b",
 ]), re.I)
+# a question (rather than a value): its first word, in the languages the widget speaks (escapes: the repository
+# is English-only). Slavic words are prefixes, since they change form ("\u0441\u043a\u043e\u043b\u044c\u043a\u043e", "\u043a\u0430\u043a\u043e\u0439/\u043a\u0430\u043a\u0438\u0435").
+_ASK = re.compile(r"^\W*(?:(?:" + "|".join([
+    r"what|how|when|where|who|which|why|can|could|do|does|did|is|are|will|should",          # English
+    r"wie|was|wann|wo|wer|welche\w*|warum|kann|gibt",                                      # German
+    r"qu\u00e9|c\u00f3mo|cu\u00e1ndo|d\u00f3nde|qui\u00e9n|cu\u00e1l\w*|cu\u00e1nt\w*|por qu\u00e9",           # Spanish
+    r"que|quoi|comment|quand|o\u00f9|qui|quel\w*|combien|pourquoi|est-ce",                       # French
+    r"che|cosa|come|quando|dove|chi|qual\w*|quant\w*|perch\u00e9",                             # Italian
+    "\u0433\u0434\u0435|\u043a\u043e\u0433\u0434\u0430|\u0447\u0442\u043e|\u043a\u0442\u043e|\u043f\u043e\u0447\u0435\u043c\u0443|\u0437\u0430\u0447\u0435\u043c|\u043c\u043e\u0436\u043d\u043e|\u0435\u0441\u0442\u044c \u043b\u0438",   # Russian: where, when, what, who, why, can, is there
+    "\u0434\u0435|\u043a\u043e\u043b\u0438|\u0449\u043e|\u0445\u0442\u043e|\u0447\u043e\u043c\u0443|\u043d\u0430\u0432\u0456\u0449\u043e",   # Ukrainian: where, when, what, who, why
+]) + r")\b|" + "|".join([   # words that change form: their stems
+    "\u0441\u043a\u043e\u043b\u044c\u043a", "\u043a\u0430\u043a",       # Russian: how many, how / which
+    "\u0441\u043a\u0456\u043b\u044c\u043a", "\u044f\u043a",                # Ukrainian: how many, how / which
+]) + ")", re.I)
+
+
+# words in field labels that say nothing about the field ("I have additional income", "Your phone")
+_STOP = {"have", "many", "much", "your", "with", "from", "this", "that", "they", "them", "their", "there", "been",
+         "more", "other", "into", "than", "only", "also", "each", "some", "will", "would", "about", "after",
+         "before", "list", "number", "existing", "yes", "here",
+         "\u0435\u0441\u0442\u044c", "\u0432\u0430\u0448", "\u0432\u0430\u0448\u0438", "\u0432\u0430\u0448\u0430", "\u0432\u0430\u0448\u0435", "\u0434\u043b\u044f"}   # Russian: is, your, for
+
+
+def is_question(text: str) -> bool:
+    return text.rstrip().endswith("?") or bool(_ASK.match(text.strip()))
+
+
+def names_a_field(text: str, form: dict[str, Any]) -> bool:
+    """The message uses a word of one of the form's field labels (a stem, so "loans" matches "Loan amount" and
+    other word forms of the same label match too)."""
+    props = ((form or {}).get("config") or {}).get("props") or {}
+    words = re.findall(r"\w+", text.lower())
+    for p in props.values():
+        for tok in re.findall(r"\w+", str((p or {}).get("label") or "").lower()):
+            if len(tok) >= 4 and tok not in _STOP and not _ASK.match(tok):   # "How many vehicles": not "many"
+                stem = tok[:max(4, len(tok) - 2)]
+                if any(w.startswith(stem) for w in words):
+                    return True
+    return False
+
+
 HISTORY = 6
 HANDED = "[Handed over by the site assistant]"
 
@@ -86,6 +127,14 @@ def _text_of(out: Any) -> str:
     if isinstance(c, list):
         return "".join(b.get("text", "") for b in c if isinstance(b, dict) and b.get("type", "text") == "text")
     return str(c or "")
+
+
+def with_hand_back(caps: Any) -> list[str]:
+    """The client's capabilities plus hand_back (none sent: every card, as an older client gets)."""
+    from ..agent.actions import ACTION_CAPS, VARIANTS
+
+    base = list(caps) if isinstance(caps, (list, tuple)) else [*dict.fromkeys(ACTION_CAPS.values()), *VARIANTS]
+    return [*base, "hand_back"] if "hand_back" not in base else base
 
 
 def handoff_message(note: str, language: str = "") -> str:
@@ -180,6 +229,8 @@ class SiteGuide:
                 return "unclear"   # "a car loan" on the loan form is the form's; "the barbershop prices" is not
         if self._last_speaker(thread_id)[0] == "site":
             return "unclear"   # the site agent spoke last: the message may answer it
+        if is_question(message) and not names_a_field(message, state.get("form") or {}):
+            return "unclear"   # a question about none of this form's fields ("how many new requests?")
         return "form"
 
     async def classify(self, message: str, state: dict[str, Any], thread_id: str | None = None) -> str:
@@ -261,19 +312,40 @@ class SiteGuide:
             tx = self.forms.transcripts
             if typed:
                 tx.append(thread_id, new_entry("user", text=typed, form_id=fid))
+            kw["capabilities"] = with_hand_back(kw.get("capabilities"))   # the form agent may give the message back
             said: list[str] = []
+            back = None
             async for ev in self.forms.run(form_thread, message=message, state=form, resume=resume,
                                            run_id=run_id, **kw):
+                if ev["type"] == "CUSTOM" and ev.get("name") == "hand_back":
+                    back = ev.get("value") or {}
+                    continue
+                if back is not None:   # the form's turn ended with hand_back: the site agent answers next
+                    continue
                 if ev["type"] == "TEXT_MESSAGE_CONTENT":
                     said.append(ev["delta"])
                 yield ev
             if "".join(said).strip():
                 tx.append(thread_id, new_entry("assistant", text="".join(said), form_id=fid))
+            if back is None or not typed:
+                return
+            async for ev in self._site_turn(thread_id, typed, state, run_id, host, form_kwargs, recorded=True):
+                if ev["type"] != "RUN_STARTED":   # one run: the form's RUN_STARTED already went out
+                    yield ev
             return
+        async for ev in self._site_turn(thread_id, message, state, run_id, host, form_kwargs):
+            yield ev
+
+    async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
+                         host: Any, form_kwargs: dict[str, Any], recorded: bool = False) -> AsyncIterator[dict]:
+        """The site agent's turn (and a same-run hand-off to a form). `recorded`: the user's message is already in
+        the transcript (the form agent gave it back)."""
         tx = self.forms.transcripts
         history = [(e["kind"], e.get("text", "")) for e in tx.list(thread_id)
                    if e["kind"] in ("user", "assistant")][-self.history:] if self.history > 0 else []
-        if message:
+        if recorded and history and history[-1][0] == "user":
+            history = history[:-1]   # the message itself goes last, not twice
+        if message and not recorded:
             tx.append(thread_id, new_entry("user", text=message))
         said: list[str] = []
         page = ((state.get("page") or {}).get("path")) or "/"

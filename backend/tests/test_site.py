@@ -355,3 +355,29 @@ def test_questions_about_the_business_go_to_the_router_model(site, guide):
     assert site.route("where are you located?", st) == "unclear"
     assert site.route(where_ru, st) == "unclear"
     assert site.route("I want it with Maria", st) == "form"
+
+
+def test_a_question_about_none_of_the_fields_goes_to_the_router_model(site, guide):
+    st = form_state(guide)
+    many_ru = "\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u0443 \u043c\u0435\u043d\u044f \u043d\u043e\u0432\u044b\u0445 \u0437\u0430\u044f\u0432\u043e\u043a?"   # "how many new requests do I have?"
+    assert site.route("How many new requests do I have?", st) == "unclear"
+    assert site.route(many_ru, st) == "unclear"
+    assert site.route("what is the maximum loan amount?", st) == "form"          # names a field: the form's
+    assert site.route("the loan amount is 900 000", st) == "form"                # a value, not a question
+    money_ru = "\u0434\u0435\u043d\u044c\u0433\u0438 \u043d\u0443\u0436\u043d\u044b \u043d\u0430 \u043c\u0430\u0448\u0438\u043d\u0443"   # "I need money for a car": not a question
+    assert site.route(money_ru, st) == "form"
+
+
+def test_the_form_agent_gives_a_foreign_message_back(site, guide, model):
+    model.script = [say("", ("h1", "hand_back", {"reason": "statistics"})),       # the form agent: not mine
+                    say("There were 120 visits this week.")]                        # the site agent answers
+    ev = run(site, "hb1", message="show me last week's visits", state=form_state(guide))
+    types = [e["type"] for e in ev]
+    assert types.count("RUN_STARTED") == 1 and types.count("RUN_FINISHED") == 1 and types[-1] == "RUN_FINISHED"
+    assert "120 visits" in "".join(e.get("delta", "") for e in ev)
+    assert not any(e.get("name") == "hand_back" for e in ev)                      # internal, never shown
+    assert len(model.calls) == 2                                                  # no second form-agent call
+    first = model.calls[0][0].content
+    assert "hand_back" in (first if isinstance(first, str) else first[0]["text"])  # the form agent got the rule
+    msgs = [(m["role"], m["content"]) for m in site.thread("hb1")["messages"]]
+    assert msgs == [("user", "show me last week's visits"), ("assistant", "There were 120 visits this week.")]

@@ -63,6 +63,7 @@ class AgentState(TypedDict, total=False):
     said: bool      # the user saw some text this turn
     nudged: bool    # we already asked the model to reply with text
     limited: bool   # the turn used up max_tool_rounds: the model was asked to reply without more tools
+    handed_back: str | None   # hand_back was called: the turn ends, the site assistant answers (SiteGuide)
     system_prompt: str   # frozen for the thread: changing it would invalidate the model's earlier reasoning
     prompt_sent: str     # the instructions the model last got as <updated_instructions> (empty: none since compaction)
     memory: str          # summary of older turns after compaction (see memory.py)
@@ -224,7 +225,7 @@ def build_graph(guide: FormGuide):
         return {
             "messages": [*(state.get("messages") or []), *new],
             "snapshot": ctx.ov.snapshot(), "version": version, "pending": None, "tool_round": 0,
-            "said": False, "nudged": False, "limited": False, "attachments": [], "system_prompt": frozen,
+            "said": False, "nudged": False, "limited": False, "handed_back": None, "attachments": [], "system_prompt": frozen,
             "prompt_sent": current if current != frozen else "",
             "pending_client": None, "client_results": {}, "turn_sources": None,
         }
@@ -429,6 +430,9 @@ def build_graph(guide: FormGuide):
         for d in ctx.ui_directives:
             w({"kind": "ui", "directive": d})
         upd: dict[str, Any] = {"tool_round": (state.get("tool_round") or 0) + 1}
+        if ctx.handed_back:
+            upd["handed_back"] = ctx.handed_back
+            w({"kind": "hand_back", "reason": ctx.handed_back})
         if ctx.last_extraction is not state.get("last_extraction"):
             upd["last_extraction"] = ctx.last_extraction
         if ctx.turn_sources is not state.get("turn_sources"):
@@ -448,6 +452,8 @@ def build_graph(guide: FormGuide):
         return upd
 
     def route_tools(state: AgentState) -> str:
+        if state.get("handed_back") and not state.get("pending"):
+            return END   # the site assistant answers this message (SiteGuide runs it next)
         if state.get("pending"):
             return "confirm"
         return END if state.get("pending_client") else "llm"

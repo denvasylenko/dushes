@@ -135,3 +135,26 @@ On a form page, a typed message SHALL go to the router model (not straight to th
 #### Scenario: Answering the site agent on a form page
 - **WHEN** on the loan form the site agent asked "Which page do you need?" and the user replies "contacts"
 - **THEN** the router model decides, and the site agent answers
+
+### Requirement: Questions about something else on a form page
+On a form page, a typed question (ending with "?" or starting with a question word in any of the widget's seven languages) that names none of the form's field labels SHALL go to the router model. Function words and question words in labels ("How many vehicles", "I have additional income") SHALL NOT count as naming a field.
+
+#### Scenario: A question about something else on a form page
+- **WHEN** on the loan form the user asks "How many new requests do I have?"
+- **THEN** the router model decides instead of the form agent answering
+
+#### Scenario: A question about a field
+- **WHEN** on the loan form the user asks "What is the maximum loan amount?"
+- **THEN** the form agent answers
+
+### Requirement: The form agent gives a foreign message back
+Under the site assistant the form agent SHALL have a `hand_back(reason)` tool (SiteGuide adds the capability `hand_back`; every other client, older ones included, SHALL NOT get it). When the form agent calls it, its turn SHALL end without more model calls, and the site agent SHALL answer the same message in the same run, with one `RUN_STARTED` and one `RUN_FINISHED`; the `hand_back` event SHALL NOT reach the client.
+
+#### Scenario: Gift cards asked on the loan form
+- **WHEN** on the loan form the user writes "tell me about gift cards" and the router gives it to the form agent
+- **THEN** the form agent calls hand_back and the site agent answers about the barbershop's gift cards in the same run
+
+#### Scenario: A page without the site assistant
+- **WHEN** the form agent runs on its own page through `/agent/run`
+- **THEN** it has no hand_back tool and no rule about it in its prompt
+

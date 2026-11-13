@@ -88,3 +88,14 @@ def test_prompt_puts_the_business_after_the_priorities():
     assert "The business's instructions for \"F\"" in text
     bare = system_prompt(pack, actions=frozenset())
     assert "Showing where" not in bare and "Each turn" in bare      # a section with no rules left is dropped
+
+
+def test_hand_back_only_under_the_site_assistant():
+    from formguide.agent.actions import ACTIONS, resolve
+    cfg = dict(ACTIONS)
+    assert "hand_back" not in resolve(cfg, has_documents=False, attachments=False, caps=None)        # old clients
+    assert "hand_back" not in resolve(cfg, has_documents=False, attachments=False, caps=frozenset({"ask"}))
+    assert "hand_back" in resolve(cfg, has_documents=False, attachments=False, caps=frozenset({"ask", "hand_back"}))
+    pack = DomainPack(form_id="f", title="F")
+    assert "hand_back" not in system_prompt(pack, actions=frozenset({"ask_user"}))
+    assert "hand_back" in system_prompt(pack, actions=frozenset({"ask_user", "hand_back"}))

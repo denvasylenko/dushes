@@ -169,7 +169,7 @@ app.include_router(create_site_router(site, host=lambda request: {"site": curren
 
 Every callback gets `ctx`, a `SiteRunCtx(thread_id, page, state, message, host)`, and may be sync or async. `open_form` also passes the language the user writes in, so the form agent replies in it.
 
-On a form page the router also looks at who spoke last: when the site agent did, the message has navigation words in German, Spanish, French, Italian, Russian or Ukrainian, or it asks where the business is (address, phone, opening hours), a cheap router model decides between the form and the site, so a reply to the site agent's question stays with the site agent.
+On a form page the router also looks at who spoke last: when the site agent did, the message has navigation words in German, Spanish, French, Italian, Russian or Ukrainian, or it asks where the business is (address, phone, opening hours), or it is a question that names none of the form's field labels ("how many new requests do I have?"), a cheap router model decides between the form and the site, so a reply to the site agent's question stays with the site agent. And when a message still reaches the form agent but is about something else (the account, statistics, another service), the form agent gives it back with `hand_back`, and the site agent answers in the same run: the user never hears "ask the other assistant". The form agent has this tool only under the site assistant.
 
 ## Knowledge
 
