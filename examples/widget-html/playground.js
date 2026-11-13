@@ -46,7 +46,7 @@ const FONTS = { system: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inte
 const S = {
   opt: { mode: 'inline', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, mic: true, micAutoSend: false,
     dictation: 'browser', attach: true, attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: 'Want me to book you a haircut?', motion: 'spring',
-    title: 'Barbershop', subtitle: 'formguide · playground', intro: '', placeholder: '' },
+    title: 'Barbershop', subtitle: 'formguide · playground', intro: '', placeholder: '', footnote: '' },
   preset: 'default', light: {}, dark: {},
   shape: { radius: 14, 'radius-sm': 10, 'radius-lg': 20, 'radius-pill': 999, font: 'system', 'panel-width': 460 },
   comp: {},                 // component tokens the user changed: {'card-bg': '#...'}
@@ -523,6 +523,7 @@ const sections = [
       row('Subtitle', '', text(() => S.opt.subtitle, (v) => { S.opt.subtitle = v })),
       row('Intro', 'The line on the empty chat.', text(() => S.opt.intro, (v) => { S.opt.intro = v }, 'Ask anything about this form.')),
       row('Placeholder', 'Inside the message box.', text(() => S.opt.placeholder, (v) => { S.opt.placeholder = v }, 'Message the assistant…')),
+      row('Footnote', 'A line under the message box: a note people should read ("The assistant can make mistakes", "Don\'t type passwords").', text(() => S.opt.footnote, (v) => { S.opt.footnote = v }, 'The assistant can make mistakes.')),
       row('Language', 'All built-in texts; also the dictation language.', pick([['', 'Browser'], ['en', 'English'], ['ru', 'Russian'], ['uk', 'Ukrainian'], ['de', 'German'], ['fr', 'French'], ['it', 'Italian'], ['es', 'Spanish']], () => S.opt.lang, (v) => { S.opt.lang = v }))),
   ]],
   ['colors', 'Colours and theme', 'A theme is a set of colours for light and dark. Pick a preset, then change any colour; your changes become your own theme.', () => {
@@ -726,7 +727,7 @@ function themeObject() {
 }
 const changedOptions = () => {
   const base = { mode: 'floating', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, mic: true, micAutoSend: false, dictation: 'browser', attach: true,
-    attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: '', motion: 'spring', title: '', subtitle: '', intro: '', placeholder: '' }
+    attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: '', motion: 'spring', title: '', subtitle: '', intro: '', placeholder: '', footnote: '' }
   return Object.fromEntries(Object.entries(S.opt).filter(([k, v]) => v !== base[k]))
 }
 const renderSlots = () => {

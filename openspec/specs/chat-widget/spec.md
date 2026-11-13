@@ -68,6 +68,13 @@ When no animation frame arrives within 300 ms while an answer is typing (a hidde
 - **WHEN** the page gets no animation frames while a followed answer streams
 - **THEN** the full text appears in its bubble instead of an empty one
 
+### Requirement: A footnote under the composer
+The `footnote` option SHALL show a line of text under the composer; a hint or an error SHALL take its place while shown, and the line SHALL keep its height, so nothing below or around the composer moves. An upload SHALL write no text there (its tiles show the progress).
+
+#### Scenario: A warning for every message
+- **WHEN** the host sets `footnote: "Don't type passwords"`
+- **THEN** the line shows under the composer and stays when a file is attached
+
 ### Requirement: Attachments shown in the composer
 Attached files SHALL show inside the composer box, above the text: an image as a thumbnail, a document as a tile with its name and type, each with a remove button and a spinner while it uploads. A long row SHALL scroll sideways with its edges fading where there is more. Tapping a thumbnail SHALL open the image large in a modal view that a close button, Esc or a tap beside it closes. A sent message SHALL show its images and documents the same way above the text.
 

@@ -173,6 +173,9 @@ export interface ChatOptions {
   subtitle: string
   intro: string
   placeholder: string
+  /** A line under the composer ("The assistant can make mistakes", "Don't type passwords"); a hint or an error takes
+   *  its place while shown. Empty: none. */
+  footnote: string
   starters: string[]
   /** How to answer an interrupt: forwardedProps.command.resume (CopilotKit, ag-ui-langgraph) or AG-UI 1.0 resume[]. */
   resumeStyle: 'command' | 'resume'

@@ -55,6 +55,15 @@ describe('attachments in the composer', () => {
     expect(el.shadowRoot!.querySelector('dialog.zoom .zoom-edit')).toBeNull()
   })
 
+  it('a footnote sits under the composer; an upload writes no line that would shift it', async () => {
+    const el = await mount()
+    el.options = { footnote: 'The assistant can make mistakes.' }
+    const hint = el.shadowRoot!.querySelector('.hint') as HTMLElement
+    expect(hint.dataset.footnote).toBe('The assistant can make mistakes.')   // shown by CSS while the hint is empty
+    await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])
+    expect(hint.textContent).toBe('')
+  })
+
   it('opens an image large, and closes it', async () => {
     const el = await mount()
     await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])

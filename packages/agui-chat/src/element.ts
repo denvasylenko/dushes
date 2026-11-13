@@ -16,7 +16,7 @@ import type {
 
 export const DEFAULTS: ChatOptions = {
   url: '/agent/run', threadId: undefined, persistThread: true, mode: 'floating', typing: 'words', toolSteps: true, mic: true, quickReplies: true,
-  theme: 'default', scheme: '', lang: '', title: '', subtitle: '', intro: '', placeholder: '', starters: [], resumeStyle: 'command',
+  theme: 'default', scheme: '', lang: '', title: '', subtitle: '', intro: '', placeholder: '', footnote: '', starters: [], resumeStyle: 'command',
   history: 'full', headers: {}, credentials: undefined, fetch: undefined, request: undefined, transport: undefined,
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, dictation: 'browser', transcribeUrl: '', attach: true, attachAccept: '', attachMultiple: true,
@@ -30,7 +30,7 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   url: ['url', String], 'thread-id': ['threadId', String], 'persist-thread': ['persistThread', bool], mode: ['mode', String],
   typing: ['typing', String], 'tool-steps': ['toolSteps', bool], mic: ['mic', bool], 'quick-replies': ['quickReplies', bool],
   theme: ['theme', String], scheme: ['scheme', String], lang: ['lang', String], title: ['title', String], subtitle: ['subtitle', String],
-  intro: ['intro', String], placeholder: ['placeholder', String], 'resume-style': ['resumeStyle', String],
+  intro: ['intro', String], placeholder: ['placeholder', String], footnote: ['footnote', String], 'resume-style': ['resumeStyle', String],
   history: ['history', String], open: ['open', bool], attach: ['attach', bool], 'mic-lang': ['micLang', String],
   'mic-auto-send': ['micAutoSend', bool], dictation: ['dictation', String], 'transcribe-url': ['transcribeUrl', String], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
   'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
@@ -718,6 +718,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (o.mode === 'bubble') this.$.fab.setAttribute('aria-label', this.t('open'))
     const input = this.$.input as HTMLTextAreaElement
     input.placeholder = o.placeholder || this.t('placeholder')
+    this.$.hint.dataset.footnote = o.footnote   // the line under the composer when there is no hint or error
     input.setAttribute('aria-label', input.placeholder)
     this.$.mic.hidden = !o.mic || !this._micMode()
     this.$.mic.setAttribute('aria-label', this.t('mic'))
@@ -773,7 +774,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const upload = this._opts.upload ?? this._plugins.find((p) => p.attach)?.attach?.upload
     if (!upload || !list.length) return
     if (!this._opts.attachMultiple) { list = list.slice(0, 1); this._files = [] }
-    this.$.hint.textContent = this.t('working')
+    this.$.hint.textContent = ''   // the tiles show the upload (a spinner on each): no line that would shift the composer
     list = await Promise.all(list.map((f) => shrinkImage(f, this._opts.imageMaxPx)))   // big photos -> JPEG
     const max = this._opts.attachMaxMb * 1024 * 1024
     const big = list.filter((f) => f.size > max)

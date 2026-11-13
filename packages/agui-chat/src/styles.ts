@@ -372,7 +372,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
   background: color-mix(in srgb, black 86%, transparent); }   /* dark in both schemes, like Photos */
 .zoom::backdrop { background: transparent; }
 .zoom:not([open]) { display: none; }
-.zoom img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--agui-radius-sm); box-shadow: 0 20px 60px -20px var(--agui-shadow); cursor: default; }
+.zoom img { max-width: calc(100vw - 32px); max-height: calc(100vh - 112px); width: auto; height: auto; object-fit: contain; border-radius: var(--agui-radius-sm); box-shadow: 0 20px 60px -20px var(--agui-shadow); cursor: default; }
 .zoom-x { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: 12px; width: 44px; height: 44px; border: 0; border-radius: 50%;
   display: grid; place-items: center; background: color-mix(in srgb, white 18%, transparent); color: white; cursor: pointer; }
 .zoom-x svg { width: 20px; height: 20px; }
@@ -396,7 +396,8 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 @media (prefers-reduced-motion: reduce) { .att-new, .att.busy::after, .zoom { animation: none; } }
 .chip.file { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 11px; cursor: default; }
 .chip.file .btn { padding: 2px 7px; }
-.hint { text-align: center; font-size: 12px; color: var(--agui-ink-3); margin-top: 7px; min-height: 1em; }
+.hint { text-align: center; font-size: 12px; line-height: 16px; color: var(--agui-ink-3); margin-top: 7px; min-height: 16px; }   /* one line, always the same height: nothing below jumps */
+.hint:empty::after { content: attr(data-footnote); }
 .hint .btn.link { font-size: 12px; padding: 0 2px; }
 /* dictation on the server: the wave and the timer take the input's place, like iOS Messages' dictation */
 .rec-x, .wave, .rec-busy { display: none; }

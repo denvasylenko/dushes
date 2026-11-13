@@ -46,6 +46,7 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `quickReplies` (`quick-replies`) | `true` | starter chips in an empty chat and suggested replies after answers |
 | `starters` | — | opening messages for an empty chat (Dushes also reads them from the domain pack) |
 | `title`, `subtitle`, `intro`, `placeholder` | localized defaults | the header, the empty-chat text, the composer hint |
+| `footnote` | none | a line under the composer ("The assistant can make mistakes"); a hint or an error takes its place while shown |
 | `lang` | the page's `lang` | UI language: `en` (built in), `ru`, `uk`, `de`, `fr`, `it`, `es` (packs loaded on first use, English until then; your own with `addLanguage`); also used for dictation |
 | `i18n` | — | override any UI string: `{ send: "Go" }` |
 | `theme` | `default` | a theme name (`default`; the packs `glass`, `bold`, `messenger`, `contrast`, loaded on first use; or one from `defineTheme`) or a theme object; see [Themes](../../frontend/themes/#themes). `auto`, `light` and `dark` still work and set the scheme |
