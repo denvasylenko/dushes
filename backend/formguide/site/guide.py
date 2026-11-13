@@ -129,6 +129,38 @@ def _text_of(out: Any) -> str:
     return str(c or "")
 
 
+def card_outcome(e: dict[str, Any]) -> str | None:
+    """A form card's answer as one line for the site's history: "[Form card] Accepted: Item 5 = Arrosticini"."""
+    st, kind = e.get("status"), e.get("kind")
+    if st in (None, "pending"):
+        return None
+    if kind == "card":
+        changes = e.get("changes") or []
+        names = set(e.get("names") or [c.get("name") for c in changes])
+        edited = e.get("edited") or {}
+        kept = [f"{c.get('label') or c.get('name')} = {edited.get(c.get('name'), c.get('display') or c.get('value'))}"
+                for c in changes if c.get("name") in names]
+        if st == "rejected":
+            return "[Form card] The user rejected: " + "; ".join(
+                f"{c.get('label') or c.get('name')} = {c.get('display') or c.get('value')}" for c in changes)[:600]
+        if st == "dismissed":
+            return "[Form card] The user closed it without filling anything."
+        head = "Accepted" if st == "accepted" else "Accepted in part"
+        return f"[Form card] {head}, now in the form: " + "; ".join(kept)[:600]
+    if kind == "question":
+        a = e.get("answer") or {}
+        if st == "dismissed" or not a:
+            return "[Form question] The user skipped it."
+        picked = ", ".join(str(o.get("label") or o.get("id")) for o in e.get("options") or [] if o.get("id") in (a.get("ids") or []))
+        said = picked or str(a.get("text") or "")
+        return f"[Form question] {e.get('question', '')} The user answered: {said}" + (" (filled in the form)" if e.get("applied") else "")
+    if kind == "confirm":
+        return f"[Form confirmation] {e.get('title', '')}: the user {'confirmed' if st == 'accepted' else 'declined'}."
+    if kind == "upload":
+        return "[Form upload] The user attached a file." if st == "answered" else "[Form upload] The user skipped it."
+    return None
+
+
 def with_hand_back(caps: Any) -> list[str]:
     """The client's capabilities plus hand_back (none sent: every card, as an older client gets)."""
     from ..agent.actions import ACTION_CAPS, VARIANTS
@@ -313,6 +345,8 @@ class Dushes:
             if typed:
                 tx.append(thread_id, new_entry("user", text=typed, form_id=fid))
             kw["capabilities"] = with_hand_back(kw.get("capabilities"))   # the form agent may give the message back
+            from ..transcript import pending_card
+            open_card = pending_card(tx.list(form_thread)) if resume is not None else None
             said: list[str] = []
             back = None
             async for ev in self.forms.run(form_thread, message=message, state=form, resume=resume,
@@ -325,6 +359,11 @@ class Dushes:
                 if ev["type"] == "TEXT_MESSAGE_CONTENT":
                     said.append(ev["delta"])
                 yield ev
+            if open_card:   # what the user did with the form's card, as a fact the site agent and the router see
+                done = next((e for e in tx.list(form_thread) if e["id"] == open_card["id"]), None)
+                fact = card_outcome(done) if done else None
+                if fact:
+                    tx.append(thread_id, new_entry("card_result", text=fact, form_id=fid))
             if "".join(said).strip():
                 tx.append(thread_id, new_entry("assistant", text="".join(said), form_id=fid))
             if back is None or not typed:
@@ -341,8 +380,8 @@ class Dushes:
         """Dushes' turn (and a same-run hand-off to a form). `recorded`: the user's message is already in
         the transcript (the form agent gave it back)."""
         tx = self.forms.transcripts
-        history = [(e["kind"], e.get("text", "")) for e in tx.list(thread_id)
-                   if e["kind"] in ("user", "assistant")][-self.history:] if self.history > 0 else []
+        history = [("user" if e["kind"] == "card_result" else e["kind"], e.get("text", "")) for e in tx.list(thread_id)
+                   if e["kind"] in ("user", "assistant", "card_result")][-self.history:] if self.history > 0 else []
         if recorded and history and history[-1][0] == "user":
             history = history[:-1]   # the message itself goes last, not twice
         if message and not recorded:

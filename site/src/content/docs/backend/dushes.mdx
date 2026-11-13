@@ -179,6 +179,8 @@ Dushes reads the site map and the business documents of its own knowledge scope:
 
 The site thread's transcript holds every turn the user saw, Dushes' and the form agents' (their text), and the hand-off note, so nothing lives only in memory. `GET /site/threads/{id}?form_id=` returns `{messages, pending_card}`; the page's `restore` uses it, so a reload shows the whole conversation and the form's open card.
 
+What the user does with a form's card goes into it too, as a fact for Dushes and the router ("[Form card] Accepted, now in the form: Item 5 = Arrosticini"; rejected, skipped, a question's answer, a confirmation). It is not a chat bubble: it keeps Dushes from offering again what the user has just accepted.
+
 ## The hand-off
 
 "I want a mortgage, I earn 6,000 a month" on the Loans page: Dushes calls `open_form`, keeps a note of what the user said and sends the page a directive to open `/apply`. The page opens the form and runs the chat once with `forwardedProps: {handoff: true}`; the form agent gets the note as its first message and proposes those fields right away, without the user repeating themselves. The page's side: [Dushes in the page](../../frontend/dushes/).

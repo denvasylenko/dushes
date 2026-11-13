@@ -165,3 +165,11 @@ Under Dushes the form agent SHALL have a `hand_back(reason)` tool (Dushes adds t
 #### Scenario: An existing host
 - **WHEN** a host imports `SiteGuide` and `create_site_router` from `formguide.site`
 - **THEN** it gets `Dushes` and `create_dushes_router`
+
+### Requirement: Form card outcomes in the site history
+When the user answers a form card on a form page (a field card, a question, a confirmation, an upload), the site thread's transcript SHALL get a `card_result` entry with one line saying what happened (accepted with the values now in the form, accepted in part, rejected, skipped, the answer). Dushes SHALL see it in its history as a fact; it SHALL NOT appear among the chat's messages on restore.
+
+#### Scenario: An accepted menu item
+- **WHEN** the user accepts a card that sets Item 5 = Arrosticini and Price 5 = € 12 and then asks Dushes about the menu
+- **THEN** Dushes' history holds "[Form card] Accepted, now in the form: Item 5 = Arrosticini; Price 5 = € 12" and it does not offer to add the item again
+

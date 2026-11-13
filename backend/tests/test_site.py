@@ -387,3 +387,30 @@ def test_the_old_names_still_work():
     from formguide.site import SiteGuide, create_dushes_router, create_site_router
 
     assert SiteGuide is Dushes and create_site_router is create_dushes_router
+
+
+def test_a_form_card_outcome_reaches_the_site_history(site, guide, model, monkeypatch):
+    from formguide.site.guide import card_outcome
+    from formguide.transcript import new_entry
+    form_thread = "co1-loan_application"
+    tx = site.forms.transcripts
+    card = tx.append(form_thread, new_entry("card", status="pending", changes=[
+        {"name": "item_5", "label": "Item 5", "display": "Arrosticini", "value": "Arrosticini"},
+        {"name": "price_5", "label": "Price 5", "display": "€ 12", "value": 12}]))
+
+    async def fake_run(thread_id, **kw):   # the form agent applies the card and says a word
+        tx.update(form_thread, card["id"], status="accepted")
+        yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "Added Arrosticini."}
+        yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": "r"}
+    monkeypatch.setattr(site.forms, "run", fake_run)
+    run(site, "co1", resume={"accepted": True}, state=form_state(guide))
+    facts = [e["text"] for e in tx.list("co1") if e["kind"] == "card_result"]
+    assert facts == ["[Form card] Accepted, now in the form: Item 5 = Arrosticini; Price 5 = € 12"]
+    assert [m["role"] for m in site.thread("co1")["messages"]] == ["assistant"]          # a fact, not a chat bubble
+    model.script = [say("Arrosticini is on the menu now.")]
+    run(site, "co1", message="what's on the menu?", state={"page": {"path": "/"}})
+    seen = " ".join(str(m.content) for m in model.calls[-1])
+    assert "Accepted, now in the form: Item 5 = Arrosticini" in seen
+    assert card_outcome({"kind": "card", "status": "rejected", "changes": [{"label": "Item 5", "display": "X"}]}) \
+        == "[Form card] The user rejected: Item 5 = X"
+    assert card_outcome({"kind": "card", "status": "pending"}) is None
