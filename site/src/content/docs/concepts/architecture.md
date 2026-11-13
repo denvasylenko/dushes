@@ -48,9 +48,9 @@ Principles:
 - **Small context.** The model sees a collapsed outline, the open section and the changes: about 1K tokens instead of about 16K for the loan demo's raw config.
 - **Append-only history.** The system prompt is frozen per thread; updates arrive in new messages. This keeps prompt caching effective and keeps models that bind reasoning to the exact prefix working.
 
-### Above the form agent: the site assistant
+### Above the form agent: Dushes
 
-[`formguide/site/`](https://github.com/denvasylenko/dushes/tree/main/backend/formguide/site) adds `SiteGuide`, one chat for a whole site. A router sends each turn either to the site agent (answers from the site map's sections, `navigate`, `open_form`) or to the form agent (`FormGuide.run`, unchanged, one conversation per form: thread `<site thread>-<form id>`). `open_form` keeps a note that becomes the form agent's first message on the form page. See [Site assistant](../../backend/site-assistant/).
+[`formguide/site/`](https://github.com/denvasylenko/dushes/tree/main/backend/formguide/site) adds `Dushes`, one chat for a whole site. A router sends each turn either to Dushes (answers from the site map's sections, `navigate`, `open_form`) or to the form agent (`FormGuide.run`, unchanged, one conversation per form: thread `<site thread>-<form id>`). `open_form` keeps a note that becomes the form agent's first message on the form page. See [Dushes](../../backend/dushes/).
 
 ## 2. One turn
 

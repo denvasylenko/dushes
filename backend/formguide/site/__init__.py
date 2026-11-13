@@ -1,6 +1,7 @@
-"""SiteGuide: one assistant for a whole site, above the form agent (see guide.py)."""
+"""Dushes: one assistant for a whole site, above the form agent (see guide.py)."""
 from .agent import SiteRunCtx, SiteTool
-from .guide import SiteGuide, create_site_router
+from .guide import Dushes, SiteGuide, create_dushes_router, create_site_router
 from .sitemap import SiteMap
 
-__all__ = ["SiteGuide", "SiteMap", "SiteRunCtx", "SiteTool", "create_site_router"]
+__all__ = ["Dushes", "SiteMap", "SiteRunCtx", "SiteTool", "create_dushes_router",
+           "SiteGuide", "create_site_router"]   # the old names of Dushes and its router

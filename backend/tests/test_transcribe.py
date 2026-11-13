@@ -53,10 +53,10 @@ def test_off_and_failing(guide):
 def test_the_site_router_transcribes_too(guide):
     from pathlib import Path
 
-    from formguide.site import SiteGuide, SiteMap, create_site_router
+    from formguide.site import Dushes, SiteMap, create_dushes_router
     guide.transcriber = Transcriber(TranscriptionConfig(provider="tests.test_transcribe:fake_whisper"))
-    site = SiteGuide(guide, SiteMap.load(Path(__file__).resolve().parents[1] / "demo" / "site.yaml"))
+    site = Dushes(guide, SiteMap.load(Path(__file__).resolve().parents[1] / "demo" / "site.yaml"))
     app = FastAPI()
-    app.include_router(create_site_router(site), prefix="/site")
+    app.include_router(create_dushes_router(site), prefix="/site")
     r = TestClient(app).post("/site/transcribe", files={"file": ("rec.webm", b"audio", "audio/webm")})
     assert r.json()["text"] == "hello there"

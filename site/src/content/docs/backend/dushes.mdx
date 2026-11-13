@@ -1,21 +1,21 @@
 ---
-title: Site assistant
+title: Dushes
 description: "One chat for a whole site: it answers about any page, takes the user to the right page, tab or section, and hands over to the form agent on a form page."
 ---
 import { LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
 import SiteDemoLink from '../../../components/SiteDemoLink.astro';
 import { Summary } from '../../../components/ui';
 
-<Summary what={"One chat for a whole site, above the form agent."} when={"Your site has many pages and the forms are only some of them."} write={"A site map (`site.yaml`) and `create_site_router(SiteGuide(guide, site_map))`."} />
+<Summary what={"One chat for a whole site, above the form agent."} when={"Your site has many pages and the forms are only some of them."} write={"A site map (`site.yaml`) and `create_dushes_router(Dushes(guide, site_map))`."} />
 
-`SiteGuide` sits above the form agent. On a page without a form, the **site agent** answers from the site's content and moves the user around. On a page with a form, the turn goes to the **form agent**: the same `FormGuide` as everywhere else, unchanged. One chat follows the user from page to page.
+`Dushes` sits above the form agent. On a page without a form, **Dushes** answers from the site's content and moves the user around. On a page with a form, the turn goes to the **form agent**: the same `FormGuide` as everywhere else, unchanged. One chat follows the user from page to page.
 
 <SiteDemoLink />
 
 ```mermaid
 flowchart LR
   P["The page<br/>path, and the form if it has one"] --> R{Router}
-  R -->|"no form, or a question about the site"| S["Site agent<br/>search_site, navigate, open_form"]
+  R -->|"no form, or a question about the site"| S["Dushes<br/>search_site, navigate, open_form"]
   R -->|"a form page, or a card's answer"| F["Form agent<br/>FormGuide, unchanged"]
   S -->|"open_form: what the user wants"| F
 ```
@@ -44,16 +44,16 @@ pages:
 
 ```python title="app.py"
 from formguide.app import create_app
-from formguide.site import SiteGuide, SiteMap, create_site_router
+from formguide.site import Dushes, SiteMap, create_dushes_router
 
 app = create_app("formguide.yaml", prefix="/agent")            # the form agent, as on every other page
 guide = app.state.guide                                         # its FormGuide
 
-site = SiteGuide(guide, SiteMap.load("site.yaml"))              # the site agent, above it
-app.include_router(create_site_router(site), prefix="/site")    # POST /site/run, GET /site/map
+site = Dushes(guide, SiteMap.load("site.yaml"))              # Dushes, above it
+app.include_router(create_dushes_router(site), prefix="/site")    # POST /site/run, GET /site/map
 ```
 
-The site map is both what the site agent knows (a search index over every tab, accordion and section) and where it may go: `navigate` and `open_form` accept only its pages, tabs, sections and forms, so the model cannot invent a page.
+The site map is both what Dushes knows (a search index over every tab, accordion and section) and where it may go: `navigate` and `open_form` accept only its pages, tabs, sections and forms, so the model cannot invent a page.
 
 ## What the assistant knows
 
@@ -62,7 +62,7 @@ The **site map** and the site's **business documents**. It does not crawl the si
 The map does not have to be a hand-written file. `SiteMap.load()` takes a dict too, so build it from what you already have when the server starts:
 
 ```python title="app.py"
-from formguide.site import SiteGuide, SiteMap
+from formguide.site import Dushes, SiteMap
 
 def site_map_from_cms() -> dict:
     pages = []
@@ -74,13 +74,13 @@ def site_map_from_cms() -> dict:
         })
     return {"title": "Main Street", "pages": pages}
 
-site = SiteGuide(guide, SiteMap.load(site_map_from_cms()))
+site = Dushes(guide, SiteMap.load(site_map_from_cms()))
 ```
 
 | Source | When it fits |
 | --- | --- |
 | `site.yaml` by hand | a small site, or the pages that matter most (FAQ, prices, hours) |
-| built from your CMS or database at start-up | content that editors change; restart (or rebuild the `SiteGuide`) after publishing |
+| built from your CMS or database at start-up | content that editors change; restart (or rebuild the `Dushes`) after publishing |
 | built from your app's routes plus short texts | an app where the pages are screens rather than articles |
 
 The forms on form pages need nothing new: they are the same forms the form agent already knows (`form: loan_application`).
@@ -90,8 +90,8 @@ The forms on form pages need nothing new: they are the same forms the form agent
 ```mermaid
 sequenceDiagram
   participant P as Page
-  participant R as SiteGuide (router)
-  participant S as Site agent
+  participant R as Dushes (router)
+  participant S as Dushes
   participant F as Form agent (FormGuide)
   P->>R: POST /site/run {page, form?}, message
   alt a page without a form, or a message about the site
@@ -103,8 +103,8 @@ sequenceDiagram
   end
 ```
 
-1. **The router** looks at the page and the message. A card's answer always goes to the form agent. On a page without a form the turn goes to the site agent. On a form page, words about moving ("open the …", "go to", "where is") send it to the site agent. Another page's title or keywords without a move are unclear: a cheap router model answers one word, form or site, and on any failure the turn stays with the form. Everything else goes to the form agent.
-2. **The site agent** gets the message, the last few turns, the sections of the site map that match it best (a BM25 search) and the best matching passages of the site's business documents. It answers in one to three sentences and may call four tools: `search_site` (look again), `ask_documents` (the document researcher), `navigate` (a page, tab or section; the result tells it what that part says) and `open_form` (a form, with a note of what the user already said).
+1. **The router** looks at the page and the message. A card's answer always goes to the form agent. On a page without a form the turn goes to Dushes. On a form page, words about moving ("open the …", "go to", "where is") send it to Dushes. Another page's title or keywords without a move are unclear: a cheap router model answers one word, form or site, and on any failure the turn stays with the form. Everything else goes to the form agent.
+2. **Dushes** gets the message, the last few turns, the sections of the site map that match it best (a BM25 search) and the best matching passages of the site's business documents. It answers in one to three sentences and may call four tools: `search_site` (look again), `ask_documents` (the document researcher), `navigate` (a page, tab or section; the result tells it what that part says) and `open_form` (a form, with a note of what the user already said).
 3. **Each move is checked** against the site map. A valid one becomes a `site_directive` event for the page; an unknown path is refused and the model is told so.
 4. **The hand-off.** After `open_form` the page opens the form and runs once with `handoff: true`. The router gives the form agent the note as its first message, so it proposes those fields at once.
 5. **The form agent** is the same `FormGuide` as on a page of its own, with its own conversation per form inside the site's thread: its history, cards and Undo work as everywhere else.
@@ -113,9 +113,9 @@ sequenceDiagram
 
 | The user is | and writes | The turn goes to |
 | --- | --- | --- |
-| on a page without a form | anything | the site agent |
+| on a page without a form | anything | Dushes |
 | on a form page | about the form ("my name is Anna") | the form agent |
-| on a form page | about moving ("open the contacts page", "take me to the FAQ") | the site agent |
+| on a form page | about moving ("open the contacts page", "take me to the FAQ") | Dushes |
 | on a form page | naming another page's words ("when is the bank open?", "a car loan please" on the loan form) | the router model decides: form or site |
 | anywhere | a card's answer | the form agent (only it shows cards) |
 
@@ -123,14 +123,14 @@ A page's own keywords stay with its form: on the booking page, "book a haircut" 
 
 ## Your instructions
 
-`instructions:` at the top of the site map is your brief for the site agent: tone, what to recommend, what to say first. The prompt ranks it below truth (business facts only from the site and its documents) and below the map (only its pages, tabs, sections and forms), and above the agent's own defaults. If the agent runs out of tool rounds without a word, it gets one more call without tools, so the user always gets a reply.
+`instructions:` at the top of the site map is your brief for Dushes: tone, what to recommend, what to say first. The prompt ranks it below truth (business facts only from the site and its documents) and below the map (only its pages, tabs, sections and forms), and above the agent's own defaults. If the agent runs out of tool rounds without a word, it gets one more call without tools, so the user always gets a reply.
 
 ## Extend it for your app
 
-A site with live data of its own (an admin cabinet, a shop, a booking system) gives the site agent what it needs without replacing it:
+A site with live data of its own (an admin cabinet, a shop, a booking system) gives Dushes what it needs without replacing it:
 
 ```python title="app.py"
-from formguide.site import SiteGuide, SiteMap, SiteTool, create_site_router
+from formguide.site import Dushes, SiteMap, SiteTool, create_dushes_router
 
 async def live(ctx):                                  # in the prompt on every turn, no search in between
     site = ctx.host["site"]
@@ -142,7 +142,7 @@ def stats(args, ctx):                                 # the model gets the text 
 def build_form(form_id, ctx):                         # the form's state on the server: same-run hand-off
     return my_forms.state(form_id, ctx.host["site"])  # None: the page's own hand-off run, as before
 
-site = SiteGuide(guide, SiteMap.load("cabinet.yaml"),
+site = Dushes(guide, SiteMap.load("cabinet.yaml"),
                  context=live,
                  instructions="You help the owner run their website. Never publish for them.",
                  style="Reply in one to four short sentences, warm and plain.",
@@ -153,7 +153,7 @@ site = SiteGuide(guide, SiteMap.load("cabinet.yaml"),
                  suggestions=True,
                  form_for=build_form)
 
-app.include_router(create_site_router(site, host=lambda request: {"site": current_site(request)}), prefix="/site")
+app.include_router(create_dushes_router(site, host=lambda request: {"site": current_site(request)}), prefix="/site")
 ```
 
 | Option | What it changes |
@@ -161,27 +161,27 @@ app.include_router(create_site_router(site, host=lambda request: {"site": curren
 | `context(ctx)` | live facts in the prompt on every turn; the model trusts them over the site map's passages |
 | `instructions` | your brief, added to the site map's `instructions:` |
 | `style` | replaces the default "one to three short sentences" |
-| `history` | how many past turns the site agent sees (default 6) |
+| `history` | how many past turns Dushes sees (default 6) |
 | `tools` | your `SiteTool`s next to its own; a tool that raises tells the model, the turn goes on |
 | `suggestions` | a `suggest_next` tool: its options arrive as CUSTOM `suggestions {items}`, the chat's quick replies |
 | `form_for(form_id, ctx)` | the form's state on the server: after `open_form` the form agent answers in the same run, and the directive says `handoff: "done"` so the page does not run again |
-| `create_site_router(site, host=fn)` | `fn(request)` builds `ctx.host` for each run: one guide serves every site and user |
+| `create_dushes_router(site, host=fn)` | `fn(request)` builds `ctx.host` for each run: one guide serves every site and user |
 
 Every callback gets `ctx`, a `SiteRunCtx(thread_id, page, state, message, host)`, and may be sync or async. `open_form` also passes the language the user writes in, so the form agent replies in it.
 
-On a form page the router also looks at who spoke last: when the site agent did, the message has navigation words in German, Spanish, French, Italian, Russian or Ukrainian, or it asks where the business is (address, phone, opening hours), or it is a question that names none of the form's field labels ("how many new requests do I have?"), a cheap router model decides between the form and the site, so a reply to the site agent's question stays with the site agent. And when a message still reaches the form agent but is about something else (the account, statistics, another service), the form agent gives it back with `hand_back`, and the site agent answers in the same run: the user never hears "ask the other assistant". The form agent has this tool only under the site assistant.
+On a form page the router also looks at who spoke last: when Dushes did, the message has navigation words in German, Spanish, French, Italian, Russian or Ukrainian, or it asks where the business is (address, phone, opening hours), or it is a question that names none of the form's field labels ("how many new requests do I have?"), a cheap router model decides between the form and the site, so a reply to Dushes' question stays with Dushes. And when a message still reaches the form agent but is about something else (the account, statistics, another service), the form agent gives it back with `hand_back`, and Dushes answers in the same run: the user never hears "ask the other assistant". The form agent has this tool only under Dushes.
 
 ## Knowledge
 
-The site agent reads the site map and the business documents of its own knowledge scope: by default the `site` namespace (site-wide documents such as partners, a glossary, policies) plus every form on the map. Facts about the business come only from those; general concepts (what a co-borrower is) may come from general knowledge, said to be general. The form agent keeps its own form's documents.
+Dushes reads the site map and the business documents of its own knowledge scope: by default the `site` namespace (site-wide documents such as partners, a glossary, policies) plus every form on the map. Facts about the business come only from those; general concepts (what a co-borrower is) may come from general knowledge, said to be general. The form agent keeps its own form's documents.
 
 ## One conversation, after a reload too
 
-The site thread's transcript holds every turn the user saw, the site agent's and the form agents' (their text), and the hand-off note, so nothing lives only in memory. `GET /site/threads/{id}?form_id=` returns `{messages, pending_card}`; the page's `restore` uses it, so a reload shows the whole conversation and the form's open card.
+The site thread's transcript holds every turn the user saw, Dushes' and the form agents' (their text), and the hand-off note, so nothing lives only in memory. `GET /site/threads/{id}?form_id=` returns `{messages, pending_card}`; the page's `restore` uses it, so a reload shows the whole conversation and the form's open card.
 
 ## The hand-off
 
-"I want a mortgage, I earn 6,000 a month" on the Loans page: the site agent calls `open_form`, keeps a note of what the user said and sends the page a directive to open `/apply`. The page opens the form and runs the chat once with `forwardedProps: {handoff: true}`; the form agent gets the note as its first message and proposes those fields right away, without the user repeating themselves. The page's side: [Site assistant in the page](../../frontend/site-assistant/).
+"I want a mortgage, I earn 6,000 a month" on the Loans page: Dushes calls `open_form`, keeps a note of what the user said and sends the page a directive to open `/apply`. The page opens the form and runs the chat once with `forwardedProps: {handoff: true}`; the form agent gets the note as its first message and proposes those fields right away, without the user repeating themselves. The page's side: [Dushes in the page](../../frontend/dushes/).
 
 ## The endpoints
 
@@ -200,8 +200,8 @@ curl -N -X POST http://localhost:8000/site/run -H "Content-Type: application/jso
 ## Every option
 
 ```yaml title="site.yaml"
-title: Main Street                   # the site's name, in the site agent's prompt
-instructions: |                      # optional: your own rules for the site agent (tone, what to recommend)
+title: Main Street                   # the site's name, in Dushes' prompt
+instructions: |                      # optional: your own rules for Dushes (tone, what to recommend)
   Aster Bank and Barber & Co are separate businesses: never mix their prices.
 pages:
   - path: /apply                     # required: the page's route, the navigation target
@@ -215,25 +215,25 @@ pages:
 ```
 
 ```python title="app.py"
-from formguide.site import SiteGuide, SiteMap, create_site_router
+from formguide.site import Dushes, SiteMap, create_dushes_router
 
 SiteMap.load("site.yaml")            # a path, or a dict with the same shape
-SiteGuide(
+Dushes(
     guide,                           # your FormGuide: the form agent for form pages
     SiteMap.load("site.yaml"),
-    model=None,                      # the site agent's model; None: the form guide's agent model
+    model=None,                      # Dushes' model; None: the form guide's agent model
     knowledge_namespaces=None,       # the documents it reads; None: "site" + every form on the map
     router_model=None,               # one word, form or site, for unclear messages; None: the memory model
     context=None,                    # fn(ctx) -> str: live facts in the prompt every turn (sync or async)
     instructions="",                 # added to the site map's instructions
     style=None,                      # replaces "one to three short sentences"
-    history=6,                       # past turns the site agent sees
+    history=6,                       # past turns Dushes sees
     tools=[],                        # SiteTool(name, description, parameters, handler(args, ctx) -> str)
     suggestions=False,               # suggest_next -> CUSTOM suggestions {items}
     form_for=None,                   # fn(form_id, ctx) -> form state | None: the form agent answers in the same run
 )
 site.run(thread_id, message=..., state=..., host=obj)   # obj -> ctx.host in every callback
-create_site_router(site, host=None)  # POST /run (AG-UI), GET /map, GET /threads/{id}?form_id=; host(request) -> ctx.host
+create_dushes_router(site, host=None)  # POST /run (AG-UI), GET /map, GET /threads/{id}?form_id=; host(request) -> ctx.host
 ```
 
 | `forwardedProps` key | Default | What it does |
@@ -244,6 +244,6 @@ create_site_router(site, host=None)  # POST /run (AG-UI), GET /map, GET /threads
 ## Next
 
 <CardGrid>
-  <LinkCard title="Site assistant in the page" description="State, the directive, the hand-off run." href="../../frontend/site-assistant/" />
+  <LinkCard title="Dushes in the page" description="State, the directive, the hand-off run." href="../../frontend/dushes/" />
   <LinkCard title="Types and the contract" description="Every message, typed." href="../../form/contract/" />
 </CardGrid>

@@ -1,14 +1,14 @@
 ---
-title: Site assistant in the page
+title: Dushes in the page
 description: One <agui-chat> for the whole site. Send the page with every run, follow the assistant's directive to another page, and run once more when a form opens.
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 import SiteDemoLink from '../../../components/SiteDemoLink.astro';
 import { Summary } from '../../../components/ui';
 
-<Summary what={"The page side of the site assistant."} when={"You set up the site assistant on the server."} write={"`url=\"/site/run\"`, the page in `state`, and follow `site_directive`."} />
+<Summary what={"The page side of Dushes."} when={"You set up Dushes on the server."} write={"`url=\"/site/run\"`, the page in `state`, and follow `site_directive`."} />
 
-The server side is [Site assistant](../../backend/site-assistant/). In the page, the chat points at `/site/run` instead of `/agent/run`, and three things change.
+The server side is [Dushes](../../backend/dushes/). In the page, the chat points at `/site/run` instead of `/agent/run`, and three things change.
 
 <SiteDemoLink />
 
@@ -86,6 +86,6 @@ The demo does exactly this in React: [`frontend/src/site/Site.tsx`](https://gith
 ## Next
 
 <CardGrid>
-  <LinkCard title="Site assistant" description="The server: site map, router, hand-off." href="../../backend/site-assistant/" />
+  <LinkCard title="Dushes" description="The server: site map, router, hand-off." href="../../backend/dushes/" />
   <LinkCard title="Types and the contract" description="Every message, typed." href="../../form/contract/" />
 </CardGrid>

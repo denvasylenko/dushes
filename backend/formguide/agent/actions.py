@@ -23,7 +23,7 @@ ACTIONS: dict[str, object] = {
 # what an action needs the client to render (checked only when the client sends capabilities). A client
 # that lists a variant ("ask.details") renders its base card ("ask") too. focus_field draws no card.
 # actions a host turns on per run, never the config: hand_back exists only when the form agent works under the
-# site assistant (SiteGuide adds the capability "hand_back"); off for every other client, old ones included
+# Dushes (it adds the capability "hand_back"); off for every other client, old ones included
 HOST_ACTIONS = ("hand_back",)
 
 ACTION_CAPS: dict[str, str] = {

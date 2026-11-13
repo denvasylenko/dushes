@@ -5,7 +5,7 @@
     /demo/       the demo page with the loan form (frontend/dist, built with --base /demo/)
     /agent/...   formguide for the demo (demo.app with formguide.hosted.yaml: Claude Haiku)
     /java/...    the demo's mock form backend
-    /site/...    the site assistant over a small demo site (/demo/site.html; demo/site_app.py)
+    /site/...    Dushes over a small demo site (/demo/site.html; demo/site_app.py)
 
 The demo is public, so it is limited (environment):
     DEMO_PER_THREAD     messages per conversation (default 15)

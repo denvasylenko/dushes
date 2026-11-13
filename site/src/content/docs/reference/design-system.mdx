@@ -151,7 +151,7 @@ A quiet trigger with a chevron and a popover of rows, like a macOS pull-down: a 
 
 <Specimen>
   <Menu label="Live demo" align="start" items={[
-    { href: '#menu', title: 'Site assistant', text: 'One chat for a whole site.' },
+    { href: '#menu', title: 'Dushes', text: 'One chat for a whole site.' },
     { href: '#menu', title: 'Form assistant', text: 'A big loan form with the agent next to it.' },
   ]} />
   <Menu label="Ask AI" variant="gray" align="start" caption="Ask about this page in your AI assistant:" items={[
@@ -165,7 +165,7 @@ A quiet trigger with a chevron and a popover of rows, like a macOS pull-down: a 
 
 ```astro
 <Menu label="Live demo" items={[
-  { href: '/demo/site.html', title: 'Site assistant', text: 'One chat for a whole site.' },
+  { href: '/demo/site.html', title: 'Dushes', text: 'One chat for a whole site.' },
   { href: '/demo/', title: 'Form assistant', text: 'A big loan form with the agent.' },
 ]} />
 ```
@@ -245,7 +245,7 @@ Two or three equal ways into the product, side by side under a hero (a column on
 
 <Specimen layout="col">
   <Entries label="Ways in">
-    <Entry icon="compass" eyebrow="Whole product" title="Site assistant" text="One chat across every page: answers, takes people where they need to go, hands over to a form." href="#entry-tiles" demo="#entry-tiles" points={['Knows your pages from a site map', 'Opens the right page and section']} />
+    <Entry icon="compass" eyebrow="Whole product" title="Dushes" text="One chat across every page: answers, takes people where they need to go, hands over to a form." href="#entry-tiles" demo="#entry-tiles" points={['Knows your pages from a site map', 'Opens the right page and section']} />
     <Entry icon="form" eyebrow="One big form" title="Form assistant" text="Next to a long form: shows where to click, reads documents, fills fields after a tap." href="#entry-tiles" points={['Fills from documents with Undo', 'Works with any form via `jsx_hash`']} />
   </Entries>
 </Specimen>
@@ -254,7 +254,7 @@ Two or three equal ways into the product, side by side under a hero (a column on
 import { Entries, Entry } from '../../components/ui';
 
 <Entries label="Ways in">
-  <Entry icon="compass" title="Site assistant" text="One chat across every page." href="backend/site-assistant/" demo={demoUrl} />
+  <Entry icon="compass" title="Dushes" text="One chat across every page." href="backend/dushes/" demo={demoUrl} />
   <Entry icon="form" title="Form assistant" text="Next to a long form." href="getting-started/quick-start/" />
 </Entries>
 ```

@@ -9,6 +9,8 @@ const repo = 'https://github.com/denvasylenko/dushes';
 export default defineConfig({
 	site: process.env.DOCS_SITE ?? 'https://denvasylenko.github.io',
 	base: process.env.DOCS_BASE ?? '/dushes',
+	// the pages' addresses before Dushes had its name
+	redirects: Object.fromEntries(['backend', 'frontend', 'specifications'].map((d) => [`/${d}/site-assistant/`, `${(process.env.DOCS_BASE ?? '/dushes').replace(/\/$/, '')}/${d}/dushes/`])),
 	vite: { server: { fs: { allow: ['..'] } } },
 	integrations: [
 		mermaid({ theme: 'neutral', autoTheme: true, mermaidConfig: { fontFamily: 'system-ui, sans-serif', flowchart: { curve: 'basis', htmlLabels: true } } }),
@@ -38,7 +40,7 @@ export default defineConfig({
 					{ label: 'Business documents', slug: 'backend/knowledge' },
 					{ label: 'Skills and tools', slug: 'backend/skills' },
 					{ label: 'Cards from blocks', slug: 'backend/cards' },
-					{ label: 'Site assistant', slug: 'backend/site-assistant' },
+					{ label: 'Dushes', slug: 'backend/dushes' },
 					{ label: 'Persistence and history', slug: 'backend/persistence' },
 					{ label: 'Prefill', slug: 'backend/prefill' },
 					{ label: 'Deploy and secure', slug: 'backend/deploy' },
@@ -58,7 +60,7 @@ export default defineConfig({
 					{ label: 'Themes and styling', slug: 'frontend/themes' },
 					{ label: 'Playground', slug: 'frontend/playground' },
 					{ label: 'Frontend tools', slug: 'frontend/frontend-tools' },
-					{ label: 'Site assistant in the page', slug: 'frontend/site-assistant' },
+					{ label: 'Dushes in the page', slug: 'frontend/dushes' },
 				] },
 				{ label: 'Your form', items: [
 					{ label: 'How the form and agent talk', slug: 'form/overview' },

@@ -1,5 +1,5 @@
 # The demo site's map: a portal of two local businesses, a bank and a barbershop. It is both the
-# site's content (what the site assistant knows) and its navigation (the only pages, tabs, sections
+# site's content (what Dushes knows) and its navigation (the only pages, tabs, sections
 # and forms the assistant may open). The demo page (frontend/site.html) renders the same file.
 title: Main Street
 instructions: |

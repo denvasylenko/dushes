@@ -117,7 +117,7 @@ The response is a stream of AG-UI events (`text/event-stream`). Besides text and
 | `suggestions` | `{ items: string[]; applies?: (Change[] \| null)[] }` | quick replies after an answer |
 | `sources` | `{ items: { title: string; section?: string; quote?: string }[] }` | an answer used your documents |
 | `receipt` | `{ card_id: string; title?: string; number?: string; eta?: string }` | a confirmed action returned a receipt |
-| `site_directive` | `{ type: 'navigate'; path: string; tab?: string; section?: string; form_id?: string }` | the [site assistant](../../backend/site-assistant/) moves the user to another page (`/site/run` only) |
+| `site_directive` | `{ type: 'navigate'; path: string; tab?: string; section?: string; form_id?: string }` | [Dushes](../../backend/dushes/) moves the user to another page (`/site/run` only) |
 | `run_stats` | timings and tokens | last event of every run ([Speed and tracing](../../backend/observability/)) |
 
 ```ts

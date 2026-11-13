@@ -90,7 +90,7 @@ def test_prompt_puts_the_business_after_the_priorities():
     assert "Showing where" not in bare and "Each turn" in bare      # a section with no rules left is dropped
 
 
-def test_hand_back_only_under_the_site_assistant():
+def test_hand_back_only_under_dushes():
     from formguide.agent.actions import ACTIONS, resolve
     cfg = dict(ACTIONS)
     assert "hand_back" not in resolve(cfg, has_documents=False, attachments=False, caps=None)        # old clients

@@ -1,28 +1,28 @@
-"""SiteGuide: one assistant for a whole site, above the form agent.
+"""Dushes: one assistant for a whole site, above the form agent.
 
-    site = SiteGuide(form_guide, SiteMap.load("site.yaml"))
+    site = Dushes(form_guide, SiteMap.load("site.yaml"))
     async for ev in site.run(thread_id, message="open the contacts page", state={"page": {"path": "/apply"}, "form": {...}}):
         ...
 
 Each turn goes to one of two agents:
 - the form agent: `FormGuide.run`, unchanged, on a page with a form (its own conversation per form, thread
   `<site thread>-<form id>`), and for every card answer;
-- the site agent (agent.py): on pages without a form, and on a form page when the message is about the
+- Dushes (agent.py): on pages without a form, and on a form page when the message is about the
   site rather than the form (navigation, another page).
 
-A hand-off: the site agent's open_form keeps a note of what the user wants; the next run on the form page
+A hand-off: Dushes' open_form keeps a note of what the user wants; the next run on the form page
 with `forwardedProps.handoff` gives the form agent that note as its first message. With `form_for` (the
 host builds the form's state on the server) the form agent answers at once, in the same run.
 
 Host extensions: `context` (live facts in the prompt every turn), `instructions`, `style`, `history`,
 `tools` (SiteTool), `suggestions` and `form_for`; each callback gets a SiteRunCtx whose `host` is the
-object passed to run(host=...) (create_site_router(host=fn) builds it per request).
+object passed to run(host=...) (create_dushes_router(host=fn) builds it per request).
 
-Knowledge: the site agent reads the site map and the business documents of the site's own namespaces
+Knowledge: Dushes reads the site map and the business documents of the site's own namespaces
 (`knowledge_namespaces`, default: "site" plus every form on the map), through a search and the document
 researcher. The form agent keeps its own form's documents.
 
-One conversation: the site thread's transcript holds every turn the user saw, the site agent's and the
+One conversation: the site thread's transcript holds every turn the user saw, Dushes' and the
 form agents' (their text; their cards stay in the form's own thread), plus the hand-off note, so the chat
 and the note survive a reload or a restart. `GET /threads/{id}` returns it for the page.
 """
@@ -50,12 +50,12 @@ if TYPE_CHECKING:
     from ..guide import FormGuide
 
 # a message that is about moving around the site, not about the form on the page
-SCOPE = "site"   # the knowledge scope of the site agent
+SCOPE = "site"   # the knowledge scope of Dushes
 log = logging.getLogger("formguide.site")
 _NAV = re.compile(r"\b(go to|go back to|take me|open (the|my|a|an|up)|show me the|navigate|switch to|back to|where (is|can i find)|"
                   r"which page|another page|home ?page|main page)\b", re.I)
 # navigation words of other languages (written as escapes: the repository is English-only); they send the
-# message to the router model rather than straight to the site agent, since "open" may mean a form section too
+# message to the router model rather than straight to Dushes, since "open" may mean a form section too
 _NAV_OTHER = re.compile("|".join([
     r"\bgeh(e)? zu\b", r"\b\u00f6ffne\b", r"\bzeig mir die seite\b", r"\bwo finde ich\b",            # German
     r"\bve a\b", r"\bll\u00e9vame\b", r"\babre la p\u00e1gina\b", r"\bd\u00f3nde est\u00e1\b",      # Spanish
@@ -118,7 +118,7 @@ def names_a_field(text: str, form: dict[str, Any]) -> bool:
 
 
 HISTORY = 6
-HANDED = "[Handed over by the site assistant]"
+HANDED = "[Handed over by Dushes]"
 
 
 def _text_of(out: Any) -> str:
@@ -143,7 +143,7 @@ def handoff_message(note: str, language: str = "") -> str:
     return f"{HANDED} On the site the user said: {note}{say}"
 
 
-class SiteGuide:
+class Dushes:
     def __init__(self, form_guide: FormGuide, site: SiteMap, model: Any = None,
                  knowledge_namespaces: list[str] | None = None, router_model: Any = None, *,
                  context: Any = None, instructions: str = "", style: str | None = None, history: int = HISTORY,
@@ -152,12 +152,12 @@ class SiteGuide:
         self.context = context            # (ctx) -> str | Awaitable[str]: live facts, in the prompt every turn
         self.instructions = instructions  # added to the site map's own instructions
         self.style = style                # replaces the default reply length rule
-        self.history = history            # past turns the site agent sees
+        self.history = history            # past turns Dushes sees
         self.tools = list(tools or [])    # the host's SiteTools
         self.suggestions = suggestions    # suggest_next -> CUSTOM suggestions
         self.form_for = form_for          # (form_id, ctx) -> form state | None: the same-run hand-off
         self.site = site
-        self.model = model   # the site agent's model; default: the form guide's agent model
+        self.model = model   # Dushes' model; default: the form guide's agent model
         self.router_model = router_model or form_guide.models.memory   # a cheap model for unclear messages
         # the site's documents: the "site" namespace and the forms' own, seen through one knowledge scope
         spaces = knowledge_namespaces or ["site", *dict.fromkeys(p.form for p in site.pages if p.form)]
@@ -228,7 +228,7 @@ class SiteGuide:
             if any(re.search(rf"(?<!\w){re.escape(w)}(?!\w)", text) for w in words if len(w) > 2):
                 return "unclear"   # "a car loan" on the loan form is the form's; "the barbershop prices" is not
         if self._last_speaker(thread_id)[0] == "site":
-            return "unclear"   # the site agent spoke last: the message may answer it
+            return "unclear"   # Dushes spoke last: the message may answer it
         if is_question(message) and not names_a_field(message, state.get("form") or {}):
             return "unclear"   # a question about none of this form's fields ("how many new requests?")
         return "form"
@@ -264,7 +264,7 @@ class SiteGuide:
         who, said = self._last_speaker(thread_id)
         if not who:
             return ""
-        name = "the site assistant" if who == "site" else "the form assistant"
+        name = "Dushes" if who == "site" else "the form assistant"
         return f"The last to speak was {name}: \"{said[-300:]}\". "
 
     def _carry_files(self, site_thread: str, form_thread: str, form: dict[str, Any], resume: Any) -> None:
@@ -320,7 +320,7 @@ class SiteGuide:
                 if ev["type"] == "CUSTOM" and ev.get("name") == "hand_back":
                     back = ev.get("value") or {}
                     continue
-                if back is not None:   # the form's turn ended with hand_back: the site agent answers next
+                if back is not None:   # the form's turn ended with hand_back: Dushes answers next
                     continue
                 if ev["type"] == "TEXT_MESSAGE_CONTENT":
                     said.append(ev["delta"])
@@ -338,7 +338,7 @@ class SiteGuide:
 
     async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
                          host: Any, form_kwargs: dict[str, Any], recorded: bool = False) -> AsyncIterator[dict]:
-        """The site agent's turn (and a same-run hand-off to a form). `recorded`: the user's message is already in
+        """Dushes' turn (and a same-run hand-off to a form). `recorded`: the user's message is already in
         the transcript (the form agent gave it back)."""
         tx = self.forms.transcripts
         history = [(e["kind"], e.get("text", "")) for e in tx.list(thread_id)
@@ -390,7 +390,7 @@ class SiteGuide:
         if not handed:
             yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
             return
-        # the form agent answers now, in this same run: its words and cards follow the site agent's open_form
+        # the form agent answers now, in this same run: its words and cards follow Dushes' open_form
         fid, form = handed["form_id"], handed["form"]
         form_thread = f"{thread_id}-{fid}"[:100]
         out: list[str] = []
@@ -405,7 +405,7 @@ class SiteGuide:
             tx.append(thread_id, new_entry("assistant", text="".join(out), form_id=fid))
 
 
-def create_site_router(site: SiteGuide, host: Any = None):
+def create_dushes_router(site: Dushes, host: Any = None):
     """FastAPI router: POST /run (AG-UI RunAgentInput; state {page, form?}), GET /map (the site map for the page).
     `host(request)` (sync or async) builds the host's object for each run: SiteRunCtx.host in every callback."""
     from fastapi import APIRouter, HTTPException
@@ -458,3 +458,8 @@ def create_site_router(site: SiteGuide, host: Any = None):
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     return r
+
+
+# the names before Dushes, kept so existing hosts keep working
+SiteGuide = Dushes
+create_site_router = create_dushes_router

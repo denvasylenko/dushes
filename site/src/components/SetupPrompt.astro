@@ -64,9 +64,9 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
       'Point CopilotKitProvider at the runtime (runtimeUrl, agentId "formguide"); do not use agents__unsafe_dev_only.',
       'Register the form, send it with every run via agent.setState, and draw the cards with useInterrupt.',
     ] },
-    site: { name: 'a site assistant across the whole site', pages: ['backend/site-assistant', 'frontend/site-assistant', 'form/contract'], steps: [
+    site: { name: 'Dushes across the whole site', pages: ['backend/dushes', 'frontend/dushes', 'form/contract'], steps: [
       'Write a site map (site.yaml, or build it from my CMS or routes with SiteMap.load(dict)) with pages, sections and which page holds which form.',
-      'Mount create_site_router(SiteGuide(guide, site_map)) under /site next to the /agent router.',
+      'Mount create_dushes_router(Dushes(guide, site_map)) under /site next to the /agent router.',
       'In the page: <agui-chat url="/site/run">, send {page, form?} as state, follow CUSTOM site_directive, and run once with forwardedProps.handoff after a form opens.',
     ] },
   }

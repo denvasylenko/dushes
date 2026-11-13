@@ -1,4 +1,4 @@
-"""The site agent: answers from the site's content and moves the user around the site.
+"""Dushes: answers from the site's content and moves the user around the site.
 
 Tools:
   search_site(query)                 more passages when the first ones do not answer
@@ -6,7 +6,7 @@ Tools:
   navigate(path, tab?, section?)     open a page (and a tab, accordion or section on it)
   open_form(form_id, note)           open the page with that form and hand the request to the form agent
 
-Host extensions (SiteGuide passes them in): live facts and instructions in the prompt, the host's own
+Host extensions (Dushes passes them in): live facts and instructions in the prompt, the host's own
 tools (`SiteTool`), `suggest_next` (CUSTOM suggestions after the answer), and a same-run hand-off (the turn
 ends after open_form and the form agent answers in the same stream).
 
@@ -40,12 +40,12 @@ class SiteRunCtx:
     page: str
     state: dict[str, Any] = field(default_factory=dict)
     message: str = ""
-    host: Any = None   # the host's own object for this request: run(host=...) / create_site_router(host=fn)
+    host: Any = None   # the host's own object for this request: run(host=...) / create_dushes_router(host=fn)
 
 
 @dataclass
 class SiteTool:
-    """A tool of the host's for the site agent. `handler(args, ctx)` returns the text the model gets."""
+    """A tool of the host's for Dushes. `handler(args, ctx)` returns the text the model gets."""
     name: str
     description: str
     parameters: dict[str, Any]

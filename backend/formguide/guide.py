@@ -536,7 +536,7 @@ class FormGuide:
                     yield {"type": "CUSTOM", "name": "agent_note", "value": chunk["text"]}
                 elif k == "sources":
                     yield {"type": "CUSTOM", "name": "sources", "value": {"items": chunk["items"]}}
-                elif k == "hand_back":   # the site assistant (SiteGuide) answers this message instead
+                elif k == "hand_back":   # Dushes answers this message instead
                     yield {"type": "CUSTOM", "name": "hand_back", "value": {"reason": chunk["reason"]}}
                 elif k == "receipt":
                     yield {"type": "CUSTOM", "name": "receipt", "value": chunk["receipt"]}

@@ -1,6 +1,6 @@
 """The site map: a site's pages, their tabs, accordions and sections, and which form each page holds.
 
-It is both what the site assistant knows (a BM25 index over every section) and where it may go:
+It is both what Dushes knows (a BM25 index over every section) and where it may go:
 navigation targets are checked against it, so the model cannot invent pages.
 
     title: Main Street
@@ -53,7 +53,7 @@ class Page:
 class SiteMap:
     def __init__(self, title: str, pages: list[Page], instructions: str = ""):
         self.title = title
-        self.instructions = instructions   # the business's own instructions for the site assistant
+        self.instructions = instructions   # the business's own instructions for Dushes
         self.pages = pages
         self.by_path = {p.path: p for p in pages}
         self.index = BM25Index()

@@ -180,10 +180,10 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "hand_back",
-        "description": "Give the user's message back to the site's assistant, which answers it at once in this chat: "
+        "description": "Give the user's message back to Dushes, which answers it at once in this chat: "
                        "for a message that is not about this form or its business documents (the user's account, "
                        "statistics, requests, another page or service). Call it alone, with no text: the user sees "
-                       "the site assistant's answer, not yours.",
+                       "Dushes' answer, not yours.",
         "input_schema": {"type": "object", "properties": {
             "reason": {"type": "string", "description": "what the message is about, in a few words"}}, "required": ["reason"]},
     },
@@ -301,7 +301,7 @@ class ToolCtx:
     pending_source: dict | None = None           # the card's source header (values from a document)
     caps: frozenset[str] | None = None           # what the client renders; None = everything
     cards: dict[str, Any] = field(default_factory=dict)   # show_<type> -> CardSpec (cards from blocks)
-    handed_back: str | None = None              # hand_back's reason: the site assistant answers this message
+    handed_back: str | None = None              # hand_back's reason: Dushes answers this message
 
     def can(self, variant: str) -> bool:
         return self.caps is None or variant in self.caps
@@ -491,7 +491,7 @@ def reveal_chain(ctx: ToolCtx, name: str) -> list[dict]:
 
 def _t_hand_back(a: dict, ctx: ToolCtx) -> str:
     ctx.handed_back = str(a.get("reason") or "not about this form")[:200]
-    return "Handed to the site assistant: it answers the user now. Say nothing."
+    return "Handed to Dushes: it answers the user now. Say nothing."
 
 
 def _t_focus_field(a: dict, ctx: ToolCtx) -> str:

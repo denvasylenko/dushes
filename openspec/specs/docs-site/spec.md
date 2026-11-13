@@ -104,11 +104,11 @@ The themes guide SHALL have an inline theme playground (accent, radii, font, sch
 - **THEN** the card in the live chat changes its radius at once and the generated code shows the new `card-radius`
 
 ### Requirement: One public host
-The docs site, Ask AI and a live demo SHALL be servable from one app (`docs_ai.host`): the site at `/`, the assistant at `/ai`, the demo page at `/demo/` with formguide at `/agent`, and the site assistant's demo at `/demo/site.html` with `/site`.
+The docs site, Ask AI and a live demo SHALL be servable from one app (`docs_ai.host`): the site at `/`, the assistant at `/ai`, the demo page at `/demo/` with formguide at `/agent`, and Dushes' demo at `/demo/site.html` with `/site`.
 
 #### Scenario: One address for everything
 - **WHEN** a reader opens the public host
-- **THEN** the docs are at `/`, Ask AI answers at `/ai/ask/run`, and "Live demo" offers the site assistant and the form assistant
+- **THEN** the docs are at `/`, Ask AI answers at `/ai/ask/run`, and "Live demo" offers Dushes and the form assistant
 
 ### Requirement: Public demo limits
 The public demo SHALL use an inexpensive model and limit messages per conversation (default 15), per address per day and per site per day, on `/agent/run` and `/site/run` alike, and SHALL refuse document uploads. Answering a card or the hand-off run SHALL not count as a message.

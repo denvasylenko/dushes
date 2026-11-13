@@ -1,4 +1,4 @@
-"""SiteGuide: routing between the site agent and the form agent, navigation checks, the hand-off."""
+"""Dushes: routing between Dushes itself and the form agent, navigation checks, the hand-off."""
 from __future__ import annotations
 
 import asyncio
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from formguide.site import SiteGuide, SiteMap
+from formguide.site import Dushes, SiteMap
 from formguide.site.agent import directive
 
 from .conftest import say
@@ -18,7 +18,7 @@ SITE = Path(__file__).resolve().parents[1] / "demo" / "site.yaml"
 
 @pytest.fixture
 def site(guide):
-    return SiteGuide(guide, SiteMap.load(SITE))
+    return Dushes(guide, SiteMap.load(SITE))
 
 
 def run(site, thread, **kw):
@@ -106,10 +106,10 @@ def test_the_map_endpoint_and_run(site, model):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from formguide.site import create_site_router
+    from formguide.site import create_dushes_router
 
     app = FastAPI()
-    app.include_router(create_site_router(site), prefix="/site")
+    app.include_router(create_dushes_router(site), prefix="/site")
     c = TestClient(app)
     m = c.get("/site/map").json()
     assert m["title"] == "Main Street" and any(p["form"] == "barber_booking" for p in m["pages"])
@@ -175,11 +175,11 @@ def test_one_transcript_and_restore(site, guide, model, monkeypatch):
 
 
 def test_the_hand_off_note_survives_a_restart(guide, model, monkeypatch):
-    first = SiteGuide(guide, SiteMap.load(SITE))
+    first = Dushes(guide, SiteMap.load(SITE))
     model.script = [say("", ("o1", "open_form", {"form_id": "loan_application", "note": "A cash loan of 200 000."})),
                     say("Opening it.")]
     run(first, "k3", message="I need 200 000 in cash", state={"page": {"path": "/"}})
-    restarted = SiteGuide(guide, SiteMap.load(SITE))                      # a new process: nothing in memory
+    restarted = Dushes(guide, SiteMap.load(SITE))                      # a new process: nothing in memory
     seen = {}
 
     async def fake_run(thread_id, **kw):
@@ -203,7 +203,7 @@ def test_an_unclear_message_is_decided_by_the_router_model(site, guide, model, m
     assert seen == ["form"]                                            # the model said form
     model.script = [say("site"), say("The barbershop prices are on the Barbershop page.")]
     run(site, "k4", message="what are the barbershop prices?", state=form_state(guide))
-    assert seen == ["form"]                                            # the model said site: the site agent answered
+    assert seen == ["form"]                                            # the model said site: Dushes answered
     prompt = model.calls[-2][0].content
     assert "Answer with one word" in prompt and "loan_application" in prompt
 
@@ -211,7 +211,7 @@ def test_an_unclear_message_is_decided_by_the_router_model(site, guide, model, m
 def test_the_business_instructions_and_a_last_reply(guide, model):
     m = SiteMap.load({"title": "Shop", "instructions": "Always mention the spring sale.",
                       "pages": [{"path": "/", "title": "Home", "description": "The shop."}]})
-    s = SiteGuide(guide, m)
+    s = Dushes(guide, m)
     loop = [say("", (f"q{i}", "search_site", {"query": "sale"})) for i in range(4)]
     model.script = [*loop, say("I could not find more about the sale.")]
     ev = run(s, "k5", message="tell me about the sale", state={"page": {"path": "/"}})
@@ -236,7 +236,7 @@ def test_host_context_tools_and_style(guide, model):
 
     async def live(ctx):
         return f"Open today 12:00 to 23:00 ({ctx.host['site']})."
-    s = SiteGuide(guide, SiteMap.load(SITE), context=live, instructions="Call the owner by name.",
+    s = Dushes(guide, SiteMap.load(SITE), context=live, instructions="Call the owner by name.",
                   style="Reply in up to five sentences.", history=2,
                   tools=[SiteTool("site_stats", "Visits.", {"type": "object", "properties": {"days": {"type": "string"}}}, stats)])
     model.script = [say("", ("t1", "site_stats", {"days": "7"})), say("120 visits this week.")]
@@ -253,15 +253,15 @@ def test_a_failing_host_tool_does_not_end_the_turn(guide, model):
 
     def boom(args, ctx):
         raise RuntimeError("db down")
-    s = SiteGuide(guide, SiteMap.load(SITE), tools=[SiteTool("site_stats", "Visits.", {"type": "object", "properties": {}}, boom)])
+    s = Dushes(guide, SiteMap.load(SITE), tools=[SiteTool("site_stats", "Visits.", {"type": "object", "properties": {}}, boom)])
     model.script = [say("", ("t1", "site_stats", {})), say("I could not check the visits right now.")]
     ev = run(s, "h2", message="visits?", state={"page": {"path": "/"}})
     assert "tool failed" in [e["content"] for e in ev if e["type"] == "TOOL_CALL_RESULT"][0]
     assert ev[-1]["type"] == "RUN_FINISHED" and not any(e["type"] == "RUN_ERROR" for e in ev)
 
 
-def test_suggestions_from_the_site_agent(guide, model):
-    s = SiteGuide(guide, SiteMap.load(SITE), suggestions=True)
+def test_suggestions_from_dushes(guide, model):
+    s = Dushes(guide, SiteMap.load(SITE), suggestions=True)
     model.script = [say("Barber & Co is open every day 10:00 to 21:00.",
                         ("g1", "suggest_next", {"options": ["Book a haircut", "Show prices"]}))]
     ev = run(s, "h3", message="when is the barber open?", state={"page": {"path": "/"}})
@@ -274,7 +274,7 @@ def test_hand_off_in_the_same_run(guide, model, monkeypatch):
     def form_for(form_id, ctx):
         built.update(form_id=form_id, host=ctx.host)
         return {"form_id": form_id, "config": {}, "jsx_hash": "x"}
-    s = SiteGuide(guide, SiteMap.load(SITE), form_for=form_for)
+    s = Dushes(guide, SiteMap.load(SITE), form_for=form_for)
     seen = {}
 
     async def fake_run(thread_id, **kw):
@@ -292,7 +292,7 @@ def test_hand_off_in_the_same_run(guide, model, monkeypatch):
         {"type": "navigate", "path": "/book", "form_id": "barber_booking", "handoff": "done"}]
     assert built == {"form_id": "barber_booking", "host": "me"} and seen["thread_id"] == "h4-barber_booking"
     assert seen["message"].endswith("A haircut on Friday. Reply to the user in Russian.")
-    assert len(model.calls) == 1                                          # the site agent says nothing after open_form
+    assert len(model.calls) == 1                                          # Dushes says nothing after open_form
     seen.clear()
     run(s, "h4", state={"page": {"path": "/book"}, "form": {"form_id": "barber_booking"}}, handoff=True)
     assert seen["message"] is None                                        # the page's run finds no pending note
@@ -324,7 +324,7 @@ def test_routing_by_who_spoke_last(site, guide, model):
     tx.append("h6", new_entry("assistant", text="Car loan noted.", form_id="loan_application"))
     assert site.route("the second one", st, thread_id="h6") == "form"                # the form spoke last
     tx.append("h6", new_entry("assistant", text="Which one do you mean?"))
-    assert site.route("the second one", st, thread_id="h6") == "unclear"             # the site agent spoke last
+    assert site.route("the second one", st, thread_id="h6") == "unclear"             # Dushes spoke last
     open_ru = "\u043e\u0442\u043a\u0440\u043e\u0439 \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u044b"   # "open contacts" in Russian
     tx.append("h6", new_entry("assistant", text="Noted.", form_id="loan_application"))
     assert site.route(open_ru, st, thread_id="h6") == "unclear"                      # navigation in another language
@@ -337,11 +337,11 @@ def test_the_router_builds_the_host_per_request(guide, model):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from formguide.site import create_site_router
+    from formguide.site import create_dushes_router
     got = []
-    s = SiteGuide(guide, SiteMap.load(SITE), context=lambda ctx: got.append(ctx.host) or "")
+    s = Dushes(guide, SiteMap.load(SITE), context=lambda ctx: got.append(ctx.host) or "")
     app = FastAPI()
-    app.include_router(create_site_router(s, host=lambda request: request.headers.get("x-site")), prefix="/site")
+    app.include_router(create_dushes_router(s, host=lambda request: request.headers.get("x-site")), prefix="/site")
     model.script = [say("Hi!")]
     body = {"threadId": "h7", "runId": "r1", "messages": [{"role": "user", "content": "hi"}],
             "state": {"page": {"path": "/"}}, "tools": [], "context": [], "forwardedProps": {}}
@@ -370,7 +370,7 @@ def test_a_question_about_none_of_the_fields_goes_to_the_router_model(site, guid
 
 def test_the_form_agent_gives_a_foreign_message_back(site, guide, model):
     model.script = [say("", ("h1", "hand_back", {"reason": "statistics"})),       # the form agent: not mine
-                    say("There were 120 visits this week.")]                        # the site agent answers
+                    say("There were 120 visits this week.")]                        # Dushes answers
     ev = run(site, "hb1", message="show me last week's visits", state=form_state(guide))
     types = [e["type"] for e in ev]
     assert types.count("RUN_STARTED") == 1 and types.count("RUN_FINISHED") == 1 and types[-1] == "RUN_FINISHED"
@@ -381,3 +381,9 @@ def test_the_form_agent_gives_a_foreign_message_back(site, guide, model):
     assert "hand_back" in (first if isinstance(first, str) else first[0]["text"])  # the form agent got the rule
     msgs = [(m["role"], m["content"]) for m in site.thread("hb1")["messages"]]
     assert msgs == [("user", "show me last week's visits"), ("assistant", "There were 120 visits this week.")]
+
+
+def test_the_old_names_still_work():
+    from formguide.site import SiteGuide, create_dushes_router, create_site_router
+
+    assert SiteGuide is Dushes and create_site_router is create_dushes_router

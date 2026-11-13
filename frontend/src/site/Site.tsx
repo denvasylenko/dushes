@@ -13,7 +13,7 @@ const DICTATION = ((): 'auto' | 'server' | 'browser' => {
 })()
 
 /** The demo site: a portal of two businesses (demo/site.yaml), one chat across every page.
- * The site assistant (/site/run) answers about the site and moves around it; on a page with a form
+ * Dushes (/site/run) answers about the site and moves around it; on a page with a form
  * it hands the turn to the form agent, which the page serves through the usual formguide plugin. */
 type Part = { id: string; title: string; text: string }
 type SitePage = { path: string; title: string; description: string; form: string | null
@@ -41,7 +41,7 @@ export default function Site() {
   const [ring, setRing] = useState<string | null>(null)
   const [thread] = useState(threadId)
   const chatRef = useRef<AguiChatElement | null>(null)
-  const pendingHandoff = useRef<string | null>(null)   // a form the site assistant opened for the form agent
+  const pendingHandoff = useRef<string | null>(null)   // a form Dushes opened for the form agent
 
   useEffect(() => { fetch('/site/map').then((r) => r.json()).then(setMap) }, [])
   useEffect(() => {

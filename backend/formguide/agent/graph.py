@@ -63,7 +63,7 @@ class AgentState(TypedDict, total=False):
     said: bool      # the user saw some text this turn
     nudged: bool    # we already asked the model to reply with text
     limited: bool   # the turn used up max_tool_rounds: the model was asked to reply without more tools
-    handed_back: str | None   # hand_back was called: the turn ends, the site assistant answers (SiteGuide)
+    handed_back: str | None   # hand_back was called: the turn ends, Dushes answers
     system_prompt: str   # frozen for the thread: changing it would invalidate the model's earlier reasoning
     prompt_sent: str     # the instructions the model last got as <updated_instructions> (empty: none since compaction)
     memory: str          # summary of older turns after compaction (see memory.py)
@@ -453,7 +453,7 @@ def build_graph(guide: FormGuide):
 
     def route_tools(state: AgentState) -> str:
         if state.get("handed_back") and not state.get("pending"):
-            return END   # the site assistant answers this message (SiteGuide runs it next)
+            return END   # Dushes answers this message (Dushes runs it next)
         if state.get("pending"):
             return "confirm"
         return END if state.get("pending_client") else "llm"
