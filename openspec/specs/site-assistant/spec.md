@@ -43,3 +43,11 @@ The site agent SHALL answer only from the site map's sections and name the page 
 #### Scenario: A question about opening hours
 - **WHEN** the user asks when the branch is open
 - **THEN** the answer comes from the contacts page and the reply offers to go there
+
+### Requirement: Files on a form page
+Files the chat uploads on a form page SHALL reach the form agent: before a form turn, `SiteGuide` SHALL make the files named in the form state's `attachments` and in an upload card's `attachment_ids` available in the form's own conversation, under the same ids. Attachment storage SHALL accept the same conversation ids as the rest of formguide (letters, digits, `_`, `-`, up to 100 characters).
+
+#### Scenario: A passport photo on the loan form page
+- **WHEN** the user attaches a photo in the site chat on the loan application page
+- **THEN** the form agent can read it with extract_from_attachment
+

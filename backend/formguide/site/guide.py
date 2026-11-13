@@ -72,6 +72,14 @@ class SiteGuide:
                 return True
         return False
 
+    def _carry_files(self, site_thread: str, form_thread: str, form: dict[str, Any], resume: Any) -> None:
+        """The chat uploads under the site's conversation; the form agent reads files from its own."""
+        ids = [str(a.get("id")) for a in form.get("attachments") or [] if isinstance(a, dict) and a.get("id")]
+        if isinstance(resume, dict) and isinstance(resume.get("attachment_ids"), list):
+            ids += [str(i) for i in resume["attachment_ids"]]
+        for att_id in dict.fromkeys(ids):
+            self.forms.attachments.copy(site_thread, form_thread, att_id)
+
     # ------------------------------------------------------------ a turn
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None, handoff: bool = False,
@@ -89,7 +97,9 @@ class SiteGuide:
                 # the request the user made elsewhere on the site, as the form agent's first message: it then
                 # proposes what the note covers with its usual tools and cards
                 message = f"[Handed over by the site assistant] On the site the user said: {note['note']}"
-            async for ev in self.forms.run(f"{thread_id}-{fid}"[:100], message=message, state=form, resume=resume,
+            form_thread = f"{thread_id}-{fid}"[:100]
+            self._carry_files(thread_id, form_thread, form, resume)
+            async for ev in self.forms.run(form_thread, message=message, state=form, resume=resume,
                                            run_id=run_id, **kw):
                 yield ev
             return

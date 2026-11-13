@@ -118,3 +118,32 @@ def test_the_map_endpoint_and_run(site, model):
             "state": {"page": {"path": "/"}}, "tools": [], "context": [], "forwardedProps": {}}
     text = c.post("/site/run", json=body).text
     assert "RUN_FINISHED" in text and "Ask me about loans" in text
+
+
+def test_files_uploaded_on_a_form_page_reach_the_form_agent(site, guide, monkeypatch):
+    site_thread = "7b1f0c2e-1d3a-4c5b-9e8f-0a1b2c3d4e5f"   # a real chat id: the form thread is 53 chars with "_"
+    att = guide.attachments.save(site_thread, "passport.jpg", b"\xff\xd8 scan")
+    up = guide.attachments.save(site_thread, "payslip.pdf", b"%PDF scan")
+    seen = {}
+
+    async def fake_run(thread_id, **kw):
+        seen["thread_id"] = thread_id
+        yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": "r"}
+    monkeypatch.setattr(site.forms, "run", fake_run)
+    st = form_state(guide)
+    st["form"]["attachments"] = [att]
+    run(site, site_thread, message="read my passport", state=st)
+    form_thread = seen["thread_id"]
+    assert form_thread == f"{site_thread}-loan_application"
+    assert guide.attachments.load(form_thread, att["id"])[0] == "passport.jpg"     # carried over, same id
+    run(site, site_thread, resume={"attachment_ids": [up["id"]]}, state=form_state(guide))
+    assert guide.attachments.load(form_thread, up["id"])[0] == "payslip.pdf"       # an upload card's file too
+
+
+def test_attachment_threads_follow_the_chat_rule(guide):
+    long_id = "a" * 60 + "-loan_application"
+    saved = guide.attachments.save(long_id, "x.pdf", b"%PDF")
+    assert guide.attachments.load(long_id, saved["id"])
+    import pytest as _pt
+    with _pt.raises(ValueError):
+        guide.attachments.save("bad id!", "x.pdf", b"%PDF")

@@ -27,7 +27,7 @@ MEDIA = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", "
          ".webp": "image/webp", ".gif": "image/gif", ".txt": "text/plain", ".md": "text/plain"}
 
 _SAFE = re.compile(r"[^\w.\-]+", re.UNICODE)
-_ID = re.compile(r"^[A-Za-z0-9\-]{1,64}$")
+_ID = re.compile(r"^[A-Za-z0-9_\-]{1,100}$")   # the same rule as conversation ids (transcript.py)
 _ATT = re.compile(r"att_[0-9a-f]{8}")
 
 
@@ -53,6 +53,24 @@ class AttachmentStore:
         d.mkdir(parents=True, exist_ok=True)
         (d / f"{att_id}__{safe}").write_bytes(data)
         return {"id": att_id, "filename": safe, "bytes": len(data)}
+
+    def copy(self, src_thread: str, dst_thread: str, att_id: str) -> bool:
+        """Make a file uploaded in one conversation available in another under the same id (e.g. a site
+        chat's upload for the form's own conversation). True when the file is there afterwards."""
+        if self.load(dst_thread, att_id):
+            return True
+        if not _ATT.fullmatch(att_id):
+            return False
+        try:
+            hits = list(self._thread_dir(src_thread).glob(f"{att_id}__*"))
+            d = self._thread_dir(dst_thread)
+        except ValueError:
+            return False
+        if not hits:
+            return False
+        d.mkdir(parents=True, exist_ok=True)
+        (d / hits[0].name).write_bytes(hits[0].read_bytes())
+        return True
 
     def load(self, thread_id: str, att_id: str) -> tuple[str, bytes] | None:
         if not _ATT.fullmatch(att_id):
