@@ -63,6 +63,21 @@ function ics(v: Item): string {
     `SUMMARY:${esc(v.title)}`, ...(v.place ? [`LOCATION:${esc(v.place)}`] : []), 'END:VEVENT', 'END:VCALENDAR'].join('\r\n')
 }
 
+/** Local time without a zone ("2026-11-15T16:30:00"), for the calendar links; and its compact form for Google. */
+const local = (d: Date): string => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19)
+/** "Add to calendar": Apple (.ics), Google and Outlook links for {title, start, minutes?, place?, details?}. */
+function calendars(v: Item, c: RendererContext): [string, string, boolean][] {
+  const start = new Date(str(v.start))
+  if (Number.isNaN(start.getTime())) return []
+  const end = new Date(start.getTime() + (Number(v.minutes) || 60) * 60000)
+  const q = (o: Record<string, string>) => new URLSearchParams(Object.entries(o).filter(([, x]) => x)).toString()
+  const g = (d: Date) => local(d).replace(/[-:]/g, '')
+  const apple: [string, string, boolean] = [c.t('calApple'), `data:text/calendar;charset=utf-8,${encodeURIComponent(ics(v))}`, true]
+  return [apple,
+    [c.t('calGoogle'), `https://calendar.google.com/calendar/render?${q({ action: 'TEMPLATE', text: str(v.title), dates: `${g(start)}/${g(end)}`, details: str(v.details), location: str(v.place) })}`, false],
+    [c.t('calOutlook'), `https://outlook.live.com/calendar/0/deeplink/compose?${q({ subject: str(v.title), startdt: local(start), enddt: local(end), body: str(v.details), location: str(v.place) })}`, false]]
+}
+
 /** What a link does: open, call, route, add to calendar, share, copy or send as a message. */
 function linkEl(it: Item, c: RendererContext): HTMLElement {
   const kind = str(it.kind) || 'web'
@@ -72,9 +87,16 @@ function linkEl(it: Item, c: RendererContext): HTMLElement {
   if (kind === 'call') href = `tel:${str(value).replace(/[^\d+]/g, '')}`
   else if (kind === 'route') href = `https://maps.apple.com/?q=${encodeURIComponent(str(value))}`
   else if (kind === 'web') href = safeUrl(value)
-  else if (kind === 'calendar' && value && typeof value === 'object') {
-    const data = ics(value as Item)
-    if (data) href = `data:text/calendar;charset=utf-8,${encodeURIComponent(data)}`
+  else if (kind === 'calendar') {
+    // like a row that opens its choices in place: Apple's calendar, Google, Outlook (the .ics file for an iPhone first)
+    const items = value && typeof value === 'object' ? calendars(value as Item, c) : []
+    if (!items.length) return h('span', null)
+    const menu = h('div', { class: 'bk-menu', part: 'block-menu', hidden: true }, items.map(([text, url, file]) =>
+      h('a', { class: 'bk-link', href: url, target: file ? null : '_blank', rel: 'noopener noreferrer', download: file ? `${label || 'event'}.ics` : null }, h('span', null, text))))
+    const row = h('button', { class: 'bk-link', part: 'block-link', type: 'button', 'aria-expanded': 'false', onclick: () => {
+      const open = menu.hidden; menu.hidden = !open; row.setAttribute('aria-expanded', String(open))
+    } }, icon(kind), h('span', null, label)) as HTMLElement
+    return h('div', { class: 'bk-cal' }, row, menu)
   }
   const body = [icon(kind), h('span', null, label)]
   if (href) {
@@ -98,11 +120,59 @@ function linkEl(it: Item, c: RendererContext): HTMLElement {
 /** A host's own handling of a button: resolves true when handled (the chat then does nothing more). */
 export type OnAction = (id: string, label: string, values: Record<string, unknown>) => Promise<boolean>
 
+/** Opening hours: [{days: [0..6] (0 = Monday), from: 'HH:MM', to: 'HH:MM'}]. */
+type Hours = { days: number[]; from: string; to: string }[]
+const weekdays = (lang: string): string[] => {
+  const f = new Intl.DateTimeFormat(lang || 'en', { weekday: 'short' })
+  return [...Array(7)].map((_, i) => f.format(new Date(2024, 0, 1 + i)))   // 1 Jan 2024 was a Monday
+}
+/** "Mon\u2013Fri 09:00\u201318:00": runs of days joined with a dash, pairs with a comma. */
+export function hoursText(v: Hours, lang = 'en'): string {
+  const d = weekdays(lang)
+  const days = (xs: number[]): string => {
+    const s = [...new Set(xs)].filter((x) => x >= 0 && x < 7).sort((a, b) => a - b)
+    const out: string[] = []
+    for (let i = 0; i < s.length; i++) {
+      let j = i
+      while (j + 1 < s.length && s[j + 1] === s[j] + 1) j++
+      out.push(j - i >= 2 ? `${d[s[i]]}\u2013${d[s[j]]}` : s.slice(i, j + 1).map((x) => d[x]).join(', '))
+      i = j
+    }
+    return out.join(', ')
+  }
+  return v.map((r) => `${days(r.days)} ${r.from}\u2013${r.to}`).join('; ')
+}
+const hoursList = (v: unknown): Hours => list(v).map((r) => ({ days: (Array.isArray(r.days) ? r.days : []).map(Number), from: str(r.from), to: str(r.to) }))
+
+/** What a card still needs before its main button: each required choice and field, by its label. */
+const NEEDS = new WeakMap<HTMLElement, { label: string; ok: () => boolean }[]>()
+const needs = (card: HTMLElement) => { let n = NEEDS.get(card); if (!n) NEEDS.set(card, n = []); return n }
+
+/**
+ * A picker card (a booking: day, time, people, name, phone) as blocks: a title, a choice per group, the fields and
+ * one main button that waits for what is still missing.
+ *   { type: 'picker', title, groups: [{ name, label, options, more?: { label, options } }],
+ *     depends: { time: { on: 'day', options: { '<day id>': [...] } } }, fields: [{ name, label, input, required }],
+ *     submit: { label }, need: 'Choose: {x}' }
+ * Its answer is { action: 'submit', values: { day, time, people, name, phone } }.
+ */
+export function pickerBlocks(it: Item): Block[] {
+  const dep = (it.depends && typeof it.depends === 'object' ? it.depends : {}) as Record<string, Item>
+  const submit = (it.submit && typeof it.submit === 'object' ? it.submit : {}) as Item
+  return [
+    ...(it.title ? [{ type: 'title', text: it.title, subtitle: it.subtitle }] : []),
+    ...list(it.groups).map((g) => ({ type: 'choice', required: true, ...g, ...(dep[str(g.name)] ? { depends: dep[str(g.name)] } : {}) })),
+    ...list(it.fields).map((f) => ({ type: 'field', ...f })),
+    { type: 'buttons', need: it.need, items: [{ id: 'submit', style: 'primary', ...submit, label: str(submit.label) || 'OK' }] },
+  ]
+}
+
 export function blocksCard(it: Interrupt | Record<string, unknown>, c: RendererContext, answer: Answer | null, onAction?: OnAction): HTMLElement {
   const values: Record<string, unknown> = {}
   const card = h('div', { class: 'bk', part: `blocks blocks-${str(it.name) || 'card'}` })
   let group: HTMLElement | null = null
-  for (const b of list(it.blocks) as Block[]) {
+  const blocks = Array.isArray(it.blocks) ? it.blocks : it.groups ? pickerBlocks(it as Item) : []
+  for (const b of list(blocks) as Block[]) {
     if (b.type !== 'row') group = null
     const el = block(b, c, values, answer, card, onAction)
     if (!el) continue
@@ -161,14 +231,14 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       const name = str(b.name) || b.type
       const multiple = !!b.multiple
       const picked = new Set<string>()
-      const wrap = h('div', { class: b.type === 'swatches' ? 'bk-swatches' : 'chips', part, role: multiple ? 'group' : 'radiogroup' })
-      for (const o of options(b.type === 'swatches' ? b.items : b.options)) {
+      const wrap = h('div', { class: b.type === 'swatches' ? 'bk-swatches' : 'chips', part, role: multiple ? 'group' : 'radiogroup', 'aria-label': str(b.label) || null })
+      const add = (o: Item): void => {
         const id = str(o.id)
         const sw = b.type === 'swatches'
           ? h('button', { class: 'bk-sw', type: 'button', 'aria-label': str(o.label) || id, 'aria-pressed': 'false' },
             h('span', { class: 'bk-sw-c' }, (Array.isArray(o.colors) ? o.colors : []).slice(0, 4).map((col) => h('i', { style: `background: ${/^#[0-9a-f]{3,8}$/i.test(str(col)) ? col : 'transparent'}` }))),
             o.label ? h('span', { class: 'bk-small' }, str(o.label)) : null)
-          : h('button', { class: 'chip', part: 'chip', type: 'button', 'aria-pressed': 'false' }, str(o.label))
+          : h('button', { class: 'chip', part: 'chip', type: 'button', 'aria-pressed': 'false', disabled: !!o.off, title: o.off && typeof o.off === 'string' ? o.off : null }, str(o.label))
         sw.addEventListener('click', () => {
           if (!multiple) { picked.clear(); wrap.querySelectorAll('[aria-pressed]').forEach((x) => { x.setAttribute('aria-pressed', 'false'); x.classList.remove('on') }) }
           if (picked.has(id)) picked.delete(id); else picked.add(id)
@@ -177,20 +247,97 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
           card.dispatchEvent(new Event('bk-change'))
         })
         wrap.append(sw)
+        if (b.value != null && str(b.value) === id && !o.off) sw.click()   // a smart default: already chosen
       }
-      return wrap
+      const fill = (opts: Item[]): void => {
+        wrap.replaceChildren(); picked.clear(); values[name] = multiple ? [] : null
+        opts.forEach(add)
+        const more = b.more && typeof b.more === 'object' ? b.more as Item : null
+        if (more && options(more.options).length) {   // "Other days": the rest in place, one tap
+          const m = h('button', { class: 'chip bk-more', type: 'button', onclick: () => { m.remove(); options(more.options).forEach(add) } }, str(more.label) || '\u2026')
+          wrap.append(m)
+        }
+      }
+      // options that follow another choice (times of the chosen day): redrawn, and the choice cleared, when it changes
+      const dep = b.depends && typeof b.depends === 'object' ? b.depends as Item : null
+      const map = (dep?.options ?? {}) as Record<string, unknown>
+      let on: unknown = dep ? values[str(dep.on)] : undefined   // a default chosen above already counts
+      if (dep) card.addEventListener('bk-change', () => {
+        const now = values[str(dep.on)]
+        if (now === on) return
+        on = now
+        fill(options(map[str(now)]))
+        card.dispatchEvent(new Event('bk-change'))
+      })
+      fill(options(b.type === 'swatches' ? b.items : dep && on != null ? map[str(on)] : b.options))
+      if (b.required) needs(card).push({ label: str(b.label) || name, ok: () => (multiple ? (values[name] as unknown[] ?? []).length > 0 : values[name] != null) })
+      return b.label ? h('div', { class: 'bk-group', part: 'block-group' }, h('div', { class: 'bk-cap' }, str(b.label)), wrap) : wrap
+    }
+    case 'hours': {   // opening hours: days as chips, from\u2013to, one or more pairs, quick presets
+      const name = str(b.name) || 'hours'
+      const lang = c.chat.lang
+      const days = weekdays(lang)
+      let rows: Hours = hoursList(b.value)
+      if (!rows.length) rows = [{ days: [], from: '09:00', to: '18:00' }]
+      const presets = Array.isArray(b.presets) ? b.presets.map(hoursList) : [[{ days: [0, 1, 2, 3, 4], from: '09:00', to: '18:00' }], [{ days: [0, 1, 2, 3, 4, 5, 6], from: '12:00', to: '23:00' }]]
+      const box = h('div', { class: 'bk-hours', part })
+      const set = (): void => { values[name] = rows.map((r) => ({ ...r, days: [...r.days].sort((a, x) => a - x) })); card.dispatchEvent(new Event('bk-change')) }
+      const draw = (): void => {
+        box.replaceChildren()
+        if (presets.length) box.append(h('div', { class: 'chips' }, presets.map((p) => h('button', { class: 'chip', type: 'button',
+          'aria-pressed': String(JSON.stringify(p) === JSON.stringify(values[name])), onclick: () => { rows = structuredClone(p); set(); draw() } }, hoursText(p, lang)))))
+        rows.forEach((r, i) => {
+          const time = (k: 'from' | 'to') => h('input', { class: 'text-in', type: 'time', value: r[k], 'aria-label': k,
+            oninput: (e: Event) => { r[k] = (e.target as HTMLInputElement).value; set() } })
+          box.append(h('div', { class: 'bk-pair' },
+            h('div', { class: 'chips', role: 'group' }, days.map((d, n) => h('button', { class: `chip${r.days.includes(n) ? ' on' : ''}`, type: 'button',
+              'aria-pressed': String(r.days.includes(n)), onclick: (e: Event) => {
+                r.days = r.days.includes(n) ? r.days.filter((x) => x !== n) : [...r.days, n]
+                const b2 = e.currentTarget as HTMLElement; b2.classList.toggle('on'); b2.setAttribute('aria-pressed', String(r.days.includes(n))); set()
+              } }, d))),
+            h('div', { class: 'bk-times' }, time('from'), h('span', { class: 'muted' }, '\u2013'), time('to'),
+              rows.length > 1 ? h('button', { class: 'btn link', type: 'button', onclick: () => { rows.splice(i, 1); set(); draw() } }, c.t('remove')) : null)))
+        })
+        if (rows.length < 3) box.append(h('button', { class: 'btn link bk-add', type: 'button', onclick: () => { rows.push({ days: [], from: '09:00', to: '18:00' }); set(); draw() } }, str(b.addLabel) || c.t('addHours')))
+      }
+      values[name] = rows
+      draw()
+      if (b.required !== false) needs(card).push({ label: str(b.label) || name, ok: () => (values[name] as Hours).some((r) => r.days.length > 0 && r.from && r.to) })
+      return b.label ? h('div', { class: 'bk-group', part: 'block-group' }, h('div', { class: 'bk-cap' }, str(b.label)), box) : box
+    }
+    case 'preview': {   // a live thumbnail of a page (a site that is ready): view only, a tap opens it
+      const src = safeUrl(b.src)
+      if (!src) return null
+      const tall = str(b.ratio) === '9:16'
+      const w = tall ? 390 : 1280
+      const frame = h('iframe', { src, title: str(b.title) || src, loading: 'lazy', tabindex: '-1', sandbox: 'allow-scripts', referrerpolicy: 'no-referrer',
+        style: `width: ${w}px; height: ${Math.round(tall ? w * 16 / 9 : w / 1.6)}px` })
+      const box = h(safeUrl(b.href) ? 'a' : 'div', { class: `bk-preview${tall ? ' tall' : ''}`, part, href: safeUrl(b.href) || null, target: '_blank', rel: 'noopener noreferrer',
+        'aria-label': str(b.title) || null }, frame)
+      // the page is drawn at its real width and scaled to the card: a true miniature, not a squeezed layout
+      if (typeof ResizeObserver !== 'undefined') new ResizeObserver(([e]) => { frame.style.transform = `scale(${e.contentRect.width / w})` }).observe(box)
+      return box
     }
     case 'field': {
       const name = str(b.name)
       const type = ['text', 'tel', 'email', 'number', 'date', 'url'].includes(str(b.input)) ? str(b.input) : 'text'
-      const input = h('input', { class: 'text-in', part: 'text-input', type, name, placeholder: str(b.placeholder), value: str(b.value),
+      const input = h('input', { class: 'text-in', part: 'text-input', type, name, placeholder: str(b.placeholder), value: str(b.value), required: !!b.required,
+        autocomplete: ({ tel: 'tel', email: 'email' } as Record<string, string>)[type] ?? (name === 'name' ? 'name' : null),
         'aria-label': str(b.label) || name, inputmode: type === 'tel' ? 'tel' : null,
         oninput: (e: Event) => { values[name] = (e.target as HTMLInputElement).value; card.dispatchEvent(new Event('bk-change')) } }) as HTMLInputElement
       if (b.value != null) values[name] = str(b.value)
+      if (b.required) needs(card).push({ label: str(b.label) || name, ok: () => !!str(values[name]).trim() })
       return h('label', { class: 'bk-field', part }, b.label ? h('span', { class: 'muted bk-small' }, str(b.label)) : null, input)
     }
     case 'buttons': {
       const row = h('div', { class: 'acts', part })
+      const line = h('div', { class: 'muted bk-need', part: 'block-need', 'aria-live': 'polite' })
+      const check = (): void => {
+        if (!needs(card).length) return void line.remove()   // nothing required: no line, no gap
+        const missing = needs(card).filter((n) => !n.ok()).map((n) => n.label)
+        row.querySelectorAll<HTMLButtonElement>('.btn.pri').forEach((p) => { p.disabled = missing.length > 0 })
+        line.textContent = missing.length ? (str(b.need) || c.t('needs')).replace('{x}', missing.join(', ')) : ''
+      }
       for (const x of list(b.items)) {
         const style = ({ primary: 'pri', secondary: 'sec', plain: 'link', danger: 'danger' } as Record<string, string>)[str(x.style)] ?? 'sec'
         const label = str(x.label)
@@ -204,7 +351,9 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
         })
         row.append(btn)
       }
-      return row
+      card.addEventListener('bk-change', check)
+      queueMicrotask(check)   // after the whole card is built: the choices above have registered what they need
+      return h('div', { class: 'bk-submit' }, row, line)
     }
     case 'links': {   // a link without a value (no phone given) is left out; no links, no block
       const items = list(b.items).filter((x) => x.value != null && x.value !== '')

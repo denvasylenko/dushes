@@ -12,7 +12,10 @@ import { gzipSync } from 'node:zlib'
 // 48 KB since image thumbnails in the composer, the zoom view and bubble reopen on follow (2026-11-14). Next: move the blocks to an on-demand pack
 // 49 KB since the markup editor hook (the editor itself is a separate on-demand file, agui-chat.editor.js; 2026-11-14).
 // Over budget again soon: move the blocks (formguide/blocks.ts) to an on-demand pack like the editor
-const BUDGET = 49 * 1024
+// 51 KB since the picker, opening hours, site preview and the calendar menu for Herefront (2026-11-14); blocksCard is
+// public API (sync), so moving the blocks to an on-demand file needs an async renderer first
+// 52 KB since paging the images of a sent message in the zoom view (2026-11-14)
+const BUDGET = 52 * 1024
 const file = new URL('../dist/agui-chat.iife.js', import.meta.url)
 const size = gzipSync(readFileSync(file)).length
 console.log(`agui-chat.iife.js: ${(size / 1024).toFixed(1)} KB gzipped (budget ${BUDGET / 1024} KB)`)

@@ -49,7 +49,10 @@
   "colour": "Colore",
   "lineWidth": "Spessore",
   "redo": "Ripristina",
-  "clearAll": "Cancella"
+  "clearAll": "Cancella",
+  "prevImage": "Immagine precedente",
+  "nextImage": "Immagine successiva",
+  "nOfTotal": "{n} di {total}"
  },
  "formguide": {
   "fillTitle": "Compilare questi campi?",
@@ -129,7 +132,12 @@
   "no": "No",
   "pickDate": "Scegli una data",
   "prevMonth": "Mese precedente",
-  "nextMonth": "Mese successivo"
+  "nextMonth": "Mese successivo",
+  "needs": "Scegli: {x}",
+  "calApple": "Calendario Apple",
+  "calGoogle": "Google Calendar",
+  "calOutlook": "Outlook",
+  "addHours": "Aggiungi orari"
  },
  "tools": {
   "get_outline": "Guardo il modulo",

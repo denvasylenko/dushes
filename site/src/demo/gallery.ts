@@ -318,6 +318,20 @@ const GALLERY: Specimen[] = [
   },
 ]
 
+GALLERY.push({
+  id: 'picker', group: 'blocks', tag: 'picker · groups, depends, fields',
+  title: 'A booking',
+  blurb: 'A `picker` card: one choice per group, times follow the day, "Other days" in place, and the button waits, saying what is missing.',
+  user: 'Book a table for Friday',
+  event: { name: 'on_interrupt', value: { type: 'picker', card_id: 'pk1', title: 'Book a table', submit: { label: 'Book' },
+    groups: [
+      { name: 'day', label: 'Day', options: [{ id: 'fri', label: 'Fri 20' }, { id: 'sat', label: 'Sat 21', off: 'Closed' }], more: { label: 'Other days', options: [{ id: 'sun', label: 'Sun 22' }, { id: 'mon', label: 'Mon 23' }] } },
+      { name: 'time', label: 'Time' },
+      { name: 'people', label: 'People', options: ['1', '2', '3', '4', '5+'], value: '2' }],
+    depends: { time: { on: 'day', options: { fri: ['18:00', '19:30', '21:00'], sun: ['12:00', '14:00'], mon: ['19:00'] } } },
+    fields: [{ name: 'phone', label: 'Phone', input: 'tel', required: true }] } },
+})
+
 /** One specimen per block, for the Blocks page (group "catalog"); the card gallery leaves them out. */
 const block = (id: string, title: string, blurb: string, blocks: Record<string, unknown>[]): Specimen => ({
   id: `block-${id}`, group: 'catalog', tag: `block · ${id}`, title, blurb, user: `Show the ${id} block`,
@@ -342,6 +356,9 @@ export const CATALOG: Specimen[] = [
     { type: 'buttons', items: [{ id: 'use', label: 'Use it', style: 'primary' }] }]),
   block('choice', 'Choice', '`name`, `options` (objects or strings), `multiple?`.', [{ type: 'choice', name: 'slot', options: ['16:30', '18:00', '19:30'] }, { type: 'buttons', items: [{ id: 'book', label: 'Book', style: 'primary' }] }]),
   block('field', 'Field', '`name`, `label?`, `input?`, `placeholder?`; the text comes back in `values`.', [{ type: 'field', name: 'wish', label: 'A wish for Maria', placeholder: 'Shorter on the sides' }, { type: 'buttons', items: [{ id: 'send', label: 'Send', style: 'primary' }] }]),
+  block('hours', 'Opening hours', '`name`, `label?`, `value?: [{days, from, to}]`, `presets?`: presets, weekday chips, from–to.', [{ type: 'hours', name: 'hours', label: 'Opening hours' },
+    { type: 'buttons', items: [{ id: 'save', label: 'Save', style: 'primary' }] }]),
+  block('preview', 'Site preview', '`src`, `href?`, `ratio?` (16:10, 9:16): a live thumbnail, view only.', [{ type: 'preview', src: 'https://example.com/', href: 'https://example.com/', title: 'Your site', ratio: '16:10' }, done]),
   block('buttons', 'Buttons', '`items: [{id, label, style?}]`: primary, secondary, plain, danger.', [{ type: 'buttons', items: [
     { id: 'yes', label: 'Book', style: 'primary' }, { id: 'later', label: 'Later' }, { id: 'skip', label: 'Skip', style: 'plain' }, { id: 'cancel', label: 'Cancel visit', style: 'danger' }] }]),
   block('links', 'Links', '`items: [{kind, label, value}]`: call, route, web, calendar, share, copy, chat.', [{ type: 'links', items: [

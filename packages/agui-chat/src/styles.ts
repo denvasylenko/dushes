@@ -174,6 +174,24 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .bk-sw.on { border-color: var(--agui-link); box-shadow: 0 0 0 2px color-mix(in srgb, var(--agui-link) 35%, transparent); }
 .bk-sw-c { display: flex; height: 28px; border-radius: 6px; overflow: hidden; }
 .bk-sw-c > i { flex: 1; }
+.bk-group { display: grid; gap: 8px; }
+.bk-cap { font-size: 13px; font-weight: 600; color: var(--agui-ink-2); }
+.bk .chips { row-gap: 8px; }
+.chip:disabled { opacity: .4; cursor: default; text-decoration: line-through; }
+.chip.bk-more { border-style: dashed; color: var(--agui-link); }
+.bk-submit { display: grid; gap: 8px; }
+.bk-hours { display: grid; gap: 12px; }
+.bk-pair { display: grid; gap: 8px; }
+.bk-pair .chip { min-width: 44px; }
+.bk-times { display: flex; align-items: center; gap: 8px; }
+.bk-times .text-in { width: auto; flex: 1; min-width: 0; margin-top: 0; }
+.bk-add { justify-self: start; }
+.bk-preview { position: relative; display: block; overflow: hidden; aspect-ratio: 16 / 10; border-radius: var(--agui-radius-sm); border: 1px solid var(--agui-line); background: var(--agui-soft); }
+.bk-preview.tall { aspect-ratio: 9 / 16; max-width: 220px; justify-self: center; width: 100%; }
+.bk-preview iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; pointer-events: none; background: white; }
+.bk-need { font-size: 13px; line-height: 16px; min-height: 16px; }   /* its place is kept: the button never moves */
+.bk-cal + .bk-link, .bk-link + .bk-cal, .bk-cal + .bk-cal { border-top: 1px solid var(--agui-line); }
+.bk-menu .bk-link { padding-left: 46px; border-top: 1px solid var(--agui-line); }
 .bk-field { display: grid; gap: 4px; }
 .bk-field .text-in { margin-top: 0; }
 .bk-links { display: grid; border: 1px solid var(--agui-option-border, var(--agui-line)); border-radius: var(--agui-radius-sm); background: var(--agui-option-bg, var(--agui-bg)); overflow: hidden; }
@@ -376,6 +394,11 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .zoom-x { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: 12px; width: 44px; height: 44px; border: 0; border-radius: 50%;
   display: grid; place-items: center; background: color-mix(in srgb, white 18%, transparent); color: white; cursor: pointer; }
 .zoom-x svg { width: 20px; height: 20px; }
+.zoom-pager { position: absolute; left: 50%; bottom: max(12px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 4px; color: white; }
+.zoom-go { width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; color: inherit; display: grid; place-items: center; cursor: pointer; }
+.zoom-go:hover:not(:disabled) { background: color-mix(in srgb, white 14%, transparent); }
+.zoom-go:disabled { opacity: .3; cursor: default; }
+.zoom-n { min-width: 64px; text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
 .zoom-edit { top: calc(max(12px, env(safe-area-inset-top, 0px)) + 52px); }   /* the pencil under the close button */
 @keyframes zoom-in { from { opacity: 0; } to { opacity: 1; } }
 .att.doc { width: auto; min-width: 120px; max-width: 200px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 28px 8px 10px; }

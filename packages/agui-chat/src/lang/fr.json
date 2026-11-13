@@ -49,7 +49,10 @@
   "colour": "Couleur",
   "lineWidth": "\u00c9paisseur",
   "redo": "R\u00e9tablir",
-  "clearAll": "Effacer"
+  "clearAll": "Effacer",
+  "prevImage": "Image pr\u00e9c\u00e9dente",
+  "nextImage": "Image suivante",
+  "nOfTotal": "{n} sur {total}"
  },
  "formguide": {
   "fillTitle": "Remplir ces champs ?",
@@ -129,7 +132,12 @@
   "no": "Non",
   "pickDate": "Choisir une date",
   "prevMonth": "Mois pr\u00e9c\u00e9dent",
-  "nextMonth": "Mois suivant"
+  "nextMonth": "Mois suivant",
+  "needs": "Choisissez : {x}",
+  "calApple": "Calendrier Apple",
+  "calGoogle": "Google Agenda",
+  "calOutlook": "Outlook",
+  "addHours": "Ajouter des horaires"
  },
  "tools": {
   "get_outline": "Je regarde le formulaire",

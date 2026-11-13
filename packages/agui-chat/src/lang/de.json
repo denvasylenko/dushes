@@ -49,7 +49,10 @@
   "colour": "Farbe",
   "lineWidth": "Linienst\u00e4rke",
   "redo": "Wiederholen",
-  "clearAll": "L\u00f6schen"
+  "clearAll": "L\u00f6schen",
+  "prevImage": "Vorheriges Bild",
+  "nextImage": "N\u00e4chstes Bild",
+  "nOfTotal": "{n} von {total}"
  },
  "formguide": {
   "fillTitle": "Diese Felder ausf\u00fcllen?",
@@ -128,7 +131,12 @@
   "no": "Nein",
   "pickDate": "Datum w\u00e4hlen",
   "prevMonth": "Vorheriger Monat",
-  "nextMonth": "N\u00e4chster Monat"
+  "nextMonth": "N\u00e4chster Monat",
+  "needs": "W\u00e4hlen Sie: {x}",
+  "calApple": "Apple Kalender",
+  "calGoogle": "Google Kalender",
+  "calOutlook": "Outlook",
+  "addHours": "Zeiten hinzuf\u00fcgen"
  },
  "tools": {
   "get_outline": "Sehe mir das Formular an",

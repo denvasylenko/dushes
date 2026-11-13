@@ -51,6 +51,9 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "colour": "Colour",
     "lineWidth": "Line width",
     "redo": "Redo",
-    "clearAll": "Clear"
+    "clearAll": "Clear",
+    "prevImage": "Previous image",
+    "nextImage": "Next image",
+    "nOfTotal": "{n} of {total}"
   }
 }

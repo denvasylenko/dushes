@@ -82,6 +82,13 @@ Attached files SHALL show inside the composer box, above the text: an image as a
 - **WHEN** the user pastes a screenshot into the composer
 - **THEN** its thumbnail appears in the composer; a tap shows it large
 
+### Requirement: Paging the images of a message
+The large view of an image sent with a message SHALL page through that message's images only, with a previous and next arrow and "1 of 2" under the picture, the arrow keys and a swipe; it SHALL not wrap around, and an image still in the composer SHALL have no pager.
+
+#### Scenario: Two screenshots in one message
+- **WHEN** the user opens the first of two images sent with a message and presses the right arrow key
+- **THEN** the second image shows with "2 of 2", and the next arrow is dimmed
+
 ### Requirement: Marking up an attached image
 An image still in the composer SHALL offer a pencil in its large view. It SHALL load the markup editor on demand (pen, rectangle, text, a colour, a line width, undo, redo, clear, Save, close) and Save SHALL replace the attachment with the marked-up copy, uploaded like any file, in the same place in the row. A sent image SHALL only be viewed.
 

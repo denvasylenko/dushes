@@ -6,18 +6,46 @@ Cards of the host's own, composed from small blocks that look like the chat's ow
 ## Requirements
 
 ### Requirement: Cards from blocks
-The widget SHALL render a card of type `blocks` from its `blocks` list, in order. Known blocks are `title`, `text`, `note`, `row`, `image`, `place`, `stat`, `diff`, `steps`, `progress`, `swatches`, `choice`, `field`, `buttons`, `links` and `divider`; consecutive `row` blocks SHALL form one grouped list. An unknown block SHALL be skipped. Colours SHALL come from the theme and a block's `tone` only.
+The widget SHALL render a card of type `blocks` from its `blocks` list, in order. Known blocks are `title`, `text`, `note`, `row`, `image`, `place`, `stat`, `diff`, `steps`, `progress`, `swatches`, `choice`, `field`, `hours`, `preview`, `buttons`, `links` and `divider`; consecutive `row` blocks SHALL form one grouped list. An unknown block SHALL be skipped. Colours SHALL come from the theme and a block's `tone` only.
 
 #### Scenario: A venue card
 - **WHEN** a card has a `place` block and a `buttons` block with "Yes, mine" and "No"
 - **THEN** the card shows the photo, name and address, and the two buttons, the first one filled
 
 ### Requirement: Answering a blocks card
-A button with an `id` SHALL resolve the card with `{action, label, values}`, where `values` holds the card's `choice`, `swatches` and `field` values by name, and SHALL fold the card into a result line with the button's label. A `links` entry SHALL open its link, call, route, calendar entry, share sheet or copy its text without resolving the card.
+A button with an `id` SHALL resolve the card with `{action, label, values}`, where `values` holds the card's `choice`, `swatches` and `field` values by name, and SHALL fold the card into a result line with the button's label. A `links` entry SHALL open its link, call, route, share sheet or copy its text without resolving the card; a `calendar` entry SHALL open its choices in place: Apple Calendar (an .ics file), Google Calendar and Outlook, in local time.
 
 #### Scenario: Picking a palette
 - **WHEN** the user taps a swatch named `palette` and then "Use it"
 - **THEN** the card resolves with `{action: "use", label: "Use it", values: {palette: "<swatch id>"}}`
+
+### Requirement: Choices with captions, unavailable options, more and dependencies
+A `choice` SHALL take a `label` (a caption above its chips), options with `off` (shown, not choosable), `more: {label, options}` (a chip that shows the rest in place), `value` (chosen at the start) and `depends: {on, options: {<id>: [...]}}` (its options follow another choice and the pick is cleared when that changes).
+
+#### Scenario: Other days
+- **WHEN** the user taps a choice's "Other days" chip
+- **THEN** the chip gives way to the rest of the days, in place
+
+### Requirement: The main button waits for what is required
+A `choice` or `field` with `required`, and an `hours` block, SHALL keep the card's primary button disabled, with a line under it naming what is missing (`need` on the `buttons` block, "Choose: {x}" by default); the line keeps its place so the button never moves.
+
+#### Scenario: Times follow the day
+- **WHEN** a card has `day` and `time` choices with `depends: {on: "day"}` and the user taps another day
+- **THEN** the times of that day replace the others, none is chosen, and the line says "Choose: Time"
+
+### Requirement: A picker card
+A card of type `picker` (`title`, `groups`, `depends`, `fields`, `submit`, `need`) SHALL draw as blocks: a title, one required single choice per group, the fields and one primary button; it SHALL answer `{action: "submit", label, values}` (or reach `onAction` first).
+
+#### Scenario: A table booking
+- **WHEN** the user picks a day, a time and the number of people, types a phone and taps "Book"
+- **THEN** the answer is `{action: "submit", values: {day, time, people, phone}}`
+
+### Requirement: Opening hours and a site preview
+An `hours` block SHALL edit `[{days: [0..6] (0 = Monday), from, to}]`: presets in one tap, weekday chips (several at once), from and to times, up to three pairs; its value comes back under its `name`. A `preview` block SHALL show a live view-only thumbnail of an https page (`ratio` `16:10` or `9:16`), drawn at the page's own width and scaled to the card, sandboxed, opening `href` on tap.
+
+#### Scenario: Weekdays nine to six
+- **WHEN** the user taps the preset "Mon–Fri 09:00–18:00" and Save
+- **THEN** the values hold `hours: [{days: [0, 1, 2, 3, 4], from: "09:00", to: "18:00"}]`
 
 ### Requirement: Card specs become tools
 A card spec (`type`, `description`, `data`, `blocks`, `wait`) in the config SHALL become a model tool `show_<type>` whose parameters are `data`. Calling it SHALL send the card filled from the arguments: as an interrupt that waits for the answer when `wait` is true, else as a `CUSTOM card` event while the turn goes on.

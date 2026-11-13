@@ -55,6 +55,30 @@ describe('attachments in the composer', () => {
     expect(el.shadowRoot!.querySelector('dialog.zoom .zoom-edit')).toBeNull()
   })
 
+  it('pages through the images sent with one message: ‹ 1 of 2 ›, arrow keys; one in the composer has no pager', async () => {
+    const el = await mount()
+    await pick(el, [new File(['x'], 'a.png', { type: 'image/png' }), new File(['y'], 'b.png', { type: 'image/png' })])
+    ;(el.shadowRoot!.querySelector('.files .att-open') as HTMLButtonElement).click()
+    expect(el.shadowRoot!.querySelector('dialog.zoom .zoom-pager')).toBeNull()        // not sent yet: no paging
+    ;(el.shadowRoot!.querySelector('dialog.zoom .zoom-x') as HTMLButtonElement).click()
+    await tick()
+    el.agent = { run: () => ({ subscribe: (o: { next: (e: unknown) => void; complete: () => void }) => { setTimeout(() => { o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' }); o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }); return { unsubscribe() {} } } }) } as never
+    await el.send('look')
+    await tick(5)
+    ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()
+    const zoom = el.shadowRoot!.querySelector('dialog.zoom') as HTMLDialogElement
+    const [prev, next] = [...zoom.querySelectorAll<HTMLButtonElement>('.zoom-go')]
+    const n = zoom.querySelector('.zoom-n')!
+    expect(n.textContent).toBe('1 of 2')
+    expect(prev.disabled).toBe(true)
+    zoom.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    expect(n.textContent).toBe('2 of 2')
+    expect(zoom.querySelector('img')!.getAttribute('alt')).toBe('b.png')
+    expect(next.disabled).toBe(true)
+    prev.click()
+    expect(n.textContent).toBe('1 of 2')
+  })
+
   it('a footnote sits under the composer; an upload writes no line that would shift it', async () => {
     const el = await mount()
     el.options = { footnote: 'The assistant can make mistakes.' }

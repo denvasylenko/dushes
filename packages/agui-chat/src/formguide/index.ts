@@ -68,7 +68,7 @@ export interface FormguideOptions {
 }
 
 /** The cards every formguide client draws, besides the variants in CAPABILITIES. */
-const BASE_CARDS = ['ask', 'upload', 'confirm', 'review', 'blocks']
+const BASE_CARDS = ['ask', 'upload', 'confirm', 'review', 'blocks', 'picker']
 
 /** What this client announces: the base cards and variants, minus `exclude` (a card takes its variants along). */
 export function capabilitiesFor(exclude: string[] = []): string[] {
@@ -132,6 +132,8 @@ export function formguide(opts: FormguideOptions): Plugin {
       // cards composed from blocks (formguide.yaml `cards:`, or showCard); a button's `fills` go through the form
       blocks: (it, c) => { host = c.chat.host; return blocksRenderer(it, c, { apply: (ch) => Promise.resolve(ctx.applyChanges(ch)), state: async () => await ctx.getState(),
         undo: (line, fields) => undoLine(line, c, ctx, fields) }, act(it, c.chat)) },
+      // a picker (day, time, people, contacts, one button): the same blocks, laid out from its groups and fields
+      picker: (it, c) => { host = c.chat.host; return blocksRenderer(it, c, undefined, act(it, c.chat)) },
     },
     /** An action chip: fill its fields at once (Undo on the line). A chip whose fields changed since is out of date. */
     async applySuggestion(raw: unknown[], chat: ChatApi) {

@@ -813,13 +813,42 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   /** The image, large, over the chat: × or Esc or a tap beside it closes it. */
   private _zoom(opener: HTMLElement, edit?: (image: Blob) => void): void {
-    const row = [{ src: opener.querySelector('img')?.getAttribute('src') ?? '', name: opener.getAttribute('aria-label') ?? '' }]
-    const at = 0
+    // the images sent with the same message page with \u2039 1 of 2 \u203a, \u2190 / \u2192 and a swipe; one in the composer stays alone
+    const own = opener.closest('.att-row')
+    const openers = own ? [...own.querySelectorAll<HTMLElement>('.att-open')] : [opener]
+    const row = openers.map((b) => ({ src: b.querySelector('img')?.getAttribute('src') ?? '', name: b.getAttribute('aria-label') ?? '' }))
+    let at = Math.max(0, openers.indexOf(opener))
     // a modal <dialog>: the browser puts it above everything on the page (no stacking context can cover it), Esc closes it
     const x = h('button', { class: 'zoom-x', type: 'button', 'aria-label': this.t('close') }); this._icon(x, 'close')
     const img = h('img', { src: row[at]?.src, alt: row[at]?.name }) as HTMLImageElement
     const view = h('dialog', { class: 'zoom', part: 'zoom', 'aria-label': row[at]?.name }, img, x) as HTMLDialogElement
-    let swiped = false   // (no paging yet: one image)
+    let swiped = false
+    if (row.length > 1) {
+      const count = h('span', { class: 'zoom-n', 'aria-live': 'polite' })
+      const step = (d: number) => {
+        const b = h('button', { class: 'zoom-go', type: 'button', 'aria-label': this.t(d < 0 ? 'prevImage' : 'nextImage') })
+        b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}"/></svg>`
+        b.addEventListener('click', (e) => { e.stopPropagation(); show(at + d) })
+        return b
+      }
+      const prev = step(-1), next = step(1)
+      // like Photos: no wrap-around, the arrow at an end is dimmed
+      const show = (i: number): void => {
+        at = Math.max(0, Math.min(row.length - 1, i))
+        img.src = row[at].src; img.alt = row[at].name; view.setAttribute('aria-label', row[at].name)
+        count.textContent = this.t('nOfTotal', { n: at + 1, total: row.length })
+        prev.disabled = at === 0; next.disabled = at === row.length - 1
+      }
+      view.append(h('div', { class: 'zoom-pager', part: 'zoom-pager' }, prev, count, next))
+      show(at)
+      view.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') { e.preventDefault(); show(at + 1) }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); show(at - 1) }
+      })
+      let x0 = 0
+      view.addEventListener('pointerdown', (e) => { x0 = e.clientX })
+      view.addEventListener('pointerup', (e) => { const dx = e.clientX - x0; if (Math.abs(dx) > 40) { swiped = true; show(at + (dx < 0 ? 1 : -1)) } })
+    }
     const close = (): void => { view.close() }
     x.addEventListener('click', close)
     view.addEventListener('click', (e) => { if (swiped) { swiped = false; return } if (e.target === view) close() })   // a tap beside the picture
