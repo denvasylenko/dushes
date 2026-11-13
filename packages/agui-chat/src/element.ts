@@ -3,7 +3,7 @@ import { h, md, reducedMotion, store } from './dom'
 import { STRINGS } from './i18n'
 import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
-import { dictate, speechSupported, type Dictation } from './speech'
+import { dictate, recognitionBlocked, record, recordingSupported, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
 import { hasTheme, themeCss } from './themes'
 import { watchParts } from './parts'
@@ -18,7 +18,7 @@ export const DEFAULTS: ChatOptions = {
   theme: 'default', scheme: '', lang: '', title: '', subtitle: '', intro: '', placeholder: '', starters: [], resumeStyle: 'command',
   history: 'full', headers: {}, credentials: undefined, fetch: undefined, request: undefined, transport: undefined,
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
-  cards: {}, open: false, micLang: '', micAutoSend: false, attach: true, attachAccept: '', attachMultiple: true,
+  cards: {}, open: false, micLang: '', micAutoSend: false, dictation: 'browser', transcribeUrl: '', attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined, icons: {}, render: {},
   bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring',
 }
@@ -31,7 +31,7 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   theme: ['theme', String], scheme: ['scheme', String], lang: ['lang', String], title: ['title', String], subtitle: ['subtitle', String],
   intro: ['intro', String], placeholder: ['placeholder', String], 'resume-style': ['resumeStyle', String],
   history: ['history', String], open: ['open', bool], attach: ['attach', bool], 'mic-lang': ['micLang', String],
-  'mic-auto-send': ['micAutoSend', bool], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
+  'mic-auto-send': ['micAutoSend', bool], dictation: ['dictation', String], 'transcribe-url': ['transcribeUrl', String], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
   'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
   'bubble-side': ['bubbleSide', String], greeting: ['greeting', String], 'greeting-delay': ['greetingDelay', Number], motion: ['motion', String],
 }
@@ -131,6 +131,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _mic: Dictation | null = null
   private _micGen = 0   // a sent message ends a dictation: late results of older ones are dropped
   private _micBefore: string | null = null   // what was typed before the running dictation (kept when it is dropped)
+  private _speechBlocked = false   // the browser's recognition failed as blocked: `auto` records for the server
+  private _retryRec: (() => void) | null = null   // a failed transcription can be posted again
+  private _recClock = 0
   private _files: Attachment[] = []
   private _sending: Attachment[] = []
   private $: Record<string, HTMLElement> = {}
@@ -443,17 +446,23 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const log = h('div', { class: 'log', part: 'log', role: 'log', 'aria-live': 'polite', 'aria-relevant': 'additions' })
     const input = h('textarea', { rows: 1, part: 'input' }) as HTMLTextAreaElement
     const mic = h('button', { class: 'ib mic', type: 'button' }); this._icon(mic, 'mic')
+    // server dictation: the wave and timer take the input's place while recording, then "Transcribing…"
+    const recX = h('button', { class: 'ib rec-x', type: 'button' }); this._icon(recX, 'close')
+    const bars = h('span', { class: 'bars', 'aria-hidden': 'true' }, ...Array.from({ length: 36 }, () => h('i')))
+    const wave = h('div', { class: 'wave', part: 'recording' }, bars, h('span', { class: 'rec-time' }, '0:00'),
+      h('span', { class: 'rec-busy', role: 'status' }, h('span', { class: 'dots' }, h('i'), h('i'), h('i')), h('span', { class: 'rec-busy-t' })))
     const clip = h('button', { class: 'ib clip', type: 'button' }); this._icon(clip, 'clip')
     const picker = h('input', { type: 'file', multiple: true, hidden: true }) as HTMLInputElement
     const send = h('button', { class: 'send', type: 'button', part: 'send' }); this._icon(send, 'send')
-    const box = h('div', { class: 'box' }, clip, input, mic, send)
+    const box = h('div', { class: 'box' }, clip, recX, input, wave, mic, send)
     const files = h('div', { class: 'files chips' })
     const hint = h('div', { class: 'hint', 'aria-live': 'polite' })
     const foot = h('div', { class: 'foot', part: 'composer' }, files, box, hint, picker)
     const panel = h('section', { class: 'panel', part: 'panel', role: 'dialog' }, head, log, foot)
     wrap.append(scrim, panel, greet, fab)
     this.root.appendChild(wrap)
-    this.$ = { wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, fabLabel: fab.lastElementChild as HTMLElement }
+    this.$ = { wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, fabLabel: fab.lastElementChild as HTMLElement }
+    recX.addEventListener('click', () => { this._dropDictation(); (input as HTMLTextAreaElement).focus() })
     files.hidden = true
     clip.addEventListener('click', () => picker.click())
     picker.addEventListener('change', () => { void this._upload([...(picker.files ?? [])]); picker.value = '' })
@@ -467,6 +476,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     mic.addEventListener('click', () => this._toggleMic())
     panel.addEventListener('keydown', (e) => {
       if (!this._popup) return
+      if (e.key === 'Escape' && this.$.box.classList.contains('rec')) { e.preventDefault(); this._dropDictation(); return }   // drop the recording first
       if (e.key === 'Escape') { e.preventDefault(); this.close() }
       if (e.key === 'Tab') this._trapFocus(e)
     })
@@ -488,8 +498,24 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     void this.send(text)
   }
 
+  /** Who recognises speech now: the browser, the server (a recording), or nobody (no mic). */
+  private _micMode(): 'browser' | 'server' | null {
+    const d = this._opts.dictation
+    if (d === 'server') return recordingSupported() ? 'server' : null
+    if (d === 'auto') return speechSupported() && !this._speechBlocked ? 'browser' : recordingSupported() ? 'server' : null
+    return speechSupported() ? 'browser' : null
+  }
+
+  private _transcribeUrl(): string {
+    if (this._opts.transcribeUrl) return this._opts.transcribeUrl
+    try { return new URL('transcribe', new URL(this._opts.url, location.href)).href } catch { return 'transcribe' }
+  }
+
   private _toggleMic(): void {
+    if (this.$.box.classList.contains('busy')) return   // transcribing: wait for the text
     if (this._mic) { this._mic.stop(); return }
+    this._retryRec = null
+    if (this._micMode() === 'server') { this._startRecording(); return }
     const input = this.$.input as HTMLTextAreaElement
     const before = input.value ? input.value.replace(/\s*$/, ' ') : ''
     this._micBefore = input.value
@@ -508,9 +534,74 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         this._mic = null
         this._micBefore = null
         if (error === 'denied') this.$.hint.textContent = this.t('micDenied')
-        else if (o.micAutoSend && !error && input.value.trim()) this._submit()
+        else if (o.dictation === 'auto' && recognitionBlocked(error) && recordingSupported()) {
+          this._speechBlocked = true   // the browser's service is blocked or unreachable: record for the server
+          this._startRecording()
+        } else if (o.micAutoSend && !error && input.value.trim()) this._submit()
       }
     })
+  }
+
+  /** Dictation on the server: record, show the wave, post the recording, put the text into the input. */
+  private _startRecording(): void {
+    const input = this.$.input as HTMLTextAreaElement
+    const before = input.value ? input.value.replace(/\s*$/, ' ') : ''
+    this._micBefore = input.value
+    const gen = ++this._micGen
+    const o = this._opts
+    const lang = o.micLang || o.lang || document.documentElement.lang || navigator.language || ''
+    const box = this.$.box, mic = this.$.mic, hint = this.$.hint
+    const bars = [...this.$.bars.children] as HTMLElement[]
+    const levels: number[] = bars.map(() => 0)
+    const time = this.$.wave.querySelector('.rec-time') as HTMLElement
+    ;(this.$.wave.querySelector('.rec-busy-t') as HTMLElement).textContent = this.t('transcribing')
+    this.$.recX.setAttribute('aria-label', this.t('micCancel'))
+    hint.textContent = ''
+    const draw = () => levels.forEach((v, i) => { bars[i].style.height = `${Math.round(3 + v * 22)}px` })
+    draw()
+    const rec = record({
+      level: (v) => { if (gen !== this._micGen) return; levels.shift(); levels.push(v); draw() },
+      state: (s, error) => {
+        box.classList.toggle('rec', s !== 'off')
+        box.classList.toggle('busy', s === 'busy')
+        mic.classList.toggle('on', s === 'rec')
+        mic.setAttribute('aria-label', s === 'rec' ? this.t('micStop') : this.t('mic'))
+        window.clearInterval(this._recClock)
+        if (s === 'rec') {
+          const t0 = Date.now()
+          time.textContent = '0:00'
+          this._recClock = window.setInterval(() => {
+            const sec = Math.floor((Date.now() - t0) / 1000)
+            time.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+          }, 500)
+        }
+        if (s !== 'off' || gen !== this._micGen) return
+        this._mic = null
+        this._micBefore = null
+        if (error === 'failed') {
+          this._retryRec = () => { this._retryRec = null; this._mic = rec; rec.retry() }
+          hint.replaceChildren(h('span', null, this.t('micFailed') + ' '),
+            h('button', { class: 'btn link', type: 'button', onclick: () => { hint.textContent = ''; this._retryRec?.() } }, this.t('retry')))
+        } else if (error) {
+          hint.textContent = this.t(({ denied: 'micDenied', empty: 'micEmpty', unavailable: 'micUnavailable' } as Record<string, string>)[error])
+        } else if (o.micAutoSend && input.value.trim()) this._submit()
+        else input.focus({ preventScroll: true })
+      },
+      text: (t) => {
+        if (gen !== this._micGen) return
+        input.value = before + t
+        input.dispatchEvent(new Event('input'))
+      },
+      transcribe: async (audio) => {
+        const fd = new FormData()
+        fd.append('file', audio, `dictation.${/mp4/.test(audio.type) ? 'm4a' : /ogg/.test(audio.type) ? 'ogg' : 'webm'}`)
+        if (lang) fd.append('language', lang)
+        const r = await this.request('transcribe', this._transcribeUrl(), { method: 'POST', body: fd })
+        if (!r.ok) throw Object.assign(new Error(`transcribe ${r.status}`), { status: r.status })
+        return String(((await r.json()) as { text?: string }).text ?? '')
+      },
+    })
+    this._mic = rec
   }
 
   /** Another action answered instead (a chip, a card, Skip, New chat): stop dictating and drop what was
@@ -586,7 +677,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const input = this.$.input as HTMLTextAreaElement
     input.placeholder = o.placeholder || this.t('placeholder')
     input.setAttribute('aria-label', input.placeholder)
-    this.$.mic.hidden = !o.mic || !speechSupported()
+    this.$.mic.hidden = !o.mic || !this._micMode()
     this.$.mic.setAttribute('aria-label', this.t('mic'))
     const attach = this._plugins.find((p) => p.attach)?.attach
     this.$.clip.hidden = !o.attach || !(o.upload || attach)

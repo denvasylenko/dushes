@@ -37,10 +37,11 @@ from typing import TYPE_CHECKING, Any
 from ..transcript import check_thread_id, new_entry
 
 try:   # module level: the router's annotations are resolved here (postponed annotations)
-    from fastapi import Request
+    from fastapi import File, Form, Request, UploadFile
     from fastapi.responses import StreamingResponse
 except ImportError:  # pragma: no cover - the HTTP layer is optional
-    Request = StreamingResponse = Any  # type: ignore[assignment,misc]
+    Request = StreamingResponse = UploadFile = Any  # type: ignore[assignment,misc]
+    File = Form = None  # type: ignore[assignment]
 from . import agent
 from .agent import SiteRunCtx, SiteTool, maybe_await
 from .sitemap import SiteMap
@@ -353,6 +354,12 @@ def create_site_router(site: SiteGuide, host: Any = None):
             return site.thread(thread_id, form_id)
         except ValueError as e:
             raise HTTPException(422, str(e)) from None
+
+    @r.post("/transcribe")
+    async def transcribe(file: UploadFile = File(...), language: str | None = Form(None)) -> dict:
+        """Dictation for the site chat: the form guide's transcription."""
+        from ..server import transcribe_upload
+        return await transcribe_upload(site.forms, file, language)
 
     @r.post("/run")
     async def run(request: Request) -> StreamingResponse:

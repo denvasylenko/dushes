@@ -115,6 +115,11 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
         except ValueError as e:
             raise bad(e) from None
 
+    @r.post("/transcribe")
+    async def transcribe(file: UploadFile = File(...), language: str | None = Form(None)) -> dict:
+        """Dictation recorded in the chat -> {text, language} (the `transcription` config)."""
+        return await transcribe_upload(guide, file, language)
+
     @r.post("/feedback", status_code=204, response_class=Response)
     async def feedback(body: dict) -> Response:
         try:
@@ -193,3 +198,23 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
             return {"messages": await guide.history(thread_id), "runs": guide.recent_runs(thread_id)}
 
     return r
+
+
+async def transcribe_upload(guide: Any, file: Any, language: str | None) -> dict:
+    """POST /transcribe for the form router and the site router: 501 when off, 413 when too large."""
+    from fastapi import HTTPException
+
+    from .transcribe import TooLarge
+
+    t = getattr(guide, "transcriber", None)
+    if t is None:
+        raise HTTPException(501, "transcription is not configured on this server")
+    data = await file.read(t.cfg.max_bytes + 1)
+    try:
+        return await t.transcribe(data, file.filename or "audio.webm", language)
+    except TooLarge as e:
+        raise HTTPException(413, str(e)) from None
+    except Exception as e:  # noqa: BLE001 — a model error is the client's "Try again", never a stack trace
+        import logging
+        logging.getLogger("formguide").exception("transcription failed")
+        raise HTTPException(502, f"transcription failed ({type(e).__name__})") from None

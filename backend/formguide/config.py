@@ -121,6 +121,7 @@ class GuideConfig:
     actions: dict[str, Any] = field(default_factory=dict)
     attachments_enabled: bool = True                 # False: no uploads and no reading of attached files
     privacy_note: str = ""                           # shown on upload requests (`privacy`)
+    transcription: Any = None                        # TranscriptionConfig: server-side dictation (POST /transcribe)
 
 
 # ===================================================================== YAML
@@ -227,6 +228,8 @@ def load_config(path: str | Path) -> GuideConfig:
             raise ValueError(f"attachments: unknown key(s) {sorted(unknown)}")
         cfg.attachments_enabled = bool(at.get("enabled", True))
         cfg.privacy_note = str(at.get("privacy_note") or "").strip()[:200]
+    from .transcribe import TranscriptionConfig
+    cfg.transcription = TranscriptionConfig.parse(raw.get("transcription"))
     sg = raw.get("suggestions")
     if sg is not None:
         sg = {"enabled": sg} if isinstance(sg, bool) else sg

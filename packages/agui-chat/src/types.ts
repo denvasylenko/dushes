@@ -91,7 +91,7 @@ export interface Plugin {
 
 /** The part of the element plugins and renderers may use. */
 /** Which request the chat is making: `run`, or a plugin's (`attachments`, `thread`, `feedback`, ...). */
-export type RequestKind = 'run' | 'attachments' | 'thread' | 'feedback' | (string & {})
+export type RequestKind = 'run' | 'attachments' | 'thread' | 'feedback' | 'transcribe' | (string & {})
 
 /** Headers for a request: an object, or a function called before every request (sync or async). */
 export type HeadersOption = Record<string, string>
@@ -189,6 +189,11 @@ export interface ChatOptions {
   micLang: string
   /** Send the message as soon as dictation stops. */
   micAutoSend: boolean
+  /** Who recognises speech: the browser, the server (the chat records and posts to `transcribeUrl`), or
+   * `auto`: the browser where it works, else the server. */
+  dictation: 'browser' | 'server' | 'auto'
+  /** Where recordings go for `dictation: server | auto`; empty = `transcribe` next to `url`. */
+  transcribeUrl: string
   /** Show the paperclip when a plugin (or `upload`) can upload files. */
   attach: boolean
   /** File types the paperclip offers, e.g. ".pdf,.jpg"; empty = what the plugin accepts. */

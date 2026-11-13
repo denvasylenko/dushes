@@ -22,6 +22,7 @@ sqlite = ["langgraph-checkpoint-sqlite>=3.1.3", "aiosqlite>=0.20"]
 otel = ["opentelemetry-sdk>=1.40", "opentelemetry-exporter-otlp>=1.40"]
 otel-zipkin = ["formguide[otel]", "opentelemetry-exporter-zipkin-json>=1.40"]
 otel-azure = ["formguide[otel]", "azure-monitor-opentelemetry-exporter>=1.0.0b50"]
+transcribe = ["faster-whisper>=1.1"]   # server-side dictation (POST /transcribe), a local Whisper model
 all = ["formguide[anthropic,openai,server,research,sqlite,otel]"]
 
 [project.scripts]
@@ -42,7 +43,7 @@ packages = ["formguide"]
 include = ["formguide", "pyproject.toml"]
 
 [dependency-groups]
-dev = ["pytest>=8", "formguide[all]"]
+dev = ["pytest>=8", "formguide[all,transcribe]"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

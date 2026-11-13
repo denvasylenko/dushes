@@ -195,6 +195,14 @@ actions:                             # the agent's built-in actions: true | fals
   review_form: true
   ask_documents: auto                # auto: only when the form has documents
   extract_from_attachment: auto
+transcription:                       # dictation on the server (POST /transcribe); default: off; or just: true
+  provider: faster_whisper           # a local Whisper (pip install 'formguide[transcribe]'); openai; or "module:function"
+  model: small                       # tiny | base | small | medium | large-v3; downloaded once on the first request
+  device: auto                       # auto | cpu | cuda
+  compute_type: int8                 # int8 on a CPU, float16 on a GPU
+  language: null                     # null: the chat's language (sent with the recording)
+  max_seconds: 120                   # a longer recording is cut
+  max_bytes: 10000000                # a larger upload gets 413
 attachments:                         # or just: false
   enabled: true
   privacy_note: "Your file stays on our server; only the values reach the chat."   # shown on file requests

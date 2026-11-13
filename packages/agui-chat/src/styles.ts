@@ -287,6 +287,21 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .chip.file { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 11px; cursor: default; }
 .chip.file .btn { padding: 2px 7px; }
 .hint { text-align: center; font-size: 12px; color: var(--agui-ink-3); margin-top: 7px; min-height: 1em; }
+.hint .btn.link { font-size: 12px; padding: 0 2px; }
+/* dictation on the server: the wave and the timer take the input's place, like iOS Messages' dictation */
+.rec-x, .wave, .rec-busy { display: none; }
+.box.rec { align-items: center; padding-left: 8px; }
+.box.rec .rec-x { display: grid; }
+.box.rec .clip, .box.rec textarea { display: none; }
+.box.rec .wave { display: flex; flex: 1; min-width: 0; align-items: center; gap: 10px; height: 36px; }
+.wave .bars { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 2px; height: 28px; overflow: hidden; }
+.wave .bars i { flex: none; width: 3px; height: 3px; border-radius: var(--agui-radius-pill); background: var(--agui-ink-3); transition: height 80ms linear; }
+.wave .rec-time { flex: none; font: 13px/1 var(--agui-font); font-variant-numeric: tabular-nums; color: var(--agui-ink-2); min-width: 2.6em; text-align: right; }
+.box.busy .bars, .box.busy .rec-time { display: none; }
+.box.busy .rec-busy { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--agui-ink-2); }
+.box.busy .rec-busy .dots { padding: 0; }
+.box.busy .mic { opacity: .4; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .wave .bars i { transition: none; } }
 
 /* phones: fingers need 44 px */
 @media (pointer: coarse) {

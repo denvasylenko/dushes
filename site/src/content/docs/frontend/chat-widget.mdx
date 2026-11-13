@@ -194,6 +194,14 @@ Some things appear only when the backend enables them; the widget draws them whe
 | opening messages in an empty chat | `starters` in the form's [domain pack](../../backend/domain-packs/) |
 | a confirmation before a risky action | the server's `confirm_tools` ([Skills and tools](../../backend/skills/#every-option)) |
 | file requests, dates, sliders, reviews | built in; every card is in the [card gallery](../card-gallery/) |
+| dictation where the browser cannot (Firefox, a blocked recognition service) | `dictation="auto"` here and the server's [`transcription`](../../reference/configuration/#every-key) (a local Whisper) |
+
+```html
+<!-- the browser's recognition where it works; else the chat records and the server transcribes -->
+<agui-chat url="/agent/run" dictation="auto"></agui-chat>
+```
+
+With server dictation the microphone records: a live wave and a timer take the input's place, × or Esc drops the recording, the microphone again stops it, "Transcribing…" shows while the server works, and the text lands in the input to check and send.
 
 ## Every option
 
@@ -225,6 +233,8 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `mic` | `mic` | on | dictation, where the browser supports it |
 | `mic-lang` | `micLang` | the chat's language | BCP 47, e.g. `ru-RU` |
 | `mic-auto-send` | `micAutoSend` | off | send when dictation stops |
+| `dictation` | `dictation` | `browser` | `browser`, `server` (record, transcribe on the server) or `auto` (the server where the browser cannot) |
+| `transcribe-url` | `transcribeUrl` | next to `url` | where recordings go for server dictation |
 | `attach` | `attach` | on | the paperclip, when something can upload |
 | `attach-accept` | `attachAccept` | what the plugin accepts | e.g. `.pdf,.jpg` |
 | `attach-multiple` | `attachMultiple` | on | several files at once |

@@ -164,6 +164,15 @@ class Session:
             self._run({"threadId": self.thread, "state": self._state(),
                        "forwardedProps": {"command": {"resume": reply}}}, card)
             return
+        if interrupt and "changes" not in interrupt:   # review, upload, confirm: a user who closes it / confirms
+            kind = interrupt.get("type") or "card"
+            accepted = kind == "confirm" and card == "accept"
+            self.cards.append({**interrupt, "changes": []})
+            self.log.append(f"   \U0001f4cb {kind} card: {str(interrupt.get('title') or interrupt.get('prompt') or interrupt.get('text') or '')[:80]}"
+                            f"  \u2192 {'confirm' if accepted else 'close'}")
+            self._run({"threadId": self.thread, "state": self._state(), "forwardedProps": {
+                "command": {"resume": {"accepted": accepted, "config": self.config, "ui": self.ui}}}}, card)
+            return
         if interrupt:
             ch = interrupt["changes"]
             self.cards.append(interrupt)

@@ -25,6 +25,7 @@ skills:
 
 max_tool_rounds: 10
 
+transcription: {provider: faster_whisper, model: small}   # dictation where the browser cannot (dictation: auto)
 suggestions: {enabled: true, max: 3}   # quick replies after each answer (the memory model: Haiku)
 
 memory:                        # long chats: older turns are compacted into a conversation memory

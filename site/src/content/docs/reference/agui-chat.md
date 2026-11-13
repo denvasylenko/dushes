@@ -35,6 +35,8 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `mic` | `true` | the dictation button (only where the browser supports speech recognition) |
 | `micLang` (`mic-lang`) | the chat's language | the dictation language, e.g. `ru-RU`, `en-GB` |
 | `micAutoSend` (`mic-auto-send`) | `false` | send the message as soon as the user stops dictating (hands-free) |
+| `dictation` (`dictation`) | `'browser'` | who recognises speech: `'browser'` (the browser's own recognition), `'server'` (the chat records and posts to `transcribeUrl`: a wave and a timer in place of the input, then "Transcribing…", then the text in the input to check and send), `'auto'` (the browser where it works, the server where it is missing or blocked) |
+| `transcribeUrl` (`transcribe-url`) | `transcribe` next to `url` | where recordings go (`/agent/run` → `/agent/transcribe`); through the chat's connection (`headers`, `fetch`, `request` with kind `transcribe`) |
 | `attach` | `true` | the paperclip (only when files can be uploaded: the `upload` option or a plugin, e.g. formguide) |
 | `attachAccept` (`attach-accept`) | the plugin's types | file types offered, e.g. `.pdf,.jpg` |
 | `attachMultiple` (`attach-multiple`) | `true` | several files at once |

@@ -12,6 +12,7 @@ description: Every endpoint of formguide's FastAPI router, with its body and ans
 | `POST /run` | an AG-UI `RunAgentInput` | an AG-UI event stream (SSE, or the protocol's binary encoding by `Accept`). The turn finishes even if the client goes away. 422 when the body is not a `RunAgentInput`; 409 when `state.jsx_hash` is unknown |
 | `POST /prefill` | `{state, data?, text?, attachment_ids?, thread_id?}` | validated values to prefill, without a chat |
 | `POST /attachments` | multipart: `thread_id`, `file` | the stored attachment `{id, ...}` for the next run's `state.attachments` |
+| `POST /transcribe` | multipart: `file` (the recording: webm, mp4, ogg, wav), `language?` (`ru`, `ru-RU`) | `{text, language}`; 501 without `transcription` in the config, 413 over `max_bytes`, 502 when the model fails. The site router serves it too |
 | `GET /kb/{form_id}` | | `{documents, namespaces, compiled}` in the form's scope |
 | `POST /kb/{namespace}/documents` | multipart: `files` (repeat) | `{added, documents}` |
 | `DELETE /kb/{namespace}/documents/{doc_id}` | | `{documents}`, or 404 |

@@ -287,6 +287,7 @@ export default function App() {
           threadId={thread}
           persistThread={false}
           lang={lang}
+          dictation="auto"   // the browser's recognition where it works, else Whisper on the server
           title={form.title === form.formId ? "Form assistant" : form.title}
           subtitle="formguide · AI assistant, can make mistakes"
           plugins={plugins}

@@ -85,6 +85,11 @@ class FormGuide:
         self.packs.knowledge = self.knowledge
         self.skills = cfg.skills or SkillRegistry()
         self.attachments = cfg.attachments or AttachmentStore(self.data_dir / "attachments")
+        from .transcribe import Transcriber, TranscriptionConfig
+        tc = cfg.transcription
+        if tc is True:
+            tc = TranscriptionConfig()
+        self.transcriber = Transcriber(tc) if tc else None   # server-side dictation, see transcribe.py
         self.checkpointer = cfg.checkpointer or InMemorySaver()
         self.transcripts = cfg.transcripts or FileTranscriptStore(self.data_dir / "transcripts")
         self.max_tool_rounds = cfg.max_tool_rounds

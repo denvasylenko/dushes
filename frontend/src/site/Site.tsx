@@ -179,6 +179,7 @@ export default function Site() {
             mode="inline"
             threadId={thread}
             persistThread={false}
+            dictation="auto"   // the browser's recognition where it works, else Whisper on the server
             title={`${map.title} assistant`}
             subtitle="Ask about any page, or say what you want to do"
             starters={STARTERS}
