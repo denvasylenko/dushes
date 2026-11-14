@@ -22,7 +22,7 @@ COPY frontend frontend
 # for the charts in cards (agui-chat.charts.js)
 RUN cd packages/agui-chat && npx vite build --config vite.iife.config.ts && npx vite build --config vite.editor.config.ts && npx vite build --config vite.blocks.config.ts && npx vite build --config vite.charts.config.ts && node scripts/lang-files.mjs
 RUN cd site && DOCS_SITE=$SITE_URL DOCS_BASE=/ PUBLIC_ASK_AI_URL=/ai/ask/run PUBLIC_DEMO_URL=/demo/ \
-    PUBLIC_PLAYGROUND_URL=/examples/widget/ npm run build
+    PUBLIC_DEMO_AGENT_URL=/agent/run PUBLIC_PLAYGROUND_URL=/examples/widget/ npm run build
 RUN cd frontend && npx vite build --base /demo/
 
 # 2. the server
