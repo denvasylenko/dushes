@@ -88,9 +88,10 @@ def main() -> int:
     transcript = "\n".join(log)
     RUNS.mkdir(exist_ok=True)
     (RUNS / "landing-turns.txt").write_text(transcript)
-    from evals import Verdict, models_for
+    from evals import Verdict
     from formguide.models import structured
-    _, judge = models_for(None)
+    from formguide.models import build_model
+    judge = build_model(os.environ.get("LANDING_JUDGE", "anthropic:claude-sonnet-5-5"))   # a fixed judge, not the agent's model
     v = structured(judge, Verdict).invoke([("human", f"{RUBRIC}\n\nThe conversation:\n{transcript}")])
     out["turns"] = {"score": v.score, "lost": [x.model_dump() for x in v.lost], "transcript": "scripts/runs/landing-turns.txt"}
     print(f"live turns: {v.score} / 10")

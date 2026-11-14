@@ -1,0 +1,8 @@
+name: recipe_overlapping_skills_refund
+recipe: overlapping-skills
+form: barber_booking
+runs: 10
+turns:
+  - I won't use my gift card GC-1234-5678 any more. I want my money back.
+expect:
+  tool_args: {use_skill: {name: gift_card_refund}}

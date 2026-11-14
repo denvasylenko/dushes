@@ -58,12 +58,14 @@ def test_bench_writes_the_docs_speed_numbers(tmp_path):
     run = lambda ttft, turn: {"ttft_ms": ttft, "turn_ms": turn, "tools": 2, "tokens": {"input": 1000, "output": 100},
                               "cache_hit_rate": 0.9, "models_used": [{"model": "claude-haiku-5-5"}]}
     rows = [{"scenario": "fill", "ttft_median_ms": 800, "turn_median_ms": 5200, "runs": [run(800, 5200), run(900, 5000)]}]
-    a = argparse.Namespace(commit="abc1234", base="https://dushes-ai.fly.dev", repeat=2)
+    a = argparse.Namespace(commit="abc1234", base="https://dushes-ai.fly.dev", repeat=2, model=None,
+                           prices=str(recipes.HERE.parent / "site" / "src" / "data" / "prices.json"))
     d = bench.site_speed(rows, a, ["--repeat", "2", "--site"], target)
     assert d["model"] == "Claude Haiku 5.5" and d["commit"] == "abc1234" and d["repeat"] == 2
     assert d["scenarios"][0] == {"name": "fill", "label": "fill (long)", "short": "fill", "ttft_s": 0.8, "turn_s": 5.2,
                                  "tools": 2, "tokens_in": 1000, "tokens_out": 100, "cache": 0.9}
     assert bench.git_commit("https://dushes-ai.fly.dev") == ""
+    assert d["prices"]["model_id"] == "claude-haiku-5-5" and d["prices"]["checked"] and d["prices"]["source"].startswith("https://")
 
 
 def test_the_docs_get_the_evals_and_models_numbers(tmp_path):
@@ -84,3 +86,43 @@ def test_the_docs_get_the_evals_and_models_numbers(tmp_path):
     assert m["models"][0]["model"] == "Claude Haiku 5.5" and m["models"][0]["bar"] and m["cheapest_passing"] == "anthropic:claude-haiku-5-5"
     with pytest.raises(SystemExit, match="not comparable"):
         model_bench.site_models([row, {**row, "commit": "def"}], "", [], tmp_path / "models.json")
+
+
+def test_bench_prices_a_turn_from_the_price_file():
+    import bench
+    prices = json.loads((recipes.HERE.parent / "site" / "src" / "data" / "prices.json").read_text())
+    hk = prices["models"]["claude-haiku-5-5"]
+    small = {"model": "claude-haiku-5-5", "input_tokens": 20000, "cache_read_tokens": 15000, "cache_write_tokens": 4000, "output_tokens": 500}
+    want = (1000 * hk["input"] + 15000 * hk["cache_read"] + 4000 * hk["cache_write"] + 500 * hk["output"]) / 1e6
+    assert abs(bench.call_cost(small, hk) - want) < 1e-12
+    big = {**small, "input_tokens": 150000}                       # over 100K: the long-prompt prices
+    o = {**hk, **hk["over"]}
+    assert abs(bench.call_cost(big, hk) - (131000 * o["input"] + 15000 * o["cache_read"] + 4000 * o["cache_write"] + 500 * o["output"]) / 1e6) < 1e-12
+    run = {"ttft_ms": 900, "total_ms": 4000, "model_ms": 3000, "tool_ms": 500, "tools": [], "models": [small],
+           "tokens": {"input": 20000, "output": 500, "cache_read": 15000}}
+    assert bench.summarize([run], prices)["cost_usd"] == round(want, 5)
+    assert bench.summarize([run], {"input": 0.1, "output": 0.5, "cache_read": 0.01})["cost_usd"] > 0   # the flat file still works
+    assert "unpriced_models" in bench.summarize([{**run, "models": [{**small, "model": "gpt-x"}]}], prices)
+
+
+def test_recipe_tool_modules_have_unique_names():
+    """Every recipe folder is on sys.path while it runs, so two tool modules with one name would clash."""
+    names = [p.name for p in recipes.RECIPES.glob("*/*.py")]
+    assert len(names) == len(set(names)), names
+
+
+def test_site_bench_verdicts_and_sets():
+    import site_bench as sb
+    assert sb.verdict("no navigation", {"path": "/faq"}) == "needless" and sb.verdict("no navigation", None) == "quiet"
+    assert sb.verdict({"path": "/loans", "tab": "mortgage"}, {"path": "/loans", "tab": "mortgage"}) == "right"
+    assert sb.verdict({"path": "/loans", "tab": "mortgage"}, {"path": "/loans"}) == "page only"
+    assert sb.verdict({"path": "/faq"}, {"path": "/contacts"}) == "wrong" and sb.verdict({"path": "/faq"}, None) == "missed"
+    from formguide.site import SiteMap
+    site = SiteMap.load(recipes.HERE / "demo" / "site.yaml")
+    data = json.loads((sb.SETS / "nav_demo.json").read_text())
+    for p in data["phrases"]:   # every expected page and part is on the demo site
+        if p["expect"] != "no navigation":
+            page = site.page(p["expect"]["path"])
+            assert page, p
+            part = p["expect"].get("tab") or p["expect"].get("accordion") or p["expect"].get("section")
+            assert not part or page.part(part), p

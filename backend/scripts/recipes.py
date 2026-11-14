@@ -18,6 +18,7 @@ A scenario (evals/recipes/<name>.yaml):
     page: /book                       # instead of form: a page of the recipe's site.yaml (the visit goes through Dushes)
     runs: 10                          # default runs (--runs overrides)
     card: accept                      # accept | reject | confirm_no (accepts changes, closes confirmations)
+    answer: next Tuesday              # typed on a question with no options (a date picker); empty: the question is closed
     turns:                            # the user's messages, scripted (no user model)
       - say: I have a gift card GC-1234-5678. How much is on it?
       - {prefill: {data: {client_name: Ann}}}         # forwardedProps.prefill, no text
@@ -60,7 +61,7 @@ from harness_client import RUNS, SAMPLES, Visit, events  # noqa: E402
 RECIPES = HERE / "demo" / "recipes"
 SCENARIOS = HERE / "evals" / "recipes"
 SITE_DATA = HERE.parent / "site" / "src" / "data" / "recipes.json"
-KEYS = {"name", "recipe", "form", "page", "runs", "card", "turns", "client_tools", "documents", "expect", "transcribe", "tags"}
+KEYS = {"name", "recipe", "form", "page", "runs", "card", "turns", "client_tools", "documents", "expect", "transcribe", "tags", "answer"}
 EXPECT_KEYS = {"tools", "order", "never_tools", "tool_args", "executed", "cards"}
 
 
@@ -82,6 +83,7 @@ class RecipeScenario:
     expect: dict = field(default_factory=dict)
     transcribe: dict | None = None
     tags: list[str] = field(default_factory=list)
+    answer: str = ""          # what the user types on a question with no options (a date, a name); empty: closes it
 
     @property
     def tool(self) -> str:
@@ -112,7 +114,7 @@ def load(path: Path) -> RecipeScenario:
                           runs=int(raw.get("runs", 5)), card=str(raw.get("card", "accept")), turns=turns,
                           client_tools=list(raw.get("client_tools") or []), documents=list(raw.get("documents") or []),
                           expect=dict(raw.get("expect") or {}), transcribe=raw.get("transcribe"),
-                          tags=[str(x) for x in raw.get("tags") or []])
+                          tags=[str(x) for x in raw.get("tags") or []], answer=str(raw.get("answer") or ""))
 
 
 def load_all(names: list[str] | None = None, folder: Path = SCENARIOS) -> list[RecipeScenario]:
@@ -217,9 +219,9 @@ class FormChat:
     """The widget on one form: cards are accepted (or rejected), questions answered with their first option, browser
     tools answered with the scenario's result. Records every tool call (name, args) and every tool result."""
 
-    def __init__(self, http, form_id: str, card: str = "accept", client_tools: list[dict] | None = None):
+    def __init__(self, http, form_id: str, card: str = "accept", client_tools: list[dict] | None = None, answer: str = ""):
         from demo.mock_forms import FORMS
-        self.http, self.form, self.card = http, FORMS[form_id], card
+        self.http, self.form, self.card, self.answer = http, FORMS[form_id], card, answer
         self.config = self.form.compute(None)
         self.hash = http.post("/agent/layouts", json={"jsx": self.form.jsx, "form_id": form_id,
                                                       "domain": self.form.domain}).json()["jsx_hash"]
@@ -308,8 +310,9 @@ class FormChat:
         self.cards.append("set_fields" if "changes" in it else kind)
         if kind == "ask":
             opts = it.get("options") or []
-            self.log.append(f"   ❓ {it.get('question')} → {opts[0]['label'] if opts else 'closed'}")
-            self._resume({"answer": {"ids": [opts[0]["id"]]}} if opts else {"accepted": False}, depth)
+            self.log.append(f"   ❓ {it.get('question')} → {opts[0]['label'] if opts else self.answer or 'closed'}")
+            self._resume({"answer": {"ids": [opts[0]["id"]]}} if opts else {"answer": {"text": self.answer}} if self.answer
+                         else {"accepted": False}, depth)
         elif "changes" in it:
             ok = self.card in ("accept", "confirm_no")
             self.log.append("   🃏 " + "; ".join(f"{c.get('label')} = {c.get('display')}" for c in it["changes"]) + f" → {'accepted' if ok else 'rejected'}")
@@ -369,7 +372,7 @@ def play(sc: RecipeScenario, http, guide, i: int, offline: bool = False) -> dict
             visit.say(t.get("say") or "")
         checks, log = verdict(sc, visit.tools, {}, [c.get("type") for c in visit.cards]), visit.log
     else:
-        chat = FormChat(http, sc.form, sc.card, sc.client_tools)
+        chat = FormChat(http, sc.form, sc.card, sc.client_tools, sc.answer)
         for t in sc.turns:
             if t.get("attach"):
                 chat.attach(t["attach"])

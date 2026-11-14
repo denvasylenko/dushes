@@ -1,0 +1,4 @@
+# A gift-card skill: the skill's instructions and its tool load only when the agent calls use_skill(gift_cards).
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+skills: {dir: skills}

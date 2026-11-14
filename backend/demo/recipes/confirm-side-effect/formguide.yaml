@@ -1,0 +1,6 @@
+# Confirm before a side effect: send_booking_request sends the booking to the salon. confirm_tools holds every
+# call of it until the user taps Confirm on a card; a closed card means it never runs.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+tools: ["booking_tools:send_booking_request"]
+confirm_tools: [send_booking_request]

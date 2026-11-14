@@ -89,7 +89,29 @@ class Client:
         return runs
 
 
-def summarize(runs: list[dict], prices: dict | None) -> dict:
+def call_cost(m: dict, price: dict) -> float:
+    """One model call in dollars: fresh input, cache reads and 5-minute cache writes, output; the `over` tier when the
+    whole prompt (input_tokens counts cache reads and writes too) is over its token limit."""
+    tin, read, write = m.get("input_tokens") or 0, m.get("cache_read_tokens") or 0, m.get("cache_write_tokens") or 0
+    over = price.get("over")
+    p = {**price, **over} if over and tin > over.get("tokens", 0) else price
+    fresh = max(0, tin - read - write)
+    return (fresh * p["input"] + read * p.get("cache_read", p["input"]) + write * p.get("cache_write", p["input"])
+            + (m.get("output_tokens") or 0) * p["output"]) / 1e6
+
+
+def price_for(prices: dict, model: str | None, fallback: str | None) -> dict | None:
+    """A price from site/src/data/prices.json ({models: {id: ...}}) by the call's model, else --model."""
+    table = prices.get("models") or {}
+    for key in (model, fallback):
+        if key and key in table:
+            return table[key]
+        if key and ":" in key and key.split(":", 1)[1] in table:
+            return table[key.split(":", 1)[1]]
+    return None
+
+
+def summarize(runs: list[dict], prices: dict | None, model: str | None = None) -> dict:
     ttft = next((r["ttft_ms"] for r in runs if r.get("ttft_ms") is not None), None)
     tok = {k: sum((r["tokens"].get(k) or 0) for r in runs) for k in ("input", "output", "cache_read")}
     out = {"ttft_ms": ttft, "turn_ms": sum(r["total_ms"] for r in runs), "model_ms": sum(r["model_ms"] for r in runs),
@@ -97,7 +119,14 @@ def summarize(runs: list[dict], prices: dict | None) -> dict:
            "tools": sum(len(r["tools"]) for r in runs), "model_calls": sum(len(r["models"]) for r in runs),
            "models_used": [{"model": m.get("model")} for r in runs for m in r["models"] if m.get("model")],
            "tokens": tok, "cache_hit_rate": round(tok["cache_read"] / tok["input"], 3) if tok["input"] else None}
-    if prices:
+    if prices and "models" in prices:   # the price file: per call, with cache writes and the long-prompt tier
+        calls = [m for r in runs for m in r["models"]]
+        priced = [(m, price_for(prices, m.get("model"), model)) for m in calls]
+        missing = sorted({str(m.get("model")) for m, p in priced if p is None})
+        out["cost_usd"] = round(sum(call_cost(m, p) for m, p in priced if p), 5)
+        if missing:
+            out["unpriced_models"] = missing
+    elif prices:   # a flat {input, output, cache_read} file
         fresh = max(0, tok["input"] - tok["cache_read"])
         out["cost_usd"] = round((fresh * prices.get("input", 0) + tok["cache_read"] * prices.get("cache_read", 0)
                                  + tok["output"] * prices.get("output", 0)) / 1e6, 4)
@@ -141,10 +170,17 @@ def site_speed(rows: list[dict], a: argparse.Namespace, argv: list[str], target:
                     "ttft_s": round(r["ttft_median_ms"] / 1000, 1) if r["ttft_median_ms"] is not None else None,
                     "turn_s": round(r["turn_median_ms"] / 1000, 1), "tools": med(lambda x: x["tools"]),
                     "tokens_in": round(med(lambda x: x["tokens"]["input"])), "tokens_out": round(med(lambda x: x["tokens"]["output"])),
-                    "cache": round(med(lambda x: x["cache_hit_rate"] or 0), 2)})
+                    "cache": round(med(lambda x: x["cache_hit_rate"] or 0), 2),
+                    **({"cost_usd": None if any(x.get("unpriced_models") for x in ok) else round(med(lambda x: x["cost_usd"]), 5)}
+                       if all("cost_usd" in x for x in ok) else {})})
     data = {"source": "backend/scripts/bench.py " + " ".join(argv), "date": datetime.now().strftime("%Y-%m-%d"),
             "model": model_label(max(set(models), key=models.count)) if models else old.get("model", ""),
             "commit": a.commit if a.commit is not None else git_commit(a.base), "repeat": a.repeat, "scenarios": out}
+    table = json.loads(Path(a.prices).read_text()) if getattr(a, "prices", None) else None
+    if table and "models" in table:   # where the dollars come from, so the page needs no second file
+        ids = [m for m in models if m]
+        data["prices"] = {"checked": table.get("checked"), "source": table.get("source"),
+                          "model_id": getattr(a, "model", None) or (max(set(ids), key=ids.count) if ids else None)}
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n")
     print(f"site numbers: {target}")
@@ -167,7 +203,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--only", nargs="*", help="scenario names")
     ap.add_argument("--max-ttft", type=float, help="seconds: fail when a median time to first token is above")
     ap.add_argument("--max-turn", type=float, help="seconds: fail when a median turn time is above")
-    ap.add_argument("--prices", type=Path, help='JSON per 1M tokens: {"input": .., "output": .., "cache_read": ..}')
+    ap.add_argument("--prices", type=Path, help='JSON per 1M tokens: site/src/data/prices.json, or a flat '
+                    '{"input": .., "output": .., "cache_read": ..}')
+    ap.add_argument("--model", help="with the price file: the model to price calls by (default: each call's own model)")
     ap.add_argument("--site", action="store_true", help="write the medians to the docs: site/src/data/benchmarks/speed.json")
     ap.add_argument("--commit", help="the server's git short sha (default: this checkout's, for a local server; else empty)")
     a = ap.parse_args(argv)
@@ -181,7 +219,7 @@ def main(argv: list[str]) -> int:
         for i in range(a.repeat):
             t = time.perf_counter()
             try:
-                s = summarize(client.turn(form_id, message), prices)
+                s = summarize(client.turn(form_id, message), prices, a.model)
             except Exception as e:  # noqa: BLE001
                 s = {"error": f"{type(e).__name__}: {e}"}
             s["wall_ms"] = round((time.perf_counter() - t) * 1000)

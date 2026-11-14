@@ -8,7 +8,7 @@ start: {page: /apply, form: loan_application}
 knows:
   - Elena Igorevna Morozova, born 14.07.1985 in Perm, female
   - Phone +79031112233, email elena.m@yandex.ru
-  - Accountant at Alfa JSC since 01.09.2015, salary 120 000 a month
+  - Accountant at Northgate JSC since 01.09.2015, salary 120 000 a month
   - Consumer loan of 700 000 for 3 years for home renovation
 turns: 5
 expect:

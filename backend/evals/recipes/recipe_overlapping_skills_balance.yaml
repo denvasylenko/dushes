@@ -1,0 +1,9 @@
+name: recipe_overlapping_skills_balance
+recipe: overlapping-skills
+form: barber_booking
+runs: 10
+turns:
+  - How much is still on my gift card GC-1234-5678?
+expect:
+  tool_args: {use_skill: {name: gift_card_balance}}
+  never_tools: [refund_gift_card]

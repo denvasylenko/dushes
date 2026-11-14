@@ -1,0 +1,6 @@
+# Two skills about gift cards. Their descriptions say what each one is for and what it is not for, so the agent
+# loads the right one: the balance for "how much is left", the refund only when the user asks for their money back.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+skills: {dir: skills}
+confirm_tools: [refund_gift_card]   # a refund moves money: the user confirms it on a card first

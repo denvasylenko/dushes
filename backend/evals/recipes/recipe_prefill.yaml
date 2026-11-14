@@ -1,9 +1,9 @@
 name: recipe_prefill
 recipe: prefill
-form: barber_booking
+form: loan_application          # the personal details are on the first step, open from the start
 runs: 10
 turns:
   - prefill:                    # what the host knows about the signed-in user
-      data: {full_name: Ann Lee, mobile: "+1 555 123 4567", email: ann.lee@example.com}
+      data: {full_name: Anna Petrova, birth_date: "1990-04-12", email: anna.petrova@example.com, mobile: "+1 555 123 4567"}
 expect:
   tools: [propose_changes]

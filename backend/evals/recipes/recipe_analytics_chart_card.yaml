@@ -1,0 +1,9 @@
+name: recipe_analytics_chart_card
+recipe: analytics-chart-card
+form: barber_booking
+runs: 10
+turns:
+  - Which day of the week is the salon least busy? I'd like a quiet visit.
+expect:
+  tools: [get_visits_by_day, show_visits_chart]
+  order: true

@@ -151,6 +151,18 @@ def site_evals(report: dict, path: Path, prices: dict, target: Path = SITE) -> d
     return data
 
 
+def latest_live() -> Path:
+    """The newest live report (offline runs, the tests' included, are skipped)."""
+    for p in sorted(RUNS.glob("evals-*.json"), reverse=True):
+        try:
+            d = json.loads(p.read_text())
+        except ValueError:
+            continue
+        if not d.get("offline") and len(d.get("scenarios") or []) > 1:
+            return p
+    raise SystemExit("no live evals report in scripts/runs/")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("report", nargs="?", type=Path)
@@ -159,7 +171,7 @@ def main() -> None:
     ap.add_argument("--out", type=Path, help="write the Markdown here as well")
     ap.add_argument("--site", action="store_true", help="write the docs' numbers: site/src/data/benchmarks/evals.json")
     a = ap.parse_args()
-    path = a.report or max(RUNS.glob("evals-*.json"))
+    path = a.report or latest_live()
     text = summary(json.loads(path.read_text()), json.loads(a.prev.read_text()) if a.prev else None, json.loads(a.prices))
     print(text)
     if a.out:

@@ -1,0 +1,10 @@
+name: recipe_gift_card_skill
+recipe: gift-card-skill
+form: barber_booking
+runs: 10
+turns:
+  - I have a gift card GC-1234-5678. How much is left on it?
+expect:
+  tools: [use_skill, check_gift_card]
+  order: true
+  tool_args: {use_skill: {name: gift_cards}}

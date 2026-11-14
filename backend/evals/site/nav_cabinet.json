@@ -1,0 +1,374 @@
+{
+ "site": "cabinet",
+ "site_map": "Herefront: backend/app/data/cabinet_site.yaml (web_search_company_without_web)",
+ "start": "/",
+ "source": "R&D Brainstorm, 2026-11-14",
+ "note": "Navigation test set for the Herefront cabinet's site map; same format.",
+ "measured_2026_11_14": "fast path (keywords AND char 3-grams agree AND a navigation verb): 0 wrong jumps; demo 39% coverage, cabinet 30%. Dushes (Haiku): 98% right page, 0 wrong pages, but it also navigates on 9/20 non-navigation phrases.",
+ "count": 47,
+ "phrases": [
+  {
+   "text": "open statistics",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/stats"
+   }
+  },
+  {
+   "text": "show me my requests",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/guests"
+   }
+  },
+  {
+   "text": "go to settings",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/more"
+   }
+  },
+  {
+   "text": "edit my site",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/site"
+   }
+  },
+  {
+   "text": "where do I change the opening hours",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/site",
+    "tab": "tab_hours"
+   }
+  },
+  {
+   "text": "open the menu and prices",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/site",
+    "tab": "tab_menu"
+   }
+  },
+  {
+   "text": "take me to connections",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/connections"
+   }
+  },
+  {
+   "text": "where are my business details",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/business"
+   }
+  },
+  {
+   "text": "where do visitors come from",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/stats",
+    "section": "where"
+   }
+  },
+  {
+   "text": "change the language",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/more",
+    "section": "language"
+   }
+  },
+  {
+   "text": "opn stats",
+   "lang": "en",
+   "kind": "typo",
+   "expect": {
+    "path": "/stats"
+   }
+  },
+  {
+   "text": "reqests",
+   "lang": "en",
+   "kind": "typo",
+   "expect": {
+    "path": "/guests"
+   }
+  },
+  {
+   "text": "setings",
+   "lang": "en",
+   "kind": "typo",
+   "expect": {
+    "path": "/more"
+   }
+  },
+  {
+   "text": "so how is my site doing this week",
+   "lang": "en",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/stats"
+   }
+  },
+  {
+   "text": "hey did anyone book a table today",
+   "lang": "en",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/guests"
+   }
+  },
+  {
+   "text": "I need to put up a new photo of the place",
+   "lang": "en",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/site",
+    "section": "photos"
+   }
+  },
+  {
+   "text": "mark Anna's request as answered",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "thanks",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "write a news post about the summer menu",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "what does publish do",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "apri le statistiche",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/stats"
+   }
+  },
+  {
+   "text": "mostrami le richieste",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/guests"
+   }
+  },
+  {
+   "text": "vai alle impostazioni",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/more"
+   }
+  },
+  {
+   "text": "modifica il mio sito",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/site"
+   }
+  },
+  {
+   "text": "dove cambio gli orari",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/site",
+    "tab": "tab_hours"
+   }
+  },
+  {
+   "text": "portami ai collegamenti",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/connections"
+   }
+  },
+  {
+   "text": "statistiche sitto",
+   "lang": "it",
+   "kind": "typo",
+   "expect": {
+    "path": "/stats"
+   }
+  },
+  {
+   "text": "richeste",
+   "lang": "it",
+   "kind": "typo",
+   "expect": {
+    "path": "/guests"
+   }
+  },
+  {
+   "text": "allora come va il sito questa settimana",
+   "lang": "it",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/stats"
+   }
+  },
+  {
+   "text": "senti qualcuno ha prenotato oggi",
+   "lang": "it",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/guests"
+   }
+  },
+  {
+   "text": "segna la richiesta di Anna come risposta",
+   "lang": "it",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "grazie mille",
+   "lang": "it",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "scrivi una notizia sul menu estivo",
+   "lang": "it",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "\u043e\u0442\u043a\u0440\u043e\u0439 \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043a\u0443",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/stats"
+   }
+  },
+  {
+   "text": "\u043f\u043e\u043a\u0430\u0436\u0438 \u0437\u0430\u044f\u0432\u043a\u0438",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/guests"
+   }
+  },
+  {
+   "text": "\u043f\u0435\u0440\u0435\u0439\u0434\u0438 \u0432 \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/more"
+   }
+  },
+  {
+   "text": "\u0440\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0430\u0439\u0442",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/site"
+   }
+  },
+  {
+   "text": "\u0433\u0434\u0435 \u043f\u043e\u043c\u0435\u043d\u044f\u0442\u044c \u0447\u0430\u0441\u044b \u0440\u0430\u0431\u043e\u0442\u044b",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/site",
+    "tab": "tab_hours"
+   }
+  },
+  {
+   "text": "\u043e\u0442\u043a\u0440\u043e\u0439 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/connections"
+   }
+  },
+  {
+   "text": "\u0433\u0434\u0435 \u0440\u0435\u043a\u0432\u0438\u0437\u0438\u0442\u044b",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/business"
+   }
+  },
+  {
+   "text": "\u0441\u0442\u0430\u0442\u0438\u0441\u0442\u043a\u0430",
+   "lang": "ru",
+   "kind": "typo",
+   "expect": {
+    "path": "/stats"
+   }
+  },
+  {
+   "text": "\u0437\u0430\u044f\u043a\u0438",
+   "lang": "ru",
+   "kind": "typo",
+   "expect": {
+    "path": "/guests"
+   }
+  },
+  {
+   "text": "\u0441\u043b\u0443\u0448\u0430\u0439 \u043a\u0430\u043a \u0442\u0430\u043c \u0441\u0430\u0439\u0442 \u0441\u043a\u043e\u043b\u044c\u043a\u043e \u043b\u044e\u0434\u0435\u0439 \u0437\u0430\u0445\u043e\u0434\u0438\u043b\u043e",
+   "lang": "ru",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/stats"
+   }
+  },
+  {
+   "text": "\u043a\u0442\u043e-\u043d\u0438\u0431\u0443\u0434\u044c \u0437\u0430\u0431\u0440\u043e\u043d\u0438\u0440\u043e\u0432\u0430\u043b \u0441\u0435\u0433\u043e\u0434\u043d\u044f",
+   "lang": "ru",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/guests"
+   }
+  },
+  {
+   "text": "\u043e\u0442\u043c\u0435\u0442\u044c \u0437\u0430\u044f\u0432\u043a\u0443 \u0410\u043d\u043d\u044b \u043a\u0430\u043a \u043e\u0442\u0432\u0435\u0447\u0435\u043d\u043d\u0443\u044e",
+   "lang": "ru",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "\u0441\u043f\u0430\u0441\u0438\u0431\u043e",
+   "lang": "ru",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "\u043d\u0430\u043f\u0438\u0448\u0438 \u043d\u043e\u0432\u043e\u0441\u0442\u044c \u043f\u0440\u043e \u043b\u0435\u0442\u043d\u0435\u0435 \u043c\u0435\u043d\u044e",
+   "lang": "ru",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  }
+ ]
+}

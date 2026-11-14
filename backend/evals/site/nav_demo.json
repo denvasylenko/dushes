@@ -1,0 +1,666 @@
+{
+ "site": "main",
+ "site_map": "backend/demo/site.yaml",
+ "start": "/",
+ "source": "R&D Brainstorm, 2026-11-14",
+ "note": "Navigation test set for the demo site. expect: the page (and tab, accordion or section) a fast navigation path should open, or 'no navigation' when it must not move. Languages en/it/ru; Non-English text is stored as \\u escapes (the repository is English-only).",
+ "measured_2026_11_14": "fast path (keywords AND char 3-grams agree AND a navigation verb): 0 wrong jumps; demo 39% coverage, cabinet 30%. Dushes (Haiku): 98% right page, 0 wrong pages, but it also navigates on 9/20 non-navigation phrases.",
+ "count": 83,
+ "phrases": [
+  {
+   "text": "open the contacts page",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/contacts"
+   }
+  },
+  {
+   "text": "take me to the FAQ",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/faq"
+   }
+  },
+  {
+   "text": "go to the barbershop",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/barbershop"
+   }
+  },
+  {
+   "text": "show me the car loan tab",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/loans",
+    "tab": "car"
+   }
+  },
+  {
+   "text": "where are the mortgage conditions",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/loans",
+    "tab": "mortgage"
+   }
+  },
+  {
+   "text": "I want to see the barbershop prices",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/barbershop",
+    "tab": "services"
+   }
+  },
+  {
+   "text": "open the loan application",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/apply"
+   }
+  },
+  {
+   "text": "book a haircut",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/book"
+   }
+  },
+  {
+   "text": "where can I find the cancellation policy",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/book",
+    "section": "policy"
+   }
+  },
+  {
+   "text": "show me the rate discounts",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/loans",
+    "section": "discounts"
+   }
+  },
+  {
+   "text": "take me to car insurance",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/insurance"
+   }
+  },
+  {
+   "text": "I want an insurance quote",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/insure"
+   }
+  },
+  {
+   "text": "go back to the home page",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/"
+   }
+  },
+  {
+   "text": "where do I see the cover levels",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/insurance",
+    "tab": "levels"
+   }
+  },
+  {
+   "text": "open our barbers",
+   "lang": "en",
+   "kind": "plain",
+   "expect": {
+    "path": "/barbershop",
+    "tab": "barbers"
+   }
+  },
+  {
+   "text": "opn contcts",
+   "lang": "en",
+   "kind": "typo",
+   "expect": {
+    "path": "/contacts"
+   }
+  },
+  {
+   "text": "take me to teh faq pls",
+   "lang": "en",
+   "kind": "typo",
+   "expect": {
+    "path": "/faq"
+   }
+  },
+  {
+   "text": "barbershp prices",
+   "lang": "en",
+   "kind": "typo",
+   "expect": {
+    "path": "/barbershop",
+    "tab": "services"
+   }
+  },
+  {
+   "text": "morgage tab",
+   "lang": "en",
+   "kind": "typo",
+   "expect": {
+    "path": "/loans",
+    "tab": "mortgage"
+   }
+  },
+  {
+   "text": "cash lone",
+   "lang": "en",
+   "kind": "typo",
+   "expect": {
+    "path": "/loans",
+    "tab": "cash"
+   }
+  },
+  {
+   "text": "um can you like take me to where the opening hours are",
+   "lang": "en",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/contacts"
+   }
+  },
+  {
+   "text": "okay so I'd like to look at the list of documents I need for a loan",
+   "lang": "en",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/loans",
+    "section": "documents"
+   }
+  },
+  {
+   "text": "hey I wanna book a beard trim for tomorrow",
+   "lang": "en",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/book"
+   }
+  },
+  {
+   "text": "so how do I make a claim where is that",
+   "lang": "en",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/insurance",
+    "section": "claims"
+   }
+  },
+  {
+   "text": "could you show me the page where I apply for the loan",
+   "lang": "en",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/apply"
+   }
+  },
+  {
+   "text": "when is the bank open on Saturday",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "my first name is Anna",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "what is a co-borrower",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "how much is a haircut with Maria",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "thanks that's all",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "can I repay early without a fee",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "set the loan amount to 900 000",
+   "lang": "en",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "apri la pagina dei contatti",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/contacts"
+   }
+  },
+  {
+   "text": "portami alle domande frequenti",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/faq"
+   }
+  },
+  {
+   "text": "vai al barbiere",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/barbershop"
+   }
+  },
+  {
+   "text": "mostrami il prestito auto",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/loans",
+    "tab": "car"
+   }
+  },
+  {
+   "text": "dove sono le condizioni del mutuo",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/loans",
+    "tab": "mortgage"
+   }
+  },
+  {
+   "text": "voglio vedere i prezzi del barbiere",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/barbershop",
+    "tab": "services"
+   }
+  },
+  {
+   "text": "apri la richiesta di prestito",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/apply"
+   }
+  },
+  {
+   "text": "prenota un taglio di capelli",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/book"
+   }
+  },
+  {
+   "text": "dov'\u00e8 la politica di cancellazione",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/book",
+    "section": "policy"
+   }
+  },
+  {
+   "text": "portami all'assicurazione auto",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/insurance"
+   }
+  },
+  {
+   "text": "voglio un preventivo per l'assicurazione",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/insure"
+   }
+  },
+  {
+   "text": "torna alla home",
+   "lang": "it",
+   "kind": "plain",
+   "expect": {
+    "path": "/"
+   }
+  },
+  {
+   "text": "apri contati",
+   "lang": "it",
+   "kind": "typo",
+   "expect": {
+    "path": "/contacts"
+   }
+  },
+  {
+   "text": "prezi barbiere",
+   "lang": "it",
+   "kind": "typo",
+   "expect": {
+    "path": "/barbershop",
+    "tab": "services"
+   }
+  },
+  {
+   "text": "mutu",
+   "lang": "it",
+   "kind": "typo",
+   "expect": {
+    "path": "/loans",
+    "tab": "mortgage"
+   }
+  },
+  {
+   "text": "senti mi porti dove ci sono gli orari di apertura",
+   "lang": "it",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/contacts"
+   }
+  },
+  {
+   "text": "allora vorrei vedere che documenti servono per il prestito",
+   "lang": "it",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/loans",
+    "section": "documents"
+   }
+  },
+  {
+   "text": "ciao voglio prenotare una barba per domani",
+   "lang": "it",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/book"
+   }
+  },
+  {
+   "text": "come faccio a denunciare un sinistro dove si fa",
+   "lang": "it",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/insurance",
+    "section": "claims"
+   }
+  },
+  {
+   "text": "a che ora apre la banca sabato",
+   "lang": "it",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "mi chiamo Anna Rossi",
+   "lang": "it",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "cos'\u00e8 un coobbligato",
+   "lang": "it",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "quanto costa un taglio con Maria",
+   "lang": "it",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "grazie \u00e8 tutto",
+   "lang": "it",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "imposta l'importo a 900 000",
+   "lang": "it",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "\u043e\u0442\u043a\u0440\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u043e\u0432",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/contacts"
+   }
+  },
+  {
+   "text": "\u043f\u0435\u0440\u0435\u0439\u0434\u0438 \u0432 \u0447\u0430\u0441\u0442\u044b\u0435 \u0432\u043e\u043f\u0440\u043e\u0441\u044b",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/faq"
+   }
+  },
+  {
+   "text": "\u043e\u0442\u043a\u0440\u043e\u0439 \u0431\u0430\u0440\u0431\u0435\u0440\u0448\u043e\u043f",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/barbershop"
+   }
+  },
+  {
+   "text": "\u043f\u043e\u043a\u0430\u0436\u0438 \u0430\u0432\u0442\u043e\u043a\u0440\u0435\u0434\u0438\u0442",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/loans",
+    "tab": "car"
+   }
+  },
+  {
+   "text": "\u0433\u0434\u0435 \u0443\u0441\u043b\u043e\u0432\u0438\u044f \u0438\u043f\u043e\u0442\u0435\u043a\u0438",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/loans",
+    "tab": "mortgage"
+   }
+  },
+  {
+   "text": "\u0445\u043e\u0447\u0443 \u043f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u0442\u044c \u0446\u0435\u043d\u044b \u0432 \u0431\u0430\u0440\u0431\u0435\u0440\u0448\u043e\u043f\u0435",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/barbershop",
+    "tab": "services"
+   }
+  },
+  {
+   "text": "\u043e\u0442\u043a\u0440\u043e\u0439 \u0437\u0430\u044f\u0432\u043a\u0443 \u043d\u0430 \u043a\u0440\u0435\u0434\u0438\u0442",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/apply"
+   }
+  },
+  {
+   "text": "\u0437\u0430\u043f\u0438\u0441\u0430\u0442\u044c\u0441\u044f \u043d\u0430 \u0441\u0442\u0440\u0438\u0436\u043a\u0443",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/book"
+   }
+  },
+  {
+   "text": "\u0433\u0434\u0435 \u043f\u0440\u0430\u0432\u0438\u043b\u0430 \u043e\u0442\u043c\u0435\u043d\u044b \u0437\u0430\u043f\u0438\u0441\u0438",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/book",
+    "section": "policy"
+   }
+  },
+  {
+   "text": "\u043f\u043e\u043a\u0430\u0436\u0438 \u0441\u043a\u0438\u0434\u043a\u0438 \u043f\u043e \u0441\u0442\u0430\u0432\u043a\u0435",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/loans",
+    "section": "discounts"
+   }
+  },
+  {
+   "text": "\u043f\u0435\u0440\u0435\u0439\u0434\u0438 \u043a \u0441\u0442\u0440\u0430\u0445\u043e\u0432\u043a\u0435 \u043c\u0430\u0448\u0438\u043d\u044b",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/insurance"
+   }
+  },
+  {
+   "text": "\u0445\u043e\u0447\u0443 \u0440\u0430\u0441\u0447\u0451\u0442 \u0441\u0442\u0440\u0430\u0445\u043e\u0432\u043a\u0438",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/insure"
+   }
+  },
+  {
+   "text": "\u043d\u0430 \u0433\u043b\u0430\u0432\u043d\u0443\u044e",
+   "lang": "ru",
+   "kind": "plain",
+   "expect": {
+    "path": "/"
+   }
+  },
+  {
+   "text": "\u043e\u0442\u043a\u0440\u043e\u0439 \u043a\u043e\u043d\u0442\u0430\u043a\u044b",
+   "lang": "ru",
+   "kind": "typo",
+   "expect": {
+    "path": "/contacts"
+   }
+  },
+  {
+   "text": "\u0446\u0435\u043d\u044b \u0431\u0430\u0440\u0431\u0435\u0440\u0448\u043e\u043f",
+   "lang": "ru",
+   "kind": "typo",
+   "expect": {
+    "path": "/barbershop",
+    "tab": "services"
+   }
+  },
+  {
+   "text": "\u0438\u043f\u043e\u0442\u043a\u0430",
+   "lang": "ru",
+   "kind": "typo",
+   "expect": {
+    "path": "/loans",
+    "tab": "mortgage"
+   }
+  },
+  {
+   "text": "\u0441\u043b\u0443\u0448\u0430\u0439 \u0430 \u043c\u043e\u0436\u0435\u0448\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0433\u0434\u0435 \u0447\u0430\u0441\u044b \u0440\u0430\u0431\u043e\u0442\u044b",
+   "lang": "ru",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/contacts"
+   }
+  },
+  {
+   "text": "\u0442\u0430\u043a \u043c\u043d\u0435 \u043d\u0443\u0436\u043d\u043e \u043f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u0442\u044c \u043a\u0430\u043a\u0438\u0435 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b \u043d\u0443\u0436\u043d\u044b \u0434\u043b\u044f \u043a\u0440\u0435\u0434\u0438\u0442\u0430",
+   "lang": "ru",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/loans",
+    "section": "documents"
+   }
+  },
+  {
+   "text": "\u043f\u0440\u0438\u0432\u0435\u0442 \u0445\u043e\u0447\u0443 \u0437\u0430\u043f\u0438\u0441\u0430\u0442\u044c\u0441\u044f \u043f\u043e\u0431\u0440\u0438\u0442\u044c \u0431\u043e\u0440\u043e\u0434\u0443 \u043d\u0430 \u0437\u0430\u0432\u0442\u0440\u0430",
+   "lang": "ru",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/book"
+   }
+  },
+  {
+   "text": "\u043a\u0430\u043a \u043e\u0444\u043e\u0440\u043c\u0438\u0442\u044c \u0441\u0442\u0440\u0430\u0445\u043e\u0432\u043e\u0439 \u0441\u043b\u0443\u0447\u0430\u0439 \u0433\u0434\u0435 \u044d\u0442\u043e",
+   "lang": "ru",
+   "kind": "voice-like",
+   "expect": {
+    "path": "/insurance",
+    "section": "claims"
+   }
+  },
+  {
+   "text": "\u0432\u043e \u0441\u043a\u043e\u043b\u044c\u043a\u043e \u0431\u0430\u043d\u043a \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u0441\u0443\u0431\u0431\u043e\u0442\u0443",
+   "lang": "ru",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "\u043c\u0435\u043d\u044f \u0437\u043e\u0432\u0443\u0442 \u0410\u043d\u043d\u0430 \u041f\u0435\u0442\u0440\u043e\u0432\u0430",
+   "lang": "ru",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "\u0447\u0442\u043e \u0442\u0430\u043a\u043e\u0435 \u0441\u043e\u0437\u0430\u0451\u043c\u0449\u0438\u043a",
+   "lang": "ru",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "\u0441\u043a\u043e\u043b\u044c\u043a\u043e \u0441\u0442\u043e\u0438\u0442 \u0441\u0442\u0440\u0438\u0436\u043a\u0430 \u0443 \u041c\u0430\u0440\u0438\u0438",
+   "lang": "ru",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "\u0441\u043f\u0430\u0441\u0438\u0431\u043e \u044d\u0442\u043e \u0432\u0441\u0451",
+   "lang": "ru",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  },
+  {
+   "text": "\u043f\u043e\u0441\u0442\u0430\u0432\u044c \u0441\u0443\u043c\u043c\u0443 900 000",
+   "lang": "ru",
+   "kind": "non-navigation",
+   "expect": "no navigation"
+  }
+ ]
+}

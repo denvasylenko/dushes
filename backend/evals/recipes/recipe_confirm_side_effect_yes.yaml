@@ -1,0 +1,12 @@
+name: recipe_confirm_side_effect_yes
+recipe: confirm-side-effect
+form: barber_booking
+card: accept                    # the user taps Confirm: the booking is sent
+runs: 10
+answer: next Tuesday           # a date picker is answered with the day
+turns:
+  - Haircut with Alex next Tuesday, the first free time that day. I am Sam Reed, +1 555 201 3344.
+  - Everything is right. Send my booking to the salon now.
+expect:
+  cards: [confirm]
+  executed: {send_booking_request: true}

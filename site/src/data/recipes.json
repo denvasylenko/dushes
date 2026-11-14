@@ -1,0 +1,101 @@
+{
+  "analytics-chart-card": {
+    "runs": 10,
+    "hits": 10,
+    "scenarios": 1,
+    "tool": "get_visits_by_day, show_visits_chart",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "confirm-side-effect": {
+    "runs": 20,
+    "hits": 0,
+    "scenarios": 2,
+    "tool": "",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "frontend-tool": {
+    "runs": 10,
+    "hits": 10,
+    "scenarios": 1,
+    "tool": "get_user_locale",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "gift-card-skill": {
+    "runs": 10,
+    "hits": 10,
+    "scenarios": 1,
+    "tool": "use_skill, check_gift_card",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "income-proof": {
+    "runs": 20,
+    "hits": 20,
+    "scenarios": 2,
+    "tool": "use_skill; propose_changes",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "overlapping-skills": {
+    "runs": 20,
+    "hits": 20,
+    "scenarios": 2,
+    "tool": "use_skill",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "prefill": {
+    "runs": 10,
+    "hits": 3,
+    "scenarios": 1,
+    "tool": "propose_changes",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "researcher": {
+    "runs": 10,
+    "hits": 10,
+    "scenarios": 1,
+    "tool": "ask_documents",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "site-with-form": {
+    "runs": 10,
+    "hits": 10,
+    "scenarios": 1,
+    "tool": "open_form, propose_changes",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "skill-scoped-to-one-form": {
+    "runs": 20,
+    "hits": 20,
+    "scenarios": 2,
+    "tool": "use_skill; not use_skill",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  },
+  "voice-on-server": {
+    "runs": 5,
+    "hits": 5,
+    "scenarios": 1,
+    "tool": "transcribe",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+  }
+}

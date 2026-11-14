@@ -132,7 +132,7 @@ def sc_driver_switch(s: Session, c: Checks):
 
 def sc_bulk_message(s: Session, c: Checks):
     s.say("Here is everything at once: Elena Igorevna Morozova, 14.07.1985, female, born in Perm. "
-          "Phone +79031112233, email elena.m@yandex.ru. I work as an accountant at Alfa JSC since 01.09.2015, "
+          "Phone +79031112233, email elena.m@yandex.ru. I work as an accountant at Northgate JSC since 01.09.2015, "
           "salary 120 thousand. I want a consumer loan of 700 thousand for 3 years for home renovation. I agree to everything.")
     filled = [n for n in ("last_name", "first_name", "phone_mobile", "email", "employer_name", "income_main",
                           "loan_amount") if s.value(n) not in (None, "")]

@@ -1,0 +1,15 @@
+# Analytics with a chart card: a skill's tool returns the numbers, and a card of your own (show_visits_chart)
+# draws them as a bar chart in the chat. The model fills the card's data; the widget draws the blocks.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+skills: {dir: skills}
+cards:
+  - type: visits_chart
+    wait: false                  # a display card: the chat goes on without an answer
+    description: >-
+      Show visits by day of the week as a bar chart. days: one item per day, {label: "Mon", value: 42}, in order;
+      busiest: the label of the busiest day.
+    data: {days: "object[]", busiest: "string?"}
+    blocks:
+      - {type: title, text: Visits by day}
+      - {type: chart, kind: bar, unit: visits, data: "{days}", highlight: "{busiest}"}
