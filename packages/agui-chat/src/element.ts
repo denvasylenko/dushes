@@ -21,7 +21,7 @@ export const DEFAULTS: ChatOptions = {
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, dictation: 'browser', transcribeUrl: '', attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined, icons: {}, render: {},
-  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring',
+  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy'], onMessageAction: undefined,
 }
 
 /** attribute -> [option, parser] */
@@ -35,12 +35,24 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   'mic-auto-send': ['micAutoSend', bool], dictation: ['dictation', String], 'transcribe-url': ['transcribeUrl', String], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
   'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
   'bubble-side': ['bubbleSide', String], greeting: ['greeting', String], 'greeting-delay': ['greetingDelay', Number], motion: ['motion', String],
+  'message-actions': ['messageActions', (v) => (!v || /^(off|none|false)$/.test(v) ? [] : v.split(',').map((x) => x.trim()).filter(Boolean))],
 }
 
 /** Interrupt reasons of RUN_FINISHED.outcome (AG-UI 1.0) -> the `type` renderers are registered for. */
 const REASON_TYPE: Record<string, string> = {
   confirm_field_changes: 'set_fields', ask_user: 'ask', request_file: 'upload', confirm_action: 'confirm',
 }
+
+/** The line icons of the actions under an answer (24 grid, 1.8 stroke, round caps). */
+const ACT: Record<string, string> = {
+  copy: 'M9 9h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1zM5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1',
+  done: 'M5 12.5l4.5 4.5L19 7',
+  retry: 'M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6',
+  speak: 'M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12',
+  like: 'M7 11v9H4v-9h3zm0 0 4-7a2 2 0 0 1 3 2l-1 4h5.5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 20H7',
+  down: 'M12 5v14M6 13l6 6 6-6',
+}
+const actSvg = (d: string): string => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
 
 const ICON = {
   spark: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" opacity=".7"/></svg>',
@@ -445,6 +457,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _assistantDone(body: HTMLElement, text: string): void {
     const own = this.renderSlot('assistant', text)
     if (own) body.replaceChildren(own)
+    this._actions(body, text)
   }
 
   // ------------------------------------------------------------------ DOM
@@ -480,13 +493,21 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const files = h('div', { class: 'files', part: 'attachments' })
     const box = h('div', { class: 'box' }, files, clip, recX, input, wave, mic, send)
     const hint = h('div', { class: 'hint', 'aria-live': 'polite' })
-    const foot = h('div', { class: 'foot', part: 'composer' }, box, hint, picker)
+    // the way back to the latest message when the user has scrolled up; while the assistant works it shows the dots
+    const jump = h('button', { class: 'jump', part: 'jump', type: 'button', hidden: true, onclick: () => this._toLatest() },
+      h('span', { class: 'jump-ico' }), h('span', { class: 'dots', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')))
+    ;(jump.firstChild as HTMLElement).innerHTML = actSvg(ACT.down)
+    const foot = h('div', { class: 'foot', part: 'composer' }, jump, box, hint, picker)
     const panel = h('section', { class: 'panel', part: 'panel', role: 'dialog' }, head, log, foot)
     wrap.append(scrim, panel, greet, fab)
     this.root.appendChild(wrap)
-    this.$ = { wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, fabLabel: fab.lastElementChild as HTMLElement }
+    this.$ = { jump, wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, fabLabel: fab.lastElementChild as HTMLElement }
     recX.addEventListener('click', () => { this._dropDictation(); (input as HTMLTextAreaElement).focus() })
     files.hidden = true
+    log.addEventListener('scroll', () => {
+      this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
+      jump.hidden = this._stick
+    }, { passive: true })
     files.addEventListener('scroll', () => this._fadeFiles(), { passive: true })
     clip.addEventListener('click', () => picker.click())
     picker.addEventListener('change', () => { void this._upload([...(picker.files ?? [])]); picker.value = '' })
@@ -712,6 +733,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const foot = this.renderSlot('composer')
     this.$.foot.replaceChildren(...(foot ? [foot] : this._defaultFoot))
     this.$.btnNew.setAttribute('aria-label', this.t('newChat'))
+    this.$.jump.setAttribute('aria-label', this.t('toLatest')); this.$.jump.title = this.t('toLatest')
     this.$.btnClose.setAttribute('aria-label', this.t('close'))
     this.$.panel.setAttribute('aria-label', o.title || this.t('title'))
     if (o.mode === 'floating') this.$.panel.setAttribute('aria-modal', 'true'); else this.$.panel.removeAttribute('aria-modal')
@@ -759,15 +781,89 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     return el
   }
 
-  private _scroll(): void {
+  /** Follow the conversation down, unless the user scrolled up to read (then the jump button brings them back). */
+  private _scroll(force = false): void {
     const log = this.$.log
+    if (force) this._stick = true
+    if (!this._stick) return
     requestAnimationFrame(() => { log.scrollTop = log.scrollHeight })
+  }
+
+  /** True while the log is at (or near) its end: new messages scroll it; false once the user scrolled up. */
+  private _stick = true
+
+  private _toLatest(): void {
+    const log = this.$.log
+    this._stick = true
+    this.$.jump.hidden = true
+    log.scrollTo?.({ top: log.scrollHeight, behavior: matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+    if (!log.scrollTo) log.scrollTop = log.scrollHeight
   }
 
   private _userBubble(text: string, files: string[] = [], previews: (string | undefined)[] = []): void {
     const own = this.renderSlot('user', text, files)
-    this._append(h('div', { class: 'msg me', part: 'message user' },
-      own ?? h('div', null, files.length ? h('div', { class: 'att-row' }, files.map((f, i) => this._tile(f, previews[i]))) : null, text)))
+    this._lastUser = text
+    // the images and files sit above the bubble, on their own, like a photo sent in Messages
+    const el = this._append(h('div', { class: 'msg me', part: 'message user' },
+      own ?? [files.length ? h('div', { class: 'att-row', part: 'message-attachments' }, files.map((f, i) => this._tile(f, previews[i]))) : null,
+        text ? h('div', { class: 'bubble' }, text) : null]))
+    void el
+    this._scroll(true)   // your own message always brings the view down
+  }
+
+  private _lastUser = ''
+
+  /** The actions under an answer: copy, try again, read aloud, a good or bad answer, and the host's own. */
+  private _actions(body: HTMLElement, text: string): void {
+    const list = this._opts.messageActions ?? []
+    if (!list.length || body.querySelector(':scope > .msg-acts')) return
+    const id = body.closest('[data-message-id]')?.getAttribute('data-message-id') ?? ''
+    const bar = h('div', { class: 'msg-acts', part: 'message-actions', role: 'toolbar' })
+    const emit = (action: string, pressed?: boolean): boolean => {
+      const detail = { id: action, messageId: id || body.parentElement?.getAttribute('data-message-id') || '', text, pressed }
+      const handled = this._opts.onMessageAction?.(action, detail) === true
+      this.dispatchEvent(new CustomEvent('agui:message-action', { detail }))
+      return handled
+    }
+    for (const a of list) {
+      const own = typeof a === 'object' ? a : null
+      const kind = own ? own.id : a as string
+      const label = own?.label ?? this.t(({ copy: 'copy', retry: 'retry', speak: 'readAloud', like: 'goodAnswer', dislike: 'badAnswer' } as Record<string, string>)[kind] ?? kind)
+      const b = h('button', { class: `act act-${kind}`, type: 'button', 'aria-label': label, title: own?.hint ? `${label}\n${own.hint}` : label,
+        'aria-pressed': kind === 'like' || kind === 'dislike' || kind === 'speak' ? 'false' : null }) as HTMLButtonElement
+      b.innerHTML = actSvg(own?.icon ?? ACT[kind === 'dislike' ? 'like' : kind] ?? ACT.done)
+      if (kind === 'speak' && !('speechSynthesis' in globalThis)) continue
+      b.addEventListener('click', async () => {
+        if (emit(kind, b.getAttribute('aria-pressed') === 'true' ? false : b.hasAttribute('aria-pressed') || undefined)) return
+        if (kind === 'copy') {
+          try { await navigator.clipboard.writeText(text) } catch { return }
+          b.innerHTML = actSvg(ACT.done); b.classList.add('done')
+          setTimeout(() => { b.innerHTML = actSvg(ACT.copy); b.classList.remove('done') }, 1500)
+        } else if (kind === 'retry') {
+          if (this._lastUser && !this._busy) void this.send(this._lastUser)
+        } else if (kind === 'speak') {
+          const on = b.getAttribute('aria-pressed') !== 'true'
+          speechSynthesis.cancel()
+          b.setAttribute('aria-pressed', String(on))
+          if (on) {
+            const u = new SpeechSynthesisUtterance(body.innerText || text); u.lang = this.lang
+            u.onend = () => b.setAttribute('aria-pressed', 'false')
+            speechSynthesis.speak(u)
+          }
+        } else if (kind === 'like' || kind === 'dislike') {
+          const on = b.getAttribute('aria-pressed') !== 'true'
+          bar.querySelectorAll('.act-like, .act-dislike').forEach((x) => x.setAttribute('aria-pressed', 'false'))
+          b.setAttribute('aria-pressed', String(on))
+        }
+      })
+      bar.append(b)
+    }
+    // "Try again" belongs to the latest answer only
+    this.$.log.querySelectorAll('.msg-acts .act-retry').forEach((x) => x.remove())
+    this.$.log.querySelectorAll('.msg.ai.last').forEach((x) => x.classList.remove('last'))
+    body.append(bar)
+    body.closest('.msg')?.classList.add('last')
+    queueMicrotask(() => body.closest('.msg')?.classList.add('last'))
   }
 
   private async _upload(list: File[], at?: number): Promise<void> {
@@ -972,6 +1068,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (r.messages?.length) {
       this._messages = r.messages
       this.$.log.replaceChildren()
+      this._stick = true
       for (const m of r.messages) {
         if (m.role === 'user' && m.content) this._userBubble(m.content)
         else if (m.role === 'assistant' && m.content) {
@@ -1089,6 +1186,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _setBusy(on: boolean): void {
     this._busy = on
     this.toggleAttribute('busy', on)
+    this.$.jump?.classList.toggle('busy', on)   // "•••" in the jump button: it is still answering below
     this._syncSend()
   }
 

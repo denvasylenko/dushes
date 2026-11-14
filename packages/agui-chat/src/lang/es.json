@@ -52,7 +52,11 @@
   "clearAll": "Borrar",
   "prevImage": "Imagen anterior",
   "nextImage": "Imagen siguiente",
-  "nOfTotal": "{n} de {total}"
+  "nOfTotal": "{n} de {total}",
+  "toLatest": "Ir al \u00faltimo mensaje",
+  "readAloud": "Leer en voz alta",
+  "goodAnswer": "Buena respuesta",
+  "badAnswer": "Mala respuesta"
  },
  "formguide": {
   "fillTitle": "\u00bfRellenar estos campos?",

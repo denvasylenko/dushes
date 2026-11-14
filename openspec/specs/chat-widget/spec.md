@@ -76,11 +76,39 @@ The `footnote` option SHALL show a line of text under the composer; a hint or an
 - **THEN** the line shows under the composer and stays when a file is attached
 
 ### Requirement: Attachments shown in the composer
-Attached files SHALL show inside the composer box, above the text: an image as a thumbnail, a document as a tile with its name and type, each with a remove button and a spinner while it uploads. A long row SHALL scroll sideways with its edges fading where there is more. Tapping a thumbnail SHALL open the image large in a modal view that a close button, Esc or a tap beside it closes. A sent message SHALL show its images and documents the same way above the text.
+Attached files SHALL show inside the composer box, above the text: an image as a thumbnail, a document as a tile with its name and type, each with a remove button and a spinner while it uploads. A long row SHALL scroll sideways with its edges fading where there is more. Tapping a thumbnail SHALL open the image large in a modal view that a close button, Esc or a tap beside it closes. A sent message SHALL show its images and documents the same way, above its bubble and outside it.
 
 #### Scenario: Pasting a screenshot
 - **WHEN** the user pastes a screenshot into the composer
 - **THEN** its thumbnail appears in the composer; a tap shows it large
+
+### Requirement: Actions under an answer
+Every answer SHALL end with its actions from `messageActions` (default `copy`): `copy` copies the answer's text, `retry` (on the latest answer only) sends the last message again, `speak` reads it aloud, `like` and `dislike` are a pressed pair, and an action of the host's own `{id, label, icon?, hint?}` shows its label and hint as the tooltip. 
+
+#### Scenario: A feedback pair
+- **WHEN** the host sets `messageActions: ['copy', 'like', 'dislike']` and the user taps the thumbs-down
+- **THEN** it is pressed, the thumbs-up is not, and `agui:message-action` carries `{id: "dislike", pressed: true}`
+
+### Requirement: The host hears every action
+Every tap on an action under an answer SHALL fire `agui:message-action` `{id, messageId, text, pressed?}` and call `onMessageAction`, which skips the built-in behaviour by returning true.
+
+#### Scenario: Forking from an answer
+- **WHEN** the host adds `{id: "fork", label: "Fork from here"}` and the user taps it
+- **THEN** `onMessageAction("fork", {messageId, text})` is called
+
+### Requirement: When the actions show
+On a computer the actions under an answer SHALL show on hover or focus, except under the latest answer, where they stay; on a touch screen they SHALL always show, at a 44 px target.
+
+#### Scenario: An older answer
+- **WHEN** the pointer rests on an earlier answer
+- **THEN** its actions fade in
+
+### Requirement: Back to the latest message
+A user who scrolled up SHALL stay where they read while new text arrives, and a round button over the composer SHALL bring them to the latest message; while the assistant works it SHALL show three dots instead of its arrow. Sending a message SHALL bring the view down.
+
+#### Scenario: Reading back while it answers
+- **WHEN** the user scrolls up during an answer
+- **THEN** the view stays, the button shows the dots, and a tap on it scrolls to the end
 
 ### Requirement: Paging the images of a message
 The large view of an image sent with a message SHALL page through that message's images only, with a previous and next arrow and "1 of 2" under the picture, the arrow keys and a swipe; it SHALL not wrap around, and an image still in the composer SHALL have no pager.

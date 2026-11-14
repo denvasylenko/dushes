@@ -44,7 +44,7 @@ const FONTS = { system: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inte
 
 // ------------------------------------------------------------------ state
 const S = {
-  opt: { mode: 'inline', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, mic: true, micAutoSend: false,
+  opt: { mode: 'inline', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, messageActions: ['copy'], mic: true, micAutoSend: false,
     dictation: 'browser', attach: true, attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: 'Want me to book you a haircut?', motion: 'spring',
     title: 'Barbershop', subtitle: 'formguide · playground', intro: '', placeholder: '', footnote: '' },
   preset: 'default', light: {}, dark: {},
@@ -507,6 +507,7 @@ const sections = [
         ['off', 'At once', 'nothing shows until the answer is complete, then all of it. For screen readers or very short answers.']], () => S.opt.typing, (v) => { S.opt.typing = v }),
       row('Tool steps', 'A collapsible list of what the assistant did ("Looked up 3 fields"). Off hides it.', sw(() => S.opt.toolSteps, (v) => { S.opt.toolSteps = v })),
       row('Quick replies', 'Tap-to-send suggestions under each answer and on the empty chat ("What next?").', sw(() => S.opt.quickReplies, (v) => { S.opt.quickReplies = v })),
+      row('Actions under an answer', 'In order, comma-separated: copy, retry, speak, like, dislike. Empty: none.', text(() => S.opt.messageActions.join(', '), (v) => { S.opt.messageActions = v.split(',').map((x) => x.trim()).filter(Boolean) }, 'copy, retry, like, dislike')),
       row('Microphone', 'Dictate instead of typing.', sw(() => S.opt.mic, (v) => { S.opt.mic = v })),
       choice('Speech recognition', 'Who turns the voice into text.', [
         ['browser', 'Browser', "the browser's own recognition, live as you speak. Works in Chrome and Safari; not in some in-app browsers."],
@@ -726,7 +727,7 @@ function themeObject() {
   return t
 }
 const changedOptions = () => {
-  const base = { mode: 'floating', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, mic: true, micAutoSend: false, dictation: 'browser', attach: true,
+  const base = { mode: 'floating', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, messageActions: ['copy'], mic: true, micAutoSend: false, dictation: 'browser', attach: true,
     attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: '', motion: 'spring', title: '', subtitle: '', intro: '', placeholder: '', footnote: '' }
   return Object.fromEntries(Object.entries(S.opt).filter(([k, v]) => v !== base[k]))
 }

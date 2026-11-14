@@ -176,6 +176,12 @@ export interface ChatOptions {
   /** A line under the composer ("The assistant can make mistakes", "Don't type passwords"); a hint or an error takes
    *  its place while shown. Empty: none. */
   footnote: string
+  /** The actions under an answer, in order: built-in `copy`, `retry` (the latest answer), `speak`, `like`, `dislike`,
+   *  or your own `{id, label, icon?, hint?}` (icon: an SVG path on a 24 grid). [] or `message-actions="off"`: none.
+   *  Default ['copy']. Every tap fires `agui:message-action` {id, messageId, text, pressed?}. */
+  messageActions: (string | MessageAction)[]
+  /** A tap on an action under an answer; return true when you handled it (the built-in behaviour is skipped). */
+  onMessageAction?: (id: string, message: { id: string; messageId: string; text: string; pressed?: boolean }) => boolean | void
   starters: string[]
   /** How to answer an interrupt: forwardedProps.command.resume (CopilotKit, ag-ui-langgraph) or AG-UI 1.0 resume[]. */
   resumeStyle: 'command' | 'resume'
@@ -257,3 +263,6 @@ export interface Slots {
   /** The composer: build your own and call chat.send(text). */
   composer?: (chat: ChatApi) => Out
 }
+
+/** An action of your own under an answer: a button with an icon, its label as the tooltip (and `hint` under it). */
+export interface MessageAction { id: string; label: string; icon?: string; hint?: string }

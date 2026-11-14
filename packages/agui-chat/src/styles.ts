@@ -66,8 +66,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .empty h3 { font-size: 28px; line-height: 1.15; letter-spacing: -0.035em; margin: 0 0 8px; text-wrap: balance; }
 .empty p { margin: 0 0 18px; color: var(--agui-ink-2); font-size: 15px; line-height: 1.45; }
 .msg { margin: 0 0 20px; font-size: 15px; line-height: 1.58; letter-spacing: -0.008em; overflow-wrap: anywhere; }
-.msg.me { display: flex; justify-content: flex-end; }
-.msg.me > div { background: var(--agui-bubble-user-bg, var(--agui-soft)); color: var(--agui-bubble-user-ink, inherit); border-radius: var(--agui-bubble-radius, var(--agui-radius-lg)); padding: 10px 15px; max-width: 85%; white-space: pre-wrap; }
+.msg.me { display: flex; flex-direction: column; align-items: flex-end; }
+.msg.me > div:not(.att-row) { background: var(--agui-bubble-user-bg, var(--agui-soft)); color: var(--agui-bubble-user-ink, inherit); border-radius: var(--agui-bubble-radius, var(--agui-radius-lg)); padding: 10px 15px; max-width: 85%; white-space: pre-wrap; }
 .msg.ai { color: var(--agui-bubble-ai-ink, inherit); }
 .msg.ai p { margin: 0 0 10px; } .msg.ai p:last-child { margin-bottom: 0; }
 .msg.ai ul { margin: 4px 0 10px; padding-left: 20px; } .msg.ai li { margin: 3px 0; }
@@ -83,6 +83,28 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .code-copy:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-accent) 30%, transparent), 0 0 0 1px var(--agui-accent); }
 .notice { text-align: center; font-size: 12px; color: var(--agui-ink-3); margin: 0 0 16px; }
 .error { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--agui-danger); font-size: 13px; margin: 0 0 16px; }
+/* the actions under an answer: quiet icons; on a computer they show on hover (the latest answer keeps them) */
+.msg-acts { display: flex; gap: 2px; margin: 6px 0 0 -8px; }
+.msg-acts .act { width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--agui-ink-3); display: grid; place-items: center; cursor: pointer; }
+.msg-acts .act:hover { background: var(--agui-soft); color: var(--agui-ink); }
+.msg-acts .act[aria-pressed=true], .msg-acts .act.done { color: var(--agui-link); }
+.msg-acts .act-dislike svg { transform: rotate(180deg); }
+@media (hover: hover) {
+  .msg.ai:not(.last) .msg-acts { opacity: 0; transition: opacity .15s var(--agui-ease); }
+  .msg.ai:hover .msg-acts, .msg.ai .msg-acts:focus-within { opacity: 1; }
+}
+@media (hover: none) { .msg-acts .act { width: 44px; height: 44px; } }
+/* back to the latest message: a round button over the composer; "•••" while the assistant is still answering */
+.foot { position: relative; }
+.jump { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); z-index: 2; width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--agui-line-2); background: var(--agui-panel-bg, var(--agui-bg)); color: var(--agui-ink-2); display: grid; place-items: center; cursor: pointer;
+  box-shadow: 0 4px 14px -6px var(--agui-shadow); animation: fade-up .18s var(--agui-ease) both; }
+.jump[hidden] { display: none; }
+.jump .dots { display: none; padding: 0; gap: 3px; }
+.jump .dots i { width: 5px; height: 5px; background: var(--agui-accent); }
+.jump.busy .dots { display: inline-flex; } .jump.busy .jump-ico { display: none; }
+.jump-ico { display: grid; }
+@keyframes fade-up { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .dots { display: inline-flex; gap: 4px; padding: 8px 0; }
 .dots i { width: 7px; height: 7px; border-radius: var(--agui-radius-pill); background: var(--agui-ink-3); opacity: .5; animation: bounce 1.2s infinite; }
 .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
@@ -411,7 +433,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
   border: 2px solid color-mix(in srgb, var(--agui-bg) 60%, transparent); border-top-color: var(--agui-bg); animation: att-spin .8s linear infinite; }
 .att.busy { background: color-mix(in srgb, var(--agui-ink) 25%, var(--agui-soft)); }
 .att.busy img { opacity: .55; }
-.att-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; margin: -2px -6px 8px; }
+.att-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 85%; margin: 0 0 6px; }   /* above the bubble, on its own */
 .att-row .att { width: 120px; height: 120px; border-radius: 12px; }
 .att-row .att.doc { width: auto; height: auto; min-height: 52px; padding: 8px 12px; background: var(--agui-bg); }
 @keyframes att-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }

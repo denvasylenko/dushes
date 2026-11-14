@@ -52,7 +52,11 @@
   "clearAll": "L\u00f6schen",
   "prevImage": "Vorheriges Bild",
   "nextImage": "N\u00e4chstes Bild",
-  "nOfTotal": "{n} von {total}"
+  "nOfTotal": "{n} von {total}",
+  "toLatest": "Zur neuesten Nachricht",
+  "readAloud": "Vorlesen",
+  "goodAnswer": "Gute Antwort",
+  "badAnswer": "Schlechte Antwort"
  },
  "formguide": {
   "fillTitle": "Diese Felder ausf\u00fcllen?",

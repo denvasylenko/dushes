@@ -46,6 +46,8 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `quickReplies` (`quick-replies`) | `true` | starter chips in an empty chat and suggested replies after answers |
 | `starters` | — | opening messages for an empty chat (Dushes also reads them from the domain pack) |
 | `title`, `subtitle`, `intro`, `placeholder` | localized defaults | the header, the empty-chat text, the composer hint |
+| `messageActions` | `['copy']` | the actions under an answer, in order: `copy`, `retry` (the latest answer), `speak`, `like`, `dislike`, or your own `{id, label, icon?, hint?}` (icon: an SVG path on a 24 grid; label and hint are the tooltip). `[]` or `message-actions="off"`: none |
+| `onMessageAction` | — | `(id, {messageId, text, pressed?}) => true?`: a tap on an action; return `true` to skip the built-in behaviour |
 | `footnote` | none | a line under the composer ("The assistant can make mistakes"); a hint or an error takes its place while shown |
 | `lang` | the page's `lang` | UI language: `en` (built in), `ru`, `uk`, `de`, `fr`, `it`, `es` (packs loaded on first use, English until then; your own with `addLanguage`); also used for dictation |
 | `i18n` | — | override any UI string: `{ send: "Go" }` |
@@ -81,6 +83,7 @@ Unknown option names are ignored with a console warning.
 | `agui:open`, `agui:close` | the chat opened or closed (bubble, drawer, hero) |
 | `chat.removeMessage(id)` | take back an assistant message already shown (and from the history) |
 | `chat.updateCard(id, patch)` | redraw a shown card in place: `{blocks}` for a card from blocks |
+| `agui:message-action` | an action under an answer was tapped: `{id, messageId, text, pressed?}` (`pressed` for like, dislike, speak) |
 | `agui:applied` | the plugin filled fields: `{fields, values, undo}` (also after Undo) |
 | `chat.stop()` | abort the running turn |
 | `chat.use(plugin)`, `chat.plugins = [...]` | add plugins |

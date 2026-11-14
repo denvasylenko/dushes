@@ -54,6 +54,10 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "clearAll": "Clear",
     "prevImage": "Previous image",
     "nextImage": "Next image",
-    "nOfTotal": "{n} of {total}"
+    "nOfTotal": "{n} of {total}",
+    "toLatest": "Jump to the latest",
+    "readAloud": "Read aloud",
+    "goodAnswer": "Good answer",
+    "badAnswer": "Bad answer"
   }
 }

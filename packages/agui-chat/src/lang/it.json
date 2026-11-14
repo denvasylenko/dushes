@@ -52,7 +52,11 @@
   "clearAll": "Cancella",
   "prevImage": "Immagine precedente",
   "nextImage": "Immagine successiva",
-  "nOfTotal": "{n} di {total}"
+  "nOfTotal": "{n} di {total}",
+  "toLatest": "Vai all'ultimo messaggio",
+  "readAloud": "Leggi ad alta voce",
+  "goodAnswer": "Buona risposta",
+  "badAnswer": "Risposta sbagliata"
  },
  "formguide": {
   "fillTitle": "Compilare questi campi?",
