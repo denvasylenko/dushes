@@ -161,6 +161,9 @@ export default defineConfig({
 						{ label: 'Cards from blocks', slug: 'agents/ui-agent/cards-from-blocks' },
 						{ label: 'User documents', slug: 'agents/ui-agent/user-documents' },
 					] },
+					{ label: 'Recipes', items: [
+						{ label: 'Confirm before a side effect', slug: 'agents/recipes/confirm-side-effect' },
+					] },
 					{ label: 'Researcher', items: [
 						{ label: 'Overview', slug: 'agents/researcher' },
 						{ label: 'Toolsets', slug: 'agents/researcher/toolsets' },
