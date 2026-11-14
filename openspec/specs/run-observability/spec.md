@@ -25,7 +25,7 @@ Time spent waiting for the user to answer a card SHALL not be counted: a resumed
 ### Requirement: The run_stats event
 Before `RUN_FINISHED` (or `RUN_ERROR`) a run SHALL send `CUSTOM run_stats` with:
 - `{run_id, thread_id, ttft_ms, total_ms, model_ms, tool_ms}`;
-- `models: [{kind, model, at_ms, ms, ttft_ms, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens}]`, where `at_ms` is when the call started, counted from the start of the run; `model` SHALL name the model of every call, suggestions and failed calls included;
+- `models: [{kind, model, at_ms, ms, ttft_ms, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens}]`, where `at_ms` is when the call started, counted from the start of the run;
 - `tools: [{name, at_ms, ms, error}]`;
 - `tokens: {input, output, cache_read}`;
 - `cache_hit_rate`.
@@ -96,3 +96,10 @@ OpenTelemetry export (see the otel-tracing capability) SHALL work together with 
 #### Scenario: LangSmith and Azure Monitor at once
 - **WHEN** LangSmith is enabled through its environment variables and `tracing.otel.exporter` is `azure_monitor`
 - **THEN** each turn appears in both, and the run_stats event is the same as without them
+
+### Requirement: Every model call names its model
+Each entry of `models` in `run_stats` SHALL name the model that ran it, the suggestions call and failed calls included, taken from the provider's response or else from the configured model; the suggestions call SHALL also report its tokens.
+
+#### Scenario: Pricing a turn
+- **WHEN** a turn makes an agent call and a suggestions call
+- **THEN** both `models` entries carry a model id, so each can be priced
