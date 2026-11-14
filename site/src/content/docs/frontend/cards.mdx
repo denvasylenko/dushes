@@ -42,11 +42,11 @@ The agent streams AG-UI events. Here is **everything the frontend can receive**,
 | `CUSTOM on_interrupt`, `type: "review"` (2.8) | the form's status, or the check before sending | sections with what is left and Continue; errors with Fix and Show, warnings with Why |
 | `CUSTOM sources` (2.8) | after an answer that used the business documents | source chips under the answer |
 | `CUSTOM receipt` (2.8) | the confirmed action returned a receipt | the confirm card turns into the receipt: number, Copy number |
-| `CUSTOM tool_progress` | a sub-step of a running tool (the document researcher) | optional: a sub-line under that tool's step |
+| `CUSTOM tool_progress` | a sub-step of a running tool (the researcher) | optional: a sub-line under that tool's step |
 | `CUSTOM suggestions` | after an answer (when enabled on the server) | 2-3 chips; clicking one sends it as a message; an entry in `applies` (validated field changes) makes it an action chip that fills the fields first, with Undo |
 | `TOOL_CALL_*` + `TOOL_CALL_RESULT` | the agent used one of its own tools | optional: a step "Searching the documents" with a spinner, then a tick |
 | `TOOL_CALL_*` without a result | the agent called **your** frontend tool | anything you like: it is your own component ([Frontend tools](../frontend-tools/)) |
-| `CUSTOM run_stats` | last event of every run: timings, tokens, cache hits ([Speed and tracing](../../backend/observability/)) | nothing, or a debug line |
+| `CUSTOM run_stats` | last event of every run: timings, tokens, cache hits ([Speed and tracing](../../agents/shared/observability/)) | nothing, or a debug line |
 | `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
 | `RUN_FINISHED` / `RUN_ERROR` | the turn ended | stop the spinner, show the error |
 
@@ -367,6 +367,6 @@ await chat.showCard({ type: 'review', mode: 'status', sections: [{ name: 'car', 
 ## Next
 
 <CardGrid>
-  <LinkCard title="Custom card renderers" href="../chat-widget/#cards-the-renderer-registry" />
+  <LinkCard title="Custom card renderers" href="../widget/#cards-the-renderer-registry" />
   <LinkCard title="AG-UI events" href="../../reference/agui-events/" />
 </CardGrid>

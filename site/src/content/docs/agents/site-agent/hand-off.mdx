@@ -1,0 +1,14 @@
+---
+title: Hand-off to the UI agent
+description: "How the site agent opens a form and passes on what the user already said."
+---
+import { LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
+
+"I want a mortgage, I earn 6,000 a month" on the Loans page: Dushes calls `open_form`, keeps a note of what the user said and sends the page a directive to open `/apply`. The page opens the form and runs the chat once with `forwardedProps: {handoff: true}`; the UI agent gets the note as its first message and proposes those fields right away, without the user repeating themselves. The page's side: [Dushes in the page](../../../frontend/dushes-in-the-page/).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Site agent" description="Set it up, every option." href="../" />
+  <LinkCard title="In the page" description="State, the directive, the hand-off run." href="../../../frontend/dushes-in-the-page/" />
+</CardGrid>

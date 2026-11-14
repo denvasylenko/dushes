@@ -153,13 +153,14 @@ def _page(corpus: Corpus, url: str) -> dict[str, Any] | None:
             "description": desc}
 
 
-# the site's sidebar groups, by the first part of a page's path: "Reference · Configuration" vs "Backend · Configuration"
-GROUPS = {"getting-started": "Get started", "backend": "Backend", "frontend": "Frontend", "form": "Your form",
-          "built-on": "Built on", "concepts": "Concepts", "reference": "Reference", "specifications": "Specifications"}
+# the site's sidebar groups, by the most specific part of a page's path: "Reference · Configuration" vs "Agents · Configuration"
+GROUPS = {"get-started": "Get started", "frontend": "Frontend", "connect-your-form": "Your form", "agents": "Agents",
+          "how-it-works": "How it works", "ui-agent": "UI agent", "researcher": "Researcher", "site-agent": "Site agent", "reference": "Reference",
+          "specifications": "Specifications"}
 
 
 def _group(url: str) -> str:
-    for part in url.split("/"):
+    for part in reversed(url.split("/")):
         if part in GROUPS:
             return GROUPS[part]
     return ""

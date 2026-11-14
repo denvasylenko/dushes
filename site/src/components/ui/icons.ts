@@ -9,6 +9,9 @@ export const ICONS = {
   sidebar: '<rect x="2" y="2.8" width="12" height="10.4" rx="2.4"/><path d="M6 2.8v10.4"/>',
   compass: '<circle cx="8" cy="8" r="6"/><path d="M10.5 5.5 9 9 5.5 10.5 7 7z"/>',
   form: '<rect x="2.5" y="2" width="11" height="12" rx="2.4"/><path d="M5 5.5h6M5 8h6M5 10.5h3.5"/>',
+  search: '<circle cx="7" cy="7" r="4.5"/><path d="M10.4 10.4 13.5 13.5"/>',
+  close: '<path d="M4 4l8 8M12 4l-8 8"/>',
+  clock: '<circle cx="8" cy="8" r="6"/><path d="M8 4.8V8l2.2 1.4"/>',
   doc: '<path d="M4 1.75h5.25L12.5 5v9.25H4z"/><path d="M9 1.75V5.25h3.5M6 8.25h4.5M6 10.75h3"/>',
 } as const
 export type IconName = keyof typeof ICONS

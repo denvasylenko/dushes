@@ -1,20 +1,7 @@
 ---
-/** The header's right side: "Live demo" (a menu of the two demos, when built with PUBLIC_DEMO_URL), "Ask AI", Starlight's icons. */
+/** The header's right side: "Ask AI" and Starlight's icons. The demos live on Get started → Live demo. */
 import Default from '@astrojs/starlight/components/SocialIcons.astro';
 import AskAI from './AskAI.astro';
-import { Menu } from './ui';
-const demo = import.meta.env.PUBLIC_DEMO_URL as string | undefined;
-const base = demo?.replace(/\/?$/, '/');
-const DEMOS = base ? [
-  { href: `${base}site.html`, title: 'Dushes', text: 'One chat for a whole site: answers about any page, takes you there, hands over to the form.' },
-  { href: base, title: 'Form assistant', text: 'A big loan form with the agent next to it: where to click, what to enter, fill in with one tap.' },
-] : [];
 ---
-{base && <Menu class="demo-menu" label="Live demo" items={DEMOS} />}
 <AskAI />
 <Default />
-
-<style>
-  /* phones: the header has no room; the demos are linked from the landing page */
-  @media (max-width: 50rem) { .demo-menu { display: none; } }
-</style>

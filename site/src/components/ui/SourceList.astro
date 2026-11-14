@@ -1,0 +1,26 @@
+---
+/**
+ * Source list: a short list of top-level places, the current one marked (macOS's source list in Finder, Mail and
+ * Notes). Rows hold an optional glyph (a Starlight icon name) and a label; the current row is a soft accent fill with
+ * accent text, the others plain, with a grey fill on hover. On a phone it becomes one segmented row (glyphs hidden),
+ * so the places take one line above the page tree. Used as the docs sidebar's topic switcher.
+ */
+import { Badge, Icon } from '@astrojs/starlight/components'
+type Variant = 'note' | 'danger' | 'success' | 'caution' | 'tip' | 'default'
+interface Item { label: string; href: string; icon?: string; current?: boolean; badge?: { text: string; variant?: Variant }; attrs?: Record<string, unknown> }
+interface Props { items: Item[]; label?: string; class?: string }
+const { items, label = 'Topics', class: cls } = Astro.props
+---
+<nav class:list={['ui-source', cls]} aria-label={label}>
+  <ul class="ui-source-list" style={`--n:${items.length}`}>
+    {items.map(({ label, href, icon, current, badge, attrs }) => (
+      <li>
+        <a {...attrs} href={href} class="ui-source-row" aria-current={current ? 'true' : undefined}>
+          {icon && <span class="ui-source-glyph" aria-hidden="true"><Icon name={icon as never} /></span>}
+          <span class="ui-source-label">{label}</span>
+          {badge && <Badge class="ui-source-badge" text={badge.text} variant={badge.variant} />}
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>

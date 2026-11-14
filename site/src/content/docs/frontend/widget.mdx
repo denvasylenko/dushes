@@ -1,0 +1,307 @@
+---
+title: 'The chat widget'
+description: '<agui-chat>: one tag gives a streaming chat with steps, cards, dictation, attachments and quick replies.'
+---
+import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"The ready-made chat: one HTML element that draws every card."} when={"You want a chat without building one."} write={"`<agui-chat url=\"/agent/run\">` and `chat.use(formguide({ getState, applyChanges }))`."} />
+
+A ready-made chat for any AG-UI agent, as one HTML element. It streams the agent's answer with a smooth typewriter, shows what the agent is doing step by step, renders cards (field changes, questions, file requests, confirmations) and lets the user dictate, attach files and pick suggested replies. Every part can be switched off or restyled.
+
+It is a plain Web Component, so it works on any page: plain HTML, React, Vue, Angular, server-rendered templates. It has no runtime dependencies; the one-script build is about 23 KB gzipped. The look and motion come from the chat of the Cheese project (Herefront AI).
+
+Source: [`packages/agui-chat/`](https://github.com/denvasylenko/dushes/tree/main/packages/agui-chat). See every card it draws in the [card gallery](../card-gallery/).
+
+---
+
+## In 30 seconds
+
+```html
+<agui-chat url="/agent/run"></agui-chat>
+<script src="agui-chat.iife.js"></script>
+```
+
+That is a working chat with any AG-UI endpoint: a round button in the corner opens a side panel. For Dushes, add the plugin, which sends your form with every message and draws Dushes' cards:
+
+```html
+<script>
+  document.querySelector('agui-chat').use(AguiChat.formguide({
+    getState: () => ({ config, jsx_hash, form_id, ui }),     // the form as your backend last built it
+    applyChanges: (changes) => myFormBackend.apply(changes),  // returns the new config
+  }))
+</script>
+```
+
+
+## Install
+
+| How | Code |
+|---|---|
+| One script tag | `<script src=".../agui-chat.iife.js"></script>` defines `<agui-chat>` and `window.AguiChat` (`AguiChat.formguide`, `AguiChat.h`) |
+| npm (any bundler) | `import '@formguide/agui-chat'` defines the element; `import { formguide } from '@formguide/agui-chat/formguide'` |
+| React | `import { AguiChat } from '@formguide/agui-chat/react'` then `<AguiChat url="/agent/run" plugins={[formguide({...})]} />` |
+| React form without a config (react-hook-form, Formik…) | `useFormguide(form, schema)` from `@formguide/agui-chat/react-hook-form`, see [A React form without a config](../react-hook-form/) |
+
+Build it from this repository: `cd packages/agui-chat && npm install && npm run build` (output in `dist/`; `npm test` runs the tests). The package is not published to npm yet; until then use the built files or `npm pack`.
+
+
+## What the user sees, and where it comes from
+
+| On screen | AG-UI event |
+|---|---|
+| the answer, typed out | `TEXT_MESSAGE_START/CONTENT/END` |
+| three bouncing dots | a run started and no text came yet |
+| "Searching the business documents" with a spinner, then a tick | `TOOL_CALL_START` … `TOOL_CALL_RESULT` of a server tool |
+| sub-steps under it ("Reading a document") | `CUSTOM tool_progress {parent_id, name}` |
+| "Steps: 3 ›" (collapsed after the run) | the same steps, folded when the run ends |
+| a card | `CUSTOM on_interrupt` (JSON value with `type`) or `RUN_FINISHED.outcome.interrupts` |
+| chips under the answer; a chip marked ✓ fills fields in one tap (with Undo), then sends its text | `CUSTOM suggestions {items, applies?}` |
+| "Something went wrong" + Try again | `RUN_ERROR` or a network error |
+
+
+## The form plugin
+
+```js
+import { formguide } from '@formguide/agui-chat/formguide'
+
+chat.use(formguide({
+  getState: () => ({ config, jsx_hash, form_id, ui }),   // sent as the run's state
+  applyChanges: async (changes) => newConfig,             // your form backend; same path as user input
+  revertChanges: async (previous) => {},                  // optional, for Undo (default: applyChanges)
+  onDirective: (d) => openTabsAndHighlight(d),            // optional "look here"; default: scroll to [data-name]
+  baseUrl: '/agent',                                      // where threads and attachments live (default: url minus /run)
+  fieldCard: { select: true, diff: true, reason: true, edit: true, jump: true, undo: true },
+  undoSeconds: 20,
+  cardSteps: false,                                       // show "Preparing a question" etc. as steps too
+  // optional host callbacks for richer cards (see Cards and answers, 2.8); without them the plain controls stay
+  preview: (field, value) => `${payment(value)} per month`,  // live line under a number range
+  getSlots: async (field, date) => ['10:00', '14:30'],      // free time slots
+  lookupAddress: async (field, query) => [{ label: 'Tverskaya St, 1', detail: 'Moscow, 125009' }],
+  onFeedback: (value) => {},                                // the thumbs after a confirmed action (default: POST {base}/feedback)
+  exclude: ['review', 'ask.range'],                         // cards and variants this app does not want (see Cards and answers, 2.9)
+  traceparent: () => currentTraceparent(),                  // optional: the page's W3C trace context, so the server's turn joins it
+}))
+```
+
+It does five things:
+
+1. **Sends the form** (`getState()`) as `state` with every run, plus the files attached in the composer.
+2. **Applies directives** (`ui_directive`): your `onDirective`, or scrolling to `[data-name=target]` and flashing it, and ringing each field in `also` (the agent shows several fields at once, such as a section's empty required fields).
+3. **Draws Dushes' cards**:
+
+   | Card | What the user can do | Resume value |
+   |---|---|---|
+   | `set_fields`: field changes | untick rows, see old → new, edit a value (text, number, date, or another option), jump to the field, Undo after applying; a dependent dropdown (`deferred` row, "after Make") is applied after the others with its option looked up in the refreshed form; after the answer the card folds to one line (click it to see the rows) | `{accepted, config, ui, names?, edited?}` |
+   | `ask`: a question | click an option (or press 1-9), tick several, type an answer, pick a date / time / number; when the card `applies`, the tap fills the field at once, with Undo, and shows the field (its tab via `onDirective`) | `{answer: {ids?, text?}}` (plus `config, ui` when applied), Skip: `{accepted: false}` |
+   | `upload`: a file request | drop a file or choose one; uploads with a progress bar | `{attachment_ids}`, Skip: `{accepted: false}` |
+   | `confirm`: a confirmation | Confirm (red when `danger`) or Cancel | `{accepted}` |
+
+4. **Restores the chat** after a reload: `GET {baseUrl}/threads/{id}?format=agui&form_id=…` gives the messages, a pending card and the form's starters.
+5. **Labels the steps** of Dushes' tools in seven languages; a turn that only looked at the form or showed a field (`get_fields`, `search_fields`, `focus_field`, …) shows no step list: the dots show the wait and the form shows the field (a plugin's `quietSteps`) ("Looking at the form", "Reading your document", …). The tools that produce a card (`propose_changes`, `ask_user`, `request_file`, `confirm_action`) get no step of their own, since the card shows the result; `cardSteps: true` shows them.
+
+The fill button counts the fields ("Fill in 3 fields", "Fill in 2 of 3" when some are unticked), with the plural form of the chat's language.
+
+Edited values are applied in the shape the form uses: a dropdown that stores the option object gets the option object, one that stores an id gets the id.
+
+## Cards: the renderer registry
+
+Each interrupt has a `type`. The widget looks up a renderer for it, shows what it returns, and when the renderer calls `resolve(value)`, resumes the same thread with `value` as the answer. Unknown types get a simple card with the payload and *Skip*.
+
+```js
+chat.renderers.set('pick_seat', (payload, ctx) => {
+  const box = AguiChat.h('div', null, AguiChat.h('div', { class: 'card-q' }, 'Pick a seat'))
+  for (const seat of payload.seats) {
+    box.append(AguiChat.h('button', { class: 'chip', onclick: () => ctx.resolve({ seat }) }, seat))
+  }
+  return box
+})
+```
+
+`ctx` has `resolve(value)`, `t(key)` (the UI strings), `flags` (this type's entry of the `cards` option), `restored` (shown again after a reload) and `chat`. Reusable classes inside cards: `card-t` (small title), `card-q` (question), `chips` + `chip`, `acts`, `btn pri` / `btn sec` / `btn danger` / `btn link`, `ok-line`, `muted`. After `resolve`, buttons in the card are disabled, except ones marked `data-keep`.
+
+
+## Connection: headers, auth, your own fetch or transport
+
+The chat reaches the server with `url` and `headers` by default. Everything about a request can be yours, from one header to the whole transport, and the form plugin's own calls (attachments, restoring a thread, feedback) go through the same connection:
+
+```js
+chat.options = {
+  url: '/agent/run',
+  headers: async ({ kind }) => ({ Authorization: `Bearer ${await auth.token()}` }),   // before every request
+  credentials: 'include',                                   // cookies on another domain
+  fetch: (url, init) => withRetry(() => fetch(url, init)),  // your fetch
+  request: ({ kind, url, init }) =>                         // change any request last
+    kind === 'attachments' ? { url: 'https://files.example.com/upload', init } : undefined,
+}
+```
+
+`kind` says which request it is: `run`, `attachments`, `thread` or `feedback`. Runs without HTTP take a `transport`, an async generator of AG-UI events:
+
+```js
+chat.options = {
+  transport: async function* (input, { signal }) {
+    yield* eventsFromMyWebSocket(input, signal)   // RUN_STARTED ... RUN_FINISHED
+  },
+}
+```
+
+An `agent` object (`@ag-ui/client` `HttpAgent`, CopilotKit's) still works as before. A plugin sends its own calls with `chat.request(kind, url, init)`. A failing `headers`, `fetch`, `request` or `transport` ends the run with the usual readable error and **Try again**; the raw text is in `agui:error`.
+
+## Languages
+
+English is built in. Russian, Ukrainian, German, French, Italian and Spanish are packs the chat loads the first time it needs one, so a page in English downloads none of them. With a bundler each pack is its own chunk; with the one-script build the chat adds `agui-chat.lang-<lang>.js` from the folder `agui-chat.iife.js` came from, so deploy the whole `dist` folder. The chat shows English for the moment the pack takes to arrive, then switches.
+
+```js
+import { addLanguage, loadLanguage } from '@formguide/agui-chat'
+
+await loadLanguage('de')            // load ahead, e.g. before the chat opens
+addLanguage('pt', {                 // a language of your own; anything missing stays English
+  core: { placeholder: 'Escreva ao assistente', send: 'Enviar' },
+  formguide: { skip: 'Pular' },
+})
+```
+
+Your own texts in `options.i18n` win over any pack.
+
+## Attachments
+
+Under every answer sit its actions, quiet icons that show on hover on a computer (always on a phone and under the latest answer). Copy is there by default; choose your own list, add your own and handle the taps:
+
+```js
+chat.options = {
+  messageActions: ['copy', 'retry', 'like', 'dislike', { id: 'fork', label: 'Fork from here', hint: 'Starts a new chat from this point', icon: 'M6 4v6a4 4 0 0 0 4 4h8M14 10l4 4-4 4' }],
+  onMessageAction: (id, m) => { if (id === 'fork') { forkFrom(m.messageId); return true } },   // true: you handled it
+}
+chat.addEventListener('agui:message-action', (e) => send('feedback', e.detail))   // {id, messageId, text, pressed?}
+```
+
+Scrolled up while the assistant answers? The chat stays where you read and a round button over the composer brings you to the latest message; while the assistant is still working it shows the three dots.
+
+Files attached with the paperclip, pasted (a screenshot, Ctrl+V) or dropped show inside the composer: an image as a thumbnail, a document as a tile with its name and type, each with a remove button. A sent message shows its images above the bubble, on their own. A tap on a thumbnail opens it large (the images sent with one message page with the arrows under the picture, ← and →, or a swipe); the pencil there marks the image up (pen, rectangle, text, colours, undo) and Save puts the marked-up copy in its place. The markup editor is a separate file (`agui-chat.editor.js` next to the one-script build, its own chunk with a bundler) loaded only when the pencil is tapped. `attach="off"` turns attachments off; `attachAccept`, `attachMaxMb` and `attachMultiple` limit them.
+
+## Errors, waiting and touch
+
+- A failed run shows one sentence in plain words per kind of failure (no connection, no access, busy, server, model) and *Try again*; the raw error text is in the line's tooltip and in the `agui:error` event.
+- After 4 s with only the dots, a quiet "Still working…" appears next to them.
+- Reloaded mid-answer, the chat shows the conversation with "Still working…" while the server finishes the turn, then the answer and its card. Stop also tells the server (`POST <base>/stop`).
+- On a touch screen buttons, chips and links are at least 44 px tall, and the chat does not move the focus by itself (that would open the keyboard). With a mouse, a new card's first option gets the focus, so number keys work at once.
+- The send button looks quiet while the box is empty but still reacts: an empty send shakes the composer.
+
+## Start with prefill
+
+Your page already knows the user? Start the chat with that data instead of a message. The agent answers with one card of the values it can fill now ([what the server does](../../agents/ui-agent/prefill/)).
+
+```js
+await chat.run({
+  forwardedProps: { prefill: { data: { first_name: 'Anna', employer: 'Acme' }, text: 'Moved to Lyon in 2021' } },
+  notice: 'Filled from your profile',          // a quiet line in the chat; optional
+})
+```
+
+## Restore after a reload
+
+With the form plugin and `persist-thread` on (the default), a reload shows the same conversation, including a card the user had not answered. The thread id lives in `localStorage`; nothing else is needed. `persist-thread="off"` starts fresh every time; `chat.reset()` starts a new conversation by hand.
+
+## Features the server turns on
+
+Some things appear only when the backend enables them; the widget draws them when they arrive.
+
+| You see | Comes from |
+|---|---|
+| quick replies under answers | the server's [`suggestions`](../../reference/configuration/#every-key) option |
+| opening messages in an empty chat | `starters` in the form's [domain pack](../../agents/ui-agent/domain-packs/) |
+| a confirmation before a risky action | the server's `confirm_tools` ([Skills and tools](../../agents/ui-agent/skills/#every-option)) |
+| file requests, dates, sliders, reviews | built in; every card is in the [card gallery](../card-gallery/) |
+| dictation where the browser cannot (Firefox, a blocked recognition service) | `dictation="auto"` here and the server's [`transcription`](../../reference/configuration/#every-key) (a local Whisper) |
+
+```html
+<!-- the browser's recognition where it works; else the chat records and the server transcribes -->
+<agui-chat url="/agent/run" dictation="auto"></agui-chat>
+```
+
+Files work like in a messenger: the paperclip, a screenshot pasted with Cmd+V / Ctrl+V, or a file dropped on the composer (when uploads are on).
+
+With server dictation the microphone records: a live wave and a timer take the input's place, × or Esc drops the recording, the microphone again stops it, "Transcribing…" shows while the server works, and the text lands in the input to check and send.
+
+## Every option
+
+Attributes (HTML) and the same as properties of `chat.options` (JS).
+
+| Attribute | Option | Default | Meaning |
+|---|---|---|---|
+| `url` | `url` | `/agent/run` | the AG-UI run endpoint |
+| `thread-id` | `threadId` | a new id | continue a given conversation |
+| `persist-thread` | `persistThread` | on | keep the thread id across reloads |
+| `mode` | `mode` | `floating` | `bubble` (a round launcher that grows into a chat window), `floating` (a button and a side panel), `inline` (fills its box), `page` |
+| `bubbleSide` | `bubble-side` | `right` | bubble mode: the launcher's corner, `right` or `left` |
+| `greeting` | `greeting` | — | bubble mode: a short speech bubble next to the closed launcher, shown once per visitor until closed |
+| `greetingDelay` | `greeting-delay` | `4` | seconds before the greeting appears |
+| `motion` | `motion` | `spring` | the bubble's opening: `spring` (a small overshoot), `gentle`, `none` (fades only; reduced motion always fades) |
+| `open` | `open` | off | open the floating panel on load |
+| `title`, `subtitle` | `title`, `subtitle` | empty | the header |
+| `intro` | `intro` | a short greeting | the line in an empty chat |
+| | `starters` | `[]` | opening messages to tap (the server's `starters` win) |
+| `placeholder` | `placeholder` | from the language | the composer's hint |
+| `launcher` | `launcher` | `auto` | the launcher: `round`, `pill` (icon and words), `none` (open it with `chat.open()`); `auto`: a pill for the panel, a round one for the bubble |
+| `launcherLabel` | `launcher-label` | "Open" | the launcher's words |
+| `modal` | `modal` | `true` | floating panel: `off` keeps the page beside it usable (no scrim, a tap on the page leaves it open); a phone still gets the sheet |
+| `messageActions` | `message-actions` | `copy` | the actions under an answer (comma-separated in the attribute): `copy`, `retry`, `speak`, `like`, `dislike`, your own `{id, label, icon?, hint?}`; `off` hides them |
+| `footnote` | `footnote` | none | a line under the composer ("The assistant can make mistakes"); a hint or an error takes its place while shown |
+| `lang` | `lang` | the page's language | `en`, `ru`, `uk`, `de`, `fr`, `it`, `es` (all but `en` load on first use) |
+| `theme` | `theme` | `default` | a theme name or object ([Themes](../themes/)) |
+| `scheme` | `scheme` | follows the system | `light`, `dark` or `auto` |
+| `typing` | `typing` | `words` | `words` (fade in), `plain` (as it arrives), `off` (when done) |
+| | `typingSpeed`, `fadeMs` | `55`, `450` | characters per second; fade per word, ms |
+| `tool-steps` | `toolSteps` | on | the "Steps: 3" line |
+| | `toolLabels` | `{}` | `{tool_name: 'Searching the docs'}` |
+| `quick-replies` | `quickReplies` | on | show the server's suggestions |
+| `mic` | `mic` | on | dictation, where the browser supports it |
+| `mic-lang` | `micLang` | the chat's language | BCP 47, e.g. `ru-RU` |
+| `mic-auto-send` | `micAutoSend` | off | send when dictation stops |
+| `dictation` | `dictation` | `browser` | `browser`, `server` (record, transcribe on the server) or `auto` (the server where the browser cannot) |
+| `transcribe-url` | `transcribeUrl` | next to `url` | where recordings go for server dictation |
+| `attach` | `attach` | on | the paperclip, when something can upload |
+| `attach-accept` | `attachAccept` | what the plugin accepts | e.g. `.pdf,.jpg` |
+| `attach-multiple` | `attachMultiple` | on | several files at once |
+| `attach-max-mb` | `attachMaxMb` | `20` | larger files are refused with a message |
+| `image-max-px` | `imageMaxPx` | `2000` | big photos shrink before upload; `0` keeps them |
+| | `upload` | the plugin's | your own uploader: `(file, chat) => ({id, filename})` |
+| `resume-style` | `resumeStyle` | `command` | how a card is answered: `command` (`forwardedProps.command.resume`) or `resume` (AG-UI 1.0) |
+| `history` | `history` | `full` | send the whole conversation, or `last` (the server keeps it) |
+| | `headers` | `{}` | request headers: an object, or `({kind, url}) => headers` called before every request (async is fine, e.g. a fresh token) |
+| | `credentials` | none | `fetch` credentials for every request, e.g. `include` for cookies on another domain |
+| | `fetch` | the global fetch | your fetch for every request: a proxy, retries, logging, tests |
+| | `request` | none | `({kind, url, init}) => {url, init}`: the last word on any request |
+| | `transport` | HTTP | `(input, {signal, chat}) => AG-UI events`: runs without HTTP (WebSocket, a worker, a mock) |
+| | `forwardedProps`, `state` | `{}`, none | sent with every run |
+| | `i18n` | `{}` | override any UI string |
+| | `cards` | `{}` | per-card flags, e.g. `{ set_fields: { edit: false } }` |
+
+The form plugin's options:
+
+```js
+chat.use(formguide({
+  getState: () => ({ config, jsx_hash, form_id, ui }),   // required: the form as your backend last built it
+  applyChanges: (changes) => formBackend.apply(changes), // required: returns the new config
+  revertChanges: (previous) => formBackend.apply(previous),   // Undo; default: applyChanges(previous)
+  onDirective: (d) => openTabsAndScroll(d),              // "look here"; default: scroll to [data-name] and ring it
+  baseUrl: '/agent',                                     // threads and attachments; default: url without /run
+  fieldCard: { select: true, diff: true, reason: true, edit: true, jump: true, undo: true },
+  undoSeconds: 20,                                       // how long Undo stays
+  cardSteps: false,                                      // also show "Preparing a question" steps
+  preview: (field, value) => monthlyPayment(value),      // the live line under a range question
+  getSlots: (field, date) => ['10:00', '14:30'],         // free time slots
+  lookupAddress: (field, q) => addressApi.search(q),     // [{label, detail?, value?}]
+  onFeedback: (value) => {},                             // the rating after a confirmed action; default: POST /feedback
+  exclude: [],                                           // cards or variants the server must not send, e.g. ['upload', 'ask.range']
+  traceparent: () => undefined,                         // the page's W3C trace context (string or {traceparent, tracestate}), sent as forwardedProps.traceparent
+}))
+```
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Themes and styling" href="../themes/" />
+  <LinkCard title="<agui-chat> API" href="../../reference/agui-chat/" />
+</CardGrid>

@@ -1,0 +1,34 @@
+---
+title: User documents
+description: A passport scan, a payslip or a PDF the user attaches is read on the server; only the values reach the chat, on a card the user confirms.
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"Read the user's files into form values"} when={"Users have the answers on paper: an ID, a payslip, a contract"} write={"Nothing extra: uploads are on by default; `attachments:` to limit them"} />
+
+The user attaches a file (the paperclip, a pasted screenshot, or a file request card the agent sends). The file is stored for that conversation, read by the `extract` model, and the values come back as a field card marked with where they were read; values the model is unsure of are marked to check. The file itself never enters the chat history.
+
+```yaml title="formguide.yaml"
+attachments:
+  enabled: true                                 # false: no uploads and no reading attached files
+  privacy_note: "Your file stays on our server; only the values reach the chat."   # shown on file requests
+models:
+  extract: {provider: anthropic, model: claude-opus-5-5, max_tokens: 8000}         # needs vision or PDF input
+```
+
+| Step | Where |
+| --- | --- |
+| upload | `POST /agent/attachments` (multipart `thread_id`, `file`) returns `{id, ...}`; the next run lists it in `state.attachments` |
+| ask for a file | the agent's `request_file` action sends an [upload card](../../../frontend/card-gallery/#upload); `actions: {request_file: false}` turns it off |
+| read | the `extract` model with the form's field list; values it is unsure of are marked to check |
+| confirm | a field card with the document's name; the user ticks, edits and fills in |
+
+The same reading powers [Prefill](../prefill/) with `attachment_ids`. How a scan stays out of the history: [How attachments are read](../../how-it-works/attachments/).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Prefill" description="Values from data your app already has." href="../prefill/" />
+  <LinkCard title="Models" description="Pick a model that reads images." href="../../shared/models/" />
+</CardGrid>

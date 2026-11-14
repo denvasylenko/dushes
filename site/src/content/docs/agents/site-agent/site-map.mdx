@@ -1,0 +1,40 @@
+---
+title: Site map
+description: "What the site agent knows and where it may go: pages, tabs, sections and forms, from site.yaml or built in code."
+---
+import { LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
+
+The **site map** and the site's **business documents**. It does not crawl the site or read the page's HTML: you describe the pages once, and that description is both its knowledge (it answers from the `text` of tabs, accordions and sections) and its map (it may open only those pages, tabs, sections and forms). That is why it never invents a page or a link. Deeper facts (partners, terms, policies) come from the documents of its knowledge scope; see [Knowledge](../#knowledge) below.
+
+The map does not have to be a hand-written file. `SiteMap.load()` takes a dict too, so build it from what you already have when the server starts:
+
+```python title="app.py"
+from formguide.site import Dushes, SiteMap
+
+def site_map_from_cms() -> dict:
+    pages = []
+    for p in cms.pages(published=True):                       # your CMS, database or routes
+        pages.append({
+            "path": p.url, "title": p.title, "description": p.summary,
+            "form": p.form_id,                                 # None on a content page
+            "sections": [{"id": b.anchor, "title": b.heading, "text": b.plain_text} for b in p.blocks],
+        })
+    return {"title": "Main Street", "pages": pages}
+
+site = Dushes(guide, SiteMap.load(site_map_from_cms()))
+```
+
+| Source | When it fits |
+| --- | --- |
+| `site.yaml` by hand | a small site, or the pages that matter most (FAQ, prices, hours) |
+| built from your CMS or database at start-up | content that editors change; restart (or rebuild the `Dushes`) after publishing |
+| built from your app's routes plus short texts | an app where the pages are screens rather than articles |
+
+The forms on form pages need nothing new: they are the same forms the UI agent already knows (`form: loan_application`).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Site agent" description="Set it up, every option." href="../" />
+  <LinkCard title="In the page" description="State, the directive, the hand-off run." href="../../../frontend/dushes-in-the-page/" />
+</CardGrid>

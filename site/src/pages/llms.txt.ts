@@ -5,7 +5,7 @@ import { pageUrl } from '../lib/markdown';
 /** /llms.txt: what the site is and every page with its one-line summary (https://llmstxt.org). */
 export const GET: APIRoute = async ({ site }) => {
   const base = new URL(import.meta.env.BASE_URL.replace(/\/?$/, '/'), site).href;
-  const ORDER = ['start', 'getting-started', 'backend', 'frontend', 'form', 'concepts', 'reference', 'specifications'];
+  const ORDER = ['start', 'get-started', 'frontend', 'agents', 'reference'];
   const docs = (await getCollection('docs')).sort((a, b) => a.id.localeCompare(b.id));
   const group = (id: string) => (id.includes('/') ? id.split('/')[0] : 'start');
   const groups = new Map<string, string[]>();

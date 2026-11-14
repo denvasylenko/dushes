@@ -43,6 +43,8 @@ Run from `backend/` against the demo server (`uv run uvicorn demo.app:app --port
 | Script | What it does |
 | --- | --- |
 | `uv run python scripts/chat_harness.py [names]` | scripted form conversations with keyword checks |
-| `uv run python scripts/bench.py` | the live speed benchmark ([Speed and tracing](../../backend/observability/#the-live-benchmark)) |
-| `uv run python scripts/evals.py [names] [--tag T] [--repeat N] [--model M] [--offline] [--margin 0.5] [--save-baseline]` | scored scenario evals: a simulated user and a judge model ([Scenario evals](../../backend/observability/#scenario-evals-is-the-answer-still-good)) |
+| `uv run python scripts/bench.py` | the live speed benchmark ([Speed and tracing](../../agents/shared/observability/#the-live-benchmark)) |
+| `uv run python scripts/evals.py [names] [--tag T] [--repeat N] [--model M] [--offline] [--margin 0.5] [--save-baseline]` | scored scenario evals: a simulated user and a judge model ([Scenario evals](../../agents/shared/observability/#scenario-evals-is-the-answer-still-good)) |
+| `uv run python scripts/eval_summary.py [report] [--prev R] [--prices JSON] [--out F]` | a round summary of an evals report: averages, the held-out target, the worst scenarios, recurring failures, cost |
+| `bash scripts/evals_live.sh [evals.py args]` | live evals against the running demo, then the summary; asks for the API key without echoing it |
 

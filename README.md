@@ -3,13 +3,13 @@
 An AI assistant for your product's interface: it answers from your pages and documents, takes people to the right page, tab or field, and fills forms with them after they confirm. Two ready modes: **Dushes** (a whole site or app) and the **form assistant** (a large form: it shows where to click, explains fields, reads user documents and fills fields with the user's confirmation). The Python package and its code names are `formguide`. The core is form-agnostic and provider-agnostic; everything domain-specific is configured.
 
 Documentation: **https://denvasylenko.github.io/dushes/** — guides for the backend and the frontend with copyable examples and diagrams, the API reference, the specs, a live demo of the chat filling a form (no server needed), and **Ask AI** on every page. Every page is also Markdown (`<page>.md`), with `llms.txt` for AI tools. The site's source is [`site/`](site) (Astro Starlight; `cd site && npm install && npm run dev`); the pages are Markdown under [`site/src/content/docs/`](site/src/content/docs), and the specs are rendered from [`openspec/specs/`](openspec/specs) on every build. Start with:
-- [Quickstart](https://denvasylenko.github.io/dushes/getting-started/quick-start/), then [Backend](https://denvasylenko.github.io/dushes/backend/configuration/) (configuration step by step, models, documents, skills, deploy) and [Frontend](https://denvasylenko.github.io/dushes/frontend/overview/) (the widget, React, react-hook-form, CopilotKit, any AG-UI client);
+- [Quickstart](https://denvasylenko.github.io/dushes/get-started/quickstart/), then [Backend](https://denvasylenko.github.io/dushes/agents/shared/configuration/) (configuration step by step, models, documents, skills, deploy) and [Frontend](https://denvasylenko.github.io/dushes/frontend/) (the widget, React, react-hook-form, CopilotKit, any AG-UI client);
 - [Card gallery](https://denvasylenko.github.io/dushes/frontend/card-gallery/) — every card the chat can show, live, with the event behind it and the answer it sends back;
-- [How the form and the agent talk](https://denvasylenko.github.io/dushes/form/overview/) — what the form sends, what comes back, how each component must behave;
+- [How the form and the agent talk](https://denvasylenko.github.io/dushes/frontend/connect-your-form/) — what the form sends, what comes back, how each component must behave;
 - [Configuration keys](https://denvasylenko.github.io/dushes/reference/configuration/) — every YAML key with its default;
-- [System overview](https://denvasylenko.github.io/dushes/concepts/overview/) and [Architecture in text](https://denvasylenko.github.io/dushes/concepts/architecture/);
-- [Speed and tracing](https://denvasylenko.github.io/dushes/backend/observability/) — turn timings, LangSmith and Langfuse, the live benchmark;
-- [Specifications](https://denvasylenko.github.io/dushes/specifications/) — behaviour contracts per capability, maintained with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec list --specs`, `openspec validate --all --strict`).
+- [System overview](https://denvasylenko.github.io/dushes/agents/how-it-works/) and [Architecture in text](https://denvasylenko.github.io/dushes/agents/how-it-works/architecture/);
+- [Speed and tracing](https://denvasylenko.github.io/dushes/agents/shared/observability/) — turn timings, LangSmith and Langfuse, the live benchmark;
+- [Specifications](https://denvasylenko.github.io/dushes/reference/specifications/) — behaviour contracts per capability, maintained with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec list --specs`, `openspec validate --all --strict`).
 
 ## Quick start
 
@@ -24,7 +24,7 @@ The agent is now an AG-UI endpoint at `POST http://localhost:8000/agent/run`. Th
 
 ## Connect a frontend (AG-UI first)
 
-**The quickest way is the ready-made chat**, [`<agui-chat>`](https://denvasylenko.github.io/dushes/frontend/chat-widget/): a Web Component (one `<script>` tag, npm, or a React wrapper) with the formguide plugin. It streams answers with a typewriter, shows the agent's steps, draws every card (field changes with edit and Undo, questions, file requests, confirmations), dictation, attachments and quick replies; every part is configurable.
+**The quickest way is the ready-made chat**, [`<agui-chat>`](https://denvasylenko.github.io/dushes/frontend/widget/): a Web Component (one `<script>` tag, npm, or a React wrapper) with the formguide plugin. It streams answers with a typewriter, shows the agent's steps, draws every card (field changes with edit and Undo, questions, file requests, confirmations), dictation, attachments and quick replies; every part is configurable.
 
 ```html
 <agui-chat url="/agent/run"></agui-chat>
@@ -89,7 +89,7 @@ Everything can be set in code (`GuideConfig`) or YAML (`load_config`). The full 
 | What | Options |
 |---|---|
 | Models (per role: agent, research, compile, extract, memory) | `model: "openai:gpt-5"` for all roles; or per role: any LangChain `BaseChatModel`, `"provider:model"` strings, `{provider, model, ...}`, `{class: "langchain_openai:AzureChatOpenAI", ...}` |
-| Component library | `components:` JSX tag → role, or a field spec saying how the component stores its value (id or option object, `"Y"`/`"N"`, `"31.05.1990"`, your own codec); see [Value formats](https://denvasylenko.github.io/dushes/form/value-formats/) |
+| Component library | `components:` JSX tag → role, or a field spec saying how the component stores its value (id or option object, `"Y"`/`"N"`, `"31.05.1990"`, your own codec); see [Value formats](https://denvasylenko.github.io/dushes/frontend/connect-your-form/value-formats/) |
 | Domain packs | shipped with the form › `provider` callable › `packs` dict › JSON dir › neutral default |
 | Business documents | `KnowledgeBase(root, index=BM25Index() \| VectorStoreIndex(any LangChain VectorStore), scopes={form: [namespaces]})` |
 | Skills | folders with `SKILL.md` (name, description, forms, tools) or `Skill(...)` in code |
@@ -126,7 +126,7 @@ cd frontend && npm install && npm run build && cd ..
 cd backend && ANTHROPIC_API_KEY=... uv run uvicorn demo.app:app --port 8000 --reload --reload-dir formguide --reload-dir demo
 ```
 
-Open http://localhost:8000. Two demo forms with nothing in common: `loan_application` (221 fields, 8 tabs, nested up to 4 levels) and `barber_booking` (a 4-step wizard). "Manager: documents" uploads business documents for a form (`demo/samples/kb/` has examples); 📎 in the chat attaches a user document (`demo/samples/attachments/`). 🎤 dictates a message through the browser's speech recognition (Chrome, Edge, Safari; the language select above the chat sets the chat's language and dictation, Auto = the browser's; Chrome sends the audio to its own speech service). The chat is [`<agui-chat>`](https://denvasylenko.github.io/dushes/frontend/chat-widget/); http://localhost:8000/examples/widget/ shows it from one script tag with a panel that switches every option live.
+Open http://localhost:8000. Two demo forms with nothing in common: `loan_application` (221 fields, 8 tabs, nested up to 4 levels) and `barber_booking` (a 4-step wizard). "Manager: documents" uploads business documents for a form (`demo/samples/kb/` has examples); 📎 in the chat attaches a user document (`demo/samples/attachments/`). 🎤 dictates a message through the browser's speech recognition (Chrome, Edge, Safari; the language select above the chat sets the chat's language and dictation, Auto = the browser's; Chrome sends the audio to its own speech service). The chat is [`<agui-chat>`](https://denvasylenko.github.io/dushes/frontend/widget/); http://localhost:8000/examples/widget/ shows it from one script tag with a panel that switches every option live.
 
 Note: `--reload` watches `.py` files only; after editing `formguide.yaml`, touch a `.py` file or restart.
 

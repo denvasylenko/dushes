@@ -1,0 +1,14 @@
+---
+/**
+ * The sidebar: the topic switcher (the SourceList primitive, fed by starlight-sidebar-topics, which still decides
+ * the current topic and filters the tree) above Starlight's own page tree.
+ */
+import Default from '@astrojs/starlight/components/Sidebar.astro'
+import { SourceList } from './ui'
+const { hasSidebar } = Astro.locals.starlightRoute
+const topics = (Astro.locals as { starlightSidebarTopics?: { isPageWithTopic: boolean; topics: { label: string; link: string; icon?: string; isCurrent: boolean; badge?: { text: string; variant?: never }; attrs?: Record<string, unknown> }[] } }).starlightSidebarTopics
+---
+{hasSidebar && topics?.isPageWithTopic && (
+  <SourceList label="Topics" items={topics.topics.map((t) => ({ label: t.label, href: t.link, icon: t.icon, current: t.isCurrent, badge: t.badge, attrs: t.attrs }))} />
+)}
+<Default><slot /></Default>

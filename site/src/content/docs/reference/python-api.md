@@ -27,7 +27,7 @@ from formguide.site import Dushes, SiteMap, create_dushes_router
 | Call | Does |
 | --- | --- |
 | `SiteMap.load(path or dict)` | the site map: pages with `path`, `title`, `description`, `keywords`, `form`, `tabs`, `accordions`, `sections` |
-| `Dushes(form_guide, site_map, model=None, ...)` | the site assistant above your `FormGuide`; `model` defaults to the form guide's agent model. Keyword options: `knowledge_namespaces`, `router_model`, `context`, `instructions`, `style`, `history`, `tools`, `suggestions`, `form_for` ([Dushes](../../backend/dushes/)) |
+| `Dushes(form_guide, site_map, model=None, ...)` | the site assistant above your `FormGuide`; `model` defaults to the form guide's agent model. Keyword options: `knowledge_namespaces`, `router_model`, `context`, `instructions`, `style`, `history`, `tools`, `suggestions`, `form_for` ([Dushes](../../agents/site-agent/)) |
 | `create_dushes_router(dushes, host=None)` | its FastAPI router ([HTTP API](../http-api/#dushes-the-site-assistant)); `host(request)` builds your object for every run |
 | `SiteGuide`, `create_site_router` | the old names, kept as aliases |
 

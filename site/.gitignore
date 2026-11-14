@@ -21,4 +21,4 @@ pnpm-debug.log*
 .DS_Store
 
 # generated from openspec/specs/ by scripts/specs.mjs
-src/content/docs/specifications/
+src/content/docs/reference/specifications/

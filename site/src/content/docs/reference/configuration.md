@@ -27,7 +27,7 @@ Dushes uses four model roles plus one optional one. Each role takes any LangChai
 | Role | Used for | Needs | Falls back to |
 |---|---|---|---|
 | `agent` | the conversation: answers, tool calls, cards | tool calling, streaming | — (required) |
-| `research` | the document researcher (`ask_documents`) | tool calling | `agent` |
+| `research` | the researcher (`ask_documents`) | tool calling | `agent` |
 | `compile` | compiling business documents into the domain pack | structured output | `agent` |
 | `extract` | reading attachments, prefill from free text | structured output; vision / PDF for scans | `agent` |
 | `memory.model` | summarizing older turns of long chats | plain text | `research` |
@@ -113,14 +113,14 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `prompt_cache` | `auto` | `auto`: cache breakpoints where the provider needs them (Anthropic: the system prompt and the latest user message, so every earlier turn is read from the cache); OpenAI, Azure OpenAI and Gemini cache the stable prefix by themselves. `off`: no breakpoints |
 | `transcription` | off | dictation on the server (`POST /transcribe`): `true`, or `{provider, model, device, compute_type, language, max_seconds, max_bytes}`. `provider`: `faster_whisper` (default, a local Whisper model, the `transcribe` extra; `model: small`, `compute_type: int8`), `openai` (`model: whisper-1` or `gpt-4o-transcribe`) or `"module:function"` (`fn(data, filename, language) -> text`, sync or async). Defaults: `max_seconds: 120`, `max_bytes: 10000000`, `warm: true` (the local model loads in the background when the server starts) |
 | `attachments` | on | `false`, or `{enabled, privacy_note}`: `enabled: false` turns off uploads and reading attached files; `privacy_note` is shown on upload requests (`privacy`) |
-| `cards` | none | cards from blocks: `[{type, description, data, blocks, wait}]`; each becomes a tool `show_<type>`; see [Cards from blocks](../../backend/cards/) |
+| `cards` | none | cards from blocks: `[{type, description, data, blocks, wait}]`; each becomes a tool `show_<type>`; see [Cards from blocks](../../agents/ui-agent/cards-from-blocks/) |
 | `confirm_tools` | none | tool names that always need the user's confirmation: the call is held, the user sees a confirm card, and the tool runs only on yes |
-| `tracing` | none | `{callbacks: ["module:factory"], tags: [...], otel?: {exporter, endpoint?, headers?, service_name?, sample_ratio?}}`; `otel` exports Dushes' spans over OpenTelemetry (`otlp`, `zipkin`, `azure_monitor`, `console`, `host` or a `module:factory`), see [Speed and tracing](../../backend/observability/#opentelemetry-azure-monitor-zipkin-jaeger-datadog-any-otlp-backend). LangChain callback handlers (Langfuse, Phoenix, your own) and extra tags for every turn. LangSmith needs only `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in the environment. See [Speed and tracing](../../backend/observability/) |
+| `tracing` | none | `{callbacks: ["module:factory"], tags: [...], otel?: {exporter, endpoint?, headers?, service_name?, sample_ratio?}}`; `otel` exports Dushes' spans over OpenTelemetry (`otlp`, `zipkin`, `azure_monitor`, `console`, `host` or a `module:factory`), see [Speed and tracing](../../agents/shared/observability/#opentelemetry-azure-monitor-zipkin-jaeger-datadog-any-otlp-backend). LangChain callback handlers (Langfuse, Phoenix, your own) and extra tags for every turn. LangSmith needs only `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in the environment. See [Speed and tracing](../../agents/shared/observability/) |
 | `suggestions` | off | quick replies after answers: `true`, or `{enabled, model, max, timeout}`; `model` defaults to the memory model, `max` 3 (up to 5), `timeout` 4 s. Sent as `CUSTOM suggestions {items, applies?}` (`applies`: validated field changes for chips that fill fields); a failure or timeout sends nothing |
 
 ## Field specs: how each component stores its value
 
-A field tag can map to an object instead of a role, so the agent reads your form's values correctly and writes card and prefill values in exactly your format. The full explanation with examples is in [Value formats](../../form/value-formats/).
+A field tag can map to an object instead of a role, so the agent reads your form's values correctly and writes card and prefill values in exactly your format. The full explanation with examples is in [Value formats](../../frontend/connect-your-form/value-formats/).
 
 ```yaml
 components:

@@ -2,12 +2,13 @@
 title: An AI assistant for your interface
 description: Dushes is an AI assistant inside your site or app. It answers from your pages and documents, takes people to the right page, tab or field, and fills forms with them after they confirm.
 tableOfContents: false
+template: splash
 hero:
   title: 'Your product, <span class="hero-accent">guided.</span>'
   tagline: Dushes is an AI assistant inside your site or app. It answers from your pages and documents, takes people to the right page, tab or field, and fills forms with them, only after they confirm.
   actions:
     - text: Get started
-      link: getting-started/quick-start/
+      link: get-started/quickstart/
       icon: right-arrow
       variant: primary
     - text: Ask AI about it
@@ -44,8 +45,8 @@ export const demoBase = import.meta.env.PUBLIC_DEMO_URL ? import.meta.env.PUBLIC
 ## Two ways in
 
 <Entries label="Two ways in">
-  <Entry icon="compass" eyebrow="The whole product" title="Dushes" text="One chat that knows every page of your site or app." points={['Answers about any page', 'Opens the right page or tab', 'Hands over to a form']} href="backend/dushes/" demo={demoBase ? `${demoBase}site.html` : undefined} />
-  <Entry icon="form" eyebrow="One big form" title="Form assistant" text="One guide that knows every field of your form." points={['Shows where to click', 'Reads the user\'s documents', 'Fills fields after a yes']} href="getting-started/quick-start/" demo={demoBase ?? undefined} />
+  <Entry icon="compass" eyebrow="The whole product" title="Site agent" text="One chat that knows every page of your site or app." points={['Answers about any page', 'Opens the right page or tab', 'Hands over to a form']} href="agents/site-agent/" demo={demoBase ? `${demoBase}site.html` : undefined} />
+  <Entry icon="form" eyebrow="One screen" title="UI agent" text="One guide that knows the screen in front of the user: every field of your form." points={['Shows where to click', 'Reads the user\'s documents', 'Fills fields after a yes']} href="agents/ui-agent/" demo={demoBase ?? undefined} />
 </Entries>
 
 Both run on one base: any LangChain model, your business documents, the `<agui-chat>` widget with its cards and themes, and one Python package (`formguide`).
@@ -76,7 +77,7 @@ One scenario, played in your browser: the form assistant on a loan application.
     ```bash
     formguide serve --config formguide.yaml
     ```
-    [Configure the backend →](backend/configuration/)
+    [Configure the backend →](agents/shared/configuration/)
   </Card>
   <Card title="Frontend · any page" icon="seti:html">
     ```js
@@ -85,7 +86,7 @@ One scenario, played in your browser: the form assistant on a loan application.
       applyChanges: (c) => myBackend.apply(c),
     }))
     ```
-    [Pick a client →](frontend/overview/)
+    [Pick a client →](frontend/)
   </Card>
 </CardGrid>
 
@@ -109,8 +110,8 @@ One scenario, played in your browser: the form assistant on a loan application.
 Every page has **Ask AI** in the header: an assistant that answers from these pages with code you can paste, and links to where it found it. Or take any page to your own assistant with **Copy page**, **Open in Claude** or **Open in ChatGPT**; [`llms.txt`](llms.txt) lists every page for AI tools.
 
 <CardGrid>
-  <LinkCard title="Quickstart" description="A site or a form assistant running in five minutes." href="getting-started/quick-start/" />
-  <LinkCard title="Configuration" description="From one line to per-role models, documents and durable history." href="backend/configuration/" />
-  <LinkCard title="Choose a client" description="Widget, React, react-hook-form, CopilotKit, any AG-UI client." href="frontend/overview/" />
-  <LinkCard title="How it works" description="One turn, the context, memory, with diagrams." href="concepts/overview/" />
+  <LinkCard title="Quickstart" description="A site or a form assistant running in five minutes." href="get-started/quickstart/" />
+  <LinkCard title="Configuration" description="From one line to per-role models, documents and durable history." href="agents/shared/configuration/" />
+  <LinkCard title="Choose a client" description="Widget, React, react-hook-form, CopilotKit, any AG-UI client." href="frontend/" />
+  <LinkCard title="How it works" description="One turn, the context, memory, with diagrams." href="agents/how-it-works/" />
 </CardGrid>

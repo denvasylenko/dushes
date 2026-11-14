@@ -1,0 +1,248 @@
+---
+title: 'Speed and tracing'
+description: 'Turn timings, LangSmith and Langfuse, speed tests, the live benchmark and scored scenario evals.'
+---
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"Where a turn's time goes, and how to trace it."} when={"A turn feels slow, or you want LangSmith / Langfuse / OpenTelemetry."} write={"Nothing for timings; `tracing:` or two environment variables for a tracer."} />
+
+How to see where a turn's time goes, follow a conversation in a tracer, and catch slowdowns before users do.
+
+| Question | Where to look |
+|---|---|
+| How long did this turn take, and why? | the `run_stats` event of the run (the demo's Trace panel: every turn as a timeline of model calls and tools, tokens and cache hits) |
+| What did the model and the tools do, step by step? | a tracer: LangSmith, Langfuse or any LangChain callback handler |
+| Did my change make things slower? | the offline speed tests (every `pytest` run) and the live benchmark |
+| Did my change make the answers worse? | the scenario evals: a simulated user, a judge model, a score from 0 to 10 per scenario |
+| What happened in that user's last turns? | `GET /agent/debug/{thread_id}` (development) or the `formguide.stats` log lines |
+
+Source: [`stats.py`](https://github.com/denvasylenko/dushes/blob/main/backend/formguide/stats.py), [`scripts/bench.py`](https://github.com/denvasylenko/dushes/blob/main/backend/scripts/bench.py), [`tests/test_perf.py`](https://github.com/denvasylenko/dushes/blob/main/backend/tests/test_perf.py), [`tests/test_observability.py`](https://github.com/denvasylenko/dushes/blob/main/backend/tests/test_observability.py).
+
+---
+
+## The numbers of every turn: `run_stats`
+
+The last event of every run, right before `RUN_FINISHED` (or `RUN_ERROR`):
+
+```json
+{ "type": "CUSTOM", "name": "run_stats", "value": {
+  "run_id": "…", "thread_id": "…",
+  "ttft_ms": 1609,            // until the first word of the answer reached the stream
+  "total_ms": 5585,           // the whole run; time waiting for the user on a card is never included
+  "model_ms": 5012, "tool_ms": 41,
+  "models": [ { "kind": "agent", "model": "claude-haiku-5-5", "at_ms": 12, "ms": 2310, "ttft_ms": 980, "input_tokens": 11205,
+                "output_tokens": 96, "cache_read_tokens": 8120, "cache_write_tokens": 0 }, … ],   // at_ms: started after the run began
+  "tools":  [ { "name": "search_fields", "at_ms": 2330, "ms": 12, "error": false }, … ],
+  "tokens": { "input": 23062, "output": 259, "cache_read": 16604 },
+  "cache_hit_rate": 0.72
+} }
+```
+
+| Number | Means | When it is high |
+|---|---|---|
+| `ttft_ms` | how long the user waits before text starts | the model thinks long before writing, or the first step is a tool call; a cold prompt cache |
+| `total_ms` | the whole run | many tool rounds (see `tools`) |
+| `model_ms` vs `tool_ms` | model time vs our tools (search, documents, extraction) | `tool_ms` high: the researcher or reading an attachment |
+| `models[].ttft_ms` | a model's own latency to the first chunk | provider load, a big prompt, high reasoning effort |
+| `cache_hit_rate` | share of input tokens read from the prompt cache (cheaper and faster) | low on the first turn and after the cache expires (about 5 minutes without activity for Anthropic) |
+
+Every run also writes the same numbers as one JSON line on the `formguide.stats` logger (INFO), ready for any log collector. The development endpoint `GET /agent/debug/{thread_id}` keeps the last 20 runs of each thread. Only numbers, tool names and ids are recorded, never message text or field values.
+
+In a widget host: `chat.addEventListener('agui:event', e => e.detail.name === 'run_stats' && show(e.detail.value))`.
+
+---
+
+## Tracing
+
+Every turn is a LangChain run named **"formguide turn"**:
+- tags: `formguide`, the form id, and anything in `tracing.tags`;
+- metadata: `thread_id`, `run_id`, `form_id`, `jsx_hash`.
+
+These are inherited by every model call and tool call inside the turn, so a tracer can show one conversation as a list of turns, each with its steps.
+
+**LangSmith** needs no code: set two environment variables before starting the server and every turn shows up there; filter by `metadata.thread_id` to follow one conversation.
+
+```bash
+export LANGSMITH_TRACING=true
+export LANGSMITH_API_KEY=...            # optional: LANGSMITH_PROJECT=formguide-demo
+```
+
+**Any other tracer** (Langfuse, Phoenix, your own): give a factory that returns a LangChain callback handler.
+
+```yaml
+tracing:
+  callbacks: ["my_app.tracing:langfuse_handler"]   # def langfuse_handler(): return langfuse.langchain.CallbackHandler()
+  tags: [staging]
+```
+
+`formguide check --config formguide.yaml` prints whether LangSmith is on and which callbacks are configured.
+
+### OpenTelemetry: Azure Monitor, Zipkin, Jaeger, Datadog, any OTLP backend
+
+`pip install 'formguide[otel]'` (add `otel-zipkin` or `otel-azure` for those exporters), then one key:
+
+```yaml
+tracing:
+  otel:
+    exporter: otlp                         # otlp | zipkin | azure_monitor | console | host | "module:factory"
+    endpoint: "http://collector:4317"      # :4317 = gRPC, anything else = OTLP over HTTP
+    headers: {api-key: "${OTLP_KEY}"}      # optional, for hosted collectors
+    service_name: loan-assistant           # default: formguide
+    sample_ratio: 1.0                      # 0..1; a sampled caller trace stays sampled
+```
+
+| Exporter | For | Notes |
+| --- | --- | --- |
+| `otlp` | an OpenTelemetry Collector, Jaeger, Grafana Tempo, Datadog, Honeycomb | gRPC on `:4317`, HTTP otherwise (`/v1/traces` is added) |
+| `zipkin` | Zipkin | `endpoint: http://zipkin:9411/api/v2/spans`; needs `formguide[otel-zipkin]` |
+| `azure_monitor` | Application Insights | the connection string in `endpoint` or `APPLICATIONINSIGHTS_CONNECTION_STRING`; needs `formguide[otel-azure]` |
+| `console` | local debugging | prints spans to stdout |
+| `host` | an app that already configured OpenTelemetry | Dushes adds its spans to the app's tracer provider, nothing else |
+| `"my_app.tracing:make_exporter"` | anything else | a factory returning any OTel `SpanExporter` |
+
+What you get per turn (only ids, names, types and numbers: never message text or field values):
+
+| Span | Attributes |
+| --- | --- |
+| `formguide.turn` | `formguide.thread_id`, `.run_id`, `.form_id`, `.stop` (`answer`, a card type, `frontend_tool`, `error`), `.total_ms`, `.ttft_ms`, `gen_ai.usage.input_tokens` / `output_tokens`; an event `formguide.card` (type, id) when the turn stops at a card |
+| `formguide.model` | `formguide.model.role`, `gen_ai.request.model`, `formguide.ttft_ms`, `gen_ai.usage.*`, `formguide.usage.cache_read_tokens` |
+| `formguide.tool` | `formguide.tool.name`; error status when the tool failed |
+
+**Joining your app's trace.** A run request with a W3C `traceparent` (and `tracestate`) header makes the turn a child of that span, so one trace runs from your page or API through Dushes to the model. In Python, pass `guide.run(..., trace_context={"traceparent": ...})`.
+
+OpenTelemetry works next to LangSmith and `tracing.callbacks`; `run_stats` does not change.
+
+---
+
+## Speed tests (offline, every `pytest` run)
+
+[`tests/test_perf.py`](https://github.com/denvasylenko/dushes/blob/main/backend/tests/test_perf.py) runs Dushes' own work on the 221-field demo loan form, without a model, and fails when it gets much slower:
+
+| Operation | Measured (laptop) | Budget |
+|---|---|---|
+| build one turn's context (outline + focus) | 0.8 ms | 10 ms |
+| diff two configs | 0.9 ms | 10 ms |
+| validate a 10-field card | < 1 ms | 10 ms |
+| a whole turn through the graph with a 10-field card (scripted model) | 8 ms | 80 ms |
+
+The widget has the same in [`test/perf.test.ts`](https://github.com/denvasylenko/dushes/blob/main/packages/agui-chat/test/perf.test.ts): 5,000 SSE events (4.6 ms, budget 60), one typewriter frame on a long answer (5.7 ms, budget 60), 200 messages (12 ms, budget 120). `PERF_PRINT=1 npx vitest run test/perf.test.ts` prints the numbers.
+
+So Dushes itself adds about 10 ms to a turn; the rest is the model and the tools you call.
+
+---
+
+## The live benchmark
+
+[`scripts/bench.py`](https://github.com/denvasylenko/dushes/blob/main/backend/scripts/bench.py) plays five fixed scenarios against a running server, each on a fresh thread, accepting cards and picking the first option of questions like a user would, and reports the server's own `run_stats`:
+
+```bash
+cd backend
+uv run python scripts/bench.py                          # the local demo
+uv run python scripts/bench.py --repeat 3 --max-ttft 5 --max-turn 30   # fails (exit 1) above the thresholds
+uv run python scripts/bench.py --base https://formguide-demo.fly.dev --password ...   # a hosted demo behind a password
+uv run python scripts/bench.py --prices prices.json     # adds an estimated cost per turn
+```
+
+`prices.json` holds your model's prices per million tokens, e.g. `{"input": 5, "output": 25, "cache_read": 0.5}`. The results are also saved as `scripts/bench-<time>.json` to compare before and after a change.
+
+**Baseline** (2026-11-11, the demo with Claude Opus 5.5 at low effort, one run each, warm server):
+
+| Scenario | First token | Turn | Tool calls | Tokens in / out | Cache |
+|---|---|---|---|---|---|
+| question ("Where do I start?") | 3.4 s | 5.4 s | 1 | 14,815 / 216 | 37% |
+| fill (name and birth date, card accepted) | 1.6 s | 5.6 s | 2 | 23,062 / 259 | 72% |
+| choice (question card, then a field card) | 6.5 s | 11.9 s | 3 | 38,596 / 482 | 71% |
+| documents (the car loan rate) | 2.2 s | 4.6 s | 0 | 7,354 / 298 | 75% |
+| booking (service, barber, day and slot) | 4.0 s | 22.9 s | 10 | 75,526 / 888 | 65% |
+
+What it tells us: the model's time dominates (Dushes adds about 10 ms); a turn that walks a dependent chain (the booking: 10 tool calls in a row) is the slowest; the prompt cache saves about two thirds of the input tokens once a conversation is going. A long conversation that sat idle for a while starts cold (cache near 0%) and its first turn is noticeably slower.
+
+---
+
+## Scenario evals: is the answer still good?
+
+Speed tests catch slowdowns, keyword checks catch crashes; neither tells you whether the answer was right. [`scripts/evals.py`](https://github.com/denvasylenko/dushes/blob/main/backend/scripts/evals.py) plays realistic visits to the demo site: a **user model** acts out a persona through `/site/run` exactly like the demo page (it answers cards and follows Dushes to other pages), then a **judge model** scores the conversation from 0 to 10 and names the reason for every point it takes off.
+
+```bash
+cd backend
+uv run python scripts/evals.py                          # every scenario in evals/, against the running demo
+uv run python scripts/evals.py handoff_booking          # selected ones
+uv run python scripts/evals.py --model anthropic:claude-sonnet-5-5   # the user's and the judge's model
+uv run python scripts/evals.py --save-baseline          # keep this run's scores as the baseline
+uv run python scripts/evals.py --offline                # scripted models, the demo in-process: no keys, no server
+```
+
+A scenario is a small YAML file in `backend/evals/`:
+
+```yaml
+name: foreign_question_on_form
+persona: Someone halfway through the loan application who wonders about the branch's Saturday hours.
+goal: Find out the branch's Saturday hours without leaving the application.
+start: {page: /apply, form: loan_application}
+knows: []                       # facts the user may give when asked; nothing else is invented
+turns: 3                        # at most this many user messages
+expect:
+  says: [["10:00", "10 am"]]    # each item: one of these phrases appears in a reply
+  never_says: ["penalty is"]    # none of these appears (an invented fact)
+  answered_by: [dushes]         # exactly these agents answered: dushes, form
+  cards: []                     # card types that must be shown: set_fields, ask, upload, confirm, review
+  reaches: /apply               # the page the visit ends on
+min_score: 7
+attach: []                      # sample files attached before the first message (demo/samples/attachments)
+documents: false                # load and compile the form's business documents first
+tags: [stress]                  # run a group: --tag stress
+red_team: false                 # true: the user tries to break the rules and changes tactics after each refusal
+quote:                          # optional: once an answer matches `pattern`, the user selects that text and replies to it
+  pattern: "19[\\s,.]?069"      # a regex; the match is the quote (at most 300 characters)
+  ask: Why so high?             # sent with forwardedProps.reply_to = {message_id, quote}, as the widget sends it
+```
+
+The form's state can be part of a scenario too: `start.values` is what the user typed into the form before writing (a field holding an injected instruction, for example), and `expect.fields` checks the form's final values (`loan_type: auto`; `codeword: null` means it stayed empty).
+
+Three groups ship in `backend/evals/`: the everyday visits, **stress** (voice typos, a mind changer, everything in one message, invalid data, topic ping-pong, a language switch, a long session) and **redteam** (a fake manager, prompt leaks, other people's data, a fake promo, instructions hidden in a form field, in a photo and in base64). Scenarios named `heldout_*` are the control group: nobody tunes a prompt on them, so a gap between their average and the rest shows a rule that only fits the tests.
+
+### The Form Lab: many forms, one site
+
+The demo site has three forms; the **Form Lab** has over thirty more, from a one-field newsletter to a 122-field purchase order: medicine, government, visas, insurance, rentals, hiring, schools, repairs, restaurants, weddings, B2B, and a few deliberately broken ones (fields without labels, two fields with one name, contradictory labels). Each form is one file in `backend/demo/mock_forms/lab/` (its JSX, its rules, its domain pack and its page) and is found on import; the demo server serves them as a second site, Dushes at `/lab/run` over the Lab's own site map, so the Main Street site is unchanged. A scenario runs there with `start.site: lab` (a `/lab/...` page implies it):
+
+```yaml
+name: lab_clinic_child
+tags: [lab, fill]
+persona: A busy father registering his 8-year-old daughter at a new clinic.
+goal: Register the daughter with himself as the guardian and book her first visit with the children's doctor.
+start: {site: lab, page: /lab/clinic, form: clinic_intake}
+knows: ["Daughter Mia Turner, born 3 March 2018", "He is the father, phone +44 7700 900456"]
+expect: {answered_by: [form], cards: [set_fields], fields: {first_name: Mia, guardian_relation: father}}
+min_score: 7
+```
+
+Lab scenarios are named `lab_<form>_<kind>` and `heldout_lab_<form>_<kind>`, the kind being one of fill, fix, mind, voice, lang, dump, inject, offtopic, rule, facts. `tests/test_lab_forms.py` checks that every Lab form compiles and that every Lab scenario names a real page and real fields.
+
+After a run, `scripts/eval_summary.py` writes the round's summary: the average, the held-out average against the target (8.5, none below 6), the averages by tag, the worst scenarios, the failed checks that recur, the judge's biggest deductions and the cost from the tokens the report records. `scripts/evals_live.sh` runs the live evals and the summary in one go, asking for the API key without echoing it.
+
+How a score is made:
+
+| Step | What it does |
+|---|---|
+| checks without a model | `says`, `never_says`, `answered_by`, `cards`, `reaches` and run errors, from the server's own conversation (`GET /site/threads/{id}` names the agent of every reply) |
+| the judge | scores against a fixed rubric: truth (up to 5 points), the right agent (2), cards instead of prose (2), reaching the goal (3), brevity and language (1) |
+| caps | a failed `never_says` caps the score at 3, any other failed check at 5, so a lenient judge cannot hide a hard failure |
+
+The report goes to `scripts/runs/evals-<time>.json` with every score, check and reason; each conversation is in `scripts/runs/eval-<name>.txt`. The run exits 1 when a scenario is below its `min_score` or the average is more than `--margin` (0.5) below `evals/baseline.json`, and 2 when a scenario file is wrong (an unknown key is named before any model call).
+
+The user and the judge use `models.eval_user` and `models.eval_judge` from `demo/formguide.yaml` (any provider, as for the agent), falling back to `models.agent`; `--model` sets both. The offline mode runs in every `pytest` (`tests/test_evals.py`), so a broken scenario file or client fails the tests without any key.
+
+### Every option
+
+| Option | Default | Meaning |
+|---|---|---|
+| `names` | all | scenario names to run |
+| `start.site` (scenario) | `main` | `main` (Dushes at `/site`) or `lab` (the Form Lab at `/lab`) |
+| `quote` (scenario) | none | `{pattern, ask}`: a reply to a quote; a check fails when no answer matched `pattern` |
+| `--model` | `models.eval_user` / `eval_judge`, else `models.agent` | the user's and the judge's model, e.g. `anthropic:claude-sonnet-5-5` |
+| `--offline` | off | scripted models and the demo in-process |
+| `--tag` | all | only the scenarios with this tag (`stress`, `redteam`) |
+| `--repeat` | `1` | run each scenario N times: the mean, the worst and the best |
+| `--margin` | `0.5` | allowed drop of the average below the baseline |
+| `--save-baseline` | off | write this run's scores to `evals/baseline.json` |
+

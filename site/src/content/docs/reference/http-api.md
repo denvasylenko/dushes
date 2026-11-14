@@ -29,7 +29,7 @@ description: Every endpoint of Dushes' FastAPI router, with its body and answer.
 
 | Method and path | Body | Answer |
 | --- | --- | --- |
-| `POST /run` | an AG-UI `RunAgentInput` with `state: {page: {path, title}, form?}` (`form` is the form state on a form page) | an AG-UI event stream: Dushes' answer, or the form agent's events on a form page; `CUSTOM site_directive` when it moves the user |
+| `POST /run` | an AG-UI `RunAgentInput` with `state: {page: {path, title}, form?}` (`form` is the form state on a form page) | an AG-UI event stream: Dushes' answer, or the UI agent's events on a form page; `CUSTOM site_directive` when it moves the user |
 | `GET /map` | | the site map the page renders or checks |
 | `GET /threads/{thread_id}` | `?form_id=` | the site chat for the page after a reload: its messages and, on a form page, the form's open card |
 | `POST /transcribe` | multipart: `file`, `language?` | as above, for dictation in the site chat |
@@ -50,4 +50,4 @@ description: Every endpoint of Dushes' FastAPI router, with its body and answer.
 | `forwardedProps.capabilities` | the cards and variants the client renders ([AG-UI events](../agui-events/#capabilities)); absent = all |
 | `forwardedProps.prefill` | `{data?, text?, attachment_ids?, language?}`: values the app already knows |
 
-What comes back is in [AG-UI events](../agui-events/). Behaviour contract: [http-api](../../specifications/http-api/), [agui-protocol](../../specifications/agui-protocol/).
+What comes back is in [AG-UI events](../agui-events/). Behaviour contract: [http-api](../specifications/http-api/), [agui-protocol](../specifications/agui-protocol/).

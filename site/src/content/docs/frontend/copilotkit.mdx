@@ -12,7 +12,7 @@ import { Summary } from '../../../components/ui';
 | Your situation | Use |
 | --- | --- |
 | Your React app **already uses CopilotKit** (its chat, its hooks) | this page: CopilotKit talks to Dushes like to any AG-UI agent |
-| You are starting fresh | [`<agui-chat>`](../chat-widget/) or [React](../react/): fewer lines, and **every card is drawn for you** |
+| You are starting fresh | [`<agui-chat>`](../widget/) or [React](../react/): fewer lines, and **every card is drawn for you** |
 
 With CopilotKit you draw Dushes' cards yourself (a small React component per card type). With `<agui-chat>` they are built in. That is the whole trade-off.
 
@@ -119,7 +119,7 @@ All of it is one file, [`src/App.tsx`](https://github.com/denvasylenko/dushes/bl
 | file request (`upload`) | `{attachment_ids: [...]}` after uploading to `/agent/attachments`, or `{accepted: false}` | not in the example |
 | confirmation (`confirm`) | `{accepted: true}` or `{accepted: false}` | not in the example |
 
-What each card looks like and carries: [Card gallery](../card-gallery/); every payload typed: [Types and the contract](../../form/contract/).
+What each card looks like and carries: [Card gallery](../card-gallery/); every payload typed: [Types and the contract](../connect-your-form/contract/).
 
 ## In production: CopilotKit's runtime
 
@@ -176,5 +176,5 @@ Then swap one line in step 1, and keep everything else:
 
 <CardGrid>
   <LinkCard title="Card gallery" description="Every card, live, with its payload." href="../card-gallery/" />
-  <LinkCard title="The chat widget" description="Every card built in, no runtime." href="../chat-widget/" />
+  <LinkCard title="The chat widget" description="Every card built in, no runtime." href="../widget/" />
 </CardGrid>

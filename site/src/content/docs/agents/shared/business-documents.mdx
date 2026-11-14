@@ -1,0 +1,126 @@
+---
+title: Business documents
+description: Managers upload policies and price lists; Dushes compiles them into rules once and researches the long tail with citations.
+---
+import { Steps, Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import ArchFigure from '../../../../components/ArchFigure.astro';
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"Your policies and price lists, uploaded once, answered from with citations."} when={"Users ask questions the form itself cannot answer."} write={"Upload files to `/agent/kb/...`; optionally `knowledge: {index: ...}` for a vector store."} />
+
+<ArchFigure page="knowledge" />
+
+## Three calls
+
+<Steps>
+
+1. **Upload** documents into a namespace (usually the form id). PDF, Markdown and text.
+
+   ```bash
+   curl -F "files=@lending_policy.pdf" -F "files=@rates.md" http://localhost:8000/agent/kb/loan_application/documents
+   ```
+
+2. **Compile** them for a form: rules and field notes go into its domain pack, so common questions need no retrieval.
+
+   ```bash
+   curl -X POST http://localhost:8000/agent/kb/loan_application/compile \
+     -H "Content-Type: application/json" -d '{"jsx": "<Form ...>", "config": {"props": {}, "state": {}}}'
+   ```
+
+3. **Ask.** The agent answers from the compiled rules, and calls the researcher (`ask_documents`) for anything they do not cover. The answer cites the document and section.
+
+</Steps>
+
+## Who sees what: scopes
+
+By default a form sees only its own namespace. Give it shared documents too:
+
+```yaml
+knowledge:
+  dir: data/kb
+  scopes:
+    loan_application: [loan_application, bank_common]
+    mortgage: [mortgage, bank_common]
+```
+
+## The index
+
+<Tabs syncKey="index">
+  <TabItem label="BM25 (default)">
+    ```yaml
+    knowledge: {index: bm25}          # in memory, no embeddings, nothing to run
+    ```
+  </TabItem>
+  <TabItem label="A vector store">
+    ```yaml
+    knowledge:
+      index: {factory: "my_app.vectors:make_store", filter: "my_app.vectors:ns_filter", fetch_factor: 5}
+    ```
+    ```python title="my_app/vectors.py"
+    from langchain_postgres import PGVector
+    from langchain_openai import OpenAIEmbeddings
+
+    def make_store():                                   # any LangChain VectorStore
+        return PGVector(embeddings=OpenAIEmbeddings(), collection_name="kb", connection=DB_URL)
+
+    def ns_filter(namespaces: list[str]):               # the store's metadata filter
+        return {"namespace": {"$in": namespaces}}
+    ```
+  </TabItem>
+  <TabItem label="In code">
+    ```python
+    from formguide import KnowledgeBase, VectorStoreIndex
+
+    kb = KnowledgeBase("data/kb", index=VectorStoreIndex(my_store), scopes={"loan_application": ["loan_application", "bank_common"]})
+    ```
+  </TabItem>
+</Tabs>
+
+The researcher needs the `research` extra (`deepagents`) and a tool-calling model for the `research` role.
+
+<details>
+<summary>Every endpoint</summary>
+
+| Call | Does |
+| --- | --- |
+| `GET /kb/{form_id}` | documents, namespaces and the compiled result in the form's scope |
+| `POST /kb/{namespace}/documents` | upload (multipart `files`, repeat) |
+| `DELETE /kb/{namespace}/documents/{doc_id}` | delete one |
+| `POST /kb/{form_id}/compile` | compile into the domain pack |
+
+These endpoints change what the agent tells users: protect them with your managers' auth.
+
+</details>
+
+## Every option
+
+```yaml title="formguide.yaml"
+knowledge:
+  dir: data/kb                             # default: <data_dir>/kb
+  index: bm25                              # default; or a vector store:
+  # index: {factory: "my_app.vectors:make_store", filter: "my_app.vectors:ns_filter", fetch_factor: 5}
+  scopes:                                  # default: each form sees only its own documents
+    loan_application: [loan_application, bank_common]
+models:
+  compile: "anthropic:claude-haiku-5-5"     # compiles documents into rules; default: agent
+  research: "anthropic:claude-haiku-5-5"  # answers from documents; default: agent
+```
+```python title="app.py"
+from formguide import KnowledgeBase, BM25Index, VectorStoreIndex
+
+KnowledgeBase(
+    "data/kb",
+    index=BM25Index(),                                   # or VectorStoreIndex(store, filter_builder=ns_filter, fetch_factor=5)
+    scopes={"loan_application": ["loan_application", "bank_common"]},
+)
+```
+
+
+`make_store()` returns any LangChain `VectorStore`; `ns_filter(namespaces)` returns that store's metadata filter, so a form searches only its scopes.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="How retrieval works" description="Compiled rules first, the researcher for the rest." href="../../how-it-works/knowledge/" />
+  <LinkCard title="User documents" description="Scans and payslips the user attaches." href="../../how-it-works/attachments/" />
+</CardGrid>

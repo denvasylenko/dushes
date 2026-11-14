@@ -45,34 +45,34 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
     ollama: { pkg: 'langchain-ollama', key: 'none (a local model)', yaml: 'models:\n  agent: {provider: ollama, model: llama3.1, base_url: "http://localhost:11434"}' },
   }
   const CLIENT: Record<string, { name: string; pages: string[]; steps: string[] }> = {
-    widget: { name: 'the <agui-chat> Web Component on any page', pages: ['frontend/plain-html', 'frontend/chat-widget', 'form/contract'], steps: [
+    widget: { name: 'the <agui-chat> Web Component on any page', pages: ['frontend/plain-html', 'frontend/widget', 'frontend/connect-your-form/contract'], steps: [
       'Add <agui-chat url="/agent/run"> and the widget script to the page that has the form.',
       'Register the form once (POST /agent/layouts with the form\'s JSX skeleton) and keep the returned jsx_hash.',
       'chat.use(formguide({ getState, applyChanges })): getState returns {config, jsx_hash, form_id, ui}; applyChanges sends the accepted values to my form backend and returns the new config.',
     ] },
-    react: { name: 'React with <AguiChat>', pages: ['frontend/react', 'frontend/chat-widget', 'form/contract'], steps: [
+    react: { name: 'React with <AguiChat>', pages: ['frontend/react', 'frontend/widget', 'frontend/connect-your-form/contract'], steps: [
       'Install @formguide/agui-chat and render <AguiChat url="/agent/run" plugins={[formguide({...})]} /> next to the form.',
       'Register the form once (POST /agent/layouts) and keep the jsx_hash.',
       'getState returns {config, jsx_hash, form_id, ui}; applyChanges sends accepted values to my form backend and returns the new config.',
     ] },
-    rhf: { name: 'a react-hook-form form', pages: ['frontend/react-hook-form', 'form/contract'], steps: [
+    rhf: { name: 'a react-hook-form form', pages: ['frontend/react-hook-form', 'frontend/connect-your-form/contract'], steps: [
       'Install @formguide/agui-chat and use useFormguide(form, schema) from @formguide/agui-chat/react-hook-form with my existing useForm(); render <AguiChat plugins={plugins} /> from @formguide/agui-chat/react.',
       'Describe the fields in the schema (name, label, type, options, sections) exactly as the guide shows.',
     ] },
-    copilotkit: { name: 'CopilotKit', pages: ['frontend/copilotkit', 'form/contract', 'frontend/cards'], steps: [
+    copilotkit: { name: 'CopilotKit', pages: ['frontend/copilotkit', 'frontend/connect-your-form/contract', 'frontend/cards'], steps: [
       'Add a CopilotRuntime endpoint (Express or Next.js) with an HttpAgent pointing at <your Dushes server>/agent/run; no model key there.',
       'Point CopilotKitProvider at the runtime (runtimeUrl, agentId "formguide"); do not use agents__unsafe_dev_only.',
       'Register the form, send it with every run via agent.setState, and draw the cards with useInterrupt.',
     ] },
-    site: { name: 'Dushes across the whole site', pages: ['backend/dushes', 'frontend/dushes', 'form/contract'], steps: [
+    site: { name: 'Dushes across the whole site', pages: ['agents/site-agent', 'frontend/dushes-in-the-page', 'frontend/connect-your-form/contract'], steps: [
       'Write a site map (site.yaml, or build it from my CMS or routes with SiteMap.load(dict)) with pages, sections and which page holds which form.',
       'Mount create_dushes_router(Dushes(guide, site_map)) under /site next to the /agent router.',
       'In the page: <agui-chat url="/site/run">, send {page, form?} as state, follow CUSTOM site_directive, and run once with forwardedProps.handoff after a form opens.',
     ] },
   }
   const SERVER: Record<string, { pages: string[]; steps: string[] }> = {
-    standalone: { pages: ['backend/install'], steps: ['Run it: formguide serve --config formguide.yaml --port 8000 --cors <my app origin>.'] },
-    fastapi: { pages: ['backend/install', 'backend/deploy'], steps: [
+    standalone: { pages: ['agents/shared/install'], steps: ['Run it: formguide serve --config formguide.yaml --port 8000 --cors <my app origin>.'] },
+    fastapi: { pages: ['agents/shared/install', 'agents/shared/deploy'], steps: [
       'Mount it in my FastAPI app: app.include_router(create_router(FormGuide(load_config("formguide.yaml"))), prefix="/agent", dependencies=[Depends(<my auth>)]).',
     ] },
   }
@@ -82,7 +82,7 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
 
   function prompt(c: Choice): string {
     const p = PROVIDER[c.provider], cl = CLIENT[c.client], sv = SERVER[c.server]
-    const pages = [...new Set(['getting-started/quick-start', 'backend/configuration', 'backend/models', ...sv.pages, ...cl.pages])]
+    const pages = [...new Set(['get-started/quickstart', 'agents/shared/configuration', 'agents/shared/models', ...sv.pages, ...cl.pages])]
     let n = 0
     const step = (s: string) => `${++n}. ${s}`
     return [

@@ -13,7 +13,7 @@ Every card of your own is made of these 19 blocks, stacked top to bottom. The la
 
 <BlocksSheet />
 
-A card of type `blocks` is a list of blocks, drawn in order. The server sends it from a [card spec](../../backend/cards/); you can also show one from your own code:
+A card of type `blocks` is a list of blocks, drawn in order. The server sends it from a [card spec](../../agents/ui-agent/cards-from-blocks/); you can also show one from your own code:
 
 ```js
 const answer = await chat.showCard({ type: 'blocks', blocks: [
@@ -154,6 +154,6 @@ chat.renderers.set('booking', (card, ctx) => AguiChat.blocksCard({ blocks: card.
 Each block has a part, `block-<type>` (`agui-chat::part(block-place)`), and the card `blocks blocks-<name>`, so the page can restyle one kind of card. See [Themes and styling](../themes/).
 
 <CardGrid>
-  <LinkCard title="Cards from blocks" description="Declare a card on the server; the model fills it." href="../../backend/cards/" />
+  <LinkCard title="Cards from blocks" description="Declare a card on the server; the model fills it." href="../../agents/ui-agent/cards-from-blocks/" />
   <LinkCard title="Card gallery" description="Every card, live." href="../card-gallery/" />
 </CardGrid>

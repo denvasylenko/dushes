@@ -14,4 +14,4 @@
 **/.astro
 backend/data
 backend/scripts/*.log
-site/src/content/docs/specifications
+site/src/content/docs/reference/specifications

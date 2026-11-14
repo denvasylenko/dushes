@@ -1,0 +1,47 @@
+---
+title: Choose a client
+description: Dushes speaks plain AG-UI. Use the ready-made chat, wrap it in React, or bring CopilotKit or any AG-UI client.
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import ArchFigure from '../../../components/ArchFigure.astro';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Which client to put next to your form."} when={"Before writing any frontend code."} write={"Pick one row of the table; every client speaks the same protocol."} />
+
+| You have | Use | Effort |
+| --- | --- | --- |
+| any page, no framework | [`<agui-chat>` from one script tag](plain-html/) | 5 lines |
+| a React app with a form backend | [`<AguiChat>`](react/) + the form plugin | 10 lines |
+| a react-hook-form / Formik form, no config | [`useFormguide(form, schema)`](react-hook-form/) | a schema + one hook |
+| CopilotKit already | [`HttpAgent` + `useInterrupt`](copilotkit/) | your own cards |
+| your own chat UI | [any AG-UI client](ag-ui/) | the wire format |
+
+## Frameworks
+
+| Framework | Today | How |
+| --- | --- | --- |
+| **React** | supported | `<AguiChat>` from `@formguide/agui-chat/react`; `useFormguide` from `@formguide/agui-chat/react-hook-form` for react-hook-form and Formik |
+| **Any page** (server-rendered, Vue, Angular, Svelte, none) | works | `<agui-chat>` is a standard Web Component: one script tag, set `chat.options` and `chat.use(formguide({...}))` from your code |
+| **Angular** | coming | a module with an `<agui-chat>` component, inputs and outputs, and a form-control bridge |
+| **Vue** | coming | a component and a `useFormguide` composable |
+| **Svelte** | coming | a component and a store bridge |
+
+The server does not change with the framework: every client speaks the same [AG-UI contract](connect-your-form/contract/).
+
+## What every client does
+
+<ArchFigure page="integrate" />
+
+1. **Register the form's skeleton once**: `POST /agent/layouts {jsx, form_id}` → `jsx_hash`.
+2. **Send the form with every message** in AG-UI `state`: `{config, jsx_hash, form_id, ui}`.
+3. **Draw what comes back**: streamed text, "look here" directives, cards.
+4. **Answer a card** after applying accepted values through your form backend; the agent continues with the new config.
+
+The chat widget's form plugin does 2 to 4 for you: you give it `getState()` and `applyChanges()`. Every message as a TypeScript type: [Types and the contract](connect-your-form/contract/).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="The chat widget" description="One tag: streaming, steps, cards, dictation." href="widget/" />
+  <LinkCard title="How the form and agent talk" description="The contract, message by message." href="connect-your-form/" />
+</CardGrid>

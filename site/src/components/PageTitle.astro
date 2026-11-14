@@ -10,7 +10,7 @@ const desc = entry.data.description;
 // pages with their own header: the landing (a hero) and the card gallery
 const custom = entry.id === 'frontend/card-gallery';
 const splash = entry.data.template === 'splash' || !!entry.data.hero || custom;
-const isSpec = entry.id.startsWith('specifications/') && entry.id !== 'specifications';
+const isSpec = entry.id.startsWith('reference/specifications/') && entry.id !== 'reference/specifications';
 ---
 {!custom && <Default />}
 {!splash && (

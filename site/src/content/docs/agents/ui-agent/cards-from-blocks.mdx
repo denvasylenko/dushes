@@ -1,0 +1,117 @@
+---
+title: Cards from blocks
+description: Cards of your own, laid out in formguide.yaml and filled by the model; the chat draws them with its blocks, so they look like the built-in ones.
+---
+import { Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"Your own cards, declared on the server and drawn by the chat"} when={"The built-in cards do not fit a decision in your flow."} write={"A `cards:` entry in `formguide.yaml`: its data and its blocks."} />
+
+Your app needs a card Dushes does not have: "Is this your barber?", a palette to pick, "3 steps left", a booking with a route. Declare it once on the server: you choose the blocks and their order, the model only fills the data. The chat draws it with the same blocks as its own cards, so it follows the theme, light and dark, and never looks out of place.
+
+<Tabs>
+<TabItem label="YAML">
+
+```yaml title="formguide.yaml"
+cards:
+  - type: barber_match
+    description: >-
+      When the user names a barber or asks for "my usual barber", show the barber you mean
+      and let them confirm before you fill the barber field.
+    data: {name: string, shop: string, rating: "number?", next_slot: "string?"}
+    blocks:
+      - {type: title, text: "Is this your barber?"}
+      - {type: place, title: "{name}", subtitle: "{shop}", rating: "{rating}"}
+      - {type: row, label: Next free slot, value: "{next_slot}", icon: calendar, if: next_slot}
+      - type: buttons
+        items: [{id: "yes", label: "Yes, book {name}", style: primary}, {id: "no", label: Another barber}]
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from formguide import FormGuide, GuideConfig
+
+guide = FormGuide(GuideConfig(cards=[{
+    "type": "barber_match",
+    "description": "When the user names a barber, show the barber you mean and let them confirm.",
+    "data": {"name": "string", "shop": "string", "rating": "number?"},
+    "blocks": [
+        {"type": "title", "text": "Is this your barber?"},
+        {"type": "place", "title": "{name}", "subtitle": "{shop}", "rating": "{rating}"},
+        {"type": "buttons", "items": [{"id": "yes", "label": "Yes, book {name}", "style": "primary"},
+                                      {"id": "no", "label": "Another barber"}]},
+    ],
+}]))
+```
+
+</TabItem>
+</Tabs>
+
+That is all: the model now has a tool `show_barber_match(name, shop, rating?, next_slot?)`.
+
+```mermaid
+sequenceDiagram
+  participant M as Model
+  participant S as formguide
+  participant C as Chat
+  M->>S: show_barber_match(name: "Maria", shop: "Arbat 12", rating: 4.9)
+  S->>S: check the data, fill the placeholders, drop blocks whose if is empty
+  S->>C: the card (an interrupt; the turn waits)
+  C->>S: action yes, label "Yes, book Maria"
+  S->>M: The user chose "Yes, book Maria" (yes) on the barber_match card.
+```
+
+## A card spec
+
+| Key | What it is |
+| --- | --- |
+| `type` | snake_case name; the tool is `show_<type>` |
+| `description` | when the model should show it (it is the tool's description) |
+| `data` | what the model fills: `name: type`, types `string`, `number`, `integer`, `boolean`, `string[]`, `object[]`, `object`; add `?` for optional (quote it inside `{…}` in YAML) |
+| `blocks` | the layout: the chat's blocks, in order (see [Blocks](../../../frontend/blocks/)) |
+| `wait` | `true` (default): a question, the turn waits for the answer. `false`: a card to show (a route, a receipt, "Add to calendar"), sent as a `CUSTOM card` event while the turn goes on |
+
+In the blocks, `{name}` puts a data value into a text (`"Yes, book {name}"`). A value that is only a placeholder keeps its type: `options: "{slots}"` passes the whole list, `rating: "{rating}"` the number. `if: name` drops the block when that value is empty. A spec with an unknown block, or a placeholder that is not in `data`, is refused when the config loads.
+
+## The answer
+
+A button with an `id` answers the card. The model gets one line: which button, by label and id, and the values of the card's choices, swatches and fields:
+
+```text
+The user chose "Use it" (use) on the styles card. Values: palette = warm; mood = Lighter.
+```
+
+A card the user closes without answering says so. The transcript records the card (kind `blocks`) and its answer, so a reload shows it again. A display card (`wait: false`) has nobody waiting; its buttons send their label as a message.
+
+## A button that fills the form
+
+A button can fill form fields itself, like a one-tap question: add `fills` with the field and its value (usually a placeholder). The value is checked against the field and written in the form's own format when the card is shown; a value the field does not take goes back to the model as an error to fix. The tap fills the field at once, the card folds into its result line with Undo, and the model is told the field is filled, so no "Fill in these fields?" card follows.
+
+```yaml
+data: {barber: string, name: string}
+blocks:
+  - {type: place, title: "{name}"}
+  - type: buttons
+    items: [{id: "yes", label: "Yes, book {name}", style: primary, fills: {barber: "{barber}"}}, {id: "no", label: Another barber}]
+```
+
+## Only for chats that draw blocks
+
+The widget's form plugin announces the `blocks` capability. A client that does not (a Telegram bot, an older widget) never gets the `show_*` tools, so the model asks in text instead.
+
+## Every option
+
+| `cards[]` key | Default | |
+| --- | --- | --- |
+| `type` | required | snake_case, unique |
+| `description` | required | the tool's description |
+| `data` | `{}` | name: type, `?` for optional |
+| `blocks` | required | at least one block |
+| `wait` | `true` | `false` for a display card |
+
+<CardGrid>
+  <LinkCard title="Blocks" description="Every block, what it shows and what it answers." href="../../../frontend/blocks/" />
+  <LinkCard title="Card gallery" description="Cards from blocks, live." href="../../../frontend/card-gallery/" />
+</CardGrid>

@@ -203,7 +203,9 @@ def test_page_cards_name_their_sidebar_group():
     from docs_ai.agent import _group
 
     assert _group("https://x.example/reference/configuration/") == "Reference"
-    assert _group("https://x.example/dushes/backend/configuration/") == "Backend"
+    assert _group("https://x.example/dushes/agents/shared/configuration/") == "Agents"
+    assert _group("https://x.example/dushes/agents/ui-agent/prefill/") == "UI agent"
+    assert _group("https://x.example/reference/specifications/dushes/") == "Specifications"
     assert _group("https://x.example/") == ""
 
 

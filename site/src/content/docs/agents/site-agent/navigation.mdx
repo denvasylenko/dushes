@@ -1,0 +1,24 @@
+---
+title: Navigation and routing
+description: "Which agent answers each message, and how the site agent moves the user between pages."
+---
+import { LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
+
+| The user is | and writes | The turn goes to |
+| --- | --- | --- |
+| on a page without a form | anything | Dushes |
+| on a form page | about the form ("my name is Anna") | the UI agent |
+| on a form page | about moving ("open the contacts page", "take me to the FAQ") | Dushes |
+| on a form page | naming another page's words ("when is the bank open?", "a car loan please" on the loan form) | the router model decides: form or site |
+| anywhere | a card's answer | the UI agent (only it shows cards) |
+
+A page's own keywords stay with its form: on the booking page, "book a haircut" is the form's.
+
+On a form page the router also looks at who spoke last: when Dushes did, the message has navigation words in German, Spanish, French, Italian, Russian or Ukrainian, or it asks where the business is (address, phone, opening hours), or it is a question that names none of the form's field labels ("how many new requests do I have?"), a cheap router model decides between the form and the site, so a reply to Dushes' question stays with Dushes. And when a message still reaches the UI agent but is about something else (the account, statistics, another service), the UI agent gives it back with `hand_back`, and Dushes answers in the same run: the user never hears "ask the other assistant". The UI agent has this tool only under Dushes. It works the other way too: on a form page Dushes has `to_form`, and a form question that reached it goes to the UI agent in the same run. A message is passed once at most: what the UI agent gave back with `hand_back` is never handed to the form again.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Site agent" description="Set it up, every option." href="../" />
+  <LinkCard title="In the page" description="State, the directive, the hand-off run." href="../../../frontend/dushes-in-the-page/" />
+</CardGrid>

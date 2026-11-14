@@ -1,4 +1,4 @@
-// Render openspec/specs/*/spec.md into the site's content (src/content/docs/specifications/, generated, not committed).
+// Render openspec/specs/*/spec.md into the site's content (src/content/docs/reference/specifications/, generated, not committed).
 // Runs before `dev` and `build`, so a spec change shows up on the next build without touching the site.
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const SPECS = join(here, '../../openspec/specs')
-const OUT = join(here, '../src/content/docs/specifications')
+const OUT = join(here, '../src/content/docs/reference/specifications')
 const REPO = 'https://github.com/denvasylenko/dushes/blob/main/openspec/specs'
 
 const yaml = (s) => JSON.stringify(s)   // a JSON string is a valid YAML scalar

@@ -1,0 +1,14 @@
+---
+/** The two hosted demos as link cards: on this host (PUBLIC_DEMO_URL), or on the public one. */
+import { LinkCard } from './ui'
+const base = (import.meta.env.PUBLIC_DEMO_URL ?? 'https://dushes-ai.fly.dev/demo/').replace(/\/?$/, '/')
+---
+<div class="ld not-content">
+  <LinkCard href={`${base}site.html`} title="Site agent (Dushes)">One chat for a whole site: answers about any page, takes you there, hands over to the form.</LinkCard>
+  <LinkCard href={base} title="UI agent (FormGuide)">A big loan form with the agent next to it: where to click, what to enter, fill in with one tap.</LinkCard>
+</div>
+
+<style>
+  /* layout only */
+  .ld { display: grid; gap: 12px; margin: 1.25rem 0 2rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+</style>

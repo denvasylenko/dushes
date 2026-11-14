@@ -194,7 +194,7 @@ export class ScriptedAgent {
 
   private fallback(): Step[] {
     return [
-      { text: 'This demo replays recorded turns, so it understands only a few requests. Try a suggestion below. The real agent answers anything about your form: [run it in three commands](getting-started/quick-start/).' },
+      { text: 'This demo replays recorded turns, so it understands only a few requests. Try a suggestion below. The real agent answers anything about your form: [run it in three commands](get-started/quickstart/).' },
       this.suggestions(STARTERS),
     ]
   }

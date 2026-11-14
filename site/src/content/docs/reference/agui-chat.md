@@ -3,7 +3,7 @@ title: '<agui-chat> API'
 description: 'Every option (attribute and property), event and method of the chat widget.'
 ---
 
-The element is configured by attributes, by the `options` property or by props of the React wrapper; plugins add renderers, tools and strings. How to install it and what each part looks like: [The chat widget](../../frontend/chat-widget/).
+The element is configured by attributes, by the `options` property or by props of the React wrapper; plugins add renderers, tools and strings. How to install it and what each part looks like: [The chat widget](../../frontend/widget/).
 
 ## Options
 

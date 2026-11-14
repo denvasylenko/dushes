@@ -1,0 +1,38 @@
+---
+title: UI agent (FormGuide)
+description: "The agent for the current screen: it shows where to click, explains what is there, reads the user's documents and changes the screen's state on a card the user confirms. A form is the most common case."
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"The agent for one screen: points, explains, changes its state with consent"} when={"You have a large form or a complex screen, alone or inside a site"} write={"`FormGuide(GuideConfig(...))`, or `formguide serve` with `formguide.yaml`"} />
+
+The UI agent (`FormGuide`; the class becomes `UIAgent`, with `FormGuide` kept as an alias) works on whatever state the current screen holds. Today that is a form: your page sends the form with every message; the agent answers, points at fields ("look here") and proposes values on a card. Only when the user accepts does your app apply them. On a site with many pages, the [site agent (Dushes)](../site-agent/) sits above it and hands screens with a form over to it.
+
+```python title="app.py"
+from formguide import FormGuide, load_config
+from formguide.app import create_app
+
+guide = FormGuide(load_config("formguide.yaml"))      # the UI agent
+app = create_app(guide, cors=["https://your-app.example"])   # POST /agent/run and the rest
+```
+
+## What it is made of
+
+| Part | What it does | Page |
+| --- | --- | --- |
+| Domain packs | who the agent is for this form, how the form flows, what fields mean | [Domain packs](domain-packs/) |
+| Prefill | values your app already has, checked against the form | [Prefill](prefill/) |
+| Skills and tools | extra know-how and your own APIs | [Skills and tools](skills/) |
+| Cards from blocks | your own cards, declared on the server | [Cards from blocks](cards-from-blocks/) |
+| User documents | scans and files the user attaches, read into values | [User documents](user-documents/) |
+| Researcher | the third agent: answers from your business documents, with sources | [Researcher](../researcher/) |
+
+Models, configuration, documents, history and deployment are shared with the site agent: [Shared](../shared/install/).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Connect your form" description="What the page sends and how components behave." href="../../frontend/connect-your-form/" />
+  <LinkCard title="How it works" description="One turn, what the model sees." href="../how-it-works/" />
+</CardGrid>

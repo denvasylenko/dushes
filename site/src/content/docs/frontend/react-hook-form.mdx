@@ -49,7 +49,7 @@ export function Page() {
 - Applies accepted cards with `setValue`, converting choice values to the form's own format: `valueAs` is `id` (default), `option` or `name`.
 - Handles "show me": calls `onReveal(section)` so your page can open the tab, then scrolls to and focuses the field found by `data-name` or `name`, rings it, and shows the agent's hint ("Enter 10 digits here") in a small bubble under it. It also does this after every card, tap answer or action chip that fills a field, so the user sees what changed.
 
-The framework-free bridge underneath is `schemaForm(schema, access)` from `@formguide/agui-chat/formguide`; the [live demo](../../) on the home page uses it with a plain DOM form. Behaviour contract: [form-adapters](../../specifications/form-adapters/).
+The framework-free bridge underneath is `schemaForm(schema, access)` from `@formguide/agui-chat/formguide`; the [live demo](../../) on the home page uses it with a plain DOM form. Behaviour contract: [form-adapters](../../reference/specifications/form-adapters/).
 
 ## Run the example
 

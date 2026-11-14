@@ -3,7 +3,7 @@ title: 'Design system'
 description: 'Every control the docs use, live in light and dark, with the snippet to copy.'
 ---
 import { LinkCard as SlLinkCard, CardGrid } from '@astrojs/starlight/components';
-import { Badge, Button, Compare, Entries, Entry, Masonry, Metric, Metrics, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
+import { Badge, Button, Compare, Entries, Entry, Masonry, Icon, Metric, Metrics, SourceList, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
 
 Every piece of interface on this site comes from one folder, `site/src/components/ui/`. Each primitive is shaped like its Apple counterpart, built from the tokens in `site/src/styles/theme.css`, and shown below working. A new pattern is added there first and shown on this page, then used.
 
@@ -321,6 +321,62 @@ import { Compare } from '../../components/ui';
     { label: 'The whole form', value: 16582, display: '16,582' },
   ]} />
 ```
+
+## Source list
+
+The top-level places of a section, with the current one marked: the sidebar's topic switcher, like the source list in Finder, Mail and Notes. The current row gets a soft accent fill, accent text and an accent glyph. The others are plain, and get a grey fill on hover with a mouse. Each glyph's left edge lines up with the group headers below. On a phone the list becomes one segmented row without glyphs, so it takes one line above the page tree.
+
+<Specimen layout="col">
+  <SourceList label="Topics (example)" items={[
+    { label: 'Get started', href: '#source-list', icon: 'rocket' },
+    { label: 'Frontend', href: '#source-list', icon: 'laptop', current: true },
+    { label: 'Agents', href: '#source-list', icon: 'puzzle' },
+    { label: 'Reference', href: '#source-list', icon: 'open-book' },
+  ]} />
+</Specimen>
+
+```astro
+---
+import { SourceList } from './ui'
+---
+<SourceList label="Topics" items={[
+  { label: 'Get started', href: '/get-started/', icon: 'rocket' },
+  { label: 'Frontend', href: '/frontend/', icon: 'laptop', current: true },
+]} />
+```
+
+`icon` is a Starlight icon name and `current` sets `aria-current`. The sidebar (`components/Sidebar.astro`) feeds it from `starlight-sidebar-topics`, which still decides the current topic and filters the tree.
+
+## Search
+
+Search works like Spotlight. A pill in the header (an icon on a phone) opens a sheet over the page, and **⌘K**, **Ctrl K** or **/** opens it from anywhere. Results come instantly from the site's index, grouped **Guides**, **Reference** and **Specs**, with the matched section after the page title.
+- With nothing typed, the sheet shows recent and suggested pages.
+- Whenever something is typed, the last row is **Ask AI** with that question, so a search with no match still has a next step. A site built without an assistant has no such row; instead, a search with no match suggests fewer or other words.
+- From the keyboard: ↑ ↓ move, Return opens, ⌘ Return opens in a new tab, and Esc clears the field and then closes the sheet.
+- On a phone the sheet fills the screen, with **Cancel** beside the field.
+
+<Specimen layout="col">
+  <Button variant="gray" icon="search" data-spot-open>Open search</Button>
+  <div class="ui-spot-sheet ui-spot-sheet--static" style="width:100%">
+    <div class="ui-spot-field">
+      <Icon name="search" class="ui-spot-glass" />
+      <input class="ui-spot-input" value="theme" aria-label="Search (example)" readonly />
+    </div>
+    <div class="ui-spot-list" role="listbox" aria-label="Results (example)">
+      <div class="ui-spot-group" role="group">
+        <p class="ui-spot-gh">Guides</p>
+      <a class="ui-spot-row" role="option" aria-selected="true" href="#search"><span class="ui-spot-ico"><Icon name="doc" /></span><span class="ui-spot-text"><span class="ui-spot-title">Themes and styling<span class="ui-spot-crumb"> › Tokens</span></span><span class="ui-spot-sub">Every <mark>theme</mark> token the widget reads, with a live playground.</span></span><span class="ui-spot-go"><Icon name="chevron" /></span></a>
+      <a class="ui-spot-row" role="option" aria-selected="false" href="#search"><span class="ui-spot-ico"><Icon name="doc" /></span><span class="ui-spot-text"><span class="ui-spot-title">Card gallery</span><span class="ui-spot-sub">Cards follow the <mark>theme</mark>, so they look like the chat.</span></span><span class="ui-spot-go"><Icon name="chevron" /></span></a>
+      </div>
+      <div class="ui-spot-group" role="group">
+        <p class="ui-spot-gh">Ask AI</p>
+      <a class="ui-spot-row" role="option" aria-selected="false" href="#search"><span class="ui-spot-ico"><Icon name="sparkle" /></span><span class="ui-spot-text"><span class="ui-spot-title">Ask AI: “theme”</span><span class="ui-spot-sub">Answers from these pages, with code</span></span><span class="ui-spot-go"><Icon name="chevron" /></span></a>
+      </div>
+    </div>
+  </div>
+</Specimen>
+
+The search is `components/Search.astro`, which replaces Starlight's own search. It reads the same Pagefind index through its JavaScript API. Its styles are the `.ui-spot` block in `ui.css`. Any element with `data-spot-open` opens it, and the Ask AI row fires an `ask-ai` event that the header's Ask AI answers.
 
 ## Tokens
 
