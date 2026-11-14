@@ -1,0 +1,19 @@
+name: heldout_fill_already_set
+tags: [heldout, fill]
+persona: Someone halfway through a car insurance quote who already picked Personal use and asks the assistant to "set the usage".
+goal: Make sure the usage field is filled in.
+start:
+  page: /insure
+  form: car_insurance
+  values:
+    make: {id: toyota, name: Toyota}
+    usage: {id: personal, name: Personal}
+knows:
+  - The car is for personal use
+turns: 2
+expect:
+  answered_by: [form]
+  never_cards: [set_fields]
+  says: [["already", "is set", "is Personal", "shows Personal"]]
+  fields: {usage: personal}
+min_score: 7

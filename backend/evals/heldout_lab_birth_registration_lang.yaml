@@ -1,0 +1,20 @@
+name: heldout_lab_birth_registration_lang
+tags: [lab, lang, heldout]
+persona: >-
+  A Polish father living in Norland who writes only in Polish, in short messages, and asks in Polish whether his
+  daughter can have both surnames.
+goal: Register his daughter, born yesterday in hospital, with both parents declared and married, and both surnames.
+start: {site: lab, page: /lab/norland-birth, form: birth_registration}
+knows:
+  - "Baby Zofia, a girl, born yesterday at 11:05 at Harbour District Hospital, Westmere"
+  - "Mother: Katarzyna Nowak, born 9 March 1994, id 94030912345, address Havnegata 7, Westmere"
+  - "Father: Piotr Wisniewski, born 21 December 1991, id 91122154321"
+  - "Married, certificate MC-19870245"
+  - "Zofia takes both surnames, Nowak-Wisniewski"
+  - He registers as the father; phone +47 968 44 120
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {child_first_names: Zofia, child_surname: both, marriage_cert_number: MC-19870245, declarant_role: father}
+min_score: 7

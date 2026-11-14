@@ -1,0 +1,18 @@
+name: lab_dental_appointment_mind
+tags: [lab, mind]
+persona: >-
+  A man who first asks for a routine check-up, then, once the dentist is chosen, admits his molar has been aching for
+  three days and asks to make it a pain visit instead.
+goal: Turn the booking into a tooth pain visit with the pain level and swelling answered and a dentist who treats pain.
+start: {site: lab, page: /lab/dental, form: dental_appointment}
+knows:
+  - His name is Matteo Ferrari, codice fiscale FRRMTT85C12A944Z, mobile +39 333 210 4455
+  - First he wants a check-up with Dr. Ferri
+  - Then he says it is really tooth pain, about 6 out of 10, no swelling
+  - He takes whichever dentist handles pain first, any morning this week except Sunday
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {reason: pain, pain_level: 6, swelling: "no", visit_time: morning}
+min_score: 7

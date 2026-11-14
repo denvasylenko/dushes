@@ -1,0 +1,41 @@
+name: lab_tax_return_simple_facts
+tags: [lab, facts]
+persona: >-
+  A taxpayer whose return is filled in except the refund account; she asks how big her refund is and when it will
+  be paid, then gives her bank account.
+goal: >-
+  Hear the refund the form calculated (27,600 NKR) read from the form, learn that refunds are paid within 6 weeks,
+  and have the refund account filled.
+start:
+  site: lab
+  page: /lab/norland-tax
+  form: tax_return_simple
+  values:
+    tax_id: "123456786"
+    first_name: Ingrid
+    last_name: Solberg
+    birth_date: "1979-03-08"
+    address: Bryggen 3
+    postcode: "5003"
+    city: Bergen
+    email: ingrid.solberg@example.no
+    marital_status: {id: single, name: Single}
+    employer_count: 1
+    employer_1_name: Vestland Energi AS
+    employer_1_gross: 520000
+    employer_1_withheld: 120000
+    dependent_count: 1
+    dependent_1_name: Sofie Solberg
+    dependent_1_birth_date: "2012-09-14"
+    deductions: [{id: pension, name: Private pension contributions}]
+    deduction_pension_amount: 30000
+knows:
+  - Her IBAN is NO93 8601 1117 947, in her own name, Ingrid Solberg
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {estimated_refund: "27600", account_holder: Ingrid Solberg}
+  says: [["27,600", "27600", "27 600"], ["6 weeks", "six weeks"]]
+  never_says: ["27,000", "28,000"]
+min_score: 7

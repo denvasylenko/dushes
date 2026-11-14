@@ -1,0 +1,34 @@
+name: heldout_lab_tax_return_simple_fix
+tags: [lab, fix, heldout]
+persona: >-
+  A man who already typed most of his return himself and asks the chat to check it; he then notices that he misspelt
+  his employer and gave his old postcode, and asks to correct both.
+goal: Correct the employer's name and the postcode, keeping everything else as it is.
+start:
+  site: lab
+  page: /lab/norland-tax
+  form: tax_return_simple
+  values:
+    tax_id: "123456786"
+    first_name: Lars
+    last_name: Nilsen
+    birth_date: "1972-05-26"
+    address: Fjellveien 40
+    postcode: "5003"
+    city: Bergen
+    email: lars.nilsen@example.no
+    marital_status: {id: single, name: Single}
+    employer_count: 1
+    employer_1_name: Fjord Logistcs
+    employer_1_gross: 450000
+    employer_1_withheld: 98000
+knows:
+  - "The employer is spelt Fjord Logistics AS"
+  - "He moved within Bergen: the postcode is 5015 (the street stays the same)"
+  - The pay and the tax withheld are right
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {employer_1_name: Fjord Logistics AS, postcode: "5015", city: Bergen, first_name: Lars}
+min_score: 7

@@ -1,0 +1,28 @@
+name: quote_reply_two
+tags: [quote]
+persona: >-
+  Someone halfway through a consumer loan application (500 000 for 36 months already chosen) who first asks for
+  the rate and the term. Then they select the rate in the answer with the note "too high", select the term with no
+  note, and ask whether it can be better.
+goal: Learn the rate and the term, then find out whether either can be improved.
+start:
+  page: /apply
+  form: loan_application
+  values:
+    loan_type: {id: consumer, name: Consumer loan}
+    loan_amount: "500000"
+    loan_term: {id: "36", name: 36 months}
+knows:
+  - A consumer loan of 500 000 for 36 months, already in the form
+  - Gets the salary at another bank today
+quote:
+  quotes:
+    - {pattern: "21[.,]9\\s?%", note: too high}
+    - {pattern: "36[\\s-]months?"}
+  ask: Can we do better?
+turns: 4
+expect:
+  answered_by: [form]
+  says: [["discount", "point", "salary", "insurance", "lower"]]
+  never_says: ["which number", "which one do you mean", "which rate"]
+min_score: 7

@@ -1,0 +1,18 @@
+name: lab_building_permit_offtopic
+tags: [lab, offtopic]
+persona: >-
+  A homeowner replacing his roof and windows who keeps drifting: he asks how much a skip permit on the street costs,
+  whether the assistant can recommend a good roofer, and whether it will rain next week. None of this is on the page.
+goal: Fill the property, applicant and works sections for a roof and windows renovation, as the owner.
+start: {site: lab, page: /lab/westmere-permit, form: building_permit}
+knows:
+  - Property at Lindenweg 17, postcode 40213, parcel WM-042-1187, a detached house, not listed
+  - He is the owner, Rafael Costa, phone +49 151 2345 6789, rafael.costa@example.com
+  - "Works: new roof tiles and insulation, and all windows replaced with triple glazing"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {parcel_number: WM-042-1187, applicant_role: owner, property_type: house, works_types: roof}
+  never_says: ["skip permit costs", "I recommend the roofer", "it will rain"]
+min_score: 7

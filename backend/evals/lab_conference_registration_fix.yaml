@@ -1,0 +1,29 @@
+name: lab_conference_registration_fix
+tags: [lab, fix]
+persona: >-
+  An organiser who has already filled the form for two people and notices mistakes: the second attendee's email has
+  a typo and her diet should be vegan, and she wants the security lab added for both.
+goal: Fix the second attendee's email and diet and add the workshop, keeping the rest as it is.
+start:
+  site: lab
+  page: /lab/conference
+  form: conference_registration
+  values:
+    ticket_type: {id: standard, name: Standard (450 EUR)}
+    attendee_count: "2"
+    attendee_1_name: Diego Martins
+    attendee_1_email: diego.martins@example.com
+    attendee_1_diet: {id: none, name: No special needs}
+    attendee_2_name: Elisa Fontes
+    attendee_2_email: elisa.fontes@exmaple.com
+    attendee_2_diet: {id: vegetarian, name: Vegetarian}
+knows:
+  - Elisa's email is elisa.fontes@example.com (the domain was mistyped)
+  - Elisa is vegan, not vegetarian
+  - Both want the Web security lab on Day 2
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {attendee_1_email: diego.martins@example.com, attendee_2_email: elisa.fontes@example.com, attendee_2_diet: vegan, workshops: ws_sec, total: "1060.00"}
+min_score: 7

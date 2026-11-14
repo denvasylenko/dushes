@@ -1,0 +1,19 @@
+name: lab_warranty_claim_voice
+tags: [lab, voice]
+persona: >-
+  A man dictating to his phone: no punctuation, the serial number read out as words with mishearings ("a bee dash
+  twenty twenty five dash seven kay ex nine three queue"), the postcode as "em one one a e".
+goal: File a repair claim for his laptop with the serial number the form accepts.
+start: {site: lab, page: /lab/warranty, form: warranty_claim}
+knows:
+  - Laptop, Aerobook 15 Pro, bought five months ago at Currys
+  - Serial number AB-2025-7KX93Q (dictated as words)
+  - The screen flickers and goes black after a few minutes of use; it was never dropped or wet
+  - He wants a repair; he will upload the receipt himself
+  - "Liam Walsh, liam.walsh@example.co.uk, 7 Piccadilly, Manchester, M1 1AE"
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {category: laptop, model: aero_15, serial_number: AB-2025-7KX93Q, resolution: repair, postcode: M1 1AE}
+min_score: 6

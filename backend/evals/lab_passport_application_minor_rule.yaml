@@ -1,0 +1,19 @@
+name: lab_passport_application_minor_rule
+tags: [lab, rule]
+persona: >-
+  A father who wants passports for both his sons and starts with the elder one, who is 17; after hearing the age
+  limit he applies for the younger one instead.
+goal: Learn that the elder son needs the adult form (16 and over), then fill the child section for the younger son.
+start: {site: lab, page: /lab/norland-child-passport, form: passport_application_minor}
+knows:
+  - "First a first passport for Emil Johansen, born 10 May 2009 in Westmere"
+  - "Then the younger son: Leo Johansen, born 3 August 2014 in Westmere, male, 152 cm, blue eyes, also a first passport"
+  - The photo of Leo is attached on the form
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["adult"], ["16"]]
+  fields: {child_first_names: Leo, child_birth_date: "2014-08-03", application_type: first}
+  never_says: ["Emil can use this form"]
+min_score: 7

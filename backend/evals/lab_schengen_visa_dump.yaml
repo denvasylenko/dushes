@@ -1,0 +1,22 @@
+name: lab_schengen_visa_dump
+tags: [lab, dump, stress]
+persona: >-
+  An impatient consultant who pastes everything about herself and her passport in one long message without line
+  breaks, then only answers what is still missing.
+goal: Have the personal details and passport tabs filled from the one message.
+start:
+  site: lab
+  page: /lab/norland-visa
+  form: schengen_visa
+  values: {photo: priya_photo.jpg}
+knows:
+  - "Her first message, all at once: Priya Raman, born 22 June 1990 in Chennai India, Indian, female, single, living at 48 Harbour Street, postcode 2000, Sydney, Australia, phone +61 412 555 018, priya.raman@example.com.au, employed at Kestrel Advisory, Level 9, 1 Bligh Street Sydney +61 2 5550 1800, ordinary passport Z4821937 issued by India on 2 February 2020, valid until 1 February 2030"
+  - She lives in Australia on a residence permit PR-77820431 valid until 30 June 2029
+  - She has no surname at birth different from the current one
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {surname: Raman, birth_date: "1990-06-22", marital_status: single, passport_number: Z4821937,
+           resides_elsewhere: true}
+min_score: 6

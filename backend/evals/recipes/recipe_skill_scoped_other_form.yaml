@@ -1,0 +1,8 @@
+name: recipe_skill_scoped_other_form
+recipe: skill-scoped-to-one-form
+form: barber_booking            # another form: the skill is not offered, so it is never used
+runs: 10
+turns:
+  - How do I prove my income? I'm a pensioner.
+expect:
+  never_tools: [use_skill]

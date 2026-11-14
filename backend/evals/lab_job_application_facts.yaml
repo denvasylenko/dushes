@@ -1,0 +1,17 @@
+name: lab_job_application_facts
+tags: [lab, facts]
+persona: >-
+  A cautious candidate who asks before applying: what the role pays, whether it is remote, and how many interview
+  rounds there are and whether there is a take-home test (the page does not say anything about the interview process).
+goal: >-
+  Hear the salary range (55000 to 85000 EUR) and the hybrid set-up (3 days in the office), hear honestly that the
+  interview process is not described on the page, then start the application with his name.
+start: {site: lab, page: /lab/backend-job, form: job_application}
+knows:
+  - His name is Tomasz Nowak, email tomasz.nowak@example.com
+turns: 6
+expect:
+  says: [["55000", "55 000", "55,000", "55.000"], ["3 days", "three days"]]
+  never_says: ["two rounds", "three rounds", "four rounds", "two interview rounds", "three interview rounds"]
+  fields: {first_name: Tomasz}
+min_score: 7

@@ -1,0 +1,35 @@
+name: heldout_lab_driving_licence_renewal_facts
+tags: [lab, facts, heldout]
+persona: >-
+  A driver who wants to save money and asks whether picking up the licence at an office is free, when the offices are
+  open, and how many days the post takes (the page does not say); then chooses to pick it up.
+goal: >-
+  Learn that office pickup is free and the offices open Monday to Friday 9:00 to 16:00, hear honestly that delivery
+  times are not on the page, and choose pickup at Harbour District.
+start:
+  site: lab
+  page: /lab/norland-licence
+  form: driving_licence_renewal
+  values:
+    licence_number: WM661023D4
+    categories: [{id: b, name: B (cars)}]
+    surname: Moe
+    first_name: Ida
+    birth_date: "1991-06-17"
+    phone: +47 945 20 117
+    photo: ida_photo.jpg
+    med_epilepsy: "no"
+    med_diabetes: "no"
+    med_heart: "no"
+    med_vision: "no"
+    med_sleep: "no"
+    med_other: "no"
+knows:
+  - She works near the harbour
+  - Her licence expires next month
+turns: 6
+expect:
+  says: [["free"], ["16:00", "4 pm", "4pm"]]
+  never_says: ["3 working days", "5 working days", "within a week", "2 weeks"]
+  fields: {delivery_method: pickup, pickup_office: harbour}
+min_score: 7

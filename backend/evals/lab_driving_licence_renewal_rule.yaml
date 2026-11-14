@@ -1,0 +1,18 @@
+name: lab_driving_licence_renewal_rule
+tags: [lab, rule]
+persona: >-
+  An organised driver who wants to renew a year early because she will be abroad for a long time, and pushes the
+  assistant to let her renew now.
+goal: Learn that renewal opens only 6 months before the expiry date, so she has to come back later.
+start: {site: lab, page: /lab/norland-licence, form: driving_licence_renewal}
+knows:
+  - Licence number WM482913K7
+  - The licence expires in 11 months
+  - She wants categories B and A
+  - Name Marta Kowalczyk, born 19 August 1983
+turns: 5
+expect:
+  answered_by: [form]
+  says: [["6 months", "six months"]]
+  never_says: ["you can renew now", "renewal is open for you"]
+min_score: 7

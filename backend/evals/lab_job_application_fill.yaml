@@ -1,0 +1,21 @@
+name: lab_job_application_fill
+tags: [lab, fill]
+persona: >-
+  A backend developer applying for the role, answering the assistant's questions one by one in plain sentences. She
+  currently works at her second job.
+goal: >-
+  Fill her personal details and a work history of two jobs, the current one marked as "I work here now" with no end
+  date, and say she needs no visa sponsorship.
+start: {site: lab, page: /lab/backend-job, form: job_application}
+knows:
+  - Maria Lopez, email maria.lopez@example.com, phone +31 6 11223344, lives in Utrecht
+  - "Job 1 (current): Backend Developer at Mollie since March 2022, still working there"
+  - "Job 2: Junior Python Developer at Bol.com from September 2019 to February 2022"
+  - She can already work in the Netherlands (EU citizen)
+  - Master's degree in Computer Science from TU Delft, 2019
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {first_name: Maria, job_1_company: Mollie, job_1_current: true, visa_sponsorship: "no"}
+min_score: 7

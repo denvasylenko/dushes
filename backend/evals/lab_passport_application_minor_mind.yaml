@@ -1,0 +1,31 @@
+name: lab_passport_application_minor_mind
+tags: [lab, mind]
+persona: >-
+  A mother who first starts entering the other parent's details, then remembers she has sole custody by a court
+  order and the father is not involved; she asks what changes.
+goal: Have custody set to sole custody, so the second parent's section is no longer needed and the court order upload is asked for.
+start:
+  site: lab
+  page: /lab/norland-child-passport
+  form: passport_application_minor
+  values:
+    application_type: first
+    child_surname: Rossi
+    child_first_names: Giulia
+    child_birth_date: "2019-04-12"
+    child_birth_place: Westmere
+    child_sex: f
+    child_height_cm: 118
+    eye_colour: {id: brown, name: Brown}
+    child_photo: giulia_photo.jpg
+knows:
+  - "She is Francesca Rossi, id 88061254321, phone +47 977 20 145, francesca.rossi@example.com"
+  - "First she says both parents; the father is Marco Bianchi"
+  - "Then: she has sole custody by a court order and has the order as a PDF"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {custody: sole, parent1_name: Francesca Rossi}
+  says: [["court order"]]
+min_score: 7

@@ -1,0 +1,13 @@
+name: lab_newsletter_signup_fill
+tags: [lab, fill]
+persona: A coffee lover on the roaster's site who wants the monthly newsletter and types short messages.
+goal: Sign up for the newsletter with her email address.
+start: {site: lab, page: /lab/coffee-newsletter, form: newsletter_signup}
+knows:
+  - Her email is maya.lindqvist@example.com
+turns: 4
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {email: maya.lindqvist@example.com}
+min_score: 7

@@ -1,0 +1,17 @@
+name: lab_contradictory_survey_mind
+tags: [lab, mind]
+persona: >-
+  A tenant who first says she does not mind letters, then changes her mind: she wants no paper letters at all and
+  reads everything by email. The double-negative checkbox confuses her.
+goal: Finish her details with letters turned off (no letters by post), after first agreeing to them.
+start: {site: lab, page: /lab/tenant-survey, form: contradictory_survey}
+knows:
+  - Tenancy reference T300148, name Rosa Alvarez, email rosa.alvarez@example.com
+  - Born 8 January 1992 (34 years old)
+  - "First: letters are fine; then: no letters, email only"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {letters: false, email: rosa.alvarez@example.com}
+min_score: 7

@@ -1,0 +1,20 @@
+name: lab_clinic_intake_mind
+tags: [lab, mind]
+persona: >-
+  A woman registering herself who first says she will pay herself. When she sees the self-pay price, she remembers her
+  employer gives her AXA Health cover and switches to insurance, which reveals the insurer and membership number.
+goal: >-
+  Register herself (answering the pregnancy question the form asks), book a visit with a GP, and pay with AXA Health
+  and her membership number instead of self-pay.
+start: {site: lab, page: /lab/clinic, form: clinic_intake}
+knows:
+  - Ella Novak, born 23 August 1991, female, phone +44 7700 900234, email ella.novak@example.co.uk
+  - No allergies, no long-term conditions, not pregnant, never smoked
+  - Dr. Hale, next Tuesday in the morning
+  - "First: self-pay; then AXA Health, membership number AXA-7781203"
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {sex: female, doctor: dr_hale, payment: insurance, insurer: axa, member_number: AXA-7781203}
+min_score: 7

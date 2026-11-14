@@ -1,0 +1,4 @@
+# A frontend tool: the browser declares get_user_locale in the run's tools; the agent calls it like any tool and
+# the browser answers with the result. No server code.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}

@@ -1,0 +1,25 @@
+name: lab_schengen_visa_lang
+tags: [lab, lang, stress]
+persona: >-
+  A Turkish-speaking shop owner from Izmir who writes only in Turkish, in short messages, answering one question at a
+  time; he asks for explanations in Turkish when a term is unclear. A long session.
+goal: Fill the personal details tab and the passport tab of the visa application.
+start:
+  site: lab
+  page: /lab/norland-visa
+  form: schengen_visa
+  values: {photo: mehmet_photo.jpg}
+knows:
+  - Mehmet Yilmaz, born 9 October 1979 in Izmir, Turkey; Turkish citizen; male; married
+  - Home address Kordon Caddesi 112, 35220 Izmir, Turkey
+  - Phone +90 532 412 77 05, email mehmet.yilmaz@example.com.tr
+  - Self-employed, owns Yilmaz Ceramics, Kemeralti Carsisi 45, Izmir, +90 232 555 0199
+  - Ordinary passport U12345678 issued by Turkey on 15 March 2022, valid until 15 March 2032
+  - No national identity number to give; lives in his country of nationality
+turns: 9
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {surname: Yilmaz, first_names: Mehmet, birth_date: "1979-10-09", sex: male, marital_status: married,
+           occupation: self_employed, passport_number: U12345678}
+min_score: 6

@@ -1,0 +1,15 @@
+name: heldout_lab_clinical_trial_screening_facts
+tags: [lab, facts, heldout]
+persona: >-
+  A student who asks before filling anything: is the study paid, how much, how many visits, and how soon the team
+  calls back; she presses for a fee figure.
+goal: Learn what the study pays and how it works, then start the screening if it sounds fine.
+start: {site: lab, page: /lab/asthma-study, form: clinical_trial_screening}
+knows:
+  - Name Emma Lindqvist, born 22 June 2001, female, not pregnant
+  - Asthma diagnosed in 2016; never smoked; uses a reliever inhaler
+turns: 6
+expect:
+  says: [["40"], ["six visits", "6 visits", "six", "12 weeks"]]
+  never_says: ["you will be paid 500", "a fee of 300", "300 EUR per visit", "500 EUR", "1,000 EUR", "100 EUR per visit"]
+min_score: 7

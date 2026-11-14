@@ -1,0 +1,15 @@
+name: lab_feedback_nps_fill
+tags: [lab, fill]
+persona: A happy customer whose gears were tuned the same day; he gives a 9 and does not want to be contacted.
+goal: Leave a 9 out of 10 with a short note, without agreeing to be contacted.
+start: {site: lab, page: /lab/bike-repair-feedback, form: feedback_nps}
+knows:
+  - "Score: 9"
+  - "Comment: fast gear tuning, friendly staff"
+  - He does not want to be contacted
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {score: "9", may_contact: false, contact_email: null}
+min_score: 7

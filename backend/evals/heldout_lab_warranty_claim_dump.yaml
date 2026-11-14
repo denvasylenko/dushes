@@ -1,0 +1,19 @@
+name: heldout_lab_warranty_claim_dump
+tags: [lab, dump, heldout, stress]
+persona: >-
+  A user who pastes one long message with everything about his TV and himself, including a short fault description
+  ("no picture") that the assistant needs to have expanded, and asks to fill it all.
+goal: Have the whole claim filled from that message, with a fault description long enough for the form.
+start: {site: lab, page: /lab/warranty, form: warranty_claim}
+knows:
+  - TV, Vista 55" OLED, bought one year ago at John Lewis
+  - Serial number TVK123456789
+  - "Fault: no picture; when asked, he adds that the sound works but the screen stays black since Saturday"
+  - Never dropped or wet; he wants a repair; he uploads the receipt himself
+  - "Oscar Bennett, oscar.bennett@example.co.uk, 01632 960 123, 45 Mill Lane, Oxford, OX1 2JD"
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {category: tv, model: vista_55, serial_number: TVK123456789, resolution: repair, postcode: OX1 2JD}
+min_score: 6

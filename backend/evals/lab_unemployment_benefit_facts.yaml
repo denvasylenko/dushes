@@ -1,0 +1,30 @@
+name: lab_unemployment_benefit_facts
+tags: [lab, facts]
+persona: >-
+  A warehouse worker made redundant who wants to know how much benefit he will get each month and for how long
+  (the page does not say), and how it is paid.
+goal: >-
+  Hear honestly that the amount and the duration are not on the page, learn that it is paid monthly to his bank
+  account, and fill his last job.
+start:
+  site: lab
+  page: /lab/norland-unemployment
+  form: unemployment_benefit
+  values:
+    first_name: Ahmed
+    last_name: Karimi
+    birth_date: "1984-12-09"
+    national_id: "84120954321"
+    phone: +47 941 30 552
+    email: ahmed.karimi@example.com
+    address: Industriveien 9, Westmere
+knows:
+  - "One job in the last 3 years: Harbour Freight AS, from 1 June 2021 to 31 October 2026"
+  - His last working day was 31 October 2026; the company cut his position (redundancy)
+  - He earned 32,000 NKR a month
+turns: 6
+expect:
+  fields: {job_1_employer: Harbour Freight AS, job_1_to: "2026-10-31", leaving_reason: redundancy}
+  says: [["monthly", "every month", "each month"]]
+  never_says: ["60%", "70%", "80%", "for 12 months", "for 2 years"]
+min_score: 7

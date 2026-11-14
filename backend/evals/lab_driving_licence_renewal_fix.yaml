@@ -1,0 +1,38 @@
+name: lab_driving_licence_renewal_fix
+tags: [lab, fix]
+persona: >-
+  A driver who filled the form herself, clicked "Yes" on the sleep disorder question by mistake and typed her postcode
+  wrong; she asks the chat to put both right.
+goal: Change the sleep question to "No" (no certificate needed then) and correct the delivery postcode.
+start:
+  site: lab
+  page: /lab/norland-licence
+  form: driving_licence_renewal
+  values:
+    licence_number: WM305518C2
+    categories: [{id: b, name: B (cars)}]
+    surname: Strand
+    first_name: Eva
+    birth_date: "1979-12-01"
+    phone: +47 934 12 008
+    photo: eva_photo.jpg
+    med_epilepsy: "no"
+    med_diabetes: "no"
+    med_heart: "no"
+    med_vision: "no"
+    med_sleep: "yes"
+    med_other: "no"
+    delivery_method: home
+    delivery_street: Parkveien 8
+    delivery_postcode: "4201"
+    delivery_city: Westmere
+knows:
+  - She has no sleep disorder; "Yes" was a slip
+  - "The right postcode is 4012"
+  - Her licence expires in three months
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {med_sleep: "no", delivery_postcode: "4012", delivery_street: Parkveien 8}
+min_score: 7

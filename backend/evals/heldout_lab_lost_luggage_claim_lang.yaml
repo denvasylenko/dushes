@@ -1,0 +1,17 @@
+name: heldout_lab_lost_luggage_claim_lang
+tags: [lab, lang, heldout]
+persona: >-
+  A French traveller who writes only in French; his backpack did not arrive in Lyon yesterday. He will upload the
+  baggage receipt himself and does not claim expenses.
+goal: File the flight, bag and delivery details for a delivery in Lyon.
+start: {site: lab, page: /lab/delayed-baggage, form: lost_luggage_claim}
+knows:
+  - "Flight AV815 yesterday, bag tag AV604418"
+  - "A green backpack (Osprey) with a laptop stand, clothes and a toiletry bag"
+  - "Deliver to Julien Moreau, 8 Rue de la Republique, 69002 Lyon, France; phone +33 6 98 76 54 32, email julien.moreau@example.fr"
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {flight_number: AV815, bag_type: backpack, country: FR, postcode: "69002"}
+min_score: 7

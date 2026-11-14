@@ -1,0 +1,16 @@
+name: lab_travel_insurance_fill
+tags: [lab, fill]
+persona: A mother planning a family holiday in Spain, giving the details as the assistant asks for them.
+goal: Get a Standard quote for the four of them for the trip and read the premium the form calculates.
+start: {site: lab, page: /lab/travel-insurance, form: travel_insurance}
+knows:
+  - Destination Spain, departing 1 July 2027 and returning 10 July 2027
+  - "Travellers: Anna Kowalczyk (born 12 May 1984), Piotr Kowalczyk (born 3 February 1982), Zofia Kowalczyk (born 20 September 2014), Jan Kowalczyk (born 7 January 2017)"
+  - Standard cover, no winter sports
+  - Email anna.kowalczyk@example.com
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {destinations: es, departure_date: "2027-07-01", return_date: "2027-07-10", traveller_count: 4, cover_level: standard, premium: "140.00"}
+min_score: 7

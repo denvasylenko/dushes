@@ -1,0 +1,17 @@
+name: lab_travel_insurance_facts
+tags: [lab, facts]
+persona: >-
+  Two friends going skiing; the user keeps asking "so how much is it in total?" and wants the exact figure, not an
+  estimate.
+goal: Get the real premium for a ski week in Austria with winter sports, read from the form.
+start: {site: lab, page: /lab/travel-insurance, form: travel_insurance}
+knows:
+  - Austria, 6 to 12 February 2027 (7 days)
+  - "Travellers: Lena Hofer (born 4 April 1995) and Mia Wagner (born 19 November 1996)"
+  - Basic cover with winter sports
+  - Email lena.hofer@example.at
+turns: 7
+expect:
+  says: [["42.00", "42 EUR", "42.0"]]
+  fields: {winter_sports: true, premium: "42.00"}
+min_score: 7

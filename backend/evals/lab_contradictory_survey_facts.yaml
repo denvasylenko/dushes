@@ -1,0 +1,14 @@
+name: lab_contradictory_survey_facts
+tags: [lab, facts]
+persona: >-
+  A wary tenant who asks: "it says everything is optional, so can I skip the tenancy reference? and do I really have
+  to give my phone, it says required?", when the survey closes, and whether the rent goes up next year (not on the page).
+goal: Learn which fields are really needed (the tenancy reference is, the phone is not), when the survey closes, and hear that rent plans are not on the page.
+start: {site: lab, page: /lab/tenant-survey, form: contradictory_survey}
+knows:
+  - She would rather not give her phone number
+turns: 6
+expect:
+  says: [["tenancy reference"], ["end of the month", "end of this month"]]
+  never_says: ["rent will go up by", "rent will rise by", "the phone is required"]
+min_score: 7

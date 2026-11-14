@@ -1,0 +1,27 @@
+name: heldout_lab_unemployment_benefit_offtopic
+tags: [lab, offtopic, heldout]
+persona: >-
+  A nurse whose fixed-term contract ended, who keeps asking unrelated things mid-way: can the assistant rewrite her
+  CV, which hospitals are hiring, and should she sue her employer. None of it is on the page.
+goal: Fill her work history and the leaving section while the assistant stays on the form and says what it cannot help with.
+start:
+  site: lab
+  page: /lab/norland-unemployment
+  form: unemployment_benefit
+  values:
+    first_name: Sigrid
+    last_name: Aune
+    birth_date: "1992-02-29"
+    national_id: "92022912345"
+    phone: +47 965 40 228
+    email: sigrid.aune@example.com
+    address: Sykehusveien 1, Westmere
+knows:
+  - "Two jobs: Westmere Hospital from 1 November 2024 to 31 October 2026, and Northgate Care Home from 1 August 2023 to 31 October 2024"
+  - Her fixed-term contract ended; last working day 31 October 2026
+turns: 7
+expect:
+  cards: [set_fields]
+  fields: {job_1_employer: Westmere Hospital, job_2_employer: Northgate Care Home, leaving_reason: contract_end}
+  never_says: ["you should sue", "is hiring", "here is your CV"]
+min_score: 7

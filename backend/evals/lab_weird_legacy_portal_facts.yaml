@@ -1,0 +1,14 @@
+name: lab_weird_legacy_portal_facts
+tags: [lab, facts]
+persona: >-
+  A confused tenant who asks what the codes mean ("what is D9? and C3?"), what Fld_07 is and where the reference
+  number is, and how long a disconnection takes and what it costs (the page does not say).
+goal: Understand the service codes and the cryptic labels; hear honestly that timing and fees are not on the page.
+start: {site: lab, page: /lab/utility-portal, form: weird_legacy_portal}
+knows:
+  - He is moving out at the end of the month and will probably need a disconnection
+turns: 6
+expect:
+  says: [["disconnection"], ["change of account holder"], ["meter number"], ["page 2"]]
+  never_says: ["takes 3 days", "takes 5 days", "disconnection fee is"]
+min_score: 7

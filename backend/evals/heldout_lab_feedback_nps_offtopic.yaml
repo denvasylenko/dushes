@@ -1,0 +1,17 @@
+name: heldout_lab_feedback_nps_offtopic
+tags: [lab, offtopic, heldout]
+persona: >-
+  A customer who gives a 6, then asks unrelated things mid-way (how much a full service costs, whether the shop is
+  open on Sundays; the page says neither), and gets back to the survey.
+goal: Leave a 6 with the comment that is required for it, without being contacted; hear honestly that prices and hours are not on the page.
+start: {site: lab, page: /lab/bike-repair-feedback, form: feedback_nps}
+knows:
+  - "Score: 6"
+  - "What could be better: the bike came back dirty and the chain was not oiled"
+  - He does not want to be contacted
+turns: 7
+expect:
+  cards: [set_fields]
+  fields: {score: "6", may_contact: false}
+  never_says: ["a full service costs", "open on Sundays from"]
+min_score: 7

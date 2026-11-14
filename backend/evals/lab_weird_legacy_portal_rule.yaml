@@ -1,0 +1,18 @@
+name: lab_weird_legacy_portal_rule
+tags: [lab, rule]
+persona: >-
+  A new tenant who needs water connected. He first asks for the connection from last Monday (backdated) and, when
+  told it must be today or later, gives the date the way the label shows it: "01/12/26".
+goal: Request a new connection (A1) effective 1 December 2026, after hearing that a past date is not allowed.
+start: {site: lab, page: /lab/utility-portal, form: weird_legacy_portal}
+knows:
+  - Name Omar Haddad, phone +44 7700 900555
+  - House number 27, postcode 4417
+  - "He first wants the connection from last Monday; then 01/12/26 (1 December 2026)"
+  - He accepts the terms of supply
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {svc_code: A1, eff_dt: "2026-12-01", txt1: "27", txt2: "4417"}
+min_score: 7

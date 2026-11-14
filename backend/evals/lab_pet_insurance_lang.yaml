@@ -1,0 +1,19 @@
+name: lab_pet_insurance_lang
+tags: [lab, lang]
+persona: >-
+  A Dutch woman from Utrecht who writes only in Dutch, informally, and writes her postcode without a space. She
+  expects answers in Dutch.
+goal: Insure her cat on the Plus plan and learn the monthly price.
+start: {site: lab, page: /lab/pet-insurance, form: pet_insurance}
+knows:
+  - "Her cat Pip, a Maine Coon, born 15 March 2022, neutered"
+  - Microchip 528140000654321
+  - No known illness or injury
+  - Plus plan, starting next Monday
+  - "She is Femke de Vries, femke.devries@example.nl, +31 6 23456789, postcode 3511LX"
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {species: cat, breed: maine_coon, microchip: "528140000654321", plan: plus, monthly_price: "21.00"}
+min_score: 7

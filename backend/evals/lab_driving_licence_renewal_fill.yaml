@@ -1,0 +1,19 @@
+name: lab_driving_licence_renewal_fill
+tags: [lab, fill]
+persona: A commuter whose car licence expires soon; he answers each question and asks what the renewal costs.
+goal: Fill the renewal with express post to his home and hear the fee the form shows (40 EUR).
+start: {site: lab, page: /lab/norland-licence, form: driving_licence_renewal}
+knows:
+  - Licence number WM123456A1, expires in two months, category B only
+  - Name Tobias Engen, born 3 March 1987, phone +47 922 41 380, email tobias.engen@example.no
+  - "Health: no to every question; no glasses"
+  - "Express post to Elvegata 14, postcode 4021, Westmere"
+  - He has a new photo ready (already attached on the form)
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {licence_number: WM123456A1, categories: b, delivery_method: express, delivery_postcode: "4021",
+           med_other: "no"}
+  says: [["40 EUR", "EUR 40", "40 euros"]]
+min_score: 7

@@ -95,12 +95,60 @@ def summarize(runs: list[dict], prices: dict | None) -> dict:
     out = {"ttft_ms": ttft, "turn_ms": sum(r["total_ms"] for r in runs), "model_ms": sum(r["model_ms"] for r in runs),
            "tool_ms": sum(r["tool_ms"] for r in runs), "runs": len(runs),
            "tools": sum(len(r["tools"]) for r in runs), "model_calls": sum(len(r["models"]) for r in runs),
+           "models_used": [{"model": m.get("model")} for r in runs for m in r["models"] if m.get("model")],
            "tokens": tok, "cache_hit_rate": round(tok["cache_read"] / tok["input"], 3) if tok["input"] else None}
     if prices:
         fresh = max(0, tok["input"] - tok["cache_read"])
         out["cost_usd"] = round((fresh * prices.get("input", 0) + tok["cache_read"] * prices.get("cache_read", 0)
                                  + tok["output"] * prices.get("output", 0)) / 1e6, 4)
     return out
+
+
+SPEED = Path(__file__).resolve().parents[2] / "site" / "src" / "data" / "benchmarks" / "speed.json"
+
+
+def model_label(model_id: str) -> str:
+    """claude-haiku-5-5 -> Claude Haiku 5.5; other ids are kept."""
+    import re
+    m = re.fullmatch(r"claude-([a-z]+)-(\d+)(?:-(\d+))?", model_id or "")
+    return f"Claude {m.group(1).title()} {m.group(2)}{'.' + m.group(3) if m.group(3) else ''}" if m else (model_id or "")
+
+
+def git_commit(base: str) -> str:
+    """This checkout's short sha (with +dirty for uncommitted changes) when the server runs from it, else ""."""
+    import subprocess
+    if not any(h in base for h in ("127.0.0.1", "localhost")):
+        return ""
+    try:
+        sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True).stdout.strip()
+        return sha + ("+dirty" if dirty else "")
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+
+
+def site_speed(rows: list[dict], a: argparse.Namespace, argv: list[str], target: Path = SPEED) -> dict:
+    """The docs' Benchmarks page numbers: medians per scenario; label and short are kept from the file."""
+    old = json.loads(target.read_text()) if target.exists() else {}
+    names = {x["name"]: x for x in old.get("scenarios") or []}
+    models = [m.get("model") for r in rows for x in r["runs"] if "error" not in x for m in x.get("models_used") or []]
+    out = []
+    for r in rows:
+        ok = [x for x in r["runs"] if "error" not in x]
+        med = lambda f: statistics.median(f(x) for x in ok)  # noqa: E731
+        prev = names.get(r["scenario"], {})
+        out.append({"name": r["scenario"], "label": prev.get("label", r["scenario"]), "short": prev.get("short", r["scenario"]),
+                    "ttft_s": round(r["ttft_median_ms"] / 1000, 1) if r["ttft_median_ms"] is not None else None,
+                    "turn_s": round(r["turn_median_ms"] / 1000, 1), "tools": med(lambda x: x["tools"]),
+                    "tokens_in": round(med(lambda x: x["tokens"]["input"])), "tokens_out": round(med(lambda x: x["tokens"]["output"])),
+                    "cache": round(med(lambda x: x["cache_hit_rate"] or 0), 2)})
+    data = {"source": "backend/scripts/bench.py " + " ".join(argv), "date": datetime.now().strftime("%Y-%m-%d"),
+            "model": model_label(max(set(models), key=models.count)) if models else old.get("model", ""),
+            "commit": a.commit if a.commit is not None else git_commit(a.base), "repeat": a.repeat, "scenarios": out}
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+    print(f"site numbers: {target}")
+    return data
 
 
 def pct(values: list[float], p: float) -> float | None:
@@ -120,6 +168,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--max-ttft", type=float, help="seconds: fail when a median time to first token is above")
     ap.add_argument("--max-turn", type=float, help="seconds: fail when a median turn time is above")
     ap.add_argument("--prices", type=Path, help='JSON per 1M tokens: {"input": .., "output": .., "cache_read": ..}')
+    ap.add_argument("--site", action="store_true", help="write the medians to the docs: site/src/data/benchmarks/speed.json")
+    ap.add_argument("--commit", help="the server's git short sha (default: this checkout's, for a local server; else empty)")
     a = ap.parse_args(argv)
     prices = json.loads(a.prices.read_text()) if a.prices else None
     client = Client(a.base, (a.user, a.password) if a.password else None)
@@ -165,6 +215,8 @@ def main(argv: list[str]) -> int:
         if a.max_turn and med_turn > a.max_turn * 1000:
             failed.append(f"{name}: turn {med_turn / 1000:.1f}s > {a.max_turn}s")
 
+    if a.site and rows:
+        site_speed(rows, a, argv)
     out = Path(__file__).parent / f"bench-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
     out.write_text(json.dumps({"base": a.base, "repeat": a.repeat, "prices": prices, "scenarios": rows}, indent=1))
     print(f"\nsaved {out}")

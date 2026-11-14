@@ -1,0 +1,17 @@
+name: lab_unemployment_benefit_dump
+tags: [lab, dump, stress]
+persona: >-
+  A tired man who pastes his whole situation in one long message: personal details, three jobs, how the last one
+  ended and his bank account; then only fills gaps.
+goal: Have the personal details, the three jobs and the leaving section filled from that one message.
+start: {site: lab, page: /lab/norland-unemployment, form: unemployment_benefit}
+knows:
+  - "His first message, all at once: Marek Duda born 14 May 1981, id 81051412345, phone +47 926 77 301, marek.duda@example.com, Fjordgata 3 Westmere; jobs: Westmere Shipyard from 1 March 2024 to 31 August 2026, before that Nordic Steel AS from 1 January 2023 to 29 February 2024, and Port Aldis Logistics from 1 May 2022 to 31 December 2022; dismissed by the shipyard, last day 31 August 2026; IBAN NO93 8601 1117 947 in his name"
+  - He wants full-time work
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {last_name: Duda, job_1_employer: Westmere Shipyard, job_2_to: "2024-02-29", job_3_employer: Port Aldis Logistics,
+           leaving_reason: dismissed}
+min_score: 6

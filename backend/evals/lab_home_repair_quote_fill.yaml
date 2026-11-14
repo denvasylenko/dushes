@@ -1,0 +1,16 @@
+name: lab_home_repair_quote_fill
+tags: [lab, fill]
+persona: A homeowner who wants the window frames and doors of his house painted and answers each question plainly.
+goal: Request a standard painting quote for doors and window frames at his house, with two preferred dates.
+start: {site: lab, page: /lab/handyman, form: home_repair_quote}
+knows:
+  - "Paint the doors and window frames on the ground floor of his house, no hurry"
+  - House at Dorpsstraat 3, 1234 AB Monnickendam, ground floor; park in the driveway
+  - First choice next Monday, second choice next Wednesday, any time of day
+  - His name is Henk Mulder, phone +31 6 77889900, email henk.mulder@example.nl
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {repair_type: painting, repair_subtype: doors, property_type: house, urgency: standard, time_slot: any}
+min_score: 7

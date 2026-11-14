@@ -1,0 +1,19 @@
+name: lab_home_repair_quote_rule
+tags: [lab, rule]
+persona: >-
+  An apartment owner who wants loose roof tiles fixed above her flat. When told that FixRight does no roof work on
+  apartments because the building manages the roof, she accepts it and asks for her living room walls to be painted
+  instead.
+goal: Hear that roof work is not done for apartments, then request an interior painting job for her apartment.
+start: {site: lab, page: /lab/handyman, form: home_repair_quote}
+knows:
+  - "First request: loose roof tiles above her top-floor apartment"
+  - "Instead: paint the living room and hallway walls, no rush (standard)"
+  - Apartment at Oudegracht 45, 3511 AB Utrecht, 4th floor, there is a lift
+  - Any weekday next week in the morning
+  - Her name is Eva Smit, phone +31 6 55667788, email eva.smit@example.nl
+turns: 8
+expect:
+  cards: [set_fields]
+  fields: {repair_type: painting, repair_subtype: interior, property_type: apartment, urgency: standard}
+min_score: 7

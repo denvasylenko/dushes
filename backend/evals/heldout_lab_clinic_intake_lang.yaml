@@ -1,0 +1,18 @@
+name: heldout_lab_clinic_intake_lang
+tags: [lab, lang, heldout]
+persona: >-
+  A Turkish-speaking mother who writes every message in Turkish only and registers her 14-year-old son; she asks for
+  the children's doctor and pays herself.
+goal: Register the son with herself as the guardian and book a first visit with Dr. Lind, paying self-pay.
+start: {site: lab, page: /lab/clinic, form: clinic_intake}
+knows:
+  - Son Emre Yilmaz, born 9 April 2012, male, phone +44 7700 900567
+  - She is Ayse Yilmaz, his mother, phone +44 7700 900568
+  - Emre has asthma, no allergies, uses a salbutamol inhaler when needed
+  - Dr. Lind, next Friday in the afternoon; self-pay
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {first_name: Emre, guardian_relation: mother, doctor: dr_lind, payment: self, conditions: asthma}
+min_score: 7

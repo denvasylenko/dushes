@@ -1,0 +1,42 @@
+name: lab_b2b_purchase_order_rule
+tags: [lab, rule]
+persona: >-
+  Lisa, a buyer whose company details are already in the form, with a small order (two lines, about 2400 EUR). She wants
+  to pay in 30 days and to be her own approver. When told Net 30 is only for orders above 5000 EUR and the approver must
+  be someone else, she picks prepayment and names her finance director.
+goal: >-
+  Hear both rules, then finish with prepayment and her finance director as the approver.
+start:
+  site: lab
+  page: /lab/purchase-order
+  form: b2b_purchase_order
+  values:
+    company_name: Hartmann Office B.V.
+    registration_number: "81234567"
+    vat_id: NL123456789012
+    registration_country: {id: NL, name: Netherlands}
+    contact_first_name: Lisa
+    contact_last_name: Hartmann
+    contact_email: lisa.hartmann@hartmann-office.example
+    contact_phone: +31 20 555 0101
+    billing_attention: Accounts payable
+    billing_street: Herengracht 200
+    billing_postcode: 1016 BS
+    billing_city: Amsterdam
+    billing_country: {id: NL, name: Netherlands}
+    invoice_email: invoices@hartmann-office.example
+    same_as_billing: true
+knows:
+  - Delivery ten days from today, a weekday
+  - "Line 1: ABC-12345, A4 copy paper, 60 boxes at 24.50 EUR"
+  - "Line 2: TON-55120, toner cartridge LX-9, 10 pieces at 89.00 EUR"
+  - "First wants Net 30; then prepayment by bank transfer"
+  - PO reference PO-2026-118; refund account holder Hartmann Office B.V., IBAN NL91ABNA0417164300
+  - "First wants Lisa Hartmann (lisa.hartmann@hartmann-office.example) as the approver; then Marc Visser, finance director, marc.visser@hartmann-office.example"
+turns: 9
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["5000", "5 000", "5,000", "5.000"]]
+  fields: {payment_terms: prepay, approver_email: marc.visser@hartmann-office.example}
+min_score: 6

@@ -1,0 +1,23 @@
+name: heldout_lab_moving_service_facts
+tags: [lab, facts, heldout]
+persona: >-
+  A price-conscious mover who asks how much more a Saturday costs, what storage costs, and whether broken items are
+  insured and up to what amount (the page says nothing about insurance). He decides on a Saturday with 2 weeks of
+  storage and wants the final estimate.
+goal: >-
+  Hear that weekends cost 25% more and storage is 40 EUR a week, hear honestly that insurance is not on the page, then
+  have the move filled and hear the estimate the form calculates (970 EUR).
+start: {site: lab, page: /lab/movers, form: moving_service}
+knows:
+  - From Kastanienallee 3, 10435 Berlin, 2nd floor, no lift
+  - To Boxhagener Strasse 60, 10245 Berlin, 1st floor, with a lift
+  - A Saturday three weeks from now
+  - "Items: 30 boxes, 2 beds, 1 mirror (fragile)"
+  - No packing service, 2 weeks of storage
+turns: 8
+expect:
+  cards: [set_fields]
+  says: [["25%"], ["40 EUR", "40 euro"], ["970"]]
+  never_says: ["insured up to", "insurance covers up to", "1000 EUR per item", "500 EUR per item"]
+  fields: {origin_lift: "no", destination_lift: "yes", packing_service: false}
+min_score: 7

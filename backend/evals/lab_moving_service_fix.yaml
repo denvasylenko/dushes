@@ -1,0 +1,18 @@
+name: lab_moving_service_fix
+tags: [lab, fix]
+persona: >-
+  A user who fills the destination address and then corrects it twice: the house number was swapped (12 instead of 21)
+  and, after checking with the landlord, the new building does have a lift.
+goal: Have the destination address corrected to Bergmannstrasse 21 with a lift, each change shown on a card.
+start: {site: lab, page: /lab/movers, form: moving_service}
+knows:
+  - From Weserstrasse 10, 12047 Berlin, ground floor
+  - "To Bergmannstrasse 12 (then corrects to 21), 10961 Berlin, 4th floor"
+  - "First says there is no lift at the new place; then corrects: there is a lift"
+  - Moving in ten days
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {destination_street: Bergmannstrasse 21, destination_lift: "yes", destination_postcode: "10961"}
+min_score: 7

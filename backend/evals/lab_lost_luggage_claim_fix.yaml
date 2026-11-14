@@ -1,0 +1,26 @@
+name: lab_lost_luggage_claim_fix
+tags: [lab, fix]
+persona: >-
+  A traveller in Lisbon who gives her postcode without the hyphen ("1100148") and asks for 260 EUR of expenses for
+  six and a half days; when told the format and the 200 EUR cap she corrects both.
+goal: Finish the delivery and expenses tab with the Portuguese postcode 1100-148 and expenses capped at 200 EUR.
+start:
+  site: lab
+  page: /lab/delayed-baggage
+  form: lost_luggage_claim
+  values:
+    flight_number: AV455
+    bag_tag: AV310992
+    bag_type: {id: soft, name: Soft suitcase}
+    bag_colour: {id: grey, name: Grey}
+    contents: Work clothes, a hair dryer and two books
+knows:
+  - "Deliver to Marta Silva, Rua Augusta 50, Lisbon, Portugal; phone +351 912 000 333, email marta.silva@example.pt"
+  - "First postcode 1100148, then 1100-148"
+  - "First asks for 260 EUR, then accepts 200 EUR; IBAN PT50 0002 0123 1234 5678 9015 4, account holder Marta Silva"
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {country: PT, postcode: 1100-148, claim_expenses: true, expenses_amount: 200}
+min_score: 7

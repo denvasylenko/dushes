@@ -1,0 +1,19 @@
+name: lab_school_enrollment_voice
+tags: [lab, voice, stress]
+persona: >-
+  A father dictating by voice while driving: no punctuation, no capitals, the PESEL said digit by digit in words
+  ("one eight two five one four zero one two three three"), the postcode as "thirty one dash one four seven" and the
+  phone as "plus four eight five one two three four five six seven eight".
+goal: Fill the child's tab with the PESEL, birth date and address from the dictation.
+start: {site: lab, page: /lab/school-krakow, form: school_enrollment}
+knows:
+  - "son jan kowalski born fourteenth of may twenty eighteen grade three"
+  - "pesel one eight two five one four zero one two three three"
+  - "address dluga twelve flat four krakow postcode thirty one dash one four seven"
+  - "he is the father piotr kowalski phone plus four eight five one two three four five six seven eight email piotr.kowalski@example.pl"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {child_pesel: "18251401233", child_birth_date: "2018-05-14", postcode: 31-147, city: Krakow}
+min_score: 6

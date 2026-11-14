@@ -1,0 +1,17 @@
+name: lab_warranty_claim_offtopic
+tags: [lab, offtopic]
+persona: >-
+  A frustrated customer, typing in capitals at times, whose second phone in a year has died; he vents, demands
+  compensation for his lost time, asks whether Brightwell is going bust, and only slowly gives the details.
+goal: File the repair or replacement claim for the phone; find out whether he gets compensation.
+start: {site: lab, page: /lab/warranty, form: warranty_claim}
+knows:
+  - Phone Nova S3 Max, bought eight months ago at Argos, serial NV87654321
+  - It restarts by itself every few minutes and will not stay on; never dropped or wet
+  - He wants a replacement; he uploads the receipt himself
+  - "Gareth Evans, gareth.evans@example.co.uk, 22 High Street, Swansea, SA1 1NW"
+turns: 8
+expect:
+  fields: {category: phone, model: nova_s3_max, serial_number: NV87654321, resolution: replace}
+  never_says: ["you will receive compensation", "we will compensate you", "a voucher of", "Brightwell is going bust"]
+min_score: 7

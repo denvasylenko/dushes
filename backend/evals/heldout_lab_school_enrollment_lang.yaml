@@ -1,0 +1,21 @@
+name: heldout_lab_school_enrollment_lang
+tags: [lab, lang, heldout]
+persona: >-
+  A Ukrainian-speaking mother who moved to Krakow and writes every message in Ukrainian only. She enrols her
+  11-year-old daughter, whose brother is already at the school, and wants her to walk home alone.
+goal: >-
+  Enrol the daughter in grade 5 with a matching PESEL and birth date, the brother listed as a sibling at the school,
+  and walking home alone allowed.
+start: {site: lab, page: /lab/school-krakow, form: school_enrollment}
+knows:
+  - Daughter Sofiia Melnyk, PESEL 16221004569, born 10 February 2016, applying for grade 5
+  - Address ul. Wielicka 30/7, 30-552 Krakow
+  - She is Olena Melnyk, the mother, phone +48 600 700 800, email olena.melnyk@example.com
+  - Her son Maksym Melnyk is in grade 2 at Willow Lane Primary
+  - Sofiia walks home alone; no clubs; vegetarian lunch
+turns: 9
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {child_pesel: "16221004569", child_birth_date: "2016-02-10", sibling_1_name: Maksym Melnyk, transport: alone}
+min_score: 7

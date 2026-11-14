@@ -1,0 +1,34 @@
+name: lab_building_permit_rule
+tags: [lab, rule]
+persona: >-
+  An owner whose builder is free next week and who wants the works to start then; she accepts the earliest allowed
+  date once the assistant explains the 30-day rule.
+goal: Schedule a kitchen refit with a start date at least 30 days from today, a 2-month duration and the estimated cost filled.
+start:
+  site: lab
+  page: /lab/westmere-permit
+  form: building_permit
+  values:
+    property_street: Rosenstrasse 3
+    property_postcode: "40477"
+    parcel_number: WM-118-0450
+    property_type: {id: flat, name: Flat in a block}
+    applicant_role: owner
+    owner_name: Claire Dubois
+    owner_phone: +49 160 555 0142
+    owner_email: claire.dubois@example.com
+    works_types: [{id: interior, name: Interior refit}]
+    works_description: New kitchen and bathroom fittings, no walls moved
+    plans: kitchen_plans.pdf
+knows:
+  - "She first wants to start next Monday"
+  - "If refused, she starts on the earliest allowed day"
+  - The works take 2 months and cost about 18,000 EUR
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["30 days"]]
+  never_says: ["next Monday is fine", "you can start next week"]
+  fields: {permit_fee: "180"}
+min_score: 7

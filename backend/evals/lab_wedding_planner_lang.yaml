@@ -1,0 +1,18 @@
+name: lab_wedding_planner_lang
+tags: [lab, lang]
+persona: >-
+  A Polish-speaking bride who writes every message in Polish only, warm and detailed, planning a garden wedding
+  without a ceremony on the estate (they marry in church first).
+goal: Fill the enquiry for 80 guests (70 adults, 10 children) on Saturday 12 June 2027 with the garden menu.
+start: {site: lab, page: /lab/estate-weddings, form: wedding_planner}
+knows:
+  - Partners Zofia Wisniewska and Michal Kaczmarek, email zofia.w@example.pl, phone +48 512 345 678
+  - Saturday 12 June 2027, 80 guests, no ceremony on the estate
+  - 70 adults with the garden (vegetarian) menu, 10 children with the mini classic menu
+  - A string quartet, 12 guest rooms
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {wedding_date: "2027-06-12", adult_menu: garden, kids_menu: mini, ceremony_on_site: false}
+min_score: 7

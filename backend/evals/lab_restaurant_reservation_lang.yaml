@@ -1,0 +1,18 @@
+name: lab_restaurant_reservation_lang
+tags: [lab, lang]
+persona: >-
+  A Portuguese-speaking mother in Lisbon who writes only in Portuguese and books a weekend family lunch; her toddler
+  needs a high chair.
+goal: Book a table for 4 next Saturday at the 13:30 lunch, with one high chair.
+start: {site: lab, page: /lab/lisbon-seafood, form: restaurant_reservation}
+knows:
+  - "4 people: 3 adults and 1 toddler, next Saturday, lunch at 13:30"
+  - One high chair
+  - Name Beatriz Santos, phone +351 912 345 678
+  - Her husband is allergic to shellfish
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {party_size: 4, time_slot: l1330, children: true, high_chairs: 1}
+min_score: 7

@@ -1,0 +1,18 @@
+name: lab_dental_appointment_rule
+tags: [lab, rule]
+persona: >-
+  A busy nurse who works weekdays and asks for a cleaning on Sunday; when told it is closed she asks for Wednesday
+  afternoon; she settles for Wednesday morning once both are explained.
+goal: Book a professional cleaning in a slot the practice is actually open.
+start: {site: lab, page: /lab/dental, form: dental_appointment}
+knows:
+  - Her name is Chiara Esposito, codice fiscale SPSCHR92M50A944P, mobile +39 320 778 1234
+  - She wants a professional cleaning with the hygienist
+  - "First choice: next Sunday; second: next Wednesday afternoon; if both are refused, next Wednesday morning"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {reason: cleaning, dentist: conti, visit_time: morning}
+  never_says: ["open on Sunday", "Wednesday afternoon is fine"]
+min_score: 7

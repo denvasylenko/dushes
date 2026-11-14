@@ -1,0 +1,36 @@
+name: lab_residence_permit_rule
+tags: [lab, rule]
+persona: >-
+  A young researcher who only now noticed that her long-stay visa expired last month and wants the chat to submit the
+  renewal online anyway.
+goal: >-
+  Learn that with an expired visa she cannot apply online and must book an appointment at the prefecture, without
+  the assistant pretending otherwise.
+start:
+  site: lab
+  page: /lab/val-daurore-permit
+  form: residence_permit
+  values:
+    surname: Petrovic
+    given_names: Ana
+    birth_date: "1999-08-21"
+    birth_place: Novi Sad, Serbia
+    nationality: Serbian
+    sex: f
+    phone: +33 6 45 22 18 90
+    email: ana.petrovic@example.com
+    street: 7 rue des Tanneurs
+    postcode: "38100"
+    city: Val-d'Aurore
+    address_proof_type: {id: rent, name: Rent receipt or lease}
+    address_proof: lease.pdf
+knows:
+  - Her current visa is a long-stay visa (VLS-TS), number 99FR4471203
+  - It expired on the 3rd of last month
+  - Passport AB4471203 valid until 2031
+turns: 5
+expect:
+  says: [["appointment"], ["expired"]]
+  never_says: ["you can still apply online", "I submitted"]
+  fields: {current_visa_type: vls_ts}
+min_score: 7

@@ -1,0 +1,22 @@
+name: lab_b2b_purchase_order_fix
+tags: [lab, fix, stress]
+persona: >-
+  An office manager going through the buyer tab in a long session who makes several slips and corrects them along the
+  way: she first gives a Belgian VAT id although the company is registered in the Netherlands, then mistypes her own
+  email, and later changes the company size.
+goal: >-
+  Have the buyer tab completed with the corrected VAT id (NL), the corrected email and the final company size, with
+  each correction shown on a card.
+start: {site: lab, page: /lab/purchase-order, form: b2b_purchase_order}
+knows:
+  - Company De Boer Bouw B.V., chamber of commerce number 70112233, registered in the Netherlands, construction
+  - "First VAT id given: BE0123456789; when told it must match the country, the right one is NL004455667788"
+  - "Contact Jan de Boer, purchasing officer, phone +31 30 555 0202"
+  - "First email: jan.deboer@deboerbouw.exmaple; then corrects it to jan.deboer@deboerbouw.example"
+  - "First says 10 to 49 staff; later corrects to 50 to 249 staff"
+turns: 9
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {vat_id: NL004455667788, contact_email: jan.deboer@deboerbouw.example, company_size: "50", registration_country: NL}
+min_score: 6

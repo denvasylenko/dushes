@@ -1,0 +1,18 @@
+name: lab_newsletter_signup_offtopic
+tags: [lab, offtopic]
+persona: >-
+  A chatty user who wants to give her full name and birthday "so you can send me a birthday treat" and asks which
+  coffee goes best with a moka pot, then gets back to signing up.
+goal: Subscribe to the newsletter; learn that the form only takes an email (there is nowhere to put the name or birthday).
+start: {site: lab, page: /lab/coffee-newsletter, form: newsletter_signup}
+knows:
+  - Her name is Priya Raman and her birthday is 2 April
+  - Her email is priya.raman@example.org
+  - She brews with a moka pot every morning
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {email: priya.raman@example.org}
+  never_says: ["birthday treat is saved", "I saved your birthday"]
+min_score: 7

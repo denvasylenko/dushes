@@ -1,0 +1,15 @@
+name: heldout_lab_newsletter_signup_facts
+tags: [lab, facts, heldout]
+persona: >-
+  A cautious user who asks before subscribing: how often the emails come, whether she can unsubscribe, and whether
+  subscribers get a discount on beans and how much a bag costs (the page does not say).
+goal: Learn how often the newsletter goes out and how to unsubscribe, hear honestly that discounts and prices are not on the page, then subscribe.
+start: {site: lab, page: /lab/coffee-newsletter, form: newsletter_signup}
+knows:
+  - Her email is lena.brandt@example.com
+turns: 6
+expect:
+  says: [["once a month", "one email a month", "monthly"], ["unsubscribe"]]
+  never_says: ["10% off", "15% off", "20% off", "subscriber discount of"]
+  fields: {email: lena.brandt@example.com}
+min_score: 7

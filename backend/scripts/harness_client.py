@@ -256,10 +256,11 @@ class Visit:
     page (and its form), navigate directives move the visit, a hand-off runs the form agent once the form is
     open, cards are accepted and applied through the form backend, questions are answered by `answer`."""
 
-    def __init__(self, http: httpx.Client, path: str = "/", answer: Answer | None = None):
+    def __init__(self, http: httpx.Client, path: str = "/", answer: Answer | None = None, site: str = "/site"):
         self.http = http
+        self.site = site   # where the site's Dushes is mounted: /site (Main Street) or /lab (the Form Lab)
         self.thread = str(uuid.uuid4())
-        self.pages = {p["path"]: p for p in http.get("/site/map").json()["pages"]}
+        self.pages = {p["path"]: p for p in http.get(f"{site}/map").json()["pages"]}
         self.answer = answer or (lambda q: None)
         self.path = ""
         self.form: Form | None = None
@@ -269,6 +270,10 @@ class Visit:
         self.tools: list[tuple[str, dict]] = []
         self.errors: list[str] = []
         self.messages: list[dict] = []     # the conversation as the server keeps it: {role, content, agent?}
+        self.tokens = {"input": 0, "output": 0, "cache_read": 0}   # the assistant's, from the server's run_stats
+        self.sources: list[dict] = []      # every source chip shown under an answer
+        self.stats: list[dict] = []        # per run: ttft_ms, total_ms, tools, tool_errors, output_tokens, model_ms
+        self.replies: list[tuple[str, str]] = []   # (message id, text) of every assistant reply, as the widget keeps them
         self.go(path)
 
     # ------------------------------------------------------------ the page
@@ -300,9 +305,15 @@ class Visit:
         self.log.append(f"📎 attached {r['filename']}")
 
     # ------------------------------------------------------------ the chat
-    def say(self, text: str) -> None:
-        self.log.append(f"\n👤 {text}")
-        self._run({"threadId": self.thread, "messages": [{"role": "user", "content": text}], "state": self.state()})
+    def say(self, text: str, reply_to: dict | list | None = None) -> None:
+        """reply_to: {message_id, quote} or a list of {message_id, quote, note?}: a reply to quotes the user selected."""
+        quotes = reply_to if isinstance(reply_to, list) else [reply_to] if reply_to else []
+        self.log.append(f"\n👤 {text}" + "".join(f"  (replying to the quote \"{q.get('quote')}\"" + (f" with the note \"{q['note']}\"" if q.get("note") else "")
+                                                + ")" for q in quotes))
+        body: dict[str, Any] = {"threadId": self.thread, "messages": [{"role": "user", "content": text}], "state": self.state()}
+        if reply_to:
+            body["forwardedProps"] = {"reply_to": reply_to}
+        self._run(body)
 
     def _resume(self, reply: dict, depth: int) -> None:
         self._run({"threadId": self.thread, "state": self.state(), "forwardedProps": {"command": {"resume": reply}}}, depth + 1)
@@ -315,11 +326,12 @@ class Visit:
         calls: dict[str, list] = {}
         interrupt = directive = None
         try:
-            for e in events(self.http, "/site/run", body):
+            for e in events(self.http, f"{self.site}/run", body):
                 t, name = e["type"], e.get("name")
                 if t == "TEXT_MESSAGE_CONTENT":
                     texts[e["messageId"]] = texts.get(e["messageId"], "") + e["delta"]
                 elif t == "TEXT_MESSAGE_END" and texts.get(e["messageId"], "").strip():
+                    self.replies.append((e["messageId"], texts[e["messageId"]]))
                     self.log.append("🤖 " + texts[e["messageId"]].strip().replace("\n", "\n   "))
                 elif t == "RUN_ERROR":
                     self.errors.append(str(e.get("message")))
@@ -338,6 +350,17 @@ class Visit:
                     self.log.append(f"   ⚙ {tool}({_short(args, 110)})")
                 elif name == "site_directive":
                     directive = e["value"]
+                elif name == "sources":   # the source chips under the answer: [{title, section?}]
+                    self.sources += list((e.get("value") or {}).get("items") or [])
+                elif name == "run_stats":
+                    v = e.get("value") or {}
+                    for k, n in (v.get("tokens") or {}).items():
+                        if k in self.tokens and isinstance(n, (int, float)):
+                            self.tokens[k] += n
+                    self.stats.append({"ttft_ms": v.get("ttft_ms"), "total_ms": v.get("total_ms"),
+                                       "tools": len(v.get("tools") or []),
+                                       "tool_errors": sum(1 for t in v.get("tools") or [] if t.get("error")),
+                                       "output_tokens": (v.get("tokens") or {}).get("output"), "model_ms": v.get("model_ms")})
                 elif name == "ui_directive" and self.form:
                     self.form.directive(e["value"])
                     self.log.append(f"   🔦 highlight {e['value'].get('target')}")
@@ -368,8 +391,8 @@ class Visit:
                             + "; ".join(f"{c.get('label')} = {c.get('display')}" for c in ch))
             self.form.apply({c["name"]: c["value"] for c in ch})
             self._resume({"accepted": True, "config": self.form.config, "ui": self.form.ui}, depth)
-        else:   # a confirmation is confirmed; a review, an upload request or another card is closed
-            accepted = kind == "confirm"
+        else:   # a confirmation and a review are confirmed (the user means to submit); an upload request or another card is closed
+            accepted = kind in ("confirm", "review")
             self.log.append(f"   📋 {kind} card → the user {'confirmed it' if accepted else 'closed it'}")
             reply: dict[str, Any] = {"accepted": accepted}
             if self.form:
@@ -378,7 +401,7 @@ class Visit:
 
     def finish(self) -> list[dict]:
         """The conversation as the server keeps it, with who answered each message."""
-        r = self.http.get(f"/site/threads/{self.thread}")
+        r = self.http.get(f"{self.site}/threads/{self.thread}")
         self.messages = r.json().get("messages", []) if r.status_code == 200 else []
         return self.messages
 

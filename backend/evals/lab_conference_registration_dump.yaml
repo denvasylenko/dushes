@@ -1,0 +1,20 @@
+name: lab_conference_registration_dump
+tags: [lab, dump, stress]
+persona: >-
+  A team lead who pastes one long message: three colleagues with emails and diets, one workshop for everyone, the
+  EARLYBIRD code and the company invoice details, and asks to fill everything at once.
+goal: Have the whole registration filled from that message and read the total the form calculates.
+start: {site: lab, page: /lab/conference, form: conference_registration}
+knows:
+  - Three Standard tickets
+  - "Attendees: Ana Sousa (ana.sousa@example.pt, vegetarian), Bruno Costa (bruno.costa@example.pt, no special needs), Carla Reis (carla.reis@example.pt, gluten-free)"
+  - All three take Building with language models
+  - Promo code EARLYBIRD
+  - "Invoice for Marisol Software Lda, VAT id PT509876543, Rua Augusta 100, 1100-053 Lisboa, invoices@marisol.example.pt"
+  - They agree to the code of conduct when asked
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {ticket_type: standard, attendee_count: 3, attendee_3_diet: gluten_free, workshops: ws_llm, promo_code: EARLYBIRD, vat_id: PT509876543, total: "1387.50"}
+min_score: 6

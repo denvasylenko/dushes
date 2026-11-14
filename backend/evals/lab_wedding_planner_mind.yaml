@@ -1,0 +1,22 @@
+name: lab_wedding_planner_mind
+tags: [lab, mind, stress]
+persona: >-
+  A couple filling the enquiry together; Priya types. They first plan 120 guests (110 adults, 10 children) with the
+  ceremony on the estate, then after hearing the estimate they cut the list to 90 guests (82 adults, 8 children) and
+  ask what it costs now.
+goal: >-
+  Have the guest count changed to 90 with adults and children adding up again, and hear the new estimate the form
+  calculates (12850 EUR with the ceremony).
+start: {site: lab, page: /lab/estate-weddings, form: wedding_planner}
+knows:
+  - Partners Priya Shah and Tom Ellis, email priya.shah@example.co.uk, phone +44 7700 900654
+  - Friday 17 September 2027, ceremony on the estate at 16:00
+  - "First: 120 guests, 110 adults and 10 children; then 90 guests, 82 adults and 8 children"
+  - Classic menu for adults, pasta and fruit for the children
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["12850", "12 850", "12,850", "12.850"]]
+  fields: {wedding_date: "2027-09-17", adult_menu: classic, kids_menu: pasta}
+min_score: 6

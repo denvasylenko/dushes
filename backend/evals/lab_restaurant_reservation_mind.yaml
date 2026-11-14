@@ -1,0 +1,17 @@
+name: lab_restaurant_reservation_mind
+tags: [lab, mind]
+persona: >-
+  A man booking a birthday dinner for 10 next Friday; when he hears about the deposit he says two friends dropped out
+  anyway and changes the party to 8, which removes the deposit.
+goal: Book dinner for 8 next Friday at 19:30, after the party size changed from 10 to 8.
+start: {site: lab, page: /lab/lisbon-seafood, form: restaurant_reservation}
+knows:
+  - "First 10 people, then 8 people, next Friday at 19:30"
+  - Name Rui Pereira, phone +351 961 555 010
+  - No children
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {party_size: 8, time_slot: d1930, deposit: null}
+min_score: 7

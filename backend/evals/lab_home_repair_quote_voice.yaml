@@ -1,0 +1,21 @@
+name: lab_home_repair_quote_voice
+tags: [lab, voice, stress]
+persona: >-
+  A panicking tenant whose kitchen pipe just burst, dictating by voice: no punctuation, run-on sentences, typos from
+  speech recognition ("plumming", "its flooding", "pipe burst under the sink"), the floor said as "second floor" and the
+  postcode spelled out as "one zero one two a b".
+goal: Get an emergency same-day plumbing visit requested for the leak, with the address and contact filled.
+start: {site: lab, page: /lab/handyman, form: home_repair_quote}
+knows:
+  - "the pipe under the kitchen sink burst its flooding need someone today"
+  - "apartment on the second floor there is a lift"
+  - "address keizersgracht 120 postcode one zero one two a b amsterdam"
+  - "name is lotte visser phone plus three one six one two three four five six seven eight"
+  - "email lotte.visser@example.nl"
+  - She accepts the 60 EUR call-out fee when told about it
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {repair_type: plumbing, repair_subtype: leak, urgency: emergency, property_type: apartment, city: Amsterdam}
+min_score: 6

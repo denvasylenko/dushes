@@ -1,0 +1,18 @@
+name: lab_travel_insurance_fix
+tags: [lab, fix]
+persona: >-
+  A solo traveller who picks Premium cover, sees the price, finds it too high and switches to Standard, then
+  corrects his return date by two days.
+goal: Have the quote with Standard cover and the corrected dates, and the premium the form shows.
+start: {site: lab, page: /lab/travel-insurance, form: travel_insurance}
+knows:
+  - Trip to Japan, 10 to 24 March 2027 at first; then he corrects the return to 22 March 2027
+  - He is Tom Becker, born 30 June 1990
+  - First Premium, then Standard after seeing the price
+  - Email tom.becker@example.de
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {cover_level: standard, return_date: "2027-03-22", premium: "45.50"}
+min_score: 7

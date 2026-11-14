@@ -1,0 +1,18 @@
+name: lab_travel_insurance_rule
+tags: [lab, rule]
+persona: >-
+  A man insuring a trip to Portugal with his wife and his mother, who is 82; he is surprised and a bit upset that she
+  cannot be covered, then insures the two of them.
+goal: Learn whether his 82-year-old mother can be covered and insure who can be.
+start: {site: lab, page: /lab/travel-insurance, form: travel_insurance}
+knows:
+  - Portugal, 5 to 18 May 2027
+  - "Him: Rui Almeida, born 14 March 1970; his wife Marta Almeida, born 2 August 1972; his mother Ines Almeida, born 9 January 1944"
+  - Basic cover; email rui.almeida@example.pt
+  - If his mother cannot be covered, insure just him and his wife
+turns: 8
+expect:
+  says: [["80"]]
+  fields: {traveller_count: 2, cover_level: basic}
+  never_says: ["she is covered", "your mother is covered"]
+min_score: 7

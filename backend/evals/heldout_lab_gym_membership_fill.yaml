@@ -1,0 +1,19 @@
+name: heldout_lab_gym_membership_fill
+tags: [lab, fill, heldout]
+persona: >-
+  A mother signing up her 17-year-old daughter; she is the guardian and the account holder, and signs as guardian
+  herself when asked.
+goal: Get the daughter a Monthly membership with the guardian's details and the mother's bank account.
+start: {site: lab, page: /lab/gym, form: gym_membership}
+knows:
+  - Daughter Emily Braun, born 30 April 2009, emily.braun@example.de
+  - Address Osterstraße 101, 20259 Hamburg
+  - Mother Katrin Braun is the guardian; she confirms the guardian signature when asked
+  - Monthly plan, start next Monday, no promo code
+  - "Account holder Katrin Braun, IBAN DE89 3704 0044 0532 0130 00; she authorises the debit when asked"
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {first_name: Emily, guardian_name: Katrin Braun, plan: monthly, account_holder: Katrin Braun}
+min_score: 7

@@ -1,0 +1,23 @@
+name: lab_birth_registration_voice
+tags: [lab, voice, stress]
+persona: >-
+  An exhausted new mother dictating at 3 a.m. with the baby on her arm: no punctuation, half-finished sentences,
+  dictation slips ("lind quist" for Lindqvist, "em see two oh two three one one eight seven" for the certificate).
+goal: >-
+  Register her daughter, born four days ago at Westmere General Hospital, with both parents declared and married,
+  and the child taking both surnames hyphenated.
+start: {site: lab, page: /lab/norland-birth, form: birth_registration}
+knows:
+  - "Baby Nora, a girl, born four days ago at 04:20 at Westmere General Hospital, Westmere"
+  - "Mother: Elin Lindqvist, born 2 February 1993, id 93020212345, address Sjogata 4, Westmere"
+  - "Father: Karim Haddad, born 30 October 1990, id 90103054321"
+  - "They are married; certificate MC-20231187"
+  - "Nora takes both surnames, Lindqvist-Haddad"
+  - She is the mother and registers herself; phone +47 976 55 120
+turns: 9
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {child_first_names: Nora, mother_surname: Lindqvist, father_surname: Haddad, child_surname: both,
+           marriage_cert_number: MC-20231187, declarant_role: mother}
+min_score: 6

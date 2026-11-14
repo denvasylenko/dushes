@@ -1,0 +1,29 @@
+name: lab_vehicle_registration_de_fix
+tags: [lab, fix]
+persona: >-
+  A motorbike owner who wants a personal plate and first asks for "B-MK 2024" (his old Berlin code); told the district
+  code is LD, he corrects it to "LD-MK 2024".
+goal: Register the motorbike details with the requested plate corrected to the district's LD code.
+start:
+  site: lab
+  page: /lab/vehicle-registration-de
+  form: vehicle_registration_de
+  values:
+    first_name: Mehmet
+    last_name: Kaya
+    birth_date: "1990-04-17"
+    street: Bahnhofstrasse
+    house_number: "21"
+    postcode: "37083"
+    city: Lindenau
+    email: mehmet.kaya@example.de
+knows:
+  - "Motorbike: Honda CB650R, VIN JH2RH0600NK012345, first registered 1 April 2022, 649 cc, 70 kW"
+  - No seasonal plate
+  - "Plate wish: first B-MK 2024, then LD-MK 2024"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {vehicle_type: motorbike, plate_wish: LD-MK 2024}
+min_score: 7

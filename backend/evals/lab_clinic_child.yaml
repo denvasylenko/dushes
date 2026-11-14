@@ -1,0 +1,16 @@
+name: lab_clinic_child
+tags: [lab, fill]
+persona: A busy father registering his 8-year-old daughter at a new clinic, typing on his phone between meetings.
+goal: Register the daughter as a new patient with himself as the guardian, and book her first visit with the children's doctor.
+start: {site: lab, page: /lab/clinic, form: clinic_intake}
+knows:
+  - Daughter Mia Turner, born 3 March 2018, female
+  - His own name is Daniel Turner, he is the father, phone +44 7700 900456
+  - Mia has no allergies and no long-term conditions
+  - Any weekday morning next week works; pays with Bupa, membership number BUP-448812
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {first_name: Mia, guardian_relation: father, doctor: dr_lind}
+min_score: 7

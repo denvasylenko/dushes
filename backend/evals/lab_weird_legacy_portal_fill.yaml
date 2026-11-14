@@ -1,0 +1,19 @@
+name: lab_weird_legacy_portal_fill
+tags: [lab, fill]
+persona: >-
+  A homeowner who thinks the last water bill is far too high and does not understand the portal's labels
+  ("Fld_07", "Svc.", "Rdg").
+goal: File a meter reading dispute (B7) with the meter number and the reading she sees, with the labels explained in plain words.
+start: {site: lab, page: /lab/utility-portal, form: weird_legacy_portal}
+knows:
+  - Name Grace Holloway, phone +44 7700 900321
+  - "Meter number on the face plate: 40417733"
+  - "The meter shows 1284 cubic metres"
+  - "Bill reference on page 2: R552190"
+  - She accepts the terms of supply
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {svc_code: B7, fld_07: "40417733", rdg: "1284", ref_no: R552190}
+min_score: 7

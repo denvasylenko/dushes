@@ -1,0 +1,19 @@
+name: lab_conference_registration_mind
+tags: [lab, mind]
+persona: >-
+  A developer who starts with a Standard ticket, then remembers her talk was accepted and switches to the speaker
+  ticket; she also asks to add her colleague and accepts booking him separately once told why.
+goal: End with a speaker ticket for one person with the talk title, and the security lab.
+start: {site: lab, page: /lab/conference, form: conference_registration}
+knows:
+  - She is Ines Carvalho, ines.carvalho@example.pt, vegetarian
+  - "Her accepted talk: Streaming UIs without the pain"
+  - She first picks Standard, then switches to Speaker
+  - She would like her colleague Rui Lopes to come too; she will book him separately if needed
+  - Web security lab on Day 2
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {ticket_type: speaker, talk_title: Streaming UIs without the pain, attendee_count: 1, workshops: ws_sec, total: "80.00"}
+min_score: 7

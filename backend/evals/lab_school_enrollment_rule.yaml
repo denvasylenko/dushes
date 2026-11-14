@@ -1,0 +1,28 @@
+name: lab_school_enrollment_rule
+tags: [lab, rule]
+persona: >-
+  A father whose son (9 on 1 September) already walks to his current school alone. He asks for three clubs and for his
+  son to walk home alone; when told about the 2-club limit and that walking home alone starts at age 10, he drops choir
+  and chooses the school bus from the Kampus stop.
+goal: Hear both rules, then have two clubs chosen and the school bus with the Kampus stop set.
+start:
+  site: lab
+  page: /lab/school-krakow
+  form: school_enrollment
+  values:
+    child_first_name: Jan
+    child_last_name: Kowalski
+    child_pesel: "18251401233"
+    child_birth_date: "2018-05-14"
+    grade: {id: "3", name: Grade 3}
+knows:
+  - "Clubs wanted first: football, robotics and choir; then only football and robotics"
+  - "First wants him to walk home alone; then the school bus from Kampus"
+  - Standard lunch; photos only inside the school
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["10"]]
+  fields: {transport: bus, bus_stop: kampus, clubs: robotics}
+min_score: 7

@@ -1,0 +1,4 @@
+name: recipe_voice_on_server
+recipe: voice-on-server
+runs: 5
+transcribe: {file: book_haircut.wav, words: [haircut, tuesday]}

@@ -1,0 +1,20 @@
+name: lab_moving_service_offtopic
+tags: [lab, offtopic]
+persona: >-
+  A newcomer to Germany who, while filling the move, asks unrelated things: how to register the new address at the
+  town hall, which internet provider is best, and who won the last Hertha match. She comes back to the form after
+  each short answer.
+goal: Book the move with packing and two weeks of storage, after the assistant briefly steers each off-topic question back.
+start: {site: lab, page: /lab/movers, form: moving_service}
+knows:
+  - From Muellerstrasse 44, 13353 Berlin, 1st floor, no lift
+  - To Hauptstrasse 7, 10827 Berlin, 2nd floor, with a lift
+  - Moving in two weeks, on a Thursday
+  - "Items: 15 boxes, 1 bed, 1 desk"
+  - Packing service yes, storage 2 weeks
+  - She is Aiko Tanaka, +49 152 11122233, aiko.tanaka@example.com
+turns: 9
+expect:
+  cards: [set_fields]
+  fields: {packing_service: true, origin_lift: "no", destination_lift: "yes"}
+min_score: 7

@@ -1,0 +1,18 @@
+name: lab_passport_application_minor_voice
+tags: [lab, voice]
+persona: >-
+  A father dictating while driving: no punctuation, numbers spelt out, letters said one by one ("en el one two three
+  four five six seven" for NL1234567, "a hundred and thirty four centimetres").
+goal: Fill the application as a renewal with the previous passport number and the child's details.
+start: {site: lab, page: /lab/norland-child-passport, form: passport_application_minor}
+knows:
+  - "A renewal; previous passport number NL1234567"
+  - "Child: Noah Eriksen, born 21 November 2016 in Port Aldis, male, 134 cm, green eyes"
+  - The photo is attached on the form
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {application_type: renewal, previous_passport_number: NL1234567, child_first_names: Noah,
+           child_birth_date: "2016-11-21", eye_colour: green}
+min_score: 7

@@ -1,0 +1,19 @@
+name: lab_gym_membership_voice
+tags: [lab, voice]
+persona: >-
+  A student dictating while walking: no punctuation, numbers spoken as words, the IBAN read out digit by digit with
+  "dee ee" for DE, and the promo code spelled "welcome ten".
+goal: Join on the Student plan with the WELCOME10 code and a correct IBAN.
+start: {site: lab, page: /lab/gym, form: gym_membership}
+knows:
+  - Name Mila Novak, born the second of february two thousand three
+  - mila.novak@example.de, address Bundesstraße 55, 20146 Hamburg
+  - Student plan, starting tomorrow; she will upload the student card herself
+  - Promo code welcome ten (WELCOME10)
+  - "IBAN dee ee eight nine three seven zero four zero zero four four zero five three two zero one three zero zero zero (DE89370400440532013000), account holder Mila Novak"
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {plan: student, promo_code: WELCOME10, iban: DE89370400440532013000, birth_date: "2003-02-02"}
+min_score: 6

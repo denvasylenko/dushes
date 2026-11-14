@@ -1,0 +1,4 @@
+# Prefill: the host sends what it already knows about the user (forwardedProps.prefill.data); the agent maps it
+# to the form's fields and shows one card to confirm. Nothing is filled without the card.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}

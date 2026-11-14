@@ -1,0 +1,35 @@
+name: lab_building_permit_facts
+tags: [lab, facts]
+persona: >-
+  A developer renovating an office building who asks what the permit fee will be for works estimated at 620,000 EUR
+  and how long the city takes to decide (the page does not say).
+goal: >-
+  Have the estimated cost filled, hear the fee the form calculates (the 5,000 EUR maximum), and hear honestly that
+  the decision time is not on the page.
+start:
+  site: lab
+  page: /lab/westmere-permit
+  form: building_permit
+  values:
+    property_street: Hafenstrasse 88
+    property_postcode: "40213"
+    parcel_number: WM-007-2290
+    property_type: {id: commercial, name: Shop or office}
+    applicant_role: owner
+    owner_name: Henrik Vos
+    owner_phone: +49 171 555 0190
+    owner_email: henrik.vos@example.com
+    works_types: [{id: facade, name: Facade or cladding}, {id: windows, name: Windows and doors}]
+    works_description: New facade cladding and all windows on four floors
+    plans: facade_plans.pdf
+knows:
+  - The estimated cost is 620,000 EUR
+  - He has not decided the start date yet
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {permit_fee: "5000"}
+  says: [["5,000", "5000", "5 000"]]
+  never_says: ["6,200", "6200", "8 weeks", "6 weeks", "decision within"]
+min_score: 7

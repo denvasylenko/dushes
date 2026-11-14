@@ -1,0 +1,19 @@
+name: heldout_lab_wedding_planner_dump
+tags: [lab, dump, heldout, stress]
+persona: >-
+  An organised bride who pastes everything in one long message: both names, email, phone, the date, guests, the
+  ceremony time, the adult and children counts and menus, music, rooms and a dietary note, and asks to fill it all.
+goal: Have as much of the enquiry as possible filled from that one message, with every change shown on cards.
+start: {site: lab, page: /lab/estate-weddings, form: wedding_planner}
+knows:
+  - Emma Clarke and James O'Neill, emma.clarke@example.co.uk, +44 7700 900111
+  - Saturday 22 May 2027, 140 guests, ceremony on the estate at 14:00
+  - 125 adults on the classic menu, 15 children on the mini classic menu
+  - Live band and DJ, 20 guest rooms
+  - Two guests are coeliac and one is vegan
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {partner_1_name: Emma Clarke, wedding_date: "2027-05-22", ceremony_time: "1400", adult_menu: classic, kids_menu: mini}
+min_score: 6

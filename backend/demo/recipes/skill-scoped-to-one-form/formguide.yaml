@@ -1,0 +1,5 @@
+# A skill scoped to one form: income_proof lists forms: [loan_application] in its SKILL.md, so on any other form
+# the agent does not see it at all.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+skills: {dir: skills}

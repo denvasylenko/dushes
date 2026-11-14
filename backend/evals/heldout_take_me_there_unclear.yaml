@@ -1,0 +1,16 @@
+name: heldout_take_me_there_unclear
+tags: [heldout, navigation]
+persona: >-
+  Someone on the car insurance application who only says "navigate me there", without saying where. When offered
+  choices, they pick the one about the driver.
+goal: Be taken to the right part of the form after saying which one is meant.
+start: {page: /insure, form: car_insurance}
+knows:
+  - Wants the part about the driver
+turns: 3
+expect:
+  answered_by: [form]
+  cards: [ask]
+  tools: [focus_field]
+  never_says: ["scroll", "you're already on the right page", "you are already on the right page"]
+min_score: 7

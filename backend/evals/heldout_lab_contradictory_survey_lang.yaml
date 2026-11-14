@@ -1,0 +1,19 @@
+name: heldout_lab_contradictory_survey_lang
+tags: [lab, lang, heldout]
+persona: >-
+  A Polish tenant who writes only in Polish. She has lived in her home for 7 years and is unsure whether to pick
+  "5+ years" or "more than 2 years"; she does NOT want letters by post.
+goal: Fill in her details and the home section, picking the most precise duration option and keeping letters off.
+start: {site: lab, page: /lab/tenant-survey, form: contradictory_survey}
+knows:
+  - Tenancy reference T654210, name Agnieszka Wojcik
+  - Born 3 September 1990 (36 years old)
+  - Lived in her home for 7 years
+  - "Overall: neutral; no repairs needed"
+  - She does not want any letters by post
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {tenancy_ref: T654210, years_in_home: y5p, letters: false, repairs_rating: none}
+min_score: 7

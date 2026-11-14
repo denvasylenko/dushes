@@ -1,0 +1,18 @@
+name: lab_lost_luggage_claim_dump
+tags: [lab, dump, stress]
+persona: >-
+  A tired traveller who pastes everything in one long message: flight, date, bag tag, the bag, what is inside, where
+  to deliver it in Amsterdam and that she spent 85 EUR on essentials. She will upload the baggage receipt herself.
+goal: Have as much of the claim as possible filled from that one message, with every change confirmed on cards.
+start: {site: lab, page: /lab/delayed-baggage, form: lost_luggage_claim}
+knows:
+  - "Flight AV2231 last Tuesday, bag tag AV483920"
+  - "Black hard-shell Samsonite with clothes, a camera charger and running shoes"
+  - "Deliver to Sofie de Vries, Prinsengracht 263, 1016 GV Amsterdam, Netherlands; phone +31 6 12345678, email sofie.devries@example.nl"
+  - "She spent 85 EUR on toiletries and a shirt; IBAN NL91 ABNA 0417 1643 00, account holder Sofie de Vries"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {flight_number: AV2231, bag_tag: AV483920, bag_type: hard, bag_colour: black, country: NL, city: Amsterdam}
+min_score: 6

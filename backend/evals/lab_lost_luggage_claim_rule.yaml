@@ -1,0 +1,15 @@
+name: lab_lost_luggage_claim_rule
+tags: [lab, rule]
+persona: >-
+  A traveller whose suitcase never arrived after a flight on 12 October (about a month ago); she hopes to still file
+  the claim online and asks what she can do.
+goal: Find out whether the claim can still be filed; it cannot, because claims close 21 days after the flight.
+start: {site: lab, page: /lab/delayed-baggage, form: lost_luggage_claim}
+knows:
+  - "Flight AV907 on 12 October 2026, bag tag AV771204"
+  - A red duffel bag with winter clothes
+turns: 5
+expect:
+  says: [["21 days"]]
+  fields: {flight_date: null}
+min_score: 7

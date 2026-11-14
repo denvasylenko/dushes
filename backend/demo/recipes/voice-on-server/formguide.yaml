@@ -1,0 +1,5 @@
+# Voice on the server: the widget records audio and POSTs it to /agent/transcribe (dictation: 'server' in the
+# widget); faster-whisper turns it into text where the browser has no speech recognition.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+transcription: {provider: faster_whisper, model: small}

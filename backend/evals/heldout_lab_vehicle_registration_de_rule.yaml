@@ -1,0 +1,17 @@
+name: heldout_lab_vehicle_registration_de_rule
+tags: [lab, rule, heldout]
+persona: >-
+  A 17-year-old who wants to register his first moped-sized motorbike in his own name; told the keeper must be 18 or
+  older, he lets his father register it as the keeper.
+goal: Have the owner tab filled with his father as the registered keeper, after hearing the age limit.
+start: {site: lab, page: /lab/vehicle-registration-de, form: vehicle_registration_de}
+knows:
+  - "He is Lukas Becker, born 9 June 2009"
+  - "Father: Klaus Becker, born 22 August 1971"
+  - Both live at Gartenweg 5, 37086 Lindenau; father's email klaus.becker@example.de
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {first_name: Klaus, last_name: Becker, birth_date: "1971-08-22", postcode: "37086"}
+min_score: 7

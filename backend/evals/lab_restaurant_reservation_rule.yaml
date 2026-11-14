@@ -1,0 +1,18 @@
+name: lab_restaurant_reservation_rule
+tags: [lab, rule]
+persona: >-
+  An office manager planning a team dinner for 14 people this coming Monday. Told 13 or more must call and that
+  Mondays are closed, she trims the group to 12 and moves to Tuesday dinner at 20:30.
+goal: Book a Tuesday dinner for 12 at 20:30 online, after hearing the group limit and the Monday closure (and the deposit).
+start: {site: lab, page: /lab/lisbon-seafood, form: restaurant_reservation}
+knows:
+  - "First: 14 people on Monday evening; then 12 people on Tuesday at 20:30"
+  - Name Helen Carter, phone +351 913 222 111, email helen.carter@example.com
+  - No children
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["21 000 4455"], ["120"]]
+  fields: {party_size: 12, time_slot: d2030}
+min_score: 7

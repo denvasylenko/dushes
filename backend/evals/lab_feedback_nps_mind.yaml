@@ -1,0 +1,17 @@
+name: lab_feedback_nps_mind
+tags: [lab, mind]
+persona: >-
+  A customer who first gives a 9, then remembers the brakes started squeaking the next day and lowers the score to 4,
+  and in the end agrees to be contacted.
+goal: Change the score from 9 to 4, explain what went wrong (now required), and leave an email for a reply.
+start: {site: lab, page: /lab/bike-repair-feedback, form: feedback_nps}
+knows:
+  - "First score: 9; then he changes it to 4"
+  - The rear brake squeaked again the day after the repair
+  - "He agrees to be contacted at olek.nowak@example.com"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {score: "4", may_contact: true, contact_email: olek.nowak@example.com}
+min_score: 7

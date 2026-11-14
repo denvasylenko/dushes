@@ -1,0 +1,18 @@
+name: heldout_lab_restaurant_reservation_voice
+tags: [lab, voice, heldout]
+persona: >-
+  A user dictating while driving: no punctuation, numbers in words ("six of us", "half past twelve"), the phone as
+  "plus three five one nine one two three four five six seven eight".
+goal: Book lunch for 6 tomorrow (Sunday) at 12:30.
+start: {site: lab, page: /lab/lisbon-seafood, form: restaurant_reservation}
+knows:
+  - "six of us tomorrow sunday lunch at half past twelve"
+  - "name ana costa"
+  - "phone plus three five one nine one two three four five six seven eight"
+  - "no kids"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {party_size: 6, time_slot: l1230}
+min_score: 7

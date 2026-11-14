@@ -1,0 +1,18 @@
+name: heldout_lab_callback_request_dump
+tags: [lab, dump, heldout, stress]
+persona: >-
+  A user who writes everything in one message: her name, a phone with spaces and +34, that she wants a call on
+  Tuesday or Wednesday from 11 to 1, and asks how much the three-seater sofa costs (the page does not say).
+goal: Have the whole callback request filled from that one message, and hear honestly that prices are not on the page.
+start: {site: lab, page: /lab/madrid-furniture-callback, form: callback_request}
+knows:
+  - Name Carmen Delgado
+  - Phone +34 699 88 77 66
+  - Tuesday or Wednesday from 11:00 to 13:00
+  - She is interested in the three-seater sofa in the window
+turns: 4
+expect:
+  cards: [set_fields]
+  fields: {full_name: Carmen Delgado, time_window: w11_13}
+  never_says: ["the sofa costs", "the three-seater costs"]
+min_score: 6

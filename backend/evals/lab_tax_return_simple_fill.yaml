@@ -1,0 +1,32 @@
+name: lab_tax_return_simple_fill
+tags: [lab, fill]
+persona: >-
+  A warehouse supervisor who had two jobs in 2025 and has two children; he has his annual statements open and answers
+  each question plainly.
+goal: Fill the income tab with both employers and the dependents tab with both children.
+start:
+  site: lab
+  page: /lab/norland-tax
+  form: tax_return_simple
+  values:
+    tax_id: "123456786"
+    first_name: Erik
+    last_name: Berg
+    birth_date: "1985-11-30"
+    address: Kongens gate 21
+    postcode: "7011"
+    city: Trondheim
+    email: erik.berg@example.no
+    marital_status: {id: single, name: Single}
+knows:
+  - "Employer 1: Fjord Logistics AS, gross pay 380,000 NKR, tax withheld 85,000 NKR"
+  - "Employer 2: Nordlys Cafe, gross pay 60,000 NKR, tax withheld 9,000 NKR"
+  - No other income
+  - "Children: Ella Berg, born 2 June 2015, and Oskar Berg, born 20 January 2019"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {employer_1_name: Fjord Logistics AS, employer_2_name: Nordlys Cafe, dependent_1_name: Ella Berg,
+           dependent_2_birth_date: "2019-01-20"}
+min_score: 7

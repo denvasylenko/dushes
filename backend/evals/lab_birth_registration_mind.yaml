@@ -1,0 +1,23 @@
+name: lab_birth_registration_mind
+tags: [lab, mind]
+persona: >-
+  A mother who first asks for the father's surname for her son, then decides the father will not be declared after
+  all; she accepts her own surname for the baby.
+goal: Have the father marked as not declared and the child's surname set to the mother's.
+start:
+  site: lab
+  page: /lab/norland-birth
+  form: birth_registration
+  values: {child_first_names: Theo}
+knows:
+  - "Baby Theo, a boy, born last week at Northgate Maternity Unit, Northgate"
+  - "Mother: Sara Holm, born 11 July 1997, id 97071154321, address Bakkegata 2, Northgate"
+  - "First she says the father is Daniel Brekke and the baby should have his surname"
+  - "Then: the father will not be declared; Theo takes her surname Holm"
+  - She registers as the mother; phone +47 951 22 340
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {father_not_declared: true, child_surname: mother, mother_surname: Holm}
+min_score: 7

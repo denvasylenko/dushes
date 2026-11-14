@@ -1,0 +1,39 @@
+name: lab_residence_permit_fill
+tags: [lab, fill]
+persona: A software developer with a new permanent contract who answers precisely and copies numbers from her papers.
+goal: Fill the permit tab for an employee permit with her job details.
+start:
+  site: lab
+  page: /lab/val-daurore-permit
+  form: residence_permit
+  values:
+    surname: Petrovic
+    given_names: Ana
+    birth_date: "1999-08-21"
+    birth_place: Novi Sad, Serbia
+    nationality: Serbian
+    sex: f
+    phone: +33 6 45 22 18 90
+    email: ana.petrovic@example.com
+    street: 7 rue des Tanneurs
+    postcode: "38100"
+    city: Val-d'Aurore
+    address_proof_type: {id: rent, name: Rent receipt or lease}
+    address_proof: lease.pdf
+    current_visa_type: {id: vls_ts, name: Long-stay visa (VLS-TS)}
+    current_visa_number: 99FR5582014
+    current_visa_expiry: "2030-01-31"
+    passport_number: AB5582014
+    passport_expiry: "2032-06-30"
+knows:
+  - "She applies for an employee permit"
+  - "Employer Atelier Brunel SARL, SIRET 73282932000074"
+  - "Job title Software developer, permanent contract (CDI), gross salary 3,200 EUR a month"
+  - She has the signed contract and the work authorisation as PDFs
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {permit_type: worker, employer_name: Atelier Brunel SARL, employer_siret: "73282932000074",
+           contract_type: cdi, job_title: Software developer}
+min_score: 7

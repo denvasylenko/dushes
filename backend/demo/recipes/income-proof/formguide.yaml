@@ -1,0 +1,5 @@
+# Income proof: a skill tells the agent how to pick the document, and the user's upload fills the form.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+skills: {dir: skills}
+attachments: true            # the user can attach files to a message; the agent reads them

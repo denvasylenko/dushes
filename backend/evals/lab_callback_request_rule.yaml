@@ -1,0 +1,18 @@
+name: lab_callback_request_rule
+tags: [lab, rule]
+persona: >-
+  A man who works long shifts and insists on a call on Saturday or at 20:00 on a weekday; he accepts a weekday
+  afternoon only after the assistant explains the hours.
+goal: Get a callback booked within the shop's hours (weekdays 9:00-18:00), the latest window possible.
+start: {site: lab, page: /lab/madrid-furniture-callback, form: callback_request}
+knows:
+  - His name is Javier Ortega
+  - Phone +34 612 345 678
+  - "He wants Saturday or 20:00; if refused he takes the latest weekday slot, 15:00 to 18:00"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {time_window: w15_18}
+  never_says: ["we call on Saturday", "20:00 is fine"]
+min_score: 7

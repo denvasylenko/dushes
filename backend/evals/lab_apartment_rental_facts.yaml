@@ -1,0 +1,17 @@
+name: lab_apartment_rental_facts
+tags: [lab, facts]
+persona: >-
+  A careful flat hunter who asks questions before applying: how big the deposit is, whether there is a lift, whether
+  utilities and service charges are included in the rent, and whether a parking space comes with the flat.
+goal: >-
+  Hear the deposit (two months' rent, 2900 EUR) and that the flat is on the third floor with a lift, hear honestly that
+  the page says nothing about utilities or parking, then start the application with his name.
+start: {site: lab, page: /lab/canal-flat, form: apartment_rental}
+knows:
+  - His name is Pieter Jansen, email pieter.jansen@example.nl
+turns: 6
+expect:
+  says: [["2900", "2 900", "2,900", "two months"], ["lift"]]
+  never_says: ["50 EUR a month", "75 EUR a month", "100 EUR a month", "150 EUR a month", "200 EUR a month"]
+  fields: {first_name: Pieter, last_name: Jansen}
+min_score: 7

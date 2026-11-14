@@ -1,0 +1,17 @@
+name: lab_feedback_nps_voice
+tags: [lab, voice]
+persona: >-
+  An angry customer dictating on the phone: no punctuation, the score in words ("three"), the email spelled as
+  "tom dot hale at mail dot com". He wants someone to call him out on it.
+goal: Leave a score of 3 with the complaint as the comment, agree to be contacted and give the email.
+start: {site: lab, page: /lab/bike-repair-feedback, form: feedback_nps}
+knows:
+  - "score three out of ten"
+  - "the puncture repair took a week instead of a day and nobody called"
+  - "email tom dot hale at mail dot com, yes you may contact him"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {score: "3", may_contact: true, contact_email: tom.hale@mail.com}
+min_score: 7

@@ -1,0 +1,19 @@
+name: lab_pet_insurance_dump
+tags: [lab, dump, stress]
+persona: >-
+  A user who pastes everything in one long message, mentions that the cat has had asthma since last year, and asks
+  to fill it all in at once.
+goal: Have the whole form filled from that one message, the asthma recorded as a pre-existing condition, and the price.
+start: {site: lab, page: /lab/pet-insurance, form: pet_insurance}
+knows:
+  - "Cat Luna, Siamese, born 3 January 2020, spayed, microchip 528140000135790"
+  - Luna has had asthma since spring last year
+  - Complete plan, starting today
+  - "Owner Joris Bakker, joris.bakker@example.nl, +31 6 98765432, postcode 1012 AB"
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["excluded", "not covered"]]
+  fields: {species: cat, breed: siamese, preexisting: "yes", plan: complete, owner_postcode: 1012 AB}
+min_score: 6

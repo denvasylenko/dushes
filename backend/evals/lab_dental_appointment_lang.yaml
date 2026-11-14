@@ -1,0 +1,19 @@
+name: lab_dental_appointment_lang
+tags: [lab, lang]
+persona: >-
+  An Italian woman from Bologna who writes only in Italian, short and informal, and expects the assistant to answer
+  her in Italian. She types her codice fiscale with spaces in it.
+goal: Book a check-up with Dr. Rossi on a weekday morning as a first-time patient.
+start: {site: lab, page: /lab/dental, form: dental_appointment}
+knows:
+  - Her name is Laura Bianconi
+  - "Codice fiscale BNC LRA 90A41 A944K (she types it with spaces)"
+  - Mobile +39 347 512 8890, email laura.bianconi@example.it
+  - It is her first visit to the practice
+  - She wants a check-up with Dr. Giulia Rossi, a morning next Tuesday
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {last_name: Bianconi, codice_fiscale: BNCLRA90A41A944K, reason: checkup, dentist: dr_rossi, visit_time: morning, first_visit: true}
+min_score: 7

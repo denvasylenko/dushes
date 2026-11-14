@@ -1,0 +1,4 @@
+# A site with one form: Dushes answers on every page of site.yaml and hands the visitor over to the form agent
+# on the page that holds the form. The site map is mounted next to this config (see site.yaml).
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}

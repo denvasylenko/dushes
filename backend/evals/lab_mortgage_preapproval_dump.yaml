@@ -1,0 +1,20 @@
+name: lab_mortgage_preapproval_dump
+tags: [lab, dump, stress]
+persona: >-
+  An organised first-time buyer who pastes one very long message with everything: his personal details, address
+  history, job, salary, two debts, savings and the flat he wants, and asks to fill as much as possible at once.
+goal: Have as much of the six tabs filled from that one message as the form allows, every change on a card.
+start: {site: lab, page: /lab/mortgage, form: mortgage_preapproval}
+knows:
+  - "Mr James Patel, born 8 November 1987, NI number JP 44 55 66 C, james.patel@example.com, +44 7700 900888, single, no dependants"
+  - "Flat 3, 22 Canal Street, Manchester, M1 3HE, for 2 years; before that 9 Oak Lane, Stockport, SK4 1AA"
+  - UK citizen, applying alone
+  - Employed as a software engineer at Mosswood Digital Ltd since 1 March 2019, salary 72,000 GBP, bonus 5,000 GBP
+  - "Debts: a credit card with Barclaycard, 150 GBP a month, 2,100 GBP left; car finance with Northline Motors, 280 GBP a month, 9,800 GBP left"
+  - "Savings 48,000 GBP from his own savings; a leasehold flat at 260,000 GBP, deposit 39,000 GBP, 30 years, capital and interest"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {app_last_name: Patel, app_postcode: M1 3HE, applying_with: alone, app_employment_status: employed, app_employer: Mosswood Digital Ltd}
+min_score: 6

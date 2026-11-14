@@ -1,0 +1,20 @@
+name: lab_tax_return_simple_rule
+tags: [lab, rule]
+persona: >-
+  A nurse filing her first return who misreads her tax id by one digit; when the assistant says it does not pass the
+  check, she looks at her tax card again and gives the right one.
+goal: Fill the taxpayer section with a tax id that passes the check.
+start: {site: lab, page: /lab/norland-tax, form: tax_return_simple}
+knows:
+  - "Her tax id: first she types 123456787; after being told it is not valid she reads the card again: 123456786"
+  - Name Hanna Lie, born 4 May 1994
+  - Address Strandgata 9, postcode 6003, Alesund
+  - Email hanna.lie@example.no, phone +47 912 34 567
+  - Single
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {tax_id: "123456786", last_name: Lie, postcode: "6003", marital_status: single}
+  says: [["check digit", "not valid", "invalid", "does not pass"]]
+min_score: 7

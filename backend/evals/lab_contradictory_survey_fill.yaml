@@ -1,0 +1,17 @@
+name: lab_contradictory_survey_fill
+tags: [lab, fill]
+persona: A long-time tenant filling in the yearly survey who trusts the "All fields are optional" text at first.
+goal: Complete the survey, giving whatever the form actually needs even though it says everything is optional.
+start: {site: lab, page: /lab/tenant-survey, form: contradictory_survey}
+knows:
+  - Tenancy reference T482913, name Harold Finch
+  - Born 20 May 1979, so he is 47
+  - He has lived in his flat for 3 years
+  - "Overall: satisfied; repairs were good"
+  - He is happy to get letters by post
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {tenancy_ref: T482913, age: 47, birth_date: "1979-05-20", years_in_home: y2_5, satisfaction: "4", letters: true}
+min_score: 7

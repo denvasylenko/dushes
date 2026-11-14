@@ -1,0 +1,9 @@
+name: recipe_researcher
+recipe: researcher
+form: loan_application
+documents: [loan_application/tariffs_2026.md, loan_application/borrower_requirements.md]
+runs: 10
+turns:
+  - Is there a fee if I repay the loan early?
+expect:
+  tools: [ask_documents]

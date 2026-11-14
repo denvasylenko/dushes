@@ -1,0 +1,20 @@
+name: heldout_lab_weird_legacy_portal_dump
+tags: [lab, dump, heldout, stress]
+persona: >-
+  A small business owner taking over the account of the bakery she bought, pasting everything in one long message:
+  her name, phone, the company name, house number, postcode, bill reference and that she wants the account moved
+  to her company.
+goal: Have the change of account holder (C3) filled from that one message, with the unlabelled boxes used for the house number and postcode.
+start: {site: lab, page: /lab/utility-portal, form: weird_legacy_portal}
+knows:
+  - Name Ines Moreau, phone +44 7700 900742
+  - Company Moreau Bakery Ltd
+  - House number 12, postcode 4302
+  - "Bill reference R118804"
+  - She wants the account moved from the previous owner to her company
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {svc_code: C3, co_nm: Moreau Bakery Ltd, txt1: "12", txt2: "4302", appl_nm: Ines Moreau}
+min_score: 6

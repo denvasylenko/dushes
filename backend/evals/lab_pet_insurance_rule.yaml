@@ -1,0 +1,17 @@
+name: lab_pet_insurance_rule
+tags: [lab, rule]
+persona: >-
+  A woman insuring her old Labrador who is 10 and a half, and who gives a microchip number with one digit missing;
+  she argues a bit about the age limit, then insures her younger dog instead.
+goal: Find out whether the old dog can be insured; insure the young one with a correct microchip.
+start: {site: lab, page: /lab/pet-insurance, form: pet_insurance}
+knows:
+  - "Old dog: Bruno, Labrador Retriever, born 2 May 2016, microchip 52814000012345 (14 digits, she copied it wrong)"
+  - "Young dog: Saar, Border Collie, born 20 August 2023, neutered, microchip 528140000246810"
+  - No known illness for Saar; Basic plan starting today
+turns: 8
+expect:
+  says: [["9"], ["15"]]
+  fields: {pet_name: Saar, breed: border_collie, microchip: "528140000246810", plan: basic}
+  never_says: ["Bruno is covered", "we can insure Bruno"]
+min_score: 7

@@ -1,0 +1,14 @@
+name: lab_newsletter_signup_fix
+tags: [lab, fix]
+persona: A hurried user who types his email with a typo in the domain and notices it only after it is filled.
+goal: Subscribe with the correct email address, fixing the typo after the first value was filled.
+start: {site: lab, page: /lab/coffee-newsletter, form: newsletter_signup}
+knows:
+  - "First he types his email as anna.kovacs@gmial.com (a typo)"
+  - "Once it is filled he notices it should be anna.kovacs@gmail.com and asks to fix it"
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {email: anna.kovacs@gmail.com}
+min_score: 7

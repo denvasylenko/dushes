@@ -1,0 +1,37 @@
+name: lab_tax_return_simple_offtopic
+tags: [lab, offtopic]
+persona: >-
+  A freelancer-turned-employee who keeps asking for tax planning tips: whether to move money into a pension to pay
+  less, whether crypto gains are worth hiding, which bank gives the best savings rate. The page gives no advice.
+goal: >-
+  Add his other income and a charity deduction, while hearing that the assistant does not give personal tax planning
+  advice (it may explain the flat rule).
+start:
+  site: lab
+  page: /lab/norland-tax
+  form: tax_return_simple
+  values:
+    tax_id: "123456786"
+    first_name: Jonas
+    last_name: Dahl
+    birth_date: "1990-01-17"
+    address: Torget 5
+    postcode: "9008"
+    city: Tromso
+    email: jonas.dahl@example.no
+    marital_status: {id: single, name: Single}
+    employer_count: 1
+    employer_1_name: Polar Data AS
+    employer_1_gross: 610000
+    employer_1_withheld: 130000
+knows:
+  - Other income from interest and a rented parking space, 14,000 NKR in total
+  - He gave 6,000 NKR to the Red Cross
+  - No children
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {deductions: charity}
+  never_says: ["you should invest", "hide your crypto", "best savings rate is"]
+min_score: 7

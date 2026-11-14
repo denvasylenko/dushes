@@ -1,0 +1,527 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Length 3014 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+50 790 Td
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(Quanta Cloud Service Level Agreement) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Version 5.0, effective 1 February 2026. This SLA forms part of the Quanta Cloud Terms of Service for) Tj T*
+/F1 9 Tf
+(paid plans.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(1. Uptime commitment) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Plan   Monthly uptime commitment) Tj T*
+/F1 9 Tf
+(Starter   no commitment \(no SLA\)) Tj T*
+/F1 9 Tf
+(Team   99.5%) Tj T*
+/F1 9 Tf
+(Business   99.9%) Tj T*
+/F1 9 Tf
+(Enterprise   99.95%) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Uptime is measured every minute from three monitoring locations. A minute counts as down when the) Tj T*
+/F1 9 Tf
+(workspace cannot be reached from at least two of them.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(2. Service credits) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(If the uptime in a calendar month falls below the commitment for your plan, you receive a credit on) Tj T*
+/F1 9 Tf
+(your next invoice:) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Monthly uptime   Credit \(share of the month's fee for the affected service\)) Tj T*
+/F1 9 Tf
+(below the commitment but at least 99.0%   10%) Tj T*
+/F1 9 Tf
+(at least 95.0% but below 99.0%   25%) Tj T*
+/F1 9 Tf
+(below 95.0%   50%) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Credits are capped at 50% of the monthly fee. They are not paid out in cash and lapse if the) Tj T*
+/F1 9 Tf
+(contract ends.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(3. How to claim) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Open a support ticket with the subject "SLA claim" within 30 days after the end of the month in) Tj T*
+/F1 9 Tf
+(which the downtime happened, with the dates and times and your workspace name. We confirm the credit) Tj T*
+/F1 9 Tf
+(within 10 business days.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(4. Exclusions) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Downtime does not count when it is caused by:) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(- scheduled maintenance announced at least 72 hours in advance, up to 4 hours per month, usually on) Tj T*
+/F1 9 Tf
+(Sunday between 02:00 and 06:00 Verdania time;) Tj T*
+/F1 9 Tf
+(- emergency security patches, up to 1 hour per month;) Tj T*
+/F1 9 Tf
+(- your own systems, your internet connection or your misuse of the service;) Tj T*
+/F1 9 Tf
+(- beta features or features marked preview;) Tj T*
+/F1 9 Tf
+(- force majeure.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(5. Data durability) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Data is stored in three copies in at least two data centres. Backups are taken every 6 hours and) Tj T*
+/F1 9 Tf
+(kept for 35 days. Recovery point objective: 6 hours; recovery time objective: 4 hours.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(6. Changes) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(We may change this SLA by giving 30 days' notice; a change never reduces the commitment during a) Tj T*
+/F1 9 Tf
+(paid annual term.) Tj T*
+/F1 8 Tf
+T*
+(Quanta Cloud Service Level Agreement - page 1 of 4) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4252 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+50 790 Td
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(7. Definitions and interpretation) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 1.** Staff are trained to explain these terms in plain language. If anything is unclear,) Tj T*
+/F1 9 Tf
+(ask for an explanation before you rely on your understanding of it.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 2.** References to a law include that law as amended or re-enacted from time to time and) Tj T*
+/F1 9 Tf
+(any regulation made under it.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 3.** Customers with accessibility needs can ask for this document in large print, audio or) Tj T*
+/F1 9 Tf
+(another format at no extra cost.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 4.** Where an amount is stated including tax, the tax rate in force on the date of the) Tj T*
+/F1 9 Tf
+(invoice applies, and a change in the rate changes the amount accordingly.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 5.** A failure or delay in exercising a right is not a waiver of that right, and a single) Tj T*
+/F1 9 Tf
+(or partial exercise does not prevent any further exercise of it.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 6.** This document and the documents it refers to are the whole agreement between the) Tj T*
+/F1 9 Tf
+(parties on its subject and replace any earlier understanding.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 7.** We may rely on information you give us. You must tell us promptly when that) Tj T*
+/F1 9 Tf
+(information changes, because a change may affect the service or the price.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 8.** A failure or delay in exercising a right is not a waiver of that right, and a single) Tj T*
+/F1 9 Tf
+(or partial exercise does not prevent any further exercise of it.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 9.** The parties will try to resolve any dispute by discussion between senior) Tj T*
+/F1 9 Tf
+(representatives before starting formal proceedings.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 10.** Notices must be given in writing. A notice sent through the customer portal counts as) Tj T*
+/F1 9 Tf
+(written notice from the moment it is shown as delivered.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 11.** We may rely on information you give us. You must tell us promptly when that) Tj T*
+/F1 9 Tf
+(information changes, because a change may affect the service or the price.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 12.** Where an amount is stated including tax, the tax rate in force on the date of the) Tj T*
+/F1 9 Tf
+(invoice applies, and a change in the rate changes the amount accordingly.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 13.** Customers with accessibility needs can ask for this document in large print, audio or) Tj T*
+/F1 9 Tf
+(another format at no extra cost.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 14.** Any change to this document must be agreed in writing, except where it says that we) Tj T*
+/F1 9 Tf
+(may change a part of it by publishing a new version.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 15.** Where this document refers to a person, that includes a company, a partnership and) Tj T*
+/F1 9 Tf
+(any other body with legal personality, and their lawful successors.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 16.** We process personal data as described in our privacy notice. We keep records only for) Tj T*
+/F1 9 Tf
+(as long as we need them for the purposes stated there.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 17.** Any change to this document must be agreed in writing, except where it says that we) Tj T*
+/F1 9 Tf
+(may change a part of it by publishing a new version.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 18.** Customers with accessibility needs can ask for this document in large print, audio or) Tj T*
+/F1 9 Tf
+(another format at no extra cost.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 19.** If there is a conflict between a schedule and the main text, the schedule applies for) Tj T*
+/F1 9 Tf
+(the matter it covers and the main text applies for everything else.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 20.** References to a law include that law as amended or re-enacted from time to time and) Tj T*
+/F1 8 Tf
+T*
+(Quanta Cloud Service Level Agreement - page 2 of 4) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 4505 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+50 790 Td
+/F1 9 Tf
+(any regulation made under it.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 21.** A failure or delay in exercising a right is not a waiver of that right, and a single) Tj T*
+/F1 9 Tf
+(or partial exercise does not prevent any further exercise of it.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 22.** Where an amount is stated including tax, the tax rate in force on the date of the) Tj T*
+/F1 9 Tf
+(invoice applies, and a change in the rate changes the amount accordingly.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 23.** Headings in this document are for convenience only and do not affect its) Tj T*
+/F1 9 Tf
+(interpretation. Words in the singular include the plural and the other way round.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 24.** Headings in this document are for convenience only and do not affect its) Tj T*
+/F1 9 Tf
+(interpretation. Words in the singular include the plural and the other way round.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 25.** Nothing in this document limits any right that cannot be limited under the law that) Tj T*
+/F1 9 Tf
+(applies to it. If a provision is found invalid, the rest remains in force.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 26.** Where an amount is stated including tax, the tax rate in force on the date of the) Tj T*
+/F1 9 Tf
+(invoice applies, and a change in the rate changes the amount accordingly.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 27.** Any change to this document must be agreed in writing, except where it says that we) Tj T*
+/F1 9 Tf
+(may change a part of it by publishing a new version.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 28.** We may appoint agents and subcontractors to perform any part of this agreement. We) Tj T*
+/F1 9 Tf
+(remain responsible for what they do on our behalf.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 29.** If there is a conflict between a schedule and the main text, the schedule applies for) Tj T*
+/F1 9 Tf
+(the matter it covers and the main text applies for everything else.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 30.** We process personal data as described in our privacy notice. We keep records only for) Tj T*
+/F1 9 Tf
+(as long as we need them for the purposes stated there.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 31.** Headings in this document are for convenience only and do not affect its) Tj T*
+/F1 9 Tf
+(interpretation. Words in the singular include the plural and the other way round.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 32.** If there is a conflict between a schedule and the main text, the schedule applies for) Tj T*
+/F1 9 Tf
+(the matter it covers and the main text applies for everything else.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 33.** Where this document refers to a person, that includes a company, a partnership and) Tj T*
+/F1 9 Tf
+(any other body with legal personality, and their lawful successors.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 34.** Nothing in this document limits any right that cannot be limited under the law that) Tj T*
+/F1 9 Tf
+(applies to it. If a provision is found invalid, the rest remains in force.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 35.** Each party will act in good faith and will cooperate reasonably with the other to) Tj T*
+/F1 9 Tf
+(give effect to the purpose of this document.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 36.** We process personal data as described in our privacy notice. We keep records only for) Tj T*
+/F1 9 Tf
+(as long as we need them for the purposes stated there.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 37.** Staff are trained to explain these terms in plain language. If anything is unclear,) Tj T*
+/F1 9 Tf
+(ask for an explanation before you rely on your understanding of it.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 38.** Nothing in this document limits any right that cannot be limited under the law that) Tj T*
+/F1 9 Tf
+(applies to it. If a provision is found invalid, the rest remains in force.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 39.** Where this document refers to a person, that includes a company, a partnership and) Tj T*
+/F1 9 Tf
+(any other body with legal personality, and their lawful successors.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 40.** Where an amount is stated including tax, the tax rate in force on the date of the) Tj T*
+/F1 9 Tf
+(invoice applies, and a change in the rate changes the amount accordingly.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 8 Tf
+T*
+(Quanta Cloud Service Level Agreement - page 3 of 4) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 2206 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+50 790 Td
+/F1 9 Tf
+(**Clause 41.** Any change to this document must be agreed in writing, except where it says that we) Tj T*
+/F1 9 Tf
+(may change a part of it by publishing a new version.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 42.** Staff are trained to explain these terms in plain language. If anything is unclear,) Tj T*
+/F1 9 Tf
+(ask for an explanation before you rely on your understanding of it.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 43.** We may rely on information you give us. You must tell us promptly when that) Tj T*
+/F1 9 Tf
+(information changes, because a change may affect the service or the price.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 44.** Headings in this document are for convenience only and do not affect its) Tj T*
+/F1 9 Tf
+(interpretation. Words in the singular include the plural and the other way round.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 45.** We may rely on information you give us. You must tell us promptly when that) Tj T*
+/F1 9 Tf
+(information changes, because a change may affect the service or the price.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 46.** Any change to this document must be agreed in writing, except where it says that we) Tj T*
+/F1 9 Tf
+(may change a part of it by publishing a new version.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 47.** Copies of earlier versions of this document are kept in the archive and can be) Tj T*
+/F1 9 Tf
+(requested. They apply only to the period stated on their cover.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 48.** Nothing in this document limits any right that cannot be limited under the law that) Tj T*
+/F1 9 Tf
+(applies to it. If a provision is found invalid, the rest remains in force.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 49.** Any change to this document must be agreed in writing, except where it says that we) Tj T*
+/F1 9 Tf
+(may change a part of it by publishing a new version.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Clause 50.** We may appoint agents and subcontractors to perform any part of this agreement. We) Tj T*
+/F1 9 Tf
+(remain responsible for what they do on our behalf.) Tj T*
+/F1 8 Tf
+T*
+(Quanta Cloud Service Level Agreement - page 4 of 4) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 11 0 R >>
+endobj
+xref
+0 13
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000135 00000 n 
+0000000232 00000 n 
+0000000334 00000 n 
+0000003400 00000 n 
+0000003536 00000 n 
+0000007840 00000 n 
+0000007976 00000 n 
+0000012533 00000 n 
+0000012670 00000 n 
+0000014929 00000 n 
+trailer
+<< /Size 13 /Root 1 0 R >>
+startxref
+15067
+%%EOF

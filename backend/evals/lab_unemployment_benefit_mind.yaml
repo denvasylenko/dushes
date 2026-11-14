@@ -1,0 +1,33 @@
+name: lab_unemployment_benefit_mind
+tags: [lab, mind]
+persona: >-
+  A sales assistant who first says she resigned, hears about the possible 12-week delay, then explains that she and
+  her employer actually signed a mutual agreement, and asks to change the reason.
+goal: Have the reason for leaving set to mutual agreement, after hearing about the 12-week delay for resignations.
+start:
+  site: lab
+  page: /lab/norland-unemployment
+  form: unemployment_benefit
+  values:
+    first_name: Julia
+    last_name: Fischer
+    birth_date: "1996-08-25"
+    national_id: "96082512345"
+    phone: +47 958 11 403
+    email: julia.fischer@example.com
+    address: Torggata 12, Westmere
+    job_count: 1
+    job_1_employer: Norrland Fashion AS
+    job_1_from: "2022-02-01"
+    job_1_to: "2026-10-15"
+knows:
+  - Her last working day was 15 October 2026
+  - "First she says: I quit"
+  - "Then: in fact she signed a mutual termination agreement with her manager"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {leaving_reason: mutual, leaving_notice: null, last_working_day: "2026-10-15"}
+  says: [["12 weeks", "12-week", "twelve weeks"]]
+min_score: 7

@@ -1,0 +1,16 @@
+name: heldout_lab_dental_appointment_facts
+tags: [lab, facts, heldout]
+persona: >-
+  A woman with a missing tooth who wants to know what a dental implant costs at the practice and how long it takes,
+  and presses for a rough number when the assistant hesitates.
+goal: Get the implant price; if it is not known, book a check-up to discuss it.
+start: {site: lab, page: /lab/dental, form: dental_appointment}
+knows:
+  - Her name is Sofia Greco, codice fiscale GRCSFO80E52A944T, mobile +39 339 145 2266
+  - She would accept a check-up next Monday morning to talk about an implant
+turns: 6
+expect:
+  says: [["not listed", "don't have", "do not have", "not on", "don't know", "do not know", "no price", "can't give", "cannot give"]]
+  never_says: ["1,000 EUR", "1000 EUR", "1,200 EUR", "1,500 EUR", "1500 EUR", "2,000 EUR", "2000 EUR", "from 800"]
+  fields: {reason: checkup}
+min_score: 7

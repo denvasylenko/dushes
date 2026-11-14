@@ -1,0 +1,19 @@
+name: lab_birth_registration_fill
+tags: [lab, fill]
+persona: A calm father registering his son, born at home with a midwife, who answers each question clearly.
+goal: Register the home birth with both parents declared (not married) and the father's surname for the child.
+start: {site: lab, page: /lab/norland-birth, form: birth_registration}
+knows:
+  - "Baby Aksel, a boy, born at home ten days ago at 22:15, address Skogveien 31, Harbour District, Westmere"
+  - "Mother: Maria Santos, born 5 May 1995, id 95050554321, address Skogveien 31, Westmere"
+  - "Father: Jon Aas, born 14 January 1992, id 92011412345"
+  - They are not married
+  - "Aksel takes the father's surname, Aas"
+  - He registers as the father; phone +47 982 33 410; the midwife's birth notice is attached on the form
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {child_first_names: Aksel, birth_place_type: home, child_surname: father, father_surname: Aas,
+           declarant_role: father}
+min_score: 7

@@ -1,0 +1,20 @@
+name: lab_wedding_planner_facts
+tags: [lab, facts]
+persona: >-
+  A groom-to-be comparing venues who wants a number: what a wedding for 100 guests with the ceremony on the estate
+  would cost, how many guest rooms there are and how much a room costs per night (the page gives no room price).
+goal: >-
+  Have the date, guests and on-site ceremony filled and hear the estimate the form calculates (13800 EUR for 100 guests
+  with the ceremony), hear that the estate has 24 rooms, and hear honestly that room prices are not on the page.
+start: {site: lab, page: /lab/estate-weddings, form: wedding_planner}
+knows:
+  - Partners Oliver Hughes and Grace Bennett, email oliver.hughes@example.co.uk, phone +44 7700 900321
+  - Saturday 12 June 2027, 100 guests, ceremony on the estate at 14:00
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["13800", "13 800", "13,800", "13.800"], ["24"]]
+  never_says: ["100 EUR a night", "120 EUR a night", "150 EUR a night", "100 EUR per night", "150 EUR per night"]
+  fields: {wedding_date: "2027-06-12", ceremony_on_site: true, ceremony_time: "1400"}
+min_score: 7

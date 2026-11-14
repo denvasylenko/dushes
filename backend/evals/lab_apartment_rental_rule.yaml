@@ -1,0 +1,21 @@
+name: lab_apartment_rental_rule
+tags: [lab, rule]
+persona: >-
+  A nurse applying for the flat on her own, whose net income alone (2600 EUR a month) is below what the 40% rule
+  needs. She did not know about the rule and is a little discouraged when she hears it.
+goal: >-
+  Understand why her income alone is not enough (at least 3625 EUR together), then add her partner as a co-applicant
+  so the application can go on.
+start: {site: lab, page: /lab/canal-flat, form: apartment_rental}
+knows:
+  - Her name is Ana Costa, born 2 April 1994, email ana.costa@example.org, phone +31 6 41234567
+  - She is employed as a nurse at UMC Utrecht and earns 2600 EUR net a month
+  - Only after hearing the rule does she mention that her partner Jonas Weber could apply with her
+  - Jonas is her partner, email jonas.weber@example.org, earns 1700 EUR net a month
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["3625", "3 625", "3,625", "40%"]]
+  fields: {last_name: Costa, co_1_name: Jonas Weber, co_1_relation: partner}
+min_score: 7

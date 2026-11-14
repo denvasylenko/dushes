@@ -1,0 +1,18 @@
+name: lab_gym_membership_rule
+tags: [lab, rule]
+persona: >-
+  A father who wants to sign up his 14-year-old son, then, once told the age limit, asks if the son could join in a
+  couple of years and signs up himself instead.
+goal: Learn whether the son can join; sign the father up on the Monthly plan.
+start: {site: lab, page: /lab/gym, form: gym_membership}
+knows:
+  - Son Finn Weber, born 9 August 2012
+  - Father Thomas Weber, born 22 January 1980, thomas.weber@example.de
+  - Address Mühlenkamp 8, 22303 Hamburg
+  - Monthly plan, start next Monday
+turns: 7
+expect:
+  says: [["16"]]
+  fields: {first_name: Thomas, plan: monthly}
+  never_says: ["Finn can join", "your son can join now"]
+min_score: 7

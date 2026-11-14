@@ -1,0 +1,29 @@
+name: lab_vehicle_registration_de_mind
+tags: [lab, mind]
+persona: >-
+  An owner who starts registering "the car" and then realises the paperwork in his hand is for his new box trailer;
+  he switches the vehicle type to trailer.
+goal: Register the trailer (weight and brakes) instead of a car, with the owner details already filled.
+start:
+  site: lab
+  page: /lab/vehicle-registration-de
+  form: vehicle_registration_de
+  values:
+    first_name: Stefan
+    last_name: Krause
+    birth_date: "1978-11-02"
+    street: Am Markt
+    house_number: "3"
+    postcode: "37081"
+    city: Lindenau
+    email: stefan.krause@example.de
+knows:
+  - "He first says car, then: it is actually a trailer"
+  - "Trailer: Humbaur box trailer, VIN WHU12345678901234, first registered 5 May 2025"
+  - "Permissible total weight 750 kg, no brakes of its own"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {vehicle_type: trailer, trailer_weight: 750, make: Humbaur}
+min_score: 7

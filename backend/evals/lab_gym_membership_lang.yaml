@@ -1,0 +1,19 @@
+name: lab_gym_membership_lang
+tags: [lab, lang]
+persona: >-
+  A man from Hamburg who writes only in German, with German date formats (14.05.1988) and his IBAN in groups of four.
+  He expects answers in German.
+goal: Join on the Monthly plan with the freeze option, paying by SEPA direct debit.
+start: {site: lab, page: /lab/gym, form: gym_membership}
+knows:
+  - Name Jonas Schmidt, born 14.05.1988
+  - jonas.schmidt@example.de, +49 151 23456789
+  - Address Elbchaussee 12, 22765 Hamburg
+  - Monthly plan with the freeze option, starting next Monday, no promo code
+  - "Account holder Jonas Schmidt, IBAN DE89 3704 0044 0532 0130 00; he authorises the direct debit when asked"
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {birth_date: "1988-05-14", postcode: "22765", plan: monthly, freeze_option: true, iban: DE89370400440532013000}
+min_score: 7

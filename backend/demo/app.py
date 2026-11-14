@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from formguide.app import create_app
 
 from .mock_forms import FORMS
+from .mock_forms.lab import LAB
 
 HERE = Path(__file__).resolve().parent
 
@@ -39,7 +40,7 @@ def _form(form_id: str):
 
 @java.get("/forms")
 def java_forms() -> list[str]:
-    return list(FORMS)
+    return [f for f in FORMS if f not in LAB]   # the demo page's picker; the Lab's forms are on /lab
 
 
 @java.get("/form")
@@ -88,6 +89,11 @@ if _RHF.exists():
 from .site_app import mount as mount_site  # noqa: E402
 
 mount_site(app, guide)
+
+# The Form Lab: Dushes over the QA library of forms (demo/mock_forms/lab/), for the scenario evals: /lab/run, /lab/map.
+from .lab_site import mount as mount_lab  # noqa: E402
+
+mount_lab(app, guide)
 
 # The demo page at "/" (DEMO_PATH moves it, e.g. "/demo" on the docs host, built with `vite build --base /demo/`).
 _DIST = HERE.parents[1] / "frontend" / "dist"

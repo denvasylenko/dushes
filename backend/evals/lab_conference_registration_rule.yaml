@@ -1,0 +1,19 @@
+name: lab_conference_registration_rule
+tags: [lab, rule]
+persona: >-
+  Two students who want both Kubernetes from zero and Rust for the web; when told they clash, they keep Kubernetes
+  and add Accessibility in practice instead.
+goal: Register both students with workshops that do not clash and read the total.
+start: {site: lab, page: /lab/conference, form: conference_registration}
+knows:
+  - Two Student tickets
+  - "Attendees: Hugo Pereira (hugo.pereira@example.edu, no special needs) and Lara Mendes (lara.mendes@example.edu, halal)"
+  - They want Kubernetes from zero and Rust for the web; after the clash they keep Kubernetes and add Accessibility in practice
+  - No promo code, no invoice
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {ticket_type: student, attendee_count: 2, workshops: ws_a11y, total: "620.00"}
+  never_says: ["you can attend both", "both workshops work"]
+min_score: 7

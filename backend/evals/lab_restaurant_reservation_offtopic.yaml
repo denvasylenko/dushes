@@ -1,0 +1,16 @@
+name: lab_restaurant_reservation_offtopic
+tags: [lab, offtopic]
+persona: >-
+  A tourist booking dinner for two who asks off-topic things mid-way: which tram goes to Belem, whether there is
+  parking nearby and what the price of the grilled octopus is (the page says none of these), then finishes the booking.
+goal: Book dinner for 2 next Wednesday at 21:30; hear honestly that parking and prices are not on the page.
+start: {site: lab, page: /lab/lisbon-seafood, form: restaurant_reservation}
+knows:
+  - "2 people, next Wednesday, dinner at 21:30"
+  - Name Kenji Watanabe, phone +81 90 1234 5678
+turns: 7
+expect:
+  cards: [set_fields]
+  fields: {party_size: 2, time_slot: d2130}
+  never_says: ["the octopus costs", "free parking", "parking is available"]
+min_score: 7

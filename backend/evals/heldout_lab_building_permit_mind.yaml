@@ -1,0 +1,28 @@
+name: heldout_lab_building_permit_mind
+tags: [lab, mind, heldout]
+persona: >-
+  A homeowner who first describes an interior refit only, then adds that the plan now includes removing a
+  load-bearing wall between kitchen and living room, and gives her engineer's details when asked.
+goal: Have the works changed to include structural works, with the structural engineer's name and licence filled.
+start:
+  site: lab
+  page: /lab/westmere-permit
+  form: building_permit
+  values:
+    property_street: Ahornweg 5
+    property_postcode: "40625"
+    parcel_number: WM-210-3381B
+    property_type: {id: house, name: Detached or semi-detached house}
+    applicant_role: owner
+    owner_name: Nadia Rahimi
+    owner_phone: +49 157 555 0133
+    owner_email: nadia.rahimi@example.com
+knows:
+  - "First: a new kitchen and flooring (interior refit)"
+  - "Then: they will also remove the load-bearing wall between kitchen and living room"
+  - "Engineer: Sofia Marin, licence ENG-40712"
+turns: 6
+expect:
+  cards: [set_fields]
+  fields: {works_types: structural, engineer_name: Sofia Marin, engineer_licence: ENG-40712}
+min_score: 7

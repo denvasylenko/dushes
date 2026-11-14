@@ -1,0 +1,18 @@
+name: lab_apartment_rental_mind
+tags: [lab, mind]
+persona: >-
+  A tenant who first says they will move in with their dog and their cat. When told dogs are not allowed in this flat,
+  they think it over and decide the dog will stay with their parents, so only the cat comes along.
+goal: Fill the household section with the cat as the only pet (with its details) after dropping the dog.
+start: {site: lab, page: /lab/canal-flat, form: apartment_rental}
+knows:
+  - Two people will live in the flat; nobody smokes
+  - "First answer about pets: a dog (a beagle) and a cat"
+  - "After hearing the dog rule: the dog stays with their parents; the pet is one indoor cat, 4 years old"
+  - Move-in about one month from today, a 12-month lease
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {pets: cat, lease_term: "12"}
+min_score: 7

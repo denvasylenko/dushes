@@ -1,0 +1,19 @@
+name: lab_school_enrollment_lang
+tags: [lab, lang]
+persona: >-
+  A Polish-speaking mother in Krakow who writes every message in Polish only and enrols her son; she gives the PESEL
+  and the address in the usual Polish way.
+goal: Enrol her son in grade 3 with his PESEL and birth date matching, herself as parent 1, and pick-up by a parent.
+start: {site: lab, page: /lab/school-krakow, form: school_enrollment}
+knows:
+  - Son Jan Kowalski, PESEL 18251401233, born 14 May 2018, applying for grade 3
+  - Address ul. Dluga 12/4, 31-147 Krakow
+  - She is Anna Kowalska, his mother, phone +48 512 345 678, email anna.kowalska@example.pl
+  - No siblings at the school, no medical needs
+  - Chess and robotics clubs, standard lunch, she picks him up herself
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {child_pesel: "18251401233", child_birth_date: "2018-05-14", grade: "3", parent_1_relation: mother, transport: parent}
+min_score: 7

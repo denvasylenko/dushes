@@ -1,0 +1,49 @@
+name: lab_schengen_visa_mind
+tags: [lab, mind]
+persona: >-
+  An engineer from Manchester who first says he is going to Valdoria as a tourist and gives a hotel, then remembers
+  that his employer is actually sending him to meet a client, so the trip is a business trip.
+goal: >-
+  Fill the travel tab for a business trip to Valdoria with the inviting company's details (the hotel section no
+  longer applies), and learn that an invitation letter from the company must be uploaded.
+start:
+  site: lab
+  page: /lab/norland-visa
+  form: schengen_visa
+  values:
+    surname: Whitfield
+    first_names: Oliver James
+    birth_date: "1988-07-14"
+    birth_place: Manchester
+    birth_country: United Kingdom
+    nationality: British
+    sex: male
+    marital_status: {id: single, name: Single}
+    photo: oliver_photo.jpg
+    home_address: 22 Albert Road
+    home_postcode: M14 5RF
+    home_city: Manchester
+    home_country: United Kingdom
+    phone: +44 7700 900123
+    email: oliver.whitfield@example.com
+    occupation: {id: employed, name: Employed}
+    employer_name: Northline Robotics Ltd
+    employer_address: 5 Mill Lane, Manchester, +44 161 555 0100
+    passport_type: {id: ordinary, name: Ordinary passport}
+    passport_number: "533817264"
+    passport_issued_by: United Kingdom
+    passport_issue_date: "2021-09-01"
+    passport_expiry_date: "2031-09-01"
+knows:
+  - "First: a tourist trip to Valdoria, entering via Valdoria, one entry, flying"
+  - Arrival in three weeks, staying 8 days
+  - "First he mentions Hotel Ambra, Seestrasse 4, Valdoria City"
+  - "Then he corrects himself: it is a business trip; the inviting company is Valdor Systems AG, Kaiserring 12, Valdoria City, phone +41 44 555 1200, contact Petra Lang, petra.lang@valdor.example"
+  - He has the invitation letter as a PDF on his laptop
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {purpose: business, main_destination: valdoria, company_name: Valdor Systems AG}
+  says: [["invitation letter", "invitation"]]
+min_score: 7

@@ -1,0 +1,18 @@
+name: lab_warranty_claim_mind
+tags: [lab, mind]
+persona: >-
+  A user who starts a claim for her phone, then realises the faulty device is actually her laptop (the phone was
+  fine after a restart) and switches the category after the model is set.
+goal: End with a laptop claim, a laptop model and a laptop serial number.
+start: {site: lab, page: /lab/warranty, form: warranty_claim}
+knows:
+  - "First: phone Nova S3, serial NV12345678"
+  - "Then: laptop Aerobook Flip, serial AB-2024-3MQ81Z, bought last spring, the hinge cracked during normal use"
+  - She wants a replacement; she uploads the receipt herself
+  - "Megan Doyle, megan.doyle@example.co.uk, 3 Castle Hill, Lincoln, LN1 3AA"
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {category: laptop, model: aero_flip, serial_number: AB-2024-3MQ81Z, resolution: replace}
+min_score: 7

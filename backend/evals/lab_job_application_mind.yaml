@@ -1,0 +1,18 @@
+name: lab_job_application_mind
+tags: [lab, mind]
+persona: >-
+  A candidate from Brazil who first answers that she will need visa sponsorship. When she sees the notice that the
+  company does not sponsor visas, she remembers she already has a Dutch residence permit through her husband, which
+  allows her to work, and changes the answer.
+goal: Have the right-to-work answer changed to "no sponsorship needed" and the salary and notice period filled.
+start: {site: lab, page: /lab/backend-job, form: job_application}
+knows:
+  - "First answer: yes, she needs sponsorship"
+  - "After the notice: she has a residence permit as a partner of a Dutch citizen, so she can already work"
+  - Expected salary 60000 to 70000 EUR a year, notice period 1 month
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {visa_sponsorship: "no", notice_period: 1m}
+min_score: 7

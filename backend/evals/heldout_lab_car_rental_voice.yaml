@@ -1,0 +1,19 @@
+name: heldout_lab_car_rental_voice
+tags: [lab, voice, heldout, stress]
+persona: >-
+  A parent dictating by voice with kids in the background: no punctuation, numbers in words ("thirty two", "ten am"),
+  speech-recognition slips ("compact car" as "compact car pls", "child seat" as "child sear"), all in a few long
+  messages.
+goal: Book a compact car from the airport with a child seat for a 4-year-old.
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - "pick up at the airport next friday at ten am bring it back to the airport monday after at ten am"
+  - "compact car pls with a child sear my son is four"
+  - "my name is clara nunes i am thirty two licence number PT-7766554 had it for twelve years"
+  - "email clara.nunes@example.pt phone plus three five one nine one two three four five six seven eight"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {pickup_location: airport, car_class: compact, extras: child_seat, pickup_time: 10h}
+min_score: 6

@@ -1,0 +1,15 @@
+name: lab_birth_registration_rule
+tags: [lab, rule]
+persona: >-
+  A father who has been travelling and only now registers his daughter, born two months ago; he hopes the chat can
+  still do it online.
+goal: Learn that more than 42 days have passed and the birth must be registered in person at the registry.
+start: {site: lab, page: /lab/norland-birth, form: birth_registration}
+knows:
+  - "Baby Liv, a girl, born two months ago at Westmere General Hospital"
+  - "Mother Anna Berg, father Tom Berg, married"
+turns: 5
+expect:
+  says: [["in person"], ["42 days"]]
+  never_says: ["you can still register online", "registered online"]
+min_score: 7

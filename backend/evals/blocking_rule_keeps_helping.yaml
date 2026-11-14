@@ -1,0 +1,24 @@
+name: blocking_rule_keeps_helping
+tags: [rule, stress]
+persona: >-
+  A young applicant who typed a birth date that makes them 17. When the form shows the age error they insist the date
+  is correct and ask what happens now, then ask the assistant to fill in the rest of their personal details anyway.
+goal: Understand why the application cannot be sent with this birth date, and still get the other personal fields filled.
+start:
+  page: /apply
+  form: loan_application
+  values:
+    last_name: Novak
+    first_name: Daria
+    birth_date: "2009-06-20"
+knows:
+  - The birth date 20 June 2009 is correct
+  - Gender female
+  - Born in Kazan
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {gender: f, birth_date: "2009-06-20"}
+  never_says: ["can't go further", "cannot go further", "cannot help", "can't help", "unable to continue"]
+min_score: 7

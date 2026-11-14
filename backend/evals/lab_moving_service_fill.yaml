@@ -1,0 +1,21 @@
+name: lab_moving_service_fill
+tags: [lab, fill]
+persona: A student moving to a new flat across town who answers each question plainly and wants to know the price.
+goal: >-
+  Request a weekday move with both addresses, four kinds of items and no extra services, and hear the estimate the
+  form calculates.
+start: {site: lab, page: /lab/movers, form: moving_service}
+knows:
+  - From Sonnenallee 80, 12045 Berlin, 3rd floor, no lift
+  - To Schillerstrasse 5, 10625 Berlin, ground floor
+  - Moving next Wednesday
+  - "Items: 20 boxes, 1 sofa, 2 wardrobes, 1 TV (fragile)"
+  - No packing service, no storage
+  - He is Felix Wagner, phone +49 151 23456789, email felix.wagner@example.de
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["634"]]
+  fields: {origin_lift: "no", destination_city: Berlin, packing_service: false}
+min_score: 7

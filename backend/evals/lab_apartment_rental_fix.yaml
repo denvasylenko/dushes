@@ -1,0 +1,18 @@
+name: lab_apartment_rental_fix
+tags: [lab, fix]
+persona: >-
+  A software tester who fills the applicant tab quickly and makes a typo in her email ("gmial" instead of "gmail").
+  After the card is shown she notices it and asks to correct it, and later corrects her employer's name too.
+goal: Have the applicant tab filled with the corrected email and the corrected employer.
+start: {site: lab, page: /lab/canal-flat, form: apartment_rental}
+knows:
+  - Her name is Ines Moreau, born 9 November 1990, phone +31 6 22334455
+  - "First typed email: ines.moreau@gmial.com; the correct one is ines.moreau@gmail.com"
+  - "She is employed; first says the employer is Adyn, then corrects it to Adyen"
+  - Net income 4100 EUR a month, she applies alone
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {email: ines.moreau@gmail.com, employer: Adyen, employment: employed}
+min_score: 7

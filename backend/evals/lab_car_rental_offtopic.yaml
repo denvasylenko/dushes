@@ -1,0 +1,17 @@
+name: lab_car_rental_offtopic
+tags: [lab, offtopic]
+persona: >-
+  A tourist who, while booking, asks unrelated things: the best beaches near Lisbon, whether it will rain next week,
+  and a good restaurant near the harbour. He returns to the booking after each short answer.
+goal: Book a car from the harbour office with navigation, after the assistant briefly steers each off-topic question back.
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - Pick-up at the harbour office next Wednesday at 11:00, return there five days later at 11:00
+  - An economy car with navigation
+  - He is Mark Evans, 45, licence number UK-55443322, licence for 25 years
+  - Email mark.evans@example.co.uk, phone +44 7700 900222
+turns: 8
+expect:
+  cards: [set_fields]
+  fields: {pickup_location: harbour, car_class: economy, extras: gps}
+min_score: 7

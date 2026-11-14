@@ -1,0 +1,16 @@
+name: heldout_lab_conference_registration_offtopic
+tags: [lab, offtopic, heldout]
+persona: >-
+  A traveller registering alone who keeps asking unrelated things: a good hotel near the venue, whether there is a
+  conference hotel discount, the best pastel de nata in Lisbon, and the weather in April.
+goal: Register for one Standard ticket; get answers to the side questions if the assistant has them.
+start: {site: lab, page: /lab/conference, form: conference_registration}
+knows:
+  - He is Noah Fischer, noah.fischer@example.ch, no special diet
+  - One Standard ticket, no workshops, no promo code, no invoice
+turns: 7
+expect:
+  answered_by: [form]
+  fields: {ticket_type: standard, attendee_count: 1, total: "450.00"}
+  never_says: ["hotel discount of", "20% off the hotel", "the conference hotel is", "discount code for the hotel"]
+min_score: 7

@@ -1,0 +1,43 @@
+name: lab_b2b_purchase_order_dump
+tags: [lab, dump, stress]
+persona: >-
+  A procurement manager whose buyer and billing details are already in the form. She pastes six order lines in one
+  message, copied from a spreadsheet (SKU, description, quantity, unit, unit price, discount), and asks to put them all
+  in.
+goal: >-
+  Have the delivery date set and all six order lines filled from that one message, with every change shown on cards,
+  and the totals calculated by the form.
+start:
+  site: lab
+  page: /lab/purchase-order
+  form: b2b_purchase_order
+  values:
+    company_name: Hartmann Office B.V.
+    registration_number: "81234567"
+    vat_id: NL123456789012
+    registration_country: {id: NL, name: Netherlands}
+    contact_first_name: Lisa
+    contact_last_name: Hartmann
+    contact_email: lisa.hartmann@hartmann-office.example
+    contact_phone: +31 20 555 0101
+    billing_attention: Accounts payable
+    billing_street: Herengracht 200
+    billing_postcode: 1016 BS
+    billing_city: Amsterdam
+    billing_country: {id: NL, name: Netherlands}
+    invoice_email: invoices@hartmann-office.example
+    same_as_billing: true
+knows:
+  - Delivery two weeks from today, a weekday
+  - "ABC-12345 | A4 copy paper, 5 reams | 40 | boxes | 24.50 | 0%"
+  - "PEN-20011 | Ballpoint pens, blue | 100 | pieces | 1.20 | 0%"
+  - "TON-55120 | Toner cartridge LX-9 | 8 | pieces | 89.00 | 0%"
+  - "CHR-30400 | Office chair Ergo | 6 | pieces | 145.00 | 10%"
+  - "DSK-77810 | Desk lamp LED | 12 | pieces | 32.00 | 0%"
+  - "CBL-10200 | HDMI cable 3 m | 25 | pieces | 6.40 | 0%"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {item_1_sku: ABC-12345, item_4_sku: CHR-30400, item_6_sku: CBL-10200, item_1_unit: box}
+min_score: 6

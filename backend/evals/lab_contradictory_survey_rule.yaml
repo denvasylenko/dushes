@@ -1,0 +1,16 @@
+name: lab_contradictory_survey_rule
+tags: [lab, rule]
+persona: >-
+  A tenant who says he is 45 but was born on 10 February 1983 (which makes him 43). When the mismatch is pointed out
+  he confirms the birth date is right.
+goal: Have age and date of birth agree, with the birth date kept and the age corrected to 43.
+start: {site: lab, page: /lab/tenant-survey, form: contradictory_survey}
+knows:
+  - Tenancy reference T771025, name Dmitri Albescu
+  - "He says he is 45 but was born 10 February 1983; the birth date is correct"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {birth_date: "1983-02-10", age: 43}
+min_score: 7

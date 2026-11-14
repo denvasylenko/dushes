@@ -1,0 +1,22 @@
+name: lab_moving_service_dump
+tags: [lab, dump, stress]
+persona: >-
+  A family moving house who pastes the whole move in one long message: both addresses with floors and lifts, the date,
+  and an inventory of nine kinds of items (one more than the form takes), and asks to fill everything.
+goal: >-
+  Have the addresses and the inventory filled from that one message, with the nine kinds fitted into the form's
+  8 lines (for example by merging two of them) and every change shown on cards.
+start: {site: lab, page: /lab/movers, form: moving_service}
+knows:
+  - From Karl-Marx-Allee 90, 10243 Berlin, 5th floor, with a lift
+  - To Brandenburger Strasse 40, 14467 Potsdam, 2nd floor, no lift
+  - Moving in three weeks, on a Tuesday
+  - "Inventory: 35 boxes, 1 sofa, 2 beds, 3 wardrobes, 1 dining table, 6 chairs, 1 washing machine, 1 TV (fragile), 2 floor lamps (fragile)"
+  - Happy to merge the table and chairs into one line, or whatever the assistant suggests
+  - Packing service yes, no storage; contact Julia Schmidt, +49 160 98765432, julia.schmidt@example.de
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {origin_city: Berlin, destination_city: Potsdam, destination_lift: "no", packing_service: true}
+min_score: 6

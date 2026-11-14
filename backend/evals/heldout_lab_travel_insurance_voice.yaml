@@ -1,0 +1,18 @@
+name: heldout_lab_travel_insurance_voice
+tags: [lab, voice, heldout]
+persona: >-
+  A man dictating to his phone while driving: no punctuation, numbers in words, misheard words ("grease" for Greece,
+  "too travelers"), dates like "the third of june".
+goal: Get a Standard quote for himself and his partner for the trip to Greece.
+start: {site: lab, page: /lab/travel-insurance, form: travel_insurance}
+knows:
+  - Greece, departing the third of June 2027, back the sixteenth of June 2027
+  - "Two travellers: Daniel Price born the eleventh of october nineteen eighty eight, and Sara Lund born the second of may nineteen ninety"
+  - Standard cover, no skiing
+  - Email daniel.price@example.co.uk
+turns: 8
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {destinations: gr, departure_date: "2027-06-03", return_date: "2027-06-16", traveller_count: 2, cover_level: standard}
+min_score: 6

@@ -1,0 +1,13 @@
+name: lab_dental_appointment_facts
+tags: [lab, facts]
+persona: A young man who asks how much whitening costs and who does it before deciding to book.
+goal: Learn the whitening price and the dentist, then book a whitening visit.
+start: {site: lab, page: /lab/dental, form: dental_appointment}
+knows:
+  - His name is Luca Romano, codice fiscale RMNLCU98D15A944W, mobile +39 345 600 7788
+  - He wants whitening if the price is reasonable; any Saturday morning works
+turns: 6
+expect:
+  says: [["250"]]
+  fields: {reason: whitening, dentist: dr_bianchi}
+min_score: 7

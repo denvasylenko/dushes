@@ -1,0 +1,17 @@
+name: lab_pet_insurance_mind
+tags: [lab, mind]
+persona: >-
+  A man who has a dog and a rabbit; he starts insuring the dog, then decides the rabbit matters more right now and
+  switches the species after the breed is already set.
+goal: End with the rabbit insured on the Complete plan, with a rabbit breed and the matching price.
+start: {site: lab, page: /lab/pet-insurance, form: pet_insurance}
+knows:
+  - "First: his Beagle Max, born 1 June 2021"
+  - "Then he switches to his rabbit Bolletje, a Lionhead, born 10 October 2024, not neutered, microchip 528140000777888"
+  - No known illness or injury; Complete plan starting today
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {species: rabbit, breed: lionhead, plan: complete, monthly_price: "19.00"}
+min_score: 7

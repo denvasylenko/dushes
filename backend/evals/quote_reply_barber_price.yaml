@@ -1,0 +1,24 @@
+name: quote_reply_barber_price
+tags: [quote]
+persona: >-
+  A client booking a haircut with Maria. When the assistant names the price, they select it in the answer and ask why
+  it is so high: they expected the usual haircut price.
+goal: Learn the price of the haircut with Maria, then understand why it is higher than a usual haircut.
+start:
+  page: /book
+  form: barber_booking
+  values:
+    service: {id: haircut, name: Haircut}
+    barber: {id: maria, name: Maria (senior)}
+knows:
+  - Wants a haircut with Maria, already chosen in the form
+  - Heard a haircut costs 40 dollars
+quote:
+  pattern: "\\$?\\s?48\\b"
+  ask: Why so high?
+turns: 4
+expect:
+  answered_by: [form]
+  says: [["20%", "20 %", "senior"]]
+  never_says: ["which price", "which number", "which amount"]
+min_score: 7

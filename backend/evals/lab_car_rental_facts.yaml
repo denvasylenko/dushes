@@ -1,0 +1,21 @@
+name: lab_car_rental_facts
+tags: [lab, facts]
+persona: >-
+  A traveller booking a compact car who keeps looking for the field to enter his credit card, asks whether a deposit
+  is blocked on the card, and what the fuel policy is (the page says payment is at the desk and nothing about deposits
+  or fuel).
+goal: >-
+  Hear that there is no card field because payment is made at the desk at pick-up, hear honestly that deposits and the
+  fuel policy are not on the page, and have the trip and the car class filled.
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - Pick-up at the airport terminal next Friday at 10:00, return there the Monday after at 10:00
+  - A compact car, no extras
+  - He is Lukas Becker, 34, email lukas.becker@example.de
+turns: 7
+expect:
+  cards: [set_fields]
+  says: [["desk", "counter", "at pick-up", "when you pick up"]]
+  never_says: ["full-to-full", "full to full", "deposit of 300", "deposit of 500", "300 EUR deposit", "500 EUR deposit"]
+  fields: {pickup_location: airport, pickup_time: 10h, car_class: compact}
+min_score: 7

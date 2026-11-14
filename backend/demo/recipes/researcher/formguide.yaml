@@ -1,0 +1,7 @@
+# The researcher: questions about the business go to the form's documents (uploaded by a manager), read in the
+# researcher's own context; the form agent gets a short answer with its sources.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+  research: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}
+actions:
+  ask_documents: auto        # on when the form has documents

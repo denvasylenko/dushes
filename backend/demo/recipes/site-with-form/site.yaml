@@ -1,0 +1,19 @@
+# Three pages; only /book holds a form. Dushes opens it when the visitor wants to book.
+title: Barber & Co
+pages:
+  - path: /
+    title: Home
+    description: Barber & Co, haircuts and beard trims on Main Street.
+    sections:
+      - {id: welcome, title: Welcome, text: Haircuts and beard trims at 21 Main Street. Book a visit online.}
+  - path: /prices
+    title: Prices
+    keywords: [price, cost, how much]
+    description: Services and prices.
+    sections:
+      - {id: list, title: Services and prices, text: "Haircut $40, beard trim $25, haircut and beard $60, kids haircut $25."}
+  - path: /book
+    title: Book a visit
+    keywords: [book, booking, appointment, haircut, visit]
+    description: Book a haircut or a beard trim.
+    form: barber_booking

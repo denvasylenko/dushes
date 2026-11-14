@@ -1,0 +1,45 @@
+name: lab_schengen_visa_rule
+tags: [lab, rule]
+persona: >-
+  A retired teacher who wants to spend the whole summer in Lunesse, four months, and is surprised by the limit; she
+  accepts a shorter stay once the assistant explains it.
+goal: Have the travel dates filled within the 90-day limit for a tourist stay in Lunesse.
+start:
+  site: lab
+  page: /lab/norland-visa
+  form: schengen_visa
+  values:
+    surname: Okafor
+    first_names: Grace
+    birth_date: "1956-02-03"
+    birth_place: Lagos
+    birth_country: Nigeria
+    nationality: Nigerian
+    sex: female
+    marital_status: {id: widowed, name: Widowed}
+    photo: grace_photo.jpg
+    home_address: 14 Bourdillon Road
+    home_postcode: "101233"
+    home_city: Lagos
+    home_country: Nigeria
+    phone: +234 803 555 0142
+    email: grace.okafor@example.com
+    occupation: {id: retired, name: Retired}
+    passport_type: {id: ordinary, name: Ordinary passport}
+    passport_number: A09876543
+    passport_issued_by: Nigeria
+    passport_issue_date: "2023-04-20"
+    passport_expiry_date: "2033-04-19"
+knows:
+  - "A tourist trip to Lunesse, first entry Lunesse, single entry, flying"
+  - "She wants to arrive on 1 May next year and return on 31 August next year"
+  - "If told that is too long, she returns on 29 July next year instead (exactly 90 days)"
+  - "She will stay at Villa Mirabel, 3 Rue des Pins, Lunesse"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {purpose: tourism, main_destination: lunesse}
+  says: [["90 days"]]
+  never_says: ["four months is fine", "123 days is allowed"]
+min_score: 7

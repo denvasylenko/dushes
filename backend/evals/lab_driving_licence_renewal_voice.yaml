@@ -1,0 +1,33 @@
+name: lab_driving_licence_renewal_voice
+tags: [lab, voice]
+persona: >-
+  A 72-year-old retired bus driver who dictates on his phone: no punctuation, words run together, numbers spelt out
+  ("no no to all of them", "i wear glasses yes"); he is a little offended by the health questions.
+goal: >-
+  Answer the health self-declaration (all no, wears glasses) and learn that at his age a doctor's certificate is
+  needed anyway.
+start:
+  site: lab
+  page: /lab/norland-licence
+  form: driving_licence_renewal
+  values:
+    licence_number: WM771204B3
+    categories: [{id: b, name: B (cars)}]
+    surname: Halvorsen
+    first_name: Per
+    birth_date: "1954-02-11"
+    phone: +47 913 55 210
+    photo: per_photo.jpg
+knows:
+  - "No epilepsy, no insulin diabetes, no heart problems, no uncorrectable vision loss, no sleep disorder, nothing else"
+  - He drives with glasses
+  - "He says it like: no seizures never no sugar thing no heart no eyes are fine with my glasses no sleeping trouble nothing else"
+  - His licence expires in two months
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {med_epilepsy: "no", med_diabetes: "no", med_heart: "no", med_sleep: "no", vision_correction: true}
+  says: [["certificate"]]
+  never_says: ["too old to drive", "should stop driving"]
+min_score: 7

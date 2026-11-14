@@ -1,0 +1,8 @@
+name: recipe_skill_scoped_on_its_form
+recipe: skill-scoped-to-one-form
+form: loan_application          # the skill's own form: it is used
+runs: 10
+turns:
+  - How do I prove my income? I'm a pensioner.
+expect:
+  tool_args: {use_skill: {name: income_proof}}

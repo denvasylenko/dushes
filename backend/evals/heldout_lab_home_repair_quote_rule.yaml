@@ -1,0 +1,18 @@
+name: heldout_lab_home_repair_quote_rule
+tags: [lab, rule, heldout]
+persona: >-
+  A busy office worker with a blocked bathroom drain who can only be home at the weekend and first asks for the coming
+  Sunday. When told FixRight does not work on Sundays (except emergencies), he picks the Saturday before instead.
+goal: Request a standard plumbing visit for a blocked drain on a Saturday, after hearing Sundays are not possible.
+start: {site: lab, page: /lab/handyman, form: home_repair_quote}
+knows:
+  - "The bathroom sink drains very slowly, it is not an emergency"
+  - "First wish: the coming Sunday morning; then the Saturday before it, in the morning"
+  - Apartment at Witte de Withstraat 50, 3012 BR Rotterdam, ground floor
+  - His name is Sem Bos, phone +31 6 12121212, email sem.bos@example.nl
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {repair_type: plumbing, repair_subtype: blocked, urgency: standard, time_slot: morning}
+min_score: 7

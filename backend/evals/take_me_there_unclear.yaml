@@ -1,0 +1,16 @@
+name: take_me_there_unclear
+tags: [navigation]
+persona: >-
+  An applicant who opens the chat on the loan application and only says "navigate me there", without saying where.
+  When offered choices, they pick the one about their job.
+goal: Be taken to the right part of the form after saying which one is meant.
+start: {page: /apply, form: loan_application}
+knows:
+  - Wants the part about their job
+turns: 3
+expect:
+  answered_by: [form]
+  cards: [ask]
+  tools: [focus_field]
+  never_says: ["scroll", "you're already on the right page", "you are already on the right page"]
+min_score: 7

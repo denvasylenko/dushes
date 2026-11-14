@@ -1,0 +1,14 @@
+name: lab_vehicle_registration_de_facts
+tags: [lab, facts]
+persona: >-
+  A first-time car owner who asks before starting: what an eVB is, what the registration and a personal plate cost,
+  and how much vehicle tax she will pay per year for a petrol hatchback (the page does not say).
+goal: Learn the fees (27.90 EUR registration, 10.20 EUR for a requested plate) and what an eVB is; hear that the tax amount is not on the page.
+start: {site: lab, page: /lab/vehicle-registration-de, form: vehicle_registration_de}
+knows:
+  - She is buying a small petrol car next week
+turns: 5
+expect:
+  says: [["27.90"], ["10.20"], ["insurer", "insurance"]]
+  never_says: ["the tax is", "you will pay 100", "per year in tax is"]
+min_score: 7

@@ -1,0 +1,18 @@
+name: lab_wedding_planner_rule
+tags: [lab, rule]
+persona: >-
+  A bride who dreams of a winter wedding and first asks for Sunday 5 December 2027. When told weddings are held only on
+  Fridays and Saturdays from April to October, she settles for an autumn Saturday.
+goal: Hear the date rule, then have the wedding set for Saturday 18 September 2027 with 60 guests.
+start: {site: lab, page: /lab/estate-weddings, form: wedding_planner}
+knows:
+  - Partners Chloe Martin and Sam Patel, email chloe.martin@example.co.uk, phone +44 7700 900987
+  - "First wish: Sunday 5 December 2027; then Saturday 18 September 2027"
+  - 60 guests, all adults, coast menu, no ceremony on the estate
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["April to October", "April and October", "April through October"]]
+  fields: {wedding_date: "2027-09-18", adult_menu: coast}
+min_score: 7

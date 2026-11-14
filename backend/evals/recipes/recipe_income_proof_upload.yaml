@@ -1,0 +1,8 @@
+name: recipe_income_proof_upload
+recipe: income-proof
+form: loan_application
+runs: 10
+turns:
+  - {say: Here is my employment letter. Please fill in my job details from it., attach: employment_letter.png}
+expect:
+  tools: [propose_changes]      # the values read from the letter, shown on a card

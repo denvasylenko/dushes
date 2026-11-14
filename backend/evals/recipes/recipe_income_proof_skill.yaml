@@ -1,0 +1,8 @@
+name: recipe_income_proof_skill
+recipe: income-proof
+form: loan_application
+runs: 10
+turns:
+  - I'm an employee. Which document should I use to prove my income?
+expect:
+  tool_args: {use_skill: {name: income_proof}}

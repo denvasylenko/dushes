@@ -1,0 +1,25 @@
+name: quote_reply_loan_payment
+tags: [quote]
+persona: >-
+  Someone halfway through a consumer loan application who already chose 500 000 for 36 months. When the assistant names
+  the monthly payment, they select that number in the answer and ask where it comes from.
+goal: Learn the monthly payment, then understand where exactly that number comes from.
+start:
+  page: /apply
+  form: loan_application
+  values:
+    loan_type: {id: consumer, name: Consumer loan}
+    loan_amount: "500000"
+    loan_term: {id: "36", name: 36 months}
+knows:
+  - A consumer loan of 500 000 for 36 months, already in the form
+  - Thinks the payment looks high and wants to know why
+quote:
+  pattern: "19[\\s\\u00a0,.]?069"
+  ask: Why so high? Where does this number come from?
+turns: 4
+expect:
+  answered_by: [form]
+  says: [["21.9", "21,9"], ["36"]]
+  never_says: ["which number", "which amount", "which figure"]
+min_score: 7

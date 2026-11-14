@@ -1,0 +1,23 @@
+name: lab_residence_permit_lang
+tags: [lab, lang]
+persona: >-
+  A Senegalese student who writes only in French, gives her phone the French way (06 12 34 56 78) and her dates as
+  DD/MM/YYYY; she lives in a room rented from a host family and has already uploaded the host certificate.
+goal: Fill the identity and address tab of the residence permit application.
+start:
+  site: lab
+  page: /lab/val-daurore-permit
+  form: residence_permit
+  values: {address_proof: attestation_hebergement.pdf, host_id_copy: host_id.pdf}
+knows:
+  - Amina Diallo, born 12/04/2003 in Dakar, Senegal; Senegalese; female
+  - Mobile 06 12 34 56 78, email amina.diallo@example.fr
+  - Lives at 14 rue des Lilas, 38100 Val-d'Aurore
+  - Her proof of address is a host certificate (attestation d'hebergement) from the family she lives with
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {surname: Diallo, given_names: Amina, birth_date: "2003-04-12", sex: f, postcode: "38100",
+           address_proof_type: host}
+min_score: 7

@@ -1,0 +1,19 @@
+name: heldout_lab_b2b_purchase_order_facts
+tags: [lab, facts, heldout]
+persona: >-
+  A new business customer who asks before ordering: the minimum order, whether VAT is included in the prices, when
+  Net 30 is possible, how fast delivery is, and whether there is a volume discount or free delivery above some amount
+  (the page says nothing about either).
+goal: >-
+  Hear the minimum (500 EUR before VAT), that prices exclude 21% VAT, that Net 30 is only above 5000 EUR and that
+  delivery takes at least 3 working days; hear honestly that volume discounts and free delivery are not on the page;
+  then start with the company name.
+start: {site: lab, page: /lab/purchase-order, form: b2b_purchase_order}
+knows:
+  - Company Vos Horeca B.V., registered in Belgium
+turns: 7
+expect:
+  says: [["500"], ["21%"], ["5000", "5 000", "5,000", "5.000"]]
+  never_says: ["free delivery above 1000", "free delivery above 2500", "free shipping above 1000", "5% off", "10% off", "volume discount of 5%"]
+  fields: {company_name: Vos Horeca B.V.}
+min_score: 7

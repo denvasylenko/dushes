@@ -1,0 +1,19 @@
+name: lab_vehicle_registration_de_lang
+tags: [lab, lang]
+persona: >-
+  A German-speaking man who writes only in German and registers his used diesel car. He first offers his Austrian
+  account for the vehicle tax, then gives his German one when told only a DE IBAN works.
+goal: Register the car with the owner, vehicle and tax details, paying the tax from a German IBAN.
+start: {site: lab, page: /lab/vehicle-registration-de, form: vehicle_registration_de}
+knows:
+  - Jonas Weber, born 14 March 1985, Lindenstrasse 8, 37085 Lindenau, email jonas.weber@example.de
+  - "Car: Volkswagen Golf, VIN WVWZZZ1KZ6W612345, first registered 2 June 2019, 1968 cc, 110 kW, diesel, 119 g/km CO2"
+  - "eVB number K7P2M9Q from his insurer HanseSchutz"
+  - "First IBAN offered: AT61 1904 3002 3457 3201 (Austrian); German IBAN: DE89 3704 0044 0532 0130 00"
+  - He authorises the direct debit; he does not want a requested plate
+turns: 9
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {vehicle_type: car, fuel: diesel, postcode: "37085", evb_number: K7P2M9Q}
+min_score: 6

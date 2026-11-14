@@ -1,0 +1,42 @@
+name: heldout_lab_mortgage_preapproval_rule
+tags: [lab, rule, heldout]
+persona: >-
+  A buyer who has already filled in the first five tabs and now wants a 300,000 GBP flat with a 20,000 GBP deposit;
+  when told it is too low, he asks what the minimum is and raises it.
+goal: Get the property tab filled with a deposit the form accepts, and see the loan and monthly estimate.
+start:
+  site: lab
+  page: /lab/mortgage
+  form: mortgage_preapproval
+  values:
+    app_title: {id: mr, name: Mr}
+    app_first_name: Ethan
+    app_last_name: Hughes
+    app_birth_date: "1989-09-05"
+    app_ni_number: EH 12 34 56 B
+    app_email: ethan.hughes@example.co.uk
+    app_phone: "+44 7700 900111"
+    app_marital_status: {id: single, name: Single}
+    app_dependants: "0"
+    app_address_line: 12 Park Row
+    app_city: Nottingham
+    app_postcode: NG1 6GR
+    app_years_at_address: "5"
+    app_residency: {id: citizen, name: UK or Irish citizen}
+    applying_with: {id: alone, name: Just me}
+    app_employment_status: {id: employed, name: Employed}
+    app_employer: Trentbridge Engineering
+    app_job_title: Civil engineer
+    app_employment_start: "2016-04-01"
+    app_annual_salary: "82000"
+    debt_count: "0"
+    savings: "45000"
+    deposit_source: {id: savings, name: Savings}
+knows:
+  - A leasehold flat in Nottingham at 300,000 GBP, 30-year term, capital and interest
+  - He first offers a 20,000 GBP deposit; once told the minimum, he raises it to 30,000 GBP
+turns: 6
+expect:
+  says: [["30,000", "30000", "10%"]]
+  fields: {purchase_price: 300000, deposit: 30000, loan_amount: "270000", ltv: "90.0"}
+min_score: 7

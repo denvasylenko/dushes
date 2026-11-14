@@ -1,0 +1,40 @@
+name: lab_residence_permit_mind
+tags: [lab, mind]
+persona: >-
+  A master's student who starts filling a student permit, then mentions she has just signed a permanent job contract
+  and switches to an employee permit; she asks what the stamp fee is now.
+goal: Have the permit tab switched from student to employee with the job details, and hear the fee the form now shows (225 EUR).
+start:
+  site: lab
+  page: /lab/val-daurore-permit
+  form: residence_permit
+  values:
+    surname: Petrovic
+    given_names: Ana
+    birth_date: "1999-08-21"
+    birth_place: Novi Sad, Serbia
+    nationality: Serbian
+    sex: f
+    phone: +33 6 45 22 18 90
+    email: ana.petrovic@example.com
+    street: 7 rue des Tanneurs
+    postcode: "38100"
+    city: Val-d'Aurore
+    address_proof_type: {id: rent, name: Rent receipt or lease}
+    address_proof: lease.pdf
+    current_visa_type: {id: vls_ts, name: Long-stay visa (VLS-TS)}
+    current_visa_number: 99FR5582014
+    current_visa_expiry: "2030-01-31"
+    passport_number: AB5582014
+    passport_expiry: "2032-06-30"
+knows:
+  - "First: student at Universite de Val-d'Aurore, Master in Data Science, started 1 September this year, 700 EUR a month"
+  - "Then: she signed a permanent contract (CDI) with Atelier Brunel SARL, SIRET 73282932000074, as a data analyst, 2,900 EUR gross a month"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {permit_type: worker, employer_name: Atelier Brunel SARL, stamp_fee: "225"}
+  says: [["225"]]
+  never_says: ["the fee is 75 EUR for your employee permit"]
+min_score: 7

@@ -1,0 +1,17 @@
+name: lab_callback_request_lang
+tags: [lab, lang]
+persona: >-
+  A Spanish-speaking customer in Madrid who writes only in Spanish, wants a call about a sofa order and gives her
+  phone as "0034 655 123 987". She first asks for a call tomorrow (Sunday) morning.
+goal: Request a callback for a weekday morning, after hearing that weekends are not possible.
+start: {site: lab, page: /lab/madrid-furniture-callback, form: callback_request}
+knows:
+  - Her name is Lucia Navarro Gil
+  - Phone 0034 655 123 987
+  - "She would like tomorrow morning; if not possible, Monday between 9 and 11 is fine"
+turns: 6
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {full_name: Lucia Navarro Gil, time_window: w09_11}
+min_score: 7

@@ -1,0 +1,15 @@
+name: take_me_there_clear
+tags: [navigation]
+persona: >-
+  An applicant who asks where to put their monthly income. When the assistant names the section, they ask
+  "can you take me there?" instead of looking for it.
+goal: Be shown the place in the form where the income goes.
+start: {page: /apply, form: loan_application}
+knows:
+  - Works as an accountant, salary 120 000 a month
+turns: 3
+expect:
+  answered_by: [form]
+  tools: [focus_field]
+  never_says: ["scroll", "you're already on the right page", "you are already on the right page"]
+min_score: 7

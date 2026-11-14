@@ -1,0 +1,21 @@
+name: heldout_lab_passport_application_minor_dump
+tags: [lab, dump, heldout, stress]
+persona: >-
+  A father in a hurry before a trip who pastes everything in one long message: child, both parents, fast-track and
+  collection at the Port Aldis office; then answers only what is missing.
+goal: Have the whole application filled from the one message, with fast-track and collection at Port Aldis.
+start:
+  site: lab
+  page: /lab/norland-child-passport
+  form: passport_application_minor
+  values: {child_photo: ella_photo.jpg}
+knows:
+  - "His first message, all at once: first passport for Ella Berg born 7 July 2020 in Port Aldis, girl, 112 cm, hazel eyes; both parents have custody; me Tomas Berg id 85030412345 phone +47 935 66 120 tomas.berg@example.com; mother Linnea Berg id 87111954321 phone +47 936 77 210; fast-track please, we collect at the Port Aldis office"
+  - Both parents agree to the passport
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {application_type: first, child_first_names: Ella, eye_colour: hazel, custody: joint, parent2_name: Linnea Berg,
+           fast_track: true, passport_fee: "95", collection: office, collection_office: harbour}
+min_score: 6

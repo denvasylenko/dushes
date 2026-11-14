@@ -1,0 +1,19 @@
+name: lab_car_rental_rule
+tags: [lab, rule]
+persona: >-
+  A 23-year-old who wants to impress friends with a premium car for a week. When told premium cars are for drivers 25
+  and older and that he pays a young-driver surcharge, he takes an SUV instead.
+goal: Hear the premium age rule and the 15 EUR a day surcharge, then book an SUV for the week.
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - Pick-up at the central station next Saturday at 09:00, return there seven days later at 09:00
+  - He is Diogo Ferreira, 23, licence number P-2210457, licence for 4 years
+  - Email diogo.ferreira@example.pt, phone +351 912 345 678
+  - "First wants premium; then an SUV"
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  says: [["25"], ["15"]]
+  fields: {car_class: suv, pickup_location: central, driver_name: Diogo Ferreira}
+min_score: 7

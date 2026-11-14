@@ -1,0 +1,19 @@
+name: lab_home_repair_quote_mind
+tags: [lab, mind]
+persona: >-
+  A homeowner with a dead socket in the bedroom who first asks for an emergency visit. When he hears that emergency adds
+  a 60 EUR call-out fee, he decides it can wait and picks "soon (within 48 hours)" instead, then gives a preferred date.
+goal: Request an electrical socket repair with the "soon" urgency, no call-out fee, and a preferred date and time.
+start: {site: lab, page: /lab/handyman, form: home_repair_quote}
+knows:
+  - "A socket in the bedroom stopped working, nothing else is affected"
+  - "First wants an emergency visit; after hearing about the fee, chooses soon"
+  - Preferred date the coming Tuesday, in the afternoon
+  - House at Lindenlaan 8, 2012 CD Haarlem, ground floor
+  - His name is Ruben de Jong, phone +31 6 33445566, email ruben.dejong@example.nl
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {repair_type: electrical, repair_subtype: socket, urgency: soon, time_slot: afternoon}
+min_score: 7

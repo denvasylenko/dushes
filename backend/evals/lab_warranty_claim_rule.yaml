@@ -1,0 +1,19 @@
+name: lab_warranty_claim_rule
+tags: [lab, rule]
+persona: >-
+  A woman whose headphones bought three months ago stopped charging; she insists on a refund and accepts a
+  replacement once the refund window is explained.
+goal: File a claim; get a refund if possible, otherwise a replacement.
+start: {site: lab, page: /lab/warranty, form: warranty_claim}
+knows:
+  - Headphones, Hush Pro, bought three months ago online
+  - Serial number 482910375612
+  - The right earbud no longer charges in the case since last week
+  - "First choice: a refund; if refused, a replacement"
+  - "Aisha Rahman, aisha.rahman@example.co.uk, 18 Queen Street, Cardiff, CF10 2BU"
+turns: 7
+expect:
+  says: [["30 days"]]
+  fields: {category: headphones, model: hush_pro, resolution: replace}
+  never_says: ["refund is approved", "you will get a refund", "I have set the refund"]
+min_score: 7

@@ -1,0 +1,20 @@
+name: lab_car_rental_mind
+tags: [lab, mind]
+persona: >-
+  A traveller who first wants to pick the car up at the central station and drop it at the airport. When she hears
+  about the 50 EUR one-way fee, she changes her mind and returns it to the central station after all.
+goal: >-
+  Have the trip booked with the same pick-up and return location (the "different location" box unticked, no one-way
+  fee), and the driver details filled.
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - Pick-up at the central station next Thursday at 12:00, return four days later at 12:00
+  - "First: return at the airport; after the fee: return at the central station"
+  - She is Ines Duarte, 41, licence number PT-889123, licence for 20 years
+  - Email ines.duarte@example.pt, phone +351 913 222 111; an economy car
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {different_return: false, pickup_location: central, car_class: economy}
+min_score: 7

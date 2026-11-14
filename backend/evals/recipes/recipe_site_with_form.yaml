@@ -1,0 +1,9 @@
+name: recipe_site_with_form
+recipe: site-with-form
+page: /                         # starts on the home page: Dushes opens the form, the form agent fills it
+runs: 10
+turns:
+  - I'd like to book a haircut. My name is Sam Reed, phone +1 555 201 3344.
+expect:
+  tools: [open_form, propose_changes]
+  order: true

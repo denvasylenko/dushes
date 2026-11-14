@@ -1,0 +1,17 @@
+name: lab_callback_request_voice
+tags: [lab, voice]
+persona: >-
+  A user dictating by voice: no punctuation, no capitals, the phone number spelled in words with "plus three four",
+  and the time as "between one and three in the afternoon".
+goal: Request a callback for the 13:00-15:00 weekday window.
+start: {site: lab, page: /lab/madrid-furniture-callback, form: callback_request}
+knows:
+  - "his name is marco ruiz said as 'marco ruiz'"
+  - "phone dictated as 'plus three four six one two three four five six seven eight'"
+  - "any weekday between one and three in the afternoon"
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {time_window: w13_15}
+min_score: 7

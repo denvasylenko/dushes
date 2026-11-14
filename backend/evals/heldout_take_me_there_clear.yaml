@@ -1,0 +1,26 @@
+name: heldout_take_me_there_clear
+tags: [heldout, navigation]
+persona: >-
+  A driver getting a car insurance quote who asks where the deductible is chosen. When the assistant names the place,
+  they ask "can you take me there?".
+goal: Be shown the place in the form where the deductible is chosen.
+start:
+  page: /insure
+  form: car_insurance
+  values:
+    make: {id: toyota, name: Toyota}
+    model: {id: corolla, name: Corolla}
+    year: "2019"
+    vin: JTDBR32E720123456
+    usage: {id: personal, name: Personal}
+    driver_name: Marco Rossi
+    driver_birth: "1985-04-12"
+    license_year: "2005"
+    accidents: {id: "0", name: None}
+knows: []
+turns: 3
+expect:
+  answered_by: [form]
+  tools: [focus_field]
+  never_says: ["scroll", "you're already on the right page", "you are already on the right page"]
+min_score: 7

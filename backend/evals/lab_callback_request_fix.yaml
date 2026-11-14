@@ -1,0 +1,17 @@
+name: lab_callback_request_fix
+tags: [lab, fix]
+persona: >-
+  A user who first gives a short name and a phone with a digit missing, then corrects both once they are filled
+  or flagged.
+goal: End with his full name and a valid Spanish phone on the callback request, for the 11:00-13:00 window.
+start: {site: lab, page: /lab/madrid-furniture-callback, form: callback_request}
+knows:
+  - "He first says his name is Jon, then corrects it to Jonathan Perez"
+  - "He first types the phone as 61234567 (one digit missing), then corrects it to 612 345 678"
+  - Weekdays from 11 to 13 suit him
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {full_name: Jonathan Perez, time_window: w11_13}
+min_score: 7

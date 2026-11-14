@@ -1,0 +1,17 @@
+name: heldout_lab_job_application_fix
+tags: [lab, fix, heldout]
+persona: >-
+  A hurried developer who fills the terms quickly and gets two things wrong: he types his salary range the wrong way
+  round (from 90000 to 70000) and names his previous company "Booking" before correcting it to "Booking.com".
+goal: Have the salary range set to 70000 to 90000 and the first job's company corrected to Booking.com.
+start: {site: lab, page: /lab/backend-job, form: job_application}
+knows:
+  - "One job to list: Python Engineer at Booking (corrects to Booking.com) from June 2018 to May 2024"
+  - "First says the salary is from 90000 to 70000; when told, he means from 70000 to 90000"
+  - He is available now and needs no visa sponsorship
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {job_1_company: Booking.com, notice_period: none, visa_sponsorship: "no"}
+min_score: 7

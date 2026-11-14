@@ -1,0 +1,18 @@
+name: heldout_lab_schengen_visa_facts
+tags: [lab, facts, heldout]
+persona: >-
+  A mother planning a family trip with her two children, aged 8 and 4, who first asks what the visas cost in total,
+  how long the consulate takes to decide (the page does not say) and whether the visas will surely be granted.
+goal: >-
+  Learn the fees (90 EUR for her, 45 EUR for the 8-year-old, free for the 4-year-old), hear honestly that the
+  processing time is not on the page and that no visa is promised, then start her own application with her name.
+start: {site: lab, page: /lab/norland-visa, form: schengen_visa}
+knows:
+  - Her name is Laura Mendes, first name Laura
+  - The children are 8 and 4 years old
+turns: 6
+expect:
+  says: [["45"], ["free", "no fee"], ["90"]]
+  never_says: ["15 days", "10 working days", "15 calendar days", "will be granted", "guaranteed"]
+  fields: {surname: Mendes}
+min_score: 7

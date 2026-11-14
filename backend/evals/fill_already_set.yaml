@@ -1,0 +1,20 @@
+name: fill_already_set
+tags: [fill]
+persona: A careful applicant who already chose Male as gender and, unsure, asks the assistant to "fill in gender".
+goal: Make sure the gender field is filled in.
+start:
+  page: /apply
+  form: loan_application
+  values:
+    last_name: Petrov
+    first_name: Ivan
+    gender: {id: m, name: Male}
+knows:
+  - Gender male
+turns: 2
+expect:
+  answered_by: [form]
+  never_cards: [set_fields]
+  says: [["already", "is set", "is Male", "shows Male"]]
+  fields: {gender: m}
+min_score: 7

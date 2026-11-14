@@ -1,0 +1,32 @@
+name: lab_passport_application_minor_fix
+tags: [lab, fix]
+persona: >-
+  A mother who filled most of the form, ticked fast-track by accident and misspelt her daughter's name; she asks
+  what it costs, then asks to go back to standard processing and correct the name.
+goal: Untick fast-track (the fee goes back to 40 EUR) and correct the child's first name to Maja.
+start:
+  site: lab
+  page: /lab/norland-child-passport
+  form: passport_application_minor
+  values:
+    application_type: first
+    child_surname: Lindgren
+    child_first_names: Maya
+    child_birth_date: "2018-01-30"
+    child_birth_place: Northgate
+    child_sex: f
+    child_height_cm: 121
+    eye_colour: {id: blue, name: Blue}
+    child_photo: maja_photo.jpg
+    fast_track: true
+    collection: post
+knows:
+  - "Her daughter's name is Maja, with a j"
+  - They do not travel for three months, standard processing is fine
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {fast_track: false, passport_fee: "40", child_first_names: Maja}
+  says: [["40 EUR", "EUR 40", "40 euros"]]
+min_score: 7

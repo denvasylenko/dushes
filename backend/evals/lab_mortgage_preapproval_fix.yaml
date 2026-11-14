@@ -1,0 +1,37 @@
+name: lab_mortgage_preapproval_fix
+tags: [lab, fix, stress]
+persona: >-
+  A nervous applicant who keeps correcting himself over a long session: a wrong birth year, then the salary
+  (it was 54,000 not 45,000), then the number of debts (two, not one), then the term (25 years, not 30).
+goal: Have every correction end up in the form, with no stale values left.
+start:
+  site: lab
+  page: /lab/mortgage
+  form: mortgage_preapproval
+  values:
+    app_title: {id: mr, name: Mr}
+    app_first_name: Samuel
+    app_last_name: Okoro
+    app_birth_date: "1985-06-14"
+    app_ni_number: SO 23 45 67 D
+    app_email: samuel.okoro@example.co.uk
+    app_phone: "+44 7700 900777"
+    app_marital_status: {id: married, name: Married or civil partnership}
+    app_address_line: 5 Mill Close
+    app_city: Bristol
+    app_postcode: BS3 4QT
+    app_years_at_address: "6"
+    app_residency: {id: citizen, name: UK or Irish citizen}
+    applying_with: {id: alone, name: Just me}
+knows:
+  - His birth date is 14 June 1986, not 1985
+  - Employed as a nurse at Bristol Royal Infirmary since 1 September 2015; salary 54,000 GBP (he first says 45,000, then corrects it)
+  - "Two debts (he first says one): a personal loan with Halcyon Bank, 220 GBP a month, 6,000 GBP left; a credit card with Lumen, 60 GBP a month, 900 GBP left"
+  - Savings 35,000 GBP
+  - Term 25 years (he first says 30)
+turns: 9
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {app_birth_date: "1986-06-14", app_annual_salary: 54000, debt_count: 2, debt_2_lender: Lumen}
+min_score: 6

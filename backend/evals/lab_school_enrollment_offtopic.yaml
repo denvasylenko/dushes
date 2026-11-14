@@ -1,0 +1,25 @@
+name: lab_school_enrollment_offtopic
+tags: [lab, offtopic]
+persona: >-
+  A chatty mother who, in the middle of filling the health and school-day section, asks unrelated things: where to buy
+  good pierogi in Krakow, what the weather will be like on the first day of school, and whether the assistant can
+  recommend a paediatrician. She comes back to the form after each answer.
+goal: >-
+  Have the health section set for her coeliac daughter (medical needs ticked and described) with the gluten-free lunch,
+  after the assistant briefly steers each off-topic question back to the form.
+start:
+  site: lab
+  page: /lab/school-krakow
+  form: school_enrollment
+  values:
+    child_first_name: Ola
+    child_last_name: Nowak
+knows:
+  - "Ola has coeliac disease: no gluten at all; staff should call her mother if she eats something with gluten"
+  - She wants the gluten-free lunch and the art club
+  - Ola is picked up by a parent
+turns: 8
+expect:
+  cards: [set_fields]
+  fields: {has_medical_needs: true, lunch_plan: gluten_free, transport: parent}
+min_score: 7

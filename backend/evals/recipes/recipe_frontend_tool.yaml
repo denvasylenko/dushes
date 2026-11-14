@@ -1,0 +1,13 @@
+name: recipe_frontend_tool
+recipe: frontend-tool
+form: barber_booking
+runs: 10
+client_tools:
+  - name: get_user_locale
+    description: The user's browser language and time zone.
+    parameters: {type: object, properties: {}}
+    result: '{"locale": "de-DE", "time_zone": "Europe/Berlin"}'
+turns:
+  - Which time zone is my browser set to? I want to be sure the times I pick are mine.
+expect:
+  tools: [get_user_locale]
