@@ -267,3 +267,25 @@ def test_cards_of_earlier_answers_reach_the_next_question(tmp_path):
     assert cards, "the first answer shows a card"
     system = model.calls[-1][0].content
     assert "Cards the reader already has from your earlier answers" in system and "- code" in system
+
+
+def test_a_card_still_on_screen_is_pointed_at_not_drawn_twice(tmp_path):
+    from .conftest import say
+
+    def show():
+        return say("Set the roles under `models:`.", ("c1", "show_code", {"blocks": ["b1"]}))
+    other = say("Tokens go on the element.")
+    client, model = _client(tmp_path, script=[show(), say("ok"), show(), say("ok"),
+                                              other, other, other, show(), say("ok")])
+    with client as c:
+        first = [e for e in _events(_ask(c, "azure openai agent").text) if e["type"] == "CUSTOM"]
+        again = [e for e in _events(_ask(c, "show me the config for that").text) if e["type"] == "CUSTOM"]
+        for _ in range(3):
+            _ask(c, "how do I theme the widget?")
+        later = [e for e in _events(_ask(c, "show me the config for that").text) if e["type"] == "CUSTOM"]
+    card = next(e["value"] for e in first if e["name"] == "docs_card")
+    assert card["id"].startswith("card_")
+    assert [e["name"] for e in again if e["name"].startswith("docs_")] == ["docs_highlight"]
+    assert next(e["value"] for e in again if e["name"] == "docs_highlight") == {"card_id": card["id"]}
+    fresh = [e["value"] for e in later if e["name"] == "docs_card"]          # four answers later: off the screen
+    assert fresh and fresh[0]["id"] != card["id"] and not [e for e in later if e["name"] == "docs_highlight"]

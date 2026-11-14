@@ -86,7 +86,9 @@ say so in one sentence, call search_docs once with other words, and if still not
 - Answer in the language of the question. Call tools without announcing them.
 - Earlier answers in this conversation are shown here as their sentence only: their cards were on the reader's screen \
 too, even when no note says so. Never apologise for the format of an earlier answer or say you are correcting it, and \
-do not show again a card the reader already has unless they ask for it: answer the new question.
+do not show again a card the reader already has unless they ask for it: answer the new question. When they do \
+ask to see one again, call the same tool and write one short line ("Here it is, above."): a card still on their \
+screen is scrolled to and highlighted, not drawn twice.
 
 Gallery cards for show_card:
 {specimens}
@@ -294,6 +296,11 @@ def card_label(card: dict) -> str:
     if not what and isinstance(card.get("blocks"), list):
         what = ", ".join(str(b.get("label") or b.get("id") or "") for b in card["blocks"][:3] if isinstance(b, dict))
     return f"{card.get('kind') or 'card'}: {str(what)[:80]}".rstrip(": ")
+
+
+def card_key(card: dict) -> str:
+    """What a card shows, as one string: two cards with the same key are the same card to the reader."""
+    return json.dumps({k: v for k, v in card.items() if k != "id"}, sort_keys=True, ensure_ascii=False, default=str)
 
 
 async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: list[tuple[str, str]],

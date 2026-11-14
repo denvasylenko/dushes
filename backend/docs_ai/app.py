@@ -26,6 +26,7 @@ import contextlib
 import logging
 import os
 import time
+import uuid
 from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any, AsyncIterator
@@ -39,7 +40,7 @@ from pydantic import ValidationError
 
 from formguide import agui
 
-from .agent import answer, card_label
+from .agent import answer, card_key, card_label
 from .corpus import Corpus, load
 
 log = logging.getLogger("formguide.docs_ai")
@@ -74,6 +75,9 @@ def _text(content: Any) -> str:
     if isinstance(content, list):
         return "".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in content)
     return str(content or "")
+
+
+VISIBLE_ANSWERS = 3   # a card from the last three answers is still on the reader's screen
 
 
 def _cards(m: Any) -> str:
@@ -121,7 +125,9 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
     max_len = max_chars or int(env("DOCS_AI_MAX_CHARS", "2000"))
     every = refresh if refresh is not None else float(env("DOCS_AI_REFRESH", "3600"))
     state: dict[str, Any] = {"corpus": None, "model": model, "loaded": 0.0}
-    shown: dict[str, deque] = {}   # cards each conversation has seen (their labels): the client sends back only text
+    # cards each conversation has seen: {thread: deque of {id, label, key, answer}}; the client sends back only text
+    shown: dict[str, deque] = {}
+    answers: dict[str, int] = defaultdict(int)   # answers given per conversation (a card's age is counted in them)
 
     def reload() -> None:
         try:
@@ -186,13 +192,27 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
         enc = agui.encoder(request.headers.get("accept"))
 
         async def events() -> AsyncIterator[str]:
-            before = list(shown.get(inp.thread_id, ()))
-            async for ev in answer(state["model"], corpus, question, history[-7:-1], inp.thread_id, inp.run_id,
-                                   shown=before):
-                if ev.get("type") == "CUSTOM" and ev.get("name") == "docs_card":   # remembered for the next question
-                    while len(shown) >= 2000 and inp.thread_id not in shown:
-                        shown.pop(next(iter(shown)))
-                    shown.setdefault(inp.thread_id, deque(maxlen=12)).append(card_label(ev.get("value") or {}))
+            tid = inp.thread_id
+            answers[tid] += 1
+            now = answers[tid]
+            seen = shown.get(tid, ())
+            async for ev in answer(state["model"], corpus, question, history[-7:-1], tid, inp.run_id,
+                                   shown=[c["label"] for c in seen]):
+                if ev.get("type") == "CUSTOM" and ev.get("name") == "docs_card":
+                    card = dict(ev.get("value") or {})
+                    key = card_key(card)
+                    same = next((c for c in reversed(shown.get(tid, ())) if c["key"] == key), None)
+                    if same and now - same["answer"] <= VISIBLE_ANSWERS:
+                        # the reader still has this very card on screen: point at it, never draw a copy
+                        ev = {"type": "CUSTOM", "name": "docs_highlight", "value": {"card_id": same["id"]}}
+                    else:
+                        card["id"] = f"card_{uuid.uuid4().hex[:8]}"
+                        ev = {**ev, "value": card}
+                        while len(shown) >= 2000 and tid not in shown:
+                            shown.pop(next(iter(shown)))
+                            answers.pop(next(iter(answers)), None)
+                        shown.setdefault(tid, deque(maxlen=12)).append(
+                            {"id": card["id"], "label": card_label(card), "key": key, "answer": now})
                 yield agui.encode(ev, enc)
 
         return StreamingResponse(events(), media_type=enc.get_content_type(),
