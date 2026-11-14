@@ -147,8 +147,11 @@ export function mountForm(root: HTMLElement): DemoForm {
   }
 
   /** The fields the chat filled: the widget's own highlight (@formguide/agui-chat/highlight), not a copy. */
+  let flashing = 0   // when the last highlight ends: a tab switch before then would redraw the ringed fields
   function flash(names: string[]): void {
     for (const n of names) highlightField(n, { root })
+    const ms = parseFloat(getComputedStyle(root).getPropertyValue('--agui-highlight-ms')) || 1200
+    flashing = Date.now() + ms
   }
 
   function scrollTo(el: HTMLElement): void {   // inside the form panel only: never move the page
@@ -158,7 +161,7 @@ export function mountForm(root: HTMLElement): DemoForm {
   }
 
   render()
-  return {
+  const api: DemoForm = {
     state: () => ({ config: bridge.config(), jsx_hash: 'demo', form_id: SCHEMA.id, ui: { open_section: tab } }),
     values: () => values,
     async apply(changes) {
@@ -172,7 +175,10 @@ export function mountForm(root: HTMLElement): DemoForm {
     },
     reveal(d) {
       const t = d.reveal?.find((r) => r.type === 'tab')
-      tab = (t && 'tab' in t ? t.tab : bridge.sectionOf(d.target)) ?? tab
+      const next = (t && 'tab' in t ? t.tab : bridge.sectionOf(d.target)) ?? tab
+      const wait = flashing - Date.now()
+      if (next !== tab && wait > 0) { setTimeout(() => api.reveal(d), wait); return }   // let the change highlight finish first
+      tab = next
       render()
       const el = root.querySelector<HTMLElement>(`[data-name="${d.target}"]`)
       if (!el) return
@@ -180,6 +186,7 @@ export function mountForm(root: HTMLElement): DemoForm {
       highlightField(el, { kind: 'look', hint: d.hint, scroll: false })   // the panel scrolled itself: the page stays
       if (matchMedia('(pointer: fine)').matches) el.querySelector<HTMLElement>('input, .ui-select-btn, button')?.focus({ preventScroll: true })   // no keyboard popping up on a phone
     },
-    reset() { values = {}; tab = 'applicant'; render() },
+    reset() { values = {}; tab = 'applicant'; flashing = 0; render() },
   }
+  return api
 }
