@@ -286,8 +286,18 @@ def run_tool(name: str, args: dict[str, Any], corpus: Corpus, seen: set[str]) ->
     return f"Unknown tool {name}.", None
 
 
+def card_label(card: dict) -> str:
+    """A short name of a card for the model's notes: its kind and what it shows."""
+    what = card.get("title") or card.get("label") or card.get("name") or ""
+    if not what and isinstance(card.get("pages"), list):
+        what = ", ".join(str(p.get("title") or "") for p in card["pages"][:3] if isinstance(p, dict))
+    if not what and isinstance(card.get("blocks"), list):
+        what = ", ".join(str(b.get("label") or b.get("id") or "") for b in card["blocks"][:3] if isinstance(b, dict))
+    return f"{card.get('kind') or 'card'}: {str(what)[:80]}".rstrip(": ")
+
+
 async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: list[tuple[str, str]],
-                 thread_id: str, run_id: str) -> AsyncIterator[dict]:
+                 thread_id: str, run_id: str, shown: list[str] | None = None) -> AsyncIterator[dict]:
     """One answer as AG-UI events (dicts): text first, then the cards, then the follow-ups."""
     yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
     prev = " ".join(t for r, t in history if r == "user")[-400:]
@@ -309,6 +319,9 @@ async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: l
     if recipe:
         log.info("docs recipe: %s", recipe.name)
     system += recipes.instructions(recipe)
+    if shown:   # the client sends back only the text of earlier answers: say which cards went with them
+        system += ("\n\nCards the reader already has from your earlier answers in this conversation:\n"
+                   + "\n".join(f"- {s}" for s in shown[-12:]))
     msgs: list[Any] = [SystemMessage(system)]
     for role, text in history:
         msgs.append(HumanMessage(text) if role == "user" else AIMessage(text))

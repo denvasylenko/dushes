@@ -99,7 +99,7 @@ Asked for the whole configuration (every key, all options, the full file), the a
 - **THEN** the answer has a code card with the complete `formguide.yaml` and its Python equivalent as tabs
 
 ### Requirement: No apologies and no repeated cards
-The docs assistant SHALL know that its earlier answers showed cards (the history names the cards each earlier answer showed), SHALL NOT apologise for or correct the format of an earlier answer, and SHALL NOT show again a card the reader already has unless they ask for it.
+The docs assistant SHALL know that its earlier answers showed cards (the server remembers the cards each conversation has seen and names them to the model, since a client sends back only the text), SHALL NOT apologise for or correct the format of an earlier answer, and SHALL NOT show again a card the reader already has unless they ask for it.
 
 #### Scenario: A follow-up question
 - **WHEN** the reader asks a second question after an answer that showed a code card

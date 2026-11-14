@@ -39,7 +39,7 @@ from pydantic import ValidationError
 
 from formguide import agui
 
-from .agent import answer
+from .agent import answer, card_label
 from .corpus import Corpus, load
 
 log = logging.getLogger("formguide.docs_ai")
@@ -121,6 +121,7 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
     max_len = max_chars or int(env("DOCS_AI_MAX_CHARS", "2000"))
     every = refresh if refresh is not None else float(env("DOCS_AI_REFRESH", "3600"))
     state: dict[str, Any] = {"corpus": None, "model": model, "loaded": 0.0}
+    shown: dict[str, deque] = {}   # cards each conversation has seen (their labels): the client sends back only text
 
     def reload() -> None:
         try:
@@ -164,6 +165,7 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
             raise HTTPException(422, f"not an AG-UI RunAgentInput: {e}") from None
         history = [(m.role, _text(getattr(m, "content", "")) + _cards(m)) for m in inp.messages
                    if m.role in ("user", "assistant")]
+        history = [(r, t) for r, t in history if t.strip()]   # the widget sends each tool call as an empty message
         question = next((t for r, t in reversed(history) if r == "user"), "").strip()
         if not question:
             raise HTTPException(400, "no question")
@@ -184,7 +186,13 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
         enc = agui.encoder(request.headers.get("accept"))
 
         async def events() -> AsyncIterator[str]:
-            async for ev in answer(state["model"], corpus, question, history[-7:-1], inp.thread_id, inp.run_id):
+            before = list(shown.get(inp.thread_id, ()))
+            async for ev in answer(state["model"], corpus, question, history[-7:-1], inp.thread_id, inp.run_id,
+                                   shown=before):
+                if ev.get("type") == "CUSTOM" and ev.get("name") == "docs_card":   # remembered for the next question
+                    while len(shown) >= 2000 and inp.thread_id not in shown:
+                        shown.pop(next(iter(shown)))
+                    shown.setdefault(inp.thread_id, deque(maxlen=12)).append(card_label(ev.get("value") or {}))
                 yield agui.encode(ev, enc)
 
         return StreamingResponse(events(), media_type=enc.get_content_type(),

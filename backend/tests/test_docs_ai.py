@@ -252,3 +252,18 @@ def test_earlier_cards_are_named_so_the_model_does_not_apologise(tmp_path):
     assert "[cards shown to the reader with this answer: show_code]" in earlier        # suggest_next is not a card
     system = model.calls[0][0].content
     assert "Never apologise for the format of an earlier answer" in system
+
+
+def test_cards_of_earlier_answers_reach_the_next_question(tmp_path):
+    from .conftest import say
+
+    script = [say("Set the roles under `models:`.", ("c1", "show_code", {"blocks": ["b1"]})), say("Done."),
+              say("Use `research`.")]
+    client, model = _client(tmp_path, script=script)
+    with client as c:
+        r = _ask(c, "azure openai agent")
+        cards = [e for e in _events(r.text) if e.get("name") == "docs_card"]
+        _ask(c, "And the research model?")
+    assert cards, "the first answer shows a card"
+    system = model.calls[-1][0].content
+    assert "Cards the reader already has from your earlier answers" in system and "- code" in system
