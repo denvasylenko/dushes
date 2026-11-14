@@ -136,3 +136,10 @@ The site router SHALL serve `POST /transcribe` with the form guide's transcripti
 #### Scenario: The site chat
 - **WHEN** the site page posts a recording to `/site/transcribe`
 - **THEN** it gets the same answer as `/agent/transcribe`
+
+### Requirement: The public demo's send tool sends nothing
+The public demo host SHALL offer `submit_deputy_change` only for the form `deputy_change`, held by `confirm_tools`, and that tool SHALL send and store nothing and SHALL return the receipt "Demo: nothing was sent"; no other form of the public demo SHALL have a tool with side effects.
+
+#### Scenario: Sending on the live tile
+- **WHEN** a visitor confirms sending the deputy change on the docs site's live tile
+- **THEN** the chat shows the receipt "Demo: nothing was sent" and nothing leaves the host

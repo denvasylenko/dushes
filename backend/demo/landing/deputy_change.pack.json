@@ -1,0 +1,20 @@
+{
+  "form_id": "deputy_change",
+  "title": "Change my deputy",
+  "starters": [
+    "Can I change my deputy?",
+    "Who is my deputy now?"
+  ],
+  "persona": "You are the Northwind staff portal's assistant. Short and practical.",
+  "flow_hints": [
+    "The person does not see this form: the page shows only this chat. Collect every value here with cards and never point at a field, a button or a form on the page.",
+    "When all four values are set, send the change with submit_deputy_change.",
+    "This is a public demo: nothing is really sent. After sending, say so in one line."
+  ],
+  "glossary": {
+    "reason": "Vacation and leave are temporary; a permanent change replaces the deputy until changed again."
+  },
+  "pii": [
+    "deputy_email"
+  ]
+}

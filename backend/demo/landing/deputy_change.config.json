@@ -1,0 +1,56 @@
+{
+  "props": {
+    "deputy_change": {
+      "label": "Change my deputy"
+    },
+    "deputy_name": {
+      "label": "Deputy's full name",
+      "visible": true,
+      "disabled": false,
+      "required": true
+    },
+    "deputy_email": {
+      "label": "Deputy's work email",
+      "visible": true,
+      "disabled": false,
+      "required": true,
+      "placeholder": "name@northwind.example"
+    },
+    "start_date": {
+      "label": "Start date",
+      "visible": true,
+      "disabled": false,
+      "required": true
+    },
+    "reason": {
+      "label": "Reason",
+      "visible": true,
+      "disabled": false,
+      "required": true,
+      "options": [
+        {
+          "id": "vacation",
+          "name": "Vacation"
+        },
+        {
+          "id": "leave",
+          "name": "Leave"
+        },
+        {
+          "id": "permanent",
+          "name": "Permanent change"
+        }
+      ]
+    },
+    "deputy": {
+      "label": "Change my deputy",
+      "visible": true
+    }
+  },
+  "state": {
+    "deputy_name": null,
+    "deputy_email": null,
+    "start_date": null,
+    "reason": null
+  }
+}

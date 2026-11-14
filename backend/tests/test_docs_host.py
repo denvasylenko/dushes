@@ -118,3 +118,16 @@ def test_old_demo_conversations_are_deleted(monkeypatch, tmp_path):
     import asyncio
     assert asyncio.run(host.clean_up(24)) == 1
     assert not (tmp_path / "old1.jsonl").exists() and (tmp_path / "new1.jsonl").exists()
+
+
+def test_the_chat_only_form_has_a_send_tool_that_sends_nothing():
+    with TestClient(host.app) as c:
+        r = c.get("/agent/layouts/deputy_change")
+        assert r.status_code == 200 and r.json()["form_id"] == "deputy_change"
+    assert [t.name for t in host.guide.tools_for("deputy_change")] == ["submit_deputy_change"]
+    assert host.guide.tools_for("landing_loan") == []                        # and only that form has it
+    assert "submit_deputy_change" in host.guide.config.confirm_tools         # behind the system's confirmation card
+    out = host.submit_deputy_change.invoke({"summary": "Ana Ruiz, from Monday, vacation"})
+    assert out["receipt"] == {"title": "Demo: nothing was sent"}
+    pack = host.guide.packs.get("deputy_change")
+    assert "does not see this form" in pack.flow_hints[0] and "landing_loan" != pack.form_id

@@ -23,7 +23,9 @@ A refused run gets HTTP 429 {"detail", "code": "demo_limit", "reason": visitor|i
 before any stream starts. The day's numbers (runs, messages, tokens, cost; never message text) are kept in
 <data_dir>/demo/<date>.json.
 Uploading business documents (/agent/kb) is off; a user may still attach a file to a message.
-The landing's own form (backend/demo/landing/<form_id>.jsx, its pack in domain_packs/) is registered at start-up;
+The landing's own forms (backend/demo/landing/<form_id>.jsx; the pack is <form_id>.pack.json next to it, else the one
+in domain_packs/) are registered at start-up. The chat-only recipe's form, deputy_change, has one tool for that form
+only, submit_deputy_change: a stand-in that sends nothing ("Demo: nothing was sent"), held by confirm_tools;
 GET /agent/layouts/<form_id> gives its {jsx_hash, form_id}, so the public page calls no write endpoint.
 """
 from __future__ import annotations
@@ -39,6 +41,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from fastapi.staticfiles import StaticFiles
+from langchain_core.tools import tool
 from starlette.responses import JSONResponse
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -48,6 +51,8 @@ os.environ.setdefault("DEMO_DEBUG", "0")
 os.environ.setdefault("DOCS_AI_CORPUS", str(ROOT / "site/dist/llms-full.txt"))
 
 from demo.app import app  # noqa: E402  (reads the variables above)
+
+from formguide.skills import Skill  # noqa: E402
 
 from .app import create_app  # noqa: E402
 
@@ -192,10 +197,34 @@ _stats.addHandler(_Costs())
 if _stats.level == logging.NOTSET or _stats.level > logging.INFO:
     _stats.setLevel(logging.INFO)
 
-# the landing's own forms, registered once at start-up: {form_id: jsx_hash}
+# the landing's own forms, registered once at start-up: {form_id: jsx_hash}. A form's pack is <form_id>.pack.json
+# next to its JSX (given with the form, so no other host sees it), else the one in domain_packs/.
 LANDING_DIR = ROOT / "backend/demo/landing"
-LANDING = {p.stem: guide.register_form(p.read_text(encoding="utf-8"), p.stem)["jsx_hash"]
+
+
+def _landing_pack(form_id: str) -> dict | None:
+    p = LANDING_DIR / f"{form_id}.pack.json"
+    return json.loads(p.read_text(encoding="utf-8")) if p.is_file() else None
+
+
+LANDING = {p.stem: guide.register_form(p.read_text(encoding="utf-8"), p.stem, _landing_pack(p.stem))["jsx_hash"]
            for p in sorted(LANDING_DIR.glob("*.jsx"))}
+
+
+@tool
+def submit_deputy_change(summary: str) -> dict:
+    """Send the deputy change once all four values are set. summary: the deputy's name and email, the start date
+    and the reason."""
+    # the public demo's stand-in for a host's own tool: it sends nothing and stores nothing
+    return {"text": "Demo: nothing was sent.", "receipt": {"title": "Demo: nothing was sent"}}
+
+
+# the chat-only recipe's live tile: the send tool exists for that form only, behind the system's confirmation card
+guide.skills.add(Skill(name="send_deputy_change", description="Send the finished deputy change.",
+                       instructions="When all four values are set, call submit_deputy_change with a one-line summary.",
+                       tools=[submit_deputy_change], forms={"deputy_change"}))
+if "submit_deputy_change" not in (guide.config.confirm_tools or []):
+    guide.config.confirm_tools = [*(guide.config.confirm_tools or []), "submit_deputy_change"]
 
 
 async def clean_up(older_than_hours: float = KEEP_HOURS, now: float | None = None) -> int:
