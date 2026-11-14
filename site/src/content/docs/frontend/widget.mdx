@@ -52,8 +52,8 @@ Build it from this repository: `cd packages/agui-chat && npm install && npm run 
 |---|---|
 | the answer, typed out | `TEXT_MESSAGE_START/CONTENT/END` |
 | three bouncing dots | a run started and no text came yet |
-| one line in their place, after the first second: a spinner and "Searching the business documents…", the text changing in place | `TOOL_CALL_START` … `TOOL_CALL_RESULT` of a server tool (a tool's `CUSTOM tool_progress` sub-steps are not shown) |
-| "Done in 4 s ›" in the same place; the chevron opens the steps, a repeat merged ("Searching the business documents (2)") | the run ended |
+| one line in their place, after the first second: a spinner and "Searching the documents…", the text changing in place | `TOOL_CALL_START` … `TOOL_CALL_RESULT` of a server tool (a tool's `CUSTOM tool_progress` sub-steps are not shown) |
+| "Done in 4 s ›" in the same place; the chevron opens the steps, a repeat merged ("Searching the documents (2)") | the run ended |
 | a card | `CUSTOM on_interrupt` (JSON value with `type`) or `RUN_FINISHED.outcome.interrupts` |
 | chips in one row right above the input (scrolling sideways); a chip marked ✓ fills fields in one tap (with Undo), then sends its text | `CUSTOM suggestions {items, applies?}` |
 | "Something went wrong" + Try again | `RUN_ERROR` or a network error |
@@ -293,7 +293,7 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `scheme` | `scheme` | follows the system | `light`, `dark` or `auto` |
 | `typing` | `typing` | `words` | `words` (fade in), `plain` (as it arrives), `off` (when done) |
 | | `typingSpeed`, `fadeMs` | `55`, `450` | characters per second; fade per word, ms |
-| `tool-steps` | `toolSteps` | on | the steps line ("Searching the business documents…", then "Done in 4 s") |
+| `tool-steps` | `toolSteps` | on | the steps line ("Searching the documents…", then "Done in 4 s") |
 | | `toolLabels` | `{}` | `{tool_name: 'Searching the docs'}` |
 | `quick-replies` | `quickReplies` | on | show the server's suggestions |
 | `mic` | `mic` | on | dictation, where the browser supports it |

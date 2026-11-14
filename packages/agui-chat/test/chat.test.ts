@@ -116,7 +116,7 @@ describe('<agui-chat>', () => {
     await tick(5)
     const steps = $(el, '.steps')
     expect(steps.querySelector('.steps-t')!.textContent).toBe('Done in 1 s')   // the same line, in place
-    expect(steps.querySelector('li')!.textContent).toBe('Searching the business documents')
+    expect(steps.querySelector('li')!.textContent).toBe('Searching the documents')
     expect($$(el, '.steps li').length).toBe(1)                                 // its sub-step is not a row
     expect(steps.classList.contains('collapsed')).toBe(true)
     el.setAttribute('tool-steps', 'off')
@@ -142,7 +142,7 @@ describe('<agui-chat>', () => {
     await tick(40)
     expect(line.hidden).toBe(false)
     expect(line.querySelector('.steps-t')!.textContent).toBe('Reading the section\u2026')
-    expect($$(el, '.steps li').map((l) => l.textContent)).toEqual(['Searching the business documents (2)', 'Reading the section'])
+    expect($$(el, '.steps li').map((l) => l.textContent)).toEqual(['Searching the documents (2)', 'Reading the section'])
     release(); await sent
   })
 

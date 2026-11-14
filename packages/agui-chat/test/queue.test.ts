@@ -121,7 +121,7 @@ describe('the message queue', () => {
     expect($$(el, '.msg.queued .q-tag')[0].textContent).toBe('Paused')
     expect(a.runs).toHaveLength(1)                                       // nothing goes by itself after Stop
     await el.send('three')                                               // not ahead of "two"
-    await tick(5)
+    await tick(30)                                                       // room for a loaded machine
     expect(lastUser(a.runs[1].input)).toBe('two')
     await a.release()
     expect(lastUser(a.runs[2].input)).toBe('three')

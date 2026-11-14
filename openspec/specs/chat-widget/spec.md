@@ -47,7 +47,7 @@ While a run is active, the widget SHALL show the tool calls as one line of fixed
 
 #### Scenario: A search step
 - **WHEN** the agent searches the business documents twice and answers after 4 s
-- **THEN** one line reads "Searching the business documents…" while it works and "Done in 4 s ›" after, and its list has one row "Searching the business documents (2)"
+- **THEN** one line reads "Searching the documents…" while it works and "Done in 4 s ›" after, and its list has one row "Searching the documents (2)"
 
 ### Requirement: Quick answers show no steps line
 The steps line SHALL appear only after the first second of a run, so an answer quicker than that shows no line at all; the content SHALL NOT move when the line appears, changes or ends.
@@ -222,7 +222,7 @@ A plugin MAY name tools as `quietSteps`. A turn whose steps are all such tools S
 
 #### Scenario: Document research
 - **WHEN** the agent calls `ask_documents` and the researcher searches twice
-- **THEN** the user sees "Searching the business documents…", with no "Searching" rows under it
+- **THEN** the user sees "Searching the documents…", with no "Searching" rows under it
 
 ### Requirement: Interrupt renderer registry
 The widget SHALL render each interrupt with the renderer registered for its `type`. Interrupts arrive as `CUSTOM on_interrupt` with a JSON value, or as `RUN_FINISHED.outcome.interrupts`. A renderer SHALL return an element and resolve with a resume value; the widget SHALL then resume the same thread with that value. An interrupt with no renderer SHALL show a generic card with the raw payload and Skip. Pending interrupts SHALL be restored after a reload when the host provides a restore URL.
