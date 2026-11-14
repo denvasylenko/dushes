@@ -415,15 +415,20 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .zoom::backdrop { background: transparent; }
 .zoom:not([open]) { display: none; }
 .zoom img { max-width: calc(100vw - 32px); max-height: calc(100vh - 112px); width: auto; height: auto; object-fit: contain; border-radius: var(--agui-radius-sm); box-shadow: 0 20px 60px -20px var(--agui-shadow); cursor: default; }
-.zoom-x { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: 12px; width: 44px; height: 44px; border: 0; border-radius: 50%;
-  display: grid; place-items: center; background: color-mix(in srgb, white 18%, transparent); color: white; cursor: pointer; }
+.zoom-fig { position: relative; display: inline-block; line-height: 0; }   /* the picture and its own buttons */
+.zoom-fig img { display: block; }
+.zoom-x { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: 0; border-radius: 50%;
+  display: grid; place-items: center; background: color-mix(in srgb, black 55%, transparent); color: white; cursor: pointer;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+@media (hover: none) { .zoom-x { width: 44px; height: 44px; } }
 .zoom-x svg { width: 20px; height: 20px; }
-.zoom-pager { position: absolute; left: 50%; bottom: max(12px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 4px; color: white; }
+.zoom-pager { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); display: flex; align-items: center; gap: 4px; color: white; line-height: normal; }
 .zoom-go { width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; color: inherit; display: grid; place-items: center; cursor: pointer; }
 .zoom-go:hover:not(:disabled) { background: color-mix(in srgb, white 14%, transparent); }
 .zoom-go:disabled { opacity: .3; cursor: default; }
 .zoom-n { min-width: 64px; text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
-.zoom-edit { top: calc(max(12px, env(safe-area-inset-top, 0px)) + 52px); }   /* the pencil under the close button */
+.zoom-edit { top: 52px; }   /* the pencil under the close button, on the picture */
+@media (hover: none) { .zoom-edit { top: 60px; } }
 @keyframes zoom-in { from { opacity: 0; } to { opacity: 1; } }
 .att.doc { width: auto; min-width: 120px; max-width: 200px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 28px 8px 10px; }
 .att-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -917,7 +917,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     // a modal <dialog>: the browser puts it above everything on the page (no stacking context can cover it), Esc closes it
     const x = h('button', { class: 'zoom-x', type: 'button', 'aria-label': this.t('close') }); this._icon(x, 'close')
     const img = h('img', { src: row[at]?.src, alt: row[at]?.name }) as HTMLImageElement
-    const view = h('dialog', { class: 'zoom', part: 'zoom', 'aria-label': row[at]?.name }, img, x) as HTMLDialogElement
+    // the buttons sit on the picture's corner and the pager under it, not in the corners of the screen
+    const fig = h('div', { class: 'zoom-fig' }, img, x)
+    const view = h('dialog', { class: 'zoom', part: 'zoom', 'aria-label': row[at]?.name }, fig) as HTMLDialogElement
     let swiped = false
     if (row.length > 1) {
       const count = h('span', { class: 'zoom-n', 'aria-live': 'polite' })
@@ -935,7 +937,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         count.textContent = this.t('nOfTotal', { n: at + 1, total: row.length })
         prev.disabled = at === 0; next.disabled = at === row.length - 1
       }
-      view.append(h('div', { class: 'zoom-pager', part: 'zoom-pager' }, prev, count, next))
+      fig.append(h('div', { class: 'zoom-pager', part: 'zoom-pager' }, prev, count, next))
       show(at)
       view.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowRight') { e.preventDefault(); show(at + 1) }
@@ -960,7 +962,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
           open({ src: row[at].src, name: row[at].name, mount: view, t: (k) => this.t(k), onSave: (blob) => { edit(blob); close() }, onClose: close })
         }).catch(() => { pencil.hidden = true })   // no editor file next to the script: the view stays
       })
-      view.append(pencil)
+      fig.append(pencil)
     }
     this.$.wrap.append(view)
     if (typeof view.showModal === 'function') view.showModal(); else view.setAttribute('open', '')
