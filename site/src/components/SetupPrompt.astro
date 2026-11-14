@@ -17,7 +17,7 @@ const PROVIDERS = [['anthropic', 'Anthropic'], ['openai', 'OpenAI'], ['azure', '
 const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAPI app']]
 ---
 <Tile class="sp not-content" data-sp>
-  <Callout title="Set it up with your AI agent">Pick what you have, copy one prompt into Claude Code, Cursor or any coding agent. It follows these docs step by step.</Callout>
+  <Callout title="Set it up with your AI agent">Pick what you have and copy one prompt into Claude Code, Cursor or any coding agent. It asks you a few questions, explains each setting, then follows these docs step by step.</Callout>
 
   <ChipGroup label="Your app" options={CLIENTS} data-k="client" />
   <ChipGroup label="Model" options={PROVIDERS} data-k="provider" />
@@ -46,17 +46,17 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
   }
   const CLIENT: Record<string, { name: string; pages: string[]; steps: string[] }> = {
     widget: { name: 'the <agui-chat> Web Component on any page', pages: ['frontend/plain-html', 'frontend/widget', 'frontend/connect-your-form/contract'], steps: [
-      'Add <agui-chat url="/agent/run"> and the widget script to the page that has the form.',
+      'Add <agui-chat url="<the agent url above>"> to the page that has the form.',
       'Register the form once (POST /agent/layouts with the form\'s JSX skeleton) and keep the returned jsx_hash.',
       'chat.use(formguide({ getState, applyChanges })): getState returns {config, jsx_hash, form_id, ui}; applyChanges sends the accepted values to my form backend and returns the new config.',
     ] },
     react: { name: 'React with <AguiChat>', pages: ['frontend/react', 'frontend/widget', 'frontend/connect-your-form/contract'], steps: [
-      'Install @formguide/agui-chat and render <AguiChat url="/agent/run" plugins={[formguide({...})]} /> next to the form.',
+      'Install @formguide/agui-chat (not on npm yet: build it, npm pack, install the .tgz, as the React page says) and render <AguiChat url="<the agent url above>" plugins={[formguide({...})]} /> next to the form.',
       'Register the form once (POST /agent/layouts) and keep the jsx_hash.',
       'getState returns {config, jsx_hash, form_id, ui}; applyChanges sends accepted values to my form backend and returns the new config.',
     ] },
     rhf: { name: 'a react-hook-form form', pages: ['frontend/react-hook-form', 'frontend/connect-your-form/contract'], steps: [
-      'Install @formguide/agui-chat and use useFormguide(form, schema) from @formguide/agui-chat/react-hook-form with my existing useForm(); render <AguiChat plugins={plugins} /> from @formguide/agui-chat/react.',
+      'Install @formguide/agui-chat (not on npm yet: build it, npm pack, install the .tgz) and use useFormguide(form, schema) from @formguide/agui-chat/react-hook-form with my existing useForm(); render <AguiChat plugins={plugins} /> from @formguide/agui-chat/react.',
       'Describe the fields in the schema (name, label, type, options, sections) exactly as the guide shows.',
     ] },
     copilotkit: { name: 'CopilotKit', pages: ['frontend/copilotkit', 'frontend/connect-your-form/contract', 'frontend/cards'], steps: [
@@ -77,32 +77,49 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
     ] },
   }
 
+  const PROVIDERS_LABEL: Record<string, string> = { anthropic: 'Anthropic', openai: 'OpenAI', azure: 'Azure OpenAI', gemini: 'Gemini', ollama: 'Ollama' }
   const docs = new URL(import.meta.env.BASE_URL.replace(/\/?$/, '/'), location.origin).href
   const md = (slug: string) => `${docs}${slug}.md`
 
+  // the widget is not on npm yet: the docs host serves a copy to try it, and the repository builds it
+  const WIDGET = 'https://dushes-ai.fly.dev/widget/agui-chat.iife.js'
+
   function prompt(c: Choice): string {
     const p = PROVIDER[c.provider], cl = CLIENT[c.client], sv = SERVER[c.server]
-    const pages = [...new Set(['get-started/quickstart', 'agents/shared/configuration', 'agents/shared/models', ...sv.pages, ...cl.pages])]
+    const pages = [...new Set(['get-started/quickstart', 'agents/shared/install', 'agents/shared/configuration', 'agents/shared/models', ...sv.pages, ...cl.pages])]
+    const agentUrl = c.server === 'fastapi' ? '/agent/run (my app serves it)' : 'http://localhost:8000/agent/run'
     let n = 0
     const step = (s: string) => `${++n}. ${s}`
     return [
-      `Add Dushes (the Python package formguide) to this project: a chat agent next to my form that shows where to click, answers from my documents and fills fields after the user confirms. Use ${cl.name}.`,
+      `Add Dushes (the Python package formguide) to this project: a chat agent next to my form that shows where to click, answers from my documents and fills fields after the user confirms. My starting choices: ${cl.name}, ${PROVIDERS_LABEL[c.provider]}, ${c.server === 'fastapi' ? 'inside my FastAPI app' : 'its own server'}.`,
       ``,
       `Read these pages first and follow them exactly; do not invent keys, endpoints or options they do not show:`,
       ...pages.map((s) => `- ${md(s)}`),
       `The index of all pages: ${docs}llms.txt`,
       ``,
-      `Backend (Python):`,
+      `Before you change anything, ask me these questions one message at a time. For each, say in one line what it decides and what the default is, look at my project to suggest an answer, and wait for mine:`,
+      `- Site or form: one form, or a whole site with several pages and forms? (default: one form; a site adds a site map and the site agent)`,
+      `- Model: which provider and model? (default: ${p.yaml.split('\n')[0]}); where will the key live (default: the server's environment, never the browser)`,
+      `- Server: its own process, or mounted in my FastAPI app? (default: its own, formguide serve)`,
+      `- Business documents: should it answer from my policies, prices or FAQs? (default: none; with them, the researcher reads them on demand)`,
+      `- Chat history: should conversations survive a restart? (default: in memory; sqlite or Postgres keeps them)`,
+      `- Language and tone: which languages do my users write in, and how should it speak? (default: the user's language, short and plain)`,
+      `Then show me the formguide.yaml you will write, with one comment per key, and wait for my OK.`,
+      ``,
+      `Then set it up, in this order:`,
+      `Backend (Python 3.11 or newer):`,
       step(`pip install "formguide[all] @ git+https://github.com/denvasylenko/dushes.git#subdirectory=backend"${c.provider === 'gemini' || c.provider === 'ollama' ? ` and ${p.pkg}` : ''}.`),
-      step(`Create formguide.yaml with:\n   ${p.yaml.replace(/\n/g, '\n   ')}`),
+      step(`Write formguide.yaml from my answers; the model part is:\n   ${p.yaml.replace(/\n/g, '\n   ')}`),
       step(`Put the key in the server's environment, never in the browser: ${p.key}.`),
+      step(`Check the config without calling a model: formguide check --config formguide.yaml. Fix what it names before going on.`),
       ...sv.steps.map(step),
-      step(`Check the config without calling a model: formguide check --config formguide.yaml.`),
       ``,
       `Frontend:`,
+      step(`Load the chat script: ${WIDGET} to try it (the widget is not on npm yet); for my app, build it from the repository (cd packages/agui-chat && npm install && npm run build, the file is in dist/) and serve it myself.`),
+      step(`Point the chat at the agent: ${agentUrl}.`),
       ...cl.steps.map(step),
       ``,
-      `Finally, show me what you changed and how to try it: send a message like "Where do I start?" in the chat.`,
+      `Finally, tell me what you changed, what is still missing (documents I have not given you, fields you could not map, anything you guessed), and how to try it: send "Where do I start?" in the chat.`,
     ].join('\n')
   }
 

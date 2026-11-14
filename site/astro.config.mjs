@@ -109,6 +109,7 @@ export default defineConfig({
 				{ label: 'Get started', link: '/get-started/', icon: 'rocket', items: [
 					{ label: 'Overview', slug: 'get-started' },
 					{ label: 'Quickstart', slug: 'get-started/quickstart' },
+					{ label: 'Install', link: '/agents/shared/install/' },
 					{ label: 'Live demo', slug: 'get-started/live-demo' },
 					{ label: 'Benchmarks', slug: 'get-started/benchmarks' },
 					{ label: 'Open standards', slug: 'get-started/open-standards' },

@@ -45,14 +45,26 @@ function copyButton(get: () => string): HTMLButtonElement {
   return b
 }
 
+/** Code that scrolls sideways says so: a fade at the right edge while there is more to the right (like the widget's
+ *  suggestion row), so a long line reads as "scroll", not as cut text. */
+function fadeWhileScrollable(pre: HTMLElement): HTMLElement {
+  const sync = () => pre.classList.toggle('dc-more', pre.scrollLeft + pre.clientWidth < pre.scrollWidth - 1)
+  pre.addEventListener('scroll', sync, { passive: true })
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(sync).observe(pre)
+  requestAnimationFrame(sync)
+  return pre
+}
+
 function codeCard(c: Extract<Card, { kind: 'code' }>): HTMLElement {
   let current = 0
-  const pre = h('pre', null, h('code'))
+  const pre = fadeWhileScrollable(h('pre', null, h('code')))
   const from = h('a', { class: 'dc-from', target: '_blank', rel: 'noopener' })
   const show = (i: number) => {
     current = i
     const b = c.blocks[i]
     pre.firstElementChild!.textContent = b.code
+    pre.scrollLeft = 0
+    requestAnimationFrame(() => pre.dispatchEvent(new Event('scroll')))
     from.href = b.url
     from.replaceChildren(icon(ICON_DOC), h('span', null, `${b.page}${b.section && b.section !== b.page ? ` · ${b.section}` : ''}`))
     tabs?.querySelectorAll('button').forEach((t, n) => t.setAttribute('aria-selected', String(n === i)))
@@ -78,7 +90,7 @@ function stepsCard(c: Extract<Card, { kind: 'steps' }>): HTMLElement {
   return h('div', { class: 'dc dc-steps' }, c.title ? h('div', { class: 'dc-cap' }, c.title) : null,
     h('ol', null, c.steps.map((s, i) => h('li', null, h('span', { class: 'dc-n', 'aria-hidden': 'true' }, String(i + 1)),
       h('div', { class: 'dc-st' }, inline(s.text), s.block ? h('div', { class: 'dc-mini' },
-        h('pre', null, h('code', null, s.block.code)), copyButton(() => s.block!.code)) : null)))))
+        fadeWhileScrollable(h('pre', null, h('code', null, s.block.code))), copyButton(() => s.block!.code)) : null)))))
 }
 
 function liveCard(c: Extract<Card, { kind: 'live' }>): HTMLElement {
@@ -132,6 +144,8 @@ defineTheme('docs', {
   animation: dc-in .2s var(--agui-ease, ease-out) both; }
 /* the widget's quick replies pull up under a bubble (margin-top: -8px); after a card they keep the card rhythm */
 .dc + .quick { margin-top: 4px; }
+/* inside one turn the card sits 8px under the answer (its 20px bottom margin, pulled up by 12) */
+.msg.ai + .dc { margin-top: -12px; }
 @keyframes dc-in { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) { .dc { animation: none; } }
 .dc-cap { padding: 12px 14px 0; font-size: 13px; font-weight: 600; color: var(--agui-ink-2); }
@@ -139,7 +153,7 @@ defineTheme('docs', {
 .dc-i svg, .dc-pi svg, .dc-chev svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
 .dc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 8px 0 14px; min-height: 40px; }
-.dc-label { font-size: 12px; font-weight: 600; color: var(--agui-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-label { font-size: 12px; font-weight: 600; color: var(--agui-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dc-tabs { display: flex; gap: 2px; padding: 2px; border-radius: var(--agui-radius-pill); background: var(--agui-bg); overflow-x: auto; scrollbar-width: none; margin-left: -8px; }
 .dc-tabs::-webkit-scrollbar { display: none; }
 .dc-tabs button { flex: none; border: 0; background: none; color: var(--agui-ink-2); font: 500 12px/1 var(--agui-font); padding: 0 12px; min-height: 28px;
@@ -155,9 +169,11 @@ defineTheme('docs', {
 .dc-copy .dc-done, .dc-copy.done .dc-idle { display: none; }
 .dc-copy.done .dc-done { display: inline-flex; }
 .dc-code pre, .dc-mini pre { margin: 0; padding: 10px 14px 12px; overflow-x: auto; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+/* more to the right: the line fades out at the edge instead of stopping at it */
+.dc-code pre.dc-more, .dc-mini pre.dc-more { -webkit-mask-image: linear-gradient(to left, transparent, #000 24px); mask-image: linear-gradient(to left, transparent, #000 24px); }
 .dc-code code, .dc-mini code { white-space: pre; background: none; padding: 0; }
 .dc-from { display: flex; align-items: center; gap: 6px; padding: 9px 14px 11px; border-top: 1px solid var(--agui-line); font-size: 12px;
-  color: var(--agui-ink-3); text-decoration: none; transition: color .18s; }
+  color: var(--agui-ink-2); text-decoration: none; transition: color .18s; }
 .dc-from:hover { color: var(--agui-link); }
 .dc-from span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -171,9 +187,9 @@ defineTheme('docs', {
 .dc-page:focus-visible { outline-offset: -3px; }
 .dc-pi { width: 32px; height: 32px; border-radius: 10px; align-items: center; justify-content: center; background: var(--agui-bg); color: var(--agui-link); }
 .dc-pt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.dc-pt small { font-size: 11px; font-weight: 600; color: var(--agui-ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.dc-pt small { font-size: 11px; font-weight: 600; color: var(--agui-ink-2); text-transform: uppercase; letter-spacing: .04em; }
 .dc-pt b { font-size: 15px; font-weight: 600; }
-.dc-pt span { font-size: 12px; color: var(--agui-ink-3); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dc-pt span { font-size: 12px; color: var(--agui-ink-2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .dc-chev { color: var(--agui-ink-3); transition: transform .2s var(--agui-ease, ease-out), color .12s; }
 
 .dc-steps ol { list-style: none; margin: 0; padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 12px; }
@@ -191,7 +207,7 @@ defineTheme('docs', {
 .dc-stage agui-chat { display: block; height: 100%; }
 .dc-stage agui-chat::part(header), .dc-stage agui-chat::part(composer) { display: none; }
 .dc-stage agui-chat::part(panel) { border: 0; box-shadow: none; border-radius: 0; }
-.dc-foot { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--agui-line); font-size: 12px; color: var(--agui-ink-3); }
+.dc-foot { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--agui-line); font-size: 12px; color: var(--agui-ink-2); }
 .dc-foot span { flex: 1; min-width: 0; }
 .dc-link { border: 0; background: none; padding: 6px 4px; border-radius: 6px; color: var(--agui-link); font: 500 12px var(--agui-font); cursor: pointer; text-decoration: none; }
 .dc-link:hover { text-decoration: underline; text-underline-offset: 3px; }
