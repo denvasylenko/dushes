@@ -89,6 +89,7 @@ Unknown option names are ignored with a console warning.
 | `chat.use(plugin)`, `chat.plugins = [...]` | add plugins |
 | `chat.registerTool(tool)`, `chat.renderers.set(type, fn)` | frontend tools, card renderers |
 | `chat.agent = new HttpAgent(...)` | run through any AG-UI agent object instead of the built-in fetch |
+| `blocksCard(payload, ctx, answer, onAction?)`, `loadBlocks()`, `hoursText(value, lang)` | build a card from blocks in a renderer of your own; with the one-script build the blocks come in `agui-chat.blocks.js` on demand (at the first run or the first such card): `blocksCard` returns its element at once and draws into it then, `await loadBlocks()` waits for the file; from `@formguide/agui-chat/formguide` and on `window.AguiChat` ([What loads when](../../frontend/blocks/#what-loads-when)) |
 | `loadLanguage(lang)`, `addLanguage(lang, pack)` | load a shipped language pack ahead; register your own (`{core, formguide, tools}`); exported by the package and on `window.AguiChat` |
 | `agui:event` | every AG-UI event (`event.detail`) |
 | `agui:run-start`, `agui:run-end`, `agui:error` | run lifecycle |

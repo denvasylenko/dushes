@@ -7,7 +7,8 @@
  *     applyChanges: (changes) => formBackend.apply(changes),     // -> the new config
  *   }))
  */
-import { blocksCard, blocksRenderer } from './blocks'
+import { blocksCard, preloadBlocks, withBlocks } from './blocks-later'
+import { h } from '../dom'
 import type { AguiEvent, ChatApi, Interrupt, Plugin, RendererContext, Restored, RunAgentInput } from '../types'
 import { appliedLine, askCard, confirmCard, fieldCard, undoLine, uploadCard } from './cards'
 import { CAPABILITIES, receiptEl, reviewCard, sourcesEl } from './pickers'
@@ -130,10 +131,12 @@ export function formguide(opts: FormguideOptions): Plugin {
       confirm: (it, c) => confirmCard(it, c, ctx),
       review: (it, c) => reviewCard(it, c, ctx, (line, fields) => undoLine(line, c, ctx, fields)),
       // cards composed from blocks (formguide.yaml `cards:`, or showCard); a button's `fills` go through the form
-      blocks: (it, c) => { host = c.chat.host; return blocksRenderer(it, c, { apply: (ch) => Promise.resolve(ctx.applyChanges(ch)), state: async () => await ctx.getState(),
-        undo: (line, fields) => undoLine(line, c, ctx, fields) }, act(it, c.chat)) },
+      // (the one-script build loads the blocks with the first such card: its element is shown at once and filled then)
+      blocks: (it, c) => { host = c.chat.host; const box = h('div', null); return withBlocks(box, c, (b) => b.blocksRenderer(it, c, {
+        apply: (ch) => Promise.resolve(ctx.applyChanges(ch)), state: async () => await ctx.getState(),
+        undo: (line, fields) => undoLine(line, c, ctx, fields) }, act(it, c.chat), box)) },
       // a picker (day, time, people, contacts, one button): the same blocks, laid out from its groups and fields
-      picker: (it, c) => { host = c.chat.host; return blocksRenderer(it, c, undefined, act(it, c.chat)) },
+      picker: (it, c) => { host = c.chat.host; const box = h('div', null); return withBlocks(box, c, (b) => b.blocksRenderer(it, c, undefined, act(it, c.chat), box)) },
     },
     /** An action chip: fill its fields at once (Undo on the line). A chip whose fields changed since is out of date. */
     async applySuggestion(raw: unknown[], chat: ChatApi) {
@@ -149,6 +152,7 @@ export function formguide(opts: FormguideOptions): Plugin {
       return appliedLine(c, ctx, changes.map((x) => ({ name: x.name, label: x.label ?? x.name, previous: x.previous ?? null })))
     },
     async beforeRun(input: RunAgentInput, chat: ChatApi) {
+      if (caps.some((x) => x === 'blocks' || x === 'picker')) void preloadBlocks().catch(() => {})   // so the first card arrives drawn
       const st = await opts.getState()
       input.state = chat.attachments.length ? { ...st, attachments: chat.attachments } : st
       // what this client can draw: the server sends only these card variants
@@ -220,6 +224,8 @@ export function formguide(opts: FormguideOptions): Plugin {
   }
 }
 
-/** The blocks, for a card renderer of your own (chat.renderers.set): compose with the same parts and theme. */
-export { blocksCard, hoursText } from "./blocks"
-export type { Block, OnAction } from "./blocks"
+/** The blocks, for a card renderer of your own (chat.renderers.set): compose with the same parts and theme.
+ *  `loadBlocks()` resolves once they are here (at once with a bundler; agui-chat.blocks.js in the one-script build). */
+export { blocksCard, preloadBlocks as loadBlocks }
+export { hoursText } from './blocks-base'
+export type { Block, OnAction } from './blocks'

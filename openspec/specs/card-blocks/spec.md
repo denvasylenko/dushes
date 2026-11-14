@@ -12,6 +12,13 @@ The widget SHALL render a card of type `blocks` from its `blocks` list, in order
 - **WHEN** a card has a `place` block and a `buttons` block with "Yes, mine" and "No"
 - **THEN** the card shows the photo, name and address, and the two buttons, the first one filled
 
+### Requirement: Blocks load on demand in the one-script build
+The one-script build SHALL leave the blocks out of `agui-chat.iife.js` and load `agui-chat.blocks.js` from its folder at the first run or the first card from blocks. A card shown earlier SHALL keep its room and be filled in place (a failed load leaves Try again); `blocksCard` SHALL return its element at once and `loadBlocks()` SHALL resolve when the blocks are here.
+
+#### Scenario: The first card before the file
+- **WHEN** a card from blocks arrives before `agui-chat.blocks.js` has loaded
+- **THEN** the card is shown empty with its room kept, and its blocks appear in it when the file arrives
+
 ### Requirement: Answering a blocks card
 A button with an `id` SHALL resolve the card with `{action, label, values}`, where `values` holds the card's `choice`, `swatches` and `field` values by name, and SHALL fold the card into a result line with the button's label. A `links` entry SHALL open its link, call, route, share sheet or copy its text without resolving the card; a `calendar` entry SHALL open its choices in place: Apple Calendar (an .ics file), Google Calendar and Outlook, in local time.
 
