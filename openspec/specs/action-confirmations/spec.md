@@ -13,7 +13,7 @@ The agent SHALL offer a tool `confirm_action` with `title`, `message`, an option
 - **THEN** the user sees a confirmation card, and the model learns the decision before it calls the submit tool
 
 ### Requirement: Confirmation required by configuration
-`confirm_tools` in the configuration SHALL list tool names that always need a confirmation. A call to such a tool SHALL be held, the user SHALL be shown a confirm card naming the tool and its arguments, and the tool SHALL run only if the user accepts. Otherwise the model SHALL get "The user declined; the tool was not run."
+`confirm_tools` in the configuration SHALL list tool names that always need a confirmation. A call to such a tool SHALL be held, the user SHALL be shown a confirm card naming the tool and its arguments, and the tool SHALL run only if the user accepts. Otherwise the model SHALL get "The user declined; the tool was not run." Either way the held call's result SHALL reach the client as a `TOOL_CALL_RESULT` for that call.
 
 #### Scenario: A guarded tool
 - **WHEN** `confirm_tools: [submit_application]` is set and the model calls `submit_application`

@@ -589,6 +589,8 @@ def build_graph(guide: FormGuide):
                 text = "The user declined; the tool was not run."
             else:
                 text = "The user confirmed." if read_confirm(answer) else "The user declined."
+            if payload.get("held"):   # the held call's result reaches the client like any tool's
+                get_stream_writer()({"kind": "tool_result", "id": p["tool_call_id"], "content": text})
             results = p["other_results"] + [{"id": p["tool_call_id"], "content": text}]
             upd["messages"] = [*state["messages"], *_tool_messages(results)]
             return upd

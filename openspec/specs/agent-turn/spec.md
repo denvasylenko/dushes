@@ -129,3 +129,17 @@ When a form error or rule blocks sending (an age or date limit), the agent SHALL
 #### Scenario: Under the age limit
 - **WHEN** the birth date makes the applicant 17, the form says the applicant must be 18 to 75, and the user asks to fill in other fields
 - **THEN** the agent explains the age rule blocks sending and fills the other fields
+
+### Requirement: Checking the user's arithmetic
+The form agent SHALL NOT bring figures the form, a card or a tool did not return, but MAY check arithmetic the user did on such figures, saying what it leaves out; it SHALL NOT send the user to sources the business never names.
+
+#### Scenario: The total paid
+- **WHEN** the form shows a payment of 19 069 over 36 months and the user asks "so about 686 000 in total?"
+- **THEN** the agent confirms about 686 484 before any fees the form does not show, and does not refer them to a loan officer
+
+### Requirement: Take me there with no target
+On "take me there" or "navigate me" when no field or section was named in the last two turns, the agent SHALL ask with 2-3 likely sections or fields as options (the next unfinished step may be the first) and focus the chosen one; it SHALL NOT pick one silently.
+
+#### Scenario: The first message of a visit
+- **WHEN** a user's first message on an empty form is "navigate me there"
+- **THEN** a question card offers 2-3 sections, and the chosen one is shown in the form

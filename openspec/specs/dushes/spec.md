@@ -188,7 +188,7 @@ On a page with a form, Dushes SHALL have a `to_form(reason)` tool: its turn ends
 - **THEN** Dushes calls to_form and the form agent explains the tab in the same run
 
 ### Requirement: No arithmetic on prices and rates
-Dushes' prompt SHALL say not to add up discounts or work out a price, rate, payment or total, but to quote each condition as the page or document states it, with what it applies to, and to say the final figure comes from the form or the business.
+Dushes' prompt SHALL say not to add up discounts or work out a price, rate, payment or total, but to quote each condition as the page or document states it, with what it applies to, and to say the final figure comes from the form or the business. Checking the user's own arithmetic on figures the site gave SHALL be allowed, with what it leaves out, and Dushes SHALL NOT send the user to sources the site never names.
 
 #### Scenario: Two discounts
 - **WHEN** the user asks for the rate with a salary-client discount and a life-insurance discount
