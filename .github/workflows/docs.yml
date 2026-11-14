@@ -33,13 +33,18 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: site/package-lock.json
+          cache-dependency-path: |
+            site/package-lock.json
+            packages/agui-chat/package-lock.json
       - name: Validate specs
         run: npx --yes @fission-ai/openspec@1.17.0 validate --all --strict --no-interactive
       - name: English only
         run: python3 scripts/check_english.py
       - name: Install
         working-directory: site
+        run: npm ci
+      - name: Install the widget's dependencies (the site builds the widget from its sources, e.g. chart.js)
+        working-directory: packages/agui-chat
         run: npm ci
       - name: Build site
         working-directory: site
