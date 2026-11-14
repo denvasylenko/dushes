@@ -18,6 +18,8 @@ export interface Feature {
   shots?: string[]
   ref: { label: string; href: string }
   show: Live | Card | Link
+  /** the browser code that turns it on or tunes it (frontend pages show browser code only) */
+  code?: { lang: 'HTML' | 'JavaScript'; text: string }
 }
 
 const ANSWER = 'Your monthly income goes on the **Applicant** tab, in **Monthly income**. Enter what you take home after tax; include bonuses only if they are regular. If you are self-employed, use the average of the last 12 months.'
@@ -30,6 +32,7 @@ export const FEATURES: Feature[] = [
     try: 'Select a few words in the answer, tap Reply, then Add to chat. Do the same with another part and send: both quotes go in one message.',
     ref: { label: 'reply', href: '../widget/#reply-to-a-part-of-an-answer' },
     show: { kind: 'live', user: 'Where do I enter my income?', reply: ANSWER },
+    code: { lang: 'HTML', text: "<agui-chat></agui-chat>              <!-- on by default -->\n<agui-chat reply=\"off\"></agui-chat>  <!-- without it -->" },
   },
   {
     id: 'fold', title: 'Long messages fold',
@@ -37,6 +40,7 @@ export const FEATURES: Feature[] = [
     try: 'Tap Show more under the answer.',
     ref: { label: 'collapseLines', href: '../widget/#long-messages-fold' },
     show: { kind: 'live', user: 'What are all the steps?', reply: LONG, attrs: { 'collapse-answers': 'on', 'collapse-lines': '4' } },
+    code: { lang: 'HTML', text: "<agui-chat collapse-lines=\"8\" collapse-answers=\"on\"></agui-chat>   <!-- 0: never fold -->" },
   },
   {
     id: 'attach', title: 'Attachments',
@@ -44,6 +48,7 @@ export const FEATURES: Feature[] = [
     try: 'Tap the paper clip and pick any file. To remove it, hover it and click the cross. Nothing is uploaded from this page.',
     ref: { label: 'attach', href: '../widget/#attachments' },
     show: { kind: 'live', user: 'Can I send my payslip here?', reply: 'Yes: attach it with the paper clip and I will read the values from it.', upload: true },
+    code: { lang: 'HTML', text: "<!-- the + button shows when files can be uploaded (the form plugin, or the upload option) -->\n<agui-chat attach-accept=\".pdf,.jpg\" attach-max-mb=\"20\"></agui-chat>" },
   },
   {
     id: 'shortcuts', title: 'Shortcut hints',
@@ -51,12 +56,14 @@ export const FEATURES: Feature[] = [
     try: 'Hover the send, microphone or paper clip button for half a second.',
     ref: { label: 'shortcutHints', href: '../../reference/agui-chat/' },
     show: { kind: 'live', user: 'Hi!', reply: 'Hello. Hover the buttons in the message field below to see their keys.', upload: true },
+    code: { lang: 'HTML', text: "<agui-chat></agui-chat>                       <!-- on by default -->\n<agui-chat shortcut-hints=\"off\"></agui-chat>  <!-- without them -->" },
   },
   {
     id: 'shadow', title: 'A composer that fits your page',
     why: 'The message field sits on your page as if it belonged there: soft, raised or flat.',
     ref: { label: 'composerShadow', href: '../../reference/agui-chat/' },
     show: { kind: 'live', user: 'Does it fit my design?', reply: 'Try the three shadows below and keep the one that suits your page.', shadow: true },
+    code: { lang: 'HTML', text: "<agui-chat composer-shadow=\"raised\"></agui-chat>   <!-- soft (default), raised, none -->" },
   },
   {
     id: 'voice', title: 'Voice',
@@ -64,6 +71,7 @@ export const FEATURES: Feature[] = [
     try: 'Tap the microphone and speak. It works where your browser supports speech recognition.',
     ref: { label: 'voice', href: '../../reference/agui-chat/' },
     show: { kind: 'live', user: 'Can I just talk to it?', reply: 'Yes. Tap the microphone and say what you need.' },
+    code: { lang: 'HTML', text: "<agui-chat voice=\"server\"></agui-chat>   <!-- auto (default), browser, server, off -->\n<!-- server: your server transcribes (the transcription key) -->" },
     shots: ['server-voice'],
   },
   {
@@ -72,6 +80,7 @@ export const FEATURES: Feature[] = [
     try: 'Fill in the fields, then tap Undo.',
     ref: { label: 'Cards and answers', href: '../cards/' },
     show: { kind: 'card', specimen: 'set-fields' },
+    code: { lang: 'JavaScript', text: "chat.use(formguide({\n  getState, applyChanges,\n  undoSeconds: 30,          // how long Undo stays on a finished card\n}))" },
   },
   {
     id: 'blocks', title: 'Cards from blocks',
@@ -86,12 +95,14 @@ export const FEATURES: Feature[] = [
     try: 'Tap a chip under the answer.',
     ref: { label: 'quickReplies', href: '../cards/' },
     show: { kind: 'card', specimen: 'suggestions' },
+    code: { lang: 'HTML', text: "<agui-chat></agui-chat>                      <!-- starters and suggested replies, on by default -->\n<agui-chat quick-replies=\"off\"></agui-chat>  <!-- without them -->" },
   },
   {
     id: 'highlight', title: 'Changes light up in the form',
     why: 'When a card is accepted, the fields it filled flash in the form itself, so people see what changed and where.',
     ref: { label: 'The form plugin', href: '../widget/#the-form-plugin' },
     show: { kind: 'link', href: '../../#see-it-on-a-form', label: 'See it in the live demo' },
+    code: { lang: 'JavaScript', text: "chat.use(formguide({\n  getState, applyChanges,\n  highlight: true,          // the default; false when your page draws its own\n}))" },
     shots: ['change-highlight'],
   },
   {
