@@ -207,7 +207,7 @@ export interface ChatOptions {
   /** The composer's shadow: 'soft' (default; a little lift, a touch more when focused), 'raised' or 'none'.
    *  Exact values: --agui-composer-shadow and --agui-composer-shadow-focus (a theme can set them). */
   composerShadow: 'soft' | 'raised' | 'none'
-  /** Tooltips with keyboard shortcuts on the composer's buttons ("Send ↵", "Dictate ⌘D"), after a moment of hover or
+  /** Tooltips with keyboard shortcuts on the composer's buttons ("Send ↵", "New line ⇧↵"; other buttons show their name), after a moment of hover or
    *  on keyboard focus; never on a touch screen. Default on. */
   shortcutHints: boolean
   /** The actions under an answer, in order: built-in `copy`, `reply` (quotes the whole answer), `retry` (the latest answer), `speak`, `like`, `dislike`,

@@ -6,7 +6,6 @@ import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, recognitionBlocked, record, recordingSupported, speechReliable, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
-import { ariaKeys } from './keys'
 import { loadTip } from '#tip-loader'
 import type { TipRow } from './tip'
 import { hasTheme, themeCss, THEME_PACKS, loadTheme } from './themes'
@@ -571,7 +570,6 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     popIn.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this._popAdd(); return }   // into the composer, under the others
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this._closePop(true); return }
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'd' && !popMic.hidden) { e.preventDefault(); this._toggleMic('pop') }   // Dictate a reply
     })
     popAdd.addEventListener('click', () => this._popAdd())
     popMic.addEventListener('click', () => this._toggleMic('pop'))
@@ -617,18 +615,18 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       // Esc takes the last quote back (one at a time)
       if (e.key === 'Escape' && this._replies.length && !box.classList.contains('rec')) { e.preventDefault(); e.stopPropagation(); this._dropReply(this._replies.length - 1); return }
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this._submit() }
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'd' && !mic.hidden) { e.preventDefault(); this._toggleMic() }   // Dictate, as its tooltip says
     })
     send.addEventListener('click', () => (this._busy ? this.stop() : this._submit()))
     mic.addEventListener('click', () => this._toggleMic())
     // shortcut tooltips, as in the Claude app: only keys that work here
     const hints = (): boolean => this._opts.shortcutHints !== false
     this._tip(send, panel, () => (this._busy ? [{ label: this.t('stop') }] : [{ label: this.t('send'), keys: ['Enter'] }, { label: this.t('newLine'), keys: ['Shift', 'Enter'] }]), hints)
-    this._tip(mic, panel, () => [{ label: this.t('mic'), keys: ['Mod', 'D'] }], hints)
+    this._tip(mic, panel, () => [{ label: this.t('mic') }], hints)
     this._tip(clip, panel, () => [{ label: this.t('attach') }], hints)
     this._tip(popAdd, panel, () => [{ label: this.t('addToChat'), keys: ['Enter'] }], hints)
-    this._tip(popMic, panel, () => [{ label: this.t('dictateReply'), keys: ['Mod', 'D'] }], hints)
-    send.setAttribute('aria-keyshortcuts', 'Enter'); mic.setAttribute('aria-keyshortcuts', ariaKeys(['Mod', 'D']))
+    this._tip(popMic, panel, () => [{ label: this.t('dictateReply') }], hints)
+    // only keys a text field owns anyway (Enter, Shift+Enter, Esc): a web page must not take the browser's (Cmd+D bookmarks)
+    send.setAttribute('aria-keyshortcuts', 'Enter')
     panel.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && (!pill.hidden || !cap.hidden)) { e.preventDefault(); this._closePop(true); return }
       if (!this._popup && !(this._heroSheet && this.$.wrap.classList.contains('open'))) return
@@ -885,7 +883,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.btnClose.setAttribute('aria-label', this.t('close'))
     this.$.replyList.setAttribute('aria-label', this.t('reply'))
     this.$.capReply.textContent = this.t('reply')
-    this.$.popMic.setAttribute('aria-label', this.t('dictateReply')); this.$.popMic.setAttribute('aria-keyshortcuts', ariaKeys(['Mod', 'D']))
+    this.$.popMic.setAttribute('aria-label', this.t('dictateReply'))
     this.$.popAdd.setAttribute('aria-label', this.t('addToChat'))
     this.$.pill.setAttribute('aria-label', this.t('reply'))
     if (!o.reply) { this._closePop(); this._setReplies([]) }

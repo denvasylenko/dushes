@@ -190,7 +190,7 @@ Files attached with the paperclip, pasted (a screenshot, Ctrl+V) or dropped show
 
 ## Reply to a part of an answer
 
-Select a few words in an answer and a small **Reply** capsule appears, as in the Claude app (scrolling away takes it off). Reply opens a window: the quote on one line, a field "Reply to Assistant", a microphone (Cmd+D; the same `voice` setting as the composer) and **Add to chat**. One dictation runs at a time: pressing the other microphone stops the first, which keeps what it heard.
+Select a few words in an answer and a small **Reply** capsule appears, as in the Claude app (scrolling away takes it off). Reply opens a window: the quote on one line, a field "Reply to Assistant", a microphone (the same `voice` setting as the composer) and **Add to chat**. One dictation runs at a time: pressing the other microphone stops the first, which keeps what it heard.
 - **Enter** in the window (or **Add to chat**) puts the quote, with what you typed as its reply, into the composer as a grey tile, under the ones already there, so you can collect several. **Enter** in the composer then sends them in one message.
 - **× on a tile**, or **Esc** in the field, takes a quote back.
 
@@ -291,7 +291,7 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `voice` | `voice` | `auto` | how speech becomes text: `auto` (the server when it transcribes; without one, the browser's recognition in Chromium on a computer and Android, elsewhere a recording for the server), `browser` (the browser only), `server` (always the server), `off` (no mic). Chrome's recognition sends the audio to Google: use `server` for sensitive data |
 | `dictation` | `dictation` | — | the old name of `voice` (`browser`, `server`, `auto`), used when `voice` is left at `auto` |
 | `reply` | `reply` | on | Reply on a selected part of an answer, and swipe to reply on a phone |
-| `shortcutHints` | `shortcut-hints` | on | tooltips with keys on the composer's buttons (Send ↵, New line ⇧↵, Dictate ⌘D); never on touch screens |
+| `shortcutHints` | `shortcut-hints` | on | tooltips on the composer's buttons: their name, and the keys for Send ↵ and New line ⇧↵; never on touch screens. The chat takes no browser shortcuts (⌘D, ⌘U) |
 | `composerShadow` | `composer-shadow` | `soft` | the composer's shadow: `soft`, `raised` or `none`; exact values with `--agui-composer-shadow` and `--agui-composer-shadow-focus` |
 | `collapseLines` | `collapse-lines` | `8` | a message taller than this many lines folds, with Show more; `0`: never |
 | `collapseAnswers` | `collapse-answers` | off | fold the assistant's long answers too |

@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Reply to a part of an answer
-As in the Claude app, replying takes two steps. Selecting text inside one agent message SHALL show a small capsule with Reply; a scroll, Esc or a tap elsewhere SHALL take it away. Reply SHALL open a reply window in its place, with the quote on one line (ending in "…"), a field "Reply to <the assistant's name>" that takes the focus, a microphone that dictates into that field (Cmd or Ctrl+D), and Add to chat.
+As in the Claude app, replying takes two steps. Selecting text inside one agent message SHALL show a small capsule with Reply; a scroll, Esc or a tap elsewhere SHALL take it away. Reply SHALL open a reply window in its place, with the quote on one line (ending in "…"), a field "Reply to <the assistant's name>" that takes the focus, a microphone that dictates into that field, and Add to chat.
 
 #### Scenario: A line of an answer
 - **WHEN** the user selects "the fee is 2%" in an agent's message with a mouse
@@ -105,7 +105,7 @@ The old option `dictation` SHALL still apply when `voice` is left at `auto`. The
 - **THEN** the mic uses the browser's recognition, as before
 
 ### Requirement: Shortcut tooltips
-The composer's buttons SHALL show a tooltip after about 500 ms of mouse hover and at once on keyboard focus: one row per action, its keys on the right as key caps. The send button lists Send (Enter) and New line (Shift+Enter), or Stop while the assistant works; the microphone lists Dictate (Cmd or Ctrl+D), which SHALL work in the field. Keys SHALL be written as symbols on a Mac and as words elsewhere. There SHALL be no tooltip on a touch screen or with `shortcutHints` off.
+The composer's buttons SHALL show a tooltip after about 500 ms of mouse hover and at once on keyboard focus: one row per action, its keys on the right as key caps. The send button lists Send (Enter) and New line (Shift+Enter), or Stop while the assistant works; other buttons show their name only. Keys SHALL be written as symbols on a Mac and as words elsewhere. There SHALL be no tooltip on a touch screen or with `shortcutHints` off.
 
 #### Scenario: Hovering Send on a Mac
 - **WHEN** the user rests the mouse on the send button for half a second
@@ -131,4 +131,11 @@ The composer and the reply window SHALL each have a microphone, and both SHALL s
 #### Scenario: From the composer to the window
 - **WHEN** the user dictates "and the term" in the composer, opens a reply window and presses its microphone
 - **THEN** the composer keeps "and the term", its microphone is idle, and the window's field receives the new dictation
+
+### Requirement: No browser shortcuts taken
+The widget SHALL handle only the keys a text field owns anyway: Enter, Shift+Enter and Esc. It SHALL NOT take browser shortcuts such as Cmd+D (bookmark) or Cmd+U (view source); a host's own shortcuts, if ever added, SHALL be an option that is off by default and works only while the focus is in the widget.
+
+#### Scenario: Cmd+D in the field
+- **WHEN** the user presses Cmd+D with the focus in the composer
+- **THEN** the browser bookmarks the page as usual and the chat does nothing
 
