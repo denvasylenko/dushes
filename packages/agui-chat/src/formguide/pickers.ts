@@ -8,6 +8,7 @@ import { h, numberBox } from '../dom'
 import type { ChatApi, Interrupt, RendererContext } from '../types'
 import type { Ctx } from './index'
 import { dateField } from './calendar'
+import { isPlainNumber } from './plain'
 import { blocksNow, loadBlocks } from '#blocks-loader'
 
 export interface Opt { id: string; label: string; value?: unknown; description?: string; attrs?: Record<string, string> }
@@ -23,14 +24,16 @@ const FIRST_SHOWN = 5
 
 /** A value for a card row, formatted by the field's role. Without a role: large plain numbers only.
  * Yes/no fields arrive as the server's language-neutral marks (\u2713 / \u2717): shown as words. */
-export function formatValue(display: unknown, kind: string | undefined, lang: string, words?: { yes: string; no: string }): string {
+export function formatValue(display: unknown, kind: string | undefined, lang: string, words?: { yes: string; no: string }, name?: string): string {
   const v = String(display ?? '')
+  if (/^-?\d+(\.\d+)?$/.test(v) && isPlainNumber(name)) return v   // a year or an id, as written
   if (words && (kind === 'bool' || v === '\u2713' || v === '\u2717' || v === '\u2715')) {
     if (v === '\u2713' || v === 'true') return words.yes
     if (v === '\u2717' || v === '\u2715' || v === 'false') return words.no
   }
   try {
-    if (kind === 'number' && /^-?\d+(\.\d+)?$/.test(v)) return new Intl.NumberFormat(lang || undefined).format(Number(v))
+    // separators from five digits on (15,000; 1,500,000): a four-digit year or id never gets one, whatever its name
+    if (kind === 'number' && /^-?\d+(\.\d+)?$/.test(v)) return new Intl.NumberFormat(lang || undefined, { useGrouping: 'min2' } as unknown as Intl.NumberFormatOptions).format(Number(v))
     if (kind === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
       return new Intl.DateTimeFormat(lang || undefined, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
         .format(new Date(`${v}T00:00:00Z`))

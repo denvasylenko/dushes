@@ -341,6 +341,14 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
+    // title="…" names the chat (its header); left on the element, the browser would show it as a tooltip over the whole
+    // chat, so it is read and taken off the element (the name stays in options.title)
+    if (name === 'title') {
+      if (value === null) return   // our own removal, or the host's: the name stays until the host sets another
+      this.options = { title: value }
+      this.removeAttribute('title')
+      return
+    }
     const a = ATTRS[name]
     if (a) this.options = { [a[0]]: value === null && name !== 'open' ? DEFAULTS[a[0]] : a[1](value) } as Partial<ChatOptions>
   }
@@ -556,11 +564,13 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       last.after(holder)
       this._actions(body, text, holder)
     }
+    this._scroll()   // the row made the log taller: its end stays in view, above the suggestions
   }
 
   // ------------------------------------------------------------------ DOM
   private _build(): void {
     const wrap = h('div', { class: 'wrap' })
+    wrap.setAttribute('title', '')   // <agui-chat title="…"> names the chat; without this the browser shows it as a tooltip over the whole chat
     const fabIco = h('span', { class: 'fab-ico', 'aria-hidden': 'true' })
     const fabX = h('span', { class: 'fab-x', 'aria-hidden': 'true' })
     const fabOwn = h('span', { class: 'fab-own' })
@@ -633,6 +643,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     log.addEventListener('scroll', () => {
       this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
       jump.hidden = this._stick
+      this._quickAway()
       if (!this._winOpen()) this._closePop()   // the capsule goes; an open window moves with its text
     }, { passive: true })
     files.addEventListener('scroll', () => this._fadeFiles(), { passive: true })
@@ -643,7 +654,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       if (box.classList.contains('rec')) return   // hidden behind the wave: measured once it shows again
       input.style.height = 'auto'; input.style.height = `${Math.min(180, input.scrollHeight)}px`
     }
-    input.addEventListener('input', () => { grow(); this._syncSend() })
+    input.addEventListener('input', () => { grow(); this._syncSend(); this._queueKeyHint(); this._quickAway() })
     // a screenshot or a file from the clipboard, or dropped on the composer, is attached like a file from the + button
     const takeFiles = (files: FileList | null | undefined, e: Event) => {
       const list = [...(files ?? [])]
@@ -956,6 +967,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     ;(this.$.picker as HTMLInputElement).multiple = o.attachMultiple
     this.$.log.querySelectorAll('.steps').forEach((s) => ((s as HTMLElement).hidden = !o.toolSteps || s.classList.contains('quiet')))
     if (this._quick) this._quick.hidden = !o.quickReplies
+    this.$.panel.classList.toggle('quick-room', !!o.quickReplies)   // the log keeps the suggestions' room always: no shift
     const empty = this.$.log.querySelector('.empty')
     if (empty || !this.$.log.children.length) this._renderEmpty()
     this._syncSend()
@@ -1499,6 +1511,16 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this._quick?.remove(); this._quick = null; this._suggestions = []; this._applies = []
   }
 
+  /** The suggestions step aside (fade, no room taken) while the user types or reads further up; back at the end
+   *  with an empty field, they return. The text under them is never hidden by them while it is being read. */
+  private _quickAway(): void {
+    if (!this._quick) return
+    const input = this.$.input as HTMLTextAreaElement | undefined
+    const away = !!input?.value.trim() || !this._stick
+    this._quick.classList.toggle('q-away', away)
+    this._quick.inert = away
+  }
+
   /** The suggestions row goes right above the composer (ours, or the host's own from the composer slot). */
   private _placeQuick(): void {
     if (!this._quick) return
@@ -1537,6 +1559,8 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this._quick = h('div', { class: 'quick' }, ...(own ? [own] : [h('div', { class: 'chips' }, chips), err]))
     this._quick.hidden = !this._opts.quickReplies
     this._placeQuick()
+    this._quickAway()
+    this._scroll()   // the last line, with its actions, stays above the strip (the log's scroll room)
     const row = this._quick.querySelector<HTMLElement>(':scope > .chips')
     if (row) {
       const fade = (): void => {
@@ -1549,10 +1573,6 @@ export class AguiChatElement extends BaseElement implements ChatApi {
         row.scrollLeft += e.deltaY; e.preventDefault()
       }, { passive: false })
       requestAnimationFrame(fade)
-    }
-    if (!this._quick.hidden && !reducedMotion() && typeof this._quick.animate === 'function') {
-      const to = this._quick.offsetHeight
-      this._quick.animate([{ height: '0px', overflow: 'hidden' }, { height: `${to}px`, overflow: 'hidden' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' })
     }
   }
 
@@ -1856,14 +1876,24 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     setTimeout(() => this._drain())
   }
 
+  /** "↵ to send after the answer" under the field: on a computer, while it answers, once something is typed. */
+  private _queueKeyHint(): void {
+    const hint = this.$.hint, input = this.$.input as HTMLTextAreaElement | undefined
+    if (!hint || !input) return
+    const show = this._busy && !!input.value.trim() && !globalThis.matchMedia?.('(pointer: coarse)').matches
+    if (show && !hint.childElementCount && (!hint.textContent || hint.dataset.queueKey)) { hint.textContent = this.t('queueKey'); hint.dataset.queueKey = '' }
+    else if (!show && hint.dataset.queueKey !== undefined) { hint.textContent = ''; delete hint.dataset.queueKey }
+  }
+
   private _setBusy(on: boolean): void {
     this._busy = on
     this.toggleAttribute('busy', on)
     this.$.jump?.classList.toggle('busy', on)   // "•••" in the jump button: it is still answering below
     // while it answers, Enter puts the message in the queue: the field says so
     const input = this.$.input as HTMLTextAreaElement | undefined
-    const touch = !!globalThis.matchMedia?.('(pointer: coarse)').matches
-    if (input) input.placeholder = on ? this.t(touch ? 'queueHintTouch' : 'queueHint') : (this._opts.placeholder || this.t('placeholder'))
+    // while it answers the field says, in words, that more can be written and goes after the answer
+    if (input) input.placeholder = on ? this.t('queuePlaceholder') : (this._opts.placeholder || this.t('placeholder'))
+    this._queueKeyHint()
     this._syncSend()
     this._queueHints()
   }

@@ -77,11 +77,11 @@
   "queued": "En cola",
   "sendNow": "Enviar ahora",
   "edit": "Editar",
-  "queueHint": "\u21b5 para poner en cola",
+  "queuePlaceholder": "Escribe m\u00e1s \u2014 se env\u00eda tras la respuesta",
+  "queueKey": "\u21b5 env\u00eda tras la respuesta",
   "afterQuestion": "Se enviar\u00e1 cuando respondas la pregunta",
   "afterRetry": "Se enviar\u00e1 tras \u00ab{retry}\u00bb",
   "queuePaused": "En pausa",
-  "queueHintTouch": "Se enviar\u00e1 tras la respuesta",
   "messageRemoved": "Mensaje eliminado"
  },
  "formguide": {

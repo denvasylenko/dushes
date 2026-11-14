@@ -57,7 +57,7 @@ Build it from this repository: `cd packages/agui-chat && npm install && npm run 
 | one line in their place, after the first second: a spinner and "Searching the documents…", the text changing in place | `TOOL_CALL_START` … `TOOL_CALL_RESULT` of a server tool (a tool's `CUSTOM tool_progress` sub-steps are not shown) |
 | "Done in 4 s ›" in the same place; the chevron opens the steps, a repeat merged ("Searching the documents (2)") | the run ended |
 | a card | `CUSTOM on_interrupt` (JSON value with `type`) or `RUN_FINISHED.outcome.interrupts` |
-| chips in one row right above the input (scrolling sideways); a chip marked ✓ fills fields in one tap (with Undo), then sends its text | `CUSTOM suggestions {items, applies?}` |
+| chips in one row right above the input, over the log's bottom edge (scrolling sideways; the log keeps scroll room so the last answer and its actions always scroll above them, nothing moves when they come or go, and they step aside while you type or read further up); a chip marked ✓ fills fields in one tap (with Undo), then sends its text | `CUSTOM suggestions {items, applies?}` |
 | "Something went wrong" + Try again | `RUN_ERROR` or a network error |
 
 
@@ -192,7 +192,7 @@ Files added with the + button, pasted (a screenshot, Ctrl+V) or dropped show ins
 
 ## Send while it answers
 
-A message sent while the assistant is still answering does not stop it: it waits at the end of the chat, marked **Queued**, and the answer keeps arriving above it. When the answer ends, queued messages go one by one, in order; while a question card waits for its answer, they wait too. The input's placeholder says "↵ to queue" while the assistant answers ("Sends after the answer" on a phone).
+A message sent while the assistant is still answering does not stop it: it waits at the end of the chat, marked **Queued**, and the answer keeps arriving above it. When the answer ends, queued messages go one by one, in order; while a question card waits for its answer, they wait too. While the assistant answers, the input says "Write more — sends after the answer"; on a computer, once you type, a hint under it reads "↵ to send after the answer".
 
 - **Send now** stops the answer and sends that message next.
 - **Edit** puts its text back into the input, under anything you had started typing; **Remove** takes it out, with **Undo**.
@@ -281,7 +281,7 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `greetingDelay` | `greeting-delay` | `4` | seconds before the greeting appears |
 | `motion` | `motion` | `spring` | the bubble's opening: `spring` (a small overshoot), `gentle`, `none` (fades only; reduced motion always fades) |
 | `open` | `open` | off | open the floating panel on load |
-| `title`, `subtitle` | `title`, `subtitle` | empty | the header |
+| `title`, `subtitle` | `title`, `subtitle` | empty | the header (the `title` attribute is read, then removed from the element, so no browser tooltip covers the chat) |
 | `intro` | `intro` | a short greeting | the line in an empty chat |
 | | `starters` | `[]` | opening messages to tap (the server's `starters` win) |
 | `placeholder` | `placeholder` | from the language | the composer's hint |

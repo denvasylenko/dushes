@@ -151,11 +151,15 @@ After a field-change card is accepted or rejected, its rows SHALL fold into the 
 - **THEN** the card shows one line with the three labels, and the rows appear on click
 
 ### Requirement: Readable values on cards
-Number values on cards SHALL be formatted for the chat's language (1500000 -> "1,500,000" in English). A reason equal to the value SHALL be hidden. Question text SHALL render inline markdown (bold, italics, code).
+Number values on cards SHALL be formatted for the chat's language with separators from five digits on (1500000 -> "1,500,000" in English), so a four-digit year never gets one, whatever its field is called; a field whose name has the word year, zip, postal, code, pin, phone, id, vin, inn or iban SHALL show any value as written. A reason equal to the value SHALL be hidden. Question text SHALL render inline markdown (bold, italics, code).
 
 #### Scenario: An amount
 - **WHEN** a card proposes `loan_amount` 900000 instead of 1500000 in English
 - **THEN** it shows "~~1,500,000~~ 900,000"
+
+#### Scenario: A year of manufacture
+- **WHEN** a card fills `year_of_manufacture` with 2019 in place of 2018
+- **THEN** it shows "~~2018~~ 2019", with no thousands separator
 
 ### Requirement: Cards show what they filled
 After a field-change card, a question card that fills its field, or an action chip is applied, the plugin SHALL send a focus directive for the (last) filled field, with its `reveal` steps and an empty hint, to `onDirective` or the default handling. Question cards tied to a field and suggested changes SHALL carry `reveal` for this.

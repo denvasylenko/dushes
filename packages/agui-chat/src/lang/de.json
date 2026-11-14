@@ -77,11 +77,11 @@
   "queued": "In der Warteschlange",
   "sendNow": "Jetzt senden",
   "edit": "Bearbeiten",
-  "queueHint": "\u21b5 zum Einreihen",
+  "queuePlaceholder": "Schreib weiter \u2013 kommt nach der Antwort",
+  "queueKey": "\u21b5 zum Senden nach der Antwort",
   "afterQuestion": "Wird nach deiner Antwort auf die Frage gesendet",
   "afterRetry": "Wird nach \u201e{retry}\u201c gesendet",
   "queuePaused": "Pausiert",
-  "queueHintTouch": "Wird nach der Antwort gesendet",
   "messageRemoved": "Nachricht entfernt"
  },
  "formguide": {

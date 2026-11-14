@@ -50,7 +50,12 @@ describe('the message queue', () => {
     const q = $$(el, '.msg.queued')
     expect(q).toHaveLength(1)
     expect(q[0].querySelector('.q-now')!.textContent).toBe('Send now')
-    expect((el.shadowRoot!.querySelector('textarea') as HTMLTextAreaElement).placeholder).toBe('↵ to queue')
+    const field = el.shadowRoot!.querySelector('textarea') as HTMLTextAreaElement
+    expect(field.placeholder).toBe('Write more \u2014 sends after the answer')   // words, not a key symbol
+    expect(el.shadowRoot!.querySelector('.hint')!.textContent).toBe('')
+    field.value = 'and a window seat'; field.dispatchEvent(new Event('input'))
+    expect(el.shadowRoot!.querySelector('.hint')!.textContent).toBe('\u21b5 to send after the answer')   // the key, once there is text (a computer)
+    field.value = ''; field.dispatchEvent(new Event('input'))
     expect(el.shadowRoot!.querySelector('.log')!.lastElementChild!.classList.contains('queued')).toBe(true)   // the dots above it
     await a.release()
     await tick(300)                                                      // its line eases away
@@ -164,6 +169,11 @@ describe('the message queue', () => {
     const el = await mount()
     el.setSuggestions(['Add a note', 'Change the time'])
     expect($$(el, '.foot > .quick .chip').map((c) => c.textContent)).toEqual(['Add a note', 'Change the time'])
+    const field = el.shadowRoot!.querySelector('textarea') as HTMLTextAreaElement
+    field.value = 'my own words'; field.dispatchEvent(new Event('input'))
+    expect(el.shadowRoot!.querySelector('.quick')!.classList.contains('q-away')).toBe(true)   // typing: out of the way
+    field.value = ''; field.dispatchEvent(new Event('input'))
+    expect(el.shadowRoot!.querySelector('.quick')!.classList.contains('q-away')).toBe(false)  // empty again: back
     el.setSuggestions([])
     expect(el.shadowRoot!.querySelector('.quick')).toBeNull()
   })
@@ -193,6 +203,19 @@ describe('the message queue', () => {
     ;(rows[0].querySelector('.act-copy') as HTMLButtonElement).click()
     await tick()
     expect(write).toHaveBeenCalledWith('The fee is 2%.\n\nEarly repayment is free.')
+  })
+
+  it('title="…" names the chat and leaves the element, so no browser tooltip covers it', async () => {
+    const el = document.createElement('agui-chat') as AguiChatElement
+    el.setAttribute('title', 'Ask the docs')
+    for (const [k, v] of Object.entries({ mode: 'inline', lang: 'en', 'persist-thread': 'off' })) el.setAttribute(k, v)
+    document.body.appendChild(el)
+    await tick()
+    expect(el.hasAttribute('title')).toBe(false)
+    expect(el.shadowRoot!.querySelector('.title')!.textContent).toBe('Ask the docs')
+    el.setAttribute('title', 'Help')                                     // set again later: read again, taken off again
+    expect(el.hasAttribute('title')).toBe(false)
+    expect(el.shadowRoot!.querySelector('.title')!.textContent).toBe('Help')
   })
 
   it('the queue survives a reload', async () => {

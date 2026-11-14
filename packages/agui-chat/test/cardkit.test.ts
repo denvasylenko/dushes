@@ -58,6 +58,20 @@ describe('card kit: values and looks', () => {
     expect(formatValue('1500000', undefined, 'en')).toBe('1,500,000')
   })
 
+  it('a year, a zip or an id is a name: no thousands separator, anywhere a card shows it', async () => {
+    expect(formatValue('2019', 'number', 'en', undefined, 'year_of_manufacture')).toBe('2019')
+    expect(formatValue('2019', 'number', 'de', undefined, 'year')).toBe('2019')   // live v9's payload: name "year", kind number
+    expect(formatValue('2019', 'number', 'de', undefined, 'buildYear')).toBe('2019')
+    expect(formatValue('10115', 'number', 'en', undefined, 'zip')).toBe('10115')
+    expect(formatValue('15000', 'number', 'en', undefined, 'shipping_cost')).toBe('15,000')   // an amount keeps its separator
+    expect(formatValue('2019', 'number', 'de', undefined, 'built')).toBe('2019')   // a year by any name: no separator under five digits
+    const { el } = await chatWith(run(interrupt({ type: 'set_fields', card_id: 'c', changes: [
+      { name: 'year_of_manufacture', label: 'Year of manufacture', kind: 'number', value: 2019, display: '2019', previous_display: '2018' },
+      { name: 'year', label: 'Baujahr', kind: 'number', value: 2019, display: '2019', previous: null, previous_display: null }] })))
+    expect($$(el, '.card b').map((b) => b.textContent)).toEqual(['2019', '2019'])   // SRE's capture from live v9, as sent
+    expect($(el, '.card s.was').textContent).toBe('2018')
+  })
+
   it('picks the look from the options', () => {
     const a = { id: 'a', label: 'A' }
     expect(optionsLook([a, { id: 'b', label: 'B' }])).toBe('chips')

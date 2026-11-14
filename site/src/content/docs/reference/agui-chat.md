@@ -46,7 +46,7 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `upload` | the plugin's | your own uploader: `(file, chat) => Promise<{id, filename}>` (attachments without Dushes) |
 | `quickReplies` (`quick-replies`) | `true` | starter chips in an empty chat and suggested replies after answers |
 | `starters` | — | opening messages for an empty chat (Dushes also reads them from the domain pack) |
-| `title`, `subtitle`, `intro`, `placeholder` | localized defaults | the header, the empty-chat text, the composer hint |
+| `title`, `subtitle`, `intro`, `placeholder` | localized defaults | the header, the empty-chat text, the composer hint; a `title` attribute is read and then taken off the element, so the browser shows no tooltip over the chat (read it back from `chat.options.title`) |
 | `launcher` | `auto` | the launcher in every popup mode: `auto` (a pill with its words for the panel, a round button for the bubble), `round`, `pill`, `none` (your own button calls `chat.open()`); `render.launcher` replaces its content in any of them |
 | `launcherLabel` | the language's "Open" | the launcher's words ("Edit with AI") and its accessible name |
 | `modal` | `true` | floating panel: `false` (`modal="off"`) keeps the page beside it usable, like a sidebar next to the site it talks about: no scrim, a tap on the page does not close it, no focus trap; on a phone it is still a sheet |

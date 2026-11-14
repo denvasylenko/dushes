@@ -76,11 +76,11 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "queued": "Queued",
     "sendNow": "Send now",
     "edit": "Edit",
-    "queueHint": "\u21b5 to queue",
+    "queuePlaceholder": "Write more — sends after the answer",
+    "queueKey": "↵ to send after the answer",
     "afterQuestion": "Sends after you answer the question",
     "afterRetry": "Sends after {retry}",
     "queuePaused": "Paused",
-    "queueHintTouch": "Sends after the answer",
     "messageRemoved": "Message removed",
     "quoteRemoved": "Quote removed.",
     "undo": "Undo"

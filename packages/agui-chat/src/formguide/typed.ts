@@ -8,6 +8,7 @@ import type { Interrupt, RendererContext } from '../types'
 import type { Ctx } from './index'
 import { monthCalendar } from './month'
 import { timeGrid } from './dates'
+import { isPlainNumber } from './plain'
 
 
 type Commit = (value: unknown, label: string) => void
@@ -68,7 +69,7 @@ function rangeView(it: Interrupt, c: RendererContext, ctx: Ctx | undefined, comm
   if (input) input.hidden = true
   const unit = r.unit ? ` ${r.unit}` : ''
   // a year, a zip or a code is a name, not an amount: "1988", never "1,988"
-  const plain = ['year', 'code'].includes(String(r.format)) || /year|zip|postal|code|pin/i.test(it.field ?? '')
+  const plain = isPlainNumber(it.field, r.format)
     || (!r.unit && Number.isInteger(min) && Number.isInteger(max) && step === 1 && min >= 1000 && max <= 2999)
   const fmt = new Intl.NumberFormat(c.chat.lang || undefined, plain ? { useGrouping: false } : undefined)
   const known = (v: unknown): v is number | string => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v))

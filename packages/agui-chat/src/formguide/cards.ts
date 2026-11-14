@@ -162,7 +162,7 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
   const rows = changes.map((ch) => {
     const lang = c.chat.lang
     const yesNo = { yes: c.t('yes'), no: c.t('no') }
-    const valueEl = h('b', null, ch.consent ? '' : formatValue(ch.display, ch.kind, lang, yesNo))
+    const valueEl = h('b', null, ch.consent ? '' : formatValue(ch.display, ch.kind, lang, yesNo, ch.name))
     const row = h('label', { class: `row${ch.consent ? ' consent' : ''}` })   // the whole row toggles its checkbox
     const check = (flags.select && many) || ch.consent
       ? h('input', { type: 'checkbox', checked: !ch.consent, 'aria-label': ch.label, onchange: (e: Event) => {
@@ -172,7 +172,7 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
         } })
       : null
     const prev = flags.diff && ch.previous_display && ch.previous_display !== ch.display
-      ? h('s', { class: 'muted was' }, formatValue(ch.previous_display, ch.kind, lang, yesNo)) : null
+      ? h('s', { class: 'muted was' }, formatValue(ch.previous_display, ch.kind, lang, yesNo, ch.name)) : null
     const afterLabels = (ch.after ?? []).map((n) => changes.find((x) => x.name === n)?.label ?? n).join(', ')
     const docText = ch.doc?.text ? h('div', { class: 'muted doc', hidden: true }, ch.doc.text) : null
     const why = ch.issue?.why ? h('div', { class: 'muted why', hidden: true }, ch.issue.why) : null
@@ -203,7 +203,7 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
         const done = h('button', { class: 'btn sec', type: 'button', onclick: () => {
           const [val, shown] = ed.read()
           if (JSON.stringify(val) !== JSON.stringify(ch.value)) edits.set(ch.name, [val, shown]); else edits.delete(ch.name)
-          valueEl.textContent = formatValue(shown, ch.kind, lang, yesNo)
+          valueEl.textContent = formatValue(shown, ch.kind, lang, yesNo, ch.name)
           box.replaceWith(line)
           tools.hidden = false
         } }, 'OK')

@@ -77,11 +77,11 @@
   "queued": "In coda",
   "sendNow": "Invia ora",
   "edit": "Modifica",
-  "queueHint": "\u21b5 per mettere in coda",
+  "queuePlaceholder": "Scrivi ancora \u2014 invio dopo la risposta",
+  "queueKey": "\u21b5 per inviare dopo la risposta",
   "afterQuestion": "Partir\u00e0 dopo la tua risposta alla domanda",
   "afterRetry": "Verr\u00e0 inviato dopo \u00ab{retry}\u00bb",
   "queuePaused": "In pausa",
-  "queueHintTouch": "Verr\u00e0 inviato dopo la risposta",
   "messageRemoved": "Messaggio rimosso"
  },
  "formguide": {

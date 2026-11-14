@@ -173,7 +173,7 @@ describe('a picker card', () => {
     expect(chips('Day')[1].disabled).toBe(true)                               // closed
     expect(chips('Time')).toHaveLength(0)
     chips('Day')[2].click()                                                    // "Other days" opens the rest in place
-    expect(chips('Day').map((b) => b.textContent)).toEqual(['Fri', 'Sat', 'Sun'])
+    expect(chips('Day').map((b) => b.textContent)).toEqual(['Fri', 'Sat \u00b7 Closed', 'Sun'])   // a closed day says why
     chips('Day')[2].click()
     expect(chips('Time').map((b) => b.textContent)).toEqual(['12:00'])
     chips('Day')[0].click()

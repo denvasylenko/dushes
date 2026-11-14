@@ -254,7 +254,9 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
           ? h('button', { class: 'bk-sw', type: 'button', 'aria-label': str(o.label) || id, 'aria-pressed': 'false' },
             h('span', { class: 'bk-sw-c' }, (Array.isArray(o.colors) ? o.colors : []).slice(0, 4).map((col) => h('i', { style: `background: ${/^#[0-9a-f]{3,8}$/i.test(str(col)) ? col : 'transparent'}` }))),
             o.label ? h('span', { class: 'bk-small' }, str(o.label)) : null)
-          : h('button', { class: 'chip', part: 'chip', type: 'button', 'aria-pressed': 'false', disabled: !!o.off, title: o.off && typeof o.off === 'string' ? o.off : null }, str(o.label))
+          // a closed one says why in its own text: a disabled button shows no tooltip, and a phone has none
+          : h('button', { class: 'chip', part: 'chip', type: 'button', 'aria-pressed': 'false', disabled: !!o.off }, str(o.label),
+            o.off && typeof o.off === 'string' ? h('span', { class: 'bk-off' }, ` \u00b7 ${o.off}`) : null)
         sw.addEventListener('click', () => {
           if (!multiple) { picked.clear(); wrap.querySelectorAll('[aria-pressed]').forEach((x) => { x.setAttribute('aria-pressed', 'false'); x.classList.remove('on') }) }
           if (picked.has(id)) picked.delete(id); else picked.add(id)

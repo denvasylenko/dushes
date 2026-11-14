@@ -8,14 +8,14 @@
 export const CSS = `
 :host { --agui-accent: #1d1d1f; --agui-on-accent: #fff; --agui-link: #0071e3; --agui-bg: #fff; --agui-surface: #fafafb;
   --agui-soft: #f2f2f5; --agui-ink: #1d1d1f; --agui-ink-2: #6e6e73; --agui-ink-3: #86868b; --agui-line: #ececf0;
-  --agui-line-2: #e3e3e8; --agui-ok: #34c759; --agui-on-ok: #fff; --agui-danger: #ff3b30; --agui-on-danger: #fff;
+  --agui-line-2: #e3e3e8; --agui-ok: #34c759; --agui-on-ok: #fff; --agui-danger: #ff3b30; --agui-on-danger: #fff; --agui-danger-ink: #d70015;
   --agui-shadow: rgba(0,0,0,.3); --agui-scrim: rgba(0,0,0,.18); --agui-knob: #fff;
   --agui-radius: 14px; --agui-radius-sm: 10px; --agui-radius-lg: 20px; --agui-radius-pill: 999px; --agui-panel-width: 460px;
   --agui-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif;
   --agui-ease: cubic-bezier(.28, .11, .32, 1); --agui-fade: 450ms;
   display: block; font-family: var(--agui-font); color: var(--agui-ink); letter-spacing: -0.01em; }
 :host([hidden]) { display: none; }
-:host(.dark) { --agui-danger: #ff453a; --agui-accent: #f5f5f7; --agui-on-accent: #1d1d1f; --agui-link: #4ea1ff; --agui-bg: #1c1c1e; --agui-surface: #242426;
+:host(.dark) { --agui-danger: #ff453a; --agui-danger-ink: #ff6961; --agui-accent: #f5f5f7; --agui-on-accent: #1d1d1f; --agui-link: #4ea1ff; --agui-bg: #1c1c1e; --agui-surface: #242426;
   --agui-soft: #2c2c2e; --agui-ink: #f5f5f7; --agui-ink-2: #aeaeb2; --agui-ink-3: #8e8e93; --agui-line: #333336; --agui-line-2: #3a3a3c;
   --agui-shadow: rgba(0,0,0,.6); --agui-scrim: rgba(0,0,0,.4); }
 * { box-sizing: border-box; }
@@ -25,7 +25,10 @@ button:focus, input:focus, a:focus, [tabindex]:focus { outline: none; }
 /* a soft ring for the keyboard only */
 button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 35%, transparent); }
-.card:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 22%, transparent); }
+.card:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 35%, transparent); }
+/* pressed: every control answers the finger (a phone has no hover) */
+:is(.btn:not(.pri), .chip, .act, .icon, .q-act, .code-copy, .steps > button):active:not(:disabled) { background: color-mix(in srgb, var(--agui-ink) 8%, transparent); }
+.btn.pri:active:not(:disabled) { filter: brightness(.92); }
 
 /* layout: floating (button + side panel), inline (fills its box), page (the whole window) */
 .panel { position: relative; display: flex; flex-direction: column; background: var(--agui-panel-bg, var(--agui-bg)); color: var(--agui-panel-ink, var(--agui-ink)); min-height: 0; text-align: left; }
@@ -33,7 +36,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .mode-inline .panel { height: 100%; border: 1px solid var(--agui-line); border-radius: var(--agui-radius); overflow: hidden; }
 .mode-page .panel { position: fixed; inset: 0; z-index: 2147483001; }   /* above the host page's own sticky bars */
 .mode-page .log, .mode-page .foot { width: min(760px, 100%); margin: 0 auto; }
-.mode-floating .panel { position: fixed; z-index: 2147483001; top: 0; right: 0; bottom: 0; width: min(var(--agui-panel-width), 100vw);
+.mode-inline .log { padding-left: max(20px, calc((100% - 720px) / 2)); padding-right: max(20px, calc((100% - 720px) / 2)); }
+.mode-floating .panel { position: fixed; z-index: 2147483001; top: 0; right: 0; bottom: 0; width: min(var(--agui-panel-width), 100%);
   box-shadow: -20px 0 60px -20px var(--agui-shadow); transform: translateX(104%); transition: transform .42s var(--agui-ease); visibility: hidden; }
 .mode-floating.open .panel { transform: none; visibility: visible; }
 .scrim { position: fixed; inset: 0; z-index: 2147483000; background: var(--agui-scrim); opacity: 0; pointer-events: none; transition: opacity .3s; }
@@ -70,7 +74,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   background: var(--agui-header-bg, transparent); color: var(--agui-header-ink, inherit); }
 .logo { width: 32px; height: 32px; border-radius: var(--agui-radius-sm); flex: none; display: grid; place-items: center; background: var(--agui-accent); color: var(--agui-on-accent); }
 .title { font-weight: 650; font-size: 15px; line-height: 1.2; }
-.sub { font-size: 12px; color: var(--agui-ink-2); margin-top: 2px; }
+:host { line-height: 1.4; }   /* our own rhythm, whatever the page around sets */
+.sub { font-size: 12px; line-height: 16px; color: var(--agui-ink-2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .icon { flex: none; width: 36px; height: 36px; border: 0; border-radius: var(--agui-radius-sm); background: transparent; color: var(--agui-ink-2);
   display: grid; place-items: center; cursor: pointer; }
 .head .icon:first-of-type { margin-left: auto; }
@@ -79,21 +84,21 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .mode-inline .close, .mode-page .close { display: none; }
 
 /* messages */
-.log { position: relative; flex: 1; overflow-y: auto; padding: 22px 20px 12px; background: var(--agui-log-bg, transparent); overscroll-behavior: contain; min-height: 0; }
+.log { position: relative; flex: 1; overflow-y: auto; padding: 24px 20px 12px; background: var(--agui-log-bg, transparent); overscroll-behavior: contain; min-height: 0; }
 .empty { padding: 22px 2px 10px; }
 .empty h3 { font-size: 28px; line-height: 1.15; letter-spacing: -0.035em; margin: 0 0 8px; text-wrap: balance; }
 .empty p { margin: 0 0 18px; color: var(--agui-ink-2); font-size: 15px; line-height: 1.45; }
 .msg { margin: 0 0 20px; font-size: 15px; line-height: 1.58; letter-spacing: -0.008em; overflow-wrap: anywhere; }
 .msg.me { display: flex; flex-direction: column; align-items: flex-end; }
-.msg.me > div:not(.att-row):not(.q-line) { background: var(--agui-bubble-user-bg, var(--agui-soft)); color: var(--agui-bubble-user-ink, inherit); border-radius: var(--agui-bubble-radius, var(--agui-radius-lg)); padding: 10px 15px; max-width: 85%; white-space: pre-wrap; }
+.msg.me > div:not(.att-row):not(.q-line) { background: var(--agui-bubble-user-bg, var(--agui-soft)); color: var(--agui-bubble-user-ink, inherit); border-radius: var(--agui-bubble-radius, var(--agui-radius-lg)); padding: 10px 16px; max-width: 85%; white-space: pre-wrap; }
 .msg.ai { color: var(--agui-bubble-ai-ink, inherit); }
 .msg.gone { opacity: 0; transition: opacity .18s var(--agui-ease); }
-.msg.ai p { margin: 0 0 10px; } .msg.ai p:last-child { margin-bottom: 0; }
+.msg.ai p { margin: 0 0 12px; } .msg.ai p:last-child { margin-bottom: 0; }
 .msg.ai ul { margin: 4px 0 10px; padding-left: 20px; } .msg.ai li { margin: 3px 0; }
 .msg.ai a { color: var(--agui-link); }
 .msg.ai .body img { max-width: 100%; height: auto; border-radius: var(--agui-radius-sm); }
 .msg.ai .body img, .card img.bk-img { cursor: zoom-in; }
-.msg.ai code { font-size: .9em; background: var(--agui-soft); border-radius: var(--agui-radius-sm); padding: 1px 5px; }
+.msg.ai code { font-size: 13px; background: var(--agui-soft); border-radius: var(--agui-radius-sm); padding: 1px 5px; }
 .msg.ai .code { position: relative; margin: 8px 0 12px; background: var(--agui-soft); border-radius: var(--agui-radius-sm); overflow: hidden; }
 .msg.ai .code pre { margin: 0; padding: 12px 14px; overflow-x: auto; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0; }
 .msg.ai .code code { background: none; padding: 0; font-size: inherit; white-space: pre; overflow-wrap: normal; }
@@ -101,11 +106,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .code-copy { position: absolute; top: 4px; right: 4px; border: 0; border-radius: var(--agui-radius-pill); background: var(--agui-bg); color: var(--agui-ink-2);
   font: 500 12px var(--agui-font); padding: 4px 10px; min-height: 28px; cursor: pointer; box-shadow: 0 0 0 1px var(--agui-line); }
 .code-copy:hover { color: var(--agui-ink); }
-.code-copy:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-accent) 30%, transparent), 0 0 0 1px var(--agui-accent); }
 .notice { text-align: center; font-size: 12px; color: var(--agui-ink-2); margin: 0 0 16px; }
-.error { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--agui-danger); font-size: 13px; margin: 0 0 16px; }
+.error { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--agui-danger-ink, var(--agui-danger)); font-size: 13px; margin: 0 0 16px; }
 /* the actions under an answer: quiet icons; on a computer they show on hover (the latest answer keeps them) */
-.msg-acts { display: flex; gap: 2px; margin: 6px 0 0 -8px; }
+.msg-acts { display: flex; gap: 2px; margin: 8px 0 0 -8px; }
 .msg-acts .act { width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--agui-ink-3); display: grid; place-items: center; cursor: pointer; }
 .msg-acts .act:hover { background: var(--agui-soft); color: var(--agui-ink); }
 .msg-acts .act[aria-pressed=true], .msg-acts .act.done { color: var(--agui-link); }
@@ -114,7 +118,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .msg.ai:not(.last) .msg-acts { opacity: 0; transition: opacity .15s var(--agui-ease); }
   .msg.ai:hover .msg-acts, .msg.ai .msg-acts:focus-within { opacity: 1; }
 }
-@media (hover: none) { .msg-acts .act { width: 44px; height: 44px; } }
+@media (hover: none) { .msg-acts .act { width: 44px; height: 44px; } .msg-acts { margin: -2px 0 0 -14px; } }   /* the icon on the text's edge, the target still 44 px */
 /* back to the latest message: a round button over the composer; "•••" while the assistant is still answering */
 .foot { position: relative; }
 .jump { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); z-index: 2; width: 36px; height: 36px; border-radius: 50%;
@@ -136,22 +140,24 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 @keyframes word { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: blur(0); } }
 
 /* live tool steps */
-.steps { margin: 0 0 20px; font-size: 13px; color: var(--agui-ink-2); }   /* the dots' row and margin: no move at the handover */
+.steps { margin: 0 0 8px; font-size: 13px; color: var(--agui-ink-2); }   /* with its answer; the dots' row has the same margin: no move at the handover */
+.msg.ai.wait { margin-bottom: 8px; }
 /* one line, one height (the dots' row, which it replaces): the text changes in place, the mark turns while it works */
 .steps > button { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 26px; max-width: calc(100% + 12px); border: 0; background: none; padding: 0 6px; margin: 0 -6px;
   border-radius: var(--agui-radius-pill); cursor: pointer; color: inherit; font: inherit; text-align: left; }
 @media (pointer: coarse) { .steps > button::before { content: ""; position: absolute; inset: -9px -8px; } }   /* 44 px to the finger, 26 px to the eye */
-.steps-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.steps-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .steps > button > .mark { width: 14px; height: 14px; flex: none; border-radius: var(--agui-radius-pill); border: 2px solid var(--agui-line-2); border-top-color: var(--agui-link); animation: turn .8s linear infinite; }
 /* done: the slot stays (the text does not slide), the spinner turns into a quiet tick; open, the rows carry the spinners */
 .steps.done > button > .mark { animation: none; border: 0; display: grid; place-items: center; }
-.steps.done > button > .mark::before { content: "\\2713"; font-size: 11px; color: var(--agui-ink-2); }
+.steps.done > button > .mark::before { content: ""; width: 8px; height: 4px; border: solid var(--agui-ink-2); border-width: 0 0 1.5px 1.5px;
+  transform: translateY(-1px) rotate(-45deg); }   /* a drawn tick: centred on the line, like the spinner it replaces */
 .steps.openlist:not(.done) > button > .mark { visibility: hidden; }
 .steps > button::after { content: "\\203A"; transition: transform .2s; } .steps.openlist > button::after { transform: rotate(90deg); }
-.steps ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 7px; }
+.steps ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
 .steps.collapsed ul { display: none; }
-.steps li { display: flex; align-items: center; gap: 9px; animation: rise .35s var(--agui-ease) both; }
-.steps li .mark { width: 16px; height: 16px; border-radius: var(--agui-radius-pill); border: 2px solid var(--agui-line-2); flex: none; display: grid; place-items: center; }
+.steps li { display: flex; align-items: center; gap: 8px; animation: rise .2s var(--agui-ease) both; }
+.steps li .mark { width: 14px; height: 14px; border-radius: var(--agui-radius-pill); border: 2px solid var(--agui-line-2); flex: none; display: grid; place-items: center; }
 .steps li.run .mark { border-color: var(--agui-line-2); border-top-color: var(--agui-link); animation: turn .8s linear infinite; }
 .steps li.ok { color: var(--agui-ink-2); }
 .steps li.ok .mark { border-color: var(--agui-ok); background: var(--agui-ok) center/10px no-repeat
@@ -184,11 +190,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 /* cards inside the conversation */
 /* one turn, one group: inside an answer its text, cards and actions sit close (about 8 px); turns keep 20 px */
 .msg.ai + .card, .card + .card, .card + .msg.ai { margin-top: -12px; }
-.msg.ai.turn-acts { margin-top: -16px; }
+.msg.ai.turn-acts { margin-top: -4px; } .card + .msg.ai.turn-acts { margin-top: -12px; }   /* 8 px under the last piece */
 .card { margin: 4px 0 20px; border: 1px solid var(--agui-card-border, var(--agui-line)); border-radius: var(--agui-card-radius, var(--agui-radius));
-  background: var(--agui-card-bg, var(--agui-surface)); color: var(--agui-card-ink, inherit); padding: var(--agui-card-padding, 14px);
+  background: var(--agui-card-bg, var(--agui-surface)); color: var(--agui-card-ink, inherit); padding: var(--agui-card-padding, 16px);
   -webkit-backdrop-filter: var(--agui-card-blur, none); backdrop-filter: var(--agui-card-blur, none);   /* glass: a translucent card-bg + blur */
-  animation: rise .5s var(--agui-ease) both; font-size: 15px; line-height: 1.45; }
+  animation: rise .24s var(--agui-ease) both; font-size: 15px; line-height: 1.45; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 .bk-wait { min-height: 88px; }
 .tone-accent { color: var(--agui-link); } .tone-ok { color: var(--agui-ok); } .tone-danger { color: var(--agui-danger); } .tone-muted { color: var(--agui-ink-2); }
@@ -199,9 +205,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .card.dismissed .chips, .card.dismissed .text-in, .card.dismissed [role=button], .card.dismissed .row input,
 .card.dismissed .row .btn, .card.dismissed .field { display: none; }
 .card-t { font-size: 13px; font-weight: 600; color: var(--agui-ink-2); margin-bottom: 10px; }
-.card-q { font-size: 15px; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.01em; }
+.card-q { font-size: 17px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.02em; line-height: 1.3; }   /* the question: the scale's 17 */
+@media (max-width: 520px) { .card { padding: var(--agui-card-padding, 12px); } }
 .card .muted, .muted { color: var(--agui-ink-2); font-size: 13px; }
 .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.acts > .btn.link:first-child { margin-left: -6px; }   /* its padding, not the word, sits outside the edge */
+@media (pointer: coarse) { .acts > .btn.link:first-child { margin-left: -10px; } }
 .btn { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: var(--agui-button-radius, var(--agui-radius-pill));
   padding: 9px 15px; font: 600 13px/1 var(--agui-font); cursor: pointer; text-decoration: none; }
 .btn.pri { background: var(--agui-button-bg, var(--agui-accent)); color: var(--agui-button-ink, var(--agui-on-accent)); }
@@ -220,9 +229,21 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .card:focus-visible kbd, .card:has(:focus-visible) kbd { display: inline; }
 .chip.on kbd { color: inherit; opacity: .7; }
 /* suggestions: one row above the composer, scrolling sideways, its edges fading */
-.quick { margin: -2px -14px 6px; }
+/* the suggestions lie over the log's bottom edge, on a fade of the panel. The log keeps scroll room at its end (below):
+   the last answer, its actions included, always scrolls above them, and nothing moves when they come or go */
+.foot > .quick { position: absolute; left: 0; right: 0; bottom: 100%; z-index: 1; margin: 0; padding: 12px 0 4px; pointer-events: none;
+  background: linear-gradient(to top, var(--agui-composer-area-bg, var(--agui-panel-bg, var(--agui-bg))) 60%, transparent);
+  animation: q-in .2s var(--agui-ease) both; }
+.foot > .quick > * { pointer-events: auto; }
+.foot > .quick { transition: opacity .2s var(--agui-ease); } .foot > .quick.q-away { opacity: 0; }   /* typing or reading up: out of the way */
+.foot > .quick.q-away > * { pointer-events: none; }
+@keyframes q-in { from { opacity: 0; } }
+.panel { --agui-quick-room: 50px; }   /* the strip's height: 12 + a chip (34) + 4 */
+@media (pointer: coarse) { .panel { --agui-quick-room: 60px; } }
+.quick-room .log { padding-bottom: calc(12px + var(--agui-quick-room)); }
+.foot:has(> .quick:not([hidden])) > .jump { bottom: calc(100% + var(--agui-quick-room) + 8px); }
 /* room for the focus ring; the edges fade only where chips are hidden (a mask's colour is only its alpha) */
-.quick > .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 4px 14px; scroll-padding: 0 14px;
+.quick > .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 0 14px; scroll-padding: 0 14px;
   mask-image: linear-gradient(to right, transparent, var(--agui-ink) var(--fl, 0px), var(--agui-ink) calc(100% - var(--fr, 0px)), transparent); }
 .quick > .chips.more-left { --fl: 24px; } .quick > .chips.more-right { --fr: 24px; }
 .quick > .chips::-webkit-scrollbar { display: none; }
@@ -347,9 +368,9 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .bar { height: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-line); overflow: hidden; margin-top: 12px; }
 .bar > div { height: 100%; width: 0; background: var(--agui-link); transition: width .2s; }
 .card-msg { color: var(--agui-ink-2); }
-.err-line { color: var(--agui-danger); margin-top: 8px; }
+.err-line { color: var(--agui-danger-ink, var(--agui-danger)); margin-top: 8px; }
 .err-line:empty { display: none; }
-.wait .slow { margin-left: 10px; font-size: 13px; color: var(--agui-ink-2); animation: rise .4s var(--agui-ease) both; }
+.wait .slow { margin-left: 8px; font-size: 13px; color: var(--agui-ink-2); animation: rise .2s var(--agui-ease) both; }
 
 /* composer */
 .foot { padding: 10px 14px max(14px, env(safe-area-inset-bottom, 0px)); background: var(--agui-composer-area-bg, transparent); }
@@ -449,7 +470,7 @@ button.bubble-q { cursor: pointer; }
 /* only the next message to go shows its actions; a later one on hover or focus (a tap on touch) */
 .msg.queued ~ .msg.queued:not(.q-open) .q-act { display: none; }
 @media (hover: hover) { .q-act:hover { background: var(--agui-soft); } .msg.queued ~ .msg.queued:is(:hover, :focus-within) .q-act { display: inline-block; } }
-@media (pointer: coarse) { .q-line { margin: -6px -10px 0 0; } .q-act { min-height: 44px; min-width: 44px; padding: 0 10px; } }
+@media (pointer: coarse) { .q-line { margin: -6px -10px 0 0; min-height: 44px; } .q-act { min-height: 44px; min-width: 44px; padding: 0 10px; } }
 .q-out { transition: height .2s var(--agui-ease), opacity .14s var(--agui-ease), margin .2s var(--agui-ease); opacity: 0; margin-top: 0; margin-bottom: 0; }
 /* a long message folds: its start, the bottom fading into the bubble's own colour, and Show more under it */
 /* (.clamped, not .folded: a card folded into its result line is .fcard.folded) */
@@ -565,7 +586,7 @@ button.bubble-q { cursor: pointer; }
   .chip.file .btn { min-height: 32px; }
 }
 @media (max-width: 760px) {
-  .mode-floating .panel { width: 100vw; box-shadow: none; transform: translateY(100%); }
+  .mode-floating .panel { width: 100%; box-shadow: none; transform: translateY(100%); }
   .mode-floating.open .panel { transform: none; }
 }
 /* bubble mode: a round launcher that grows into a chat window (iMessage / Intercom-like), Apple-style spring */

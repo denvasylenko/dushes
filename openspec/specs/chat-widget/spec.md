@@ -274,7 +274,7 @@ Where the browser supports speech recognition and `mic` is on, a microphone butt
 - **THEN** the dictated text is sent as a message
 
 ### Requirement: Quick-reply chips
-The widget SHALL show quick-reply chips: the starters for an empty chat, and the latest `CUSTOM suggestions` event in one row pinned right above the composer (it scrolls sideways; the log does not grow under the answer). Clicking a chip SHALL send it as a message. The chips SHALL disappear when the user sends a message, and come back when the user stops that answer.
+The widget SHALL show quick-reply chips: the starters for an empty chat, and the latest `CUSTOM suggestions` event in one row right above the composer, laid over the log's bottom edge (it scrolls sideways). Clicking a chip SHALL send it as a message. The chips SHALL disappear when the user sends a message, and come back when the user stops that answer.
 
 #### Scenario: A suggestion clicked
 - **WHEN** the last answer has the suggestions "What comes next?" and "Fill from my passport"
@@ -293,6 +293,13 @@ A card that shrinks to its answer and a long message that opens or folds SHALL c
 #### Scenario: Answering a question card
 - **WHEN** the user taps an option on a question card
 - **THEN** the card eases to its question and the answer line, and the content under it moves smoothly
+
+### Requirement: Suggestions never move the log
+The log SHALL keep scroll room at its end always, so the last answer with its actions scrolls above the chips and nothing moves when they come or go; they SHALL only fade. They SHALL step aside while the user types or has scrolled up to read, and return at the end with an empty field.
+
+#### Scenario: Chips after an answer
+- **WHEN** an answer ends and its suggestions appear, and the user taps one
+- **THEN** the log's height and every message's place stay the same, and the last line stays visible above the chips
 
 ### Requirement: Action chips
 A suggestion with changes in `applies` SHALL be marked as filling fields. Clicking it SHALL hand the changes to the plugin that applies them (formguide's `applyChanges`), show the result with Undo, and then send the text. When applying fails, the chips SHALL stay and a readable error SHALL show under them.
@@ -582,7 +589,7 @@ When uploads are available (the + button shows), files pasted into the input (a 
 - **THEN** the screenshot is uploaded and shown as an attachment of the next message
 
 ### Requirement: Messages sent while the assistant answers wait in a queue
-A message sent while a turn runs SHALL NOT interrupt it: it SHALL wait last in the log, marked Queued, with Send now, Edit and Remove, and the answer being written SHALL land above it. When the turn ends the queued messages SHALL go one by one, in order; while a question card waits for its answer they SHALL wait too ("Sends after you answer the question"). The input's placeholder SHALL say that Enter queues while the assistant answers.
+A message sent while a turn runs SHALL NOT interrupt it: it SHALL wait last in the log, marked Queued, with Send now, Edit and Remove, and the answer being written SHALL land above it. When the turn ends the queued messages SHALL go one by one, in order; while a question card waits for its answer they SHALL wait too ("Sends after you answer the question"). The placeholder SHALL then say in words that more goes after the answer; on a computer a hint names the key once text is typed.
 
 #### Scenario: A second message while the first is answered
 - **WHEN** the user sends "second" while the answer to "first" is still coming

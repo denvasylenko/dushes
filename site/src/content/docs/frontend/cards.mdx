@@ -35,7 +35,7 @@ The agent streams AG-UI events. Here is **everything the frontend can receive**,
 |---|---|---|
 | `TEXT_MESSAGE_START` / `_CONTENT` / `_END` | the agent replies | a chat bubble, filled as the text streams |
 | `CUSTOM ui_directive` (2.1) | the agent points at a place in the form | open tabs and accordions, scroll, highlight, show the hint |
-| `CUSTOM on_interrupt`, `type: "set_fields"` (2.2) | the agent wants to fill fields | a card with a row per field: *Fill in* / *Reject* |
+| `CUSTOM on_interrupt`, `type: "set_fields"` (2.2) | the agent wants to fill fields | a card with a row per field: *Fill in* / *Reject*; numbers get the language's separators from five digits on (1,500,000), so a year stays 2019 whatever its field is called; zips, phones and ids stay as written |
 | `CUSTOM on_interrupt`, `type: "ask"` (2.5) | the agent asks a question with options | a question card: option buttons and/or a text box (a date / time / number picker when `input` is set) |
 | `CUSTOM on_interrupt`, `type: "upload"` (2.6) | the agent asks for a document | a drop zone; upload, then answer with the attachment ids |
 | `CUSTOM on_interrupt`, `type: "confirm"` (2.7) | the agent needs a yes/no before an action | a confirmation: Confirm / Cancel, with details and one consequence line |

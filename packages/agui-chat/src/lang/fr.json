@@ -77,11 +77,11 @@
   "queued": "En attente",
   "sendNow": "Envoyer maintenant",
   "edit": "Modifier",
-  "queueHint": "\u21b5 pour mettre en file",
+  "queuePlaceholder": "\u00c9crivez encore \u2014 envoi apr\u00e8s la r\u00e9ponse",
+  "queueKey": "\u21b5 : envoi apr\u00e8s la r\u00e9ponse",
   "afterQuestion": "Partira apr\u00e8s votre r\u00e9ponse \u00e0 la question",
   "afterRetry": "Envoy\u00e9 apr\u00e8s \u00ab\u00a0{retry}\u00a0\u00bb",
   "queuePaused": "En pause",
-  "queueHintTouch": "Envoy\u00e9 apr\u00e8s la r\u00e9ponse",
   "messageRemoved": "Message supprim\u00e9"
  },
  "formguide": {
