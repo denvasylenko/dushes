@@ -48,7 +48,7 @@ Compose your own card from these in the [Playground](../playground/) (Your own c
 | `swatches` | `name`, `items: [{id, label?, colors: [hex]}]`, `multiple?` | palettes to pick |
 | `choice` | `name`, `options: [{id, label, off?}]` or `["a", "b"]`, `label?`, `multiple?`, `value?`, `required?`, `more?: {label, options}`, `depends?: {on, options: {<id>: [...]}}` | chips to pick, under a caption; `off` is shown but not choosable; `more` shows the rest in place; `depends` follows another choice (times of the chosen day) |
 | `field` | `name`, `label?`, `input?` (`text`, `tel`, `email`, `number`, `date`, `url`), `placeholder?`, `value?`, `required?` | a field |
-| `hours` | `name`, `label?`, `value?: [{days: [0..6], from, to}]` (0 = Monday), `presets?` | opening hours: presets in one tap, weekday chips, from–to, up to three pairs |
+| `hours` | `name`, `label?`, `value?: [{days: [0..6], from, to}]` (0 = Monday), `presets?` | opening hours: presets in one tap, weekday chips, from–to, up to three pairs ; `AguiChat.hoursText(value, lang)` (or `hoursText` from `@formguide/agui-chat/formguide`) gives the line "Mon–Fri 09:00–18:00" |
 | `preview` | `src` (https), `href?`, `title?`, `ratio?` (`16:10`, `9:16`) | a live, view-only thumbnail of a page; a tap opens `href` |
 | `buttons` | `items: [{id, label, style?, fills?}]`, styles `primary`, `secondary`, `plain`, `danger`; `need?` | the card's actions; one primary. `fills: {field: value}` fills form fields on the tap, with Undo. While a `required` choice or field (or `hours`) is empty, the primary waits and the line under it says what is missing (`need`, `Choose: {x}` by default) |
 | `links` | `items: [{kind, label, value}]` | actions that work at once, see below |

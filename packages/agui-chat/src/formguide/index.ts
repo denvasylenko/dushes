@@ -221,5 +221,5 @@ export function formguide(opts: FormguideOptions): Plugin {
 }
 
 /** The blocks, for a card renderer of your own (chat.renderers.set): compose with the same parts and theme. */
-export { blocksCard } from "./blocks"
+export { blocksCard, hoursText } from "./blocks"
 export type { Block, OnAction } from "./blocks"
