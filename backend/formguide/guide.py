@@ -66,11 +66,16 @@ class FormGuide:
         from .models import build_model
         self.models.memory = build_model(cfg.memory.model) if cfg.memory.model else self.models.research
         self._recent: dict[str, deque] = defaultdict(lambda: deque(maxlen=20))   # recent run stats per thread
+        self._lang: dict[str, str] = {}        # the conversation's language per thread (see language.py)
+        self._lang_sent: dict[str, str] = {}   # the language the client was last told, per thread
         # tracer handlers, built once: factories are called, ready handlers are used as they are
         self._callbacks = [f if hasattr(f, "on_llm_start") or not callable(f) else f() for f in cfg.tracing.callbacks]
         self.otel = otel_setup(cfg.tracing.otel)   # OpenTelemetry tracer, or None (see otel.py)
         sg = cfg.suggestions
         self.suggestions_model = (build_model(sg.model) if sg.model else self.models.memory) if sg.enabled else None
+        from .language import Translator
+        self.translator = Translator()
+        self.translation_model = self.models.memory or self.models.research   # card text the form does not translate
         from .models import missing_keys
         m = self.models
         no_key: dict[str, list[str]] = {}
@@ -223,7 +228,9 @@ class FormGuide:
                     tx.update(thread_id, e["id"], result=tool_results[e["call_id"]])
             if message:
                 files = [a.get("filename") for a in (state or {}).get("attachments") or []]
+                lang = self._language(thread_id, state or {}, message)
                 tx.append(thread_id, new_entry("user", text=message, files=files,
+                                               **({"language": lang} if lang else {}),
                                                **({"reply_to": as_list(reply_to)} if reply_to else {})))
             elif prefill:
                 tx.append(thread_id, new_entry("notice", text="The form was prefilled from data the app already has."))
@@ -447,6 +454,21 @@ class FormGuide:
         t.cancel()
         return True
 
+    def _language(self, thread_id: str, state: dict[str, Any], message: str | None) -> str | None:
+        """The conversation's language for this run: the form's or the host's setting, else the message's, else
+        the one this conversation had (see language.conversation). Remembered per thread."""
+        from .language import conversation
+        cfg = (state.get("config") or {}).get("props") or {}
+        lay = self.layout(state.get("jsx_hash", "")) if state.get("jsx_hash") else None
+        root = cfg.get(lay.root) if lay is not None and lay.root else None
+        before = self._lang.get(thread_id)
+        if before is None:   # after a restart: what the transcript last recorded
+            before = next((e["language"] for e in reversed(self.transcripts.list(thread_id)) if e.get("language")), None)
+        lang = conversation(self.config, root, message, before)
+        if lang:
+            self._lang[thread_id] = lang
+        return lang
+
     def thread(self, thread_id: str, form_id: str | None = None) -> dict[str, Any]:
         """What a client needs to restore a conversation: the transcript and the pending card, if any, and
         whether a turn is still running (the client checks back until it ends).
@@ -454,6 +476,9 @@ class FormGuide:
         entries = self.transcripts.list(check_thread_id(thread_id))
         out = {"thread_id": thread_id, "transcript": entries, "pending_card": pending_card(entries),
                "running": self.running(thread_id), "transcription": bool(self.transcriber)}
+        lang = self._lang.get(thread_id) or next((e["language"] for e in reversed(entries) if e.get("language")), None)
+        if lang:
+            out["language"] = lang   # the widget's own words on cards follow it
         if not entries and form_id:
             out["starters"] = starters_of(self.packs.get(form_id))
         return out
@@ -529,6 +554,12 @@ class FormGuide:
                 if client_tools is not None:
                     inp["client_tools"] = client_tools
                 inp["capabilities"] = capabilities if isinstance(capabilities, list) else None
+                lang = self._language(thread_id, st, message)
+                if lang:
+                    inp["language"] = lang
+                    if self._lang_sent.get(thread_id) != lang:   # once, and again only when it changes
+                        self._lang_sent[thread_id] = lang
+                        yield {"type": "CUSTOM", "name": "language", "value": {"lang": lang}}
             async for mode, chunk in self.graph.astream(inp, cfg, stream_mode=["custom", "updates"]):
                 if mode == "updates":
                     for it in (chunk.get("__interrupt__") or ()) if isinstance(chunk, dict) else ():
@@ -554,6 +585,9 @@ class FormGuide:
                            "content": chunk["content"], "role": "tool"}
                 elif k == "ui":
                     yield {"type": "CUSTOM", "name": "ui_directive", "value": chunk["directive"]}
+                elif k == "language":   # the agent named the conversation's language on a card
+                    self._lang[thread_id] = chunk["lang"]
+                    yield {"type": "CUSTOM", "name": "language", "value": {"lang": chunk["lang"]}}
                 elif k == "note":
                     yield {"type": "CUSTOM", "name": "agent_note", "value": chunk["text"]}
                 elif k == "text_retract":   # a lead written before tools, taken back: the answer came after them

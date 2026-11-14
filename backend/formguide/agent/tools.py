@@ -118,6 +118,8 @@ TOOLS: list[dict[str, Any]] = [
                           "fills it at once)"},
                 "multiple": {"type": "boolean", "description": "several choices allowed"},
                 "allow_text": {"type": "boolean", "description": "a typed answer allowed; default true"},
+                "language": {"type": "string", "description": "the user's language, two letters (de, ru), when it "
+                             "is not the form's"},
                 "input": {"type": "object", "description": "the kind of typed answer, shown as a picker. Narrow min / max with "
                           "what the user already gave (a date that cannot come before another one). Set `value` only to a "
                           "value the user or a document already gave, never a guess: without it the picker starts at "
@@ -224,6 +226,8 @@ TOOLS: list[dict[str, Any]] = [
         "input_schema": {
             "type": "object",
             "properties": {
+                "language": {"type": "string", "description": "the user's language, two letters (de, ru), when it "
+                             "is not the form's"},
                 "changes": {
                     "type": "array",
                     "items": {
@@ -317,6 +321,7 @@ class ToolCtx:
     pending_source: dict | None = None           # the card's source header (values from a document)
     caps: frozenset[str] | None = None           # what the client renders; None = everything
     cards: dict[str, Any] = field(default_factory=dict)   # show_<type> -> CardSpec (cards from blocks)
+    language: str | None = None                 # the conversation's language, when the agent names it on a card
     handed_back: str | None = None              # hand_back's reason: Dushes answers this message
 
     def can(self, variant: str) -> bool:
@@ -658,6 +663,7 @@ _PAST_DATE = re.compile(r"birth|born|dob|issue|issued", re.I)
 def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
     if _waiting(ctx):
         raise ToolError(WAITING)
+    _say_language(a, ctx)
     question = str(a.get("question") or "").strip()
     if not question:
         raise ToolError("question must not be empty")
@@ -1049,9 +1055,16 @@ def _empty(value: Any) -> bool:
     return value is None or value == [] or (isinstance(value, str) and not value.strip())
 
 
+def _say_language(a: dict, ctx: ToolCtx) -> None:
+    from ..language import norm
+    if norm(a.get("language")):
+        ctx.language = norm(a["language"])
+
+
 def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
     if _waiting(ctx):
         raise ToolError(WAITING)
+    _say_language(a, ctx)
     changes = a.get("changes")
     if not isinstance(changes, list) or not changes:
         raise ToolError("INVALID_JSON: changes must be a non-empty list")

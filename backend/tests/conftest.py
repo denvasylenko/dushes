@@ -68,4 +68,5 @@ def guide(tmp_path, model) -> FormGuide:
         domain_packs=DomainPackRegistry(directory=DEMO / "domain_packs"),
         knowledge=KnowledgeBase(tmp_path / "kb", scopes={"loan_application": ["loan_application", "bank_common"]}),
         skills=SkillRegistry.from_dir(DEMO / "skills"),
+        translate_missing=False,   # the scripted model answers the agent only; tests of translation turn it on
     ))

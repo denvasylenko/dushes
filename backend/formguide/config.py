@@ -38,6 +38,8 @@ FORMGUIDE_MODEL environment variable does the same without a file. Everything el
     checkpointer: {sqlite: data/checkpoints.sqlite}  # model history; default in memory
     transcripts: {dir: data/transcripts}             # what the user saw; default files under data_dir
     max_tool_rounds: 10
+    language: de                                     # cards in this language; or languages: [de, en]; default: the user's
+    translate_missing: true                          # a cheap model translates card text the form has no translation for
     interrupt_mode: legacy                           # confirmation cards: legacy (CopilotKit) | structured (AG-UI 1.0) | both
     confirm_tools: [submit_application]              # these tools always ask the user before running
     suggestions: {enabled: true, max: 3}             # quick replies after each answer (a cheap model)
@@ -110,6 +112,9 @@ class GuideConfig:
     checkpointer: BaseCheckpointSaver | None = None  # model history; default in memory (sqlite_checkpointer(), Postgres, Redis)
     transcripts: TranscriptStore | None = None       # display transcript; default: files under <data_dir>/transcripts
     max_tool_rounds: int = 10
+    language: str | None = None                      # cards and the widget's words in this language (not guessed)
+    languages: list[str] | None = None               # the languages a conversation may be in (the first is the default)
+    translate_missing: bool = True                   # a cheap model translates card text the form does not
     learn_dependencies: bool = True                  # persist observed field dependencies per form
     memory: MemoryConfig = field(default_factory=MemoryConfig)   # long-chat compaction
     # How confirmation cards reach the client: "legacy" = CUSTOM on_interrupt (CopilotKit,
@@ -190,6 +195,17 @@ def load_config(path: str | Path) -> GuideConfig:
         cfg.skills = SkillRegistry.from_dir(rel(raw["skills"].get("dir", "skills")))
     cfg.tools = [import_object(t) for t in raw.get("tools") or []]
     cfg.max_tool_rounds = int(raw.get("max_tool_rounds", cfg.max_tool_rounds))
+    from .language import LANGS, norm
+    if raw.get("language") is not None:
+        cfg.language = norm(raw["language"])
+        if not cfg.language:
+            raise ValueError(f"language: unknown {raw['language']!r}; one of {', '.join(LANGS)}")
+    if raw.get("languages") is not None:
+        langs = raw["languages"] if isinstance(raw["languages"], list) else None
+        if not langs or any(not norm(x) for x in langs):
+            raise ValueError(f"languages must be a list of {', '.join(LANGS)}")
+        cfg.languages = [norm(x) for x in langs]
+    cfg.translate_missing = bool(raw.get("translate_missing", cfg.translate_missing))
     cp = raw.get("checkpointer")
     if isinstance(cp, dict) and cp.get("sqlite"):
         cfg.checkpointer = sqlite_checkpointer(rel(cp["sqlite"]))

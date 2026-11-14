@@ -82,6 +82,7 @@ class AgentState(TypedDict, total=False):
     memory: str          # summary of older turns after compaction (see memory.py)
     client_tools: list[dict]     # frontend tools declared by the client: [{name, description, parameters}]
     capabilities: list[str] | None   # what the client renders (forwardedProps.capabilities); None = all
+    language: str | None             # the conversation's language (set, detected or named by the agent): cards use it
     last_extraction: dict | None     # the thread's last read document (values with confidence), for card sources
     turn_sources: list | None        # documents the researcher cited this turn (reset by each new message)
     client_results: dict         # results of frontend tool calls delivered by this run: {tool_call_id: content}
@@ -472,6 +473,16 @@ def build_graph(guide: FormGuide):
                               **({"source": ctx.pending_source} if ctx.pending_source else {})}
         elif client_ids:
             upd["pending_client"] = {"ids": client_ids, "server_results": results}
+        if upd.get("pending"):   # the card in the conversation's language, before it is shown or stored
+            from ..language import conversation, localize
+            lang = conversation(guide.config, ctx.ov[ctx.ov.layout.root].props if ctx.ov.layout.root else None,
+                                None, ctx.language or state.get("language"))
+            if lang and lang != state.get("language"):
+                upd["language"] = lang
+                w({"kind": "language", "lang": lang})
+            await localize(upd["pending"], ctx.ov, lang, translator=guide.translator,
+                           model=guide.translation_model if guide.config.translate_missing else None,
+                           stats=current_stats())
         else:
             upd["messages"] = [*state["messages"], *_tool_messages(results)]
         return upd
