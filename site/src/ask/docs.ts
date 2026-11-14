@@ -13,11 +13,11 @@ import type { AguiEvent, ChatApi, Plugin } from '../../../packages/agui-chat/src
 
 interface Block { id: string; lang: string; label: string; code: string; url: string; page: string; section: string }
 interface PageRef { url: string; title: string; group?: string; section?: string; description?: string }
-type Card =
+type Card = { id?: string } & (
   | { kind: 'code'; caption?: string; blocks: Block[] }
   | { kind: 'pages'; pages: PageRef[] }
   | { kind: 'steps'; title?: string; steps: { text: string; block?: Block }[] }
-  | { kind: 'live'; specimen: string; about?: string }
+  | { kind: 'live'; specimen: string; about?: string })
 
 const GALLERY = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}frontend/card-gallery/`
 const ICON_COPY = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="2"/><path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>'
@@ -126,6 +126,8 @@ export function docs(): Plugin {
         : c?.kind === 'pages' && c.pages?.length ? pagesCard(c)
         : c?.kind === 'steps' && c.steps?.length ? stepsCard(c)
         : c?.kind === 'live' ? liveCard(c) : null
+      // the card's id, so the widget's `card_focus {card_id}` can scroll back to it instead of a second copy
+      if (el && c.id) el.dataset.cardId = c.id
       if (el) chat.append(el)
       return true
     },
