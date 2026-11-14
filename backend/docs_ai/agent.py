@@ -296,6 +296,15 @@ def card_label(card: dict) -> str:
     return f"{card.get('kind') or 'card'}: {str(what)[:80]}".rstrip(": ")
 
 
+_POINTS_BACK = re.compile(r"\b(it|that|this|these|those|there|them|same|again|also|instead)\b", re.I)
+
+
+def follows_up(question: str) -> bool:
+    """A question that leans on the conversation: a short one, or one with "that" / "it" and no topic of its own."""
+    words = question.split()
+    return len(words) <= 6 or (len(words) <= 10 and bool(_POINTS_BACK.search(question)))
+
+
 def card_key(card: dict) -> str:
     """What a card shows, as one string: two cards with the same key are the same card to the reader."""
     kind = card.get("kind")
@@ -311,11 +320,12 @@ def card_key(card: dict) -> str:
 
 
 async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: list[tuple[str, str]],
-                 thread_id: str, run_id: str, shown: list[str] | None = None,
-                 on_screen: list[str] | None = None) -> AsyncIterator[dict]:
+                 thread_id: str, run_id: str, shown: list[str] | None = None) -> AsyncIterator[dict]:
     """One answer as AG-UI events (dicts): text first, then the cards, then the follow-ups."""
     yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
-    prev = " ".join(t for r, t in history if r == "user")[-400:]
+    # earlier questions help a short follow-up ("and for Azure?", "show me the config for that"); a question that
+    # stands on its own is searched alone, or the passages of the previous topic crowd out its own
+    prev = " ".join(t for r, t in history if r == "user")[-400:] if follows_up(question) else ""
     found = corpus.search(f"{question} {prev}".strip(), k=7)
     if WHOLE_CONFIG.search(question):   # "the whole config": the one-file section, whatever the ranking says
         whole = [c for c in corpus.chunks if c.section == "Every key in one file"]
@@ -337,14 +347,11 @@ async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: l
     if shown:   # the client sends back only the text of earlier answers: say which cards went with them
         system += ("\n\nCards the reader already has from your earlier answers in this conversation:\n"
                    + "\n".join(f"- {s}" for s in shown[-12:]))
-        if on_screen:   # this page scrolls to a card it still has and marks it, instead of drawing it twice
-            system += ("\nStill on the reader's screen: " + "; ".join(on_screen) + ". When they ask to see one of "
-                       'THESE again, call the same tool and write one short line ("Here it is, above."): the page '
-                       "shows them the card they already have. Any other card you show again is drawn again: never "
-                       'say "above" for it.')
-        else:
-            system += ('\nWhen the reader asks to see one of these again, show it again and say so in one short '
-                       'line; never say it is "above".')
+        # where the card ends up is the page's business (it scrolls to a card it still has, or draws it again):
+        # the model only names it, so its words are true either way
+        system += ("\nWhen the reader asks to see one of these again, call the same tool for that card and write one "
+                   'short line that names it ("Here is the Azure config."). Never say where it is on the screen '
+                   '("above", "below", "earlier"): the page takes the reader to it.')
     msgs: list[Any] = [SystemMessage(system)]
     for role, text in history:
         msgs.append(HumanMessage(text) if role == "user" else AIMessage(text))

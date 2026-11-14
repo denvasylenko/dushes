@@ -320,5 +320,12 @@ def test_a_reworded_caption_is_still_the_same_card_and_above_is_said_only_when_t
         with_focus = model.calls[-1][0].content
         _ask(c, "show me the config for that")
         without = model.calls[-1][0].content
-    assert "Still on the reader's screen" in with_focus and '"Here it is, above."' in with_focus
-    assert "Still on the reader's screen" not in without and 'never say it is "above"' in without
+    for system in (with_focus, without):   # the same words either way: the model never says where the card is
+        assert "Never say where it is on the screen" in system and "Here it is, above" not in system
+
+
+def test_a_question_that_stands_alone_is_searched_alone():
+    from docs_ai.agent import follows_up
+    assert follows_up("And for Azure?") and follows_up("Show me the config for that")
+    assert not follows_up("Show me the config for Azure OpenAI with a cheaper research model again")
+    assert not follows_up("How do I run the scenario evals against my own server from the backend folder?")
