@@ -45,6 +45,7 @@ step "site install" bash -c "cd site && npm ci --silent --no-audit --no-fund && 
 step "site build" bash -c "cd site && npm run -s build"
 step "site links" python3 scripts/check_links.py site/dist
 step "site exports" python3 scripts/check_exports.py site/dist
+step "site contrast" python3 scripts/check_contrast.py
 
 dirty="$(git status --porcelain)"
 [ -z "$dirty" ] || { echo "refuse: the worktree changed during build/tests:"; echo "$dirty"; exit 1; } >&2
