@@ -26,6 +26,28 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals() })
 
 describe('attachments in the composer', () => {
+  it('keeps the order: a new pick goes to the end, a finished upload stays in its place, same names included', async () => {
+    const el = await mount()
+    let n = 0
+    const waits: (() => void)[] = []
+    el.options = { upload: (f: File) => new Promise((r) => { const id = `att_${++n}`; waits.push(() => r({ id, filename: f.name })) }) }
+    const shot = () => new File(['x'], 'image.png', { type: 'image/png' })
+    const keys = () => [...el.shadowRoot!.querySelectorAll<HTMLElement>('.files .att')].map((t) => t.dataset.key)
+    await pick(el, [shot(), shot()])
+    const first = keys()
+    expect(first).toHaveLength(2)
+    waits.shift()!(); await tick(5)                                         // the first one finishes
+    expect(keys()).toEqual(first)                                          // still in the same place
+    await pick(el, [shot()])                                               // a second pick while one still uploads
+    const all = keys()
+    expect(all.slice(0, 2)).toEqual(first)                                 // the earlier two stay first
+    expect(all).toHaveLength(3)
+    waits.shift()!(); await tick(5)
+    waits.shift()!(); await tick(5)
+    expect(keys()).toEqual(all)                                            // all done: no shuffle
+    expect(new Set(all).size).toBe(3)
+  })
+
   it('shows an image as a thumbnail and a document as a tile, inside the composer, each with a remove button', async () => {
     const el = await mount()
     await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' }), new File(['%PDF'], 'passport scan.pdf', { type: 'application/pdf' })])

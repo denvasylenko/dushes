@@ -7,6 +7,8 @@ import { h } from '../dom'
 import { blocksNow, loadBlocks, type Blocks } from '#blocks-loader'
 import type { Interrupt, RendererContext } from '../types'
 import { blocksShell } from './blocks-base'
+import { FG_STRINGS } from './i18n'
+import { PACKS } from '../langs'
 import type { OnAction } from './blocks'
 
 type Answer = Parameters<Blocks['blocksCard']>[2]
@@ -37,5 +39,19 @@ export const preloadBlocks = (): Promise<void> => loadBlocks().then(() => undefi
  */
 export function blocksCard(it: Interrupt | Record<string, unknown>, c: RendererContext, answer: Answer, onAction?: OnAction): HTMLElement {
   const card = blocksShell(it)
-  return withBlocks(card, c, (b) => { b.blocksCard(it, c, answer, onAction, card) })
+  const ctx = withCardTexts(c)
+  return withBlocks(card, ctx, (b) => { b.blocksCard(it, ctx, answer, onAction, card) })
+}
+
+/** A host's own context (\`t: chat.t\`, without the formguide plugin) still gets the cards' texts ("Apple Calendar",
+ *  "Show data"): a key the chat does not know is looked up in the formguide strings, in the chat's language. */
+function withCardTexts(c: RendererContext): RendererContext {
+  const t = (key: string, vars?: Record<string, string | number>): string => {
+    const own = c.t(key, vars)
+    if (own !== key) return own
+    const lang = (c.chat as { lang?: string } | undefined)?.lang ?? 'en'
+    const raw = PACKS[lang]?.formguide?.[key] ?? FG_STRINGS[lang]?.[key] ?? FG_STRINGS.en[key]
+    return raw ? raw.replace(/\{(\w+)\}/g, (m, n) => (vars && n in vars ? String(vars[n]) : m)) : key
+  }
+  return { ...c, t }
 }

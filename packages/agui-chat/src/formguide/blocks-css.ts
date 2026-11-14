@@ -86,10 +86,15 @@ export const BLOCKS_CSS = `
 .bk-field { display: grid; gap: 4px; }
 .bk-field .text-in { margin-top: 0; }
 .bk-links { display: grid; border: 1px solid var(--agui-option-border, var(--agui-line)); border-radius: var(--agui-radius-sm); background: var(--agui-option-bg, var(--agui-bg)); overflow: hidden; }
-.bk-link { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; color: var(--agui-link); text-decoration: none; background: none; border: 0;
+.bk-link { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; color: var(--agui-link); text-decoration: none; background: none; border: 0;
   font: inherit; text-align: left; cursor: pointer; }
 .bk-link + .bk-link { border-top: 1px solid var(--agui-line); }
-.bk-link:active { background: var(--agui-soft); }
+/* a row of the grouped list: its highlight and its focus fill the whole row (a button would shrink to its text); the
+   focus ring is drawn inside, so the list's rounded, clipped edge never cuts it into side stripes */
+.bk-link:active, .bk-link[aria-expanded=true] { background: var(--agui-soft); }
+@media (hover: hover) { .bk-link:hover { background: var(--agui-soft); } }
+.bk-link:focus-visible { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--agui-link) 55%, transparent); }
+.bk-cal { display: grid; }
 .bk-link.done { color: var(--agui-ok); }
 .bk-ico { width: 20px; height: 20px; flex: none; display: grid; place-items: center; } .bk-ico svg { width: 20px; height: 20px; }
 .bk-row .bk-ico { color: var(--agui-ink-3); }

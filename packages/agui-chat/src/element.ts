@@ -1273,24 +1273,28 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.hint.textContent = big.length ? this.t('tooBig', { name: big.map((f) => f.name).join(', '), mb: this._opts.attachMaxMb }) : ''
     // the tiles appear at once, with a spinner while each file uploads
     const view = (f: File) => (/^image\//.test(f.type) && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(f) : undefined)
-    this._uploading = list.map((f) => ({ name: f.name, preview: view(f) }))
+    const batch = list.map((f) => ({ key: uid(), name: f.name, preview: view(f) }))
+    this._uploading.push(...batch)   // after the ones already there: a second pick never pushes the first aside
     this._renderFiles()
+    const done = (u: (typeof batch)[number]): void => { this._uploading = this._uploading.filter((x) => x !== u) }
     try {
       for (let i = 0; i < list.length; i++) {
         const att = await upload(list[i], this)
-        const preview = this._uploading[0]?.preview
-        if (preview) this._previews.set(att.id, preview)
+        if (batch[i].preview) this._previews.set(att.id, batch[i].preview!)
+        this._tileKey.set(att.id, batch[i].key)   // the same tile, now done: it stays where it is
         if (at === undefined) this._files.push(att); else this._files.splice(at + i, 0, att)
-        this._uploading.shift()
+        done(batch[i])
         this._renderFiles()
       }
     } catch (e) {
       this.$.hint.textContent = `${this.t('error')} ${e instanceof Error ? e.message : String(e)}`
     }
-    this._uploading = []
+    batch.forEach(done)
     this._renderFiles()
     this._syncSend()
   }
+
+  private _keyed(key: string, tile: HTMLElement): HTMLElement { tile.dataset.key = key; return tile }
 
   /** A tile for an attachment: an image's thumbnail, or a document's name and type; × removes it from the message. */
   private _tile(name: string, preview: string | undefined, remove?: (tile: HTMLElement) => void, busy = false, edit?: number): HTMLElement {
@@ -1385,10 +1389,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   private _renderFiles(): void {
     // only a tile that was not there before plays its entrance; the others slide to their new place (no jump)
-    const was = new Map([...this.$.files.querySelectorAll<HTMLElement>('.att')].map((t) => [t.title, t.getBoundingClientRect().left]))
+    const was = new Map([...this.$.files.querySelectorAll<HTMLElement>('.att')].map((t) => [t.dataset.key, t.getBoundingClientRect().left]))
     const wasHidden = this.$.files.hidden
     this.$.files.replaceChildren(
-      ...this._files.map((f, i) => this._tile(f.filename, this._previews.get(f.id), (tile) => {
+      ...this._files.map((f, i) => this._keyed(this._tileKey.get(f.id) ?? f.id, this._tile(f.filename, this._previews.get(f.id), (tile) => {
         const drop = (): void => {
           const k = this._files.indexOf(f)
           if (k >= 0) this._files.splice(k, 1)
@@ -1397,12 +1401,12 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         if (reducedMotion() || !tile.animate) drop()
         else { tile.classList.add('att-out'); setTimeout(drop, 180) }   // it shrinks away, then the others close the gap
         if (finePointer()) (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true })   // the composer keeps its focus: no border flash
-      }, false, i)),
-      ...this._uploading.map((u) => this._tile(u.name, u.preview, undefined, true)))
+      }, false, i))),
+      ...this._uploading.map((u) => this._keyed(u.key, this._tile(u.name, u.preview, undefined, true))))
     this.$.files.hidden = !this._files.length && !this._uploading.length
     if (wasHidden && !this.$.files.hidden && !reducedMotion()) { this.$.files.classList.remove('files-in'); void this.$.files.offsetWidth; this.$.files.classList.add('files-in') }
     this.$.files.querySelectorAll<HTMLElement>('.att').forEach((t) => {
-      const x0 = was.get(t.title)
+      const x0 = was.get(t.dataset.key)
       if (x0 === undefined) { t.classList.add('att-new'); return }
       const dx = x0 - t.getBoundingClientRect().left
       if (dx && !reducedMotion()) t.animate?.([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.28, .11, .32, 1)' })
@@ -1412,7 +1416,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   /** Thumbnails of attached images (object URLs) by attachment id, and the files still uploading. */
   private _previews = new Map<string, string>()
-  private _uploading: { name: string; preview?: string }[] = []
+  private _uploading: { key: string; name: string; preview?: string }[] = []
+  private _tileKey = new Map<string, string>()   // attachment id -> the key its tile had while uploading
 
   private _showDots(on: boolean): void {
     if (on && !this._dots) {
