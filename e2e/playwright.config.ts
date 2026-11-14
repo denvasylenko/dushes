@@ -28,8 +28,8 @@ export default defineConfig({
       url: 'http://127.0.0.1:4399/e2e/fixtures/chat.html',
       reuseExistingServer: true,
     },
-    ...(existsSync(resolve(__dirname, 'nuxt/.output/server/index.mjs')) ? [{   // the Nuxt stand, server-rendered (cd nuxt && npx nuxi build)
-      command: 'node nuxt/.output/server/index.mjs',
+    ...(existsSync(resolve(__dirname, 'nuxt/dist/output/server/index.mjs')) ? [{   // the Nuxt stand, server-rendered (cd nuxt && npx nuxi build)
+      command: 'node nuxt/dist/output/server/index.mjs',
       env: { PORT: '4400', HOST: '127.0.0.1' },
       url: 'http://127.0.0.1:4400/',
       reuseExistingServer: true,

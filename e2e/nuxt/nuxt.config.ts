@@ -15,6 +15,8 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   ssr: true,
   devtools: { enabled: false },
+  buildDir: 'dist/.nuxt',                     // under dist/: the repository's checks skip build output
+  nitro: { output: { dir: 'dist/output' } },
   vue: { compilerOptions: { isCustomElement: (t) => t === 'agui-chat' } },
   vite: {
     resolve: {
