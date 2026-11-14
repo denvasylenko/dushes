@@ -106,7 +106,7 @@ The docs assistant SHALL know that its earlier answers showed cards (the server 
 - **THEN** the answer starts with the answer itself, with no apology, and does not repeat the earlier card
 
 ### Requirement: A card still on screen is pointed at
-Every card the docs assistant shows SHALL carry an `id`. When an answer would show a card identical to one from the conversation's last three answers, the server SHALL send `CUSTOM docs_highlight {card_id}` with that card's id instead of a second copy, and the page SHALL scroll to that card and highlight it; an older card, or a card with different content, SHALL be drawn as a new card.
+Every card the docs assistant shows SHALL carry an `id`. When an answer would show a card identical to one from the conversation's last three answers, and the client lists the capability `card.focus`, the server SHALL send `CUSTOM card_focus {card_id}` with that card's id instead of a second copy, and the widget SHALL scroll to that card and mark it; an older card, or a card with different content, SHALL be drawn as a new card.
 
 #### Scenario: Show me that again
 - **WHEN** the reader asks "show me the config for that" right after an answer that showed the config card

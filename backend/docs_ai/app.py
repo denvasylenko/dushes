@@ -193,6 +193,8 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
 
         async def events() -> AsyncIterator[str]:
             tid = inp.thread_id
+            caps = (inp.forwarded_props or {}).get("capabilities") if isinstance(inp.forwarded_props, dict) else None
+            can_focus = isinstance(caps, list) and "card.focus" in caps   # an older page gets a new card, as before
             answers[tid] += 1
             now = answers[tid]
             seen = shown.get(tid, ())
@@ -202,9 +204,10 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
                     card = dict(ev.get("value") or {})
                     key = card_key(card)
                     same = next((c for c in reversed(shown.get(tid, ())) if c["key"] == key), None)
-                    if same and now - same["answer"] <= VISIBLE_ANSWERS:
+                    if same and can_focus and now - same["answer"] <= VISIBLE_ANSWERS:
                         # the reader still has this very card on screen: point at it, never draw a copy
-                        ev = {"type": "CUSTOM", "name": "docs_highlight", "value": {"card_id": same["id"]}}
+                        # (the widget's own event: it scrolls to [data-card-id] and marks it)
+                        ev = {"type": "CUSTOM", "name": "card_focus", "value": {"card_id": same["id"]}}
                     else:
                         card["id"] = f"card_{uuid.uuid4().hex[:8]}"
                         ev = {**ev, "value": card}

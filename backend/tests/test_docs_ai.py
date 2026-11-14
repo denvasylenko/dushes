@@ -53,9 +53,9 @@ def _client(tmp_path, script=None, **kw):
     return TestClient(app), model
 
 
-def _ask(c, text, ip=None):
+def _ask(c, text, ip=None, caps=None):
     body = {"threadId": "t1", "runId": "r1", "state": {}, "messages": [{"id": "m1", "role": "user", "content": text}],
-            "tools": [], "context": [], "forwardedProps": {}}
+            "tools": [], "context": [], "forwardedProps": {"capabilities": caps} if caps else {}}
     return c.post("/ask/run", json=body, headers={"Accept": "text/event-stream"})
 
 
@@ -278,14 +278,26 @@ def test_a_card_still_on_screen_is_pointed_at_not_drawn_twice(tmp_path):
     client, model = _client(tmp_path, script=[show(), say("ok"), show(), say("ok"),
                                               other, other, other, show(), say("ok")])
     with client as c:
-        first = [e for e in _events(_ask(c, "azure openai agent").text) if e["type"] == "CUSTOM"]
-        again = [e for e in _events(_ask(c, "show me the config for that").text) if e["type"] == "CUSTOM"]
+        first = [e for e in _events(_ask(c, "azure openai agent", caps=["card.focus"]).text) if e["type"] == "CUSTOM"]
+        again = [e for e in _events(_ask(c, "show me the config for that", caps=["card.focus"]).text) if e["type"] == "CUSTOM"]
         for _ in range(3):
-            _ask(c, "how do I theme the widget?")
-        later = [e for e in _events(_ask(c, "show me the config for that").text) if e["type"] == "CUSTOM"]
+            _ask(c, "how do I theme the widget?", caps=["card.focus"])
+        later = [e for e in _events(_ask(c, "show me the config for that", caps=["card.focus"]).text) if e["type"] == "CUSTOM"]
     card = next(e["value"] for e in first if e["name"] == "docs_card")
     assert card["id"].startswith("card_")
-    assert [e["name"] for e in again if e["name"].startswith("docs_")] == ["docs_highlight"]
-    assert next(e["value"] for e in again if e["name"] == "docs_highlight") == {"card_id": card["id"]}
+    assert [e["name"] for e in again if e["name"] in ("docs_card", "card_focus")] == ["card_focus"]
+    assert next(e["value"] for e in again if e["name"] == "card_focus") == {"card_id": card["id"]}
     fresh = [e["value"] for e in later if e["name"] == "docs_card"]          # four answers later: off the screen
-    assert fresh and fresh[0]["id"] != card["id"] and not [e for e in later if e["name"] == "docs_highlight"]
+    assert fresh and fresh[0]["id"] != card["id"] and not [e for e in later if e["name"] == "card_focus"]
+
+
+def test_a_page_without_card_focus_gets_the_card_again(tmp_path):
+    from .conftest import say
+
+    def show():
+        return say("Set the roles under `models:`.", ("c1", "show_code", {"blocks": ["b1"]}))
+    client, _ = _client(tmp_path, script=[show(), say("ok"), show(), say("ok")])
+    with client as c:
+        _ask(c, "azure openai agent")
+        again = [e["name"] for e in _events(_ask(c, "show me the config for that").text) if e["type"] == "CUSTOM"]
+    assert "docs_card" in again and "card_focus" not in again
