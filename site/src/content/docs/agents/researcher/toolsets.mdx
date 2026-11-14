@@ -1,0 +1,24 @@
+---
+title: Toolsets
+description: "What the researcher can work with: your documents today, data analysis later."
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Badge, Summary } from '../../../../components/ui';
+
+<Summary what={"The sources the researcher reads"} when={"You want to know what it can answer from"} write={"Nothing: documents come from your knowledge base"} />
+
+| Toolset | What it does | Status |
+| --- | --- | --- |
+| Documents | searches and reads your business documents, answers with sources | available |
+| Data | analysis in a sandbox, data only through your host's tools | <Badge variant="neutral">Planned</Badge> |
+
+## Documents
+
+The researcher gets a read-only view of the documents its scope allows and a ranked search over them. It reads the sections a question needs and cites them; the chat shows each source as a chip. How the documents get there: [Business documents](../../shared/business-documents/); how retrieval works: [How documents are retrieved](../../how-it-works/knowledge/).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Configuration" description="The research extra, its model, which documents it reads." href="../configuration/" />
+  <LinkCard title="How documents are retrieved" description="Namespaces, scopes and the two layers, with a diagram." href="../../how-it-works/knowledge/" />
+</CardGrid>

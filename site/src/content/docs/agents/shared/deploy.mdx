@@ -38,6 +38,30 @@ import { Summary } from '../../../../components/ui';
 - Field search matches words, not meaning; the document index already takes embeddings.
 - Live conversation tests run on Anthropic models; OpenAI and Azure are covered by offline payload checks only.
 
+## A public demo host
+
+This project's own host (`docs_ai.host`, deployed from `deploy/docs-ai/` as https://dushes-ai.fly.dev) serves the docs, Ask AI and a live demo anyone can use, so it limits the demo. Copy the pattern if you put an agent in front of the public.
+
+| Variable | Default | Limit |
+| --- | --- | --- |
+| `DEMO_PER_VISITOR_DAY` | `10` | messages per visitor a day, by the `X-Demo-Visitor` header the landing sends |
+| `DEMO_PER_IP_DAY` | `60` | messages per address a day |
+| `DEMO_PER_THREAD` | `15` | messages per conversation |
+| `DEMO_PER_DAY` | `500` | messages for the whole site a day |
+| `DEMO_RUNS_DAY` | `300` | runs a day, card answers and hand-offs included |
+| `DEMO_COST_DAY` | `5` | US dollars a day, from each run's real tokens |
+| `DEMO_PRICES` | unset | `"input,output,cache_read,cache_write"` dollars per million tokens of the hosted model; unset turns the cost cap off |
+| `DEMO_KEEP_HOURS` | `24` | the demo's transcripts and checkpoints are deleted after this many hours (the hourly clean-up runs on Fly or when this is set) |
+| `DEMO_LINK` | the quickstart | where a refused visitor is sent |
+
+Card answers and hand-offs don't count as messages, but they do count as runs and toward the cost. A refused run gets HTTP 429 before any stream starts:
+
+```json
+{"detail": "...", "code": "demo_limit", "reason": "visitor", "link": "/get-started/quickstart/"}
+```
+
+`reason` is one of `visitor`, `ip`, `thread`, `site`, `runs`, `cost`. Uploading business documents is off on this host. The landing's form is registered at start-up from `backend/demo/landing/`, and `GET /agent/layouts/<form_id>` returns its `{jsx_hash, form_id}`, so the public page calls no write endpoint.
+
 ## What to keep on disk
 
 `data_dir` holds learned field dependencies, registered layouts, documents, attachments and transcripts. Mount it as a volume, or point each store elsewhere (a SQL checkpointer, your own transcript store, a vector store).

@@ -1,0 +1,40 @@
+---
+title: Configuration
+description: "Switch the researcher on with the research extra, pick its model, and say which documents each form may read."
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"The settings of the researcher"} when={"You turn it on, or give it a cheaper or stronger model"} write={"The `research` extra and a few lines of `formguide.yaml`"} />
+
+## Switch it on
+
+```bash
+pip install "formguide[research]"      # included in formguide[all]
+```
+
+## Settings
+
+```yaml title="formguide.yaml"
+models:
+  research: "anthropic:claude-sonnet-5-5"       # the researcher; default: the agent model
+actions:
+  ask_documents: auto                           # auto: only when there are documents; true | false
+knowledge:
+  scopes: {loan_application: [loan_application, bank_common]}   # which documents each form may read
+```
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `models.research` | the agent model | the model the researcher reads with; it needs tool calling |
+| `actions.ask_documents` | `auto` | whether the agents get the action: `auto` only when the form has documents, `true`, `false` |
+| `knowledge.scopes` | each form reads its own namespace | which document namespaces a form may read |
+
+Every key with its default: [Configuration keys](../../../reference/configuration/).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Business documents" description="Upload, compile, scopes, vector stores." href="../../shared/business-documents/" />
+  <LinkCard title="Toolsets" description="What it can read today, and what is planned." href="../toolsets/" />
+</CardGrid>

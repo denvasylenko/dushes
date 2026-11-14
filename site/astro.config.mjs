@@ -158,7 +158,11 @@ export default defineConfig({
 						{ label: 'Cards from blocks', slug: 'agents/ui-agent/cards-from-blocks' },
 						{ label: 'User documents', slug: 'agents/ui-agent/user-documents' },
 					] },
-					{ label: 'Researcher', slug: 'agents/researcher' },
+					{ label: 'Researcher', items: [
+						{ label: 'Overview', slug: 'agents/researcher' },
+						{ label: 'Toolsets', slug: 'agents/researcher/toolsets' },
+						{ label: 'Configuration', slug: 'agents/researcher/configuration' },
+					] },
 					{ label: 'Server and setup', items: [
 						{ label: 'Install and serve', slug: 'agents/shared/install' },
 						{ label: 'Configuration', slug: 'agents/shared/configuration' },

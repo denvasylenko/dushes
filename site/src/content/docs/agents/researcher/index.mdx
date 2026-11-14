@@ -3,7 +3,7 @@ title: Researcher
 description: "The third agent: an isolated sub-agent that reads a lot and returns a short answer with sources. The site agent and the UI agent both call it, for questions that need deep reading."
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
-import { Summary } from '../../../components/ui';
+import { Summary } from '../../../../components/ui';
 
 <Summary what={"A sub-agent that reads your documents and answers in a few lines, with sources"} when={"Users ask about rules, rates or policies that the compiled knowledge does not cover"} write={"`pip install \"formguide[research]\"`; optionally `models: {research: ...}`"} />
 
@@ -20,31 +20,9 @@ The researcher runs apart from the conversation. An agent hands it one question;
 
 Both agents have the action: the UI agent (`FormGuide`) on a screen with documents, and the site agent (Dushes) on any page (`Dushes.ask_documents`, which calls the same `knowledge.research`). Each reads only the documents its knowledge scope allows.
 
-## Switch it on
-
-```bash
-pip install "formguide[research]"      # included in formguide[all]
-```
-
-```yaml title="formguide.yaml"
-models:
-  research: "anthropic:claude-sonnet-5-5"       # the researcher; default: the agent model
-actions:
-  ask_documents: auto                           # auto: only when there are documents; true | false
-knowledge:
-  scopes: {loan_application: [loan_application, bank_common]}   # which documents each form may read
-```
-
-## Toolsets
-
-| Toolset | What it does | Status |
-| --- | --- | --- |
-| Documents | search and read your business documents, answer with sources | available |
-| Data | analysis in a sandbox, data only through host tools | Planned |
-
 ## Next
 
 <CardGrid>
-  <LinkCard title="Business documents" description="Upload, compile, scopes, vector stores." href="../shared/business-documents/" />
-  <LinkCard title="How documents are retrieved" description="Namespaces, scopes and the two layers, with a diagram." href="../how-it-works/knowledge/" />
+  <LinkCard title="Configuration" description="The research extra, its model, which documents it reads." href="configuration/" />
+  <LinkCard title="Toolsets" description="What it can read today, and what is planned." href="toolsets/" />
 </CardGrid>

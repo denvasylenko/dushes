@@ -52,6 +52,17 @@ In a widget host: `chat.addEventListener('agui:event', e => e.detail.name === 'r
 
 ---
 
+## The public demo's day
+
+The public demo host ([A public demo host](../deploy/#a-public-demo-host)) keeps one file per day, `<data_dir>/demo/<date>.json`:
+
+```json
+{"date": "2026-11-14", "runs": 212, "messages": 154, "visitors": 61,
+ "tokens": {"input": 410000, "output": 52000, "cache_read": 1900000, "cache_write": 260000}, "cost_usd": 1.84}
+```
+
+`visitors` is a count. The file never holds message text, visitor ids or addresses: those are counted in memory for the current day only (with thread ids, for the per-conversation limit), and a restart or a new day drops them.
+
 ## Tracing
 
 Every turn is a LangChain run named **"formguide turn"**:

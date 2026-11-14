@@ -144,7 +144,7 @@ h1#_top { text-wrap: balance; }
 .sb-phone { margin-bottom: 1rem; }
 .sb-phone .sb-seg { margin-bottom: 1rem; }
 .sb-phone .ui-seg { display: flex; width: 100%; }
-.sb-phone .ui-seg > button { flex: 1 1 0; min-width: 0; padding-inline: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-phone .ui-seg > button { min-height: 44px; flex: 1 1 0; min-width: 0; padding-inline: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 50rem) { .sb-phone ~ sl-sidebar-state-persist { display: none; } }
 @media (min-width: 50rem) {
   .sb-phone { display: none; }
@@ -152,3 +152,39 @@ h1#_top { text-wrap: balance; }
   :root:has([data-fg-phone-only]) { --sl-content-inline-start: 0rem; }
   :root:has([data-fg-phone-only]) .sidebar-pane { display: none; }
 }
+
+/*
+ * The sidebar as one quiet list, like Apple's sidebars (Finder, Notes, the Apple Developer docs): top-level pages and
+ * group titles share one size and weight; children sit indented with no rule; the current page is a light tinted pill
+ * with accent text, not a solid block; a grey row on hover (mouse only); chevrons at the right. Desktop and phone menu.
+ */
+#starlight__sidebar { --fg-side-row: 32px; }
+@media (max-width: 50rem), (pointer: coarse) { #starlight__sidebar { --fg-side-row: 44px; } }
+#starlight__sidebar ul { --sl-sidebar-item-padding-inline: 10px; }
+#starlight__sidebar .top-level > li + li { margin-top: 2px; }
+#starlight__sidebar .top-level > li:has(> details) { margin-top: 12px; }
+#starlight__sidebar .top-level > li:first-child { margin-top: 0; }
+#starlight__sidebar ul ul li { margin-inline-start: 12px; padding-inline-start: 0; border-inline-start: 0; }
+#starlight__sidebar ul ul { margin-top: 2px; display: flex; flex-direction: column; gap: 2px; }
+#starlight__sidebar :is(a, summary) {
+  display: flex; align-items: center; min-height: var(--fg-side-row); padding: 4px 10px; border-radius: var(--fg-r-ctl);
+  line-height: 1.3; color: var(--fg-ink-2); transition: background-color var(--fg-dur-instant) var(--fg-ease);
+}
+#starlight__sidebar summary { justify-content: space-between; gap: 8px; }
+#starlight__sidebar a { font-size: var(--fg-fs-sub); }
+#starlight__sidebar .large { font: 600 var(--fg-fs-callout)/1.3 var(--sl-font); color: var(--fg-ink); }
+#starlight__sidebar .caret { width: 16px; height: 16px; color: var(--fg-ink-3); }
+#starlight__sidebar a:is(:hover, :focus) { color: var(--fg-ink-2); }
+#starlight__sidebar :is(a, a:hover, a:focus)[aria-current='page'] {
+  color: var(--fg-accent-ink); background: color-mix(in srgb, var(--fg-accent) 14%, transparent);
+}
+:root[data-theme='light'] #starlight__sidebar :is(a, a:hover, a:focus)[aria-current='page'] { background: var(--fg-accent-soft); }   /* a clear tint on white */
+@media (hover: hover) {
+  #starlight__sidebar a:not([aria-current='page']):hover, #starlight__sidebar summary:hover { background: var(--fg-fill); color: var(--fg-ink); }
+}
+#starlight__sidebar :is(a, summary):focus-visible { outline: 3px solid var(--fg-focus); outline-offset: -3px; }
+@media (max-width: 50rem), (pointer: coarse) {
+  #starlight__sidebar a { font-size: var(--fg-fs-callout); }
+  #starlight__sidebar .large { font-size: var(--fg-fs-headline); }
+}
+@media (prefers-reduced-motion: reduce) { #starlight__sidebar :is(a, summary) { transition: none; } }
