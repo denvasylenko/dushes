@@ -26,5 +26,5 @@ expect:
     reason: vacation
   never_tools: [focus_field]
   never_points_at_the_page: true
-  never_says: ["the form", "on the right", "on the left", "on the page", "scroll", "field above", "field below", " tab"]
+  never_says: ["in the form", "on the form", "the form on", "look at the form", "see the form", "fill in the form", "the form below", "the form above", "on the right", "on the left", "on the page", "scroll", "field above", "field below", " tab"]   # pointing at what the person cannot see; "the form is complete" is fine
 min_score: 7
