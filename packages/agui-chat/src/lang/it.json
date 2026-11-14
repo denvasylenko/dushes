@@ -24,6 +24,7 @@
   "transcribing": "Trascrizione\u2026",
   "micEmpty": "Non ho capito. Riprova.",
   "micFailed": "Impossibile trascrivere la registrazione.",
+  "micBusy": "Occupato, riprova tra un momento.",
   "micUnavailable": "La dettatura non \u00e8 disponibile qui.",
   "answered": "Risposto",
   "skipped": "Saltato",

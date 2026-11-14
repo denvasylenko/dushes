@@ -26,6 +26,7 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "transcribing": "Transcribing\u2026",
     "micEmpty": "Didn't catch that. Try again.",
     "micFailed": "Couldn't transcribe the recording.",
+    "micBusy": "Busy, try again in a moment.",
     "micUnavailable": "Voice input isn't available here.",
     "answered": "Answered",
     "skipped": "Skipped",

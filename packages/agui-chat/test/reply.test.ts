@@ -80,6 +80,27 @@ describe('reply to a part of an answer', () => {
     expect(seen[2].forwardedProps).not.toHaveProperty('reply_to')   // one run only
   })
 
+  it('Safari: a selection retargeted to the host and reported collapsed still opens Reply (its composed range)', async () => {
+    const el = await mount(), seen: Record<string, unknown>[] = []
+    el.agent = agent('The fee is 2% of the amount. It is paid once.', seen) as never
+    await el.send('fees?')
+    await tick(5)
+    const body = $(el, '.msg.ai .body')
+    const t = [...body.querySelectorAll('*'), body].flatMap((n) => [...n.childNodes]).find((c) => c.nodeType === 3 && c.textContent!.includes('The fee is 2%'))!
+    const real = { startContainer: t, startOffset: 0, endContainer: t, endOffset: 'The fee is 2%'.length }
+    const host = document.createRange(); host.setStart(document.body, 0); host.collapse(true)   // what WebKit reports
+    const safari = { isCollapsed: true, rangeCount: 1, getRangeAt: () => host, getComposedRanges: () => [real], removeAllRanges() {}, addRange() {} }
+    Object.defineProperty(el.shadowRoot!, 'getSelection', { value: undefined, configurable: true })
+    vi.spyOn(document, 'getSelection').mockReturnValue(safari as unknown as Selection)
+    document.dispatchEvent(new Event('selectionchange'))
+    await tick(200)
+    const cap = el.shadowRoot!.querySelector('.cap-reply:not([hidden])') as HTMLButtonElement | null
+    expect(cap).not.toBeNull()
+    cap!.click()
+    expect($(el, '.pop-q').textContent).toBe('The fee is 2%')
+    vi.restoreAllMocks()
+  })
+
   it('Add to chat collects several quotes, each with its reply; one message carries them all', async () => {
     const el = await mount(), seen: Record<string, unknown>[] = []
     el.agent = agent('The fee is 2%. The term is 36 months. Insurance is optional.', seen) as never

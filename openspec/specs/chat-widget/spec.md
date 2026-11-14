@@ -126,6 +126,13 @@ On a computer the actions under an answer SHALL show on hover or focus, except u
 - **WHEN** the pointer rests on an earlier answer
 - **THEN** its actions fade in
 
+### Requirement: Imports are safe on the server
+Every entry of the package (the element, `formguide`, `highlight`, `react`, `react-hook-form`) SHALL import without a DOM, as in server rendering, and define its custom elements only in the browser.
+
+#### Scenario: A Nuxt page renders on the server
+- **WHEN** a server-rendered page imports `@formguide/agui-chat/highlight`
+- **THEN** the request renders, and `<agui-highlight>` works after hydration
+
 ### Requirement: Pictures open in the viewer
 A picture sent with a message or shown in an answer (an `image` block) SHALL open in the image viewer on a tap, as a real image the browser's own menu works on (right-click or a long press: copy, save); the viewer SHALL NOT block that menu.
 
@@ -550,11 +557,15 @@ The chat SHALL accept `transport`, a function of the run input and `{signal}` re
 - **THEN** the chat shows "Transcribing…" and then the recognised text in the input
 
 ### Requirement: Cancelling and failures of server dictation
-Esc or the cancel button SHALL drop a recording without sending it. An empty result SHALL say nothing was caught; a failed transcription SHALL say so in plain words with "Try again", which posts the same recording again.
+Esc or the cancel button SHALL drop a recording without sending it. An empty result SHALL say nothing was caught; a failed transcription SHALL say so in plain words with "Try again", which posts the same recording again. A server that does not answer within 30 s SHALL count as failed (the mic is free again), and a busy one (503, 429) SHALL say "Busy, try again in a moment" with Try again.
 
 #### Scenario: The server is down
 - **WHEN** the transcription request fails
 - **THEN** the hint says the recording could not be transcribed and offers Try again
+
+#### Scenario: The server hangs
+- **WHEN** the transcription request has no answer after 30 s
+- **THEN** it is given up, the hint says the recording could not be transcribed and offers Try again
 
 ### Requirement: Dictation that falls back
 `dictation: 'auto'` SHALL use the browser's recognition where it exists and works, and record for the server where it is missing or blocked (the recognition service refused or unreachable); the microphone SHALL show whenever either way is possible.

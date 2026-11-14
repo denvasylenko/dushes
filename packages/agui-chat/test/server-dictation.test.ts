@@ -81,6 +81,36 @@ describe('server dictation', () => {
     expect(($(el, 'textarea') as HTMLTextAreaElement).value).toBe('second time')
   })
 
+  it('a busy server (503) says "Busy, try again in a moment", and Try again posts it once more', async () => {
+    let n = 0
+    setup(() => (n++ ? new Response(JSON.stringify({ text: 'now it works' })) : new Response('busy', { status: 503 })))
+    const el = await mount({ dictation: 'server' })
+    $(el, '.mic').click(); await tick()
+    $(el, '.mic').click(); await tick(); await tick()
+    expect($(el, '.hint').textContent).toContain('Busy, try again in a moment.')
+    ;($(el, '.hint button') as HTMLButtonElement).click()
+    await tick(); await tick()
+    expect(($(el, 'textarea') as HTMLTextAreaElement).value).toBe('now it works')
+  })
+
+  it('a server that never answers lets go after 30 s: "Couldn\'t transcribe", the mic back, the recording kept', async () => {
+    setup(() => new Response('{}'))
+    vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_ok, fail) => {
+      init?.signal?.addEventListener('abort', () => fail(new DOMException('aborted', 'AbortError')))   // hangs until aborted
+    })))
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const el = await mount({ dictation: 'server' })
+      $(el, '.mic').click(); await vi.advanceTimersByTimeAsync(10)
+      $(el, '.mic').click(); await vi.advanceTimersByTimeAsync(10)
+      expect($(el, '.hint').textContent).not.toContain("Couldn't transcribe")   // still waiting
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect($(el, '.hint').textContent).toContain("Couldn't transcribe")
+      expect($(el, '.hint button')!.textContent).toBe('Try again')
+      expect($(el, '.box').classList.contains('rec')).toBe(false)
+    } finally { vi.useRealTimers() }
+  })
+
   it('cancel drops the recording', async () => {
     setup(() => new Response(JSON.stringify({ text: 'never' })))
     const el = await mount({ dictation: 'server' })

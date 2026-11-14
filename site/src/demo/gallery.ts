@@ -338,6 +338,17 @@ GALLERY.push({
       { name: 'people', label: 'People', options: ['1', '2', '3', '4', '5+'], value: '2' }],
     depends: { time: { on: 'day', options: { fri: ['18:00', '19:30', '21:00'], sun: ['12:00', '14:00'], mon: ['19:00'] } } },
     fields: [{ name: 'phone', label: 'Phone', input: 'tel', required: true }] } },
+}, {
+  id: 'picker-empty', group: 'blocks', tag: 'picker · depends.empty',
+  title: 'Times before a day',
+  blurb: 'With `depends.empty`, a group that follows another says what comes first, in a line as tall as a row of chips: pick a day and the times take its place without a jump.',
+  user: 'Book a table',
+  event: { name: 'on_interrupt', value: { type: 'picker', card_id: 'pk2', title: 'Book a table', submit: { label: 'Book' },
+    groups: [
+      { name: 'day', label: 'Day', options: [{ id: 'fri', label: 'Fri 20' }, { id: 'sat', label: 'Sat 21', off: 'Closed' }, { id: 'sun', label: 'Sun 22' }] },
+      { name: 'time', label: 'Time' },
+      { name: 'people', label: 'People', options: ['1', '2', '3', '4', '5+'], value: '2' }],
+    depends: { time: { on: 'day', options: { fri: ['18:00', '19:30', '21:00'], sun: ['12:00', '14:00'] }, empty: 'Pick a day first' } } } },
 })
 
 /** One specimen per block, for the Blocks page (group "catalog"); the card gallery leaves them out. */

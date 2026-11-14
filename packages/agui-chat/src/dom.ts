@@ -80,6 +80,10 @@ export function md(src: string, labels: { copy?: string } = {}): string {
   return out.join('')
 }
 
+/** HTMLElement, or a stand-in where there is none (server rendering in Node, Nuxt, Next): importing the package
+ *  never throws there; the elements are defined in the browser only. */
+export const BaseElement: typeof HTMLElement = typeof HTMLElement === 'undefined' ? (class {} as unknown as typeof HTMLElement) : HTMLElement
+
 export const reducedMotion = (): boolean =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 

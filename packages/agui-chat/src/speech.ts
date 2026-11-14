@@ -71,7 +71,7 @@ export interface RecordingHooks {
   /** The voice level, 0..1, about 12 times a second. */
   level(v: number): void
   /** 'rec' while recording, 'busy' while the server transcribes, 'off' when done (with an error code). */
-  state(s: 'rec' | 'busy' | 'off', error?: 'denied' | 'empty' | 'failed' | 'unavailable'): void
+  state(s: 'rec' | 'busy' | 'off', error?: 'denied' | 'empty' | 'failed' | 'unavailable' | 'overloaded'): void
   /** The recognised text. */
   text(t: string): void
   /** Post the recording, resolve with the text. */
@@ -104,7 +104,9 @@ export function record(hooks: RecordingHooks, maxMs = 120_000): Dictation & { re
       if (text) hooks.text(text)
       hooks.state('off', text ? undefined : 'empty')
     } catch (e) {
-      if (!dead) hooks.state('off', (e as { status?: number })?.status === 501 ? 'unavailable' : 'failed')
+      const status = (e as { status?: number })?.status
+      // 501: no transcription on this server; 503 / 429: it is busy (worth another try in a moment)
+      if (!dead) hooks.state('off', status === 501 ? 'unavailable' : status === 503 || status === 429 ? 'overloaded' : 'failed')
     }
   }
 

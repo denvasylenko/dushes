@@ -24,6 +24,7 @@
   "transcribing": "Transcribiendo\u2026",
   "micEmpty": "No se entendi\u00f3. Int\u00e9ntalo de nuevo.",
   "micFailed": "No se pudo transcribir la grabaci\u00f3n.",
+  "micBusy": "Ocupado, int\u00e9ntalo de nuevo en un momento.",
   "micUnavailable": "El dictado no est\u00e1 disponible aqu\u00ed.",
   "answered": "Respondido",
   "skipped": "Omitido",

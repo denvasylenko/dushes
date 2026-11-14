@@ -207,7 +207,9 @@ export function lookAt(name: string, hint = ''): boolean {
 }
 
 /** <agui-highlight name="amount">: a block box carrying data-name, for a field of your own. */
-export class AguiHighlightElement extends HTMLElement {
+// HTMLElement, or a stand-in in server rendering (Node has none), so importing this never throws there
+const Base: typeof HTMLElement = typeof HTMLElement === 'undefined' ? (class {} as unknown as typeof HTMLElement) : HTMLElement
+export class AguiHighlightElement extends Base {
   static observedAttributes = ['name']
   connectedCallback(): void { style(this); this.attributeChangedCallback() }
   attributeChangedCallback(): void { const n = this.getAttribute('name'); if (n) this.dataset.name = n; else delete this.dataset.name }

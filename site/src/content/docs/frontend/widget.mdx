@@ -43,6 +43,8 @@ That is a working chat with any AG-UI endpoint: a round button in the corner ope
 | React | `import { AguiChat } from '@formguide/agui-chat/react'` then `<AguiChat url="/agent/run" plugins={[formguide({...})]} />` |
 | React form without a config (react-hook-form, Formik…) | `useFormguide(form, schema)` from `@formguide/agui-chat/react-hook-form`, see [A React form without a config](../react-hook-form/) |
 
+Server rendering (Next, Nuxt, Astro) can import every entry: nothing touches the DOM on import, and `<agui-chat>` is defined once the page runs in the browser.
+
 Build it from this repository: `cd packages/agui-chat && npm install && npm run build` (output in `dist/`; `npm test` runs the tests). The package is not published to npm yet; until then use the built files or `npm pack`.
 
 
@@ -306,7 +308,7 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `composerShadow` | `composer-shadow` | `soft` | the composer's shadow: `soft`, `raised` or `none`; exact values with `--agui-composer-shadow` and `--agui-composer-shadow-focus` |
 | `collapseLines` | `collapse-lines` | `8` | a message taller than this many lines folds, with Show more; `0`: never |
 | `collapseAnswers` | `collapse-answers` | off | fold the assistant's long answers too |
-| `transcribe-url` | `transcribeUrl` | next to `url` | where recordings go for server dictation |
+| `transcribe-url` | `transcribeUrl` | next to `url` | where recordings go for server dictation; no answer in 30 s counts as failed ("Couldn't transcribe" with Try again, the recording kept), a 503 or 429 says "Busy, try again in a moment" |
 | `attach` | `attach` | on | the + button (files and photos), when something can upload |
 | `attach-accept` | `attachAccept` | what the plugin accepts | e.g. `.pdf,.jpg` |
 | `attach-multiple` | `attachMultiple` | on | several files at once |

@@ -1,5 +1,5 @@
 /** <agui-chat>: an AG-UI chat as a Web Component. Every option: site/src/content/docs/reference/agui-chat.md. */
-import { easeHeight, h, md, reducedMotion, store } from './dom'
+import { BaseElement, easeHeight, h, md, reducedMotion, store } from './dom'
 import { STRINGS } from './i18n'
 import { loadZoom } from '#editor-loader'
 import { LANGUAGES, PACKS, loadLanguage } from './langs'
@@ -118,6 +118,8 @@ interface StepsItem { el: HTMLElement; list: HTMLElement; toggle: HTMLButtonElem
 // one line of steps, hidden (class "quiet") for routine look-ups (plugins' quietSteps) and for the first second
 interface PendingCall { id: string; name: string; args: string }
 
+/** How long a server transcription may take before the mic gives up (Try again keeps the recording). */
+const TRANSCRIBE_MS = 30_000
 /** After this long with only the dots, a quiet "Still working…" appears. */
 const SLOW_MS = 4000
 
@@ -142,7 +144,7 @@ function headersObject(h: HeadersInit | undefined): Record<string, string> {
   return Array.isArray(h) ? Object.fromEntries(h) : { ...(h as Record<string, string>) }
 }
 
-export class AguiChatElement extends HTMLElement implements ChatApi {
+export class AguiChatElement extends BaseElement implements ChatApi {
   static observedAttributes = Object.keys(ATTRS)
 
   readonly renderers = new Map<string, Renderer>()
@@ -821,10 +823,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         this._mic = null
         this._micBefore = null
         const line = inBox ? hint : this.$.popErr   // the window's own line: the composer's may be out of view
-        if (error === 'failed') {
+        if (error === 'failed' || error === 'overloaded') {   // the recording is kept: Try again posts it once more
           this._afterMic = null
           this._retryRec = () => { this._retryRec = null; this._mic = rec; rec.retry() }
-          line.replaceChildren(h('span', null, this.t('micFailed') + ' '),
+          line.replaceChildren(h('span', null, this.t(error === 'overloaded' ? 'micBusy' : 'micFailed') + ' '),
             h('button', { class: 'btn link', type: 'button', onclick: () => { line.textContent = ''; this._retryRec?.() } }, this.t('retry')))
         } else if (error) {
           this._afterMic = null
@@ -844,9 +846,13 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         const fd = new FormData()
         fd.append('file', audio, `dictation.${/mp4/.test(audio.type) ? 'm4a' : /ogg/.test(audio.type) ? 'ogg' : 'webm'}`)
         if (lang) fd.append('language', lang)
-        const r = await this.request('transcribe', this._transcribeUrl(), { method: 'POST', body: fd })
-        if (!r.ok) throw Object.assign(new Error(`transcribe ${r.status}`), { status: r.status })
-        return String(((await r.json()) as { text?: string }).text ?? '')
+        // a server that never answers does not hold the mic: after 30 s it is "Couldn't transcribe" with Try again
+        const ac = new AbortController(), limit = setTimeout(() => ac.abort(), TRANSCRIBE_MS)
+        try {
+          const r = await this.request('transcribe', this._transcribeUrl(), { method: 'POST', body: fd, signal: ac.signal })
+          if (!r.ok) throw Object.assign(new Error(`transcribe ${r.status}`), { status: r.status })
+          return String(((await r.json()) as { text?: string }).text ?? '')
+        } finally { clearTimeout(limit) }
       },
     })
     this._mic = rec
@@ -1022,7 +1028,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _selection(): { range: Range; msg: HTMLElement; text: string } | null {
     const root = this.root as ShadowRoot & { getSelection?: () => Selection | null }
     const sel = root.getSelection?.() ?? document.getSelection()
-    if (!sel || sel.isCollapsed || !sel.rangeCount) return null
+    // not sel.isCollapsed: Safari retargets a selection inside the shadow root to the host and reports it collapsed
+    if (!sel || !sel.rangeCount) return null
     let range: Range | null = sel.getRangeAt(0)
     if (!this.root.contains(range.startContainer)) {   // Safari: the range is retargeted to the host; ask for the composed one
       const s = sel as Selection & { getComposedRanges?: (...a: unknown[]) => StaticRange[] }
@@ -1031,6 +1038,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       if (!c || !this.root.contains(c.startContainer)) return null
       range = document.createRange(); range.setStart(c.startContainer, c.startOffset); range.setEnd(c.endContainer, c.endOffset)
     }
+    if (range.collapsed) return null   // nothing selected, judged on the real range
     const at = (n: Node): Element | null => (n.nodeType === 1 ? n as Element : n.parentElement)
     const a = at(range.startContainer), b = at(range.endContainer)
     const msg = a?.closest<HTMLElement>('.msg.ai')
@@ -1269,7 +1277,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const ico = h('span', { class: 'swipe-ico', 'aria-hidden': 'true' }); ico.innerHTML = actSvg(ACT.reply)
     log.addEventListener('touchstart', (e) => {
       const t = e.touches[0], el = (e.target as HTMLElement).closest?.<HTMLElement>('.msg.ai')
-      const selecting = !((this.root as ShadowRoot & { getSelection?: () => Selection | null }).getSelection?.() ?? document.getSelection())?.isCollapsed
+      const selecting = !!this._selection()   // the same check as the capsule (Safari reports a shadow selection collapsed)
       const edge = t.clientX < 24 || t.clientX > innerWidth - 24   // the system's back gesture lives there
       msg = e.touches.length === 1 && this._opts.reply && el && !selecting && !edge && !(e.target as HTMLElement).closest('.card, pre, table, img, .bk-chart, .steps, .msg-acts') ? el : null
       x0 = t.clientX; y0 = t.clientY; dx = 0; dir = null

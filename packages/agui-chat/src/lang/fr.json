@@ -24,6 +24,7 @@
   "transcribing": "Transcription\u2026",
   "micEmpty": "Rien compris. R\u00e9essayez.",
   "micFailed": "Impossible de transcrire l'enregistrement.",
+  "micBusy": "Occup\u00e9, r\u00e9essayez dans un instant.",
   "micUnavailable": "La dict\u00e9e n'est pas disponible ici.",
   "answered": "R\u00e9pondu",
   "skipped": "Pass\u00e9",

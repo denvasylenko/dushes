@@ -268,7 +268,7 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       const fill = (opts: Item[]): void => {
         wrap.replaceChildren(); picked.clear(); values[name] = multiple ? [] : null
         // nothing to pick yet (no day chosen): one quiet line in the row's place, its height, so the chips arrive without a jump
-        if (!opts.length && dep?.empty) wrap.append(h('div', { class: 'bk-empty' }, str(dep.empty)))
+        if (!opts.length && dep?.empty) wrap.append(h('div', { class: 'bk-first' }, str(dep.empty)))
         opts.forEach(add)
         const more = b.more && typeof b.more === 'object' ? b.more as Item : null
         if (more && options(more.options).length) {   // "Other days": the rest in place, one tap

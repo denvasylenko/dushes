@@ -24,6 +24,7 @@
   "transcribing": "Wird erkannt\u2026",
   "micEmpty": "Nichts verstanden. Noch einmal versuchen.",
   "micFailed": "Die Aufnahme konnte nicht erkannt werden.",
+  "micBusy": "Gerade ausgelastet, versuch es gleich noch einmal.",
   "micUnavailable": "Spracheingabe ist hier nicht verf\u00fcgbar.",
   "answered": "Beantwortet",
   "skipped": "\u00dcbersprungen",

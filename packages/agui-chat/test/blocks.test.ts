@@ -152,9 +152,9 @@ describe('a picker card', () => {
     void el.showCard(card)
     await tick()
     const time = $$(el, '.bk-group').find((g) => g.querySelector('.bk-cap')!.textContent === 'Time')!
-    expect(time.querySelector('.bk-empty')!.textContent).toBe('Pick a day first')
+    expect(time.querySelector('.bk-first')!.textContent).toBe('Pick a day first')
     ;[...$$(el, '.bk-group')[0].querySelectorAll<HTMLButtonElement>('.chip')][0].click()   // Fri
-    expect(time.querySelector('.bk-empty')).toBeNull()
+    expect(time.querySelector('.bk-first')).toBeNull()
     expect([...time.querySelectorAll('.chip')].map((b) => b.textContent)).toEqual(['18:00', '20:00'])
   })
 
