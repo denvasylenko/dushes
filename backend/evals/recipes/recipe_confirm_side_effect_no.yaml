@@ -9,4 +9,5 @@ turns:
   - Send my booking to the salon now.
 expect:
   cards: [confirm]
+  held_confirm: send_booking_request   # the system's card only, never the agent's confirm_action
   executed: {send_booking_request: false}

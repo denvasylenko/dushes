@@ -288,6 +288,8 @@ class FormChat:
                     args = {"raw": raw}
                 self.calls.append((tool, args))
                 self.log.append(f"   ⚙ {tool}({json.dumps(args, ensure_ascii=False)[:120]})")
+                if tool == "confirm_action" and args.get("other_action"):   # the way past "the held tool asks by itself"
+                    self.log.append("   ⚠ confirm_action called with other_action: true")
                 if tool in self.client:
                     client_calls.append((e["toolCallId"], tool, raw))
             elif t == "TOOL_CALL_RESULT" and e.get("toolCallId") in self.names:   # also a held call confirmed later
