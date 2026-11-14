@@ -2,7 +2,7 @@
  * The Vue stands, one page each (stands/<name>/index.html), built to dist/ and served next to the e2e fixtures.
  * `@formguide/agui-chat/vue` is the package's Vue adapter when it exists (packages/agui-chat/src/vue.ts); until then
  * the stands get src/adapter-pending.ts, which says so, and the checks fail by design. STAND_ADAPTER=reference builds
- * them with QA's reference adapter (src/reference-adapter.ts: the agreed contract) to check the stands themselves.
+ * them with QA's reference adapter into dist/reference (else dist/official; STAND_OUT names another folder under dist/) (src/reference-adapter.ts: the agreed contract) to check the stands themselves.
  */
 import { existsSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -31,6 +31,7 @@ export default defineConfig({
       { find: /^@formguide\/agui-chat$/, replacement: resolve(pkg, 'index.ts') },
     ],
   },
-  build: { outDir: process.env.STAND_OUT || (process.env.STAND_ADAPTER === 'reference' ? 'dist-reference' : 'dist'), emptyOutDir: true, rollupOptions: { input: stands } },
+  // under dist/: the repository's checks skip build output
+  build: { outDir: `dist/${process.env.STAND_OUT || (process.env.STAND_ADAPTER === 'reference' ? 'reference' : 'official')}`, emptyOutDir: true, rollupOptions: { input: stands } },
   define: { __ADAPTER__: JSON.stringify(adapter.includes('reference') ? 'reference' : adapter.includes('pending') ? 'pending' : 'official') },
 })

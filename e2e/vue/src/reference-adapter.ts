@@ -9,7 +9,7 @@
  */
 import { isRef, nextTick, onMounted, ref, toRaw, type Ref } from 'vue'
 import { formguide, type FormguideOptions } from '@formguide/agui-chat/formguide'
-import { highlightField, lookAt } from '../../../packages/agui-chat/src/highlight-lazy'   // the eager module defines an element: not SSR-safe
+import { highlightField, lookAt } from '@formguide/agui-chat/highlight'   // SSR-safe since c184c96
 import { schemaForm, type FormSchema, type Values } from '@formguide/agui-chat/schema'
 import type { Plugin } from '@formguide/agui-chat'
 
@@ -19,7 +19,7 @@ export interface Options {
   onReveal?: (section: string) => void | Promise<void>
   getUi?: () => Record<string, unknown>
   plugin?: Partial<FormguideOptions>
-  validate?: () => Promise<Record<string, string> | boolean>
+  validate?: () => Promise<Record<string, string> | boolean | { valid: boolean }>   // VeeValidate's {valid, errors} as it is
   errors?: () => Record<string, string>
 }
 
@@ -28,7 +28,8 @@ const plain = (v: unknown): unknown => JSON.parse(JSON.stringify(toRaw(v) ?? nul
 /** Reads and writes dotted paths ("items.2.qty") in a reactive object, a ref or a store. */
 export function access(source: unknown): Access {
   if (source && typeof (source as Access).getValues === 'function') return source as Access
-  const root = () => (isRef(source) ? (source as Ref<Record<string, unknown>>).value : source) as Record<string, unknown>
+  const root = () => (isRef(source) ? (source as Ref<Record<string, unknown>>).value
+    : (source as { $state?: Record<string, unknown> })?.$state ?? source) as Record<string, unknown>   // a Pinia store: its $state
   const get = (o: unknown, path: string[]): unknown => path.reduce<unknown>((x, k) => (x as Record<string, unknown>)?.[k], o)
   return {
     getValues: () => plain(root()) as Values,

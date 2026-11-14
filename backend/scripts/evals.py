@@ -39,8 +39,9 @@ BASELINE = EVALS / "baseline.json"
 CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold"}
-START_KEYS = {"page", "form", "values", "site"}
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards"}
+START_KEYS = {"page", "form", "values", "site", "host"}   # host: for a host's own runner (e.g. Herefront)
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards",
+               "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers"}
 CAP_NEVER, CAP_OTHER = 3, 5
 RUBRIC = """Score the assistant from 0 to 10 (10: a person would be fully satisfied). Take points off for:
 - truth: a fact about the business (prices, rates, rules, hours, partners) that the site or its documents do not
@@ -93,6 +94,12 @@ class Scenario:
     file: str = ""
     tools: list[str] = field(default_factory=list)          # tools the assistant must call (a recipe's own tool)
     never_cards: list[str] = field(default_factory=list)    # card types that must not be shown (no card for a value already set)
+    # "the assistant does not act dumb" (deterministic; the judge scores the rest):
+    never_repeat_questions: bool = False                   # no question asked twice, none about a field already filled
+    never_suggests: list[str] = field(default_factory=list)          # phrases no quick reply may contain
+    never_says_after_card: list[str] = field(default_factory=list)   # phrases no reply may say once a card was accepted
+    rejected_values: dict[str, Any] = field(default_factory=dict)    # {field: a bad value the form must not keep}
+    never_numbers: list[str] = field(default_factory=list)           # numbers no reply may state (not on the screen)
     never_tools: list[str] = field(default_factory=list)    # tools it must not call (no researcher when the site knows)
     sources: list[str] = field(default_factory=list)        # source chips that must be shown: "file" or "file > section"
     corpus: str | None = None                               # documents: <name>: demo/research_corpora/<name>/ for the form
@@ -127,7 +134,11 @@ def load_scenario(path: Path) -> Scenario:
                     documents=raw.get("documents") is True, tags=[str(x) for x in raw.get("tags") or []],
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
                     fields=dict(exp.get("fields") or {}), file=path.name, site=_site(start), tools=[str(x) for x in exp.get("tools") or []],
-                    never_tools=[str(x) for x in exp.get("never_tools") or []], never_cards=[str(x) for x in exp.get("never_cards") or []], sources=[str(x) for x in exp.get("sources") or []],
+                    never_tools=[str(x) for x in exp.get("never_tools") or []], never_cards=[str(x) for x in exp.get("never_cards") or []],
+                    never_repeat_questions=bool(exp.get("never_repeat_questions")),
+                    never_suggests=[str(x) for x in exp.get("never_suggests") or []],
+                    never_says_after_card=[str(x) for x in exp.get("never_says_after_card") or []],
+                    rejected_values=dict(exp.get("rejected_values") or {}), never_numbers=[str(x) for x in exp.get("never_numbers") or []], sources=[str(x) for x in exp.get("sources") or []],
                     corpus=raw["documents"] if isinstance(raw.get("documents"), str) else None, gold=str(raw.get("gold") or "").strip(), quote=_quote(path, raw.get("quote")))
 
 
@@ -193,8 +204,10 @@ def upload_corpus(http: httpx.Client, form: str, corpus: str) -> None:
 def _site(start: dict) -> str:
     """start.site: main (default) or lab; a lab page path (/lab/...) means the Lab."""
     site = str(start.get("site") or ("lab" if str(start.get("page") or "").startswith("/lab/") else "main"))
+    if site.startswith("/"):   # another host's Dushes mount, e.g. /cabinet/site on FORMGUIDE_BASE
+        return site.rstrip("/")
     if site not in ("main", "lab"):
-        raise ScenarioError(f"start.site takes main or lab, not {site}")
+        raise ScenarioError(f"start.site takes main, lab or a mount path (/...), not {site}")
     return "/lab" if site == "lab" else "/site"
 
 
@@ -354,6 +367,37 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
     shown = {c.get("type") for c in visit.cards}
     for kind in sc.cards:
         out.append({"check": f"shows a {kind} card", "ok": kind in shown, "detail": f"shown: {sorted(shown)}", "cap": CAP_OTHER})
+    if sc.never_repeat_questions:
+        asked = [c for c in visit.cards if c.get("type") == "ask"]
+        norm = [" ".join(str(c.get("question") or "").lower().split()) for c in asked]
+        twice = sorted({q for q in norm if q and norm.count(q) > 1})
+        done: set[str] = set()
+        filled = []
+        for c in visit.cards:   # in order: a question about a field an earlier card already filled
+            if c.get("type") == "set_fields":
+                done.update(str(x.get("name")) for x in c.get("changes") or [])
+            elif c.get("type") == "ask" and c.get("field") and str(c["field"]) in done:
+                filled.append(str(c["field"]))
+        out.append({"check": "never repeats a question", "ok": not twice and not filled,
+                    "detail": ("asked twice: " + "; ".join(twice) if twice else "") + (" asked about filled: " + ", ".join(filled) if filled else ""),
+                    "cap": CAP_OTHER})
+    offered = [x for group in getattr(visit, "suggestions", []) for x in group]
+    for bad in sc.never_suggests:
+        hit = next((x for x in offered if bad.lower() in x.lower()), None)
+        out.append({"check": f"never suggests {bad}", "ok": hit is None, "detail": hit or "", "cap": CAP_OTHER})
+    if sc.never_says_after_card:
+        after = _replies_after_first_card(visit)
+        for bad in sc.never_says_after_card:
+            hit = next((r for r in after if _says(r, bad)), None)
+            out.append({"check": f"never says {bad} after a card", "ok": hit is None, "detail": (hit or "")[:200], "cap": CAP_OTHER})
+    for name, bad in sc.rejected_values.items():
+        got = next((f.config["state"].get(name) for f in visit.forms.values() if name in f.config.get("props", {})), None)
+        out.append({"check": f"{name} does not keep {bad}", "ok": not _same(got, bad), "detail": f"is {json.dumps(got, ensure_ascii=False)[:80]}",
+                    "cap": CAP_OTHER})
+    for num in sc.never_numbers:
+        import re
+        hit = next((r for r in replies if re.search(r"(?<![\d.,])" + re.escape(num) + r"(?![\d]|[.,]\d)", r)), None)
+        out.append({"check": f"never states the number {num}", "ok": hit is None, "detail": (hit or "")[:200], "cap": CAP_OTHER})
     for kind in sc.never_cards:
         out.append({"check": f"shows no {kind} card", "ok": kind not in shown, "detail": f"shown: {sorted(shown)}", "cap": CAP_OTHER})
     for name, want in sc.fields.items():
@@ -377,6 +421,17 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
                     "detail": "no answer contained " + " and ".join(i["pattern"] for i in sc.quote["items"]), "cap": CAP_OTHER})
     if visit.errors:
         out.append({"check": "no run errors", "ok": False, "detail": "; ".join(visit.errors)[:300], "cap": CAP_OTHER})
+    return out
+
+
+def _replies_after_first_card(visit: Visit) -> list[str]:
+    """The assistant's replies logged after the first accepted change card (the log keeps the order)."""
+    out, seen = [], False
+    for line in visit.log:
+        if "card shown and accepted" in line:
+            seen = True
+        elif seen and line.startswith("\U0001f916 "):
+            out.append(line[2:].strip())
     return out
 
 

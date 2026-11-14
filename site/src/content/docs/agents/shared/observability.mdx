@@ -241,6 +241,13 @@ The user and the judge use `models.eval_user` and `models.eval_judge` from `demo
 |---|---|---|
 | `names` | all | scenario names to run |
 | `start.site` (scenario) | `main` | `main` (Dushes at `/site`) or `lab` (the Form Lab at `/lab`) |
+| `expect.tools` (scenario) | none | tools the assistant must call; with `--repeat N` the report counts the runs that called them all (`tools 9/10`) |
+| `start.site` path (scenario) | none | a mount path (`/cabinet/site`) instead of `main` / `lab`: another host's Dushes on `FORMGUIDE_BASE` |
+| `expect.never_repeat_questions` (scenario) | off | no question asked twice, none about a field an earlier card filled |
+| `expect.never_suggests` (scenario) | none | phrases no quick reply may contain ("Pick a day" after a booking) |
+| `expect.never_says_after_card` (scenario) | none | phrases no reply may say once a card was accepted |
+| `expect.rejected_values` (scenario) | none | `{field: bad value}`: the form must not keep it (a phone "333", a past date) |
+| `expect.never_numbers` (scenario) | none | numbers no reply may state (one the screen does not show) |
 | `quote` (scenario) | none | `{pattern, ask}`: a reply to a quote, or `{quotes: [{pattern, note?}], ask}`: a reply to several quotes, each with an optional note (sent as a list in `reply_to`); a check fails when an answer never matched |
 | `--model` | `models.eval_user` / `eval_judge`, else `models.agent` | the user's and the judge's model, e.g. `anthropic:claude-sonnet-5-5` |
 | `--offline` | off | scripted models and the demo in-process |

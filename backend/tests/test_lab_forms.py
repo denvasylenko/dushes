@@ -132,3 +132,26 @@ def test_researcher_checks_never_tools_sources_corpus_and_gold(tmp_path):
         log: list = []
     out = {c["check"]: c["ok"] for c in evals.checks(sc, V())}
     assert out == {"never calls ask_documents": False, "cites policy.md > Excess": True}
+
+
+def test_the_assistant_does_not_act_dumb_checks():
+    sc = evals.Scenario(name="x", persona="p", goal="g", never_repeat_questions=True, never_suggests=["Pick a day"],
+                        never_says_after_card=["pick a day"], rejected_values={"phone": "333"}, never_numbers=["8"])
+
+    class F:
+        config = {"props": {"phone": {}}, "state": {"phone": "333"}}
+
+    class V:
+        cards = [{"type": "ask", "question": "Which day?", "field": "day"},
+                 {"type": "set_fields", "changes": [{"name": "day", "value": "2026-12-01"}]},
+                 {"type": "ask", "question": "Which  day?", "field": "day"}]
+        suggestions = [["Pick a day", "Thanks"]]
+        log = ["🤖 Which day?", "   🃏 card shown and accepted by the user (the form now has these values): Day = 1 Dec", "🤖 Booked. Now pick a day."]
+        messages = [{"role": "assistant", "content": "You had 8 visits"}, {"role": "assistant", "content": "Booked. Now pick a day."}]
+        forms = {"f": F()}
+        tools, sources, errors, path = [], [], [], "/"
+    out = {c["check"]: c["ok"] for c in evals.checks(sc, V())}
+    assert out == {"never repeats a question": False, "never suggests Pick a day": False, "never says pick a day after a card": False,
+                   "phone does not keep 333": False, "never states the number 8": False}
+    V.messages = [{"role": "assistant", "content": "You had 2 visits, 18 views and 8.5 stars"}]
+    assert next(c for c in evals.checks(sc, V()) if c["check"] == "never states the number 8")["ok"]

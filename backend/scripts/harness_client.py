@@ -9,6 +9,7 @@ Both take an `httpx.Client` (the live server by default; a TestClient for the of
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from collections.abc import Callable, Iterator
 from datetime import datetime
@@ -17,7 +18,7 @@ from typing import Any
 
 import httpx
 
-BASE = "http://127.0.0.1:8000"
+BASE = os.environ.get("FORMGUIDE_BASE", "http://127.0.0.1:8000")   # another host's formguide server (Herefront's cabinet)
 RUNS = Path(__file__).parent / "runs"
 SAMPLES = Path(__file__).resolve().parents[1] / "demo" / "samples"
 _KB_READY: set[str] = set()
@@ -272,6 +273,7 @@ class Visit:
         self.messages: list[dict] = []     # the conversation as the server keeps it: {role, content, agent?}
         self.tokens = {"input": 0, "output": 0, "cache_read": 0}   # the assistant's, from the server's run_stats
         self.sources: list[dict] = []      # every source chip shown under an answer
+        self.suggestions: list[list[str]] = []   # each set of quick replies offered, in order
         self.stats: list[dict] = []        # per run: ttft_ms, total_ms, tools, tool_errors, output_tokens, model_ms
         self.replies: list[tuple[str, str]] = []   # (message id, text) of every assistant reply, as the widget keeps them
         self.go(path)
@@ -350,6 +352,8 @@ class Visit:
                     self.log.append(f"   ⚙ {tool}({_short(args, 110)})")
                 elif name == "site_directive":
                     directive = e["value"]
+                elif name == "suggestions":   # the quick replies the chat offers after an answer
+                    self.suggestions.append([str(x) for x in ((e.get("value") or {}).get("items") or [])])
                 elif name == "sources":   # the source chips under the answer: [{title, section?}]
                     self.sources += list((e.get("value") or {}).get("items") or [])
                 elif name == "run_stats":

@@ -1,8 +1,8 @@
 /**
  * Helpers for the Vue benchmark's stands (e2e/vue/stands/*), no model: a scripted agent shows a change card, the
  * test accepts it, and the check reads the stand's Vue state (window.__stand.values()), never the DOM's values.
- * Stands are built with the package's adapter by default (`cd e2e/vue && npx vite build`); STAND_DIST=dist-reference
- * runs the same checks on QA's reference adapter (`STAND_ADAPTER=reference npx vite build`), to tell a wrong stand from
+ * Stands are built with the package's adapter by default (`cd e2e/vue && npx vite build`, into dist/official); STAND_DIST=reference
+ * runs the same checks on QA's reference adapter (`STAND_ADAPTER=reference npx vite build`, into dist/reference), to tell a wrong stand from
  * a missing adapter.
  */
 import { expect, type Page } from '@playwright/test'
@@ -11,7 +11,7 @@ import { run, type Event } from './agent'
 
 export { run }
 
-export const DIST = process.env.STAND_DIST || 'dist'
+export const DIST = `dist/${process.env.STAND_DIST || 'official'}`   // STAND_DIST=reference: QA's reference adapter
 export const stand = (name: string) => `/e2e/vue/${DIST}/stands/${name}/index.html`
 
 export type Change = { name: string; label: string; value: unknown; display: string; previous?: unknown; previous_display?: string | null }
