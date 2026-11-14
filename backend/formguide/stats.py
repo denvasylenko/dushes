@@ -15,6 +15,15 @@ from typing import Any
 _current: ContextVar["RunStats | None"] = ContextVar("formguide_run_stats", default=None)
 
 
+def model_id(model: object) -> str | None:
+    """A chat model's id ("claude-haiku-5-5"), read from the usual attributes of LangChain models, or None."""
+    for attr in ("model", "model_name", "model_id"):
+        v = getattr(model, attr, None)
+        if isinstance(v, str) and v:
+            return v
+    return None
+
+
 class RunStats:
     def __init__(self, run_id: str, thread_id: str):
         self.run_id = run_id

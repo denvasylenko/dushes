@@ -29,7 +29,7 @@ from langgraph.types import interrupt
 from ..form.overlay import Overlay, compute_diff
 from ..form.render import locate, render_changes, render_focus, render_outline
 from ..models import cache_history, missing_key, system_message
-from ..stats import RunStats
+from ..stats import RunStats, model_id
 from ..stats import current as current_stats
 from .memory import compact as compact_history
 from .memory import new_turn_id
@@ -334,7 +334,7 @@ def build_graph(guide: FormGuide):
             flush()
         except Exception as e:  # noqa: BLE001 — provider errors vary; surface them in the chat
             if stats:
-                stats.model_call(t_call, first_chunk, None)
+                stats.model_call(t_call, first_chunk, None, model=model_id(base))
             env = missing_key(base)
             if env:   # the SDK reports a missing key as "Connection error": say what is really wrong
                 log.error("model call failed: no API key, set %s", env)
@@ -352,7 +352,7 @@ def build_graph(guide: FormGuide):
         if stats:
             rm = full.response_metadata or {}
             stats.model_call(t_call, first_chunk, dict(full.usage_metadata or {}),
-                             model=str(rm.get("model_name") or rm.get("model") or "") or None)
+                             model=str(rm.get("model_name") or rm.get("model") or "") or model_id(base))
         meta = full.response_metadata or {}
         if meta.get("stop_reason") == "refusal" or meta.get("finish_reason") == "content_filter":
             w({"kind": "error", "message": "the model declined to answer this request"})

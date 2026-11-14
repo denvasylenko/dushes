@@ -25,7 +25,7 @@ Time spent waiting for the user to answer a card SHALL not be counted: a resumed
 ### Requirement: The run_stats event
 Before `RUN_FINISHED` (or `RUN_ERROR`) a run SHALL send `CUSTOM run_stats` with:
 - `{run_id, thread_id, ttft_ms, total_ms, model_ms, tool_ms}`;
-- `models: [{kind, model, at_ms, ms, ttft_ms, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens}]`, where `at_ms` is when the call started, counted from the start of the run;
+- `models: [{kind, model, at_ms, ms, ttft_ms, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens}]`, where `at_ms` is when the call started, counted from the start of the run; `model` SHALL name the model of every call, suggestions and failed calls included;
 - `tools: [{name, at_ms, ms, error}]`;
 - `tokens: {input, output, cache_read}`;
 - `cache_hit_rate`.

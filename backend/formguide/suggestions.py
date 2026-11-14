@@ -44,7 +44,8 @@ def _parse(text: str, limit: int) -> list[dict[str, Any]]:
 
 
 async def suggest(model: Any, *, user_text: str, answer: str, context: str, limit: int,
-                  timeout: float) -> list[dict[str, Any]]:
+                  timeout: float, meta: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Quick replies after an answer; `meta`, when given, gets the call's `usage` and `model` for run_stats."""
     msgs = [SystemMessage(content=SYSTEM.replace("{max}", str(limit))),
             HumanMessage(content=f"<form>\n{context[:3000]}\n</form>\n<user>\n{user_text[:1000]}\n</user>\n"
                                  f"<assistant>\n{answer[:2000]}\n</assistant>")]
@@ -53,6 +54,10 @@ async def suggest(model: Any, *, user_text: str, answer: str, context: str, limi
     except Exception as e:  # noqa: BLE001 - suggestions are optional
         log.info("suggestions skipped: %s", type(e).__name__)
         return []
+    if meta is not None:
+        rm = getattr(res, "response_metadata", None) or {}
+        meta["usage"] = dict(getattr(res, "usage_metadata", None) or {}) or None
+        meta["model"] = str(rm.get("model_name") or rm.get("model") or "") or None
     content = res.content if isinstance(res.content, str) else " ".join(
         b.get("text", "") for b in res.content if isinstance(b, dict))
     return _parse(content, limit)

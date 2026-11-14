@@ -339,11 +339,13 @@ class FormGuide:
             if t == "RUN_FINISHED" and not interrupts and said and self.suggestions_model is not None:
                 user_text = message or next((e.get("text", "") for e in reversed(tx.list(thread_id))
                                              if e["kind"] == "user"), "")
-                t_sug = RunStats.now()
+                t_sug, sug = RunStats.now(), {}
                 items = await suggest(self.suggestions_model, user_text=user_text, answer="\n".join(said),
                                       context=context, limit=self.config.suggestions.max,
-                                      timeout=self.config.suggestions.timeout)
-                stats.model_call(t_sug, None, None, kind="suggestions")
+                                      timeout=self.config.suggestions.timeout, meta=sug)
+                from .stats import model_id
+                stats.model_call(t_sug, None, sug.get("usage"), kind="suggestions",
+                                 model=sug.get("model") or model_id(self.suggestions_model))
                 if items:
                     applies = [self._suggested_changes(it.get("set"), resume, state) for it in items]
                     keep = [i for i, a in enumerate(applies) if a != "done"]   # already true in the form: no chip
