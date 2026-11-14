@@ -424,6 +424,7 @@ def run(names: list[str] | None = None, *, runs: int | None = None, offline: boo
         out["scenarios"].append({"name": sc.name, "recipe": sc.recipe, "tool": sc.tool, "runs": n,
                                  "hits": sum(r["hit"] for r in res), "model": "offline" if offline else model_name(guide.models.agent),
                                  "results": res})
+    out["ended"] = datetime.now().isoformat(timespec="seconds")   # the report's file name and the docs' date: when it ended
     RUNS.mkdir(exist_ok=True)
     report = RUNS / f"recipes-{datetime.now():%Y%m%d-%H%M%S}{'-offline' if offline else ''}.json"   # offline never looks live
     report.write_text(json.dumps(out, ensure_ascii=False, indent=2))
@@ -448,7 +449,7 @@ def site_numbers(report: dict, path: Path, target: Path = SITE_DATA) -> dict:
             r["tool"].append(s["tool"])
     for name, r in by.items():
         data[name] = {"runs": r["runs"], "hits": r["hits"], "scenarios": r["scenarios"], "tool": "; ".join(r["tool"]), "model": r["model"],
-                      "date": report["at"][:10], "report": str(path.relative_to(HERE.parent))}
+                      "date": (report.get("ended") or report["at"])[:10], "report": str(path.relative_to(HERE.parent))}
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(dict(sorted(data.items())), indent=2) + "\n")
     print(f"site numbers: {target}")

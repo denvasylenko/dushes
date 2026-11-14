@@ -14,7 +14,7 @@
     "scenarios": 2,
     "tool": "",
     "model": "claude-haiku-5-5",
-    "date": "2026-11-14",
+    "date": "2026-11-15",
     "report": "backend/scripts/runs/recipes-20261115-000003.json"
   },
   "confirm-side-effect": {

@@ -47,6 +47,8 @@ def test_site_numbers_add_up_a_recipes_scenarios(tmp_path):
     assert data["skill-scoped"] == {"runs": 20, "hits": 19, "scenarios": 2, "tool": "use_skill; not use_skill", "model": "claude-haiku-5-5",
                                     "date": "2026-11-14", "report": "backend/scripts/runs/recipes-x.json"}
     assert json.loads(target.read_text())["other"] == {"runs": 1}
+    late = recipes.site_numbers({**rep, "at": "2026-11-14T23:55:37", "ended": "2026-11-15T00:00:03"}, path, target)
+    assert late["skill-scoped"]["date"] == "2026-11-15"   # a run over midnight carries the day it ended, as its report's name does
 
 
 def test_bench_writes_the_docs_speed_numbers(tmp_path):
