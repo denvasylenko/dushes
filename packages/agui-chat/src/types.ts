@@ -146,6 +146,8 @@ export interface ChatApi {
   append(el: HTMLElement): void
   /** Change the composer's hint (e.g. on a language switch). */
   setPlaceholder(text: string): void
+  /** Replace the suggestions above the composer without a run; `[]` clears them. */
+  setSuggestions(items: string[]): void
   /** Take back an assistant message already shown, by its message id. */
   removeMessage(id: string): boolean
   /** Redraw a shown card in place with new data. */

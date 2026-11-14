@@ -80,7 +80,7 @@ function look(c: RendererContext, unit: unknown): ChartLook {
   const accent = rgb(tok('--agui-link', '#0a84ff'))
   return {
     colors: [accent, ...SERIES.map((x, i) => rgb(tok(`--agui-series-${i + 2}`, x)))],
-    ink: rgb(tok('--agui-ink', '#1d1d1f')), muted: rgb(tok('--agui-ink-3', '#86868b')),
+    ink: rgb(tok('--agui-ink', '#1d1d1f')), /* axis labels are text: ink-2 */ muted: rgb(tok('--agui-ink-2', '#6e6e73')),
     grid: rgb(tok('--agui-line', 'rgba(0,0,0,.08)')), surface: rgb(tok('--agui-panel-bg', tok('--agui-bg', '#ffffff'))),
     font: tok('--agui-font', '-apple-system, BlinkMacSystemFont, sans-serif'),
     reduced: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,

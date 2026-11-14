@@ -1,5 +1,5 @@
 /** formguide's cards: field changes, questions, upload requests and confirmations. */
-import { h, mdInline, numberBox, selectBox } from '../dom'
+import { easeHeight, h, mdInline, numberBox, selectBox } from '../dom'
 import { shrinkImage } from '../image'
 import type { ChatApi, Interrupt, RendererContext } from '../types'
 import type { Ctx, Directive, FieldCardFlags } from './index'
@@ -306,12 +306,14 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
   const applies = !!(it.applies && it.field && ctx)   // tapping an option fills the field (no second card)
   const picked = new Set<string>()
   const err = h('div', { class: 'muted err-line', role: 'alert' })
-  const answered = (labels: string, ok = true) => {   // the card shrinks to the question and the answer
+  const answered = (labels: string, ok = true) => {   // the card shrinks to the question and the answer, easing (no jump)
     const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, labels))
-    acts.replaceWith(line)
-    card.querySelectorAll('.chips, .opts, .cmp, .strip, .range, .fields, .search, .note, .num').forEach((x) => x.remove())
-    text?.remove()
-    err.remove()
+    easeHeight(card, () => {
+      acts.replaceWith(line)
+      card.querySelectorAll('.chips, .opts, .cmp, .strip, .range, .fields, .search, .note, .num').forEach((x) => x.remove())
+      text?.remove()
+      err.remove()
+    })
     return line
   }
   /** Values that fill fields directly (a day, a slot, a range, several fields): applied with Undo, then resumed. */
@@ -513,7 +515,7 @@ export function uploadCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLEle
 export function confirmCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLElement {
   const answer = (ok: boolean) => {
     const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '✓' : '✕'), h('span', null, ok ? c.t('confirmed') : c.t('declined')))
-    acts.replaceWith(line)
+    easeHeight(acts.closest<HTMLElement>('.card'), () => acts.replaceWith(line))
     c.resolve({ accepted: ok })
     // a receipt (CUSTOM receipt) may replace the line later; the rating is offered once either way
     if (ok && ctx && !c.restored) line.after(feedbackEl(c, c.chat, ctx, it.card_id))

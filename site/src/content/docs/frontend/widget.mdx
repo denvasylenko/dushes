@@ -55,7 +55,7 @@ Build it from this repository: `cd packages/agui-chat && npm install && npm run 
 | one line in their place, after the first second: a spinner and "Searching the business documents…", the text changing in place | `TOOL_CALL_START` … `TOOL_CALL_RESULT` of a server tool (a tool's `CUSTOM tool_progress` sub-steps are not shown) |
 | "Done in 4 s ›" in the same place; the chevron opens the steps, a repeat merged ("Searching the business documents (2)") | the run ended |
 | a card | `CUSTOM on_interrupt` (JSON value with `type`) or `RUN_FINISHED.outcome.interrupts` |
-| chips under the answer; a chip marked ✓ fills fields in one tap (with Undo), then sends its text | `CUSTOM suggestions {items, applies?}` |
+| chips in one row right above the input (scrolling sideways); a chip marked ✓ fills fields in one tap (with Undo), then sends its text | `CUSTOM suggestions {items, applies?}` |
 | "Something went wrong" + Try again | `RUN_ERROR` or a network error |
 
 

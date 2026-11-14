@@ -64,7 +64,7 @@ export const BLOCKS_CSS = `
 .bk-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--agui-ink-2); }
 .bk-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .bk-legend i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
-.bk-data summary { font-size: 12px; color: var(--agui-ink-3); cursor: pointer; width: max-content; }
+.bk-data summary { font-size: 12px; color: var(--agui-ink-2); cursor: pointer; width: max-content; }
 .bk-data table { width: 100%; margin-top: 6px; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
 .bk-data th, .bk-data td { padding: 4px 0; text-align: right; border-top: 1px solid var(--agui-line); font-weight: 400; }
 .bk-data th[scope=row] { text-align: left; color: var(--agui-ink-2); }

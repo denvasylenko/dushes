@@ -160,6 +160,14 @@ describe('the message queue', () => {
     expect($$(el, '.chip').map((c) => c.textContent)).toEqual(['Book a table'])
   })
 
+  it('the page sets the suggestions without a run; [] clears them', async () => {
+    const el = await mount()
+    el.setSuggestions(['Add a note', 'Change the time'])
+    expect($$(el, '.foot > .quick .chip').map((c) => c.textContent)).toEqual(['Add a note', 'Change the time'])
+    el.setSuggestions([])
+    expect(el.shadowRoot!.querySelector('.quick')).toBeNull()
+  })
+
   it('the queue survives a reload', async () => {
     const el = await mount(), a = agent()
     el.agent = a as never

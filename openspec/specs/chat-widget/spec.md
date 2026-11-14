@@ -43,7 +43,7 @@ With `typing="plain"`, text SHALL appear as it arrives without effects. With `pr
 - **THEN** text, cards and the panel appear without animation
 
 ### Requirement: Live tool steps
-While a run is active, the widget SHALL show the agent's tool calls as one line of fixed height, in the place of the typing dots: a spinner and the current step's label (from the label map, or the tool name), changed in place. A chevron SHALL open the step list (collapsed by default): a tick for a finished step, a mark for a failed one, and a repeated step merged into one row with its count. When the run ends the line SHALL read "Done in N s" in the same place; `tool-steps="off"` SHALL hide it.
+While a run is active, the widget SHALL show the tool calls as one line of fixed height in the typing dots' place: a spinner and the current step's label (the label map, or the tool name), changed in place. A chevron SHALL open the step list (collapsed by default; a tick per finished step, a mark per failed one, a repeat merged with its count). At the end the line SHALL read "Done in N s" in place; a list the user opened SHALL stay open. `tool-steps="off"` SHALL hide it.
 
 #### Scenario: A search step
 - **WHEN** the agent searches the business documents twice and answers after 4 s
@@ -246,11 +246,25 @@ Where the browser supports speech recognition and `mic` is on, a microphone butt
 - **THEN** the dictated text is sent as a message
 
 ### Requirement: Quick-reply chips
-The widget SHALL show quick-reply chips: the starters for an empty chat, and the latest `CUSTOM suggestions` event under the last answer. Clicking a chip SHALL send it as a message. The chips SHALL disappear when the user sends a message.
+The widget SHALL show quick-reply chips: the starters for an empty chat, and the latest `CUSTOM suggestions` event in one row pinned right above the composer (it scrolls sideways; the log does not grow under the answer). Clicking a chip SHALL send it as a message. The chips SHALL disappear when the user sends a message, and come back when the user stops that answer.
 
 #### Scenario: A suggestion clicked
 - **WHEN** the last answer has the suggestions "What comes next?" and "Fill from my passport"
-- **THEN** two chips appear under it, and clicking one sends that text
+- **THEN** two chips appear above the composer, and clicking one sends that text
+
+### Requirement: Suggestions from the page
+`chat.setSuggestions(items)` SHALL replace the suggestions above the composer without a run (at most five, `[]` clears them); during a run they SHALL show when it ends.
+
+#### Scenario: A booking made by the page
+- **WHEN** the page books the table itself and calls `chat.setSuggestions(["Add a note", "Change the time"])`
+- **THEN** the old suggestions go and these two show above the composer
+
+### Requirement: Heights ease
+A card that shrinks to its answer and a long message that opens or folds SHALL change height over about 200 ms instead of at once, and a queued message's line SHALL fold away; with reduced motion the change SHALL be immediate. While the user has scrolled up, new content SHALL NOT scroll the log, and the jump-to-latest button SHALL show.
+
+#### Scenario: Answering a question card
+- **WHEN** the user taps an option on a question card
+- **THEN** the card eases to its question and the answer line, and the content under it moves smoothly
 
 ### Requirement: Action chips
 A suggestion with changes in `applies` SHALL be marked as filling fields. Clicking it SHALL hand the changes to the plugin that applies them (formguide's `applyChanges`), show the result with Undo, and then send the text. When applying fails, the chips SHALL stay and a readable error SHALL show under them.

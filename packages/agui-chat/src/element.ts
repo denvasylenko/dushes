@@ -1,5 +1,5 @@
 /** <agui-chat>: an AG-UI chat as a Web Component. Every option: site/src/content/docs/reference/agui-chat.md. */
-import { h, md, reducedMotion, store } from './dom'
+import { easeHeight, h, md, reducedMotion, store } from './dom'
 import { STRINGS } from './i18n'
 import { loadZoom } from '#editor-loader'
 import { LANGUAGES, PACKS, loadLanguage } from './langs'
@@ -114,7 +114,7 @@ const darkNow = (scheme: string): boolean => scheme === 'dark' ||
 
 interface AiItem { id: string; text: string; el: HTMLElement; body: HTMLElement; st: TypewriterState; done: boolean; raf: number; typed: () => void }
 interface StepsItem { el: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement; text: HTMLElement; steps: Map<string, HTMLElement>; count: number
-  t0: number; show?: ReturnType<typeof setTimeout>; last?: { label: string; li: HTMLElement; n: number } }
+  t0: number; show?: ReturnType<typeof setTimeout>; last?: { label: string; li: HTMLElement; n: number }; now: string; end?: string }
 // one line of steps, hidden (class "quiet") for routine look-ups (plugins' quietSteps) and for the first second
 interface PendingCall { id: string; name: string; args: string }
 
@@ -599,6 +599,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._swipe(log)
     recX.addEventListener('click', () => { this._dropDictation(); (input as HTMLTextAreaElement).focus() })
     files.hidden = true
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (this._stick) log.scrollTop = log.scrollHeight }).observe(log)
     log.addEventListener('scroll', () => {
       this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
       jump.hidden = this._stick
@@ -891,6 +892,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._defaultFoot ??= [...this.$.foot.childNodes]
     const foot = this.renderSlot('composer')
     this.$.foot.replaceChildren(...(foot ? [foot] : this._defaultFoot))
+    this._placeQuick()   // the suggestions stay above the composer, the host's own one too
     this.$.btnNew.setAttribute('aria-label', this.t('newChat'))
     this.$.jump.setAttribute('aria-label', this.t('toLatest')); this.$.jump.title = this.t('toLatest')
     this.$.btnClose.setAttribute('aria-label', this.t('close'))
@@ -1195,7 +1197,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const toggle = (): void => {
       const log = this.$.log, top = box.getBoundingClientRect().top
       log.style.overflowAnchor = 'none'
-      const open = box.classList.toggle('clamped') === false
+      let open = false
+      easeHeight(box, () => { open = box.classList.toggle('clamped') === false })   // it opens and folds, never jumps
       btn.textContent = this.t(open ? 'showLess' : 'showMore')
       btn.setAttribute('aria-expanded', String(open))
       log.scrollTop += box.getBoundingClientRect().top - top   // the text opens downwards from where it was read
@@ -1460,6 +1463,13 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._quick?.remove(); this._quick = null; this._suggestions = []; this._applies = []
   }
 
+  /** The suggestions row goes right above the composer (ours, or the host's own from the composer slot). */
+  private _placeQuick(): void {
+    if (!this._quick) return
+    const foot = this.$.foot
+    foot.insertBefore(this._quick, this.$.box.parentNode === foot ? this.$.box : foot.firstChild)
+  }
+
   private _renderQuick(): void {
     this._quick?.remove()
     this._quick = null
@@ -1487,8 +1497,27 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       return b
     })
     const own = this.renderSlot('suggestions', this._suggestions)
-    this._quick = this._append(h('div', { class: 'quick' }, ...(own ? [own] : [h('div', { class: 'chips' }, chips), err])))
+    // pinned above the composer, one row that scrolls sideways (as in Telegram): the log does not grow under the answer
+    this._quick = h('div', { class: 'quick' }, ...(own ? [own] : [h('div', { class: 'chips' }, chips), err]))
     this._quick.hidden = !this._opts.quickReplies
+    this._placeQuick()
+    const row = this._quick.querySelector<HTMLElement>(':scope > .chips')
+    if (row) {
+      const fade = (): void => {
+        row.classList.toggle('more-left', row.scrollLeft > 2)
+        row.classList.toggle('more-right', row.scrollLeft + row.clientWidth < row.scrollWidth - 2)
+      }
+      row.addEventListener('scroll', fade, { passive: true })
+      row.addEventListener('wheel', (e) => {   // a mouse wheel scrolls the row sideways
+        if (e.shiftKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX) || row.scrollWidth <= row.clientWidth) return
+        row.scrollLeft += e.deltaY; e.preventDefault()
+      }, { passive: false })
+      requestAnimationFrame(fade)
+    }
+    if (!this._quick.hidden && !reducedMotion() && typeof this._quick.animate === 'function') {
+      const to = this._quick.offsetHeight
+      this._quick.animate([{ height: '0px', overflow: 'hidden' }, { height: `${to}px`, overflow: 'hidden' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' })
+    }
   }
 
   // ------------------------------------------------------------------ thread
@@ -1967,12 +1996,15 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const toggle = h('button', { type: 'button', 'aria-expanded': 'false', 'aria-controls': list.id }, h('span', { class: 'mark', 'aria-hidden': 'true' }), text) as HTMLButtonElement
     const el = h('div', { class: 'steps collapsed quiet', part: 'steps', role: 'status' }, toggle, list)
     toggle.addEventListener('click', () => {
-      const closed = el.classList.toggle('collapsed')
-      el.classList.toggle('openlist', !closed)
-      toggle.setAttribute('aria-expanded', String(!closed))
+      easeHeight(el, () => {   // the list opens and folds, never jumps
+        const closed = el.classList.toggle('collapsed')
+        el.classList.toggle('openlist', !closed)
+        toggle.setAttribute('aria-expanded', String(!closed))
+        if (this._steps) this._stepsHead(this._steps)
+      })
     })
     el.hidden = true
-    this._steps = { el, list, toggle, text, steps: new Map(), count: 0, t0: this._runT0 || Date.now() }
+    this._steps = { el, list, toggle, text, steps: new Map(), count: 0, t0: this._runT0 || Date.now(), now: this.t('working') }
     this._append(el)
     return this._steps
   }
@@ -1993,7 +2025,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       s.list.appendChild(li)
     }
     s.steps.set(id, li)
-    s.text.textContent = `${text}\u2026`
+    s.now = `${text}\u2026`
+    this._stepsHead(s)
     if (!this._plugins.some((p) => p.quietSteps?.includes(name)) && !s.show) {   // a real step: the line shows after the first second
       s.show = setTimeout(() => {
         if (this._steps !== s || s.el.classList.contains('done')) return
@@ -2016,11 +2049,15 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (!s) return
     clearTimeout(s.show)
     s.el.querySelectorAll('li.run').forEach((x) => x.classList.replace('run', failed ? 'fail' : 'ok'))
-    s.text.textContent = failed ? this.t('steps', { n: s.count }) : this.t('doneIn', { s: Math.max(1, Math.round((Date.now() - s.t0) / 1000)) })
-    s.el.classList.add('done', 'collapsed')
-    s.el.classList.remove('openlist')
-    s.toggle.setAttribute('aria-expanded', 'false')
+    s.end = failed ? this.t('steps', { n: s.count }) : this.t('doneIn', { s: Math.max(1, Math.round((Date.now() - s.t0) / 1000)) })
+    s.el.classList.add('done')   // a list the user opened stays open (it does not snap shut under them)
+    this._stepsHead(s)
     s.el.removeAttribute('role')
+  }
+
+  /** The line's text: the time when done, the count while the list is open (its rows name the steps), else the step. */
+  private _stepsHead(s: StepsItem): void {
+    s.text.textContent = s.end ?? (s.el.classList.contains('openlist') ? this.t('steps', { n: s.count }) : s.now)
   }
 
   // ------------------------------------------------------------------ frontend tools
@@ -2051,6 +2088,15 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   /** Show any card without the agent; the promise resolves with the user's answer. */
+  /** Replace the suggestions above the composer without a run (e.g. after the page did the booking itself); `[]` clears them. */
+  setSuggestions(items: string[]): void {
+    this._suggestions = (Array.isArray(items) ? items : []).map(String).filter((s) => s.trim()).slice(0, 5)
+    this._applies = []
+    this._prevQuick = null
+    if (this._busy) return   // shown when the running answer ends
+    this._renderQuick()
+  }
+
   /** Take back an assistant message already shown (e.g. a host's "cut" when an action follows the text). */
   removeMessage(id: string): boolean {
     const el = [...this.$.log.querySelectorAll<HTMLElement>('[data-message-id]')].find((x) => x.dataset.messageId === id)

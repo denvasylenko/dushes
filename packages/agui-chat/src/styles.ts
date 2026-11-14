@@ -70,7 +70,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   background: var(--agui-header-bg, transparent); color: var(--agui-header-ink, inherit); }
 .logo { width: 32px; height: 32px; border-radius: var(--agui-radius-sm); flex: none; display: grid; place-items: center; background: var(--agui-accent); color: var(--agui-on-accent); }
 .title { font-weight: 650; font-size: 15px; line-height: 1.2; }
-.sub { font-size: 12px; color: var(--agui-ink-3); margin-top: 2px; }
+.sub { font-size: 12px; color: var(--agui-ink-2); margin-top: 2px; }
 .icon { flex: none; width: 36px; height: 36px; border: 0; border-radius: var(--agui-radius-sm); background: transparent; color: var(--agui-ink-2);
   display: grid; place-items: center; cursor: pointer; }
 .head .icon:first-of-type { margin-left: auto; }
@@ -95,12 +95,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .msg.ai .code { position: relative; margin: 8px 0 12px; background: var(--agui-soft); border-radius: var(--agui-radius-sm); overflow: hidden; }
 .msg.ai .code pre { margin: 0; padding: 12px 14px; overflow-x: auto; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0; }
 .msg.ai .code code { background: none; padding: 0; font-size: inherit; white-space: pre; overflow-wrap: normal; }
-.msg.ai .code[data-lang]::before { content: attr(data-lang); display: block; padding: 6px 14px 0; font-size: 11px; font-weight: 600; color: var(--agui-ink-3); text-transform: lowercase; }
+.msg.ai .code[data-lang]::before { content: attr(data-lang); display: block; padding: 6px 14px 0; font-size: 11px; font-weight: 600; color: var(--agui-ink-2); text-transform: lowercase; }
 .code-copy { position: absolute; top: 4px; right: 4px; border: 0; border-radius: var(--agui-radius-pill); background: var(--agui-bg); color: var(--agui-ink-2);
   font: 500 12px var(--agui-font); padding: 4px 10px; min-height: 28px; cursor: pointer; box-shadow: 0 0 0 1px var(--agui-line); }
 .code-copy:hover { color: var(--agui-ink); }
 .code-copy:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-accent) 30%, transparent), 0 0 0 1px var(--agui-accent); }
-.notice { text-align: center; font-size: 12px; color: var(--agui-ink-3); margin: 0 0 16px; }
+.notice { text-align: center; font-size: 12px; color: var(--agui-ink-2); margin: 0 0 16px; }
 .error { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--agui-danger); font-size: 13px; margin: 0 0 16px; }
 /* the actions under an answer: quiet icons; on a computer they show on hover (the latest answer keeps them) */
 .msg-acts { display: flex; gap: 2px; margin: 6px 0 0 -8px; }
@@ -134,12 +134,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 @keyframes word { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: blur(0); } }
 
 /* live tool steps */
-.steps { margin: 0 0 14px; font-size: 13px; color: var(--agui-ink-2); }
+.steps { margin: 0 0 20px; font-size: 13px; color: var(--agui-ink-2); }   /* the dots' row and margin: no move at the handover */
 /* one line, one height (the dots' row, which it replaces): the text changes in place, the mark turns while it works */
-.steps > button { display: inline-flex; align-items: center; gap: 8px; min-height: 26px; max-width: 100%; border: 0; background: none; padding: 0; cursor: pointer; color: inherit; font: inherit; text-align: left; }
+.steps > button { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 26px; max-width: calc(100% + 12px); border: 0; background: none; padding: 0 6px; margin: 0 -6px;
+  border-radius: var(--agui-radius-pill); cursor: pointer; color: inherit; font: inherit; text-align: left; }
+@media (pointer: coarse) { .steps > button::before { content: ""; position: absolute; inset: -9px -8px; } }   /* 44 px to the finger, 26 px to the eye */
 .steps-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .steps > button > .mark { width: 14px; height: 14px; flex: none; border-radius: var(--agui-radius-pill); border: 2px solid var(--agui-line-2); border-top-color: var(--agui-link); animation: turn .8s linear infinite; }
-.steps.done > button > .mark { display: none; }
+/* done: the slot stays (the text does not slide), the spinner turns into a quiet tick; open, the rows carry the spinners */
+.steps.done > button > .mark { animation: none; border: 0; display: grid; place-items: center; }
+.steps.done > button > .mark::before { content: "\\2713"; font-size: 11px; color: var(--agui-ink-2); }
+.steps.openlist:not(.done) > button > .mark { visibility: hidden; }
 .steps > button::after { content: "\\203A"; transition: transform .2s; } .steps.openlist > button::after { transform: rotate(90deg); }
 .steps ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 7px; }
 .steps.collapsed ul { display: none; }
@@ -183,7 +188,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   animation: rise .5s var(--agui-ease) both; font-size: 15px; line-height: 1.45; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 .bk-wait { min-height: 88px; }
-.tone-accent { color: var(--agui-link); } .tone-ok { color: var(--agui-ok); } .tone-danger { color: var(--agui-danger); } .tone-muted { color: var(--agui-ink-3); }
+.tone-accent { color: var(--agui-link); } .tone-ok { color: var(--agui-ok); } .tone-danger { color: var(--agui-danger); } .tone-muted { color: var(--agui-ink-2); }
 .chip:disabled { opacity: .4; cursor: default; text-decoration: line-through; }
 /* a finished card (.card.done) is quieter by its shape, never by opacity: its text and Undo keep full contrast */
 .chip input[type=checkbox] { accent-color: var(--agui-accent); width: 15px; height: 15px; }
@@ -192,7 +197,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .card.dismissed .row .btn, .card.dismissed .field { display: none; }
 .card-t { font-size: 13px; font-weight: 600; color: var(--agui-ink-2); margin-bottom: 10px; }
 .card-q { font-size: 15px; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.01em; }
-.card .muted, .muted { color: var(--agui-ink-3); font-size: 13px; }
+.card .muted, .muted { color: var(--agui-ink-2); font-size: 13px; }
 .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
 .btn { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: var(--agui-button-radius, var(--agui-radius-pill));
   padding: 9px 15px; font: 600 13px/1 var(--agui-font); cursor: pointer; text-decoration: none; }
@@ -207,11 +212,19 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   font: 13px/1.2 var(--agui-font); cursor: pointer; text-align: left; transition: border-color .2s, color .2s, background .2s; }
 @media (hover: hover) { .chip:not(:disabled):hover { border-color: var(--agui-ink-3); color: var(--agui-ink); } }
 .chip.on { background: var(--agui-chip-on-bg, var(--agui-accent)); border-color: var(--agui-chip-on-bg, var(--agui-accent)); color: var(--agui-chip-on-ink, var(--agui-on-accent)); }
-.chip kbd { font: 11px/1 var(--agui-font); color: var(--agui-ink-3); margin-right: 6px; display: none; }
+.chip kbd { font: 11px/1 var(--agui-font); color: var(--agui-ink-2); margin-right: 6px; display: none; }
 /* number-key hints only once the user works from the keyboard (the card or an option has keyboard focus) */
 .card:focus-visible kbd, .card:has(:focus-visible) kbd { display: inline; }
 .chip.on kbd { color: inherit; opacity: .7; }
-.quick { margin: -8px 0 18px; animation: rise .4s var(--agui-ease) both; }
+/* suggestions: one row above the composer, scrolling sideways, its edges fading */
+.quick { margin: -2px -14px 6px; }
+/* room for the focus ring; the edges fade only where chips are hidden (a mask's colour is only its alpha) */
+.quick > .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 4px 14px; scroll-padding: 0 14px;
+  mask-image: linear-gradient(to right, transparent, var(--agui-ink) var(--fl, 0px), var(--agui-ink) calc(100% - var(--fr, 0px)), transparent); }
+.quick > .chips.more-left { --fl: 24px; } .quick > .chips.more-right { --fr: 24px; }
+.quick > .chips::-webkit-scrollbar { display: none; }
+.quick > .chips > .chip { flex: none; }
+.quick > .err-line { padding: 4px 14px 0; }
 /* inputs, Apple-style: a soft filled field, 44 px tall, the accent ring on focus; 16 px text so iOS does not zoom */
 .field input, .field select, .text-in { width: 100%; min-height: var(--agui-input-height, 44px); border: 1px solid var(--agui-input-border, transparent);
   border-radius: var(--agui-input-radius, var(--agui-radius-sm)); padding: 10px 14px; font: 16px/1.3 var(--agui-font);
@@ -256,7 +269,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .cal-nav:disabled { color: var(--agui-ink-3); opacity: .5; cursor: default; background: none; }
 .cal-nav svg { width: 14px; height: 14px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
-.cal-wd { font-size: 11px; font-weight: 600; color: var(--agui-ink-3); padding: 4px 0; }
+.cal-wd { font-size: 11px; font-weight: 600; color: var(--agui-ink-2); padding: 4px 0; }
 .cal-d { aspect-ratio: 1; max-height: 40px; border: 0; border-radius: var(--agui-radius-pill); background: none; color: var(--agui-ink); font: 15px/1 var(--agui-font);
   cursor: pointer; display: grid; place-items: center; transition: background .15s; }
 .cal-d:hover { background: var(--agui-soft); }
@@ -333,7 +346,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .card-msg { color: var(--agui-ink-2); }
 .err-line { color: var(--agui-danger); margin-top: 8px; }
 .err-line:empty { display: none; }
-.wait .slow { margin-left: 10px; font-size: 13px; color: var(--agui-ink-3); animation: rise .4s var(--agui-ease) both; }
+.wait .slow { margin-left: 10px; font-size: 13px; color: var(--agui-ink-2); animation: rise .4s var(--agui-ease) both; }
 
 /* composer */
 .foot { padding: 10px 14px max(14px, env(safe-area-inset-bottom, 0px)); background: var(--agui-composer-area-bg, transparent); }
@@ -493,7 +506,7 @@ button.bubble-q { cursor: pointer; }
 @keyframes zoom-in { from { opacity: 0; } to { opacity: 1; } }
 .att.doc { width: auto; min-width: 120px; max-width: 200px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 28px 8px 10px; }
 .att-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.att-ext { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--agui-ink-3); }
+.att-ext { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--agui-ink-2); }
 .att-x { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; display: grid; place-items: center;
   background: color-mix(in srgb, var(--agui-ink) 72%, transparent); color: var(--agui-bg); font-size: 14px; line-height: 1; cursor: pointer; }
 .att-x::before { content: ''; position: absolute; inset: -10px; }   /* a finger-sized target */
@@ -519,7 +532,7 @@ button.bubble-q { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .att-new, .att-out, .files-in, .att.busy::after, .zoom { animation: none; } .att-x { transition: none; } }
 .chip.file { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 11px; cursor: default; }
 .chip.file .btn { padding: 2px 7px; }
-.hint { text-align: center; font-size: 12px; line-height: 16px; color: var(--agui-ink-3); margin-top: 7px; min-height: 16px; }   /* one line, always the same height: nothing below jumps */
+.hint { text-align: center; font-size: 12px; line-height: 16px; color: var(--agui-ink-2); margin-top: 7px; min-height: 16px; }   /* one line, always the same height: nothing below jumps */
 .hint:empty::after { content: attr(data-footnote); }
 .hint .btn.link { font-size: 12px; padding: 0 2px; }
 /* dictation on the server: the wave and the timer take the input's place, like iOS Messages' dictation */
@@ -640,7 +653,7 @@ button.bubble-q { cursor: pointer; }
 .opt:hover { border-color: var(--agui-ink-3); }
 .opt b { font-weight: 600; }
 .opt .muted { font-size: 13px; }
-.opt kbd { position: absolute; right: 10px; top: 10px; font: 11px/1 var(--agui-font); color: var(--agui-ink-3); display: none; }
+.opt kbd { position: absolute; right: 10px; top: 10px; font: 11px/1 var(--agui-font); color: var(--agui-ink-2); display: none; }
 .opt.on { border-color: var(--agui-accent); box-shadow: inset 0 0 0 1px var(--agui-accent); }
 .cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
 .cmp-col { align-content: start; }
@@ -680,7 +693,7 @@ button.bubble-q { cursor: pointer; }
 .rev-s { cursor: pointer; align-items: center; }
 .rev-s .dot { width: 14px; height: 14px; border: 1.5px dashed var(--agui-ink-3); border-radius: var(--agui-radius-pill); flex: none; }
 .rev-s .okmark { width: 14px; color: var(--agui-ok); font-style: normal; font-weight: 700; flex: none; }
-.row.issue .sev { width: 14px; font-style: normal; font-weight: 700; flex: none; color: var(--agui-ink-3); }
+.row.issue .sev { width: 14px; font-style: normal; font-weight: 700; flex: none; color: var(--agui-ink-2); }
 .row.issue.fixed .sev { color: var(--agui-ok); }
 .row.issue .ok-line { margin-top: 4px; }
 .srcs { margin: -10px 0 18px; }

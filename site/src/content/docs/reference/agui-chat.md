@@ -89,6 +89,7 @@ Unknown option names are ignored with a console warning.
 | `await chat.showCard(payload)` | shows any card without the agent and resolves with the user's answer; see [Calling components](../../frontend/cards/#calling-components-from-your-code) |
 | `chat.reset()` | a new conversation (new thread id) |
 | `chat.setPlaceholder(text)` | change the composer's hint (a language switch) |
+| `chat.setSuggestions(items)` | replace the suggestions above the composer without a run (after the page did something itself); `[]` clears them; at most 5 |
 | `agui:open`, `agui:close` | the chat opened or closed (bubble, drawer, hero) |
 | `chat.removeMessage(id)` | take back an assistant message already shown (and from the history) |
 | `chat.updateCard(id, patch)` | redraw a shown card in place: `{blocks}` for a card from blocks |

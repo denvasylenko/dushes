@@ -83,6 +83,17 @@ export function md(src: string, labels: { copy?: string } = {}): string {
 export const reducedMotion = (): boolean =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
+/** A height change that eases instead of jumping: `change` runs, then the element moves from its old height to
+ *  the new one in 200 ms (at once with reduced motion). */
+export function easeHeight(el: HTMLElement | null, change: () => void, ms = 200): void {
+  const from = el?.isConnected && !reducedMotion() ? el.offsetHeight : -1
+  change()
+  if (!el || from < 0 || typeof el.animate !== 'function') return
+  const to = el.offsetHeight
+  // max-height too: a folded message is held by it (.clamped), and it would win over height
+  if (from !== to) el.animate([{ height: `${from}px`, maxHeight: `${from}px`, overflow: 'hidden' }, { height: `${to}px`, maxHeight: `${to}px`, overflow: 'hidden' }], { duration: ms, easing: 'cubic-bezier(.2,.8,.2,1)' })
+}
+
 export function store<T>(key: string): { get(): T | null; set(v: T): void } {
   return {
     get() { try { return JSON.parse(localStorage.getItem(key) ?? 'null') } catch { return null } },
