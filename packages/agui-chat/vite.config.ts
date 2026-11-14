@@ -8,6 +8,7 @@ export default defineConfig({
   // language packs: chunks loaded with import() (the one-script build swaps in a <script> loader)
   resolve: { alias: { '#lang-loader': new URL('./src/lang-loader.ts', import.meta.url).pathname,
     '#theme-loader': new URL('./src/theme-loader.ts', import.meta.url).pathname,
+    '#tip-loader': new URL('./src/tip-loader.ts', import.meta.url).pathname,
     '#editor-loader': new URL('./src/editor-loader.ts', import.meta.url).pathname,
     '#blocks-loader': new URL('./src/blocks-loader.ts', import.meta.url).pathname,
     '#charts-loader': new URL('./src/charts-loader.ts', import.meta.url).pathname } },

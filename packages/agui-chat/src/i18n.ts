@@ -70,7 +70,6 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "dictateReply": "Dictate a reply",
     "withReply": "With reply",
     "quotedReply": "My replies are on the quotes above.",
-    "replyQueued": "Added. It goes with your next message.",
     "newLine": "New line",
     "quoteRemoved": "Quote removed.",
     "undo": "Undo"

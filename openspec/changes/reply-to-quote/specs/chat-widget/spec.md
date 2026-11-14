@@ -3,11 +3,18 @@
 ## ADDED Requirements
 
 ### Requirement: Reply to a part of an answer
-As in the Claude app, replying takes two steps. Selecting text inside one agent message SHALL show a small capsule with Reply; a scroll, Esc or a tap elsewhere SHALL take it away. Reply SHALL open a reply window in its place, with the quote on one line (ending in "…"), a field "Reply to <the assistant's name>" that takes the focus, and Add to chat. The capsule and the window sit above the selection on a fine pointer and under it on a touch screen.
+As in the Claude app, replying takes two steps. Selecting text inside one agent message SHALL show a small capsule with Reply; a scroll, Esc or a tap elsewhere SHALL take it away. Reply SHALL open a reply window in its place, with the quote on one line (ending in "…"), a field "Reply to <the assistant's name>" that takes the focus, a microphone that dictates into that field (Cmd or Ctrl+D), and Add to chat.
 
 #### Scenario: A line of an answer
 - **WHEN** the user selects "the fee is 2%" in an agent's message with a mouse
 - **THEN** a capsule with Reply appears above the selection, and Reply opens a window with the quote, a field "Reply to Assistant" and Add to chat
+
+### Requirement: Where the capsule and the window sit
+The capsule and the reply window SHALL sit above the selection on a fine pointer and under it on a touch screen, clear of the system's own selection menu.
+
+#### Scenario: On a phone
+- **WHEN** the user selects a line on a touch screen
+- **THEN** the Reply capsule appears under the selection
 
 ### Requirement: The reply window follows its text
 The reply window SHALL move with the quoted text when the log scrolls, never pinned to an edge of the panel, and stay open. Esc or a tap elsewhere SHALL close it, keeping anything typed as a quote with its reply in the composer.
@@ -117,3 +124,11 @@ The composer SHALL carry a soft shadow, a little stronger when focused and faint
 #### Scenario: A flat page
 - **WHEN** a page sets `composer-shadow="none"`
 - **THEN** the composer has no shadow, focused or not
+
+### Requirement: One dictation at a time
+The composer and the reply window SHALL each have a microphone, and both SHALL stay visible while dictation is available. Pressing one while the other dictates SHALL stop the other first; the words it already put in its field SHALL stay. With `voice: off` there SHALL be no microphone in either.
+
+#### Scenario: From the composer to the window
+- **WHEN** the user dictates "and the term" in the composer, opens a reply window and presses its microphone
+- **THEN** the composer keeps "and the term", its microphone is idle, and the window's field receives the new dictation
+

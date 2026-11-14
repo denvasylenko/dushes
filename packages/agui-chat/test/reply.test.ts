@@ -230,6 +230,40 @@ describe('reply to a part of an answer', () => {
   })
 })
 
+describe('dictating a reply', () => {
+  class Rec {
+    static last: Rec | null = null
+    lang = ''; continuous = false; interimResults = false
+    onresult: ((e: unknown) => void) | null = null; onerror: ((e: unknown) => void) | null = null; onend: (() => void) | null = null
+    aborted = false
+    constructor() { Rec.last = this }
+    start() {} stop() { setTimeout(() => this.onend?.()) } abort() { this.aborted = true; setTimeout(() => this.onend?.()) }
+    say(t: string) { this.onresult?.({ resultIndex: 0, results: { length: 1, 0: { isFinal: false, 0: { transcript: t } } } }) }
+  }
+
+  it('the window has a mic; one dictation at a time: pressing it stops the composer dictation, which keeps its words', async () => {
+    vi.stubGlobal('webkitSpeechRecognition', Rec)
+    const el = await mount({ voice: 'browser' }), seen: Record<string, unknown>[] = []
+    el.agent = agent('The fee is 2%.', seen) as never
+    await el.send('fee?')
+    await tick(5)
+    const composer = $(el, 'textarea:not(.pop-in)') as HTMLTextAreaElement
+    ;($(el, '.mic') as HTMLButtonElement).click()
+    const first = Rec.last!
+    first.say('and the term')
+    expect(composer.value).toBe('and the term')
+    await select(el, $(el, '.msg.ai .body'), 'The fee is 2%')
+    const mic = $(el, '.pop-mic') as HTMLButtonElement
+    expect(mic.hidden).toBe(false)                                       // never hidden while the other one dictates
+    mic.click()
+    expect(first.aborted).toBe(true)
+    expect(composer.value).toBe('and the term')                         // what it heard stays
+    expect($(el, '.mic').classList.contains('on')).toBe(false)
+    Rec.last!.say('per month?')
+    expect(field(el).value).toBe('per month?')
+  })
+})
+
 describe('more ways to reply', () => {
   it('Reply under an answer quotes the whole of it; a cut word at the edge of a selection is dropped', async () => {
     const el = await mount(), seen: Record<string, unknown>[] = []

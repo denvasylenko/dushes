@@ -10,25 +10,10 @@
 
 export interface TipRow { label: string; keys?: string[] }
 
-const MAC_KEYS: Record<string, string> = { Mod: '⌘', Alt: '⌥', Shift: '⇧', Ctrl: '⌃', Enter: '↵', Esc: 'esc' }
-const PC_KEYS: Record<string, string> = { Mod: 'Ctrl', Alt: 'Alt', Shift: 'Shift', Ctrl: 'Ctrl', Enter: 'Enter', Esc: 'Esc' }
+import { isMac, keyLabel } from './keys'
+import { TIP_CSS } from './tip-css'
 
-/** A Mac (or an iPad with a keyboard): from userAgentData when the browser has it, else platform / the user agent. */
-export function isMac(): boolean {
-  if (typeof navigator === 'undefined') return false
-  const n = navigator as Navigator & { userAgentData?: { platform?: string } }
-  return /mac|iphone|ipad/i.test(n.userAgentData?.platform || n.platform || n.userAgent || '')
-}
-
-/** One key as the platform writes it: 'Mod' -> ⌘ on a Mac, Ctrl elsewhere; a letter in capitals. */
-export function keyLabel(key: string, mac = isMac()): string {
-  return (mac ? MAC_KEYS : PC_KEYS)[key] ?? key.toUpperCase()
-}
-
-/** The value for aria-keyshortcuts ("Shift+Enter", "Meta+D"). */
-export function ariaKeys(keys: string[], mac = isMac()): string {
-  return keys.map((k) => (k === 'Mod' ? (mac ? 'Meta' : 'Control') : k === 'Ctrl' ? 'Control' : k === 'Esc' ? 'Escape' : k)).join('+')
-}
+export { ariaKeys, isMac, keyLabel } from './keys'
 
 const tips = new WeakMap<Node, HTMLElement>()
 let shown: { el: HTMLElement; host: HTMLElement; timer?: ReturnType<typeof setTimeout> } | null = null
@@ -36,7 +21,18 @@ let shown: { el: HTMLElement; host: HTMLElement; timer?: ReturnType<typeof setTi
 /** No hover and no keys on a touch screen. */
 const touchOnly = (): boolean => !!globalThis.matchMedia?.('(hover: none)').matches
 
+const styled = new WeakSet<Node>()
+/** The tooltip's styles in the root it shows in (a shadow root gets them once; the page needs a <style> of its own). */
+function style(host: HTMLElement): void {
+  const root = host.getRootNode()
+  if (styled.has(root) || !(root instanceof ShadowRoot)) return
+  styled.add(root)
+  try { const sh = new CSSStyleSheet(); sh.replaceSync(TIP_CSS); root.adoptedStyleSheets = [...root.adoptedStyleSheets, sh] }
+  catch { const el = document.createElement('style'); el.textContent = TIP_CSS; root.append(el) }
+}
+
 function plate(host: HTMLElement): HTMLElement {
+  style(host)
   let t = tips.get(host)
   if (!t) {
     t = document.createElement('div')
@@ -115,4 +111,8 @@ export function attachTip(button: HTMLElement, host: HTMLElement, rows: () => Ti
   }
 }
 
-export { TIP_CSS } from './tip-css'
+export { TIP_CSS }
+
+// the one-script build: agui-chat.tip.js registers it on window.AguiChat
+const g = globalThis as unknown as { AguiChat?: Record<string, unknown> }
+if (g.AguiChat) g.AguiChat.attachTip = attachTip

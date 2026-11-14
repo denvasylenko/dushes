@@ -15,7 +15,7 @@ export const CSS = `
   --agui-ease: cubic-bezier(.28, .11, .32, 1); --agui-fade: 450ms;
   display: block; font-family: var(--agui-font); color: var(--agui-ink); letter-spacing: -0.01em; }
 :host([hidden]) { display: none; }
-:host(.dark) { --agui-accent: #f5f5f7; --agui-on-accent: #1d1d1f; --agui-link: #4ea1ff; --agui-bg: #1c1c1e; --agui-surface: #242426;
+:host(.dark) { --agui-danger: #ff453a; --agui-accent: #f5f5f7; --agui-on-accent: #1d1d1f; --agui-link: #4ea1ff; --agui-bg: #1c1c1e; --agui-surface: #242426;
   --agui-soft: #2c2c2e; --agui-ink: #f5f5f7; --agui-ink-2: #aeaeb2; --agui-ink-3: #8e8e93; --agui-line: #333336; --agui-line-2: #3a3a3c;
   --agui-shadow: rgba(0,0,0,.6); --agui-scrim: rgba(0,0,0,.4); }
 * { box-sizing: border-box; }
@@ -382,7 +382,13 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .pop-in { flex: 1; min-width: 0; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 15px/1.4 var(--agui-font);
   padding: 8px 0; max-height: 120px; }
 .pop-in::placeholder { color: var(--agui-ink-3); }
-.sel-pop .ib { width: 36px; height: 36px; flex: none; } .sel-pop .ib svg { width: 20px; height: 20px; }
+.sel-pop .ib { width: 36px; height: 36px; flex: none; } .sel-pop .ib svg { width: 18px; height: 18px; stroke-width: 1.8; }   /* one size and stroke for both */
+.sel-pop .ib[hidden] { display: none; }
+.pop-err { font-size: 13px; color: var(--agui-ink-2); padding: 0 8px 6px 0; }
+.pop-err:empty { display: none; }
+.pop-mic.on { background: var(--agui-danger); color: var(--agui-on-danger); animation: rec 1.4s ease-out infinite; }   /* recording, as the composer's mic */
+.pop-mic.busy { opacity: .5; pointer-events: none; animation: pulse 1s ease-in-out infinite; }   /* transcribing on the server; still dim without motion */
+.ib.on:focus-visible { outline: 2px solid var(--agui-link); outline-offset: 2px; }   /* the recording halo animates the shadow: the ring is an outline */
 @media (pointer: coarse) { .sel-pop .ib { width: 44px; height: 44px; } .pop-in { font-size: 16px; padding: 11px 0; } }
 .box > .reply-list { order: -2; flex: 1 0 100%; display: grid; gap: 8px; min-width: 0; margin: 2px 0 6px -4px; animation: att-in .15s var(--agui-ease) both; }
 .box > .reply-list[hidden] { display: none; }

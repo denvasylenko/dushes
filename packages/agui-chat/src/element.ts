@@ -6,7 +6,9 @@ import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, recognitionBlocked, record, recordingSupported, speechReliable, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
-import { ariaKeys, attachTip, TIP_CSS } from './tip'
+import { ariaKeys } from './keys'
+import { loadTip } from '#tip-loader'
+import type { TipRow } from './tip'
 import { hasTheme, themeCss, THEME_PACKS, loadTheme } from './themes'
 import { watchParts } from './parts'
 import { runAgent, runHttp, uid, type AgentLike } from './transport'
@@ -95,12 +97,12 @@ let sheet: CSSStyleSheet | null = null
 function styles(root: ShadowRoot): (css: string) => void {
   try {
     sheet ??= new CSSStyleSheet()
-    if (!sheet.cssRules.length) sheet.replaceSync(CSS + TIP_CSS)
+    if (!sheet.cssRules.length) sheet.replaceSync(CSS)
     const theme = new CSSStyleSheet()
     root.adoptedStyleSheets = [sheet, theme]   // later sheet, same specificity: the theme wins
     return (css) => theme.replaceSync(css)
   } catch {   // no constructable stylesheets: <style> elements in the same order
-    root.appendChild(h('style', null, CSS + TIP_CSS))
+    root.appendChild(h('style', null, CSS))
     const theme = root.appendChild(h('style'))
     return (css) => { theme.textContent = css }
   }
@@ -560,15 +562,19 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     capReply.addEventListener('click', () => this._openWin())
     const popQ = h('div', { class: 'pop-q', id: 'pop-q' })
     const popIn = h('textarea', { class: 'pop-in', rows: 1 }) as HTMLTextAreaElement
+    const popMic = h('button', { class: 'ib pop-mic', type: 'button' }); this._icon(popMic, 'mic')
     const popAdd = h('button', { class: 'ib pop-add', type: 'button' }); popAdd.innerHTML = actSvg(ACT.addChat)
-    const pill = h('div', { class: 'sel-pop', part: 'reply-window', role: 'dialog', 'aria-describedby': 'pop-q', hidden: true }, popQ, h('div', { class: 'pop-row' }, popIn, popAdd))
+    const popErr = h('div', { class: 'pop-err', role: 'status', 'aria-live': 'polite' })
+    const pill = h('div', { class: 'sel-pop', part: 'reply-window', role: 'dialog', 'aria-describedby': 'pop-q', hidden: true }, popQ, h('div', { class: 'pop-row' }, popIn, popMic, popAdd), popErr)
     pill.addEventListener('pointerdown', (e) => { if (e.target !== popIn) e.preventDefault() })   // the button keeps the focus in the field
     popIn.addEventListener('input', () => { popIn.style.height = 'auto'; popIn.style.height = `${Math.min(120, popIn.scrollHeight)}px` })
     popIn.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this._popAdd(); return }   // into the composer, under the others
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this._closePop(true) }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this._closePop(true); return }
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'd' && !popMic.hidden) { e.preventDefault(); this._toggleMic('pop') }   // Dictate a reply
     })
     popAdd.addEventListener('click', () => this._popAdd())
+    popMic.addEventListener('click', () => this._toggleMic('pop'))
     const hint = h('div', { class: 'hint', 'aria-live': 'polite' })
     // the way back to the latest message when the user has scrolled up; while the assistant works it shows the dots
     const jump = h('button', { class: 'jump', part: 'jump', type: 'button', hidden: true, onclick: () => this._toLatest() },
@@ -578,7 +584,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const panel = h('section', { class: 'panel', part: 'panel', role: 'dialog' }, head, log, foot)
     wrap.append(scrim, panel, greet, fab)
     this.root.appendChild(wrap)
-    this.$ = { jump, wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, replyList, pill, cap, capReply, popQ, popIn, popAdd, fabLabel: fab.querySelector('.fab-label') as HTMLElement }
+    this.$ = { jump, wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, replyList, pill, cap, capReply, popQ, popIn, popMic, popAdd, popErr, fabLabel: fab.querySelector('.fab-label') as HTMLElement }
     this._swipe(log)
     recX.addEventListener('click', () => { this._dropDictation(); (input as HTMLTextAreaElement).focus() })
     files.hidden = true
@@ -617,10 +623,11 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     mic.addEventListener('click', () => this._toggleMic())
     // shortcut tooltips, as in the Claude app: only keys that work here
     const hints = (): boolean => this._opts.shortcutHints !== false
-    attachTip(send, panel, () => (this._busy ? [{ label: this.t('stop') }] : [{ label: this.t('send'), keys: ['Enter'] }, { label: this.t('newLine'), keys: ['Shift', 'Enter'] }]), hints)
-    attachTip(mic, panel, () => [{ label: this.t('mic'), keys: ['Mod', 'D'] }], hints)
-    attachTip(clip, panel, () => [{ label: this.t('attach') }], hints)
-    attachTip(popAdd, panel, () => [{ label: this.t('addToChat'), keys: ['Enter'] }], hints)
+    this._tip(send, panel, () => (this._busy ? [{ label: this.t('stop') }] : [{ label: this.t('send'), keys: ['Enter'] }, { label: this.t('newLine'), keys: ['Shift', 'Enter'] }]), hints)
+    this._tip(mic, panel, () => [{ label: this.t('mic'), keys: ['Mod', 'D'] }], hints)
+    this._tip(clip, panel, () => [{ label: this.t('attach') }], hints)
+    this._tip(popAdd, panel, () => [{ label: this.t('addToChat'), keys: ['Enter'] }], hints)
+    this._tip(popMic, panel, () => [{ label: this.t('dictateReply'), keys: ['Mod', 'D'] }], hints)
     send.setAttribute('aria-keyshortcuts', 'Enter'); mic.setAttribute('aria-keyshortcuts', ariaKeys(['Mod', 'D']))
     panel.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && (!pill.hidden || !cap.hidden)) { e.preventDefault(); this._closePop(true); return }
@@ -674,12 +681,24 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     try { return new URL('transcribe', new URL(this._opts.url, location.href)).href } catch { return 'transcribe' }
   }
 
-  private _toggleMic(): void {
-    if (this.$.box.classList.contains('busy')) return   // transcribing: wait for the text
+  /** Where a dictation writes: the composer's field (with its wave for server dictation) or the reply window's. */
+  private _micAt: 'composer' | 'pop' = 'composer'
+  private _afterMic: (() => void) | null = null   // what runs once a server recording has its text
+  private _micField(at = this._micAt): HTMLTextAreaElement { return (at === 'pop' ? this.$.popIn : this.$.input) as HTMLTextAreaElement }
+  private _micButton(at = this._micAt): HTMLElement { return at === 'pop' ? this.$.popMic : this.$.mic }
+
+  /** Start or stop dictation in a field. One at a time: the other field's dictation stops first and keeps its text. */
+  private _toggleMic(at: 'composer' | 'pop' = 'composer'): void {
+    if (this._micButton(at).classList.contains('busy') || (at === 'composer' && this.$.box.classList.contains('busy'))) return   // transcribing: wait for the text
+    if (this._mic && this._micAt !== at) {
+      if (this._micMode() === 'server') { this._afterMic = () => this._toggleMic(at); this._mic.stop(); return }   // its speech is transcribed first
+      this._switchMic()
+    }
     if (this._mic) { this._mic.stop(); return }
+    this._micAt = at
     this._retryRec = null
     if (this._micMode() === 'server') { this._startRecording(); return }
-    const input = this.$.input as HTMLTextAreaElement
+    const input = this._micField(), button = this._micButton()
     const before = input.value ? input.value.replace(/\s*$/, ' ') : ''
     this._micBefore = input.value
     const gen = ++this._micGen
@@ -691,30 +710,45 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       input.dispatchEvent(new Event('input'))
     }, (on, error) => {
       if (gen !== this._micGen && on) return
-      this.$.mic.classList.toggle('on', on)
-      this._icon(this.$.mic, on ? 'stop' : 'mic')
-      this.$.mic.setAttribute('aria-label', on ? this.t('micStop') : this.t('mic'))
+      button.classList.toggle('on', on)
+      this._icon(button, on ? 'stop' : 'mic')
+      button.setAttribute('aria-label', on ? this.t('micStop') : this.t(at === 'pop' ? 'dictateReply' : 'mic'))
       if (!on && gen === this._micGen) {
         this._mic = null
         this._micBefore = null
-        if (error === 'denied') this.$.hint.textContent = this.t('micDenied')
+        if (error === 'denied') (at === 'pop' ? this.$.popErr : this.$.hint).textContent = this.t('micDenied')
         else if (this._voice() === 'auto' && recognitionBlocked(error) && recordingSupported()) {
           this._speechBlocked = true   // the browser's service is blocked or unreachable: record for the server
           this._startRecording()
-        } else if (o.micAutoSend && !error && input.value.trim()) this._submit()
+        } else if (at === 'composer' && o.micAutoSend && !error && input.value.trim()) this._submit()
       }
     })
   }
 
-  /** Dictation on the server: record, show the wave, post the recording, put the text into the input. */
+  /** The other field's mic was pressed: stop this dictation where it is; what it recognised stays in its field. */
+  private _switchMic(): void {
+    this._micGen++
+    const m = this._mic
+    this._mic = null
+    this._micBefore = null
+    m?.abort()
+    window.clearInterval(this._recClock)
+    this.$.box.classList.remove('rec', 'busy')
+    for (const b of [this.$.mic, this.$.popMic]) { b.classList.remove('on', 'busy'); this._icon(b, 'mic'); b.setAttribute('aria-label', this.t(b === this.$.popMic ? 'dictateReply' : 'mic')) }
+    this.$.input.dispatchEvent(new Event('input'))   // the composer's field shows again: fit it to its text
+  }
+
+  /** Dictation on the server: record, post the recording, put the text into the field. In the composer the wave and
+   *  timer take the field's place; in the reply window the mic itself shows it is recording, then transcribing. */
   private _startRecording(): void {
-    const input = this.$.input as HTMLTextAreaElement
+    const at = this._micAt, inBox = at === 'composer'
+    const input = this._micField(), mic = this._micButton()
     const before = input.value ? input.value.replace(/\s*$/, ' ') : ''
     this._micBefore = input.value
     const gen = ++this._micGen
     const o = this._opts
     const lang = o.micLang || o.lang || document.documentElement.lang || navigator.language || ''
-    const box = this.$.box, mic = this.$.mic, hint = this.$.hint
+    const box = this.$.box, hint = this.$.hint
     const bars = [...this.$.bars.children] as HTMLElement[]
     const levels: number[] = bars.map(() => 0)
     const time = this.$.wave.querySelector('.rec-time') as HTMLElement
@@ -722,17 +756,19 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.recX.setAttribute('aria-label', this.t('micCancel'))
     hint.textContent = ''
     const draw = () => levels.forEach((v, i) => { bars[i].style.height = `${Math.round(3 + v * 22)}px` })
-    draw()
+    if (inBox) draw()
     const rec = record({
-      level: (v) => { if (gen !== this._micGen) return; levels.shift(); levels.push(v); draw() },
-      state: (s, error) => {
-        box.classList.toggle('rec', s !== 'off')
-        box.classList.toggle('busy', s === 'busy')
-        mic.classList.toggle('on', s === 'rec')
-        this._icon(mic, s === 'rec' ? 'stop' : 'mic')   // a stop square on red while recording, as on iOS
-        mic.setAttribute('aria-label', s === 'rec' ? this.t('micStop') : this.t('mic'))
+      level: (v) => { if (gen !== this._micGen || !inBox) return; levels.shift(); levels.push(v); draw() },
+      state: (st, error) => {
+        if (gen !== this._micGen && st !== 'off') return
+        if (inBox) { box.classList.toggle('rec', st !== 'off'); box.classList.toggle('busy', st === 'busy') }
+        mic.classList.toggle('on', st === 'rec')
+        mic.classList.toggle('busy', st === 'busy')
+        this._icon(mic, st === 'rec' ? 'stop' : 'mic')   // a stop square on red while recording, as on iOS
+        mic.setAttribute('aria-label', st === 'rec' ? this.t('micStop') : st === 'busy' ? this.t('transcribing') : this.t(inBox ? 'mic' : 'dictateReply'))
+        mic.toggleAttribute('aria-busy', st === 'busy')
         window.clearInterval(this._recClock)
-        if (s === 'rec') {
+        if (st === 'rec' && inBox) {
           const t0 = Date.now()
           time.textContent = '0:00'
           this._recClock = window.setInterval(() => {
@@ -740,18 +776,24 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
             time.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
           }, 500)
         }
-        if (s === 'off') input.dispatchEvent(new Event('input'))   // the input is shown again: fit it to the text
-        if (s !== 'off' || gen !== this._micGen) return
+        if (st === 'off') input.dispatchEvent(new Event('input'))   // the input is shown again: fit it to the text
+        if (st !== 'off' || gen !== this._micGen) return
         this._mic = null
         this._micBefore = null
+        const line = inBox ? hint : this.$.popErr   // the window's own line: the composer's may be out of view
         if (error === 'failed') {
+          this._afterMic = null
           this._retryRec = () => { this._retryRec = null; this._mic = rec; rec.retry() }
-          hint.replaceChildren(h('span', null, this.t('micFailed') + ' '),
-            h('button', { class: 'btn link', type: 'button', onclick: () => { hint.textContent = ''; this._retryRec?.() } }, this.t('retry')))
+          line.replaceChildren(h('span', null, this.t('micFailed') + ' '),
+            h('button', { class: 'btn link', type: 'button', onclick: () => { line.textContent = ''; this._retryRec?.() } }, this.t('retry')))
         } else if (error) {
-          hint.textContent = this.t(({ denied: 'micDenied', empty: 'micEmpty', unavailable: 'micUnavailable' } as Record<string, string>)[error])
-        } else if (o.micAutoSend && input.value.trim()) this._submit()
-        else input.focus({ preventScroll: true })
+          this._afterMic = null
+          line.textContent = this.t(({ denied: 'micDenied', empty: 'micEmpty', unavailable: 'micUnavailable' } as Record<string, string>)[error])
+        } else if (inBox && o.micAutoSend && input.value.trim()) this._submit()
+        else if (!this._afterMic) input.focus({ preventScroll: true })
+        const next = this._afterMic
+        this._afterMic = null
+        next?.()
       },
       text: (t) => {
         if (gen !== this._micGen) return
@@ -774,7 +816,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
    * dictated; text typed before the dictation stays. */
   private _dropDictation(): void {
     if (!this._mic) return
-    const input = this.$.input as HTMLTextAreaElement
+    const input = this._micField()
     const typed = this._micBefore ?? input.value
     this._cancelMic()
     input.value = typed
@@ -789,8 +831,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const m = this._mic
     this._mic = null
     m?.abort()
-    this.$.mic.classList.remove('on')
-    this._icon(this.$.mic, 'mic')
+    for (const b of [this.$.mic, this.$.popMic]) { if (!b) continue; b.classList.remove('on', 'busy'); this._icon(b, 'mic') }
   }
 
   private _syncSend(): void {
@@ -827,7 +868,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.fab.setAttribute('aria-label', o.launcherLabel || this.t('open'))
     // icons (options.icons) and the host's own header and composer (options.render)
     this._icon(this.$.logo, 'logo'); this._icon(this.$.fabIco, 'logo'); this._icon(this.$.fabX, 'close'); this._icon(this.$.btnNew, 'plus'); this._icon(this.$.btnClose, 'close')
-    this._icon(this.$.mic, 'mic'); this._icon(this.$.clip, 'clip'); this._icon(this.$.send, this._busy ? 'stop' : 'send')
+    this._icon(this.$.mic, 'mic'); if (!this._mic || this._micAt !== 'pop') this._icon(this.$.popMic, 'mic'); this._icon(this.$.clip, 'clip'); this._icon(this.$.send, this._busy ? 'stop' : 'send')
     const launcher = this.renderSlot('launcher', { open: wrap.classList.contains('open'), unread: this.$.fab.classList.contains('unread') })
     this.$.fabOwn.replaceChildren(...(launcher ? [launcher] : []))
     this.$.fab.classList.toggle('own', !!launcher)
@@ -844,6 +885,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.btnClose.setAttribute('aria-label', this.t('close'))
     this.$.replyList.setAttribute('aria-label', this.t('reply'))
     this.$.capReply.textContent = this.t('reply')
+    this.$.popMic.setAttribute('aria-label', this.t('dictateReply')); this.$.popMic.setAttribute('aria-keyshortcuts', ariaKeys(['Mod', 'D']))
     this.$.popAdd.setAttribute('aria-label', this.t('addToChat'))
     this.$.pill.setAttribute('aria-label', this.t('reply'))
     if (!o.reply) { this._closePop(); this._setReplies([]) }
@@ -999,6 +1041,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     field.placeholder = this.t('replyTo').replace('{name}', this._opts.title || this.t('title'))
     field.setAttribute('aria-label', field.placeholder)
     field.value = ''; field.style.height = 'auto'
+    this.$.popMic.hidden = !this._opts.mic || !this._micMode()
     this._place(this.$.pill)
     field.focus({ preventScroll: true })
   }
@@ -1014,6 +1057,11 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   private _closePop(keep = false): void {
     if (!this.$.pill) return
+    if (this._mic && this._micAt === 'pop') {   // the window's own dictation ends with it
+      if (keep && this._micMode() === 'server') { this._afterMic = () => this._closePop(true); this._mic.stop(); return }   // its words become the tile
+      if (keep) this._switchMic(); else this._cancelMic()
+    }
+    this.$.popErr.textContent = ''
     const typed = (this.$.popIn as HTMLTextAreaElement).value.trim()
     if (keep && typed && this._picked && !this.$.pill.hidden) { this._popAdd(false); return }   // never lose a typed reply
     this.$.pill.hidden = true
@@ -1026,6 +1074,11 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _popAdd(focus = true): void {
     const field = this.$.popIn as HTMLTextAreaElement, r = this._picked
     if (!r) return
+    if (this._mic && this._micAt === 'pop') {   // stop dictating here: the words heard so far go with the quote
+      if (this._micMode() === 'server') { this._afterMic = () => this._popAdd(focus); this._mic.stop(); return }
+      this._switchMic()
+    }
+    this.$.popErr.textContent = ''
     const note = field.value.trim().slice(0, 1000)
     field.value = ''
     if (!focus) { this._addReply(note ? { ...r, note } : r); this.$.pill.hidden = true; this.$.cap.hidden = true; this._picked = null; return }
@@ -1293,6 +1346,26 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._renderFiles()
     this._syncSend()
   }
+
+  /** A shortcut tooltip on a button, its code loaded on the first hover or keyboard focus of any of them (it is
+   *  only ever needed after half a second of hover); the event that asked for it then plays again. */
+  private _tip(button: HTMLElement, host: HTMLElement, rows: () => TipRow[], on: () => boolean): void {
+    this._tips.push({ button, host, rows, on })
+    const wake = (e: Event): void => {
+      if ((e as PointerEvent).pointerType === 'touch' || !on()) return
+      for (const t of this._tips) { t.button.removeEventListener('pointerenter', t.wake!); t.button.removeEventListener('focus', t.wake!) }
+      void loadTip().then((attach) => {
+        for (const t of this._tips) attach(t.button, t.host, t.rows, t.on)
+        if (e.type === 'focus') button.dispatchEvent(new FocusEvent('focus'))
+        else if (button.matches(':hover')) button.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
+      }).catch(() => {})   // no tooltip file next to the script: buttons keep their labels
+    }
+    this._tips[this._tips.length - 1].wake = wake
+    button.addEventListener('pointerenter', wake)
+    button.addEventListener('focus', wake)
+  }
+
+  private _tips: { button: HTMLElement; host: HTMLElement; rows: () => TipRow[]; on: () => boolean; wake?: (e: Event) => void }[] = []
 
   private _keyed(key: string, tile: HTMLElement): HTMLElement { tile.dataset.key = key; return tile }
 
