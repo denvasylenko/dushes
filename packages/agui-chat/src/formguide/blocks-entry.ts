@@ -3,6 +3,7 @@
 import { blocksCard, blocksRenderer } from './blocks'
 import { monthCalendar } from './month'   // the date picker's month grid travels with the blocks
 import { realTypedView } from './typed'   // so do a question's typed answers (days, slots, a range, an address)
+import { realReviewCard } from './review'   // and the review card
 
 const g = globalThis as unknown as { AguiChat?: Record<string, unknown> }
-if (g.AguiChat) g.AguiChat.blocks = { blocksCard, blocksRenderer, calendar: monthCalendar, typedView: realTypedView }
+if (g.AguiChat) g.AguiChat.blocks = { blocksCard, blocksRenderer, calendar: monthCalendar, typedView: realTypedView, reviewCard: realReviewCard }

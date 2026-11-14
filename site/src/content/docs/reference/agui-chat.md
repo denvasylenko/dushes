@@ -50,7 +50,7 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `launcher` | `auto` | the launcher in every popup mode: `auto` (a pill with its words for the panel, a round button for the bubble), `round`, `pill`, `none` (your own button calls `chat.open()`); `render.launcher` replaces its content in any of them |
 | `launcherLabel` | the language's "Open" | the launcher's words ("Edit with AI") and its accessible name |
 | `modal` | `true` | floating panel: `false` (`modal="off"`) keeps the page beside it usable, like a sidebar next to the site it talks about: no scrim, a tap on the page does not close it, no focus trap; on a phone it is still a sheet |
-| `reply` (`reply`) | `true` | Reply to a part of an answer, as in the Claude app: a selection in an agent message shows a Reply capsule, which opens a reply window (the quote, a field "Reply to …", a mic, Add to chat; one dictation at a time); Enter or Add to chat puts the quote (with what was typed as its reply) as a tile into the composer, under the others, several in one message. The run carries `forwardedProps.reply_to [{message_id, quote | whole, note?}]`; the bubble shows every quote and its reply, and a tap scrolls to the answer. Reply under an answer, or a swipe left on a phone, quotes the whole answer. Parts: `selection-menu`, `reply-window`, `reply`, `reply-quote`, `message-quote` |
+| `reply` (`reply`) | `true` | Reply to a part of an answer, as in the Claude app: a selection in an agent message (or in the user's own sent message: "Reply to your message") shows a Reply capsule, which opens a reply window (the quote, a field "Reply to …", a mic, Add to chat; one dictation at a time); Enter or Add to chat puts the quote (with what was typed as its reply) as a tile into the composer, under the others, several in one message. The run carries `forwardedProps.reply_to [{message_id, quote | whole, note?}]`; the bubble shows every quote and its reply, and a tap scrolls to the answer. Reply under an answer, or a swipe left on a phone, quotes the whole answer. Parts: `selection-menu`, `reply-window`, `reply`, `reply-quote`, `message-quote` |
 | `shortcutHints` (`shortcut-hints`) | `true` | tooltips with keyboard shortcuts on the composer's buttons, after ~500 ms of hover or at once on keyboard focus, never on a touch screen: Send (Enter) and New line (Shift+Enter), and Add to chat (Enter) in the reply window; Dictate and Attach show their name only (the chat takes no browser shortcuts such as Cmd+D). Keys show as ⌘ ⌥ ⇧ ↵ on a Mac and as words elsewhere. Part `tooltip`. The tooltip loads on the first hover or focus (its own chunk with a bundler, `agui-chat.tip.js` next to the one-script build); `keyLabel`, `ariaKeys` and `isMac` are exported |
 | `composerShadow` (`composer-shadow`) | `'soft'` | the composer's shadow: `'soft'` (a little lift, more when focused, fainter in dark), `'raised'`, `'none'`; tokens `--agui-composer-shadow`, `--agui-composer-shadow-focus` |
 | `collapseLines` (`collapse-lines`) | `8` | a message taller than this many lines folds: its start fading out and Show more / Show less (`aria-expanded`; part `fold-toggle`); `0`: never |
@@ -84,17 +84,19 @@ Unknown option names are ignored with a console warning.
 |---|---|
 | `chat.send(text)` | send a message as the user |
 | `chat.request(kind, url, init)` | a request through the chat's connection (headers, credentials, fetch, request hook); for plugins and host code |
-| `chat.run({ forwardedProps, notice })` | run without a message (e.g. prefill: `{ prefill: { data } }`) |
+| `chat.run({ forwardedProps, notice })` | run without a message (e.g. prefill: `{ prefill: { data } }`); such a turn shows no steps line, so nothing stands above the user's first message |
 | `chat.open()`, `chat.close()`, `chat.toggle()` | the floating panel or the bubble |
 | `await chat.showCard(payload)` | shows any card without the agent and resolves with the user's answer; see [Calling components](../../frontend/cards/#calling-components-from-your-code) |
 | `chat.reset()` | a new conversation (new thread id) |
 | `chat.setPlaceholder(text)` | change the composer's hint (a language switch) |
+| `chat.t(key, vars?)`, `chat.tc(key, vars?)` | a text in the page's language, or in the conversation's (the language the server names with `CUSTOM language`; cards and the turn's lines use it) |
 | `chat.setSuggestions(items)` | replace the suggestions above the composer without a run (after the page did something itself); `[]` clears them; at most 5 |
 | `agui:open`, `agui:close` | the chat opened or closed (bubble, drawer, hero) |
 | `chat.removeMessage(id)` | take back an assistant message already shown (and from the history) |
 | `chat.updateCard(id, patch)` | redraw a shown card in place: `{blocks}` for a card from blocks |
 | `agui:message-action` | an action under an answer was tapped: `{id, messageId, text, pressed?}` (`pressed` for like, dislike, speak) |
 | `agui:applied` | the plugin filled fields: `{fields, values, undo}` (also after Undo) |
+| `agui:card-missing` | `CUSTOM card_focus` named a card that is no longer in the log: `{card_id}` (nothing is drawn) |
 | `chat.stop()` | abort the running turn |
 | `chat.use(plugin)`, `chat.plugins = [...]` | add plugins |
 | `chat.registerTool(tool)`, `chat.renderers.set(type, fn)` | frontend tools, card renderers |

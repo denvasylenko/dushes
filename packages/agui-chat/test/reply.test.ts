@@ -126,6 +126,20 @@ describe('reply to a part of an answer', () => {
     expect(chips(el)).toHaveLength(0)
   })
 
+  it('a quote of your own message says whose words it is: role "user", the id of your message', async () => {
+    const el = await mount(), seen: Record<string, unknown>[] = []
+    el.agent = agent('Noted.', seen) as never
+    await el.send('my budget is 900 a month')
+    await tick(5)
+    await select(el, $(el, '.msg.me .bubble'), 'my budget is 900')
+    type(field(el), 'make it 800')
+    ;($(el, '.pop-add') as HTMLButtonElement).click()
+    ;($(el, '.send') as HTMLButtonElement).click()
+    await tick(5)
+    const mine = (seen[0].messages as { id: string; role: string }[]).find((m) => m.role === 'user')!
+    expect((seen[1].forwardedProps as { reply_to: unknown[] }).reply_to).toEqual([{ message_id: mine.id, quote: 'my budget is 900', note: 'make it 800', role: 'user' }])
+  })
+
   it('quotes with their own replies go without a text of the composer', async () => {
     const el = await mount(), seen: Record<string, unknown>[] = []
     el.agent = agent('The fee is 2%.', seen) as never
@@ -189,12 +203,16 @@ describe('reply to a part of an answer', () => {
     expect(answer.classList.contains('flash')).toBe(true)
   })
 
-  it('no window for your own message; Esc closes the window; Esc and x take quotes back', async () => {
+  it('your own message can be quoted too; Esc closes the window; Esc and x take quotes back', async () => {
     const el = await mount(), seen: Record<string, unknown>[] = []
     el.agent = agent('Sure, and more.', seen) as never
     await el.send('my own words here')
     await tick(5)
     await select(el, $(el, '.msg.me .bubble'), 'own words')
+    expect(pop(el).hidden).toBe(false)                                     // as in the Claude app: your words too
+    expect(field(el).placeholder).toBe('Reply to your message')
+    expect($(el, '.pop-q').textContent).toBe('own words')
+    field(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(pop(el).hidden).toBe(true)
     await select(el, $(el, '.msg.ai .body'), 'Sure')
     field(el).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))

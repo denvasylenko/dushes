@@ -150,12 +150,12 @@ export function formguide(opts: FormguideOptions): Plugin {
       const changes = raw as { name: string; label?: string; value: unknown; previous?: unknown }[]
       const now = (await opts.getState()).config?.state ?? {}
       const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
-      if (changes.some((x) => x.name in now && !same(now[x.name], x.previous))) throw new Error(chat.t('stale'))
+      if (changes.some((x) => x.name in now && !same(now[x.name], x.previous))) throw new Error((chat.tc ?? chat.t).call(chat, 'stale'))
       host = chat.host
       await ctx.applyChanges(Object.fromEntries(changes.map((x) => [x.name, x.value])))
       const last = changes[changes.length - 1] as { name: string; reveal?: Directive['reveal'] }
       ctx.onDirective!({ type: 'focus', target: last.name, reveal: last.reveal ?? [], hint: '' })   // show what the chip filled
-      const c = { chat, t: chat.t.bind(chat), flags: {}, resolve: () => {} } as unknown as RendererContext
+      const c = { chat, t: (chat.tc ?? chat.t).bind(chat), flags: {}, resolve: () => {} } as unknown as RendererContext
       return appliedLine(c, ctx, changes.map((x) => ({ name: x.name, label: x.label ?? x.name, previous: x.previous ?? null })))
     },
     async beforeRun(input: RunAgentInput, chat: ChatApi) {
@@ -185,7 +185,7 @@ export function formguide(opts: FormguideOptions): Plugin {
         const v = { ...(ev.value ?? {}) as Record<string, unknown> }
         const id = String(v.card_id ?? `card-${Math.random().toString(36).slice(2, 10)}`)
         v.card_id = id
-        const rc = { chat, t: chat.t.bind(chat), resolve: () => {}, flags: {}, restored: false }
+        const rc = { chat, t: (chat.tc ?? chat.t).bind(chat), resolve: () => {}, flags: {}, restored: false }
         const draw = (p: Record<string, unknown>) => {
           const el = blocksCard(p, rc, null, act(p, chat))
           el.classList.add('card'); el.setAttribute('part', `card card-blocks blocks-${String(p.name ?? 'card')}`)
@@ -209,7 +209,7 @@ export function formguide(opts: FormguideOptions): Plugin {
         const r = ev.value as { card_id?: string; title?: string; number?: string; eta?: string }
         const card = chat.host.shadowRoot?.querySelector(`[data-card-id="${CSS.escape(String(r?.card_id ?? ''))}"]`)
         const line = card?.querySelector('.ok-line')
-        const el = receiptEl({ t: chat.t.bind(chat) }, r ?? {})
+        const el = receiptEl({ t: (chat.tc ?? chat.t).bind(chat) }, r ?? {})
         if (line) line.replaceWith(el); else chat.append(el)
         return true
       }

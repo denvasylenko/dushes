@@ -68,6 +68,7 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "showMore": "Show more",
     "showLess": "Show less",
     "replyTo": "Reply to {name}",
+    "replyOwn": "Reply to your message",
     "addToChat": "Add to chat",
     "dictateReply": "Dictate a reply",
     "withReply": "With reply",

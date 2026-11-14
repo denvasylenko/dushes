@@ -15,6 +15,8 @@ A run starts with `RUN_STARTED` and ends with exactly one `RUN_FINISHED` or `RUN
 | `CUSTOM tool_progress` | a sub-step of a running tool `{parent_id, name, input}` | nest it under the step |
 | `CUSTOM sources` | after an answer that used the business documents: `{items: [{title, section?}]}`, once, before `RUN_FINISHED` | show source chips under the answer |
 | `CUSTOM receipt` | a confirmed host tool returned `{receipt: {title?, number?, eta?}}`: the same plus `card_id` of the confirmation | turn that confirmation into a receipt |
+| `CUSTOM card_focus` | `{card_id}`: the card the user asks for is still in the thread (sent only to clients listing `card.focus`) | scroll the log to `[data-card-id]` and mark it `data-spot` for about 1.6 s; no copy; `agui:card-missing` when it's gone |
+| `CUSTOM language` | `{lang}` (en, ru, uk, de, fr, es, it): the language the user writes in, once known and when it changes; also `language` on cards and in the restore | cards, the steps line and the queue speak it; the frame stays the page's |
 | `CUSTOM suggestions` | quick replies `{items, applies?}`; each may carry validated field changes | show chips; a chip with `applies` fills fields at once |
 | `CUSTOM run_stats` | right before the terminal event: timings, tokens, cache hits | nothing, or a debug line ([Speed and tracing](../../agents/shared/observability/)) |
 | `CUSTOM text_retract` | `{messageId}`: a short lead written before tools, taken back because the answer came after them | remove that message (`<agui-chat>` fades it out) |

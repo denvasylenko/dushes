@@ -249,13 +249,37 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   /** Register a frontend tool the agent can call (sent as `tools` with each run). */
   registerTool(tool: FrontendTool): this { this.tools.set(tool.name, tool); return this }
 
-  t(key: string, vars?: Record<string, string | number>): string {
-    const lang = this.lang
+  t(key: string, vars?: Record<string, string | number>): string { return this._tr(this.lang, key, vars) }
+
+  /** The conversation's words (cards, the steps line, the queue): in the language the user writes in, which the
+   *  server names (`CUSTOM language`, a card's `language`), once its pack is here; the page's language otherwise.
+   *  The chat's frame (header, field, buttons) stays in the page's language. */
+  tc(key: string, vars?: Record<string, string | number>): string { return this._tr(this._talkLang(), key, vars) }
+
+  private _tr(lang: string, key: string, vars?: Record<string, string | number>): string {
     const pack = PACKS[lang]
     let s = this._opts.i18n[key] ?? this._i18n[lang]?.[key] ?? pack?.formguide?.[key] ?? pack?.core?.[key] ?? STRINGS[lang]?.[key]
       ?? this._i18n.en?.[key] ?? STRINGS.en[key] ?? key
     for (const [k, v] of Object.entries(vars ?? {})) s = s.replaceAll(`{${k}}`, String(v))
     return s
+  }
+
+  private _talk: string | null = null
+  private _talkReady: Promise<unknown> = Promise.resolve()
+  private _talkLoading = false
+  private _talkLang(): string {
+    const l = this._talk
+    return l && (PACKS[l] || STRINGS[l] || this._i18n[l]) ? l : this.lang
+  }
+  /** The conversation's language, from the server: its pack loads now (long before a card, which waits for it). */
+  private _setTalk(lang: unknown): void {
+    const l = typeof lang === 'string' ? lang.slice(0, 2).toLowerCase() : ''
+    if (!l || !LANGUAGES.includes(l)) return
+    this._talk = l === this.lang ? null : l
+    if (this._talk && !PACKS[l] && !STRINGS[l] && !this._i18n[l]) {
+      this._talkLoading = true
+      this._talkReady = loadLanguage(l).catch(() => false).finally(() => { this._talkLoading = false })
+    }
   }
 
   get lang(): string {
@@ -424,6 +448,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   }
 
   private _switchThread(id: string, restore = true): void {
+    this._talk = null   // a new conversation: the page's language until the server names another
     this._dropDictation()
     this._setReplies([])
     for (const q of [...this._queue]) this._removeQueued(q.id, false)
@@ -463,10 +488,11 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this._renderFiles()
     const replies = this._replies
     this._setReplies([])
-    this._userBubble(text, this._sending.map((f) => f.filename), this._sending.map((f) => this._previews.get(f.id)), replies)
+    const mid = uid()
+    this._userBubble(text, this._sending.map((f) => f.filename), this._sending.map((f) => this._previews.get(f.id)), replies, mid)
     // the replies are on the quotes: the message still carries a short text so the turn has one
-    this._messages.push({ id: uid(), role: 'user', content: text || this.t('quotedReply') })
-    const sent = replies.map((r) => ({ message_id: r.message_id, ...(r.whole ? { whole: true } : { quote: r.quote }), ...(r.note ? { note: r.note } : {}) }))
+    this._messages.push({ id: mid, role: 'user', content: text || this.t('quotedReply') })
+    const sent = replies.map((r) => ({ message_id: r.message_id, ...(r.whole ? { whole: true } : { quote: r.quote }), ...(r.note ? { note: r.note } : {}), ...(r.role ? { role: r.role } : {}) }))
     await this._run(sent.length ? { forwardedProps: { reply_to: sent } } : {})
   }
 
@@ -488,8 +514,13 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this._closePendingCards()
     if (opts.notice) this.notice(opts.notice)
     this._sending = []
-    await this._run({ forwardedProps: opts.forwardedProps })
+    // a turn the page started (a greeting, prefill) shows no steps line: nobody asked yet, so nothing stands above the
+    // user's first message; its answer and cards show as usual
+    this._hostRun = true
+    try { await this._run({ forwardedProps: opts.forwardedProps }) } finally { this._hostRun = false }
   }
+
+  private _hostRun = false
 
   /** Show a small centred line in the chat. */
   notice(text: string): void { this._append(h('div', { class: 'notice', part: 'notice' }, text)) }
@@ -623,9 +654,10 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     popAdd.addEventListener('click', () => this._popAdd())
     popMic.addEventListener('click', () => this._toggleMic('pop'))
     const hint = h('div', { class: 'hint', 'aria-live': 'polite' })
-    // the way back to the latest message when the user has scrolled up; while the assistant works it shows the dots
+    // the way back to the latest message when the user has scrolled up: always the arrow (the typing dots live in the
+    // log, at its end), always in one place over the field
     const jump = h('button', { class: 'jump', part: 'jump', type: 'button', hidden: true, onclick: () => this._toLatest() },
-      h('span', { class: 'jump-ico' }), h('span', { class: 'dots', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')))
+      h('span', { class: 'jump-ico' }))
     ;(jump.firstChild as HTMLElement).innerHTML = actSvg(ACT.down)
     const foot = h('div', { class: 'foot', part: 'composer' }, jump, box, hint, picker)
     const panel = h('section', { class: 'panel', part: 'panel', role: 'dialog' }, head, log, foot)
@@ -641,6 +673,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     })
     if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (this._stick) log.scrollTop = log.scrollHeight }).observe(log)
     log.addEventListener('scroll', () => {
+      if (this._jumping) { this._quickAway(); return }   // our own scroll to the end: the button stays gone on the way
       this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
       jump.hidden = this._stick
       this._quickAway()
@@ -939,7 +972,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this.$.foot.replaceChildren(...(foot ? [foot] : this._defaultFoot))
     this._placeQuick()   // the suggestions stay above the composer, the host's own one too
     this.$.btnNew.setAttribute('aria-label', this.t('newChat'))
-    this.$.jump.setAttribute('aria-label', this.t('toLatest')); this.$.jump.title = this.t('toLatest')
+    this.$.jump.setAttribute('aria-label', this.t('toLatest'))   // no title: its tooltip would linger under a resting cursor
     this.$.btnClose.setAttribute('aria-label', this.t('close'))
     this.$.replyList.setAttribute('aria-label', this.t('reply'))
     this.$.capReply.textContent = this.t('reply')
@@ -1004,26 +1037,39 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     const log = this.$.log
     if (force) this._stick = true
     if (!this._stick) return
-    requestAnimationFrame(() => { log.scrollTop = log.scrollHeight })
+    requestAnimationFrame(() => { if (this._stick) log.scrollTop = log.scrollHeight })   // unless someone went up since
   }
 
   /** True while the log is at (or near) its end: new messages scroll it; false once the user scrolled up. */
   private _stick = true
 
+  private _jumping = false
+
+  /** The ↓ button: down to the end and gone at once. Its smooth scroll is ours, so the scroll events on the way do not
+   *  bring the button back, and an answer still arriving meanwhile does not leave it short of the end. */
   private _toLatest(): void {
     const log = this.$.log
     this._stick = true
     this.$.jump.hidden = true
-    log.scrollTo?.({ top: log.scrollHeight, behavior: globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
-    if (!log.scrollTo) log.scrollTop = log.scrollHeight
+    this.$.jump.blur()
+    const done = (): void => {
+      if (!this._jumping) return
+      this._jumping = false
+      log.scrollTop = log.scrollHeight   // the end, wherever it is now
+    }
+    if (!log.scrollTo || reducedMotion()) { log.scrollTop = log.scrollHeight; return }
+    this._jumping = true
+    log.scrollTo({ top: log.scrollHeight, behavior: 'smooth' })
+    log.addEventListener('scrollend', done, { once: true })
+    setTimeout(done, 700)   // no scrollend in this browser, or the scroll was already there
   }
 
-  private _userBubble(text: string, files: string[] = [], previews: (string | undefined)[] = [], reply?: ReplyTo | ReplyTo[] | null): void {
+  private _userBubble(text: string, files: string[] = [], previews: (string | undefined)[] = [], reply?: ReplyTo | ReplyTo[] | null, id?: string): void {
     const quotes = replyList(reply)
     const own = this.renderSlot('user', text, files)
     this._lastUser = text
     // the images and files sit above the bubble, on their own, like a photo sent in Messages
-    const el = this._append(h('div', { class: 'msg me', part: 'message user' },
+    const el = this._append(h('div', { class: 'msg me', part: 'message user', ...(id ? { 'data-message-id': id } : {}) },
       own ?? [files.length ? h('div', { class: 'att-row', part: 'message-attachments' }, files.map((f, i) => this._tile(f, previews[i]))) : null,
         text || quotes.length ? h('div', { class: 'bubble' }, ...quotes.flatMap((r) => [this._quoteEl(r), r.note ? h('div', { class: 'bq-note' }, r.note) : null]),
           text && text !== this.t('quotedReply') ? (quotes.length ? h('span', { class: 'bubble-text' }, text) : text) : null) : null]))
@@ -1053,9 +1099,10 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     if (range.collapsed) return null   // nothing selected, judged on the real range
     const at = (n: Node): Element | null => (n.nodeType === 1 ? n as Element : n.parentElement)
     const a = at(range.startContainer), b = at(range.endContainer)
-    const msg = a?.closest<HTMLElement>('.msg.ai')
-    if (!a || !b || !msg || msg !== b.closest('.msg.ai')) return null
-    if ([a, b].some((x) => !x.closest('.body') || x.closest('.card, .steps, .msg-acts, .wait'))) return null
+    const msg = a?.closest<HTMLElement>('.msg.ai, .msg.me')
+    if (!a || !b || !msg || msg !== b.closest('.msg.ai, .msg.me') || msg.matches('.queued') || !msg.dataset.messageId) return null
+    const own = msg.matches('.msg.me')   // your own words can be quoted too, as in the Claude app
+    if ([a, b].some((x) => !x.closest(own ? '.bubble' : '.body') || x.closest('.card, .steps, .msg-acts, .wait, .bubble-q, .bq-note, .q-line'))) return null
     const text = quoteOf(wholeWords(range))
     return text ? { range, msg, text } : null
   }
@@ -1067,7 +1114,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     const s = this._opts.reply ? this._selection() : null
     if (!s) { this._closePop(); return }
     if (!this.$.pill.hidden) this._closePop(true)   // a new selection: the open window keeps what was typed as a tile
-    this._picked = { message_id: s.msg.dataset.messageId ?? '', quote: s.text }
+    this._picked = { message_id: s.msg.dataset.messageId ?? '', quote: s.text, ...(s.msg.matches('.msg.me') ? { role: 'user' as const } : {}) }
     this._anchor = { msg: s.msg, rect: s.range.getBoundingClientRect() }
     this._place(cap)
   }
@@ -1100,7 +1147,8 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this.$.cap.hidden = true
     this.$.popQ.textContent = r.quote ?? ''
     const field = this.$.popIn as HTMLTextAreaElement
-    field.placeholder = this.t('replyTo').replace('{name}', this._opts.title || this.t('title'))
+    const mine = [...this.$.log.querySelectorAll<HTMLElement>(':scope > .msg.me')].some((m) => m.dataset.messageId === r.message_id)
+    field.placeholder = mine ? this.t('replyOwn') : this.t('replyTo').replace('{name}', this._opts.title || this.t('title'))
     field.setAttribute('aria-label', field.placeholder)
     field.value = ''; field.style.height = 'auto'
     this.$.popMic.hidden = !this._opts.mic || !this._micMode()
@@ -1597,13 +1645,14 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     if (!r) { this._renderEmpty(); return }
     this._starters = r.starters ?? []
     if (r.transcription) { this._serverVoice = true; this._apply() }
+    this._setTalk((r as { language?: unknown }).language)
     if (r.messages?.length) {
       // cards are shown, not sent back as history; a reply's quote is drawn, never sent back in messages
       this._messages = r.messages.filter((m) => m.role !== 'activity').map((m) => { const { reply_to, ...rest } = m; void reply_to; return rest })
       this.$.log.replaceChildren()
       this._stick = true
       for (const m of r.messages) {
-        if (m.role === 'user' && (m.content || m.reply_to)) this._userBubble(m.content ?? '', [], [], m.reply_to)
+        if (m.role === 'user' && (m.content || m.reply_to)) this._userBubble(m.content ?? '', [], [], m.reply_to, m.id)
         else if (m.role === 'assistant' && m.content) {
           const body = h('div', { class: 'body' }); body.innerHTML = this._html(m.content); this._assistantDone(body, m.content)
           this._append(h('div', { class: 'msg ai', part: 'message assistant', 'data-message-id': m.id }, body))
@@ -1677,6 +1726,8 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     }
     const input = this._input(extra)
     if (!args.follow) for (const p of this._plugins) await p.beforeRun?.(input, this)
+    const fp = (input.forwardedProps ??= {}) as Record<string, unknown>
+    fp.capabilities = [...new Set([...(Array.isArray(fp.capabilities) ? fp.capabilities : []), 'card.focus'])]   // card_focus: no copies
     this._setBusy(true)
     this._interrupted = false
     this._pendingCalls = []
@@ -1746,10 +1797,10 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     const bubble = h('div', { class: 'bubble' }, ...quotes.flatMap((r) => [this._quoteEl(r), r.note ? h('div', { class: 'bq-note' }, r.note) : null]),
       text && text !== this.t('quotedReply') ? (quotes.length ? h('span', { class: 'bubble-text' }, text) : text) : null)
     const line = h('div', { class: 'q-line', part: 'queued' },
-      h('span', { class: 'q-tag' }, this.t('queued')),
-      h('button', { class: 'q-act q-now', type: 'button', onclick: () => this._sendQueuedNow(id) }, this.t('sendNow')),
-      h('button', { class: 'q-act q-edit', type: 'button', onclick: () => this._editQueued(id) }, this.t('edit')),
-      h('button', { class: 'q-act q-x', type: 'button', onclick: () => this._removeQueued(id) }, this.t('remove')))
+      h('span', { class: 'q-tag' }, this.tc('queued')),
+      h('button', { class: 'q-act q-now', type: 'button', onclick: () => this._sendQueuedNow(id) }, this.tc('sendNow')),
+      h('button', { class: 'q-act q-edit', type: 'button', onclick: () => this._editQueued(id) }, this.tc('edit')),
+      h('button', { class: 'q-act q-x', type: 'button', onclick: () => this._removeQueued(id) }, this.tc('remove')))
     const el = h('div', { class: 'msg me queued', part: 'message user queued', 'data-queue-id': id,
       onclick: (e: Event) => { if (!(e.target as HTMLElement).closest('button')) el.classList.toggle('q-open') } },
       files.length ? h('div', { class: 'att-row', part: 'message-attachments' }, files.map((f) => this._tile(f.filename, this._previews.get(f.id)))) : null, bubble, line)
@@ -1787,8 +1838,10 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this._closePendingCards()   // a waiting question is answered by this message now (Send now)
     this._sending = q.files
     this._lastUser = q.text
-    this._messages.push({ id: uid(), role: 'user', content: q.text || this.t('quotedReply') })
-    const sent = q.replies.map((r) => ({ message_id: r.message_id, ...(r.whole ? { whole: true } : { quote: r.quote }), ...(r.note ? { note: r.note } : {}) }))
+    const mid = uid()
+    q.el.dataset.messageId = mid   // sent now: its own quotes can point to it
+    this._messages.push({ id: mid, role: 'user', content: q.text || this.t('quotedReply') })
+    const sent = q.replies.map((r) => ({ message_id: r.message_id, ...(r.whole ? { whole: true } : { quote: r.quote }), ...(r.note ? { note: r.note } : {}), ...(r.role ? { role: r.role } : {}) }))
     this._queueHints()
     void this._run(sent.length ? { forwardedProps: { reply_to: sent } } : {})
   }
@@ -1856,7 +1909,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     const why = this._busy ? 'queued' : this._paused === 'error' ? 'afterRetry' : this._paused === 'stop' ? 'queuePaused' : waits ? 'afterQuestion' : 'queued'
     for (const q of this._queue) {
       const tag = q.el.querySelector('.q-tag')
-      if (tag) tag.textContent = this.t(why, { retry: this.t('retry') })
+      if (tag) tag.textContent = this.tc(why, { retry: this.tc('retry') })
     }
   }
 
@@ -1888,7 +1941,6 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   private _setBusy(on: boolean): void {
     this._busy = on
     this.toggleAttribute('busy', on)
-    this.$.jump?.classList.toggle('busy', on)   // "•••" in the jump button: it is still answering below
     // while it answers, Enter puts the message in the queue: the field says so
     const input = this.$.input as HTMLTextAreaElement | undefined
     // while it answers the field says, in words, that more can be written and goes after the answer
@@ -1963,6 +2015,10 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     } else if (name === 'tool_progress') {
       const p = value as { parent_id?: string; name?: string; input?: unknown }
       void p   // a tool's own sub-steps are not shown: the line names the tool
+    } else if (name === 'card_focus') {   // "show me that card": the one still in the thread, not a copy
+      this._focusCard(String((value as { card_id?: unknown } | null)?.card_id ?? ''))
+    } else if (name === 'language') {   // the language the user writes in: the conversation's words follow it
+      this._setTalk((value as { lang?: unknown } | null)?.lang)
     } else if (name === 'suggestions') {
       const items = (value as { items?: unknown[] })?.items
       this._suggestions = Array.isArray(items) ? items.map(String).slice(0, 5) : []
@@ -2024,7 +2080,8 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     ai.body.innerHTML = this._html(visible(ai.text, ai.st.shown))
     fadeWords(ai.body, ai.st, now, this._opts.fadeMs)
     const log = this.$.log
-    if (log.scrollHeight - log.scrollTop - log.clientHeight < 120) log.scrollTop = log.scrollHeight
+    // typing follows the end only while the reader is there (not after a jump up to a card, not mid-seek)
+    if (this._stick && !this._jumping && log.scrollHeight - log.scrollTop - log.clientHeight < 120) log.scrollTop = log.scrollHeight
     const fading = ai.st.marks.length > 0 && now - ai.st.marks[ai.st.marks.length - 1][1] < this._opts.fadeMs
     if (ai.st.shown < ai.text.length || fading) this._frame(ai)
     else if (ai.done) { ai.body.innerHTML = this._html(ai.text); this._assistantDone(ai.body, ai.text); ai.typed() }   // all typed and faded in: the plain text stays
@@ -2049,7 +2106,8 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     // a key ending in * labels every tool with that prefix ("show_*": the cards from blocks)
     const l = this._labels[name] ?? Object.entries(this._labels).find(([k]) => k.endsWith('*') && name.startsWith(k.slice(0, -1)))?.[1]
     if (typeof l === 'string') return l
-    if (l) return l[this.lang] ?? PACKS[this.lang]?.tools?.[name] ?? l.en ?? Object.values(l)[0]
+    const lang = this._talkLang()   // a step names what it does in the conversation's language
+    if (l) return l[lang] ?? PACKS[lang]?.tools?.[name] ?? l.en ?? Object.values(l)[0]
     const sub = name.includes('.') ? name.split('.').pop()! : name
     const s = sub.replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim()
     return s.charAt(0).toUpperCase() + s.slice(1)
@@ -2060,7 +2118,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   private _ensureSteps(): StepsItem {
     if (this._steps) return this._steps
     const list = h('ul', { id: `steps-${uid()}` })
-    const text = h('span', { class: 'steps-t' }, this.t('working'))
+    const text = h('span', { class: 'steps-t' }, this.tc('working'))
     const toggle = h('button', { type: 'button', 'aria-expanded': 'false', 'aria-controls': list.id }, h('span', { class: 'mark', 'aria-hidden': 'true' }), text) as HTMLButtonElement
     const el = h('div', { class: 'steps collapsed quiet', part: 'steps', role: 'status' }, toggle, list)
     toggle.addEventListener('click', () => {
@@ -2072,12 +2130,13 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       })
     })
     el.hidden = true
-    this._steps = { el, list, toggle, text, steps: new Map(), count: 0, t0: this._runT0 || Date.now(), now: this.t('working') }
+    this._steps = { el, list, toggle, text, steps: new Map(), count: 0, t0: this._runT0 || Date.now(), now: this.tc('working') }
     this._append(el)
     return this._steps
   }
 
   private _addStep(id: string, name: string, label?: string): void {
+    if (this._hostRun) return   // a turn the page started: no steps line (see run())
     const s = this._ensureSteps()
     const text = label ?? this._label(name)
     if (!text) return
@@ -2117,7 +2176,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     if (!s) return
     clearTimeout(s.show)
     s.el.querySelectorAll('li.run').forEach((x) => x.classList.replace('run', failed ? 'fail' : 'ok'))
-    s.end = failed ? this.t('steps', { n: s.count }) : this.t('doneIn', { s: Math.max(1, Math.round((Date.now() - s.t0) / 1000)) })
+    s.end = failed ? this.tc('steps', { n: s.count }) : this.tc('doneIn', { s: Math.max(1, Math.round((Date.now() - s.t0) / 1000)) })
     s.el.classList.add('done')   // a list the user opened stays open (it does not snap shut under them)
     this._stepsHead(s)
     s.el.removeAttribute('role')
@@ -2125,7 +2184,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
 
   /** The line's text: the time when done, the count while the list is open (its rows name the steps), else the step. */
   private _stepsHead(s: StepsItem): void {
-    s.text.textContent = s.end ?? (s.el.classList.contains('openlist') ? this.t('steps', { n: s.count }) : s.now)
+    s.text.textContent = s.end ?? (s.el.classList.contains('openlist') ? this.tc('steps', { n: s.count }) : s.now)
   }
 
   // ------------------------------------------------------------------ frontend tools
@@ -2164,6 +2223,35 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     if (this._busy) return   // shown when the running answer ends
     this._renderQuick()
   }
+
+  /** A card already in the thread, brought back: the log scrolls to it (not the page) and it glows for a moment
+   *  (`data-spot`); the focus stays in the composer, where the person keeps typing. Gone: `agui:card-missing`. */
+  private _focusCard(id: string): void {
+    const log = this.$.log
+    const el = [...log.querySelectorAll<HTMLElement>('[data-card-id]')].find((x) => x.dataset.cardId === id)
+    if (!el) { this.dispatchEvent(new CustomEvent('agui:card-missing', { detail: { card_id: id } })); return }
+    this._stick = false   // reading up now: the text that follows ("Here it is, above") and the run's end stay put
+    this.$.jump.hidden = false
+    const top = el.getBoundingClientRect().top - log.getBoundingClientRect().top + log.scrollTop
+    // our own scroll: its first events still read "near the end", so they must not re-pin it (as for the ↓ button)
+    // (no scrollend here: Chrome delivers a late one from the pin before this scroll; a timer ends it, and lands it)
+    this._jumping = true
+    const target = Math.max(0, top - (log.clientHeight - el.offsetHeight) / 2)
+    log.style.overflowAnchor = 'none'   // Chrome's scroll anchoring would cancel the smooth scroll as the text below types
+    log.scrollTo?.({ top: target, behavior: reducedMotion() ? 'auto' : 'smooth' })
+    setTimeout(() => {
+      this._jumping = false
+      log.style.overflowAnchor = ''
+      if (Math.abs(log.scrollTop - target) > 4) log.scrollTop = target   // a smooth scroll something cut short
+      this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
+      this.$.jump.hidden = this._stick
+    }, 600)
+    el.removeAttribute('data-spot'); void el.offsetWidth; el.setAttribute('data-spot', '')
+    clearTimeout(this._spotT)
+    this._spotT = setTimeout(() => el.removeAttribute('data-spot'), 1600)
+  }
+
+  private _spotT: ReturnType<typeof setTimeout> | undefined
 
   /** Take back an assistant message already shown (e.g. a host's "cut" when an action follows the text). */
   removeMessage(id: string): boolean {
@@ -2209,8 +2297,11 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this._shown.add(it.card_id)
     if (!local) this._interrupted = true
     // a card from the agent appears after the text above it has finished typing, like a message after its sentence
-    if (!restored && !local) { const thread = this._thread; void this._typing.then(() => { if (this._thread === thread) this._renderCard(it, restored, local) }); return }
-    this._renderCard(it, restored, local)
+    this._setTalk((it as { language?: unknown }).language)
+    const thread = this._thread
+    if ((restored || local) && !this._talkLoading) { this._renderCard(it, restored, local); return }   // at once, as before
+    const after = !restored && !local ? Promise.all([this._typing, this._talkReady]) : this._talkReady
+    void after.then(() => { if (this._thread === thread) this._renderCard(it, restored, local) })
   }
 
   private _renderCard(it: Interrupt, restored: boolean, local?: (value: unknown) => void): void {
@@ -2219,7 +2310,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     let done = false
     const ctx = {
       chat: this as ChatApi, restored, flags: this._opts.cards[it.type] ?? {},
-      t: (k: string, v?: Record<string, string | number>) => this.t(k, v),
+      t: (k: string, v?: Record<string, string | number>) => this.tc(k, v),   // a card speaks the conversation's language
       resolve: (value: unknown) => {
         if (done) return
         done = true

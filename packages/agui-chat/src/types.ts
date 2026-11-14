@@ -28,6 +28,8 @@ export interface ReplyTo {
   whole?: boolean
   /** the user's own comment on this quote (typed in the reply window, then added to the chat) */
   note?: string
+  /** whose words are quoted: "user" for the user's own message (the server tells the agent so); absent for an answer */
+  role?: 'user'
 }
 
 export interface ToolSpec { name: string; description: string; parameters?: Record<string, unknown> }
@@ -159,6 +161,8 @@ export interface ChatApi {
   /** Run a slot from options.render safely: its element, or null for the default. */
   renderSlot(name: keyof Slots, ...args: unknown[]): HTMLElement | null
   t(key: string, vars?: Record<string, string | number>): string
+  /** The conversation's words (cards and the turn's lines): the language the server names, else the page's. */
+  tc?(key: string, vars?: Record<string, string | number>): string
   host: HTMLElement
 }
 

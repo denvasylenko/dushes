@@ -24,11 +24,11 @@ The reply window SHALL move with the quoted text when the log scrolls, never pin
 - **THEN** the window moves with the quoted answer and stays open
 
 ### Requirement: No reply window
-There SHALL be no capsule or reply window for a selection in the user's own messages, cards, tool steps or the action bar, for a selection spanning two messages, or with the `reply` option off.
+The user's own sent messages SHALL be quotable too, their window reading "Reply to your message" and the quote carrying `role: "user"`. There SHALL be no capsule or reply window for a selection in a queued message, a quote inside a bubble, cards, tool steps or the action bar, for a selection spanning two messages, or with the `reply` option off.
 
 #### Scenario: Own message
-- **WHEN** the user selects text in their own bubble
-- **THEN** no window appears
+- **WHEN** the user selects text in their own sent bubble
+- **THEN** the same Reply capsule appears, and its window reads "Reply to your message"
 
 ### Requirement: Send or collect a reply
 In the reply window, Enter and Add to chat SHALL put the quote into the composer, under the quotes already there, with what was typed as its reply, and send nothing. Enter in the composer SHALL send the message with every collected quote. A quote is the selection's plain text with whitespace collapsed, at most 300 characters, cut with "…".

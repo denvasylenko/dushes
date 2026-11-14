@@ -12,7 +12,8 @@ vi.mock('#blocks-loader', async () => {
   const real = await import('../src/formguide/blocks')
   const { monthCalendar } = await import('../src/formguide/month')
   const { realTypedView } = await import('../src/formguide/typed')
-  const b: Blocks = { blocksCard: real.blocksCard, blocksRenderer: real.blocksRenderer, calendar: monthCalendar, typedView: realTypedView }
+  const { realReviewCard } = await import('../src/formguide/review')
+  const b: Blocks = { blocksCard: real.blocksCard, blocksRenderer: real.blocksRenderer, calendar: monthCalendar, typedView: realTypedView, reviewCard: realReviewCard }
   return {
     blocksNow: () => load.ready,
     loadBlocks: () => load.ready ? Promise.resolve(load.ready) : new Promise<Blocks>((ok, fail) => {

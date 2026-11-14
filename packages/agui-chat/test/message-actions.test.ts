@@ -164,7 +164,7 @@ describe('a lead taken back', () => {
 })
 
 describe('back to the latest message', () => {
-  it('shows a jump button when scrolled up, with the dots while the assistant works', async () => {
+  it('shows a jump button when scrolled up: always the arrow, in one place', async () => {
     const el = await mount()
     let go!: () => void
     el.agent = agent('Done', new Promise<void>((r) => { go = r })) as never
@@ -177,12 +177,20 @@ describe('back to the latest message', () => {
     log.dispatchEvent(new Event('scroll'))
     const jump = $(el, '.jump') as HTMLButtonElement
     expect(jump.hidden).toBe(false)
-    expect(jump.classList.contains('busy')).toBe(true)                          // "•••": still answering below
+    expect(jump.querySelector('.dots')).toBeNull()                              // the arrow even while it answers: the dots stay in the log
     expect(jump.getAttribute('aria-label')).toBe('Jump to the latest')
     go()
     await tick(5)
-    expect(jump.classList.contains('busy')).toBe(false)                         // the arrow again
     jump.click()
+    expect(jump.hidden).toBe(true)
+    expect(jump.hasAttribute('title')).toBe(false)                              // no native tooltip left under the cursor
+    log.scrollTop = 900                                                         // half-way down, our own smooth scroll
+    log.dispatchEvent(new Event('scroll'))
+    expect(jump.hidden).toBe(true)                                              // it does not come back on the way
+    Object.defineProperty(log, 'scrollHeight', { value: 2600, configurable: true })   // an answer grew meanwhile
+    await tick(750)
+    expect(log.scrollTop).toBe(2600)                                            // it ends at the end, wherever that is now
+    log.dispatchEvent(new Event('scroll'))
     expect(jump.hidden).toBe(true)
   })
 })

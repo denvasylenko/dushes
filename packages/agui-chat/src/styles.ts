@@ -125,9 +125,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   border: 1px solid var(--agui-line-2); background: var(--agui-panel-bg, var(--agui-bg)); color: var(--agui-ink-2); display: grid; place-items: center; cursor: pointer;
   box-shadow: 0 4px 14px -6px var(--agui-shadow); animation: fade-up .18s var(--agui-ease) both; }
 .jump[hidden] { display: none; }
-.jump .dots { display: none; padding: 0; gap: 3px; }
-.jump .dots i { width: 5px; height: 5px; background: var(--agui-accent); }
-.jump.busy .dots { display: inline-flex; } .jump.busy .jump-ico { display: none; }
 .jump-ico { display: grid; }
 @keyframes fade-up { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .dots { display: inline-flex; gap: 4px; padding: 8px 0; }
@@ -172,8 +169,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .mode-hero .panel { background: transparent; }
 .mode-hero:not(.open) .head, .mode-hero:not(.open) .log { display: none; }
 .mode-hero:not(.open) .foot { padding: 0; background: none; }
-.mode-hero:not(.open) .box { min-height: 60px; padding: 8px 8px 8px 16px; align-items: center; box-shadow: 0 10px 30px -14px var(--agui-shadow); }
-.mode-hero:not(.open) textarea { font-size: 17px; }
+/* the hero's field keeps its buttons level with the last line, as everywhere: its 60 px come from the padding */
+.mode-hero:not(.open) .box { min-height: 60px; padding: 12px 12px 12px 16px; align-items: flex-end; box-shadow: 0 10px 30px -14px var(--agui-shadow); }
+.mode-hero:not(.open) textarea { font-size: 17px; line-height: 24px; padding-top: 6px; padding-bottom: 6px; }
+@media (pointer: coarse) { .mode-hero:not(.open) textarea { padding-top: 10px; padding-bottom: 10px; } .mode-hero:not(.open) .box { padding: 8px 8px 8px 16px; } }
 .mode-hero.open .panel { background: var(--agui-panel-bg, var(--agui-bg)); border: 1px solid var(--agui-line); border-radius: var(--agui-radius-lg);
   overflow: hidden; animation: hero-grow .32s var(--agui-ease) both; }
 .mode-hero.open .log { max-height: 70vh; min-height: 160px; }
@@ -191,6 +190,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 /* one turn, one group: inside an answer its text, cards and actions sit close (about 8 px); turns keep 20 px */
 .msg.ai + .card, .card + .card, .card + .msg.ai { margin-top: -12px; }
 .msg.ai.turn-acts { margin-top: -4px; } .card + .msg.ai.turn-acts { margin-top: -12px; }   /* 8 px under the last piece */
+/* a card brought back (card_focus): a soft ring that fades, no layout change */
+[data-spot] { outline: 3px solid transparent; outline-offset: 2px; animation: spot 1.6s var(--agui-ease) both; }
+@keyframes spot { 0%, 60% { outline-color: color-mix(in srgb, var(--agui-link) 45%, transparent); } }
 .card { margin: 4px 0 20px; border: 1px solid var(--agui-card-border, var(--agui-line)); border-radius: var(--agui-card-radius, var(--agui-radius));
   background: var(--agui-card-bg, var(--agui-surface)); color: var(--agui-card-ink, inherit); padding: var(--agui-card-padding, 16px);
   -webkit-backdrop-filter: var(--agui-card-blur, none); backdrop-filter: var(--agui-card-blur, none);   /* glass: a translucent card-bg + blur */
@@ -241,7 +243,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .panel { --agui-quick-room: 50px; }   /* the strip's height: 12 + a chip (34) + 4 */
 @media (pointer: coarse) { .panel { --agui-quick-room: 60px; } }
 .quick-room .log { padding-bottom: calc(12px + var(--agui-quick-room)); }
-.foot:has(> .quick:not([hidden])) > .jump { bottom: calc(100% + var(--agui-quick-room) + 8px); }
+.foot:has(> .quick:not([hidden]):not(.q-away)) > .jump { bottom: calc(100% + var(--agui-quick-room) + 8px); }   /* only over chips actually shown */
 /* room for the focus ring; the edges fade only where chips are hidden (a mask's colour is only its alpha) */
 .quick > .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 0 14px; scroll-padding: 0 14px;
   mask-image: linear-gradient(to right, transparent, var(--agui-ink) var(--fl, 0px), var(--agui-ink) calc(100% - var(--fr, 0px)), transparent); }
@@ -388,8 +390,9 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 :host(.dark) .wrap.shadow-raised { --sh: 0 2px 6px -2px color-mix(in srgb, var(--agui-shadow) 35%, transparent); --sh-f: 0 6px 18px -6px color-mix(in srgb, var(--agui-shadow) 55%, transparent); }
 .wrap.shadow-none, :host(.dark) .wrap.shadow-none { --sh: none; --sh-f: none; }
 .box.drop { border-color: var(--agui-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-accent) 25%, transparent); }   /* a file dragged over it */
-.box textarea { flex: 1; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 16px/1.4 var(--agui-font);
-  padding: 7px 0; max-height: 180px; min-height: 24px; }
+.box textarea { flex: 1; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 16px/22px var(--agui-font);
+  padding: 7px 0; max-height: 180px; min-height: 36px; }   /* one line = the buttons' 36 px, so its text sits on their centre */
+@media (pointer: coarse) { .box textarea { padding: 11px 0; min-height: 44px; } }   /* the 44 px buttons on touch */
 .box textarea:placeholder-shown { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .send { width: 36px; height: 36px; border: 0; border-radius: var(--agui-radius-pill); background: var(--agui-accent); color: var(--agui-on-accent); cursor: pointer;
   display: grid; place-items: center; flex: none; transition: opacity .2s, transform .15s; }

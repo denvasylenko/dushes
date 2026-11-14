@@ -50,7 +50,7 @@ While a run is active, the widget SHALL show the tool calls as one line of fixed
 - **THEN** one line reads "Searching the documents…" while it works and "Done in 4 s ›" after, and its list has one row "Searching the documents (2)"
 
 ### Requirement: Quick answers show no steps line
-The steps line SHALL appear only after the first second of a run, so an answer quicker than that shows no line at all; the content SHALL NOT move when the line appears, changes or ends.
+The steps line SHALL appear only after the first second of a run, so an answer quicker than that shows no line at all; the content SHALL NOT move when the line appears, changes or ends. A turn the page starts without a user message (`chat.run`: a greeting, prefill) SHALL show no steps line, its answer as usual.
 
 #### Scenario: A quick look-up
 - **WHEN** the agent calls a tool and answers within half a second
@@ -126,6 +126,20 @@ On a computer the actions under an answer SHALL show on hover or focus, except u
 - **WHEN** the pointer rests on an earlier answer
 - **THEN** its actions fade in
 
+### Requirement: A card brought back, not copied
+On `CUSTOM card_focus {card_id}` the chat SHALL scroll its log (not the page) to the card with that `data-card-id` and mark it `data-spot` for about 1.6 s, a fading ring with no layout change, leaving the focus where it is; no second card SHALL be drawn. A card that is no longer there SHALL fire `agui:card-missing {card_id}` and draw nothing. Every run SHALL list the capability `card.focus`.
+
+#### Scenario: "Show me the seats again"
+- **WHEN** the seat card is still in the thread and the server sends `card_focus` for it
+- **THEN** the log scrolls to that card, it glows for a moment, and there is still one seat card
+
+### Requirement: The conversation's language
+When the server names the language the user writes in (`CUSTOM language {lang}`, a card's `language`, the restore's `language`), the chat SHALL load that pack and use it for the cards' own words, the steps line and the queue lines; a card SHALL wait for its pack rather than mix two languages. The frame (header, placeholder, button labels) SHALL stay in the page's language, and a new chat SHALL start there again.
+
+#### Scenario: A German visitor on an English page
+- **WHEN** the server sends `language: de` and then a question card
+- **THEN** the card shows "Überspringen" and the steps line "Fertig in …", while the header and the field stay English
+
 ### Requirement: Imports are safe on the server
 Every entry of the package (the element, `formguide`, `highlight`, `react`, `react-hook-form`) SHALL import without a DOM, as in server rendering, and define its custom elements only in the browser.
 
@@ -148,7 +162,7 @@ A chip that cannot be chosen (a closed day, the chips while an action applies) S
 - **THEN** the Monday chip is grey and cannot be tapped, and it is not struck through
 
 ### Requirement: Back to the latest message
-A user who scrolled up SHALL stay where they read while new text arrives, and a round button over the composer SHALL bring them to the latest message; while the assistant works it SHALL show three dots instead of its arrow. Sending a message SHALL bring the view down.
+A user who scrolled up SHALL stay where they read while new text arrives, and a round button over the composer SHALL bring them to the latest message; it SHALL always show its arrow and sit in one place over the field. A tap SHALL take it away at once, keep it away during its own scroll, end at the very bottom, and leave no tooltip. Sending a message SHALL bring the view down.
 
 #### Scenario: Reading back while it answers
 - **WHEN** the user scrolls up during an answer

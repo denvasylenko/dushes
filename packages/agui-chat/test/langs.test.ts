@@ -49,3 +49,33 @@ describe('language packs', () => {
     expect(el.t('send')).toBe('Send')   // missing texts fall back to English
   })
 })
+
+describe('the conversation\'s language', () => {
+  it('cards and the steps line follow the language the server names; the frame stays the page\'s', async () => {
+    const { formguide } = await import('../src/formguide/index')
+    const el = document.createElement('agui-chat') as AguiChatElement
+    for (const [k, v] of Object.entries({ mode: 'inline', typing: 'plain', lang: 'en', 'persist-thread': 'off' })) el.setAttribute(k, v)
+    document.body.appendChild(el)
+    el.use(formguide({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({}) }))
+    await new Promise((r) => setTimeout(r))
+    el.agent = { run: () => ({ subscribe: (o: { next: (e: unknown) => void; complete: () => void }) => {
+      setTimeout(() => {
+        for (const e of [{ type: 'RUN_STARTED', threadId: 't', runId: 'r' }, { type: 'CUSTOM', name: 'language', value: { lang: 'de' } },
+          { type: 'TOOL_CALL_START', toolCallId: 'a', toolCallName: 'ask_documents' }, { type: 'TOOL_CALL_END', toolCallId: 'a' },
+          { type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'ask', card_id: 'q', question: 'Welche Versicherung?', language: 'de',
+            options: [{ id: 'a', label: 'Haftpflicht' }], multiple: false, allow_text: true }) },
+          { type: 'RUN_FINISHED', threadId: 't', runId: 'r' }]) o.next(e)
+        o.complete()
+      })
+      return { unsubscribe() {} }
+    } }) } as never
+    await el.send('Ich brauche eine Versicherung')
+    await new Promise((r) => setTimeout(r, 300))
+    const root = el.shadowRoot!
+    const skip = [...root.querySelectorAll<HTMLButtonElement>('.card .btn.link')].map((b) => b.textContent)
+    expect(skip).toContain('\u00dcberspringen')                                   // the card's own words: German
+    expect(root.querySelector('.steps-t')!.textContent).toMatch(/^Fertig in/)      // the steps line too
+    expect(root.querySelector('.title')!.textContent).toBe('Assistant')            // the frame: the page's English
+    expect(root.querySelector('textarea')!.placeholder).toBe('Message the assistant\u2026')
+  })
+})

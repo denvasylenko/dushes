@@ -165,6 +165,8 @@ addLanguage('pt', {                 // a language of your own; anything missing 
 
 Your own texts in `options.i18n` win over any pack.
 
+The conversation can be in another language than the page: a Russian visitor on an English site. When the server names the language the user writes in (`CUSTOM language {lang}`, `language` on a card, or `language` in the restore), the chat loads that pack and speaks it in the conversation itself: the cards' own words (Skip, "or type your answer", Undo), the steps line and the queue lines. A card waits for its pack, so it never mixes two languages. The frame (header, the field's placeholder, button labels) stays in the page's language, and a new chat starts there again. For plugins the conversation's words are `chat.tc(key)`, the page's `chat.t(key)`.
+
 ## Attachments
 
 Under every answer sit its actions, quiet icons that show on hover on a computer (always on a phone and under the latest answer). They come once per turn, when it has finished: after its last piece, a card included, and Copy takes every text part of it, so a sentence and the card under it read as one answer. Copy is there by default; choose your own list, add your own and handle the taps:
@@ -177,7 +179,7 @@ chat.options = {
 chat.addEventListener('agui:message-action', (e) => send('feedback', e.detail))   // {id, messageId, text, pressed?}
 ```
 
-Scrolled up while the assistant answers? The chat stays where you read and a round button over the composer brings you to the latest message; while the assistant is still working it shows the three dots.
+Scrolled up while the assistant answers? The chat stays where you read and a round button over the composer brings you to the latest message: always an arrow, in the same place over the field (the typing dots stay at the end of the chat).
 
 Files added with the + button, pasted (a screenshot, Ctrl+V) or dropped show inside the composer: an image as a thumbnail, a document as a tile with its name and type, each with a remove button. A sent message shows its images above the bubble, on their own. A tap on a thumbnail opens it large (the images sent with one message page with the arrows under the picture, ← and →, or a swipe); the pencil there marks the image up (pen, rectangle, text, colours, undo) and Save puts the marked-up copy in its place. A picture in an answer (an `image` block in a card) opens the same way. The large picture is a real image, so the browser's own menu (right-click, or a long press on a phone) copies or saves it. The markup editor is a separate file (`agui-chat.editor.js` next to the one-script build, its own chunk with a bundler) loaded only when the pencil is tapped. `attach="off"` turns attachments off; `attachAccept`, `attachMaxMb` and `attachMultiple` limit them.
 
@@ -203,7 +205,7 @@ The queue is kept per thread across a reload, and a new chat clears it. Restyle 
 
 ## Reply to a part of an answer
 
-Select a few words in an answer and a small **Reply** capsule appears, as in the Claude app (scrolling away takes it off). Reply opens a window: the quote on one line, a field "Reply to Assistant", a microphone (the same `voice` setting as the composer) and **Add to chat**. One dictation runs at a time: pressing the other microphone stops the first, which keeps what it heard.
+Select a few words in an answer, or in a message you sent, and a small **Reply** capsule appears, as in the Claude app (scrolling away takes it off). Reply opens a window: the quote on one line, a field "Reply to Assistant", a microphone (the same `voice` setting as the composer) and **Add to chat**. One dictation runs at a time: pressing the other microphone stops the first, which keeps what it heard.
 - **Enter** in the window (or **Add to chat**) puts the quote, with what you typed as its reply, into the composer as a grey tile, under the ones already there, so you can collect several. **Enter** in the composer then sends them in one message.
 - **× on a tile**, or **Esc** in the field, takes a quote back.
 
@@ -218,7 +220,7 @@ The run carries the quotes for the server, once:
 ] } }
 ```
 
-`quote` is the selection's plain text, at most 300 characters; `note` is the reply typed for that quote; `whole: true` means the whole answer (the server looks it up). A restored user message with `reply_to` (a list, or one object from an older server) shows its quotes again. Turn it off with `reply="off"`; restyle it with the parts `selection-menu` (the capsule), `reply-window`, `reply` (the tiles) and `message-quote`.
+`quote` is the selection's plain text, at most 300 characters; `note` is the reply typed for that quote; `whole: true` means the whole answer (the server looks it up); `role: "user"` marks a quote of the user's own message, so the agent reads it as their words. A restored user message with `reply_to` (a list, or one object from an older server) shows its quotes again. Turn it off with `reply="off"`; restyle it with the parts `selection-menu` (the capsule), `reply-window`, `reply` (the tiles) and `message-quote`.
 
 ## Long messages fold
 

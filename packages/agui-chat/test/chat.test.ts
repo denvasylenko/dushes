@@ -146,6 +146,44 @@ describe('<agui-chat>', () => {
     release(); await sent
   })
 
+  it('a turn the page started (prefill, a greeting) shows no steps line; its answer shows; a sent message has its line again', async () => {
+    const step: AguiEvent[] = [{ type: 'TOOL_CALL_START', toolCallId: 'g', toolCallName: 'ask_documents' }, { type: 'TOOL_CALL_END', toolCallId: 'g' }]
+    mockRuns(run(...step, ...text('m1', 'Your form is filled from the passport.')), run(...step, ...text('m2', 'Done.')))
+    const el = await mount()
+    ;(el as unknown as { _stepsAfter: number })._stepsAfter = 0
+    await el.run({ forwardedProps: { prefill: { data: {} } } })
+    await tick(5)
+    expect($$(el, '.steps')).toHaveLength(0)                                     // nothing above the first message
+    expect($(el, '.msg.ai .body').textContent).toContain('filled from the passport')
+    await el.send('thanks, and the rate?')
+    await tick(5)
+    expect($$(el, '.steps')).toHaveLength(1)                                     // the user's own turn: its line
+    const order = [...$(el, '.log').children].map((c) => c.className.split(' ').slice(0, 2).join(' '))
+    expect(order.indexOf('msg me')).toBeLessThan(order.indexOf('steps collapsed'))
+  })
+
+  it('card_focus brings back the card already in the thread: no copy, a glow, card.focus sent; a missing one fires an event', async () => {
+    const card = interrupt({ type: 'pick_seat', card_id: 'k7', seats: ['1A'] })
+    mockRuns(run(card), run({ type: 'CUSTOM', name: 'card_focus', value: { card_id: 'k7' } }, ...text('m2', 'Here it is, above.')),
+      run({ type: 'CUSTOM', name: 'card_focus', value: { card_id: 'gone' } }))
+    const el = await mount()
+    el.renderers.set('pick_seat', () => document.createElement('div'))
+    await el.send('seats?')
+    await tick(5)
+    await el.send('show me the seats again')
+    await tick(5)
+    expect(($$(el, '[data-card-id]').filter((c) => c.dataset.cardId === 'k7'))).toHaveLength(1)   // no copy
+    expect($$(el, '[data-card-id]').find((c) => c.dataset.cardId === 'k7')!.hasAttribute('data-spot')).toBe(true)
+    expect((bodies[1].forwardedProps as { capabilities: string[] }).capabilities).toContain('card.focus')
+    const missing: unknown[] = []
+    el.addEventListener('agui:card-missing', (e) => missing.push((e as CustomEvent).detail))
+    await el.send('and the other card?')
+    await tick(5)
+    expect(missing).toEqual([{ card_id: 'gone' }])
+    await tick(1700)
+    expect($$(el, '[data-spot]')).toHaveLength(0)                               // the glow fades
+  })
+
   it('renders an interrupt with a registered renderer and resumes with its value', async () => {
     mockRuns(run(interrupt({ type: 'pick_seat', card_id: 'k1', seats: ['1A', '2B'] })), run(...text('m2', 'Seat 2B.')))
     const el = await mount()
