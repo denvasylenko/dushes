@@ -1,0 +1,29 @@
+name: quote_own_message_claim
+tags: [quote]
+persona: >-
+  Someone halfway through a consumer loan application (500 000 for 36 months already chosen). Their first message
+  is exactly "I guess the rate will be around 5%, what will I pay per month?". After the assistant answers they
+  select "around 5%" in their OWN first message and ask whether that was right.
+goal: Learn the monthly payment, then find out whether their own guess of the rate was right.
+start:
+  page: /apply
+  form: loan_application
+  values:
+    loan_type: {id: consumer, name: Consumer loan}
+    loan_amount: "500000"
+    loan_term: {id: "36", name: 36 months}
+knows:
+  - A consumer loan of 500 000 for 36 months, already in the form
+  - The 5% was their own guess, written in their own message; the assistant never said 5%
+quote:
+  quotes:
+    - {pattern: "around 5\\s?%", from: user}
+  ask: Was this right?
+turns: 4
+# The quoted text is the user's own guess (role "user" on the wire). An agent that takes the quote for part of its
+# own answer owns the 5% ("I said", "my mistake", an apology); the right answer: that was your guess, the rate is 21.9%.
+expect:
+  answered_by: [form]
+  says: [["21.9", "21,9"]]
+  never_says: ["my answer", "what I told you", "I told you", "my reply", "my response", "as I said", "I said", "I mentioned", "my earlier", "my previous", "my mistake", "I apolog", "sorry", "I was wrong", "I stated"]
+min_score: 7
