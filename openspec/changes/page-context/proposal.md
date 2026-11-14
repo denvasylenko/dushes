@@ -6,6 +6,8 @@ Dushes knows the site only from the site map written in advance and the host's `
 
 ## What Changes
 
+- **First (phase 0, from QA's round 1): the form agent sees the page it sits on.** On a page with a form, Dushes leaves form questions to the form agent (`stay_on_forms`), but the form agent never got the page's own text, so it denied facts the page states (a 27.90 EUR fee, visa fees, a deposit; about nine scenarios at -3 to -5, one held out). Dushes passes the current page's facts (the site map's sections for this path, and later `state.page.content`) to `FormGuide.run(page=...)`; the form agent reads them in a `<page_facts>` block of the current message (never the frozen system prompt, so the cache holds), cut to `max_chars`, as data, never instructions. Its prompt gets one rule: what the page states is as good as the form; never say the page or the form does not give a fact that `<page_facts>` holds. A host without Dushes may pass `state.page.content` directly.
+
 - A page config: `state.page.content` (sections with text and tables, the visible section, the selection, free data), prepared by the host like the form config. This is the main path.
 - A fallback snapshot: when the host sends no page content, `<agui-chat>` (attribute `page-snapshot`) attaches a compact snapshot of the visible page as `state.page.snapshot` (title, headings, visible text, tables, selection), skipping inputs, passwords and elements marked `data-agui-skip` or matched by configured selectors.
 - Dushes gets the page in a `<page_context>` block of the current message (not the frozen system prompt), cut to a configured size with the visible section first, and treats it as data, never as instructions.

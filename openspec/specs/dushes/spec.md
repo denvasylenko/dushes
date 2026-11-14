@@ -180,3 +180,17 @@ With `stay_on_forms` (default true), on a page with a form Dushes' prompt SHALL 
 - **WHEN** a host sets `stay_on_forms=False` and the owner on the "Site" page asks how many people visited
 - **THEN** Dushes may open the Statistics page its instructions name
 
+### Requirement: Dushes gives a form question to the form
+On a page with a form, Dushes SHALL have a `to_form(reason)` tool: its turn ends and the form agent answers the same message in the same run, with one `RUN_STARTED` and one `RUN_FINISHED`. Dushes SHALL NOT have it off a form page or for a message the form agent has just given back with `hand_back`, so a message never bounces twice. Dushes' prompt SHALL say never to send the user to another assistant.
+
+#### Scenario: A form tab asked on the form page
+- **WHEN** on the loan form a question about the locked Collateral tab reaches Dushes
+- **THEN** Dushes calls to_form and the form agent explains the tab in the same run
+
+### Requirement: No arithmetic on prices and rates
+Dushes' prompt SHALL say not to add up discounts or work out a price, rate, payment or total, but to quote each condition as the page or document states it, with what it applies to, and to say the final figure comes from the form or the business.
+
+#### Scenario: Two discounts
+- **WHEN** the user asks for the rate with a salary-client discount and a life-insurance discount
+- **THEN** Dushes quotes both conditions and what they apply to and does not state a combined rate
+

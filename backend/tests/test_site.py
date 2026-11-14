@@ -460,3 +460,32 @@ def test_no_second_round_after_an_answer_and_a_move(guide, model):
                     say("Barber & Co takes card or cash.")]                         # a second round would repeat it
     ev = run(s, "dup2", message="do you take cards?", state={"page": {"path": "/"}})
     assert "".join(e.get("delta", "") for e in ev).count("card or cash") == 1 and len(model.calls) == 1
+
+
+def test_dushes_gives_a_form_question_to_the_form(site, guide, model, monkeypatch):
+    seen = {}
+
+    async def fake_run(thread_id, **kw):
+        seen.update(thread_id=thread_id, message=kw.get("message"), caps=kw.get("capabilities"))
+        yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": "r"}
+        yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "The Collateral tab opens once you pick a car loan."}
+        yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": "r"}
+    monkeypatch.setattr(site.forms, "run", fake_run)
+    model.script = [say("site"), say("", ("t1", "to_form", {"reason": "a form tab"}))]   # the router, then Dushes
+    ev = run(site, "tf1", message="where are you located? and why is the Collateral tab locked?", state=form_state(guide))
+    types = [e["type"] for e in ev]
+    assert types.count("RUN_STARTED") == 1 and types.count("RUN_FINISHED") == 1
+    assert seen["thread_id"] == "tf1-loan_application" and seen["message"].startswith("where are you located?")
+    assert not seen["caps"] or "hand_back" not in seen["caps"]                     # no ping-pong back to Dushes
+    msgs = [(m["role"], m["content"]) for m in site.thread("tf1")["messages"]]
+    assert msgs[-1] == ("assistant", "The Collateral tab opens once you pick a car loan.")
+    assert "to_form" in {(t.get("function") or t)["name"] if isinstance(t, dict) else t.name for t in model.bound}
+
+
+def test_no_to_form_after_a_hand_back_or_off_a_form_page(guide, model):
+    s = Dushes(guide, SiteMap.load(SITE))
+    model.script = [say("Hi!")]
+    run(s, "tf2", message="hello", state={"page": {"path": "/"}})
+    assert "to_form" not in {(t.get("function") or t)["name"] if isinstance(t, dict) else t.name for t in model.bound}
+    prompt = model.calls[-1][0].content
+    assert "work out a price, rate, payment or total yourself" in prompt

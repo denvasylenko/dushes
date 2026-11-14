@@ -451,6 +451,13 @@ class Dushes:
                 handed.update(form_id=form_id, note=note, language=language, form=form)
             return bool(form)
 
+        back: dict[str, str] = {}   # to_form was called: the form agent answers this message next
+
+        def to_form(reason: str) -> None:
+            back["reason"] = reason
+
+        # on a form page Dushes can give a form question to the form agent, unless the form agent just gave it back
+        give = to_form if state.get("form") and message and not recorded else None
         has_docs = bool(self.forms.knowledge.documents_for(SCOPE))
         failed = False
         async for ev in agent.answer(self.model or self.forms.models.agent, self.site, message or "", history, page,
@@ -458,7 +465,7 @@ class Dushes:
                                      ask_docs=self.ask_documents if has_docs else None, live=live,
                                      instructions=self.instructions, style=self.style, tools=self.tools, ctx=ctx,
                                      suggestions=self.suggestions, finish=False,
-                                     stay_on_form=self._filling(thread_id, state)):
+                                     stay_on_form=self._filling(thread_id, state), to_form=give):
             if ev["type"] == "TEXT_MESSAGE_CONTENT":
                 said.append(ev["delta"])
             elif ev["type"] == "RUN_ERROR":
@@ -467,6 +474,21 @@ class Dushes:
         if said:
             tx.append(thread_id, new_entry("assistant", text="".join(said)))
         if failed:
+            return
+        if back and not handed:   # the form agent answers the message itself, in this run (no hand_back now)
+            form = state["form"]
+            fid = str(form.get("form_id") or "form")
+            form_thread = f"{thread_id}-{fid}"[:100]
+            out = Said()
+            async for ev in self.forms.run(form_thread, message=message, state=form, run_id=run_id, **form_kwargs):
+                if ev["type"] == "RUN_STARTED":
+                    continue
+                out.see(ev)
+                yield ev
+            if out.text().strip():
+                tx.append(thread_id, new_entry("assistant", text=out.text(), form_id=fid))
+            for card in out.cards:
+                tx.append(thread_id, new_entry("display", card=card, form_id=fid))
             return
         if not handed:
             yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
