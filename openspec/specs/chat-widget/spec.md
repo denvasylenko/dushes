@@ -126,6 +126,13 @@ On a computer the actions under an answer SHALL show on hover or focus, except u
 - **WHEN** the pointer rests on an earlier answer
 - **THEN** its actions fade in
 
+### Requirement: Pictures open in the viewer
+A picture sent with a message or shown in an answer (an `image` block) SHALL open in the image viewer on a tap, as a real image the browser's own menu works on (right-click or a long press: copy, save); the viewer SHALL NOT block that menu.
+
+#### Scenario: Saving a picture from an answer
+- **WHEN** the user taps the terrace photo in a card and then right-clicks it in the viewer
+- **THEN** the browser's own menu offers to copy or save the image
+
 ### Requirement: Unavailable choices are quiet
 A chip that cannot be chosen (a closed day, the chips while an action applies) SHALL be disabled and shown in the tertiary ink with no strike-through, as the iOS calendar shows unavailable days.
 

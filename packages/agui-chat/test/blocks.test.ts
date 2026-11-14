@@ -145,6 +145,19 @@ const BOOKING = { type: 'picker', title: 'Book a table', need: 'Choose: {x}', su
   fields: [{ name: 'phone', label: 'Phone', input: 'tel', required: true }] }
 
 describe('a picker card', () => {
+  it('a following group says what to pick first, one line in its row, and the chips take its place', async () => {
+    const el = await mount()
+    const card = structuredClone(BOOKING) as typeof BOOKING & { depends: { time: { empty?: string } } }
+    card.depends.time.empty = 'Pick a day first'
+    void el.showCard(card)
+    await tick()
+    const time = $$(el, '.bk-group').find((g) => g.querySelector('.bk-cap')!.textContent === 'Time')!
+    expect(time.querySelector('.bk-empty')!.textContent).toBe('Pick a day first')
+    ;[...$$(el, '.bk-group')[0].querySelectorAll<HTMLButtonElement>('.chip')][0].click()   // Fri
+    expect(time.querySelector('.bk-empty')).toBeNull()
+    expect([...time.querySelectorAll('.chip')].map((b) => b.textContent)).toEqual(['18:00', '20:00'])
+  })
+
   it('one choice per group; times follow the day; the button waits and says what is missing; answers with the values', async () => {
     const el = await mount()
     const answer = el.showCard(structuredClone(BOOKING))

@@ -33,6 +33,13 @@ A `choice` SHALL take a `label` (a caption above its chips), options with `off` 
 - **WHEN** the user taps a choice's "Other days" chip
 - **THEN** the chip gives way to the rest of the days, in place
 
+### Requirement: A following choice says what comes first
+A choice with `depends.empty` SHALL show that text as one quiet line, as high as a row of chips, while the choice it follows has no options for it; its chips SHALL take that line's place when they arrive, so nothing below moves.
+
+#### Scenario: Times before a day
+- **WHEN** a picker's `time` group has `depends: {on: "day", empty: "Pick a day first"}` and no day is chosen
+- **THEN** the Time caption has the line "Pick a day first" under it, and tapping Friday replaces it with Friday's times
+
 ### Requirement: The main button waits for what is required
 A `choice` or `field` with `required`, and an `hours` block, SHALL keep the card's primary button disabled, with a line under it naming what is missing (`need` on the `buttons` block, "Choose: {x}" by default); the line keeps its place so the button never moves.
 

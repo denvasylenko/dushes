@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import '../src/index'
 import type { AguiChatElement } from '../src/element'
+import { formguide } from '../src/formguide/index'
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 /** The viewer loads on demand: wait until its dialog is there (up to 2 s). */
@@ -128,5 +129,22 @@ describe('attachments in the composer', () => {
     ;(zoom.querySelector('.zoom-x') as HTMLButtonElement).click()
     await tick()
     expect(el.shadowRoot!.querySelector('dialog.zoom')).toBeNull()
+  })
+})
+
+describe('a picture from an answer', () => {
+  it('opens in the viewer as a real image, and the browser keeps its own menu (Copy, Save)', async () => {
+    const el = await mount()
+    el.use(formguide({ getState: () => ({ config: {}, jsx_hash: 'h' }), applyChanges: async () => ({}) }))
+    void el.showCard({ type: 'blocks', blocks: [{ type: 'image', src: 'data:image/png;base64,iVBORw0KGgo=', alt: 'The terrace' }] })
+    await tick(5)
+    ;(el.shadowRoot!.querySelector('.card img.bk-img') as HTMLImageElement).click()
+    await viewer(el)
+    const big = el.shadowRoot!.querySelector('dialog.zoom img') as HTMLImageElement
+    expect(big.getAttribute('src')).toBe('data:image/png;base64,iVBORw0KGgo=')
+    expect(big.alt).toBe('The terrace')
+    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
+    big.dispatchEvent(menu)
+    expect(menu.defaultPrevented).toBe(false)
   })
 })

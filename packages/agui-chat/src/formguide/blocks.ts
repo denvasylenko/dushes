@@ -164,7 +164,7 @@ const needs = (card: HTMLElement) => { let n = NEEDS.get(card); if (!n) NEEDS.se
  * A picker card (a booking: day, time, people, name, phone) as blocks: a title, a choice per group, the fields and
  * one main button that waits for what is still missing.
  *   { type: 'picker', title, groups: [{ name, label, options, more?: { label, options } }],
- *     depends: { time: { on: 'day', options: { '<day id>': [...] } } }, fields: [{ name, label, input, required }],
+ *     depends: { time: { on: 'day', options: { '<day id>': [...] }, empty?: 'Pick a day first' } }, fields: [{ name, label, input, required }],
  *     submit: { label }, need: 'Choose: {x}' }
  * Its answer is { action: 'submit', values: { day, time, people, name, phone } }.
  */
@@ -267,6 +267,8 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       }
       const fill = (opts: Item[]): void => {
         wrap.replaceChildren(); picked.clear(); values[name] = multiple ? [] : null
+        // nothing to pick yet (no day chosen): one quiet line in the row's place, its height, so the chips arrive without a jump
+        if (!opts.length && dep?.empty) wrap.append(h('div', { class: 'bk-empty' }, str(dep.empty)))
         opts.forEach(add)
         const more = b.more && typeof b.more === 'object' ? b.more as Item : null
         if (more && options(more.options).length) {   // "Other days": the rest in place, one tap

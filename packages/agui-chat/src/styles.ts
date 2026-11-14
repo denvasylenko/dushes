@@ -91,6 +91,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .msg.ai p { margin: 0 0 10px; } .msg.ai p:last-child { margin-bottom: 0; }
 .msg.ai ul { margin: 4px 0 10px; padding-left: 20px; } .msg.ai li { margin: 3px 0; }
 .msg.ai a { color: var(--agui-link); }
+.msg.ai .body img { max-width: 100%; height: auto; border-radius: var(--agui-radius-sm); }
+.msg.ai .body img, .card img.bk-img { cursor: zoom-in; }
 .msg.ai code { font-size: .9em; background: var(--agui-soft); border-radius: var(--agui-radius-sm); padding: 1px 5px; }
 .msg.ai .code { position: relative; margin: 8px 0 12px; background: var(--agui-soft); border-radius: var(--agui-radius-sm); overflow: hidden; }
 .msg.ai .code pre { margin: 0; padding: 12px 14px; overflow-x: auto; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0; }
@@ -190,7 +192,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 .bk-wait { min-height: 88px; }
 .tone-accent { color: var(--agui-link); } .tone-ok { color: var(--agui-ok); } .tone-danger { color: var(--agui-danger); } .tone-muted { color: var(--agui-ink-2); }
-.chip:disabled { color: var(--agui-ink-3); border-color: var(--agui-line); cursor: default; }   /* a closed day, as in the iOS calendar: quiet, never struck through (a strike reads as an error) */
+.chip:disabled { color: var(--agui-ink-3); border-color: transparent; background: transparent; cursor: default; }   /* a closed day, as in the iOS calendar: quiet, never struck through (a strike reads as an error) */
 /* a finished card (.card.done) is quieter by its shape, never by opacity: its text and Undo keep full contrast */
 .chip input[type=checkbox] { accent-color: var(--agui-accent); width: 15px; height: 15px; }
 /* a card closed by a new message keeps what was asked, not the controls */

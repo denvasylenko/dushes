@@ -16,7 +16,8 @@ export function openZoom(host: ZoomHost, opener: HTMLElement, edit?: (image: Blo
   // the images sent with the same message page with \u2039 1 of 2 \u203a, \u2190 / \u2192 and a swipe; one in the composer stays alone
   const own = opener.closest('.att-row')
   const openers = own ? [...own.querySelectorAll<HTMLElement>('.att-open')] : [opener]
-  const row = openers.map((b) => ({ src: b.querySelector('img')?.getAttribute('src') ?? '', name: b.getAttribute('aria-label') ?? '' }))
+  const pic = (b: HTMLElement): HTMLImageElement | null => (b instanceof HTMLImageElement ? b : b.querySelector('img'))   // a picture in an answer opens itself
+  const row = openers.map((b) => ({ src: pic(b)?.getAttribute('src') ?? '', name: b.getAttribute('aria-label') ?? pic(b)?.alt ?? '' }))
   let at = Math.max(0, openers.indexOf(opener))
   // a modal <dialog>: the browser puts it above everything on the page (no stacking context can cover it), Esc closes it
   const x = h('button', { class: 'zoom-x', type: 'button', 'aria-label': host.t('close') }); host.icon(x, 'close')

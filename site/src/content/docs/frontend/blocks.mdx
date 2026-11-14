@@ -47,7 +47,7 @@ Compose your own card from these in the [Playground](../playground/) (Your own c
 | `steps` | `title?` (`{left}` counts open steps), `items: [{label, done?}]` | a checklist with round ticks |
 | `progress` | `value`, `max?` (100), `label?` | a thin bar |
 | `swatches` | `name`, `items: [{id, label?, colors: [hex]}]`, `multiple?` | palettes to pick |
-| `choice` | `name`, `options: [{id, label, off?}]` or `["a", "b"]`, `label?`, `multiple?`, `value?`, `required?`, `more?: {label, options}`, `depends?: {on, options: {<id>: [...]}}` | chips to pick, under a caption; `off` is shown but not choosable; `more` shows the rest in place; `depends` follows another choice (times of the chosen day) |
+| `choice` | `name`, `options: [{id, label, off?}]` or `["a", "b"]`, `label?`, `multiple?`, `value?`, `required?`, `more?: {label, options}`, `depends?: {on, options: {<id>: [...]}, empty?}` | chips to pick, under a caption; `off` is shown but not choosable; `more` shows the rest in place; `depends` follows another choice (times of the chosen day), with `empty` as one quiet line, a row high, until that choice is made |
 | `field` | `name`, `label?`, `input?` (`text`, `tel`, `email`, `number`, `date`, `url`), `placeholder?`, `value?`, `required?` | a field |
 | `hours` | `name`, `label?`, `value?: [{days: [0..6], from, to}]` (0 = Monday), `presets?` | opening hours: presets in one tap, weekday chips, from–to, up to three pairs ; `AguiChat.hoursText(value, lang)` (or `hoursText` from `@formguide/agui-chat/formguide`) gives the line "Mon–Fri 09:00–18:00" |
 | `preview` | `src` (https), `href?`, `title?`, `ratio?` (`16:10`, `9:16`) | a live, view-only thumbnail of a page; a tap opens `href` |
@@ -98,7 +98,7 @@ const answer = await chat.showCard({
     { name: 'time', label: 'Time' },
     { name: 'people', label: 'People', options: ['1', '2', '3', '4'], value: '2' },
   ],
-  depends: { time: { on: 'day', options: { fri: ['18:00', '20:00'], sun: ['12:00', '14:00'] } } },
+  depends: { time: { on: 'day', options: { fri: ['18:00', '20:00'], sun: ['12:00', '14:00'] }, empty: 'Pick a day first' } },
   fields: [{ name: 'name', label: 'Name', required: true }, { name: 'phone', label: 'Phone', input: 'tel', required: true }],
 })
 // { action: 'submit', label: 'Book', values: { day: 'fri', time: '20:00', people: '2', name: '…', phone: '…' } }

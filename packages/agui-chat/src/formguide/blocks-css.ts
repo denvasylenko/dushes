@@ -43,6 +43,8 @@ export const BLOCKS_CSS = `
 .bk-cap { font-size: 13px; font-weight: 600; color: var(--agui-ink-2); }
 .bk .chips { row-gap: 8px; }
 .chip.bk-more { border-style: dashed; color: var(--agui-link); }
+.bk-empty { display: flex; align-items: center; min-height: 34px; font-size: 13px; color: var(--agui-ink-2); }
+@media (pointer: coarse) { .bk-empty { min-height: 44px; } }
 .bk-submit { display: grid; gap: 8px; }
 .bk-hours { display: grid; gap: 12px; }
 .bk-pair { display: grid; gap: 8px; }

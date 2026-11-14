@@ -623,6 +623,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._swipe(log)
     recX.addEventListener('click', () => { this._dropDictation(); (input as HTMLTextAreaElement).focus() })
     files.hidden = true
+    log.addEventListener('click', (e) => {
+      const img = (e.target as HTMLElement).closest?.('.msg.ai .body img, .card img.bk-img')   // a picture from an answer or its card
+      if (img instanceof HTMLImageElement && !img.closest('a, button') && img.src) this._zoom(img)
+    })
     if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (this._stick) log.scrollTop = log.scrollHeight }).observe(log)
     log.addEventListener('scroll', () => {
       this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
