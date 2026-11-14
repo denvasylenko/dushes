@@ -61,4 +61,7 @@ Herefront/Cheese is a consumer of the package: what it lacks is asked here, not 
 - Public host (site + Ask AI + demo in one app, as on Fly): build `site` with `DOCS_BASE=/ PUBLIC_ASK_AI_URL=/ai/ask/run PUBLIC_DEMO_URL=/demo/ PUBLIC_DEMO_AGENT_URL=/agent/run` (the last one makes the landing demo talk to the real agent, falling back to the recorded replay over the host's limits) and `frontend` with `vite build --base /demo/`, then `cd backend && ANTHROPIC_API_KEY=... uv run uvicorn docs_ai.host:app --port 8080`; deploy: `deploy/docs-ai/` (app `dushes-ai`, https://dushes-ai.fly.dev).
 
 ## Git / GitHub
-The project will be pushed to a GitHub repository the user will name later. Do not create remotes, commit or push until the user asks and gives the repository.
+The repository is `denvasylenko/dushes` on GitHub (`main`). The owner's rule (14.11.2026, as in Herefront):
+- **Commits**: each session commits its own files itself, without asking. Commit through your own index (`GIT_INDEX_FILE=<tmp> git read-tree HEAD`, `git add <own files or hunks>`, `git commit`, then `git add` the same paths in the shared index), never `git commit -a` or `git commit -- <paths>`: both take other sessions' work.
+- **Push to `main` and deploys**: only on the owner's yes, which the CPO session passes on from its own session, word for word. Before pushing, run `git log origin/main..HEAD` and push only when every commit listed is yours or its owner agreed. The CPO starts deploys.
+- No force push and no history rewrite.
