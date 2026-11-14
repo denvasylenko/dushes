@@ -8,7 +8,7 @@ name: Docs
 on:
   push:
     branches: [main]
-    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/check_english.py", ".github/workflows/docs.yml"]
+    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/check_english.py", "scripts/check_links.py", ".github/workflows/docs.yml"]
   pull_request:
     paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/**"]
   workflow_dispatch:
@@ -52,6 +52,8 @@ jobs:
         env:
           PUBLIC_ASK_AI_URL: ${{ vars.PUBLIC_ASK_AI_URL }}   # the docs assistant; unset = Ask AI offers Claude / ChatGPT
         run: npm run build
+      - name: Internal links and anchors
+        run: python3 scripts/check_links.py site/dist
       - name: Redirect stub for GitHub Pages (every page -> the same page on the canonical host)
         if: github.event_name != 'pull_request'
         run: |

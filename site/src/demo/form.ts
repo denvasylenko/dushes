@@ -3,6 +3,7 @@
  * same `schemaForm` a real integration uses, so cards, action chips and Undo go through real code.
  */
 import { schemaForm, type FormSchema, type FormState, type Directive } from '../../../packages/agui-chat/src/formguide/index'
+import { buildSelect } from '../components/ui/ui'
 
 type Values = Record<string, unknown>
 
@@ -17,10 +18,12 @@ export const EMPLOYMENT = [
   { id: 'self', name: 'Self-employed' },
   { id: 'retired', name: 'Retired' },
 ]
+/** Fields in dollars: a "$" sits inside the field, before the number (the label stays clean, as in Apple's forms). */
+const UNITS: Record<string, string> = { monthly_income: '$', amount: '$' }
 const MAKES = ['Toyota', 'Honda', 'Tesla', 'Ford'].map((m) => ({ id: m.toLowerCase(), name: m }))
 
 export const SCHEMA: FormSchema = {
-  id: 'loan_demo',
+  id: 'landing_loan',   // the live demo's form on dushes-ai (backend/demo/landing/landing_loan.jsx)
   title: 'Loan application',
   sections: [
     {
@@ -28,14 +31,14 @@ export const SCHEMA: FormSchema = {
         { name: 'full_name', label: 'Full name', required: true },
         { name: 'email', label: 'Email', required: true },
         { name: 'employment', label: 'Employment', type: 'radio', options: EMPLOYMENT },
-        { name: 'monthly_income', label: 'Monthly income, $', type: 'number', help: 'After tax' },
+        { name: 'monthly_income', label: 'Monthly income', type: 'number', help: 'After tax, in dollars' },
       ],
     },
     {
       name: 'loan', label: 'Loan', fields: [
         { name: 'loan_type', label: 'Loan type', type: 'select', options: LOAN_TYPES, required: true },
         { name: 'car_make', label: 'Car make', type: 'select', options: MAKES, visible: (v) => v.loan_type === 'auto' },
-        { name: 'amount', label: 'Amount, $', type: 'number' },
+        { name: 'amount', label: 'Amount', type: 'number', help: 'In dollars' },
         { name: 'term', label: 'Term', type: 'radio', options: TERMS },
       ],
     },
@@ -65,7 +68,7 @@ export function mountForm(root: HTMLElement): DemoForm {
     setValue: (name, value) => { values = { ...values, [name]: value } },
   })
 
-  const tabs = h('div', { class: 'df-tabs', role: 'tablist' })
+  const tabs = h('div', { class: 'df-tabs ui-tabs', role: 'tablist', 'aria-label': 'Sections' })
   const body = h('div', { class: 'df-body' })
   const progress = h('div', { class: 'df-progress' })
   root.replaceChildren(
@@ -77,9 +80,18 @@ export function mountForm(root: HTMLElement): DemoForm {
 
   function render(): void {
     const props = bridge.config().props as Record<string, Record<string, unknown>>
-    tabs.replaceChildren(...SCHEMA.sections.map((s) => {
-      const b = h('button', { type: 'button', role: 'tab', class: 'df-tab', 'aria-selected': String(s.name === tab) }, s.label!)
+    // the sections as the design system's tabs (.ui-tab, ui.css); ← → move between them
+    tabs.replaceChildren(...SCHEMA.sections.map((s, i, all) => {
+      const on = s.name === tab
+      const b = h('button', { type: 'button', role: 'tab', class: 'ui-tab', 'aria-selected': String(on), tabindex: on ? '0' : '-1' }, s.label!)
       b.addEventListener('click', () => { tab = s.name; render() })
+      b.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+        e.preventDefault()
+        tab = all[(i + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length].name
+        render()
+        tabs.querySelector<HTMLElement>('[aria-selected="true"]')?.focus()
+      })
       return b
     }))
     body.replaceChildren(...fieldsOf(tab).filter((f) => props[f.name]?.visible !== false).map((f) => {
@@ -87,30 +99,38 @@ export function mountForm(root: HTMLElement): DemoForm {
       const id = `df-${f.name}`
       let input: HTMLElement
       if (f.type === 'radio') {
-        input = h('div', { class: 'df-seg', role: 'radiogroup', 'aria-label': f.label! },
-          ...(f.options as { id: string; name: string }[]).map((o) => {
-            const b = h('button', { type: 'button', role: 'radio', 'aria-checked': String(v === o.id), class: 'df-segbtn' }, o.name.replace(' months', ' mo'))
-            b.addEventListener('click', () => { values = { ...values, [f.name]: o.id }; render() })
-            return b
-          }))
+        // the design system's choice groups (ui.ts wires clicks and arrow keys): Term is a segmented control,
+        // Employment a row of chips
+        const seg = f.name === 'term'
+        const opts = f.options as { id: string; name: string }[]
+        const hit = opts.some((o) => o.id === v)
+        input = h('div', { class: seg ? 'ui-seg' : 'ui-chips', role: 'radiogroup', 'aria-label': f.label!, 'data-ui-choice': f.name },
+          ...opts.map((o, k) => h('button', { type: 'button', role: 'radio', class: seg ? '' : 'ui-chip', 'data-value': o.id,
+            'aria-checked': String(v === o.id), tabindex: v === o.id || (!hit && k === 0) ? '0' : '-1' }, o.name.replace(' months', ' mo'))))
+        input.addEventListener('ui-change', (e) => {
+          values = { ...values, [f.name]: (e as CustomEvent<{ value: string }>).detail.value }
+          render()
+          root.querySelector<HTMLElement>(`[data-ui-choice="${f.name}"] [aria-checked="true"]`)?.focus()
+        })
       } else if (f.type === 'select') {
-        const sel = h('select', { id, class: 'df-in' }, h('option', { value: '' }, 'Choose…'),
-          ...(f.options as { id: string; name: string }[]).map((o) => {
-            const opt = h('option', { value: o.id }, o.name)
-            if (v === o.id) opt.setAttribute('selected', '')
-            return opt
-          }))
-        sel.addEventListener('change', () => { values = { ...values, [f.name]: sel.value || null }; render() })
-        input = sel
+        // the design system's Select (a pop-up menu; a sheet on a phone), not the browser's own
+        input = buildSelect({
+          id, label: f.label!, value: (v as string | null) ?? null, placeholder: 'Choose\u2026',
+          options: (f.options as { id: string; name: string }[]).map((o) => ({ value: o.id, label: o.name })),
+          onChange: (value) => { values = { ...values, [f.name]: value || null }; render(); document.getElementById(id)?.focus() },   // focus stays on the field after the redraw
+        })
       } else {
-        const inp = h('input', { id, class: 'df-in', type: f.type === 'number' ? 'text' : 'text', inputmode: f.type === 'number' ? 'numeric' : 'text', autocomplete: 'off', placeholder: f.help ?? '' }) as HTMLInputElement
+        const inp = h('input', { id, class: 'df-in', type: f.type === 'number' ? 'text' : 'text', inputmode: f.type === 'number' ? 'numeric' : 'text', autocomplete: 'off', placeholder: (UNITS[f.name] ? f.help?.replace(/,? in dollars$/i, '').replace(/^In dollars$/i, '') : f.help) ?? '' }) as HTMLInputElement
         inp.value = v === null || v === undefined ? '' : f.type === 'number' ? Number(v).toLocaleString('en-US') : String(v)
         inp.addEventListener('change', () => {
           const raw = inp.value.trim()
           values = { ...values, [f.name]: raw === '' ? null : f.type === 'number' ? Number(raw.replace(/[^\d.]/g, '')) || null : raw }
           renderProgress()
         })
-        input = inp
+        // a currency sits inside the field, before the number (as in Apple's forms), not in the label
+        const unit = UNITS[f.name]
+        input = unit ? h('div', { class: 'df-affix' }, h('span', { class: 'df-unit', 'aria-hidden': 'true' }, unit), inp) : inp
+        if (unit) inp.setAttribute('aria-label', `${f.label}, in ${unit === '$' ? 'dollars' : unit}`)
       }
       const label = f.type === 'radio' ? h('span', { class: 'df-label' }, f.label!) : h('label', { class: 'df-label', for: id }, f.label!)
       return h('div', { class: 'df-field', 'data-name': f.name }, label, input)
@@ -165,7 +185,7 @@ export function mountForm(root: HTMLElement): DemoForm {
       void el.offsetWidth
       el.classList.add('df-look')
       if (d.hint) el.dataset.hint = d.hint
-      if (matchMedia('(pointer: fine)').matches) el.querySelector<HTMLElement>('input, select, button')?.focus({ preventScroll: true })   // no keyboard popping up on a phone
+      if (matchMedia('(pointer: fine)').matches) el.querySelector<HTMLElement>('input, .ui-select-btn, button')?.focus({ preventScroll: true })   // no keyboard popping up on a phone
     },
     reset() { values = {}; tab = 'applicant'; render() },
   }

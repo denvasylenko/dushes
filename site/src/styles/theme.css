@@ -46,6 +46,7 @@
   /* depth */
   --fg-shadow-pop: 0 18px 50px -18px hsla(0, 0%, 0%, .55), 0 0 0 1px var(--sl-color-hairline-light);
   --fg-shadow-lift: 0 18px 50px -24px hsla(0, 0%, 0%, .45);
+  --fg-step-line: color-mix(in srgb, var(--sl-color-white) 28%, transparent);   /* the line between numbered steps */
   --fg-scrim: hsla(0, 0%, 0%, .32);                                        /* the page dimmed under a sheet */
   /* type (px steps of the ui-craft scale) */
   --fg-fs-caption: 11px;
@@ -188,3 +189,8 @@ h1#_top { text-wrap: balance; }
   #starlight__sidebar .large { font-size: var(--fg-fs-headline); }
 }
 @media (prefers-reduced-motion: reduce) { #starlight__sidebar :is(a, summary) { transition: none; } }
+/* Starlight's <Steps> in the guides: the same markers and connector as the landing's stepper (components/Flow.astro) */
+.sl-markdown-content .sl-steps > li::before {
+  background: var(--fg-accent-soft); color: var(--fg-accent-ink); box-shadow: inset 0 0 0 1px var(--fg-line); font-weight: 600;
+}
+.sl-markdown-content .sl-steps > li::after { width: 1.5px; background: var(--fg-step-line); }

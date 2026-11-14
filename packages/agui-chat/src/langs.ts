@@ -31,6 +31,7 @@ export function loadLanguage(lang: string): Promise<boolean> {
   let p = loading.get(lang)
   if (!p) {
     p = loadPack(lang).then((pack) => { if (pack) addLanguage(lang, pack); return !!PACKS[lang] }, () => false)
+      .finally(() => loading.delete(lang))   // only one load at a time; a pack removed later loads again
     loading.set(lang, p)
   }
   return p

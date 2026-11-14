@@ -156,17 +156,9 @@ uv run python scripts/bench.py --prices prices.json     # adds an estimated cost
 
 `prices.json` holds your model's prices per million tokens, e.g. `{"input": 5, "output": 25, "cache_read": 0.5}`. The results are also saved as `scripts/bench-<time>.json` to compare before and after a change.
 
-**Baseline** (2026-11-11, the demo with Claude Opus 5.5 at low effort, one run each, warm server):
+The latest run, with its date, model and code, is on [Benchmarks](../../../get-started/benchmarks/#live-turns): the page reads it from the report `bench.py --site` writes, so it is never typed by hand. Runs on different days, code or models are not comparable.
 
-| Scenario | First token | Turn | Tool calls | Tokens in / out | Cache |
-|---|---|---|---|---|---|
-| question ("Where do I start?") | 3.4 s | 5.4 s | 1 | 14,815 / 216 | 37% |
-| fill (name and birth date, card accepted) | 1.6 s | 5.6 s | 2 | 23,062 / 259 | 72% |
-| choice (question card, then a field card) | 6.5 s | 11.9 s | 3 | 38,596 / 482 | 71% |
-| documents (the car loan rate) | 2.2 s | 4.6 s | 0 | 7,354 / 298 | 75% |
-| booking (service, barber, day and slot) | 4.0 s | 22.9 s | 10 | 75,526 / 888 | 65% |
-
-What it tells us: the model's time dominates (Dushes adds about 10 ms); a turn that walks a dependent chain (the booking: 10 tool calls in a row) is the slowest; the prompt cache saves about two thirds of the input tokens once a conversation is going. A long conversation that sat idle for a while starts cold (cache near 0%) and its first turn is noticeably slower.
+What it tells us: the model's time dominates (Dushes adds about 10 ms); a turn that walks a dependent chain (the booking: 10 tool calls in a row) is the slowest; once a conversation is going, most of the input is read from the prompt cache (the share per scenario is in the latest run). A long conversation that sat idle for a while starts cold (cache near 0%) and its first turn is noticeably slower.
 
 ---
 
@@ -249,11 +241,14 @@ The user and the judge use `models.eval_user` and `models.eval_judge` from `demo
 |---|---|---|
 | `names` | all | scenario names to run |
 | `start.site` (scenario) | `main` | `main` (Dushes at `/site`) or `lab` (the Form Lab at `/lab`) |
-| `quote` (scenario) | none | `{pattern, ask}`: a reply to a quote; a check fails when no answer matched `pattern` |
+| `quote` (scenario) | none | `{pattern, ask}`: a reply to a quote, or `{quotes: [{pattern, note?}], ask}`: a reply to several quotes, each with an optional note (sent as a list in `reply_to`); a check fails when an answer never matched |
 | `--model` | `models.eval_user` / `eval_judge`, else `models.agent` | the user's and the judge's model, e.g. `anthropic:claude-sonnet-5-5` |
 | `--offline` | off | scripted models and the demo in-process |
 | `--tag` | all | only the scenarios with this tag (`stress`, `redteam`) |
 | `--repeat` | `1` | run each scenario N times: the mean, the worst and the best |
 | `--margin` | `0.5` | allowed drop of the average below the baseline |
 | `--save-baseline` | off | write this run's scores to `evals/baseline.json` |
+| `--agent-model` | none | run the demo in-process from `demo/formguide.yaml` with this agent model (`openai:gpt-5-mini`, `ollama:qwen3:8b`, a JSON spec); the user and the judge stay as configured: the model benchmark (`scripts/model_bench.py` builds its table) |
+| `--research-model` | the agent model | with `--agent-model`: the researcher's model |
+| `--names-file` | none | scenario names from a file (`evals/bench_set.txt`: the main set and every held-out scenario) |
 

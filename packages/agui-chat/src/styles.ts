@@ -181,7 +181,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .bk-wait { min-height: 88px; }
 .tone-accent { color: var(--agui-link); } .tone-ok { color: var(--agui-ok); } .tone-danger { color: var(--agui-danger); } .tone-muted { color: var(--agui-ink-3); }
 .chip:disabled { opacity: .4; cursor: default; text-decoration: line-through; }
-.card.done { opacity: .72; }
+/* a finished card (.card.done) is quieter by its shape, never by opacity: its text and Undo keep full contrast */
 .chip input[type=checkbox] { accent-color: var(--agui-accent); width: 15px; height: 15px; }
 /* a card closed by a new message keeps what was asked, not the controls */
 .card.dismissed .chips, .card.dismissed .text-in, .card.dismissed [role=button], .card.dismissed .row input,
@@ -292,7 +292,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .text-in { margin-top: 10px; }
 .raw { font: 12px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap; max-height: 160px; overflow: auto; color: var(--agui-ink-2); }
 .ok-line { display: flex; gap: 9px; align-items: center; font-size: 13px; color: var(--agui-ink-2); }
-.ok-line i { width: 20px; height: 20px; border-radius: var(--agui-radius-pill); background: var(--agui-ok); color: var(--agui-on-ok); display: grid; place-items: center; font-style: normal;
+.ok-line i { width: 20px; height: 20px; border-radius: var(--agui-radius-pill); background: color-mix(in srgb, var(--agui-ok) 70%, #000);   /* deep enough for the white check (4.5:1) on any ok green */ color: var(--agui-on-ok); display: grid; place-items: center; font-style: normal;
   font-size: 11px; font-weight: 700; flex: none; }
 .ok-line.off i { background: var(--agui-ink-3); }
 .tool-el { margin: 0 0 18px; }
@@ -305,6 +305,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .fold span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fold .chev { flex: none; color: var(--agui-ink-3); transition: transform .2s; }
 .fcard.unfolded .fold .chev { transform: rotate(90deg); }
+@media (pointer: coarse) { .fold { min-height: 44px; } }   /* the line opens to every filled field: a full tap target */
 .after { font-weight: 400; }
 .chip.act { border-color: var(--agui-ok); color: var(--agui-ink); }
 .chip.act i { font-style: normal; color: var(--agui-ok); font-weight: 700; margin-right: 6px; }
@@ -386,8 +387,9 @@ button.bubble-q { cursor: pointer; }
 @media (pointer: coarse) { button.bubble-q { min-height: 44px; display: flex; flex-direction: column; justify-content: center; align-items: stretch; } }
 .msg.ai { position: relative; }
 /* a long message folds: its start, the bottom fading into the bubble's own colour, and Show more under it */
-.folded { position: relative; max-height: var(--fold-h); overflow: hidden; }
-.folded::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; pointer-events: none;
+/* (.clamped, not .folded: a card folded into its result line is .fcard.folded) */
+.clamped { position: relative; max-height: var(--fold-h); overflow: hidden; }
+.clamped::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; pointer-events: none;
   background: linear-gradient(to bottom, transparent, var(--fold-bg, var(--agui-panel-bg, var(--agui-bg))) calc(100% - 10px)); }
 .msg.me .bubble { --fold-bg: var(--agui-bubble-user-bg, var(--agui-soft)); }
 .fold-btn { border: 0; background: transparent; color: var(--agui-link); font: 500 13px/1 var(--agui-font); padding: 8px; margin: 2px -8px 0;

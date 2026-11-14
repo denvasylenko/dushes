@@ -31,3 +31,35 @@ The code on a recipe page SHALL be included from the files its eval scenario run
 
 - **WHEN** a recipe's `SKILL.md` changes in `backend/demo/recipes/<name>/`
 - **THEN** the next build shows the changed file on the page
+
+### Requirement: Benchmark numbers come from reports
+
+Every measured number on the Benchmarks page SHALL be read at build time from a report file under `site/src/data/benchmarks/`, written by the script that measured it, with the date, the model and, when known, the code version. The page SHALL say when and with which model they were measured, and SHALL flag a report older than 14 days.
+
+#### Scenario: A fresh report
+
+- **WHEN** the live benchmark report is 3 days old
+- **THEN** the page shows its numbers with "Measured on <date> with <model>"
+
+#### Scenario: An old report
+
+- **WHEN** the live benchmark report is 20 days old
+- **THEN** the page shows a note that the numbers are 20 days old and should be measured again
+
+### Requirement: Comparisons change one thing
+
+A comparison chart on the Benchmarks page SHALL compare runs that differ in one thing only, the same model over time or different models on the same day and code, and SHALL say which.
+
+#### Scenario: Two models
+
+- **WHEN** the page compares two models
+- **THEN** both were measured on the same day with the same code, and the chart says so
+
+### Requirement: Broken links fail the docs build
+
+The docs workflow SHALL check every internal link and anchor of the built site and fail when one is broken.
+
+#### Scenario: A renamed heading
+
+- **WHEN** a page links to an anchor that no longer exists
+- **THEN** the docs workflow fails and names the page and the link

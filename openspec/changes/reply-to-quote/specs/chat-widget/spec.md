@@ -53,6 +53,13 @@ A user's bubble taller than `collapseLines` lines (default 8; 0 turns folding of
 - **WHEN** the user sends forty lines of pasted text
 - **THEN** the bubble shows its first eight lines fading out and "Show more", and a tap shows all forty lines with "Show less"
 
+### Requirement: Cards never fold
+Cards SHALL never fold like long messages. A finished card SHALL be quieter by its shape (one result line), with its text, its check mark and Undo at full contrast, never by opacity.
+
+#### Scenario: Fields filled in
+- **WHEN** the user taps "Fill in 3 fields"
+- **THEN** the card becomes one line "Filled in · Loan type, Loan amount, Term" with Undo, at full contrast and with no fade over it
+
 ### Requirement: How the mic turns speech into text
 The `voice` option SHALL choose:
 - `auto` (default): the server when it transcribes (its restore returns `transcription: true`, or `transcribeUrl` is set); without one, the browser's own recognition in Chromium on a computer and on Android, and otherwise (iPhone, Safari, Firefox, or a blocked service) recording for the server;

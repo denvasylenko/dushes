@@ -238,7 +238,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const l = this._wantLang()
     if (PACKS[l] || STRINGS[l] || this._i18n[l] || !LANGUAGES.includes(l)) return
     void loadLanguage(l).then((ok) => {
-      if (!ok || !this._built || this._wantLang() !== l) return
+      if (!ok || !PACKS[l] || !this._built || this._wantLang() !== l) return   // no pack after all: never loop
       this._apply()   // titles, placeholders and the empty chat in the new language
     })
   }
@@ -989,12 +989,12 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     box.dataset.fold = '1'
     box.id ||= `fold-${uid()}`
     box.style.setProperty('--fold-h', `${limit}px`)
-    box.classList.add('folded')
+    box.classList.add('clamped')
     const btn = h('button', { class: 'fold-btn', part: 'fold-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': box.id }, this.t('showMore')) as HTMLButtonElement
     const toggle = (): void => {
       const log = this.$.log, top = box.getBoundingClientRect().top
       log.style.overflowAnchor = 'none'
-      const open = box.classList.toggle('folded') === false
+      const open = box.classList.toggle('clamped') === false
       btn.textContent = this.t(open ? 'showLess' : 'showMore')
       btn.setAttribute('aria-expanded', String(open))
       log.scrollTop += box.getBoundingClientRect().top - top   // the text opens downwards from where it was read
@@ -1005,7 +1005,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     }
     btn.addEventListener('click', toggle)
     // Tab into a folded answer (a link in it): it opens, so the focus is never on something hidden
-    box.addEventListener('focusin', () => { if (box.classList.contains('folded')) toggle() })
+    box.addEventListener('focusin', () => { if (box.classList.contains('clamped')) toggle() })
     box.after(btn)
   }
 

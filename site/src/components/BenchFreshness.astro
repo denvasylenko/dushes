@@ -1,0 +1,15 @@
+---
+/** "Measured on <date> with <model>", and a note when the report is older than STALE_DAYS. */
+import { Callout } from './ui'
+import { ageDays, longDate, STALE_DAYS } from '../lib/bench'
+interface Props { date: string; model: string; commit?: string; what: string }
+const { date, model, commit, what } = Astro.props
+const age = ageDays(date)
+---
+{age > STALE_DAYS
+  ? <Callout title={`These numbers are ${age} days old`}>{what} was last measured on {longDate(date)} with {model}{commit ? ` (code ${commit})` : ''}. The code has changed since; run it again before relying on them.</Callout>
+  : <p class="bench-when">Measured on {longDate(date)} with {model}{commit ? <>, code <code>{commit}</code></> : ''}.</p>}
+
+<style>
+  .bench-when { color: var(--fg-ink-2); font-size: var(--fg-fs-footnote); }
+</style>

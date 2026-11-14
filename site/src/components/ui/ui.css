@@ -442,19 +442,72 @@ html.ui-spot-on { overflow: hidden; }
 .ui-tab::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: 0; height: 2px; border-radius: 2px 2px 0 0; background: transparent;
   transition: background-color var(--fg-dur-instant) var(--fg-ease); }
 /* the current section: ink and the accent underline; one weight for all, so labels never shift between pages */
-.ui-tab[aria-current] { color: var(--fg-ink); }
-.ui-tab[aria-current]::after { background: var(--fg-accent); }
+.ui-tab:is([aria-current], [aria-selected='true']) { color: var(--fg-ink); }
+.ui-tab:is([aria-current], [aria-selected='true'])::after { background: var(--fg-accent); }
+button.ui-tab { border: 0; background: none; cursor: pointer; min-height: 44px; }   /* the same tabs as buttons (role=tab) inside a page */
 @media (hover: hover) {
-  .ui-tab:not([aria-current]):hover { color: var(--fg-ink); }
-  .ui-tab:not([aria-current]):hover::after { background: color-mix(in srgb, var(--fg-ink) 25%, transparent); }
+  .ui-tab:not([aria-current], [aria-selected='true']):hover { color: var(--fg-ink); }
+  .ui-tab:not([aria-current], [aria-selected='true']):hover::after { background: color-mix(in srgb, var(--fg-ink) 25%, transparent); }
 }
 .ui-tab:focus-visible { outline: 3px solid var(--fg-focus); outline-offset: -6px; }   /* inset, rounded on every corner */
+
+/* ---------- Select: a pop-up menu with a check (macOS pop-up button); on a phone, a sheet from the bottom (iOS) ---------- */
+.ui-select { position: relative; display: flex; min-width: 0; }
+.ui-select-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px; padding: 0 10px 0 12px;
+  border: 1px solid var(--fg-line); border-radius: var(--fg-r-ctl); background: var(--fg-surface); color: var(--fg-ink);
+  font: 400 16px/1.2 var(--sl-font); text-align: start; cursor: pointer; transition: border-color var(--fg-dur-instant) var(--fg-ease);
+}
+.ui-select-btn.is-empty .ui-select-val { color: var(--fg-ink-3); }
+.ui-select-val { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-select-btn > .ui-icon { flex: none; width: 14px; height: 14px; color: var(--fg-ink-2); }
+@media (hover: hover) { .ui-select-btn:hover { border-color: var(--fg-ink-3); } }
+.ui-select-btn:focus-visible, .ui-select.is-open .ui-select-btn { outline: none; border-color: var(--fg-accent); box-shadow: 0 0 0 3px var(--fg-focus); }
+.ui-select-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; min-width: 12rem; max-width: min(22rem, calc(100vw - 32px));
+  max-height: min(18rem, 60vh); overflow-y: auto; padding: 5px; border-radius: var(--fg-r-card);
+  background: var(--fg-elevated); box-shadow: var(--fg-shadow-pop); animation: ui-pop-in var(--fg-dur-quick) var(--fg-ease);
+}
+.ui-select-pop[hidden] { display: none; }
+.ui-select-title { display: none; }
+.ui-select-opt {
+  display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 6px 12px 6px 6px; border-radius: var(--fg-r-sm);
+  font: 400 var(--fg-fs-callout)/1.3 var(--sl-font); color: var(--fg-ink); cursor: pointer; outline: none;
+}
+.ui-select-opt .ui-icon { flex: none; width: 14px; height: 14px; color: var(--fg-accent-ink); visibility: hidden; }
+.ui-select-opt[aria-selected='true'] .ui-icon { visibility: visible; }
+/* the pointed-at or focused option: the accent fill, like a macOS menu */
+.ui-select-opt:focus-visible, .ui-select-opt:focus { background: var(--fg-accent); color: var(--fg-on-accent); }
+.ui-select-opt:focus .ui-icon { color: var(--fg-on-accent); }
+@media (hover: hover) and (pointer: fine) {
+  .ui-select-opt:hover { background: var(--fg-accent); color: var(--fg-on-accent); }
+  .ui-select-opt:hover .ui-icon { color: var(--fg-on-accent); }
+}
+/* the sheet: from the bottom, over a dimmed page, a title, 44px rows */
+.ui-select-scrim { position: fixed; inset: 0; z-index: 59; background: var(--fg-scrim); animation: ui-spot-fade var(--fg-dur-instant) var(--fg-ease); }
+.ui-select-pop.is-sheet {
+  position: fixed; top: auto; left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); max-width: none; min-width: 0;
+  max-height: 70vh; padding: 6px 6px 8px; border-radius: var(--fg-r-tile); animation: ui-sheet-up var(--fg-dur-quick) var(--fg-ease);
+}
+.ui-select-pop.is-sheet .ui-select-title { display: block; margin: 8px 12px 6px; font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); text-align: center; }
+.ui-select-pop.is-sheet .ui-select-opt { min-height: 48px; padding: 0 14px 0 10px; font-size: var(--fg-fs-headline); border-radius: var(--fg-r-ctl); }
+.ui-select-pop.is-sheet .ui-select-opt:focus:not(:focus-visible) { background: none; color: var(--fg-ink); }
+.ui-select-pop.is-sheet .ui-select-opt:focus:not(:focus-visible) .ui-icon { color: var(--fg-accent-ink); }
+.ui-select-pop.is-sheet .ui-select-opt:active { background: var(--fg-fill); }
+.ui-select-cancel { display: none; }
+.ui-select-pop.is-sheet .ui-select-cancel {
+  display: block; width: 100%; min-height: 52px; margin-top: 8px; border: 0; border-radius: var(--fg-r-ctl);
+  background: var(--fg-fill); color: var(--fg-accent-ink); font: 600 var(--fg-fs-headline)/1 var(--sl-font); cursor: pointer;
+}
+.ui-select-pop.is-sheet .ui-select-cancel:focus-visible { outline: 3px solid var(--fg-focus); outline-offset: -3px; }
+html.ui-select-lock { overflow: hidden; }
+@keyframes ui-sheet-up { from { transform: translateY(24px); opacity: 0; } }
 
 /* ---------- motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .ui-btn, .ui-chip, .ui-seg > button, .ui-disc-chev, .ui-linkcard, .ui-linkcard > .ui-icon, .ui-menu-item, .ui-source-row, .ui-tab, .ui-tab::after, .ui-swatch, .ui-range::-webkit-slider-thumb { transition: none; }
   .ui-btn:active, .ui-chip:active, .ui-swatch:active, .ui-linkcard:active { transform: none; }
-  .ui-pop, .ui-spot[open] .ui-spot-sheet, .ui-spot::backdrop { animation: none; }
+  .ui-pop, .ui-spot[open] .ui-spot-sheet, .ui-spot::backdrop, .ui-select-pop, .ui-select-scrim { animation: none; }
   .ui-spot-list { transition: none; }
 }
 

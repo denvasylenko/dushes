@@ -9,7 +9,7 @@ import type { DemoForm } from './form'
 import { EMPLOYMENT, LOAN_TYPES, TERMS } from './form'
 
 // the widget turns only absolute http(s) URLs into links, so the demo links the page by its full address
-const QUICKSTART = new URL(`${import.meta.env.BASE_URL.replace(/\/?$/, '/')}get-started/quickstart/`, location.origin).href
+export const QUICKSTART = new URL(`${import.meta.env.BASE_URL.replace(/\/?$/, '/')}get-started/quickstart/`, location.origin).href
 
 type Step = { wait?: number; ev: AguiEvent } | { wait?: number; text: string } | { wait?: number; tool: string; ms?: number }
 
@@ -22,8 +22,8 @@ const PROFILE = {
   amount: 28000,
 }
 const LABELS: Record<string, string> = {
-  full_name: 'Full name', email: 'Email', employment: 'Employment', monthly_income: 'Monthly income, $',
-  loan_type: 'Loan type', amount: 'Amount, $', term: 'Term',
+  full_name: 'Full name', email: 'Email', employment: 'Employment', monthly_income: 'Monthly income',
+  loan_type: 'Loan type', amount: 'Amount', term: 'Term',
 }
 const SECTION: Record<string, string> = {
   full_name: 'applicant', email: 'applicant', employment: 'applicant', monthly_income: 'applicant',
@@ -38,9 +38,10 @@ export const STARTERS = ['Where do I enter my income?', 'Fill it in from my prof
 
 let seq = 0
 const id = (p: string) => `${p}-${Date.now().toString(36)}-${++seq}`
-const show = (v: unknown): string => {
+const DOLLARS = new Set(['monthly_income', 'amount'])   // shown with "$", as the form shows them
+const show = (v: unknown, name = ''): string => {
   if (v === null || v === undefined || v === '') return ''
-  if (typeof v === 'number') return v.toLocaleString('en-US')
+  if (typeof v === 'number') return (DOLLARS.has(name) ? '$' : '') + v.toLocaleString('en-US')
   if (typeof v === 'object' && 'name' in (v as object)) return String((v as { name: unknown }).name)
   return String(v)
 }
@@ -132,8 +133,8 @@ export class ScriptedAgent {
   private fill(): Step[] {
     const now = (this.form.state().config.state ?? {}) as Record<string, unknown>
     const changes = Object.entries(PROFILE).map(([name, value]) => ({
-      name, label: LABELS[name], value, display: show(value), reason: REASONS[name], kind: kindOf(value),
-      previous: now[name] ?? null, previous_display: show(now[name]) || null, reveal: reveal(name),
+      name, label: LABELS[name], value, display: show(value, name), reason: REASONS[name], kind: kindOf(value),
+      previous: now[name] ?? null, previous_display: show(now[name], name) || null, reveal: reveal(name),
     })).filter((c) => JSON.stringify(c.previous) !== JSON.stringify(c.value))
     if (!changes.length) return [{ text: 'Everything from your profile is already in the form. Next is the **Term** on the *Loan* tab.' }, ...this.term()]
     this.lastCard = 'set_fields'

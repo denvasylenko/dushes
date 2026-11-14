@@ -172,15 +172,15 @@ describe('long messages fold', () => {
     const btns = [...el.shadowRoot!.querySelectorAll<HTMLButtonElement>('.fold-btn')]
     expect(btns).toHaveLength(1)
     const box = [...el.shadowRoot!.querySelectorAll<HTMLElement>('.msg.me .bubble')].at(-1)!
-    expect(box.classList.contains('folded')).toBe(true)
+    expect(box.classList.contains('clamped')).toBe(true)
     expect(btns[0].textContent).toBe('Show more')
     expect(btns[0].getAttribute('aria-controls')).toBe(box.id)
     btns[0].click()
-    expect(box.classList.contains('folded')).toBe(false)
+    expect(box.classList.contains('clamped')).toBe(false)
     expect(btns[0].textContent).toBe('Show less')
     expect(btns[0].getAttribute('aria-expanded')).toBe('true')
     btns[0].click()
-    expect(box.classList.contains('folded')).toBe(true)
+    expect(box.classList.contains('clamped')).toBe(true)
     expect($$(el, '.msg.ai .fold-btn')).toHaveLength(0)
     tall.mockRestore(); shown.mockRestore()
   })

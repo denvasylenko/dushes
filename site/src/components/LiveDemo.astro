@@ -1,15 +1,22 @@
 ---
 /**
- * The landing page's live demo: a real <agui-chat> and a real form, driven by a scripted in-browser agent.
- * Nothing leaves the page; the script replays the events formguide's server would send.
+ * The landing page's live demo: a real <agui-chat> and a real form. With PUBLIC_DEMO_AGENT_URL (the hosted /agent/run)
+ * the chat talks to the real agent, limited per visitor; over the limit, or without the URL, a scripted in-browser agent
+ * replays the events formguide's server would send, and nothing leaves the page.
  */
-import { Button } from './ui';
+import { Badge, Button } from './ui';
 const live = import.meta.env.PUBLIC_DEMO_URL as string | undefined;
+const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined;
 ---
-<div class="demo not-content" data-demo>
+<div class="demo not-content" data-demo data-agent-url={agentUrl} data-live={agentUrl ? '' : undefined}>
   <div class="demo-bar">
     <span class="demo-dots" aria-hidden="true"><i></i><i></i><i></i></span>
     <span class="demo-url">your-app.example/apply</span>
+    <!-- which agent answers: shown by [data-live] on .demo (removed on a fallback to the replay) -->
+    <span class="demo-mode" aria-live="polite">
+      <Badge variant="ok" class="demo-live"><span class="ui-dot" aria-hidden="true"></span>Live</Badge>
+      <Badge class="demo-rec">Recorded</Badge>
+    </span>
     <Button variant="quiet" size="sm" data-reset>Start over</Button>
   </div>
   <div class="demo-grid">
@@ -17,17 +24,21 @@ const live = import.meta.env.PUBLIC_DEMO_URL as string | undefined;
       <noscript><p class="demo-nojs">The live demo needs JavaScript. It shows the chat filling this form; see the <a href="get-started/quickstart/">quick start</a> to run the real agent.</p></noscript>
     </div>
     <div class="demo-chat">
-      <agui-chat mode="inline" persist-thread="off" attach="off" title="Loan assistant" subtitle="Replays recorded turns · no server"></agui-chat>
+      <agui-chat mode="inline" persist-thread="off" attach="off" title="Loan assistant" subtitle={agentUrl ? 'Live agent' : 'Replays recorded turns · no server'}></agui-chat>
     </div>
   </div>
-  <p class="demo-cap">The real <code>&lt;agui-chat&gt;</code> widget and its form plugin. Only the agent is scripted: tap a suggestion.{live && <> Try the real agents: <a href={live}>a big form</a> or <a href={`${live.replace(/\/?$/, '/')}site.html`}>a whole site</a>.</>}</p>
+  <p class="demo-cap">The real <code>&lt;agui-chat&gt;</code> widget and its form plugin. <span data-cap>{agentUrl ? 'Ask anything about the form.' : 'Only the agent is scripted: tap a suggestion.'}</span>{live && <> Try the real agents: <a href={live}>a big form</a> or <a href={`${live.replace(/\/?$/, '/')}site.html`}>a whole site</a>.</>}</p>
 </div>
 
 <script>
   import '../../../packages/agui-chat/src/index'
   import { formguide } from '../../../packages/agui-chat/src/formguide/index'
   import { mountForm } from '../demo/form'
-  import { ScriptedAgent, STARTERS } from '../demo/agent'
+  import { QUICKSTART, ScriptedAgent, STARTERS } from '../demo/agent'
+  import { landingLayout, liveDemo } from '../demo/live'
+
+  const REPLAY = 'Replays recorded turns · no server'
+  const RECORDED = 'This is a recorded run.'
 
   for (const root of document.querySelectorAll<HTMLElement>('[data-demo]')) {
     const form = mountForm(root.querySelector<HTMLElement>('[data-form]')!)
@@ -35,8 +46,17 @@ const live = import.meta.env.PUBLIC_DEMO_URL as string | undefined;
     const agent = new ScriptedAgent(form)
     chat.agent = agent
     chat.options = { starters: STARTERS, intro: 'Ask about any field, or let me fill the form for you.' }
+    const setCap = (t: string) => { const c = root.querySelector<HTMLElement>('[data-cap]'); if (c) c.textContent = t }
+    let jsxHash: string | null = null
+    const url = root.dataset.agentUrl
+    if (url) void landingLayout(url).then((hash) => {   // the real agent only when the host knows the form
+      if (!hash) { chat.setAttribute('subtitle', REPLAY); setCap(RECORDED); root.removeAttribute('data-live'); return }   // the host does not know the form: the replay, quietly
+      jsxHash = hash
+      const demo = liveDemo(url, agent, QUICKSTART, () => { chat.setAttribute('subtitle', REPLAY); setCap(RECORDED); root.removeAttribute('data-live') })
+      chat.options = { transport: demo.transport }
+    })
     chat.use(formguide({
-      getState: () => form.state(),
+      getState: () => ({ ...form.state(), ...(jsxHash ? { jsx_hash: jsxHash } : {}) }),
       applyChanges: (changes) => form.apply(changes),
       onDirective: (d) => form.reveal(d),
       undoSeconds: 30,
@@ -81,31 +101,32 @@ const live = import.meta.env.PUBLIC_DEMO_URL as string | undefined;
     content: ''; position: absolute; left: 0; bottom: 0; height: 3px; border-radius: 6px; background: var(--sl-color-accent);
     width: calc(var(--p, 0) * 100%); transition: width .34s cubic-bezier(.2, .8, .2, 1);
   }
-  .df-tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid var(--sl-color-hairline-light); }
-  .df-tab {
-    font: 500 var(--sl-text-sm) var(--sl-font); color: var(--sl-color-gray-3); background: none; border: 0; cursor: pointer;
-    padding: 10px 8px; min-height: 40px; border-bottom: 2px solid transparent; margin-bottom: -1px;
-  }
-  .df-tab[aria-selected='true'] { color: var(--sl-color-white); border-color: var(--sl-color-accent); }
-  .df-tab:focus-visible { outline: 3px solid var(--fg-focus); outline-offset: -3px; border-radius: var(--fg-r-sm); }
+  /* the sections are the design system's tabs (.ui-tabs / .ui-tab); this only places the row */
+  .df-tabs.ui-tabs { padding: 0 8px; border-bottom: 1px solid var(--fg-line); }
   .df-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
   .df-field { position: relative; display: flex; flex-direction: column; gap: 6px; border-radius: 14px; margin: -6px -8px; padding: 6px 8px; }
-  .df-label { font: 500 var(--sl-text-sm) var(--sl-font); color: var(--sl-color-gray-2); }
+  /* Live / Recorded in the window bar */
+  .demo-mode { display: inline-flex; margin-left: auto; }
+  .demo-mode .ui-badge { gap: 6px; }
+  .demo-mode .ui-dot { width: 6px; height: 6px; background: var(--fg-ok); }
+  .demo:not([data-live]) .demo-live, .demo[data-live] .demo-rec { display: none; }
+  .df-label { font: 500 var(--fg-fs-sub)/1.3 var(--sl-font); color: var(--fg-ink-2); }
+  /* inputs on the same tokens as the design system's Select (src/demo/form.ts builds both) */
   .df-in {
-    font: 16px var(--sl-font); color: var(--sl-color-white); background: var(--sl-color-bg-nav); border: 1px solid var(--sl-color-hairline-light);
-    border-radius: 10px; padding: 9px 12px; min-height: 44px; width: 100%;
+    font: 400 16px/1.2 var(--sl-font); color: var(--fg-ink); background: var(--fg-surface); border: 1px solid var(--fg-line);
+    border-radius: var(--fg-r-ctl); padding: 0 12px; min-height: 44px; width: 100%;
+    transition: border-color var(--fg-dur-instant) var(--fg-ease);
   }
+  .df-in::placeholder { color: var(--fg-ink-3); }
+  @media (hover: hover) { .df-in:hover { border-color: var(--fg-ink-3); } }
   .df-in:focus-visible { outline: none; border-color: var(--fg-accent); box-shadow: 0 0 0 3px var(--fg-focus); }
-  .df-seg { display: flex; flex-wrap: wrap; gap: 6px; }
-  /* the demo form's segment radios (built by src/demo/form.ts) look like the system's Chip */
-  .df-segbtn {
-    font: 500 var(--fg-fs-sub) var(--sl-font); color: var(--fg-ink-2); background: var(--fg-fill); cursor: pointer;
-    border: 0; border-radius: var(--fg-r-pill); padding: 0 14px; min-height: var(--fg-h-md);
-    transition: background var(--fg-dur-instant), color var(--fg-dur-instant);
-  }
-  @media (hover: hover) { .df-segbtn:hover { background: var(--fg-fill-2); color: var(--fg-ink); } }
-  .df-segbtn[aria-checked='true'] { color: var(--fg-accent-ink); background: var(--fg-accent-soft); box-shadow: inset 0 0 0 1px var(--fg-accent); }
-  .df-segbtn:focus-visible { outline: 3px solid var(--fg-focus); outline-offset: 2px; }
+  /* a currency inside the field, before the number */
+  .df-affix { position: relative; display: flex; }
+  .df-unit { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font: 400 16px/1 var(--sl-font); color: var(--fg-ink-2); pointer-events: none; }
+  .df-affix .df-in { padding-left: 26px; }
+  /* Employment (chips) and Term (segmented) are the design system's choice groups; Term fills the row */
+  .df-field > .ui-seg { align-self: stretch; }
+  .df-field > .ui-seg > button { flex: 1 1 0; }
   .df-flash { animation: df-flash 1.4s cubic-bezier(.2, .8, .2, 1); }
   .df-look { animation: df-look 1.1s cubic-bezier(.2, .8, .2, 1) 2; }
   .df-look[data-hint]::after {
@@ -127,7 +148,7 @@ const live = import.meta.env.PUBLIC_DEMO_URL as string | undefined;
     .demo-form { border-right: 0; border-bottom: 1px solid var(--sl-color-hairline-light); max-height: 360px; }
     .demo-chat { padding: 8px; }
     .df-head { padding: 16px 16px 10px; }
-    .df-tabs { padding: 0 12px; }
+    .df-tabs.ui-tabs { padding: 0 4px; }
     .df-body { padding: 14px 16px 18px; }
   }
 </style>

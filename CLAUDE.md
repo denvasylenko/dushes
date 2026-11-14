@@ -14,11 +14,13 @@ Documentation is maintained continuously, in the same change as the code — nev
   - tabs (each with its own sidebar, `starlight-sidebar-topics` in `astro.config.mjs`): `get-started/` (overview, quickstart, live demo, benchmarks, open standards), `frontend/` (clients, widget, cards, themes, tools; `connect-your-form/` is the form contract), `agents/` (`how-it-works/` the concepts with diagrams, `ui-agent/` the UI agent (`FormGuide`): packs, prefill, skills, user documents; `researcher/` the researcher sub-agent (overview, toolsets, configuration); `site-agent/` Dushes: site map, navigation, hand-off; `shared/` install, configuration, models, business documents, persistence, deploy, observability), `reference/` (keys, APIs, events, CLI, design system, `specifications/`). A page that moves gets an entry in `redirects` in `astro.config.mjs`. Every page: a one-line `description` (shown under the title), a copyable example, tabs for variants, a diagram (Mermaid fence, or a hand-drawn SVG reused with `<ArchFigure page=… />`) where flow matters, "Next" cards;
   - components, data flow, the turn lifecycle or configuration change → update `agents/how-it-works/architecture.md` and the concept page (and its diagram fragment) that shows it;
   - a new option, key, endpoint, event or CLI flag → the matching page under `reference/` and the guide that uses it;
+    a new configuration key or HTTP endpoint fails `pytest` until the reference has it (`backend/tests/test_docs_config_keys.py`, `test_docs_http_routes.py`, read from the real routers and `formguide.config.KEYS`);
   - integration or usage changes → the guide under `agents/`, `frontend/` or `get-started/`;
   - the landing demo (`site/src/demo/`) replays the real widget's events: when card payloads or event shapes change, update the script there too; the card gallery (`site/src/demo/gallery.ts`, page `frontend/card-gallery`) has one specimen per card and variant: a new card or variant gets a specimen there;
   - backend pages show server code only (YAML and Python tabs, HTTP calls), frontend pages browser code only; each backend and widget page ends with "Every option";
   - the site also publishes `llms.txt`, `llms-full.txt` and `<page>.md` (built from the pages, nothing to edit); the docs assistant behind Ask AI (`backend/docs_ai/`, deployed from `deploy/docs-ai/`) reads `llms-full.txt`, so it follows the docs without changes.
-  - Check it builds: `cd site && npm run build`.
+  - Check it builds: `cd site && npm run build`, then `python3 scripts/check_links.py site/dist` (every internal link and anchor; CI runs both).
+  - Benchmarks and recipe numbers are never typed: they come from `site/src/data/` (`benchmarks/*.json`, `recipes.json`), written by QA's scripts; the page says how old a report is and flags it after 14 days.
 - **README.md** — update usage, configuration or run instructions when they change.
 - Before finishing any task that touched behaviour, run:
   ```bash
@@ -31,7 +33,7 @@ Documentation is maintained continuously, in the same change as the code — nev
 
 ## UI work
 Before any interface change (the `<agui-chat>` widget, its card renderers and texts, the demo form, the examples, the docs pages), load the `ui-craft` skill (`.claude/skills/ui-craft/`): Apple is the anchor (every component looks and behaves like its iOS / macOS counterpart, `references/apple-components.md`), a five-line mini-brief, the eleven laws (one main action, complex in one tap, Undo instead of confirmations, instant, every state designed, like Apple), the type / spacing / radius scales, text rules and the check in the browser (390 px and desktop, light and dark). Known UI debt is in its `references/audit.md`; update it when you fix or find something.
-Docs UI uses only the design system in `site/src/components/ui/` (Button, Copy button, Chips, Segmented, Disclosure, Tile, Callout, Link card, Menu, Range, Swatches, Code panel, Badge, Summary, Entry tiles, Masonry, Metrics, Compare, Source list, Section tabs, Search; tokens `--fg-*` in `site/src/styles/theme.css`): a new pattern is added there first and shown on the Reference → Design system page (`reference/design-system.mdx`), then used. Rules and the Apple counterpart of each primitive: `.claude/skills/ui-craft/references/docs-components.md`.
+Docs UI uses only the design system in `site/src/components/ui/` (Button, Copy button, Chips, Segmented, Disclosure, Tile, Callout, Link card, Menu, Range, Swatches, Code panel, Badge, Summary, Entry tiles, Masonry, Metrics, Compare, Source list, Section tabs, Select, Search; tokens `--fg-*` in `site/src/styles/theme.css`): a new pattern is added there first and shown on the Reference → Design system page (`reference/design-system.mdx`), then used. Rules and the Apple counterpart of each primitive: `.claude/skills/ui-craft/references/docs-components.md`.
 
 ## Team (sessions)
 Session titles start with the Russian word for Dushes followed by the role (titles are not repository text). Who owns what:
@@ -41,6 +43,7 @@ Session titles start with the Russian word for Dushes followed by the role (titl
 - **Design · UI/UX expert (widget)** — `packages/agui-chat`, cards, demo UI; reports to Head of Design in the Herefront project (one design standard, `ui-craft`).
 - **Security**, **SRE (hosting, dushes-ai)**, **R&D Brainstorm** — as named.
 Subagents in `.claude/agents/`: `openspec-writer` (docs team, under Docs Lead), `form-author`, `scenario-author`, `eval-analyst` (QA), `ux-review`, `ui-review`, `ux-writer` (design team; references Apple, Revolut, Telegram).
+**Other teams' files only through their owner** (owner's rule, 14.11.2026): a session edits only files in its own area. A change in another team's area or in shared reusable code (the widget `packages/agui-chat`, the docs design system `site/src/components/ui`, tokens, `backend/formguide`) is sent to that area's owner as a request with the reason; the session edits it itself only after the owner's explicit yes, and says what it changed.
 Herefront/Cheese is a consumer of the package: what it lacks is asked here, not written there.
 
 ## Layout
@@ -55,7 +58,7 @@ Herefront/Cheese is a consumer of the package: what it lacks is asked here, not 
 - Frontend build: `cd frontend && npm run build` (served by the demo server).
 - Docs site: `cd site && npm install && npm run dev` (http://localhost:4321/dushes/; `DOCS_BASE` / `DOCS_SITE` change the base path and host; `PUBLIC_ASK_AI_URL=http://localhost:8100/ask/run` turns on Ask AI).
 - Docs assistant: `cd backend && ANTHROPIC_API_KEY=... uv run uvicorn docs_ai.app:app --port 8100` (reads `site/dist/llms-full.txt` unless `DOCS_AI_CORPUS` is set).
-- Public host (site + Ask AI + demo in one app, as on Fly): build `site` with `DOCS_BASE=/ PUBLIC_ASK_AI_URL=/ai/ask/run PUBLIC_DEMO_URL=/demo/` and `frontend` with `vite build --base /demo/`, then `cd backend && ANTHROPIC_API_KEY=... uv run uvicorn docs_ai.host:app --port 8080`; deploy: `deploy/docs-ai/` (app `dushes-ai`, https://dushes-ai.fly.dev).
+- Public host (site + Ask AI + demo in one app, as on Fly): build `site` with `DOCS_BASE=/ PUBLIC_ASK_AI_URL=/ai/ask/run PUBLIC_DEMO_URL=/demo/ PUBLIC_DEMO_AGENT_URL=/agent/run` (the last one makes the landing demo talk to the real agent, falling back to the recorded replay over the host's limits) and `frontend` with `vite build --base /demo/`, then `cd backend && ANTHROPIC_API_KEY=... uv run uvicorn docs_ai.host:app --port 8080`; deploy: `deploy/docs-ai/` (app `dushes-ai`, https://dushes-ai.fly.dev).
 
 ## Git / GitHub
 The project will be pushed to a GitHub repository the user will name later. Do not create remotes, commit or push until the user asks and gives the repository.

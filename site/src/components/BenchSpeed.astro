@@ -1,0 +1,19 @@
+---
+/** The live benchmark section: what was run, when, the table and the per-scenario chart, all from speed.json. */
+import { Compare } from './ui'
+import BenchFreshness from './BenchFreshness.astro'
+import { SPEED, longDate, num, pct } from '../lib/bench'
+const s = SPEED
+const bars = [...s.scenarios].sort((x, y) => x.turn_s - y.turn_s).map((r, i) => ({ label: r.short, value: r.turn_s, display: `${r.turn_s} s`, highlight: i === 0 }))
+---
+<p>One user turn per scenario on a fresh conversation, against the public demo ({s.model} for every role), {s.repeat} runs each. Cards are accepted and questions answered with their first option; the user's own time is not counted. The numbers are the server's own <code>run_stats</code>, so the network is not included.</p>
+
+<BenchFreshness date={s.date} model={s.model} commit={s.commit} what="The live benchmark" />
+
+<table>
+  <thead><tr><th>Scenario</th><th>First word</th><th>Whole turn</th><th>Tool calls</th><th>Tokens in / out</th><th>From cache</th></tr></thead>
+  <tbody>{s.scenarios.map((r) => <tr><td>{r.label}</td><td>{r.ttft_s} s</td><td>{r.turn_s} s</td><td>{r.tools}</td><td>{num(r.tokens_in)} / {num(r.tokens_out)}</td><td>{pct(r.cache)}</td></tr>)}</tbody>
+</table>
+
+<Compare title="The whole turn, by scenario" unit="seconds" better="lower" items={bars}
+  note={`One run of the benchmark: the same day (${longDate(s.date)}), the same model (${s.model}) and the same code for every bar.`} />

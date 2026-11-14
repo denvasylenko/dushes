@@ -4,7 +4,7 @@ description: 'Every control the docs use, live in light and dark, with the snipp
 ---
 import { LinkCard as SlLinkCard, CardGrid } from '@astrojs/starlight/components';
 import SearchSpecimen from '../../../components/SearchSpecimen.astro';
-import { Badge, Button, Compare, Entries, Entry, Masonry, Icon, Metric, Metrics, SectionTabs, SourceList, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
+import { Badge, Button, Compare, Entries, Entry, Masonry, Icon, Metric, Metrics, SectionTabs, Select, SourceList, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
 
 Every piece of interface on this site comes from one folder, `site/src/components/ui/`. Each primitive is shaped like its Apple counterpart, built from the tokens in `site/src/styles/theme.css`, and shown below working. A new pattern is added there first and shown on this page, then used.
 
@@ -372,6 +372,30 @@ import { SectionTabs } from './ui'
 ```
 
 The header (`components/Header.astro`) feeds it from `starlight-sidebar-topics`. Its row is part of `--sl-nav-height` on a computer, so the sidebar, the page, **On this page** and anchor scrolling all start below it.
+
+## Select
+
+One choice from a list, as a pop-up button. It works like macOS: the button shows the choice, and its menu marks the chosen option with a check. On a phone the list is a sheet from the bottom over a dimmed page, as on iOS.
+- Keyboard: Return, Space or ↓ opens it. ↑ ↓ move through the options, Return picks one, and Esc closes the menu and returns focus to the button.
+- Never a browser `<select>`, which looks different in every browser and breaks the page's look.
+
+<Specimen>
+  <div style="width:min(100%,18rem)">
+    <Select label="Loan type" options={[['auto', 'Car loan'], ['personal', 'Personal loan'], ['mortgage', 'Mortgage']]} value="personal" />
+  </div>
+  <div style="width:min(100%,18rem)">
+    <Select label="Car make" placeholder="Choose…" options={[['toyota', 'Toyota'], ['honda', 'Honda'], ['tesla', 'Tesla']]} />
+  </div>
+</Specimen>
+
+```astro
+---
+import { Select } from './ui'
+---
+<Select label="Loan type" value="personal" options={[['auto', 'Car loan'], ['personal', 'Personal loan']]} />
+```
+
+It fires a bubbling `ui-change` with `{value}`. For markup made by script, such as the landing demo's form, `buildSelect({ options, value, label, onChange })` from `ui.ts` makes the same element.
 
 ## Search
 

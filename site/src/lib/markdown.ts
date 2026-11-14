@@ -1,4 +1,5 @@
 /** A docs entry as plain Markdown for llms.txt, llms-full.txt and <page>.md (what AI tools read). */
+import { speedMarkdown } from './bench';
 import type { CollectionEntry } from 'astro:content';
 
 const fragments = import.meta.glob('../fragments/*.html', { query: '?raw', eager: true, import: 'default' }) as Record<string, string>;
@@ -31,6 +32,7 @@ function mdxToMd(body: string): string {
     // the "at a glance" block: three plain lines (the attributes are JSON strings)
     .replace(/<Summary\s+what=\{("(?:[^"\\]|\\.)*")\}\s+when=\{("(?:[^"\\]|\\.)*")\}\s+write=\{("(?:[^"\\]|\\.)*")\}[^>]*\/>/g,
       (_m, a, b, c) => `- **What:** ${JSON.parse(a)}\n- **When you need it:** ${JSON.parse(b)}\n- **You write:** ${JSON.parse(c)}`)
+    .replace(/<BenchSpeed\s*\/>/g, () => speedMarkdown())   // data-driven sections: the same numbers as the page
     .replace(/<[A-Z][A-Za-z]*(\s[^>]*)?\/>/g, '')   // any other self-closing component (live widgets)
     .replace(/<LinkCard\s+title="([^"]+)"(?:\s+description="([^"]*)")?\s+href="([^"]+)"\s*\/>/g, (_m, t, d, h) => `- [${t}](${h})${d ? `: ${d}` : ''}`)
     .replace(/<Card\s+title="([^"]+)"[^>]*>/g, '**$1.** ')

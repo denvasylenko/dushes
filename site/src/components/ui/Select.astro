@@ -1,0 +1,26 @@
+---
+/**
+ * Select: one choice from a list, as a pop-up button (macOS) that opens a menu with a check on the chosen option; on a
+ * phone the list is a sheet from the bottom (iOS). Fires a bubbling `ui-change` with {value}. For markup built by
+ * script, `buildSelect()` in ui.ts makes the same element.
+ */
+import Icon from './Icon.astro'
+interface Props { options: readonly (readonly [string, string])[]; value?: string; placeholder?: string; label?: string; id?: string; class?: string; [attr: string]: unknown }
+const { options, value, placeholder = 'Choose…', label, id, class: cls, ...rest } = Astro.props
+const cur = options.find(([v]) => v === value)
+const listId = `ui-select-s${Math.random().toString(36).slice(2, 8)}`
+---
+<div class:list={['ui-select', cls]} data-ui-select {...rest}>
+  <button type="button" class:list={['ui-select-btn', { 'is-empty': !cur }]} aria-haspopup="listbox" aria-expanded="false" aria-controls={listId} id={id}>
+    <span class="ui-select-val">{cur?.[1] ?? placeholder}</span><Icon name="updown" />
+  </button>
+  <div class="ui-select-pop" id={listId} role="listbox" tabindex="-1" aria-label={label} hidden>
+    <p class="ui-select-title">{label}</p>
+    {options.map(([v, l]) => (
+      <div class="ui-select-opt" role="option" tabindex="-1" data-value={v} aria-selected={String(v === value)}><Icon name="check" /><span>{l}</span></div>
+    ))}
+    <button type="button" class="ui-select-cancel">Cancel</button>
+  </div>
+</div>
+
+<script>import './ui.ts'</script>

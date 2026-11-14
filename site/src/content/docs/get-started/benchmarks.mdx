@@ -4,6 +4,11 @@ description: How fast and how lean Dushes is, measured on the demo forms, and ho
 ---
 import { LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
 import { Summary, Metrics, Metric, Compare } from '../../../components/ui';
+import BenchSpeed from '../../../components/BenchSpeed.astro';
+import { SPEED, longDate, num, pct } from '../../../lib/bench';
+
+export const fill = SPEED.scenarios.find((r) => r.name === 'fill');
+export const caches = SPEED.scenarios.map((r) => r.cache);
 
 <Summary what={"Measured speed, tokens and cache of Dushes' turns"} when={"You want numbers before you choose it"} write={"Nothing; run `scripts/bench.py` to measure your own setup"} />
 
@@ -14,8 +19,8 @@ Every number here comes from our own measurements on the demo forms: a 221-field
 <Metrics>
   <Metric value="93%" label="fewer tokens than the whole form" detail="221-field form: 1,210 vs 16,582 tokens per turn" />
   <Metric value="~8 ms" label="Dushes' own work in a turn" detail="context, diff, validation and the graph, without the model" />
-  <Metric value="0.8 s" label="to the first word when filling" detail="median, Claude Haiku 5.5, 14 Nov 2026" />
-  <Metric value="80–93%" label="of input read from the prompt cache" detail="once a conversation is going" />
+  <Metric value={`${fill.ttft_s} s`} label="to the first word when filling" detail={`median, ${SPEED.model}, ${longDate(SPEED.date)}`} />
+  <Metric value={`${pct(Math.min(...caches))}–${pct(Math.max(...caches))}`} label="of input read from the prompt cache" detail="once a conversation is going" />
 </Metrics>
 
 <Compare title="Tokens the model sees per turn" unit="tokens" better="lower" note="Measured on the 221-field demo loan form."
@@ -23,20 +28,11 @@ Every number here comes from our own measurements on the demo forms: a 221-field
 
 ## Live turns
 
-One user turn per scenario on a fresh conversation, against the public demo (Claude Haiku 5.5 for every role), 2 runs each, 14 November 2026. Cards are accepted and questions answered with their first option; the user's own time is not counted. The numbers are the server's own `run_stats`, so the network is not included.
+<BenchSpeed />
 
-| Scenario | First word | Whole turn | Tool calls | Tokens in / out | From cache |
-| --- | --- | --- | --- | --- | --- |
-| a question ("Where do I start?") | 3.5 s | 5.3 s | 1.5 | 16,000 / 490 | 72% |
-| fill (name and birth date, card accepted) | **0.8 s** | 5.2 s | 2 | 24,431 / 318 | 92% |
-| a choice (a question card, then a field card) | 2.4 s | 8.6 s | 4 | 41,079 / 774 | 92% |
-| the business's documents (the car loan rate) | 4.7 s | 7.8 s | 3 | 24,410 / 672 | 93% |
-| a booking (service, barber, day and slot: 10 tools in a row) | 1.1 s | 12.3 s | 10.5 | 86,540 / 1,223 | 80% |
+The model's time is almost the whole turn: Dushes adds about 10 ms. A turn's time grows with the number of tool calls in it, not with the size of the form.
 
-<Compare title="The booking turn (10 tools in a row)" unit="seconds" better="lower" note="Same scenario, 11 Nov (Claude Opus 5.5 as the agent) and 14 Nov (Claude Haiku 5.5)."
-  items={[{ label: '14 Nov, Haiku 5.5', value: 12.3, display: '12.3 s', highlight: true }, { label: '11 Nov, Opus 5.5', value: 22.9, display: '22.9 s' }]} />
-
-Compared with the same scenarios on 11 November (Claude Opus 5.5 as the agent), the booking turn went from **22.9 s to 12.3 s** and the cache share from 65–75% to 80–93%. The model's time is almost the whole turn: Dushes adds about 10 ms.
+This page does not rank models: runs on different days, code or models are not comparable, and an earlier comparison of Claude Opus 5.5 on 11 November with Claude Haiku 5.5 on 14 November was withdrawn for that reason. Which model to run is a separate measurement, all models on the same day and code: the model benchmark, once it is published.
 
 ```bash
 cd backend && uv run python scripts/bench.py --base https://dushes-ai.fly.dev --repeat 3   # or your own server

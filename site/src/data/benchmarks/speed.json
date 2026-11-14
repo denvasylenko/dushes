@@ -1,0 +1,14 @@
+{
+ "source": "backend/scripts/bench.py --base https://dushes-ai.fly.dev --repeat 2",
+ "date": "2026-11-14",
+ "model": "Claude Haiku 5.5",
+ "commit": "",
+ "repeat": 2,
+ "scenarios": [
+  {"name": "question", "label": "a question (\"Where do I start?\")", "short": "a question", "ttft_s": 3.5, "turn_s": 5.3, "tools": 1.5, "tokens_in": 16000, "tokens_out": 490, "cache": 0.72},
+  {"name": "fill", "label": "fill (name and birth date, card accepted)", "short": "fill", "ttft_s": 0.8, "turn_s": 5.2, "tools": 2, "tokens_in": 24431, "tokens_out": 318, "cache": 0.92},
+  {"name": "choice", "label": "a choice (a question card, then a field card)", "short": "a choice", "ttft_s": 2.4, "turn_s": 8.6, "tools": 4, "tokens_in": 41079, "tokens_out": 774, "cache": 0.92},
+  {"name": "documents", "label": "the business's documents (the car loan rate)", "short": "documents", "ttft_s": 4.7, "turn_s": 7.8, "tools": 3, "tokens_in": 24410, "tokens_out": 672, "cache": 0.93},
+  {"name": "booking", "label": "a booking (service, barber, day and slot)", "short": "a booking", "ttft_s": 1.1, "turn_s": 12.3, "tools": 10.5, "tokens_in": 86540, "tokens_out": 1223, "cache": 0.80}
+ ]
+}
