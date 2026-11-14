@@ -3,7 +3,7 @@ import '../src/index'
 import type { AguiChatElement } from '../src/element'
 import { formguide } from '../src/formguide/index'
 import type { AguiEvent } from '../src/types'
-import { hoursText } from '../src/formguide/blocks'
+import { hoursText } from '../src/formguide/blocks-base'
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 async function mount(): Promise<AguiChatElement> {

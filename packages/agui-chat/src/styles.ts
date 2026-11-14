@@ -163,6 +163,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 
 /* cards from blocks (formguide/blocks.ts): small parts, one look; colours only from the theme and a tone */
 .bk { display: grid; gap: 12px; }
+.bk-wait { min-height: 88px; }
 .bk .card-q, .bk .acts { margin: 0; }
 .bk-title .muted, .bk-note, .bk-small { font-size: 13px; }
 .bk-strong { font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }

@@ -15,6 +15,7 @@
  */
 import { h, mdInline } from '../dom'
 import type { Interrupt, RendererContext } from '../types'
+import { blocksShell, hoursText, weekdays, type Hours } from './blocks-base'
 
 export type Tone = 'accent' | 'ok' | 'danger' | 'muted'
 /** A button's answer: its id, its label, the card's values, and the button itself (its `fills`). */
@@ -120,28 +121,6 @@ function linkEl(it: Item, c: RendererContext): HTMLElement {
 /** A host's own handling of a button: resolves true when handled (the chat then does nothing more). */
 export type OnAction = (id: string, label: string, values: Record<string, unknown>) => Promise<boolean>
 
-/** Opening hours: [{days: [0..6] (0 = Monday), from: 'HH:MM', to: 'HH:MM'}]. */
-type Hours = { days: number[]; from: string; to: string }[]
-const weekdays = (lang: string): string[] => {
-  const f = new Intl.DateTimeFormat(lang || 'en', { weekday: 'short' })
-  return [...Array(7)].map((_, i) => f.format(new Date(2024, 0, 1 + i)))   // 1 Jan 2024 was a Monday
-}
-/** "Mon\u2013Fri 09:00\u201318:00": runs of days joined with a dash, pairs with a comma. */
-export function hoursText(v: Hours, lang = 'en'): string {
-  const d = weekdays(lang)
-  const days = (xs: number[]): string => {
-    const s = [...new Set(xs)].filter((x) => x >= 0 && x < 7).sort((a, b) => a - b)
-    const out: string[] = []
-    for (let i = 0; i < s.length; i++) {
-      let j = i
-      while (j + 1 < s.length && s[j + 1] === s[j] + 1) j++
-      out.push(j - i >= 2 ? `${d[s[i]]}\u2013${d[s[j]]}` : s.slice(i, j + 1).map((x) => d[x]).join(', '))
-      i = j
-    }
-    return out.join(', ')
-  }
-  return v.map((r) => `${days(r.days)} ${r.from}\u2013${r.to}`).join('; ')
-}
 const hoursList = (v: unknown): Hours => list(v).map((r) => ({ days: (Array.isArray(r.days) ? r.days : []).map(Number), from: str(r.from), to: str(r.to) }))
 
 /** What a card still needs before its main button: each required choice and field, by its label. */
@@ -167,9 +146,10 @@ export function pickerBlocks(it: Item): Block[] {
   ]
 }
 
-export function blocksCard(it: Interrupt | Record<string, unknown>, c: RendererContext, answer: Answer | null, onAction?: OnAction): HTMLElement {
+/** `into`: an empty card made earlier (blocksShell) to build in, when the card was shown before the blocks arrived. */
+export function blocksCard(it: Interrupt | Record<string, unknown>, c: RendererContext, answer: Answer | null, onAction?: OnAction, into?: HTMLElement): HTMLElement {
   const values: Record<string, unknown> = {}
-  const card = h('div', { class: 'bk', part: `blocks blocks-${str(it.name) || 'card'}` })
+  const card = into ?? blocksShell(it)
   let group: HTMLElement | null = null
   const blocks = Array.isArray(it.blocks) ? it.blocks : it.groups ? pickerBlocks(it as Item) : []
   for (const b of list(blocks) as Block[]) {
@@ -373,8 +353,8 @@ export interface BlocksFill {
 
 /** The `blocks` renderer: a waiting card answers and folds into its result line. A button with `fills` fills those
  *  form fields first (one tap, no second card), with Undo, and the answer carries the new config. */
-export function blocksRenderer(it: Interrupt, c: RendererContext, fill?: BlocksFill, onAction?: OnAction): HTMLElement {
-  const shell = h('div', null)
+export function blocksRenderer(it: Interrupt, c: RendererContext, fill?: BlocksFill, onAction?: OnAction, into?: HTMLElement): HTMLElement {
+  const shell = into ?? h('div', null)
   const err = h('div', { class: 'muted err-line', role: 'alert' })
   const fold = (label: string): HTMLElement => {
     const line = h('div', { class: 'ok-line', part: 'result' }, h('i', null, '\u2713'), h('span', null, label))

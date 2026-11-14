@@ -113,6 +113,17 @@ chat.addEventListener('agui:applied', (e) => scrollPreviewTo(e.detail.fields))  
 
 A card of your own that blocks cannot express: `chat.renderers.set('booking', (card, ctx) => …)` draws it inside the chat, so the theme's tokens and classes apply; `AguiChat.blocksCard(payload, ctx, answer)` builds blocks inside it.
 
+## What loads when
+
+With a bundler the blocks are part of `@formguide/agui-chat/formguide`: every card is drawn at once. The one-script build leaves them out of `agui-chat.iife.js` and adds `agui-chat.blocks.js` (about 6 KB gzipped) from the same folder when the first run starts, or when the first card from blocks is shown, whichever comes first, so deploy the whole `dist` folder. A card shown before the file arrives keeps its room and fills in place; if the file cannot be loaded the card says so with Try again.
+
+`AguiChat.blocksCard(payload, ctx, answer)` still returns its element at once: the blocks are drawn into that same element when they are here. To have them ready before your own renderer runs, wait for them once; `AguiChat.hoursText` is always there.
+
+```js
+await AguiChat.loadBlocks()   // agui-chat.blocks.js is here: blocksCard draws at once
+chat.renderers.set('booking', (card, ctx) => AguiChat.blocksCard({ blocks: card.blocks }, ctx, (action, label, values) => ctx.resolve({ action, values })))
+```
+
 ## Style them
 
 Each block has a part, `block-<type>` (`agui-chat::part(block-place)`), and the card `blocks blocks-<name>`, so the page can restyle one kind of card. See [Themes and styling](../themes/).
