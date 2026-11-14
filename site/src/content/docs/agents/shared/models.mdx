@@ -170,6 +170,29 @@ One model does everything by default. Give a role its own model when it pays off
 
 <ArchFigure page="config" />
 
+### One provider, a cheaper model per role
+
+Every role takes any model, so a cheaper model can stay on the same provider: here everything runs on Azure OpenAI, with a smaller deployment for the researcher. No second provider, no second key.
+
+```yaml title="formguide.yaml"
+models:
+  agent: {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, api_version: "2025-04-01-preview",
+          azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}
+  research: {class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5-mini, api_version: "2025-04-01-preview",
+             azure_endpoint: "${AZURE_OPENAI_ENDPOINT}"}       # a cheaper deployment, for the long tail of documents
+```
+```python title="app.py"
+from formguide import FormGuide, GuideConfig, Models
+from langchain_openai import AzureChatOpenAI
+
+guide = FormGuide(GuideConfig(models=Models(
+    agent=AzureChatOpenAI(azure_deployment="gpt-5", api_version="2025-04-01-preview"),
+    research=AzureChatOpenAI(azure_deployment="gpt-5-mini", api_version="2025-04-01-preview"),   # cheaper
+)))
+```
+
+Both read `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` from the environment. The deployment names are yours: create the smaller one in Azure first. The roles without a model (`compile`, `extract`) fall back to `agent`.
+
 ### Mix providers
 
 ```yaml title="formguide.yaml"
