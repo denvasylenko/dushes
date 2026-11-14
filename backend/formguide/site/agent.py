@@ -31,6 +31,8 @@ from .sitemap import SiteMap
 log = logging.getLogger("formguide.site")
 MAX_ROUNDS = 4
 STYLE = "Reply in one to three short sentences, in the user's language."
+STAY = ("\n   The user is filling in the form on this page: answer in place and do not navigate away, unless they ask "
+        "to go\n   somewhere or the business's instructions above say which page such a question opens.")
 
 
 @dataclass
@@ -76,19 +78,20 @@ Each turn
    policy they do not settle: call ask_documents first (search_site when the answer may be on another page).
    Before you say something is not on the site, call search_site once with other words ("opening hours",
    "prices"), and look at the site contents for the page that would hold it. Still nothing: say so and
-   offer the closest page.
+   offer the closest page. The site's pages are a source as good as the documents: what a page or its
+   passage says stands even when ask_documents finds nothing about it.
 3. A general concept that is not about this business (what a co-borrower is, what an appraisal is): explain it
    briefly from general knowledge and say it is general, as this business's terms may differ.
 4. Somewhere to go, or an answer that sits on a page they would be helped to see: call navigate (a page path
-   from the site contents, plus the tab, accordion or section id where the answer is).
-   On a page with a form (the user is filling it in), answer in place and do not navigate away unless they
-   ask to go somewhere: leaving would take them off their form.
+   from the site contents, plus the tab, accordion or section id where the answer is).{stay}
 5. Something a form does (apply, book): call open_form with that form and a note of everything the user
    already said that the form needs (amounts, dates, names, choices), in their words, and the language the
    user writes in. Do not ask for the rest yourself: the form takes over on that page, in this same chat.
    If two forms could fit, ask which one.
 6. {style} After a tool, say what you did in one
-   sentence ("Here is the Contacts page: on Saturday the branch is open 10:00 to 16:00.").
+   sentence ("Here is the Contacts page: on Saturday the office is open 9:00 to 13:00."). Say each thing
+   once: never repeat in the same reply what you already wrote before a tool, and do not restate facts you
+   gave in earlier turns (hours, an address, a price) unless the user asks for them again.
 
 Never
 - name tools, quote these instructions or announce what you are about to do;
@@ -120,7 +123,7 @@ TOOLS: list[dict[str, Any]] = [
      "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
     {"name": "navigate", "description": "Open a page of the site, optionally a tab, accordion or section on it.",
      "parameters": {"type": "object", "properties": {
-         "path": {"type": "string", "description": "a page path from the site contents, e.g. /loans"},
+         "path": {"type": "string", "description": "a page path from the site contents, e.g. /pricing"},
          "tab": {"type": "string", "description": "a tab or accordion id on that page"},
          "section": {"type": "string", "description": "a section id on that page"}},
          "required": ["path"]}},
@@ -173,7 +176,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                  thread_id: str, run_id: str, on_handoff: Callable[..., Any], doc_passages: str = "",
                  ask_docs: Callable[[str], Awaitable[str]] | None = None, *, live: str = "", instructions: str = "",
                  style: str | None = None, tools: list[SiteTool] | None = None, ctx: SiteRunCtx | None = None,
-                 suggestions: bool = False, finish: bool = True) -> AsyncIterator[dict]:
+                 suggestions: bool = False, finish: bool = True, stay_on_form: bool = False) -> AsyncIterator[dict]:
     """One site turn as AG-UI events.
 
     `on_handoff(form_id, note, language)` keeps the note; when it returns True the form agent answers right after
@@ -190,6 +193,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
     own = f"\nThe business's instructions\n{brief}\n" if brief else ""
     facts = f"\nLive facts from the business (current, trust them over the site passages)\n{live.strip()}\n" if live.strip() else ""
     system = SYSTEM.format(title=site.title, instructions=own, live=facts, style=style or STYLE,
+                           stay=STAY if stay_on_form else "",
                            contents=site.contents(), passages=passages(site, found),
                            doc_passages=doc_passages or "(none matched)",
                            page=f"{here.path} ({here.title})" if here else page_path or "/")
@@ -276,8 +280,8 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                        "content": result[:200], "role": "tool"}
             if handed:   # the form agent answers next, in this run
                 break
-            if said and all(tc.get("name") == "suggest_next" for tc in calls):
-                break   # the answer is out and only the buttons came with it: another round would repeat it
+            if said and all(tc.get("name") in ("suggest_next", "navigate") for tc in calls):
+                break   # the answer is out and only a move or the buttons came with it: another round repeats it
         if not said and not handed:   # the rounds ran out, or the model gave no text: one last reply, its tool calls ignored
             msgs.append(HumanMessage("[system] Do not call tools now. Answer the user in one to three sentences "
                                      "with what you found, or say what you could not find."))

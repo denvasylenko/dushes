@@ -425,3 +425,38 @@ def test_an_answer_with_only_suggestions_is_not_asked_again(guide, model):
     assert "".join(e.get("delta", "") for e in ev).count("credit bureau") == 1
     assert len(model.calls) == 1
     assert [e["value"] for e in ev if e.get("name") == "suggestions"] == [{"items": ["What does it check?"]}]
+
+
+def test_answer_in_place_on_form_pages(guide, model):
+    from formguide.transcript import new_entry
+    st = form_state(guide)
+    on = Dushes(guide, SiteMap.load(SITE))
+    model.script = [say("ok")]
+    run(on, "st1", message="take me to the contacts page", state=st)                     # a form page: stay
+    assert "answer in place" in model.calls[-1][0].content
+    model.script = [say("ok")]
+    run(on, "st0", message="hello", state={"page": {"path": "/"}})                     # no form: may move
+    assert "answer in place" not in model.calls[-1][0].content
+    on.forms.transcripts.append("st2", new_entry("assistant", text="Car loan noted.", form_id="loan_application"))
+    model.script = [say("ok")]
+    run(on, "st2", message="take me to the contacts page", state=st)                     # the form spoke last: stay
+    assert "answer in place" in model.calls[-1][0].content
+    off = Dushes(guide, SiteMap.load(SITE), stay_on_forms=False)                     # a studio, not a form to finish
+    model.script = [say("ok")]
+    run(off, "st2", message="take me to the contacts page", state=st)
+    assert "answer in place" not in model.calls[-1][0].content
+
+
+
+def test_a_question_about_the_form_itself_stays_with_the_form(site, guide):
+    st = form_state(guide)
+    assert site.route("which fields are still required for the form to be sent?", st) == "form"
+    assert site.route("How many new requests do I have?", st) == "unclear"           # requests: not a form word
+
+
+def test_no_second_round_after_an_answer_and_a_move(guide, model):
+    s = Dushes(guide, SiteMap.load(SITE))
+    model.script = [say("Barber & Co takes card or cash.", ("n1", "navigate", {"path": "/faq"})),
+                    say("Barber & Co takes card or cash.")]                         # a second round would repeat it
+    ev = run(s, "dup2", message="do you take cards?", state={"page": {"path": "/"}})
+    assert "".join(e.get("delta", "") for e in ev).count("card or cash") == 1 and len(model.calls) == 1

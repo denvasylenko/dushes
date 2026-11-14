@@ -103,11 +103,21 @@ def is_question(text: str) -> bool:
     return text.rstrip().endswith("?") or bool(_ASK.match(text.strip()))
 
 
+# words about a form itself: a question with one of them is the form's, whatever its fields are called
+_FORM_WORDS = (
+    "field", "form", "required", "mandatory", "section", "submit", "fill", "missing", "error",
+    "feld", "formular", "pflicht", "campo", "formulario", "obligatori", "champ", "formulaire", "modul",
+    "\u043f\u043e\u043b\u0435", "\u043f\u043e\u043b\u044f", "\u043f\u043e\u043b\u0435\u0439", "\u0444\u043e\u0440\u043c", "\u0430\u043d\u043a\u0435\u0442", "\u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d",   # Russian: field (three forms), form, questionnaire, required
+)
+
+
 def names_a_field(text: str, form: dict[str, Any]) -> bool:
     """The message uses a word of one of the form's field labels (a stem, so "loans" matches "Loan amount" and
     other word forms of the same label match too)."""
     props = ((form or {}).get("config") or {}).get("props") or {}
     words = re.findall(r"\w+", text.lower())
+    if any(w.startswith(_FORM_WORDS) for w in words):   # "which fields are still required?": about the form
+        return True
     for p in props.values():
         for tok in re.findall(r"\w+", str((p or {}).get("label") or "").lower()):
             if len(tok) >= 4 and tok not in _STOP and not _ASK.match(tok):   # "How many vehicles": not "many"
@@ -198,7 +208,8 @@ class Dushes:
     def __init__(self, form_guide: FormGuide, site: SiteMap, model: Any = None,
                  knowledge_namespaces: list[str] | None = None, router_model: Any = None, *,
                  context: Any = None, instructions: str = "", style: str | None = None, history: int = HISTORY,
-                 tools: list[SiteTool] | None = None, suggestions: bool = False, form_for: Any = None):
+                 tools: list[SiteTool] | None = None, suggestions: bool = False, form_for: Any = None,
+                 stay_on_forms: bool = True):
         self.forms = form_guide
         self.context = context            # (ctx) -> str | Awaitable[str]: live facts, in the prompt every turn
         self.instructions = instructions  # added to the site map's own instructions
@@ -207,6 +218,7 @@ class Dushes:
         self.tools = list(tools or [])    # the host's SiteTools
         self.suggestions = suggestions    # suggest_next -> CUSTOM suggestions
         self.form_for = form_for          # (form_id, ctx) -> form state | None: the same-run hand-off
+        self.stay_on_forms = stay_on_forms   # on a form page, answer in place while the user fills the form in
         self.site = site
         self.model = model   # Dushes' model; default: the form guide's agent model
         self.router_model = router_model or form_guide.models.memory   # a cheap model for unclear messages
@@ -310,6 +322,11 @@ class Dushes:
         word = _text_of(out).strip().lower()
         log.info("site router: %r -> %s", message[:60], word[:20])
         return "site" if word.startswith("site") else "form"
+
+    def _filling(self, thread_id: str, state: dict[str, Any]) -> bool:
+        """The user is on a page with a form to fill in, and stay_on_forms is on (a host whose form page is a
+        studio rather than a form to finish turns it off)."""
+        return bool(self.stay_on_forms and state.get("form"))
 
     def _spoke_line(self, thread_id: str | None) -> str:
         who, said = self._last_speaker(thread_id)
@@ -440,7 +457,8 @@ class Dushes:
                                      thread_id, run_id, keep, doc_passages=self.doc_passages(message or "") if has_docs else "",
                                      ask_docs=self.ask_documents if has_docs else None, live=live,
                                      instructions=self.instructions, style=self.style, tools=self.tools, ctx=ctx,
-                                     suggestions=self.suggestions, finish=False):
+                                     suggestions=self.suggestions, finish=False,
+                                     stay_on_form=self._filling(thread_id, state)):
             if ev["type"] == "TEXT_MESSAGE_CONTENT":
                 said.append(ev["delta"])
             elif ev["type"] == "RUN_ERROR":

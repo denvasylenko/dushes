@@ -1,6 +1,6 @@
 [project]
 name = "formguide"
-version = "0.2.0"
+version = "0.3.0"
 description = "A chat agent that guides users through large configurable forms (LangGraph, AG-UI, CopilotKit)."
 requires-python = ">=3.11"
 dependencies = [

@@ -165,6 +165,7 @@ app.include_router(create_dushes_router(site, host=lambda request: {"site": curr
 | `tools` | your `SiteTool`s next to its own; a tool that raises tells the model, the turn goes on |
 | `suggestions` | a `suggest_next` tool: its options arrive as CUSTOM `suggestions {items}`, the chat's quick replies |
 | `form_for(form_id, ctx)` | the form's state on the server: after `open_form` the form agent answers in the same run, and the directive says `handoff: "done"` so the page does not run again |
+| `stay_on_forms` | `True`: on a page with a form, Dushes answers in place instead of opening another page, unless the user asks to go or your instructions name the page for that question. `False`: no such rule (a studio or an admin cabinet, where the form page is not a form to finish) |
 | `create_dushes_router(site, host=fn)` | `fn(request)` builds `ctx.host` for each run: one guide serves every site and user |
 
 Every callback gets `ctx`, a `SiteRunCtx(thread_id, page, state, message, host)`, and may be sync or async. `open_form` also passes the language the user writes in, so the form agent replies in it.
@@ -233,6 +234,7 @@ Dushes(
     tools=[],                        # SiteTool(name, description, parameters, handler(args, ctx) -> str)
     suggestions=False,               # suggest_next -> CUSTOM suggestions {items}
     form_for=None,                   # fn(form_id, ctx) -> form state | None: the form agent answers in the same run
+    stay_on_forms=True,              # answer in place while the user fills in the page's form
 )
 site.run(thread_id, message=..., state=..., host=obj)   # obj -> ctx.host in every callback
 create_dushes_router(site, host=None)  # POST /run (AG-UI), GET /map, GET /threads/{id}?form_id=; host(request) -> ctx.host

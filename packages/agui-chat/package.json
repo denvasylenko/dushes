@@ -1,6 +1,6 @@
 {
   "name": "@formguide/agui-chat",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "An installable AG-UI chat: a framework-free Web Component (<agui-chat>) with a formguide plugin and a React wrapper",
   "keywords": [
     "ag-ui",

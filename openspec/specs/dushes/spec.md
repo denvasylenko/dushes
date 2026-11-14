@@ -173,3 +173,10 @@ When the user answers a form card on a form page (a field card, a question, a co
 - **WHEN** the user accepts a card that sets Item 5 = Arrosticini and Price 5 = € 12 and then asks Dushes about the menu
 - **THEN** Dushes' history holds "[Form card] Accepted, now in the form: Item 5 = Arrosticini; Price 5 = € 12" and it does not offer to add the item again
 
+### Requirement: Staying on a form the user is filling in
+With `stay_on_forms` (default true), on a page with a form Dushes' prompt SHALL tell it to answer in place and not navigate away unless the user asks to go somewhere or the business's instructions name the page for such a question. With `stay_on_forms: false` the prompt SHALL have no such rule.
+
+#### Scenario: A studio page
+- **WHEN** a host sets `stay_on_forms=False` and the owner on the "Site" page asks how many people visited
+- **THEN** Dushes may open the Statistics page its instructions name
+
