@@ -140,7 +140,7 @@ A question SHALL keep today's behaviour, where the answer is returned and the mo
 - **THEN** the model receives "The user chose: Car loan (auto)", and the field stays as it was
 
 ### Requirement: A picker starts at a sensible value
-A number or date question MAY carry `input.value`, where the picker starts; the server SHALL keep it inside `min` and `max` (the nearest bound when outside), use the field's own value when the model gives none, and send no `value` when neither exists, so the client does not start at an invented midpoint. A range whose `min` is after its `max` SHALL be refused, so the agent tells the user that no answer fits.
+A number or date question MAY carry `input.value`, where the picker starts, only for a value the user or a document already gave, never a guess; the server SHALL keep it inside `min` and `max` (the nearest bound when outside), use the field's own value when the model gives none, and send no `value` when neither exists, so the client does not start at an invented midpoint. A range whose `min` is after its `max` SHALL be refused, so the agent tells the user that no answer fits.
 
 #### Scenario: A licence year
 - **WHEN** the agent asks for the licence year with `min` 2028 and a suggested 1988

@@ -117,12 +117,13 @@ TOOLS: list[dict[str, Any]] = [
                 "multiple": {"type": "boolean", "description": "several choices allowed"},
                 "allow_text": {"type": "boolean", "description": "a typed answer allowed; default true"},
                 "input": {"type": "object", "description": "the kind of typed answer, shown as a picker. Narrow min / max with "
-                          "what the user already gave (a date that cannot come before another one) and set `value` to "
-                          "the likeliest answer; without `value` the picker starts at the field's value or empty",
+                          "what the user already gave (a date that cannot come before another one). Set `value` only to a "
+                          "value the user or a document already gave, never a guess: without it the picker starts at "
+                          "the field's value or empty",
                           "properties": {"type": {"type": "string",
                                                   "enum": ["text", "number", "date", "time", "datetime", "address"]},
                                          "min": {"type": ["string", "number"]}, "max": {"type": ["string", "number"]},
-                                         "value": {"type": ["string", "number"], "description": "where the picker starts"}}},
+                                         "value": {"type": ["string", "number"], "description": "where the picker starts: a known value only"}}},
             },
             "required": ["question"],
         },

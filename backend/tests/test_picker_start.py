@@ -34,3 +34,10 @@ def test_dates_too_and_impossible_bounds_are_refused():
     assert _start_value(_Ctx(), None, inp)["value"] == "2026-01-01"
     with pytest.raises(ToolError, match="no answer fits"):
         _question_input({"type": "number", "min": 2028, "max": 2026})
+
+
+
+def test_the_tool_says_never_guess_a_start_value():
+    from formguide.agent.tools import TOOLS
+    ask = next(t for t in TOOLS if t["name"] == "ask_user")["input_schema"]["properties"]["input"]
+    assert "never a guess" in ask["description"] and "known value only" in ask["properties"]["value"]["description"]
