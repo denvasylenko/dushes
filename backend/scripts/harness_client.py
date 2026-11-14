@@ -218,21 +218,42 @@ def setup_documents(http: httpx.Client, form: str) -> None:
 # ===================================================================== a visit to the demo site (Dushes)
 
 
+# The form backend and the layout registration: the demo's own routes by default; another host sets its own
+# (FORMGUIDE_FORM_URL: GET ?form_id= -> {jsx, config, domain?} or {config, jsx_hash} (then no registration);
+# FORMGUIDE_EVENT_URL: POST {form_id, state, changes} -> the config, or {config, ...}; FORMGUIDE_LAYOUTS_URL: POST {jsx, form_id, domain} -> {jsx_hash}).
+FORM_URL = os.environ.get("FORMGUIDE_FORM_URL", "/java/form")
+EVENT_URL = os.environ.get("FORMGUIDE_EVENT_URL", "/java/event")
+LAYOUTS_URL = os.environ.get("FORMGUIDE_LAYOUTS_URL", "/agent/layouts")
+
+
+def _json(r: httpx.Response, what: str) -> Any:
+    try:
+        return r.raise_for_status().json()
+    except (httpx.HTTPStatusError, ValueError) as e:
+        raise RuntimeError(f"{what}: {r.request.method} {r.request.url} answered {r.status_code} "
+                           f"{r.headers.get('content-type', '')} ({e.__class__.__name__}); set the FORMGUIDE_*_URL routes") from None
+
+
 class Form:
     """A form on a page, as the page keeps it: the form backend's config, the registered layout, the ui."""
 
     def __init__(self, http: httpx.Client, form_id: str):
         self.http, self.form_id = http, form_id
-        f = http.get("/java/form", params={"form_id": form_id}).json()
+        f = _json(http.get(FORM_URL, params={"form_id": form_id}), "the form")
         self.config = f["config"]
-        self.hash = http.post("/agent/layouts", json={"jsx": f["jsx"], "form_id": form_id, "domain": f["domain"]}).json()["jsx_hash"]
+        if f.get("jsx_hash"):   # the host registered its layout already (e.g. Herefront's cabinet): no POST layouts
+            self.hash = f["jsx_hash"]
+        else:
+            self.hash = _json(http.post(LAYOUTS_URL, json={"jsx": f["jsx"], "form_id": form_id, "domain": f.get("domain")}),
+                              "the layout")["jsx_hash"]
         self.ui: dict[str, Any] = {"activeTabs": {}, "openAccordions": [], "focused": None,
                                    "now": datetime.now().strftime("%Y-%m-%d %A %H:%M")}
         self.attachments: list[dict] = []
 
     def apply(self, changes: dict[str, Any]) -> None:
-        self.config = self.http.post("/java/event", json={"form_id": self.form_id, "state": self.config["state"],
-                                                          "changes": changes}).json()
+        r = _json(self.http.post(EVENT_URL, json={"form_id": self.form_id, "state": self.config["state"],
+                                                  "changes": changes}), "the form event")
+        self.config = r["config"] if isinstance(r, dict) and isinstance(r.get("config"), dict) and "props" not in r else r   # {config, ...} or the config
 
     def directive(self, d: dict) -> None:
         for s in d.get("reveal") or []:

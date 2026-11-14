@@ -155,3 +155,49 @@ def test_the_assistant_does_not_act_dumb_checks():
                    "phone does not keep 333": False, "never states the number 8": False}
     V.messages = [{"role": "assistant", "content": "You had 2 visits, 18 views and 8.5 stars"}]
     assert next(c for c in evals.checks(sc, V()) if c["check"] == "never states the number 8")["ok"]
+
+
+def test_another_hosts_headers_come_from_the_environment(monkeypatch):
+    monkeypatch.setenv("FORMGUIDE_COOKIE", "hf_cab=abc")
+    monkeypatch.setenv("FORMGUIDE_HEADERS", '{"X-Site": "1"}')
+    assert evals.host_headers() == {"X-Site": "1", "Cookie": "hf_cab=abc"}
+    monkeypatch.delenv("FORMGUIDE_COOKIE"); monkeypatch.delenv("FORMGUIDE_HEADERS")
+    assert evals.host_headers() == {}
+
+
+def test_a_scenario_folder_from_the_command_line(tmp_path, monkeypatch):
+    (tmp_path / "one.yaml").write_text("name: one\npersona: p\ngoal: g\nturns: 1\n")
+    seen = {}
+    monkeypatch.setattr(evals, "run", lambda names, **kw: (seen.update(kw), ({}, False))[1])
+    assert evals.main(["--offline", "--folder", str(tmp_path)]) == 0
+    assert seen["folder"] == tmp_path and seen["baseline_file"] == tmp_path / "baseline.json"
+
+
+def test_a_host_form_with_its_own_hash_and_a_wrapped_apply(monkeypatch):
+    import harness_client as hc
+
+    class R:
+        def __init__(self, body): self.body, self.status_code, self.headers, self.request = body, 200, {}, None
+        def raise_for_status(self): return self
+        def json(self): return self.body
+
+    calls = []
+
+    class H:
+        def get(self, url, params=None): calls.append(("GET", url)); return R({"config": {"props": {}, "state": {"a": 1}}, "jsx_hash": "h1"})
+        def post(self, url, json=None): calls.append(("POST", url)); return R({"config": {"props": {}, "state": {"a": 2}}, "changed": ["a"]})
+    f = hc.Form(H(), "x")
+    assert f.hash == "h1" and calls == [("GET", hc.FORM_URL)]          # no layout registration
+    f.apply({"a": 2})
+    assert f.config == {"props": {}, "state": {"a": 2}}
+
+
+def test_a_preset_picker_is_caught():
+    sc = evals.Scenario(name="x", persona="p", goal="g", never_preset_pickers=True)
+
+    class V:
+        cards = [{"type": "ask", "question": "Licence year?", "input": {"type": "number", "min": 2026, "max": 2026, "value": 1988}}]
+        messages, forms, tools, sources, errors, log, path = [], {}, [], [], [], [], "/"
+    assert not next(c for c in evals.checks(sc, V()) if c["check"] == "never presets a picker")["ok"]
+    V.cards = [{"type": "ask", "question": "Licence year?", "input": {"type": "number", "min": 2026, "max": 2026}}]
+    assert next(c for c in evals.checks(sc, V()) if c["check"] == "never presets a picker")["ok"]

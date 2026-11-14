@@ -41,7 +41,8 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold"}
 START_KEYS = {"page", "form", "values", "site", "host"}   # host: for a host's own runner (e.g. Herefront)
 EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards",
-               "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers"}
+               "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
+               "never_preset_pickers"}
 CAP_NEVER, CAP_OTHER = 3, 5
 RUBRIC = """Score the assistant from 0 to 10 (10: a person would be fully satisfied). Take points off for:
 - truth: a fact about the business (prices, rates, rules, hours, partners) that the site or its documents do not
@@ -100,6 +101,7 @@ class Scenario:
     never_says_after_card: list[str] = field(default_factory=list)   # phrases no reply may say once a card was accepted
     rejected_values: dict[str, Any] = field(default_factory=dict)    # {field: a bad value the form must not keep}
     never_numbers: list[str] = field(default_factory=list)           # numbers no reply may state (not on the screen)
+    never_preset_pickers: bool = False                     # no picker (a question's input) starts at a value the user never gave
     never_tools: list[str] = field(default_factory=list)    # tools it must not call (no researcher when the site knows)
     sources: list[str] = field(default_factory=list)        # source chips that must be shown: "file" or "file > section"
     corpus: str | None = None                               # documents: <name>: demo/research_corpora/<name>/ for the form
@@ -138,7 +140,8 @@ def load_scenario(path: Path) -> Scenario:
                     never_repeat_questions=bool(exp.get("never_repeat_questions")),
                     never_suggests=[str(x) for x in exp.get("never_suggests") or []],
                     never_says_after_card=[str(x) for x in exp.get("never_says_after_card") or []],
-                    rejected_values=dict(exp.get("rejected_values") or {}), never_numbers=[str(x) for x in exp.get("never_numbers") or []], sources=[str(x) for x in exp.get("sources") or []],
+                    rejected_values=dict(exp.get("rejected_values") or {}), never_numbers=[str(x) for x in exp.get("never_numbers") or []],
+                    never_preset_pickers=bool(exp.get("never_preset_pickers")), sources=[str(x) for x in exp.get("sources") or []],
                     corpus=raw["documents"] if isinstance(raw.get("documents"), str) else None, gold=str(raw.get("gold") or "").strip(), quote=_quote(path, raw.get("quote")))
 
 
@@ -381,6 +384,10 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         out.append({"check": "never repeats a question", "ok": not twice and not filled,
                     "detail": ("asked twice: " + "; ".join(twice) if twice else "") + (" asked about filled: " + ", ".join(filled) if filled else ""),
                     "cap": CAP_OTHER})
+    if sc.never_preset_pickers:
+        preset = [c for c in visit.cards if c.get("type") == "ask" and isinstance(c.get("input"), dict) and c["input"].get("value") not in (None, "")]
+        out.append({"check": "never presets a picker", "ok": not preset,
+                    "detail": "; ".join(f"{c.get('question')} starts at {c['input'].get('value')}" for c in preset)[:200], "cap": CAP_OTHER})
     offered = [x for group in getattr(visit, "suggestions", []) for x in group]
     for bad in sc.never_suggests:
         hit = next((x for x in offered if bad.lower() in x.lower()), None)
@@ -596,6 +603,16 @@ def _name(m: Any) -> str:
     return "" if m is None else type(m).__name__
 
 
+def host_headers() -> dict[str, str]:
+    """Headers for another host's server, from the environment only (never from a file): FORMGUIDE_HEADERS (a JSON
+    object) and FORMGUIDE_COOKIE (a Cookie header, e.g. a signed-in cabinet's session)."""
+    import os
+    h = json.loads(os.environ.get("FORMGUIDE_HEADERS") or "{}")
+    if os.environ.get("FORMGUIDE_COOKIE"):
+        h["Cookie"] = os.environ["FORMGUIDE_COOKIE"]
+    return {str(k): str(v) for k, v in h.items()}
+
+
 def models_for(spec: str | None) -> tuple[Any, Any]:
     from formguide.models import build_model
     raw = (yaml.safe_load(CONFIG.read_text()) or {}).get("models") or {}
@@ -730,7 +747,7 @@ def run(names: list[str] | None = None, *, model: str | None = None, offline: bo
         http = agent_client(Path(tempfile.mkdtemp(prefix="formguide-bench-")), agent_model, research_model)
         user_model, judge_model = models_for(model)
     else:
-        http = httpx.Client(base_url=BASE, timeout=300)
+        http = httpx.Client(base_url=BASE, timeout=300, headers=host_headers())
         user_model, judge_model = models_for(model)
     if judge and not offline:   # only the judge (the user keeps --model / the config)
         from formguide.models import build_model
@@ -783,6 +800,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--judge-model", help="the judge alone, e.g. anthropic:claude-opus-5-5 (default: as --model / the config)")
     ap.add_argument("--research-model", help="with --agent-model: the researcher's model (default: the agent model)")
     ap.add_argument("--names-file", type=Path, help="scenario names, one per line or space-separated")
+    ap.add_argument("--folder", type=Path, default=EVALS, help="another folder of scenarios (a host's own, e.g. cheese/docs/qa/evals)")
+    ap.add_argument("--baseline", type=Path, help="the baseline file (default: baseline.json in the scenario folder)")
     ap.add_argument("--margin", type=float, default=0.5, help="allowed drop of the average below the baseline")
     ap.add_argument("--save-baseline", action="store_true", help="keep this run's scores as the baseline")
     a = ap.parse_args(argv)
@@ -790,7 +809,7 @@ def main(argv: list[str]) -> int:
         names = (a.names or []) + (a.names_file.read_text().split() if a.names_file else [])
         _, failed = run(names or None, model=a.model, offline=a.offline, margin=a.margin, save_baseline=a.save_baseline and not a.agent_model,
                         tag=a.tag, repeat=a.repeat, agent_model=a.agent_model, research_model=a.research_model,
-                        judge=a.judge_model)
+                        judge=a.judge_model, folder=a.folder, baseline_file=a.baseline or a.folder / "baseline.json")
     except ScenarioError as e:
         print(f"scenario error: {e}", file=sys.stderr)
         return 2

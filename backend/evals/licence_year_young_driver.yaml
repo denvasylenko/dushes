@@ -22,4 +22,5 @@ turns: 4
 expect:
   answered_by: [form]
   never_says: ["1988"]
+  never_preset_pickers: true                # the licence-year picker starts empty: the user gave no year (60bd8cc)
 min_score: 7
