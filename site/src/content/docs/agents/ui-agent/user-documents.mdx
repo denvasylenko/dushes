@@ -7,7 +7,7 @@ import { Summary } from '../../../../components/ui';
 
 <Summary what={"Read the user's files into form values"} when={"Users have the answers on paper: an ID, a payslip, a contract"} write={"Nothing extra: uploads are on by default; `attachments:` to limit them"} />
 
-The user attaches a file (the paperclip, a pasted screenshot, or a file request card the agent sends). The file is stored for that conversation, read by the `extract` model, and the values come back as a field card marked with where they were read; values the model is unsure of are marked to check. The file itself never enters the chat history.
+The user attaches a file (the + button in the composer, a pasted screenshot, or a file request card the agent sends). The file is stored for that conversation, read by the `extract` model, and the values come back as a field card marked with where they were read; values the model is unsure of are marked to check. The file itself never enters the chat history.
 
 ```yaml title="formguide.yaml"
 attachments:

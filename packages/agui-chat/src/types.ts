@@ -105,7 +105,7 @@ export interface Plugin {
   quietSteps?: string[]
   /** the user pressed Stop: e.g. tell the server, since a closed connection need not end the turn there */
   onStop?: (chat: ChatApi) => void
-  /** Files in the composer: the paperclip button uploads them here; they go with the next message. */
+  /** Files in the composer: the + button uploads them here; they go with the next message. */
   attach?: { accept?: string; upload: (file: File, chat: ChatApi) => Promise<Attachment> }
   /** Apply a suggestion's field changes (`CUSTOM suggestions` `applies`); return a result line to show, or throw. */
   applySuggestion?: (changes: unknown[], chat: ChatApi) => Promise<HTMLElement | null | void>
@@ -269,9 +269,9 @@ export interface ChatOptions {
   dictation: '' | 'browser' | 'server' | 'auto'
   /** Where recordings go for `voice: server | auto`; empty = `transcribe` next to `url`. */
   transcribeUrl: string
-  /** Show the paperclip when a plugin (or `upload`) can upload files. */
+  /** Show the + button when a plugin (or `upload`) can upload files. */
   attach: boolean
-  /** File types the paperclip offers, e.g. ".pdf,.jpg"; empty = what the plugin accepts. */
+  /** File types the + button offers, e.g. ".pdf,.jpg"; empty = what the plugin accepts. */
   attachAccept: string
   /** Allow several files at once. */
   attachMultiple: boolean

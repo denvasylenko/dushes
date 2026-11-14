@@ -121,6 +121,30 @@ describe('card kit: questions', () => {
     expect(resume()).toEqual({ answer: { text: '14:30' } })   // not applies: only answers
   })
 
+  it('a range with no value pretends none: an empty slider, Set waits; a year has no thousands separator', async () => {
+    const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Licence year?', field: 'licence_year', label: 'Licence year',
+      applies: true, input: { type: 'number', min: 1960, max: 2026, step: 1 }, allow_text: true, reveal: [] })))
+    await tick(5)
+    const set = $(el, '.range .btn.pri') as HTMLButtonElement
+    expect(set.disabled).toBe(true)
+    expect(set.textContent).toBe('Choose a value')
+    expect($(el, '.range-v').textContent).toBe('—')                 // no midpoint (1993) shown
+    const slider = $(el, '.range input[type=range]') as HTMLInputElement
+    slider.value = '1988'; slider.dispatchEvent(new Event('input'))
+    expect($(el, '.range-v').textContent).toBe('1988')                   // not "1,988"
+    expect(set.disabled).toBe(false)
+    expect(set.textContent).toBe('Set 1988')
+  })
+
+  it('a stepper with no value starts at the lowest on +', async () => {
+    const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Doors?', field: 'doors', label: 'Doors',
+      applies: true, input: { type: 'number', min: 2, max: 5, step: 1 }, allow_text: true, reveal: [] })))
+    await tick(5)
+    expect($(el, '.stepper .range-v').textContent).toBe('—')
+    ;($$(el, '.stepper .btn')[1] as HTMLButtonElement).click()          // plus
+    expect($(el, '.stepper .range-v').textContent).toBe('2')
+  })
+
   it('a small range is a stepper with a live preview, and Set fills the field', async () => {
     const preview = vi.fn((_f: string, v: number) => `${v * 10} per month`)
     const { el, applyChanges, onDirective } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Term?', field: 'term', label: 'Term',

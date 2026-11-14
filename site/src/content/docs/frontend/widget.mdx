@@ -178,7 +178,7 @@ chat.addEventListener('agui:message-action', (e) => send('feedback', e.detail)) 
 
 Scrolled up while the assistant answers? The chat stays where you read and a round button over the composer brings you to the latest message; while the assistant is still working it shows the three dots.
 
-Files attached with the paperclip, pasted (a screenshot, Ctrl+V) or dropped show inside the composer: an image as a thumbnail, a document as a tile with its name and type, each with a remove button. A sent message shows its images above the bubble, on their own. A tap on a thumbnail opens it large (the images sent with one message page with the arrows under the picture, ← and →, or a swipe); the pencil there marks the image up (pen, rectangle, text, colours, undo) and Save puts the marked-up copy in its place. The markup editor is a separate file (`agui-chat.editor.js` next to the one-script build, its own chunk with a bundler) loaded only when the pencil is tapped. `attach="off"` turns attachments off; `attachAccept`, `attachMaxMb` and `attachMultiple` limit them.
+Files added with the + button, pasted (a screenshot, Ctrl+V) or dropped show inside the composer: an image as a thumbnail, a document as a tile with its name and type, each with a remove button. A sent message shows its images above the bubble, on their own. A tap on a thumbnail opens it large (the images sent with one message page with the arrows under the picture, ← and →, or a swipe); the pencil there marks the image up (pen, rectangle, text, colours, undo) and Save puts the marked-up copy in its place. The markup editor is a separate file (`agui-chat.editor.js` next to the one-script build, its own chunk with a bundler) loaded only when the pencil is tapped. `attach="off"` turns attachments off; `attachAccept`, `attachMaxMb` and `attachMultiple` limit them.
 
 ## Errors, waiting and touch
 
@@ -187,6 +187,17 @@ Files attached with the paperclip, pasted (a screenshot, Ctrl+V) or dropped show
 - Reloaded mid-answer, the chat shows the conversation with "Still working…" while the server finishes the turn, then the answer and its card. Stop also tells the server (`POST <base>/stop`).
 - On a touch screen buttons, chips and links are at least 44 px tall, and the chat does not move the focus by itself (that would open the keyboard). With a mouse, a new card's first option gets the focus, so number keys work at once.
 - The send button looks quiet while the box is empty but still reacts: an empty send shakes the composer.
+
+## Send while it answers
+
+A message sent while the assistant is still answering does not stop it: it waits at the end of the chat, marked **Queued**, and the answer keeps arriving above it. When the answer ends, queued messages go one by one, in order; while a question card waits for its answer, they wait too. The input's placeholder says "↵ to queue" while the assistant answers ("Sends after the answer" on a phone).
+
+- **Send now** stops the answer and sends that message next.
+- **Edit** puts its text back into the input, under anything you had started typing; **Remove** takes it out, with **Undo**.
+- **Stop** pauses the queue ("Paused"), and a failed answer pauses it under the error ("Sends after Try again"), so a lost connection does not fail every queued message in turn. A message you send then goes in behind the waiting ones, and they go in order.
+- Only the next message to go shows its buttons; tap (or hover) a later one to see its own.
+
+The queue is kept per thread across a reload, and a new chat clears it. Restyle it with the parts `queued` (the waiting message) and `queued-actions` (its line of buttons).
 
 ## Reply to a part of an answer
 
@@ -249,7 +260,7 @@ Some things appear only when the backend enables them; the widget draws them whe
 <agui-chat url="/agent/run" voice="server"></agui-chat>
 ```
 
-Files work like in a messenger: the paperclip, a screenshot pasted with Cmd+V / Ctrl+V, or a file dropped on the composer (when uploads are on).
+Files work like in a messenger: the + button, a screenshot pasted with Cmd+V / Ctrl+V, or a file dropped on the composer (when uploads are on).
 
 With server dictation the microphone records: a live wave and a timer take the input's place, × or Esc drops the recording, the microphone again stops it, "Transcribing…" shows while the server works, and the text lands in the input to check and send.
 
@@ -296,7 +307,7 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `collapseLines` | `collapse-lines` | `8` | a message taller than this many lines folds, with Show more; `0`: never |
 | `collapseAnswers` | `collapse-answers` | off | fold the assistant's long answers too |
 | `transcribe-url` | `transcribeUrl` | next to `url` | where recordings go for server dictation |
-| `attach` | `attach` | on | the paperclip, when something can upload |
+| `attach` | `attach` | on | the + button (files and photos), when something can upload |
 | `attach-accept` | `attachAccept` | what the plugin accepts | e.g. `.pdf,.jpg` |
 | `attach-multiple` | `attachMultiple` | on | several files at once |
 | `attach-max-mb` | `attachMaxMb` | `20` | larger files are refused with a message |

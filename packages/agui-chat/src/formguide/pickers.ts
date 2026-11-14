@@ -162,30 +162,44 @@ function rangeView(it: Interrupt, c: RendererContext, ctx: Ctx | undefined, comm
   if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return null
   if (input) input.hidden = true
   const unit = r.unit ? ` ${r.unit}` : ''
-  const fmt = new Intl.NumberFormat(c.chat.lang || undefined)
-  let value = Number.isFinite(Number(it.previous)) && it.previous !== null && it.previous !== '' ? Number(it.previous)
-    : Number.isFinite(Number(r.value)) ? Number(r.value) : min + Math.round((max - min) / step / 2) * step
+  // a year, a zip or a code is a name, not an amount: "1988", never "1,988"
+  const plain = ['year', 'code'].includes(String(r.format)) || /year|zip|postal|code|pin/i.test(it.field ?? '')
+    || (!r.unit && Number.isInteger(min) && Number.isInteger(max) && step === 1 && min >= 1000 && max <= 2999)
+  const fmt = new Intl.NumberFormat(c.chat.lang || undefined, plain ? { useGrouping: false } : undefined)
+  const known = (v: unknown): v is number | string => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v))
+  // no previous answer and no value from the agent: nothing is pretended (no midpoint); Set waits for the user's pick
+  let value: number | null = known(it.previous) ? Number(it.previous) : known(r.value) ? Number(r.value) : null
   const shown = h('span', { class: 'range-v' })
   const preview = h('span', { class: 'range-p', 'aria-live': 'polite' })
-  const set = h('button', { class: 'btn pri', type: 'button', onclick: () => commit(value, `${fmt.format(value)}${unit}`) }) as HTMLButtonElement
+  const set = h('button', { class: 'btn pri', type: 'button', onclick: () => { if (value !== null) commit(value, `${fmt.format(value)}${unit}`) } }) as HTMLButtonElement
   let seq = 0
   const update = () => {
+    if (value === null) {
+      shown.textContent = '\u2014'   // an em dash: no value yet
+      set.textContent = c.t('chooseValue')
+      set.disabled = true
+      if (slider) { slider.value = String(min + Math.round((max - min) / step / 2) * step); slider.style.setProperty('--p', '0%'); slider.dataset.empty = '' }
+      return
+    }
     value = Math.min(max, Math.max(min, Math.round((value - min) / step) * step + min))
     shown.textContent = `${fmt.format(value)}${unit}`
     set.textContent = c.t('setValue', { value: `${fmt.format(value)}${unit}` })
-    if (slider) { slider.value = String(value); slider.style.setProperty('--p', `${((value - min) / (max - min)) * 100}%`) }
+    set.disabled = false
+    if (slider) { slider.value = String(value); slider.style.setProperty('--p', `${((value - min) / (max - min)) * 100}%`); delete slider.dataset.empty }
     if (ctx?.preview && it.field) {
       const n = ++seq
-      void Promise.resolve(ctx.preview(it.field, value)).then((p) => { if (n === seq) preview.textContent = p ?? '' }).catch(() => {})
+      const v = value
+      void Promise.resolve(ctx.preview(it.field, v)).then((p) => { if (n === seq) preview.textContent = p ?? '' }).catch(() => {})
     }
   }
   const steps = (max - min) / step
-  const slider = steps >= 10 ? h('input', { type: 'range', min, max, step, value, 'aria-label': it.label ?? it.question,
+  const slider = steps >= 10 ? h('input', { type: 'range', min, max, step, value: value ?? min, 'aria-label': it.label ?? it.question,
     oninput: (e: Event) => { value = Number((e.target as HTMLInputElement).value); update() } }) as HTMLInputElement : null
   const stepper = slider ? null : h('div', { class: 'stepper' },
-    h('button', { class: 'btn sec', type: 'button', 'aria-label': '-', onclick: () => { value -= step; update() } }, '−'),
+    // from nothing, + starts at the lowest and − at the highest
+    h('button', { class: 'btn sec', type: 'button', 'aria-label': '-', onclick: () => { value = value === null ? max : value - step; update() } }, '−'),
     shown,
-    h('button', { class: 'btn sec', type: 'button', 'aria-label': '+', onclick: () => { value += step; update() } }, '+'))
+    h('button', { class: 'btn sec', type: 'button', 'aria-label': '+', onclick: () => { value = value === null ? min : value + step; update() } }, '+'))
   update()
   return h('div', { class: 'range' }, slider, slider ? h('div', { class: 'range-row' }, shown, preview) : h('div', { class: 'range-row' }, stepper, preview),
     h('div', { class: 'acts' }, set))

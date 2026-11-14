@@ -122,6 +122,13 @@ A date question whose `max` is today (or within the last days) and that has no v
 - **WHEN** the card asks for a date of birth with `max` today
 - **THEN** the calendar shows years, including the year 30 years ago, and year, month, day fill the field
 
+### Requirement: A number picker pretends no value
+A number question SHALL start at the previous answer, else at `input.value`; with neither, the slider SHALL show an empty track and no number, the stepper a dash, and Set SHALL read "Choose a value" and stay disabled until the user picks (on a stepper, + starts at `min`, − at `max`). A year, a zip or another code (`input.format` `year` or `code`, a field named so, or a whole range within 1000-2999 without a unit) SHALL be shown without thousands separators.
+
+#### Scenario: A licence year with no value
+- **WHEN** the agent asks for the licence year with `min` 1960, `max` 2026 and no `value`
+- **THEN** the slider shows no number and Set is disabled; after the user moves it to 1988 the card shows "1988" and "Set 1988"
+
 ### Requirement: Fill-in labels count the fields
 A field-change card's main button SHALL say how many fields it fills, with the language's plural form: "Fill in 1 field", "Fill in 3 fields". When some rows are unticked, it SHALL say "Fill in 2 of 3".
 

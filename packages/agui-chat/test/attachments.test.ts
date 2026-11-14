@@ -3,6 +3,8 @@ import '../src/index'
 import type { AguiChatElement } from '../src/element'
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms))
+/** The viewer loads on demand: wait until its dialog is there (up to 2 s). */
+const viewer = async (el: HTMLElement) => { for (let i = 0; i < 200 && !el.shadowRoot!.querySelector('dialog.zoom'); i++) await tick(10) }
 async function mount(): Promise<AguiChatElement> {
   const el = document.createElement('agui-chat') as AguiChatElement
   for (const [k, v] of Object.entries({ mode: 'inline', typing: 'plain', lang: 'en', 'persist-thread': 'off' })) el.setAttribute(k, v)
@@ -67,6 +69,7 @@ describe('attachments in the composer', () => {
     const el = await mount()
     await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])
     ;(el.shadowRoot!.querySelector('.files .att-open') as HTMLButtonElement).click()
+    await viewer(el)                                                        // the view loads with the image tools
     expect(el.shadowRoot!.querySelector('dialog.zoom .zoom-edit')!.getAttribute('aria-label')).toBe('Mark up')
     ;(el.shadowRoot!.querySelector('dialog.zoom .zoom-x') as HTMLButtonElement).click()
     await tick()
@@ -74,6 +77,7 @@ describe('attachments in the composer', () => {
     await el.send('look')
     await tick(5)
     ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()   // a sent image: view only
+    await viewer(el)                                                        // the view loads with the image tools
     expect(el.shadowRoot!.querySelector('dialog.zoom')).not.toBeNull()
     expect(el.shadowRoot!.querySelector('dialog.zoom .zoom-edit')).toBeNull()
   })
@@ -82,6 +86,7 @@ describe('attachments in the composer', () => {
     const el = await mount()
     await pick(el, [new File(['x'], 'a.png', { type: 'image/png' }), new File(['y'], 'b.png', { type: 'image/png' })])
     ;(el.shadowRoot!.querySelector('.files .att-open') as HTMLButtonElement).click()
+    await viewer(el)                                                        // the view loads with the image tools
     expect(el.shadowRoot!.querySelector('dialog.zoom .zoom-pager')).toBeNull()        // not sent yet: no paging
     ;(el.shadowRoot!.querySelector('dialog.zoom .zoom-x') as HTMLButtonElement).click()
     await tick()
@@ -89,6 +94,7 @@ describe('attachments in the composer', () => {
     await el.send('look')
     await tick(5)
     ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()
+    await viewer(el)                                                        // the view loads with the image tools
     const zoom = el.shadowRoot!.querySelector('dialog.zoom') as HTMLDialogElement
     const [prev, next] = [...zoom.querySelectorAll<HTMLButtonElement>('.zoom-go')]
     const n = zoom.querySelector('.zoom-n')!
@@ -115,6 +121,7 @@ describe('attachments in the composer', () => {
     const el = await mount()
     await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])
     ;(el.shadowRoot!.querySelector('.att-open') as HTMLButtonElement).click()
+    await viewer(el)                                                        // the view loads with the image tools
     const zoom = el.shadowRoot!.querySelector('dialog.zoom') as HTMLDialogElement
     expect(zoom).not.toBeNull()
     expect(zoom.querySelector('img')!.getAttribute('src')).toBe('blob:preview')

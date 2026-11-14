@@ -1,7 +1,7 @@
 /** <agui-chat>: an AG-UI chat as a Web Component. Every option: site/src/content/docs/reference/agui-chat.md. */
 import { h, md, reducedMotion, store } from './dom'
 import { STRINGS } from './i18n'
-import { loadEditor } from '#editor-loader'
+import { loadZoom } from '#editor-loader'
 import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, recognitionBlocked, record, recordingSupported, speechReliable, speechSupported, type Dictation } from './speech'
@@ -86,7 +86,8 @@ const ICON = {
   send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
   stop: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>',
   mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
-  clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 01-7.8-7.8l8.6-8.6a3.7 3.7 0 015.2 5.2l-8.6 8.6a1.8 1.8 0 01-2.6-2.6l7.9-7.9"/></svg>',
+  // the composer's add button: a plus, as in the Claude app (files and photos now; a menu once a host has commands)
+  clip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
 }
@@ -179,6 +180,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _sending: Attachment[] = []
   private $: Record<string, HTMLElement> = {}
   private _replies: ReplyTo[] = []   // the quotes the next message replies to, in the order they were collected
+  /** Messages written while the assistant answers: they wait at the bottom of the log and go one by one. */
+  private _queue: { id: string; text: string; replies: ReplyTo[]; files: Attachment[]; el: HTMLElement }[] = []
+  private _paused: '' | 'stop' | 'error' = ''   // the queue waits: after Stop, or under a failed answer until Try again
+  private _sendNow: string | null = null   // the queued message Send now is for (its turn starts once the current stops)
   private _picked: ReplyTo | null = null   // what the selection capsule would quote
   private _serverVoice = false   // the server said it transcribes (restore: transcription)
   private _selT: ReturnType<typeof setTimeout> | undefined
@@ -407,6 +412,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _switchThread(id: string, restore = true): void {
     this._dropDictation()
     this._setReplies([])
+    for (const q of [...this._queue]) this._removeQueued(q.id, false)
+    this._paused = ''
     this.stop()
     this._setThread(id, true)
     this._messages = []
@@ -428,7 +435,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     text = String(text ?? '').trim()
     if (!text && this._files.length) text = this.t('useAttached')
     const noted = this._replies.some((r) => r.note)
-    if ((!text && !noted) || this._busy) return
+    if (!text && !noted) return
+    if (this._busy) { this._enqueue(text); return }   // the assistant is answering: it waits its turn, at the bottom
+    if (this._queue.length && this._paused) { this._enqueue(text); this._paused = ''; this._drain(); return }   // behind the waiting ones, in order
     if (this._hero) this.open()   // the field grows into the chat (a sheet on a phone)
     this._dropDictation()   // a chip or starter answered: the half-dictated text is stale (the composer's own send stopped it already)
     this._clearQuick()
@@ -600,7 +609,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       input.style.height = 'auto'; input.style.height = `${Math.min(180, input.scrollHeight)}px`
     }
     input.addEventListener('input', () => { grow(); this._syncSend() })
-    // a screenshot or a file from the clipboard, or dropped on the composer, is attached like the paperclip's
+    // a screenshot or a file from the clipboard, or dropped on the composer, is attached like a file from the + button
     const takeFiles = (files: FileList | null | undefined, e: Event) => {
       const list = [...(files ?? [])]
       if (!list.length || clip.hidden) return
@@ -644,7 +653,6 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       this.$.foot.classList.remove('nudge'); void this.$.foot.offsetWidth; this.$.foot.classList.add('nudge')
       return
     }
-    if (this._busy) return
     this._cancelMic()
     input.value = ''
     input.style.height = 'auto'
@@ -930,7 +938,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   private _append(el: HTMLElement): HTMLElement {
     this.$.log.querySelector('.empty')?.remove()
-    const before = this._dots && this._dots.isConnected ? this._dots : null
+    // above the dots, and both above the queue: the queue stays last
+    const before = this._dots && this._dots.isConnected ? this._dots : this.$.log.querySelector<HTMLElement>(':scope > .msg.queued')
     this.$.log.insertBefore(el, before)
     if (el.querySelector('.fold-later')) el.querySelectorAll<HTMLElement>('.fold-later').forEach((x) => this._fold(x))
     this._scroll()
@@ -1377,71 +1386,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     return tile
   }
 
-  /** The image, large, over the chat: × or Esc or a tap beside it closes it. */
+  /** The image, large, over the chat (its code loads the first time, with the markup editor). */
   private _zoom(opener: HTMLElement, edit?: (image: Blob) => void): void {
-    // the images sent with the same message page with \u2039 1 of 2 \u203a, \u2190 / \u2192 and a swipe; one in the composer stays alone
-    const own = opener.closest('.att-row')
-    const openers = own ? [...own.querySelectorAll<HTMLElement>('.att-open')] : [opener]
-    const row = openers.map((b) => ({ src: b.querySelector('img')?.getAttribute('src') ?? '', name: b.getAttribute('aria-label') ?? '' }))
-    let at = Math.max(0, openers.indexOf(opener))
-    // a modal <dialog>: the browser puts it above everything on the page (no stacking context can cover it), Esc closes it
-    const x = h('button', { class: 'zoom-x', type: 'button', 'aria-label': this.t('close') }); this._icon(x, 'close')
-    const img = h('img', { src: row[at]?.src, alt: row[at]?.name }) as HTMLImageElement
-    // the buttons sit on the picture's corner and the pager under it, not in the corners of the screen
-    const fig = h('div', { class: 'zoom-fig' }, img, x)
-    // beside the picture's top right corner when there is room (nothing covers it); on it otherwise (a phone)
-    const place = (): void => { fig.classList.toggle('out', fig.getBoundingClientRect().right + 52 <= innerWidth) }
-    img.addEventListener('load', place)
-    addEventListener('resize', place)
-    const view = h('dialog', { class: 'zoom', part: 'zoom', 'aria-label': row[at]?.name }, fig) as HTMLDialogElement
-    let swiped = false
-    if (row.length > 1) {
-      const count = h('span', { class: 'zoom-n', 'aria-live': 'polite' })
-      const step = (d: number) => {
-        const b = h('button', { class: 'zoom-go', type: 'button', 'aria-label': this.t(d < 0 ? 'prevImage' : 'nextImage') })
-        b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}"/></svg>`
-        b.addEventListener('click', (e) => { e.stopPropagation(); show(at + d) })
-        return b
-      }
-      const prev = step(-1), next = step(1)
-      // like Photos: no wrap-around, the arrow at an end is dimmed
-      const show = (i: number): void => {
-        at = Math.max(0, Math.min(row.length - 1, i))
-        img.src = row[at].src; img.alt = row[at].name; view.setAttribute('aria-label', row[at].name)
-        count.textContent = this.t('nOfTotal', { n: at + 1, total: row.length })
-        prev.disabled = at === 0; next.disabled = at === row.length - 1
-      }
-      fig.append(h('div', { class: 'zoom-pager', part: 'zoom-pager' }, prev, count, next))
-      show(at)
-      view.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight') { e.preventDefault(); show(at + 1) }
-        if (e.key === 'ArrowLeft') { e.preventDefault(); show(at - 1) }
-      })
-      let x0 = 0
-      view.addEventListener('pointerdown', (e) => { x0 = e.clientX })
-      view.addEventListener('pointerup', (e) => { const dx = e.clientX - x0; if (Math.abs(dx) > 40) { swiped = true; show(at + (dx < 0 ? 1 : -1)) } })
-    }
-    const close = (): void => { view.close() }
-    x.addEventListener('click', close)
-    view.addEventListener('click', (e) => { if (swiped) { swiped = false; return } if (e.target === view) close() })   // a tap beside the picture
-    view.addEventListener('close', () => { view.remove(); removeEventListener('resize', place) })
-    // an image still in the composer can be marked up (the editor loads now): Save puts the marked-up copy in its place
-    if (edit) {
-      const pencil = h('button', { class: 'zoom-x zoom-edit', type: 'button', 'aria-label': this.t('markup') })
-      pencil.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20zM14 7l3 3"/></svg>'
-      pencil.addEventListener('click', (e) => {
-        e.stopPropagation()
-        void loadEditor().then((open) => {
-          img.hidden = true; x.hidden = true; pencil.hidden = true
-          open({ src: row[at].src, name: row[at].name, mount: view, t: (k) => this.t(k), onSave: (blob) => { edit(blob); close() }, onClose: close })
-        }).catch(() => { pencil.hidden = true })   // no editor file next to the script: the view stays
-      })
-      fig.append(pencil)
-    }
-    this.$.wrap.append(view)
-    if (typeof view.showModal === 'function') view.showModal(); else view.setAttribute('open', '')
-    requestAnimationFrame(place)
-    x.focus({ preventScroll: true })
+    void loadZoom().then((open) => open({ wrap: this.$.wrap, t: this.t.bind(this), icon: (el, n) => this._icon(el, n) }, opener, edit)).catch(() => {})
   }
 
   /** Put a marked-up copy in place of an attachment: uploaded like any file, at the same place in the row. */
@@ -1494,7 +1441,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (on && !this._dots) {
       const dots = h('div', { class: 'msg ai wait', 'aria-label': this.t('working') }, h('span', { class: 'dots' }, h('i'), h('i'), h('i')))
       this._dots = dots
-      this.$.log.appendChild(dots)
+      this.$.log.insertBefore(dots, this.$.log.querySelector(':scope > .msg.queued'))   // where the answer comes: above the queue
       setTimeout(() => { if (this._dots === dots) dots.appendChild(h('span', { class: 'slow', role: 'status' }, this.t('slow'))) }, SLOW_MS)
       this._scroll()
     } else if (!on && this._dots) {
@@ -1580,6 +1527,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     else if (this._opts.mode === 'bubble' && (r.follow || r.running)) this.open()   // the answer is still coming: show it
     if (r.follow) void this._run({ follow: r.follow() })   // the host streams the running turn again: it goes on word by word
     else if (r.running) this._waitForTurn()
+    this._loadQueue()
   }
 
   /** The page was reloaded mid-answer and the server's turn runs on: "Still answering…", then its result. */
@@ -1665,9 +1613,14 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._showDots(false)
     this._finishSteps(!!failed || aborted)
     this._setBusy(false)
-    if (aborted) { this.notice(this.t('stopped')); return }
+    if (aborted) {
+      if (this._sendNow) { this._dequeue(this._sendNow); return }   // Send now stopped this turn for a queued message
+      this._paused = 'stop'; this._queueHints()
+      this.notice(this.t('stopped')); return
+    }
     if (failed) {
       this.dispatchEvent(new CustomEvent('agui:error', { detail: failed }))
+      this._paused = 'error'; this._queueHints()   // nothing more fails in a row: it waits for Try again
       const again = () => { el.remove(); if (this._lastRun) void this._run(this._lastRun) }
       const retry = h('button', { class: 'btn sec', type: 'button', onclick: again }, this.t('retry'))
       const own = this.renderSlot('error', { message: failed, kind: errorKind(failed), text: this.t(errorKind(failed)), retry: again })
@@ -1677,13 +1630,161 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.dispatchEvent(new CustomEvent('agui:run-end', { detail: { threadId: this._thread } }))
     if (this._pendingCalls.length && !this._interrupted) await this._runFrontendTools()
     else if (!this._interrupted) { const thread = this._thread; void this._typing.then(() => { if (this._thread === thread) this._renderQuick() }) }   // quick replies last
+    this._paused = ''
+    setTimeout(() => this._drain())   // the next queued message, once this turn has settled
+  }
+
+  // ------------------------------------------------------------------ the queue
+  /** A message written while the assistant answers: shown at once, last in the log, with Send now, Edit and Remove. */
+  private _enqueue(text: string, saved?: { id: string; replies: ReplyTo[] }): void {
+    const replies = saved?.replies ?? this._replies
+    const files = saved ? [] : this._files
+    if (!saved) { this._setReplies([]); this._files = []; this._renderFiles() }
+    const id = saved?.id ?? uid()
+    const quotes = replyList(replies)
+    const bubble = h('div', { class: 'bubble' }, ...quotes.flatMap((r) => [this._quoteEl(r), r.note ? h('div', { class: 'bq-note' }, r.note) : null]),
+      text && text !== this.t('quotedReply') ? (quotes.length ? h('span', { class: 'bubble-text' }, text) : text) : null)
+    const line = h('div', { class: 'q-line', part: 'queued' },
+      h('span', { class: 'q-tag' }, this.t('queued')),
+      h('button', { class: 'q-act q-now', type: 'button', onclick: () => this._sendQueuedNow(id) }, this.t('sendNow')),
+      h('button', { class: 'q-act q-edit', type: 'button', onclick: () => this._editQueued(id) }, this.t('edit')),
+      h('button', { class: 'q-act q-x', type: 'button', onclick: () => this._removeQueued(id) }, this.t('remove')))
+    const el = h('div', { class: 'msg me queued', part: 'message user queued', 'data-queue-id': id,
+      onclick: (e: Event) => { if (!(e.target as HTMLElement).closest('button')) el.classList.toggle('q-open') } },
+      files.length ? h('div', { class: 'att-row', part: 'message-attachments' }, files.map((f) => this._tile(f.filename, this._previews.get(f.id)))) : null, bubble, line)
+    this.$.log.querySelector('.empty')?.remove()
+    this.$.log.appendChild(el)   // last: the answer and its dots stay above it
+    this._queue.push({ id, text, replies, files, el })
+    this._saveQueue()
+    this._scroll(true)
+    this._queueHints()
+  }
+
+  /** The first queued message goes now: its bubble stays where it is (last), its line goes, the turn starts. */
+  private _drain(): void {
+    if (this._busy || !this._queue.length) return
+    if (this.$.log.querySelector('.card[data-pending]')) return this._queueHints()   // a question waits for its answer first
+    this._dequeue(this._queue[0].id)
+  }
+
+  private _dequeue(id: string): void {
+    this._sendNow = null
+    const i = this._queue.findIndex((q) => q.id === id)
+    if (i < 0) return
+    const [q] = this._queue.splice(i, 1)
+    this._paused = ''
+    this._saveQueue()
+    q.el.classList.remove('queued')
+    q.el.removeAttribute('data-queue-id')
+    q.el.setAttribute('part', 'message user')
+    const line = q.el.querySelector<HTMLElement>('.q-line')
+    if (line) this._collapse(line, () => line.remove())
+    // above the rest of the queue: the order is the order they go in
+    const first = this.$.log.querySelector<HTMLElement>(':scope > .msg.queued')
+    if (first && first !== q.el && q.el.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_PRECEDING) this.$.log.insertBefore(q.el, first)
+    this._clearQuick()
+    this._closePendingCards()   // a waiting question is answered by this message now (Send now)
+    this._sending = q.files
+    this._lastUser = q.text
+    this._messages.push({ id: uid(), role: 'user', content: q.text || this.t('quotedReply') })
+    const sent = q.replies.map((r) => ({ message_id: r.message_id, ...(r.whole ? { whole: true } : { quote: r.quote }), ...(r.note ? { note: r.note } : {}) }))
+    this._queueHints()
+    void this._run(sent.length ? { forwardedProps: { reply_to: sent } } : {})
+  }
+
+  /** Send now: stop the current answer (or skip the waiting question) and send this one. */
+  private _sendQueuedNow(id: string): void {
+    if (this._busy) { this._sendNow = id; this.stop(); return }
+    this._dequeue(id)
+  }
+
+  /** Edit: the text goes back into the field (with its quotes), and leaves the queue. */
+  private _editQueued(id: string): void {
+    const q = this._queue.find((x) => x.id === id)
+    if (!q) return
+    this._removeQueued(id, false)
+    const input = this.$.input as HTMLTextAreaElement
+    const draft = input.value.trim()   // a half-typed message is never lost: the queued text goes under it
+    input.value = draft ? `${draft}\n${q.text}` : q.text; input.dispatchEvent(new Event('input'))
+    if (q.replies.length) this._setReplies([...this._replies, ...q.replies])
+    if (q.files.length) { this._files = [...this._files, ...q.files]; this._renderFiles() }
+    input.focus()
+  }
+
+  /** Remove: the message eases out, with Undo for 5 s (a new chat removes quietly). */
+  private _removeQueued(id: string, undoable = true): void {
+    const i = this._queue.findIndex((q) => q.id === id)
+    if (i < 0) return
+    const [q] = this._queue.splice(i, 1)
+    q.el.classList.remove('queued')
+    this._collapse(q.el, () => q.el.remove())
+    this._saveQueue()
+    this._queueHints()
+    if (!undoable) return
+    const hint = this.$.hint
+    const undo = h('button', { class: 'btn link', type: 'button', onclick: () => {
+      hint.textContent = ''
+      q.el.classList.remove('q-out'); q.el.style.removeProperty('height'); q.el.style.removeProperty('overflow')
+      q.el.classList.add('queued')
+      const at = Math.min(i, this._queue.length)
+      this.$.log.insertBefore(q.el, this._queue[at]?.el ?? null)
+      this._queue.splice(at, 0, q)
+      this._saveQueue()
+      this._queueHints()
+    } }, this.t('undo'))
+    hint.replaceChildren(h('span', null, `${this.t('messageRemoved')} `), undo)
+    clearTimeout(this._undoT)
+    this._undoT = setTimeout(() => { if (hint.contains(undo)) hint.textContent = '' }, 5000)
+  }
+
+  /** A height change eases (no layout jump): the element folds to nothing, then `done`. */
+  private _collapse(el: HTMLElement, done: () => void): void {
+    if (!el.isConnected || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { done(); return }
+    el.style.height = `${el.offsetHeight}px`; el.style.overflow = 'hidden'
+    void el.offsetHeight
+    el.classList.add('q-out'); el.style.height = '0px'
+    let over = false
+    const end = (): void => { if (over || !el.classList.contains('q-out')) return; over = true; done() }
+    el.addEventListener('transitionend', end, { once: true })
+    setTimeout(end, 260)
+  }
+
+  /** The line under each queued message: "Queued", or after a question "Sends after you answer the question". */
+  private _queueHints(): void {
+    const waits = !this._busy && !!this.$.log.querySelector('.card[data-pending]')
+    const why = this._busy ? 'queued' : this._paused === 'error' ? 'afterRetry' : this._paused === 'stop' ? 'queuePaused' : waits ? 'afterQuestion' : 'queued'
+    for (const q of this._queue) {
+      const tag = q.el.querySelector('.q-tag')
+      if (tag) tag.textContent = this.t(why, { retry: this.t('retry') })
+    }
+  }
+
+  /** The queue survives a reload (text and quotes; files are not kept). */
+  private _queueKey(): string { return `agui-queue:${this._thread}` }
+  private _saveQueue(): void {
+    try {
+      if (this._queue.length) localStorage.setItem(this._queueKey(), JSON.stringify(this._queue.map(({ id, text, replies }) => ({ id, text, replies }))))
+      else localStorage.removeItem(this._queueKey())
+    } catch { /* private mode: the queue lives as long as the page */ }
+  }
+  private _loadQueue(): void {
+    let saved: { id: string; text: string; replies: ReplyTo[] }[] = []
+    try { saved = JSON.parse(localStorage.getItem(this._queueKey()) ?? '[]') } catch { saved = [] }
+    if (!Array.isArray(saved) || !saved.length) return
+    for (const q of saved) if (q && typeof q.text === 'string') this._enqueue(q.text, { id: String(q.id || uid()), replies: Array.isArray(q.replies) ? q.replies : [] })
+    setTimeout(() => this._drain())
   }
 
   private _setBusy(on: boolean): void {
     this._busy = on
     this.toggleAttribute('busy', on)
     this.$.jump?.classList.toggle('busy', on)   // "•••" in the jump button: it is still answering below
+    // while it answers, Enter puts the message in the queue: the field says so
+    const input = this.$.input as HTMLTextAreaElement | undefined
+    const touch = !!globalThis.matchMedia?.('(pointer: coarse)').matches
+    if (input) input.placeholder = on ? this.t(touch ? 'queueHintTouch' : 'queueHint') : (this._opts.placeholder || this.t('placeholder'))
     this._syncSend()
+    this._queueHints()
   }
 
   private _handle(ev: AguiEvent): void {

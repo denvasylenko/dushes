@@ -41,6 +41,7 @@ export const FG_STRINGS: Record<string, Record<string, string>> = {
     "tomorrow": "Tomorrow",
     "otherDate": "Other date",
     "setValue": "Set {value}",
+    "chooseValue": "Choose a value",
     "fillRequired": "Required fields left: {n}",
     "leftN": "Fields left: {n}",
     "allDone": "Everything is filled in",

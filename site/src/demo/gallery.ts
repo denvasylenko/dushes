@@ -193,7 +193,15 @@ const GALLERY: Specimen[] = [
     user: 'How much can I borrow?',
     opts: { preview: (_f, v) => `$${months(v, 36).toLocaleString('en-US')} a month over 36 months` },
     event: ask({ question: 'How much do you want to **borrow**, in dollars?', field: 'amount', label: 'Amount', applies: true, allow_text: true,
-      input: { type: 'number', min: 5000, max: 60000, step: 1000 } }),
+      input: { type: 'number', min: 5000, max: 60000, step: 1000, value: 20000 } }),
+  },
+  {
+    id: 'year-empty', group: 'pick', tag: 'ask · input.type: number (no value)',
+    title: 'A year, nothing known yet',
+    blurb: 'No answer and no `value`: the slider shows no number and Set waits until the user picks, so nothing is invented. Years show without separators.',
+    user: 'I need car insurance.',
+    event: ask({ question: 'Which **year** did you get your licence?', field: 'licence_year', label: 'Licence year', applies: true, allow_text: true,
+      input: { type: 'number', min: 1960, max: 2026, step: 1 } }),
   },
   {
     id: 'address', group: 'pick', tag: 'ask · input.type: address',

@@ -300,7 +300,7 @@ The model asks *what*; the widget decides *how* to draw it from the payload. Eve
 | question | more than 12 options, `suggested` | a search box; the suggested options first | |
 | question | `input: {type: "date", min?, max?}` | Today, Tomorrow and the next days, plus Other date (our own calendar, no browser popup); a date in the past opens the calendar: on the years when `max` is today (a date of birth: year, month, day in three taps), else on the month of `max`; the server sets `max` to today for date fields named like `birth_date` or `issue_date` | |
 | question | `input: {type: "time", min?, max?}`, `slots?` | free slots, else times every 30 minutes | `getSlots(field, date)` |
-| question | `input: {type: "number", min, max, step, unit?}` | a stepper (under 10 steps) or a slider, a live line, "Set 5 years" | `preview(field, value)` |
+| question | `input: {type: "number", min, max, step, unit?, value?, format?}` | a stepper (under 10 steps) or a slider, a live line, "Set 5 years"; it starts at the previous answer or `value`, else empty with "Choose a value" (no invented midpoint); `format: "year"` or `"code"` drops the thousands separator | `preview(field, value)` |
 | question | `input: {type: "address"}` | suggestions as you type | `lookupAddress(field, query)` |
 | question | `fields: [{name, label, input?, required?}]` | 2-3 short inputs in one card; resume `{answers, config}` | |
 | field change | `changes[].kind` | values formatted by role: dates in the language, numbers grouped, ids as typed | |

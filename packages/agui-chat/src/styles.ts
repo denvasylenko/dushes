@@ -85,7 +85,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .empty p { margin: 0 0 18px; color: var(--agui-ink-2); font-size: 15px; line-height: 1.45; }
 .msg { margin: 0 0 20px; font-size: 15px; line-height: 1.58; letter-spacing: -0.008em; overflow-wrap: anywhere; }
 .msg.me { display: flex; flex-direction: column; align-items: flex-end; }
-.msg.me > div:not(.att-row) { background: var(--agui-bubble-user-bg, var(--agui-soft)); color: var(--agui-bubble-user-ink, inherit); border-radius: var(--agui-bubble-radius, var(--agui-radius-lg)); padding: 10px 15px; max-width: 85%; white-space: pre-wrap; }
+.msg.me > div:not(.att-row):not(.q-line) { background: var(--agui-bubble-user-bg, var(--agui-soft)); color: var(--agui-bubble-user-ink, inherit); border-radius: var(--agui-bubble-radius, var(--agui-radius-lg)); padding: 10px 15px; max-width: 85%; white-space: pre-wrap; }
 .msg.ai { color: var(--agui-bubble-ai-ink, inherit); }
 .msg.gone { opacity: 0; transition: opacity .18s var(--agui-ease); }
 .msg.ai p { margin: 0 0 10px; } .msg.ai p:last-child { margin-bottom: 0; }
@@ -237,6 +237,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .num:has(> input[hidden]) { display: none; }
 .field > .num, .field > .sel { flex: 1; min-width: 0; }
 /* our calendar (calendar.ts): a month grid, round days, the accent for the chosen one, a ring for today */
+.cal-slot { display: contents; }   /* the month grid arrives with the blocks script */
 .cal { margin-top: 10px; border: 1px solid var(--agui-line); border-radius: var(--agui-radius); padding: 10px; background: var(--agui-bg); max-width: 340px; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .cal-title { border: 0; background: none; font: 600 15px/1.2 var(--agui-font); color: var(--agui-ink); padding: 6px 8px; border-radius: var(--agui-radius-sm);
@@ -280,6 +281,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
   background: linear-gradient(to right, var(--agui-accent) var(--p, 50%), var(--agui-line-2) var(--p, 50%)); }
 .range input[type=range]::-moz-range-track { height: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-line-2); }
 .range input[type=range]::-moz-range-progress { height: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-accent); }
+.range input[type=range][data-empty]::-moz-range-progress { background: transparent; }   /* no value yet: the track stays empty */
 .range input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -11px; border-radius: 50%;
   background: var(--agui-knob); border: 0.5px solid color-mix(in srgb, var(--agui-shadow) 40%, transparent); box-shadow: 0 2px 6px color-mix(in srgb, var(--agui-shadow) 60%, transparent); cursor: grab; }
 .range input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--agui-knob); border: 0.5px solid color-mix(in srgb, var(--agui-shadow) 40%, transparent);
@@ -418,6 +420,17 @@ button.bubble-q { cursor: pointer; }
 .bq-t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @media (pointer: coarse) { button.bubble-q { min-height: 44px; display: flex; flex-direction: column; justify-content: center; align-items: stretch; } }
 .msg.ai { position: relative; }
+/* a message in the queue: the bubble as sent (no fading), a quiet line under it: Queued · Send now · Edit · Remove */
+.msg.queued { animation: rise .2s var(--agui-ease) both; }
+.q-line { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0 2px; margin: 4px -6px 0 0; font-size: 12px; color: var(--agui-ink-2); }
+.q-tag { margin-right: 10px; text-align: right; }   /* a status, set apart from the buttons */
+.q-act { border: 0; background: transparent; color: var(--agui-link); font: 500 12px/1 var(--agui-font); padding: 6px; border-radius: var(--agui-radius-sm); cursor: pointer; white-space: nowrap; flex: none; }
+.q-act.q-x, .q-act.q-edit { color: var(--agui-ink-2); }
+/* only the next message to go shows its actions; a later one on hover or focus (a tap on touch) */
+.msg.queued ~ .msg.queued:not(.q-open) .q-act { display: none; }
+@media (hover: hover) { .q-act:hover { background: var(--agui-soft); } .msg.queued ~ .msg.queued:is(:hover, :focus-within) .q-act { display: inline-block; } }
+@media (pointer: coarse) { .q-line { margin: -6px -10px 0 0; } .q-act { min-height: 44px; min-width: 44px; padding: 0 10px; } }
+.q-out { transition: height .2s var(--agui-ease), opacity .14s var(--agui-ease), margin .2s var(--agui-ease); opacity: 0; margin-top: 0; margin-bottom: 0; }
 /* a long message folds: its start, the bottom fading into the bubble's own colour, and Show more under it */
 /* (.clamped, not .folded: a card folded into its result line is .fcard.folded) */
 .clamped { position: relative; max-height: var(--fold-h); overflow: hidden; }

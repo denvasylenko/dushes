@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import '../src/index'
 import type { AguiChatElement } from '../src/element'
 
-// A screenshot pasted into the composer (or a file dropped on it) is attached like the paperclip's.
+// A screenshot pasted into the composer (or a file dropped on it) is attached like a file from the + button.
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 afterEach(() => { document.body.innerHTML = ''; vi.unstubAllGlobals() })

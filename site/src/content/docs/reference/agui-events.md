@@ -46,7 +46,7 @@ All of these are optional: a client that ignores them still works.
 | `set_fields` | `source`, `changes[].confidence` | values from a document: `{kind: "document", title, attachment_id, found}`; `confidence` `high` / `medium` / `low` per row |
 | `ask` | `options[].description`, `options[].attrs`, `recommended` | a second line, comparable facts (only when 2+ options share the keys), the best fit |
 | `ask` | `suggested`, up to 500 `options` | a field's long list (shown with search) and the likely ones first |
-| `ask` | `input: {type: number, min, max, step, unit}` | a range from the field: a slider or stepper |
+| `ask` | `input: {type: number, min, max, step, unit, value?, format?}` | a range from the field: a slider or stepper, starting at `value` (empty without one); `format` `year` or `code` shows no thousands separator |
 | `ask` | `input: {type: address}` | an address typed with suggestions from the host |
 | `ask` | `fields: [{name, label, input?, required}]` | 2-3 short fields in one card; answer `{answers: {name: value}, config}` |
 | `ask` | yes / no options on a checkbox field (ids `yes`, `no`, with values) | tapping fills the checkbox |

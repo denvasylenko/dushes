@@ -38,7 +38,7 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `voice` (`voice`) | `'auto'` | how speech becomes text: `'auto'` (the server when it transcribes: its restore returns `transcription: true`, or `transcribeUrl` is set; without one, the browser's own recognition where it is reliable, Chromium on a computer and on Android, and elsewhere a recording posted to `transcribeUrl`), `'browser'` (the browser only; no mic where it has none), `'server'` (always record: a wave and a timer in place of the input, then "Transcribing…", then the text in the input to check and send), `'off'` (no mic). Chrome's recognition sends the audio to Google, so sites with sensitive data should use `'server'` |
 | `dictation` (`dictation`) | `''` | deprecated, the old name of `voice` (`'browser'`, `'server'`, `'auto'`); used when `voice` is left at `'auto'` |
 | `transcribeUrl` (`transcribe-url`) | `transcribe` next to `url` | where recordings go (`/agent/run` → `/agent/transcribe`); through the chat's connection (`headers`, `fetch`, `request` with kind `transcribe`) |
-| `attach` | `true` | the paperclip (only when files can be uploaded: the `upload` option or a plugin, e.g. Dushes) |
+| `attach` | `true` | the + button, files and photos (only when files can be uploaded: the `upload` option or a plugin, e.g. Dushes) |
 | `attachAccept` (`attach-accept`) | the plugin's types | file types offered, e.g. `.pdf,.jpg` |
 | `attachMultiple` (`attach-multiple`) | `true` | several files at once |
 | `attachMaxMb` (`attach-max-mb`) | `20` | the largest file; bigger ones are refused with a message |

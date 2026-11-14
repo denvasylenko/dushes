@@ -10,7 +10,8 @@ import type { RendererContext } from '../src/types'
 const load = vi.hoisted(() => ({ ready: null as Blocks | null, pending: [] as { ok: () => void; fail: () => void }[] }))
 vi.mock('#blocks-loader', async () => {
   const real = await import('../src/formguide/blocks')
-  const b: Blocks = { blocksCard: real.blocksCard, blocksRenderer: real.blocksRenderer }
+  const { monthCalendar } = await import('../src/formguide/month')
+  const b: Blocks = { blocksCard: real.blocksCard, blocksRenderer: real.blocksRenderer, calendar: monthCalendar }
   return {
     blocksNow: () => load.ready,
     loadBlocks: () => load.ready ? Promise.resolve(load.ready) : new Promise<Blocks>((ok, fail) => {
@@ -36,6 +37,16 @@ beforeEach(() => { document.body.innerHTML = ''; load.ready = null; load.pending
 afterEach(() => { vi.unstubAllGlobals() })
 
 describe('cards from blocks, loaded on demand', () => {
+  it('the month grid comes with the blocks: drawn in the same element once they arrive', async () => {
+    const { calendar } = await import('../src/formguide/calendar')
+    const slot = calendar({ lang: 'en', t: (k) => k, onPick: () => {} })
+    expect(slot.classList.contains('cal-slot')).toBe(true)
+    expect(slot.children).toHaveLength(0)
+    await arrive()
+    expect(slot.querySelector('.cal')).not.toBeNull()
+    expect(calendar({ lang: 'en', t: (k) => k, onPick: () => {} }).classList.contains('cal')).toBe(true)   // here now: at once
+  })
+
   it('shows the card at once, fills it when the blocks arrive, and it answers as usual', async () => {
     const el = await mount()
     const answer = el.showCard({ type: 'blocks', blocks: [{ type: 'title', text: 'Your barber?' },

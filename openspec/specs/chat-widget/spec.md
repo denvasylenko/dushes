@@ -303,7 +303,7 @@ The widget SHALL render inside a shadow root, so its styles neither leak into no
 - **THEN** the answer is sent and the panel closes, returning focus to the floating button
 
 ### Requirement: Attachments in the composer
-When `attach` is on and an uploader exists (the `upload` option, or a plugin's), the composer SHALL show a paperclip button. The chosen files SHALL be uploaded and listed above the composer, where each can be removed. They SHALL go with the next message: plugins can read them during that run. A message with files and no text SHALL be sent with a default text that asks the agent to use the attached document.
+When `attach` is on and an uploader exists (the `upload` option, or a plugin's), the composer SHALL show a + button (files and photos, as in the Claude app; a menu once a host has more to add). The chosen files SHALL be uploaded and listed above the composer, where each can be removed. They SHALL go with the next message: plugins can read them during that run. A message with files and no text SHALL be sent with a default text that asks the agent to use the attached document.
 
 #### Scenario: Sending a passport with a message
 - **WHEN** the user attaches `passport.pdf` and sends "Fill in my details"
@@ -358,7 +358,7 @@ Focus SHALL be shown as a soft ring only for keyboard focus. The widget SHALL no
 
 #### Scenario: A phone
 - **WHEN** the widget runs on a phone
-- **THEN** the send, microphone and paperclip buttons are at least 44 px, and a new card does not steal focus
+- **THEN** the send, microphone and + buttons are at least 44 px, and a new card does not steal focus
 
 ### Requirement: A hint on slow turns
 When a run has shown no text for 4 seconds, a quiet "Still working…" line SHALL appear under the typing dots. It SHALL disappear when text or a card arrives.
@@ -527,8 +527,29 @@ Esc or the cancel button SHALL drop a recording without sending it. An empty res
 - **THEN** the microphone shows and records for the server
 
 ### Requirement: Pasting and dropping files into the composer
-When uploads are available (the paperclip shows), files pasted into the input (a screenshot from the clipboard) or dropped on the composer SHALL be attached exactly as the paperclip attaches them; a paste without files SHALL stay plain text. The input SHALL grow with its text up to its limit, also after dictation puts text into it.
+When uploads are available (the + button shows), files pasted into the input (a screenshot from the clipboard) or dropped on the composer SHALL be attached exactly as the + button attaches them; a paste without files SHALL stay plain text. The input SHALL grow with its text up to its limit, also after dictation puts text into it.
 
 #### Scenario: A pasted screenshot
 - **WHEN** the user presses Cmd+V with a screenshot in the clipboard
 - **THEN** the screenshot is uploaded and shown as an attachment of the next message
+
+### Requirement: Messages sent while the assistant answers wait in a queue
+A message sent while a turn runs SHALL NOT interrupt it: it SHALL wait last in the log, marked Queued, with Send now, Edit and Remove, and the answer being written SHALL land above it. When the turn ends the queued messages SHALL go one by one, in order; while a question card waits for its answer they SHALL wait too ("Sends after you answer the question"). The input's placeholder SHALL say that Enter queues while the assistant answers.
+
+#### Scenario: A second message while the first is answered
+- **WHEN** the user sends "second" while the answer to "first" is still coming
+- **THEN** "second" shows below the answer, marked Queued, and is sent by itself when that answer ends
+
+### Requirement: Acting on a queued message
+Send now SHALL stop the running answer and send that message next; Edit SHALL put its text back into the input, under any draft there, and take it out of the queue; Remove SHALL take it out with Undo. Only the next queued message SHALL show its actions at rest. The queue SHALL be kept per thread across a reload and cleared by a new chat.
+
+#### Scenario: Send now
+- **WHEN** three messages wait and the user taps Send now on the second
+- **THEN** the running answer stops, the second message is sent, and the other two keep waiting in order
+
+### Requirement: A paused queue
+Stop SHALL pause the queue (its messages say "Paused"), and a failed answer SHALL pause it under its error ("Sends after Try again"). A message sent while the queue is paused SHALL go in behind the waiting ones, and the queue SHALL then go on in order.
+
+#### Scenario: A message after Stop
+- **WHEN** the user stops the answer while "two" waits, then sends "three"
+- **THEN** "two" is sent first and "three" after it
