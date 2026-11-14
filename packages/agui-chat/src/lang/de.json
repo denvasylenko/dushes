@@ -69,7 +69,9 @@
   "withReply": "Mit Antwort",
   "quotedReply": "Meine Antworten stehen bei den Zitaten oben.",
   "replyQueued": "Hinzugef\u00fcgt. Es geht mit deiner n\u00e4chsten Nachricht mit.",
-  "newLine": "Neue Zeile"
+  "newLine": "Neue Zeile",
+  "quoteRemoved": "Zitat entfernt.",
+  "undo": "R\u00fcckg\u00e4ngig"
  },
  "formguide": {
   "fillTitle": "Diese Felder ausf\u00fcllen?",

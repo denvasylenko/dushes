@@ -69,7 +69,9 @@
   "withReply": "Avec r\u00e9ponse",
   "quotedReply": "Mes r\u00e9ponses sont sur les citations ci-dessus.",
   "replyQueued": "Ajout\u00e9. Il partira avec votre prochain message.",
-  "newLine": "Nouvelle ligne"
+  "newLine": "Nouvelle ligne",
+  "quoteRemoved": "Citation retir\u00e9e.",
+  "undo": "Annuler"
  },
  "formguide": {
   "fillTitle": "Remplir ces champs ?",

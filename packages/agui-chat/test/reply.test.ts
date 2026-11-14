@@ -135,6 +135,23 @@ describe('reply to a part of an answer', () => {
     expect(chips(el)[0].querySelector('.rc-note-t')!.textContent).toBe('too high?')
   })
 
+  it('a quote with a reply makes Send ready; removing a quote offers Undo', async () => {
+    const el = await mount(), seen: Record<string, unknown>[] = []
+    el.agent = agent('The fee is 2%.', seen) as never
+    await el.send('fee?')
+    await tick(5)
+    await select(el, $(el, '.msg.ai .body'), 'The fee is 2%')
+    type(field(el), 'too high?', 'Enter')
+    expect($(el, '.send').classList.contains('idle')).toBe(false)
+    ;(chips(el)[0].querySelector('.rc-x') as HTMLButtonElement).click()
+    expect(chips(el)).toHaveLength(0)
+    const undo = $(el, '.hint .btn.link') as HTMLButtonElement
+    expect(undo.textContent).toBe('Undo')
+    undo.click()
+    expect(chips(el)).toHaveLength(1)
+    expect(chips(el)[0].querySelector('.rc-note-t')!.textContent).toBe('too high?')
+  })
+
   it('a tap on the quote brings the answer back and highlights it', async () => {
     const el = await mount(), seen: Record<string, unknown>[] = []
     el.agent = agent('Opening hours are 9 to 6.', seen) as never

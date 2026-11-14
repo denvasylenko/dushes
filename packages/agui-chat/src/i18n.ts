@@ -71,6 +71,8 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "withReply": "With reply",
     "quotedReply": "My replies are on the quotes above.",
     "replyQueued": "Added. It goes with your next message.",
-    "newLine": "New line"
+    "newLine": "New line",
+    "quoteRemoved": "Quote removed.",
+    "undo": "Undo"
   }
 }

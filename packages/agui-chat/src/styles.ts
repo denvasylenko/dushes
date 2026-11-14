@@ -333,7 +333,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .foot { padding: 10px 14px max(14px, env(safe-area-inset-bottom, 0px)); background: var(--agui-composer-area-bg, transparent); }
 .box { display: flex; align-items: flex-end; gap: 8px; background: var(--agui-composer-bg, var(--agui-bg)); border: 1px solid var(--agui-composer-border, var(--agui-line-2));
   border-radius: var(--agui-composer-radius, var(--agui-radius-lg));
-  padding: 8px 8px 8px 18px; box-shadow: var(--agui-composer-shadow, var(--sh)); transition: border-color .2s, box-shadow .2s var(--agui-ease); }
+  padding: 8px 8px 8px 16px; box-shadow: var(--agui-composer-shadow, var(--sh)); transition: border-color .2s, box-shadow .2s var(--agui-ease); }
 .box:focus-within { border-color: var(--agui-ink-3); box-shadow: var(--agui-composer-shadow-focus, var(--sh-f)); }
 /* the composer sits a little above the page, as in the Claude app; a little more when focused. In dark a shadow
    would smudge, so it stays faint and the border carries the edge. composerShadow: soft (default), raised, none */
@@ -342,7 +342,8 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .wrap.shadow-raised { --sh: 0 2px 4px color-mix(in srgb, var(--agui-shadow) 14%, transparent), 0 12px 32px -10px color-mix(in srgb, var(--agui-shadow) 40%, transparent);
   --sh-f: 0 2px 4px color-mix(in srgb, var(--agui-shadow) 16%, transparent), 0 16px 40px -10px color-mix(in srgb, var(--agui-shadow) 50%, transparent); }
 :host(.dark) .wrap { --sh: 0 1px 2px color-mix(in srgb, var(--agui-shadow) 20%, transparent); --sh-f: 0 2px 10px -4px color-mix(in srgb, var(--agui-shadow) 45%, transparent); }
-.wrap.shadow-none { --sh: none; --sh-f: none; }
+:host(.dark) .wrap.shadow-raised { --sh: 0 2px 6px -2px color-mix(in srgb, var(--agui-shadow) 35%, transparent); --sh-f: 0 6px 18px -6px color-mix(in srgb, var(--agui-shadow) 55%, transparent); }
+.wrap.shadow-none, :host(.dark) .wrap.shadow-none { --sh: none; --sh-f: none; }
 .box.drop { border-color: var(--agui-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-accent) 25%, transparent); }   /* a file dragged over it */
 .box textarea { flex: 1; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 16px/1.4 var(--agui-font);
   padding: 7px 0; max-height: 180px; min-height: 24px; }
@@ -365,6 +366,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
   background: var(--agui-panel-bg, var(--agui-bg)); box-shadow: 0 6px 20px -6px var(--agui-shadow), 0 0 0 .5px var(--agui-line-2);
   animation: pill-in .15s var(--agui-ease) both; }
 .sel-cap[hidden] { display: none; }
+:host(.dark) .sel-cap, :host(.dark) .sel-pop { background: var(--agui-soft); }
 .cap-b { height: 32px; padding: 0 14px; border: 0; border-radius: var(--agui-radius-pill); background: transparent; color: var(--agui-ink);
   font: 15px/1 var(--agui-font); cursor: pointer; transition: background .15s var(--agui-ease); }
 .cap-b:hover, .cap-b:active { background: var(--agui-soft); }
@@ -374,7 +376,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
   box-shadow: 0 10px 32px -8px var(--agui-shadow), 0 0 0 .5px var(--agui-line-2); animation: pill-in .15s var(--agui-ease) both; }
 .sel-pop[hidden] { display: none; }
 @keyframes pill-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
-.pop-q { padding: 0 8px 0 10px; border-left: 2px solid var(--agui-ink-3); color: var(--agui-ink-2); font-size: 14px; line-height: 1.4;
+.pop-q { padding: 0 8px 0 10px; border-left: 2px solid var(--agui-ink-3); color: var(--agui-ink-2); font-size: 13px; line-height: 1.4;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pop-row { display: flex; align-items: center; gap: 4px; }
 .pop-in { flex: 1; min-width: 0; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 15px/1.4 var(--agui-font);
@@ -388,18 +390,18 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
   background: var(--agui-soft); color: var(--agui-ink-2); font-size: 15px; }
 .rc-ico { display: grid; flex: none; } .rc-ico svg { width: 18px; height: 18px; }
 .rc-q { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--agui-ink-2); }
-.rc-note { position: relative; flex: none; border: 1px solid var(--agui-line-2); background: transparent; color: var(--agui-ink-2); font: 13px/1 var(--agui-font);
+.rc-note { position: relative; flex: none; border: 1px solid color-mix(in srgb, var(--agui-ink-3) 40%, transparent); background: transparent; color: var(--agui-ink-2); font: 13px/1 var(--agui-font);
   padding: 4px 10px; cursor: pointer; border-radius: var(--agui-radius-pill); }
 .rc-note:hover, .rc-note[aria-expanded=true] { background: var(--agui-bg); }
 .rc-note-t { flex: 1 0 100%; padding: 0 8px 8px 24px; white-space: pre-wrap; color: var(--agui-ink-2); }
 .rc-note-t[hidden] { display: none; }
 .reply-chip .rc-x { width: 32px; height: 32px; flex: none; } .reply-chip .rc-x svg { width: 16px; height: 16px; }
-@media (pointer: coarse) { .reply-chip { min-height: 44px; } .reply-chip .rc-x { width: 44px; height: 44px; margin: -8px -4px -8px 0; } .rc-note::before { content: ""; position: absolute; inset: -10px -4px; } }
+@media (pointer: coarse) { .reply-chip { min-height: 44px; } .reply-chip .rc-x { width: 44px; height: 44px; margin: -8px -4px -8px 0; } .rc-note::before { content: ""; position: absolute; inset: -11px -4px; } }
 .bq-note { margin: 4px 0 12px 10px; font-size: 13px; color: var(--agui-ink-2); white-space: pre-wrap; }
 .msg.me .bq-note { color: color-mix(in srgb, currentColor 78%, transparent); }
 .bubble-text { display: block; }
 .bubble-q + .bubble-text, .bq-note + .bubble-text { margin-top: 8px; }
-.bubble-q { display: block; width: 100%; margin: 0 0 4px; padding: 4px 8px; border: 0; border-left: 2px solid var(--agui-accent); border-radius: 0 6px 6px 0;
+.bubble-q { display: block; width: 100%; margin: 0 0 4px; padding: 4px 8px; border: 0; border-left: 2px solid var(--agui-accent); border-radius: 0 var(--agui-radius-sm) var(--agui-radius-sm) 0;
   background: color-mix(in srgb, var(--agui-accent) 6%, transparent); color: var(--agui-ink-2); font: 13px/1.35 var(--agui-font); text-align: left; white-space: normal; }
 button.bubble-q { cursor: pointer; }
 .bq-who { display: block; color: var(--agui-link); font-weight: 600; margin-bottom: 1px; }
@@ -432,7 +434,7 @@ button.bubble-q { cursor: pointer; }
 /* attachments inside the composer, above the text, like Messages: an image's thumbnail, a document's name and type */
 .box { flex-wrap: wrap; }
 .box > .files { order: -1; flex: 1 0 100%; display: flex; gap: 8px; overflow-x: auto; margin: 2px 0 4px -10px; padding: 2px; scrollbar-width: none; }
-.att { position: relative; flex: none; width: 64px; height: 64px; border-radius: 12px; overflow: hidden; background: var(--agui-soft);
+.att { position: relative; flex: none; width: 64px; height: 64px; border-radius: var(--agui-radius-sm); overflow: hidden; background: var(--agui-soft);
   border: 1px solid var(--agui-line); }
 .att-new { animation: att-in .2s var(--agui-ease) both; }   /* grows in from .92, fading in */
 .att img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -481,13 +483,13 @@ button.bubble-q { cursor: pointer; }
 .att-out { animation: att-out .18s var(--agui-ease) both; pointer-events: none; }
 @keyframes att-out { to { opacity: 0; transform: scale(.92); } }
 .files-in { animation: files-in .2s var(--agui-ease) both; }
-@keyframes files-in { from { opacity: 0; max-height: 0; margin-top: 0; margin-bottom: 0; } to { opacity: 1; max-height: 140px; } }
+@keyframes files-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .att.busy::after { content: ''; position: absolute; inset: 0; margin: auto; width: 20px; height: 20px; border-radius: 50%;
   border: 2px solid color-mix(in srgb, var(--agui-bg) 60%, transparent); border-top-color: var(--agui-bg); animation: att-spin .8s linear infinite; }
 .att.busy { background: color-mix(in srgb, var(--agui-ink) 25%, var(--agui-soft)); }
 .att.busy img { opacity: .55; }
 .att-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 85%; margin: 0 0 6px; }   /* above the bubble, on its own */
-.att-row .att { width: 120px; height: 120px; border-radius: 12px; }
+.att-row .att { width: 120px; height: 120px; border-radius: var(--agui-radius-sm); }
 .att-row .att.doc { width: auto; height: auto; min-height: 52px; padding: 8px 12px; background: var(--agui-bg); }
 @keyframes att-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
 @keyframes att-spin { to { transform: rotate(360deg); } }

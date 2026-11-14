@@ -69,7 +69,9 @@
   "withReply": "Con respuesta",
   "quotedReply": "Mis respuestas est\u00e1n en las citas de arriba.",
   "replyQueued": "A\u00f1adido. Se enviar\u00e1 con tu pr\u00f3ximo mensaje.",
-  "newLine": "Nueva l\u00ednea"
+  "newLine": "Nueva l\u00ednea",
+  "quoteRemoved": "Cita quitada.",
+  "undo": "Deshacer"
  },
  "formguide": {
   "fillTitle": "\u00bfRellenar estos campos?",

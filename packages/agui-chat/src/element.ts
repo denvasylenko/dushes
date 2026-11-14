@@ -609,7 +609,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     box.addEventListener('drop', (e) => { box.classList.remove('drop'); takeFiles((e as DragEvent).dataTransfer?.files, e) })
     input.addEventListener('keydown', (e) => {
       // Esc takes the last quote back (one at a time)
-      if (e.key === 'Escape' && this._replies.length && !box.classList.contains('rec')) { e.preventDefault(); e.stopPropagation(); this._setReplies(this._replies.slice(0, -1)); return }
+      if (e.key === 'Escape' && this._replies.length && !box.classList.contains('rec')) { e.preventDefault(); e.stopPropagation(); this._dropReply(this._replies.length - 1); return }
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this._submit() }
       if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'd' && !mic.hidden) { e.preventDefault(); this._toggleMic() }   // Dictate, as its tooltip says
     })
@@ -798,7 +798,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._icon(send, this._busy ? 'stop' : 'send')
     send.setAttribute('aria-label', this._busy ? this.t('stop') : this.t('send'))
     // never disabled: an empty send nudges the composer instead of doing nothing
-    send.classList.toggle('idle', !this._busy && !(this.$.input as HTMLTextAreaElement).value.trim() && !this._files.length)
+    send.classList.toggle('idle', !this._busy && !(this.$.input as HTMLTextAreaElement).value.trim() && !this._files.length && !this._replies.some((r) => r.note))
   }
 
   private _trapFocus(e: KeyboardEvent): void {
@@ -1057,7 +1057,22 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._replies = list
     if (!this.$.replyList) return
     this._renderReplies()
+    this._syncSend()
   }
+
+  /** Take a quote back, with Undo on the line under the composer for a few seconds (its reply goes with it). */
+  private _dropReply(i: number): void {
+    const before = this._replies
+    if (!before[i]) return
+    this._setReplies(before.filter((_, k) => k !== i))
+    const hint = this.$.hint
+    const undo = h('button', { class: 'btn link', type: 'button', onclick: () => { this._setReplies(before); hint.textContent = '' } }, this.t('undo'))
+    hint.replaceChildren(h('span', null, `${this.t('quoteRemoved')} `), undo)
+    clearTimeout(this._undoT)
+    this._undoT = setTimeout(() => { if (hint.contains(undo)) hint.textContent = '' }, 5000)
+  }
+
+  private _undoT: ReturnType<typeof setTimeout> | undefined
 
   /** One grey tile per quote: the reply icon, the quote on one line, "With reply" when it has one (a tap shows it), x. */
   private _renderReplies(): void {
@@ -1071,7 +1086,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       const more = r.note ? h('button', { class: 'rc-note', type: 'button', 'aria-expanded': 'false', 'aria-controls': `rc-note-${i}`,
         onclick: () => { const open = note!.hidden; note!.hidden = !open; more!.setAttribute('aria-expanded', String(open)) } }, this.t('withReply')) : null
       const x = h('button', { class: 'ib rc-x', type: 'button', 'aria-label': `${this.t('cancelReply')}: ${(q.textContent ?? '').slice(0, 40)}`, title: this.t('cancelReply'),
-        onclick: () => { this._setReplies(this._replies.filter((_, k) => k !== i)); (this.$.input as HTMLTextAreaElement).focus() } })
+        onclick: () => { this._dropReply(i); (this.$.input as HTMLTextAreaElement).focus() } })
       this._icon(x, 'close')
       return h('div', { class: 'reply-chip', role: 'listitem' }, ico, q, more, x, note)
     }))

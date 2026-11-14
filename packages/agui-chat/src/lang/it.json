@@ -69,7 +69,9 @@
   "withReply": "Con risposta",
   "quotedReply": "Le mie risposte sono sulle citazioni qui sopra.",
   "replyQueued": "Aggiunto. Partir\u00e0 con il tuo prossimo messaggio.",
-  "newLine": "Nuova riga"
+  "newLine": "Nuova riga",
+  "quoteRemoved": "Citazione rimossa.",
+  "undo": "Annulla"
  },
  "formguide": {
   "fillTitle": "Compilare questi campi?",
