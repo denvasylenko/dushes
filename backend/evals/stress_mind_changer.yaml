@@ -1,0 +1,15 @@
+name: stress_mind_changer
+tags: [stress]
+persona: >-
+  An indecisive borrower who keeps changing their mind: first a mortgage, then a cash loan, then finally a
+  car loan of 900 000 for 3 years. Each change comes in a new short message, sometimes contradicting the last.
+goal: End with the application set to a car loan of 900 000 for 3 years, nothing left from the earlier choices.
+start: {page: /apply, form: loan_application}
+knows:
+  - Final choice is a car loan of 900 000 for 3 years
+turns: 7
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {loan_type: auto, loan_amount: "900000"}
+min_score: 6

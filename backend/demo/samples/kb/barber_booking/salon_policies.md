@@ -19,6 +19,6 @@
 - Gift cards are sold at the front desk and are valid for 12 months.
 
 ## Location
-- Address: 12 Arbat Street, Moscow (the door next to the bakery).
-- Phone: +7 495 123 45 67 (calls 9:00-21:00).
+- Address: 21 Main Street (the door next to the bakery).
+- Phone: 8 800 400 50 60 (calls 10:00-19:00, Monday to Saturday; closed on Sunday).
 - Free parking behind the building; entrance from the courtyard.

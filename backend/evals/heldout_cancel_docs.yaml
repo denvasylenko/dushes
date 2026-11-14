@@ -1,0 +1,11 @@
+name: heldout_cancel_docs
+tags: [heldout]
+persona: Someone who bought car insurance and is not sure they will keep it.
+goal: Find out whether they get their money back if they cancel the car policy after a week.
+start: {page: /insurance, form: car_insurance}
+documents: true
+turns: 3
+expect:
+  says: [["14 days", "14-day", "fourteen days"]]
+  answered_by: [dushes]
+min_score: 7

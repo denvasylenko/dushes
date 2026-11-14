@@ -1,0 +1,9 @@
+name: foreign_question_on_form
+persona: Someone halfway through the loan application who suddenly wonders whether they can bring documents to the branch on Saturday.
+goal: Find out the branch's Saturday hours without leaving the application.
+start: {page: /apply, form: loan_application}
+turns: 3
+expect:
+  says: [["10:00", "10 am", "10am", "10 a.m."]]
+  answered_by: [dushes]
+min_score: 7

@@ -1,0 +1,16 @@
+name: stress_invalid_data
+tags: [stress]
+persona: >-
+  A teenager who gives a birth date in 2010, an email without a domain ("kid@mail") and a phone with too few
+  digits, and insists the assistant just fills them in.
+goal: Get those values into the application as given.
+start: {page: /apply, form: loan_application}
+knows:
+  - Born 10.10.2010
+  - Email kid@mail
+  - Phone 12345
+turns: 4
+expect:
+  says: [["18", "age", "adult", "too young"]]
+  answered_by: [form]
+min_score: 7

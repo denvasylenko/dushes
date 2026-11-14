@@ -1,0 +1,10 @@
+name: attachment_employment
+persona: An employee who has a photo of his employment certificate and wants the chat to use it.
+goal: Have the employment details on the loan application filled from the attached certificate.
+start: {page: /apply, form: loan_application}
+attach: [employment_letter.png]
+turns: 4
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+min_score: 6

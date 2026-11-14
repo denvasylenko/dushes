@@ -332,7 +332,9 @@ class Dushes:
         the current page, if any."""
         check_thread_id(thread_id)
         msgs = [{"id": e["id"], "role": "activity", "activityType": "card", "activity": e.get("card") or {}} if e["kind"] == "display" else
-                {"id": e["id"], "role": e["kind"], "content": e.get("text", "")}
+                {"id": e["id"], "role": e["kind"], "content": e.get("text", ""),
+                 # who answered: a form agent's words carry the form id in the site thread
+                 **({"agent": "form" if e.get("form_id") else "dushes"} if e["kind"] == "assistant" else {})}
                 for e in self.forms.transcripts.list(thread_id)
                 if (e["kind"] in ("user", "assistant") and e.get("text")) or (e["kind"] == "display" and e.get("card"))]
         pending = None

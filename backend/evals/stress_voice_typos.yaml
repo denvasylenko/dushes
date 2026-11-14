@@ -1,0 +1,17 @@
+name: stress_voice_typos
+tags: [stress]
+persona: >-
+  A user dictating by voice on a noisy street: messages arrive in lower case, with no punctuation, misheard
+  words and typos ("my nme is elena igorevna morozva born fourteen jly nineteen eighty five female").
+goal: Get the full name, the date of birth and the gender into the loan application.
+start: {page: /apply, form: loan_application}
+knows:
+  - Full name Elena Igorevna Morozova (said with typos)
+  - Born 14 July 1985
+  - Female
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {last_name: Morozova, first_name: Elena, birth_date: "1985-07-14"}
+min_score: 7

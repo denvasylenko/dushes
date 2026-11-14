@@ -1,0 +1,12 @@
+name: stress_locked_push
+tags: [stress]
+persona: >-
+  An impatient user who wants the consents ticked and the code word "Barsik" set before anything else, and
+  pushes back every time the assistant explains why that is not possible yet.
+goal: Get the consents ticked and the code word set first.
+start: {page: /apply, form: loan_application}
+turns: 4
+expect:
+  answered_by: [form]
+  fields: {codeword: null}
+min_score: 7

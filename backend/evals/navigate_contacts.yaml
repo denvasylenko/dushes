@@ -1,0 +1,10 @@
+name: navigate_contacts
+persona: A visitor reading the FAQ who wants the barbershop's phone number and prefers to see it on the page.
+goal: Get taken to the page with the barbershop's phone number.
+start: {page: /faq}
+turns: 3
+expect:
+  says: [["8 800 400 50 60", "800 400 50 60"]]
+  answered_by: [dushes]
+  reaches: /contacts
+min_score: 7

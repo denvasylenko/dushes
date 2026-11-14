@@ -1,0 +1,14 @@
+name: handoff_booking
+persona: A busy man who wants a haircut and types quickly from the home page. His name is Oleg.
+goal: Start booking a men's haircut for next Friday afternoon and get to the booking form with that request already in progress.
+start: {page: /}
+knows:
+  - My name is Oleg
+  - Next Friday, around 3 pm
+  - A men's haircut, any barber
+turns: 5
+expect:
+  # a same-run hand-off: Dushes opens the form without a word and the form agent answers
+  reaches: /book
+  fields: {service: haircut}
+min_score: 6

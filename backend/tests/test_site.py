@@ -223,7 +223,7 @@ def test_the_business_instructions_and_a_last_reply(guide, model):
 
 def test_navigate_tells_the_model_what_the_part_shows():
     told, _d = directive(SiteMap.load(SITE), {"path": "/contacts", "section": "barber"})
-    assert "10:00 to 21:00" in told
+    assert "10:00 to 19:00" in told
 
 
 def test_host_context_tools_and_style(guide, model):
@@ -297,6 +297,7 @@ def test_hand_off_in_the_same_run(guide, model, monkeypatch):
     run(s, "h4", state={"page": {"path": "/book"}, "form": {"form_id": "barber_booking"}}, handoff=True)
     assert seen["message"] is None                                        # the page's run finds no pending note
     assert site_messages(s, "h4")[-1] == ("assistant", "Here is the service:")
+    assert s.thread("h4")["messages"][-1]["agent"] == "form"             # who answered, for the page and the evals
 
 
 def site_messages(s, thread):

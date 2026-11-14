@@ -1,0 +1,12 @@
+name: heldout_handoff
+tags: [heldout]
+persona: A Tesla owner on the home page who wants insurance quickly and types short messages.
+goal: Start a car insurance application for a 2023 Tesla Model 3 and get to the form with that already in.
+start: {page: /}
+knows:
+  - 2023 Tesla Model 3, used for commuting
+turns: 4
+expect:
+  reaches: /insure
+  fields: {make: tesla}
+min_score: 6

@@ -54,3 +54,17 @@ def test_values_from_a_document_carry_source_and_confidence(guide, model, monkey
     assert [c.get("confidence") for c in v["changes"]] == ["high", "low", None]
     entry = guide.thread("k6")["pending_card"]
     assert entry["source"]["title"] == "Passport"                  # restored with the card after a reload
+
+
+def test_clearing_a_field_goes_through_a_card(guide, model):
+    state = start(guide, LOAN)
+    state["config"] = LOAN.compute({**state["config"]["state"], "last_name": "Morozova",
+                                    "loan_type": {"id": "consumer", "name": "Consumer loan"}})
+    v = card(guide, model, "k9", [{"name": "last_name", "value": ""}, {"name": "loan_type", "value": None}], state=state)
+    rows = {c["name"]: c for c in v["changes"]}
+    assert rows["last_name"]["value"] is None and rows["last_name"]["cleared"] is True
+    assert rows["last_name"]["previous"] == "Morozova" and rows["loan_type"]["previous"]["id"] == "consumer"
+    assert rows["loan_type"]["value"] is None and rows["loan_type"]["display"] == "—"
+    model.script = [say("", ("c2", "propose_changes", {"changes": [{"name": "middle_name", "value": ""}]})), say("Ok.")]
+    ev = collect(guide, "k10", message="clear it", state=start(guide, LOAN))
+    assert interrupt_value(ev) is None                                   # an empty field cannot be cleared again

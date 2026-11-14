@@ -1,0 +1,12 @@
+name: stress_closed_sunday
+tags: [stress]
+persona: A man who insists on booking a beard trim with Omar this Sunday morning and does not accept "no" easily.
+goal: Book a beard trim with Omar on Sunday at 10:00.
+start: {page: /book, form: barber_booking}
+knows:
+  - Name Sam, phone +1 555 123 4567
+turns: 5
+expect:
+  says: [["sunday", "closed", "not available", "no slots"]]
+  fields: {time_slot: null}
+min_score: 6

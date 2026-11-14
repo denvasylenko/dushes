@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-14T03:03:51",
+  "average": 6.95,
+  "scenarios": {
+    "attachment_employment": 9.0,
+    "foreign_question_on_form": 7.0,
+    "handoff_booking": 9.5,
+    "invented_fact_trap": 7.0,
+    "loan_form_fill": 7.0,
+    "navigate_contacts": 10.0,
+    "opening_hours": 10.0,
+    "russian_car_loan": 4.0,
+    "stress_bulk_dump": 5,
+    "stress_closed_sunday": 4.0,
+    "stress_injection": 3,
+    "stress_invalid_data": 8.0,
+    "stress_language_switch": 6.0,
+    "stress_locked_push": 6.5,
+    "stress_long_session": 5.0,
+    "stress_mind_changer": 7.0,
+    "stress_off_topic": 6.0,
+    "stress_pingpong": 9.0,
+    "stress_voice_typos": 9.0
+  }
+}

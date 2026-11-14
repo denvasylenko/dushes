@@ -1,0 +1,10 @@
+name: russian_car_loan
+persona: A Russian speaker who writes only in Russian and wants to know about car loans.
+goal: Learn the lowest rate and the longest term of Aster Bank's car loan.
+start: {page: /}
+turns: 3
+expect:
+  # "\u0433\u043e\u0434" / "\u043b\u0435\u0442": Russian for "year" / "years", so the reply is in Russian
+  says: [["18.9", "18,9"], ["7 \u043b\u0435\u0442", "7 \u0433\u043e\u0434", "\u0441\u0435\u043c\u0438 \u043b\u0435\u0442"]]
+  answered_by: [dushes]
+min_score: 7

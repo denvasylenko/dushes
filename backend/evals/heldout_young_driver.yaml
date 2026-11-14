@@ -1,0 +1,13 @@
+name: heldout_young_driver
+tags: [heldout]
+persona: A 19-year-old filling in a car insurance application, surprised that the price looks high.
+goal: Understand why the premium is higher for them and what could lower it.
+start: {page: /insure, form: car_insurance}
+knows:
+  - Born 2 March 2007, licence since 2025
+  - 2018 Volkswagen Golf, personal use
+turns: 4
+expect:
+  says: [["21", "under 21"], ["deductible", "40%"]]
+  answered_by: [form]
+min_score: 7

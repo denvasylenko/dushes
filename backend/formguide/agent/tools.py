@@ -211,7 +211,8 @@ TOOLS: list[dict[str, Any]] = [
                        "multi-selects a list of option ids. Dates: YYYY-MM-DD. "
                        "A dropdown whose options depend on another field in the same call (a car model after "
                        "its make) may be included with the option's name: it is applied after the others. "
-                       "Only the user can upload files.",
+                       "Only the user can upload files. To clear a field the user asks to empty, pass an empty "
+                       "string as its value.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -221,7 +222,7 @@ TOOLS: list[dict[str, Any]] = [
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
-                            "value": {"type": ["string", "number", "boolean", "array"], "items": {"type": "string"}},
+                            "value": {"type": ["string", "number", "boolean", "array", "null"], "items": {"type": "string"}},
                             "reason": {"type": "string"},
                             "issue": {"type": "string", "description": "only when a rule or document flags this "
                                       "valid value (e.g. income low for the payment): one short sentence"},
@@ -902,6 +903,10 @@ def _t_confirm_action(a: dict, ctx: ToolCtx) -> str:
     return ""
 
 
+def _empty(value: Any) -> bool:
+    return value is None or value == [] or (isinstance(value, str) and not value.strip())
+
+
 def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
     if _waiting(ctx):
         raise ToolError(WAITING)
@@ -919,6 +924,15 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
                 raise ToolError(f"{n.name} is a container")
             if not e.visible:
                 raise ToolError(f"{n.name} is hidden")
+            if _empty(ch["value"]) and n.role != "bool":   # the user asks to clear the field
+                if e.disabled or e.readonly:
+                    raise ToolError(f"{n.name} is {'disabled' if e.disabled else 'read-only'}: it cannot be cleared")
+                if e.value in (None, "", []):
+                    raise ToolError(f"{n.name} is already empty")
+                ok.append({"name": n.name, "label": e.label or n.name, "kind": n.role,
+                           "value": [] if n.role == "multiselect" else None, "display": "\u2014", "cleared": True,
+                           **previous_of(ctx, n.name), "reason": ch.get("reason", ""), "reveal": reveal_chain(ctx, n.name)})
+                continue
             if (n.role in CHOICE and not e.readonly and vals._codec(e.spec) is None
                     and (e.disabled or not e.options or not vals.find_option(e.options, ch["value"]))):
                 later.append((n, e, ch))   # options appear once other fields are set: applied after them

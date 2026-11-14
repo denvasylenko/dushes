@@ -1,0 +1,12 @@
+name: loan_form_fill
+persona: A woman filling in a loan application on the bank's site, who prefers telling the chat over typing in fields.
+goal: Get her full name and date of birth into the application.
+start: {page: /apply, form: loan_application}
+knows:
+  - Full name Elena Igorevna Morozova
+  - Born on 14 July 1985
+turns: 4
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+min_score: 7

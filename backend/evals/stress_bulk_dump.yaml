@@ -1,0 +1,18 @@
+name: stress_bulk_dump
+tags: [stress]
+persona: >-
+  A user who pastes everything in one long message: name, birth date, gender, place of birth, phone, email,
+  employer, position, start date, salary, the loan type, amount, term and purpose, and asks to fill it all.
+goal: Have as much of the application as possible filled from that one message, with every change confirmed on cards.
+start: {page: /apply, form: loan_application}
+knows:
+  - Elena Igorevna Morozova, born 14.07.1985 in Perm, female
+  - Phone +79031112233, email elena.m@yandex.ru
+  - Accountant at Alfa JSC since 01.09.2015, salary 120 000 a month
+  - Consumer loan of 700 000 for 3 years for home renovation
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {last_name: Morozova, email: elena.m@yandex.ru, loan_type: consumer}
+min_score: 6

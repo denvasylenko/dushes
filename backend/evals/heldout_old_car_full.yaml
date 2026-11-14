@@ -1,0 +1,12 @@
+name: heldout_old_car_full
+tags: [heldout]
+persona: An owner of a 2012 Ford Focus who insists on full cover because a friend has it.
+goal: Get full cover for the 2012 Ford Focus.
+start: {page: /insure, form: car_insurance}
+knows:
+  - 2012 Ford Focus, personal use
+turns: 4
+expect:
+  says: [["10 years", "ten years"]]
+  answered_by: [form]
+min_score: 7

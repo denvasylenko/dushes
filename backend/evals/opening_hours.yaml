@@ -1,0 +1,9 @@
+name: opening_hours
+persona: A local resident who wants to drop by the bank this weekend. Writes short, casual messages.
+goal: Find out when the Aster Bank branch is open on Saturday.
+start: {page: /}
+turns: 3
+expect:
+  says: [["10:00", "10 am", "10am", "10 a.m."], ["16:00", "4 pm", "4pm", "4 p.m."]]
+  answered_by: [dushes]
+min_score: 7

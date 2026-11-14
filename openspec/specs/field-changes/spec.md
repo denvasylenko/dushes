@@ -55,6 +55,13 @@ A proposed value SHALL be checked against the field's role and written in the fi
 - **WHEN** the field spec has `value: id` and the model proposes the label "Car loan" of option `auto`
 - **THEN** the card value is `"auto"` and the display is "Car loan"
 
+### Requirement: Clearing a field
+A change whose value is an empty string or null SHALL propose clearing that field: the card row SHALL carry `value: null` (`[]` for a multiselect), `display: "—"`, `cleared: true` and the previous value, and the field SHALL be emptied only when the card is accepted. Clearing a field that is already empty, disabled or read-only SHALL be refused to the model; a checkbox is set to false, not cleared.
+
+#### Scenario: The user takes a value back
+- **WHEN** the loan purpose is "Home renovation" and the model proposes `loan_purpose = ""` because the user asked to clear it
+- **THEN** the card shows the purpose being cleared, and after acceptance the field is empty
+
 ### Requirement: One proposal at a time
 A turn SHALL have at most one pending card or question. In one model response, a second `propose_changes` or `ask_user` call SHALL be refused, and frontend tools called alongside a card or question SHALL not be executed.
 

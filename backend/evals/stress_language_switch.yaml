@@ -1,0 +1,12 @@
+name: stress_language_switch
+tags: [stress]
+persona: >-
+  A user who starts in English on the home page, asks about mortgages, then switches to Spanish for the rest
+  of the conversation and expects the answers in Spanish.
+goal: Learn the mortgage's minimum down payment, with the later answers in Spanish.
+start: {page: /}
+turns: 4
+expect:
+  says: [["20%", "20 %"], ["entrada", "inicial", "hipoteca", "pago"]]
+  answered_by: [dushes]
+min_score: 7

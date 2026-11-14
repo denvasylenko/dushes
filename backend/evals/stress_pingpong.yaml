@@ -1,0 +1,16 @@
+name: stress_pingpong
+tags: [stress]
+persona: >-
+  A distracted user on the loan application who jumps between topics: gives their name, asks when the bank is
+  open on Saturday, asks how much a haircut costs at the barbershop, then comes back and gives their birth date.
+goal: Get the name and birth date into the application and the two side questions answered, all in one chat.
+start: {page: /apply, form: loan_application}
+knows:
+  - Name Anna Petrova
+  - Born 3 February 1991
+turns: 6
+expect:
+  says: [["10:00", "10 am", "10am"], ["$40", "40 $", "40 dollars", "40"]]
+  answered_by: [dushes, form]
+  fields: {first_name: Anna, last_name: Petrova}
+min_score: 6

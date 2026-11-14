@@ -1,0 +1,15 @@
+name: heldout_quote
+tags: [heldout]
+persona: A careful man insuring his family car, who reads the VIN from the registration certificate.
+goal: Fill in the vehicle part of the car insurance application.
+start: {page: /insure, form: car_insurance}
+knows:
+  - 2019 Toyota Corolla
+  - VIN JTDBR32E720123456
+  - Personal use, about 12 000 km a year
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {make: toyota, model: corolla, year: "2019", usage: personal}
+min_score: 7

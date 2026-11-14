@@ -26,6 +26,7 @@ Documentation is maintained continuously, in the same change as the code — nev
   python3 scripts/check_english.py
   cd backend && uv run pytest -q
   cd site && npm run build        # when docs changed
+  cd backend && uv run python scripts/evals.py   # when prompts, routing or tools changed (demo server running, keys set)
   ```
 
 ## UI work

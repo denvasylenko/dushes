@@ -145,6 +145,7 @@ interface Change {
   display: string                   // the same for people
   kind?: 'text' | 'number' | 'date' | 'select' | 'radio' | 'multiselect' | 'bool'
   previous?: unknown; previous_display?: string | null
+  cleared?: boolean                 // the user asked to empty the field: value is null ([] for a multiselect)
   reason?: string
   reveal?: UiDirective['reveal']
   consent?: boolean; required?: boolean; doc?: { title?: string; text?: string; url?: string }

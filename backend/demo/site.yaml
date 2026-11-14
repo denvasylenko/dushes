@@ -1,9 +1,9 @@
-# The demo site's map: a portal of two local businesses, a bank and a barbershop. It is both the
+# The demo site's map: a portal of three local businesses, a bank, a barbershop and a car insurer. It is both the
 # site's content (what Dushes knows) and its navigation (the only pages, tabs, sections
 # and forms the assistant may open). The demo page (frontend/site.html) renders the same file.
 title: Main Street
 instructions: |
-  Aster Bank and Barber & Co are two separate businesses: never mix their prices, hours or rules.
+  Aster Bank, Barber & Co and Harbor Insurance are separate businesses: never mix their prices, hours or rules.
   When someone compares loans, point them to the Loans page tab that fits.
 pages:
   - path: /
@@ -75,6 +75,32 @@ pages:
         title: Cancellation policy
         text: Cancel for free up to 2 hours before your visit; a later cancellation costs 50% of the price.
 
+  - path: /insurance
+    title: Car insurance
+    keywords: [car insurance, insurance, cover, premium, policy, deductible, claim]
+    description: Harbor Insurance's car cover, what it costs and how to make a claim.
+    tabs:
+      - id: levels
+        title: Cover levels
+        text: Third-party liability from 300 € a year. Standard (liability, theft and fire) from 600 € a year. Full (everything, including damage to your own car) from 900 € a year, only for cars up to 10 years old.
+      - id: premium
+        title: How the premium is set
+        text: Drivers under 21 pay 40% more; at-fault accidents in the last 3 years add 25% (one) or 60% (two); business use adds 20%. A 500 € deductible takes 5% off and a 1000 € deductible 10%. Roadside assistance costs 40 € a year and is free with a Tesla.
+    sections:
+      - id: claims
+        title: Making a claim
+        text: Report a claim within 7 days on 8 800 700 80 90. Repairs at partner garages are paid directly.
+
+  - path: /insure
+    title: Get a car insurance quote
+    keywords: [insure, quote, insurance application, insure my car]
+    description: Harbor Insurance's online application, with the assistant filling it in with you.
+    form: car_insurance
+    sections:
+      - id: how
+        title: How it works
+        text: Describe your car, the driver and the cover you want; the premium is calculated as you go. Cover can start today or within the next 60 days.
+
   - path: /faq
     title: FAQ
     keywords: [questions, cancel a booking, my data]
@@ -99,11 +125,14 @@ pages:
   - path: /contacts
     title: Contacts
     keywords: [opening hours, open, hours, address, phone, branch]
-    description: Opening hours, addresses and phones of Aster Bank and Barber & Co.
+    description: Opening hours, addresses and phones of Aster Bank, Barber & Co and Harbor Insurance.
     sections:
       - id: bank
         title: Aster Bank, Main Street branch
         text: 12 Main Street. Monday to Friday 9:00 to 19:00, Saturday 10:00 to 16:00, closed on Sunday. Phone 8 800 100 20 30.
       - id: barber
         title: Barber & Co
-        text: 21 Main Street. Every day 10:00 to 21:00. Phone 8 800 400 50 60.
+        text: 21 Main Street. Monday to Saturday 10:00 to 19:00, closed on Sunday. Phone 8 800 400 50 60.
+      - id: insurer
+        title: Harbor Insurance
+        text: 30 Main Street. Monday to Friday 9:00 to 18:00. Phone 8 800 700 80 90, and a 24-hour line for accidents.

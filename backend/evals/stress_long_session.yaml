@@ -1,0 +1,18 @@
+name: stress_long_session
+tags: [stress]
+persona: >-
+  A thorough applicant who fills the loan application step by step over many short messages: name, birth date,
+  gender, phone, email, employment, salary, loan type, amount and term, asking a small question now and then.
+goal: Fill all of those fields in one long conversation without the assistant losing track of earlier answers.
+start: {page: /apply, form: loan_application}
+knows:
+  - Alexei Viktorovich Sidorov, born 3 February 1991, male
+  - Phone +79161234567, email alexei.sidorov@mail.ru
+  - Employee, programmer at Romashka LLC since 2018, salary 150 000 a month
+  - Car loan of 1 200 000 for 5 years
+turns: 12
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields: {last_name: Sidorov, phone_mobile: "+79161234567", loan_type: auto, employment_type: employee}
+min_score: 6
