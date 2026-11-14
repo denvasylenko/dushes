@@ -5,7 +5,7 @@
  */
 import { expect, test, type Page } from '@playwright/test'
 
-import { agent, fakeMic, run, suggestions, text } from './agent'
+import { agent, fakeMic, run, slowAgent, suggestions, text } from './agent'
 
 const composer = (page: Page) => page.locator('agui-chat textarea:not(.pop-in)')
 
@@ -171,4 +171,239 @@ test('a picture opens large; the browser keeps its own menu (Copy, Save); Esc cl
   expect(prevented).toBe(false)   // nothing swallows the right click: the browser's Copy / Save image menu shows
   await page.keyboard.press('Escape')
   await expect(zoom).toBeHidden()
+})
+
+test('a year on a field card shows without a thousands separator (2019, not 2,019)', async ({ page }) => {
+  const card = { type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'set_fields', card_id: 'y1', changes: [
+    { name: 'year', label: 'Baujahr', kind: 'number', value: 2019, display: '2019', previous: null, previous_display: null, reveal: [] }] }) }   // the payload live v9 sends (SRE)
+  await page.route('**/agent/layouts', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"jsx_hash":"h"}' }))
+  await agent(page, { events: run(card) })
+  await open(page)
+  await page.evaluate(() => {   // the formguide plugin, as a page with a form uses it
+    const el = document.querySelector('agui-chat') as unknown as { use: (p: unknown) => void }
+    const fg = (window as unknown as { AguiChat: { formguide: (o: unknown) => unknown } }).AguiChat.formguide
+    el.use(fg({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({ props: {}, state: {} }) }))
+  })
+  await say(page, 'Es ist von 2019')
+  const shown = page.locator('agui-chat .card').first()
+  await expect(shown).toBeVisible()
+  await expect(shown).not.toContainText('2,019')
+  await expect(shown).not.toContainText('2.019')
+  await expect(shown).toContainText('2019')
+})
+
+test('a field the server marks as a year shows its number as written, whatever its name (built: 2019)', async ({ page }) => {
+  const card = { type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'set_fields', card_id: 'y2', changes: [
+    { name: 'built', label: 'Baujahr', kind: 'year', value: 2019, display: '2019', previous: null, previous_display: null, reveal: [] }] }) }   // the server says what the field is (Owner); the widget groups only kind number
+  await page.route('**/agent/layouts', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"jsx_hash":"h"}' }))
+  await agent(page, { events: run(card) })
+  await open(page)
+  await page.evaluate(() => {   // the formguide plugin, as a page with a form uses it
+    const el = document.querySelector('agui-chat') as unknown as { use: (p: unknown) => void }
+    const fg = (window as unknown as { AguiChat: { formguide: (o: unknown) => unknown } }).AguiChat.formguide
+    el.use(fg({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({ props: {}, state: {} }) }))
+  })
+  await say(page, 'Es ist von 2019')
+  const shown = page.locator('agui-chat .card').first()
+  await expect(shown).toBeVisible()
+  await expect(shown).not.toContainText('2,019')
+  await expect(shown).not.toContainText('2.019')
+  await expect(shown).toContainText('2019')
+})
+
+test('a four-digit number is not grouped even when the server does not mark it (built: 2019, kind number)', async ({ page }) => {
+  const card = { type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'set_fields', card_id: 'y3', changes: [
+    { name: 'built', label: 'Baujahr', kind: 'number', value: 2019, display: '2019', previous: null, previous_display: null, reveal: [] }] }) }   // an unmarked year: the widget groups from five digits on
+  await page.route('**/agent/layouts', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"jsx_hash":"h"}' }))
+  await agent(page, { events: run(card) })
+  await open(page)
+  await page.evaluate(() => {   // the formguide plugin, as a page with a form uses it
+    const el = document.querySelector('agui-chat') as unknown as { use: (p: unknown) => void }
+    const fg = (window as unknown as { AguiChat: { formguide: (o: unknown) => unknown } }).AguiChat.formguide
+    el.use(fg({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({ props: {}, state: {} }) }))
+  })
+  await say(page, 'Es ist von 2019')
+  const shown = page.locator('agui-chat .card').first()
+  await expect(shown).toBeVisible()
+  await expect(shown).not.toContainText('2,019')
+  await expect(shown).not.toContainText('2.019')
+  await expect(shown).toContainText('2019')
+})
+
+test('a German conversation on an English page: the card speaks German, the page stays English, a new chat is English again', async ({ page }) => {
+  const ask = { type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'ask', card_id: 'q1', language: 'de',
+    question: 'Wie wird das Auto genutzt?', options: [{ id: 'personal', label: 'Privat' }, { id: 'business', label: 'Geschäftlich' }] }) }
+  const lang = { type: 'CUSTOM', name: 'language', value: { lang: 'de' } }   // the server names the conversation's language (18db8fe)
+  await page.route('**/agent/layouts', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"jsx_hash":"h"}' }))
+  await agent(page, { events: run(lang, ...text('m1', 'Gern.'), ask) }, { events: run(...text('m2', 'Sure.')) })
+  await open(page)
+  await page.evaluate(() => {
+    const el = document.querySelector('agui-chat') as unknown as { use: (p: unknown) => void }
+    const fg = (window as unknown as { AguiChat: { formguide: (o: unknown) => unknown } }).AguiChat.formguide
+    el.use(fg({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({ props: {}, state: {} }) }))
+  })
+  const placeholder = await composer(page).getAttribute('placeholder')
+  await say(page, 'Ich möchte ein Angebot für mein Auto.')
+  const card = page.locator('agui-chat .card').first()
+  await expect(card).toContainText('Privat')
+  await expect(card).toContainText('Überspringen')                       // the card's own words follow the conversation
+  await expect(card).not.toContainText('Skip')
+  expect(await composer(page).getAttribute('placeholder')).toBe(placeholder)   // the page's own words stay English
+  await page.evaluate(() => (document.querySelector('agui-chat') as unknown as { reset: () => void }).reset())   // a new chat
+  await say(page, 'Hello')
+  await expect(page.locator('agui-chat .msg.ai .body').last()).toHaveText('Sure.')
+  await expect(page.locator('agui-chat')).not.toContainText('Überspringen')
+})
+
+test('the composer text sits level with its buttons (empty, one line, three lines; touch and desktop, light and dark, hero)', async ({ browser }, info) => {
+  test.skip(info.project.name.endsWith('-phone'), 'this test makes its own phone and desktop contexts: once per engine')
+  const firefox = info.project.name.startsWith('firefox')   // Firefox has no touch emulation flag
+  const failures: string[] = []
+  for (const size of [{ name: 'touch 390', viewport: { width: 390, height: 844 }, hasTouch: true }, { name: 'desktop 1280', viewport: { width: 1280, height: 800 }, hasTouch: false }]) {
+    if (size.hasTouch && firefox) continue
+    for (const scheme of ['light', 'dark'] as const) {
+      for (const mode of ['inline', 'hero']) {
+        const ctx = await browser.newContext({ viewport: size.viewport, hasTouch: size.hasTouch, colorScheme: scheme })
+        const page = await ctx.newPage()
+        await page.route('**/agent/**', (r) => r.fulfill({ status: 404, body: '' }))
+        await page.goto('http://127.0.0.1:4399/e2e/fixtures/chat.html')
+        await page.waitForFunction(() => !!customElements.get('agui-chat'))
+        await page.evaluate((m) => { const el = document.querySelector('agui-chat')!; el.setAttribute('mode', m); el.setAttribute('mic', 'on'); el.setAttribute('voice', 'server') }, mode)
+        const field = page.locator('agui-chat textarea:not(.pop-in)')
+        await expect(field).toBeVisible()
+        for (const [state, value] of [['empty', ''], ['one line', 'Hello there'], ['three lines', 'one\ntwo\nthree']] as const) {
+          await field.fill(value)
+          await page.waitForTimeout(80)   // the field grows on input
+          const m = await page.evaluate(() => {
+            const r = document.querySelector('agui-chat')!.shadowRoot!
+            const t = r.querySelector('textarea:not(.pop-in)') as HTMLTextAreaElement, cs = getComputedStyle(t), b = t.getBoundingClientRect()
+            const lh = parseFloat(cs.lineHeight), centre = (sel: string) => { const e = r.querySelector(sel) as HTMLElement | null; if (!e || e.hidden || !e.offsetParent) return null; const x = e.getBoundingClientRect(); return x.top + x.height / 2 }
+            return { first: b.top + parseFloat(cs.paddingTop) + lh / 2, last: b.bottom - parseFloat(cs.paddingBottom) - lh / 2, send: centre('.send'), mic: centre('.mic') }
+          })
+          const text = state === 'three lines' ? m.last : m.first   // a tall field: its last line stays level with the buttons
+          for (const [name, c] of [['send', m.send], ['mic', m.mic]] as const) {
+            if (c !== null && Math.abs(text - c) > 1) failures.push(`${size.name} ${scheme} ${mode} ${state}: text ${text.toFixed(1)} vs ${name} ${c.toFixed(1)}`)
+          }
+        }
+        await ctx.close()
+      }
+    }
+  }
+  expect(failures, failures.join('\n')).toEqual([])
+})
+
+test('replying to a quote of your own message carries that message id and the quote', async ({ page }) => {
+  const bodies = await agent(page, { events: run(...text('m1', 'Noted.')) }, { events: run(...text('m2', 'Yes, on Friday.')) })
+  await open(page)
+  await say(page, 'Please book a table for Friday evening')
+  await expect(page.locator('agui-chat .msg.ai .body').last()).toHaveText('Noted.')
+  const mine = page.locator('agui-chat .msg.me .bubble').last()
+  await mine.dblclick({ position: { x: 24, y: 10 } })   // select a word of my own bubble
+  await page.locator('agui-chat .cap-reply').click()
+  const field = page.locator('agui-chat .pop-in')
+  await expect(field).toBeVisible()
+  await expect(field).toHaveAttribute('placeholder', 'Reply to your message')
+  await field.fill('I meant this Friday')
+  await field.press('Enter')
+  await expect(page.locator('agui-chat .reply-chip')).toHaveCount(1)
+  await composer(page).press('Enter')
+  await expect(page.locator('agui-chat .msg.ai .body').last()).toHaveText('Yes, on Friday.')
+  const sent = bodies[1] as { forwardedProps: { reply_to?: { message_id: string; quote: string }[] }; messages: { id: string; role: string; content: string }[] }
+  const reply = sent.forwardedProps.reply_to
+  expect(reply).toHaveLength(1)
+  expect('Please book a table for Friday evening').toContain(reply![0].quote)
+  const own = sent.messages.find((m) => m.role === 'user' && m.content.includes('book a table'))
+  expect(reply![0].message_id).toBe(own?.id)   // my message's own id
+})
+
+test('the steps line ("Done in N s") never sits above the first message (complaint 16)', async ({ page }) => {
+  const steps = [{ type: 'TOOL_CALL_START', toolCallId: 't1', toolCallName: 'search_site' }, { type: 'TOOL_CALL_ARGS', toolCallId: 't1', delta: '{"query":"hours"}' },
+                 { type: 'TOOL_CALL_END', toolCallId: 't1' }, { type: 'TOOL_CALL_RESULT', messageId: 't1-result', toolCallId: 't1', content: 'found', role: 'tool' }]
+  await slowAgent(page, [run(...steps, ...text('m1', 'We are open until 19:00.'))])   // ~3.5 s: the steps line shows
+  await open(page, { 'tool-steps': 'on' })
+  await say(page, 'When are you open?')
+  await expect(page.locator('agui-chat .msg.ai .body').last()).toHaveText('We are open until 19:00.', { timeout: 15_000 })
+  const order = await page.evaluate(() => {
+    const log = document.querySelector('agui-chat')!.shadowRoot!.querySelector('.log')!
+    const kids = [...log.children] as HTMLElement[]
+    const top = (sel: string) => { const e = kids.find((k) => k.matches(sel) && !k.hidden); return e ? e.getBoundingClientRect().top : null }
+    return { me: top('.msg.me'), steps: top('.steps'), dom: kids.filter((k) => !k.hidden).map((k) => k.className).slice(0, 6) }
+  })
+  expect(order.me, 'the user message is in the log').not.toBeNull()
+  expect(order.steps, 'a turn this long shows its steps line').not.toBeNull()
+  expect(order.steps!, `log order: ${order.dom.join(' | ')}`).toBeGreaterThan(order.me!)
+})
+
+test('a host-started run: the steps line of a turn the user did not start does not sit above their first message (complaint 16, path 1)', async ({ page }) => {
+  const steps = [{ type: 'TOOL_CALL_START', toolCallId: 't1', toolCallName: 'get_fields' }, { type: 'TOOL_CALL_ARGS', toolCallId: 't1', delta: '{}' },
+                 { type: 'TOOL_CALL_END', toolCallId: 't1' }, { type: 'TOOL_CALL_RESULT', messageId: 't1-result', toolCallId: 't1', content: 'ok', role: 'tool' }]
+  await slowAgent(page, [run(...steps, ...text('m1', 'Welcome back. I prefilled what I know.')), run(...text('m2', 'Sure.'))])
+  await open(page, { 'tool-steps': 'on' })
+  await page.evaluate(() => (document.querySelector('agui-chat') as unknown as { run: (o: unknown) => Promise<void> }).run({ forwardedProps: { prefill: { data: { name: 'Ann' } } } }))
+  await expect(page.locator('agui-chat .msg.ai .body').last()).toHaveText('Welcome back. I prefilled what I know.', { timeout: 15_000 })
+  await say(page, 'Thanks, what next?')
+  await expect(page.locator('agui-chat .msg.ai .body').last()).toHaveText('Sure.', { timeout: 15_000 })
+  const seen = await page.evaluate(() => {
+    const kids = [...document.querySelector('agui-chat')!.shadowRoot!.querySelector('.log')!.children] as HTMLElement[]
+    const shown = kids.filter((k) => !k.hidden && k.getBoundingClientRect().height > 0)
+    const first = shown.find((k) => k.matches('.msg.me'))!
+    return { above: shown.filter((k) => k.matches('.steps') && k.getBoundingClientRect().top < first.getBoundingClientRect().top).map((k) => k.textContent), order: shown.map((k) => k.className).slice(0, 6) }
+  })
+  if (process.env.QA_DEBUG) console.log('ORDER', JSON.stringify(seen))
+  expect(seen.above, `a steps line above the first user message; log: ${seen.order.join(' | ')}`).toEqual([])
+})
+
+/** A thread for card_focus: a field card f1, a long answer that pushes it out of sight, then runs that point at f1
+ *  and at a card that is gone. Returns the request bodies and "is f1 inside the log's visible area". */
+async function focusThread(page: Page) {
+  const card = { type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'set_fields', card_id: 'f1', changes: [
+    { name: 'city', label: 'City', kind: 'text', value: 'Bologna', display: 'Bologna', previous: null, previous_display: null, reveal: [] }] }) }
+  const long = Array.from({ length: 40 }, (_x, i) => `Line ${i + 1} of a long answer.`).join('\n\n')
+  await page.route('**/agent/layouts', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"jsx_hash":"h"}' }))
+  const bodies = await agent(page, { events: run(card) }, { events: run(...text('a2', long)) },
+    { events: run(...text('a3', 'Here is that card.'), { type: 'CUSTOM', name: 'card_focus', value: { card_id: 'f1' } }) },
+    { events: run(...text('a4', 'Here is that card.'), { type: 'CUSTOM', name: 'card_focus', value: { card_id: 'gone' } }) })
+  await open(page)
+  await page.evaluate(() => {
+    const el = document.querySelector('agui-chat') as unknown as { use: (p: unknown) => void; addEventListener: (n: string, f: (e: Event) => void) => void }
+    const fg = (window as unknown as { AguiChat: { formguide: (o: unknown) => unknown } }).AguiChat.formguide
+    el.use(fg({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({ props: {}, state: {} }) }))
+    el.addEventListener('agui:card-missing', (e) => { (window as unknown as { missing: unknown }).missing = (e as CustomEvent).detail })
+  })
+  const inLog = () => page.evaluate(() => {
+    const r = document.querySelector('agui-chat')!.shadowRoot!
+    const c = r.querySelector('[data-card-id="f1"]')!.getBoundingClientRect(), log = r.querySelector('.log')!.getBoundingClientRect()
+    return c.top >= log.top - 1 && c.bottom <= log.bottom + 1
+  })
+  await say(page, 'I live in Bologna')
+  await expect(page.locator('agui-chat [data-card-id="f1"]')).toBeVisible()
+  await say(page, 'Tell me more')
+  await expect(page.locator('agui-chat')).toContainText('Line 40 of a long answer.')
+  await expect.poll(inLog).toBe(false)   // the long answer pushed the card out of sight (the log follows it a moment later)
+  return { bodies, inLog }
+}
+
+test('card_focus: a card still in the thread is scrolled to and highlighted, never drawn twice; a missing one says so', async ({ page }) => {
+  const { bodies, inLog } = await focusThread(page)
+  const shown = page.locator('agui-chat [data-card-id="f1"]')
+  await say(page, 'Show me that card again')
+  await expect(page.locator('agui-chat [data-card-id="f1"][data-spot]')).toHaveCount(1)   // highlighted
+  await expect(shown).toHaveCount(1)                                                       // no second card
+  await expect.poll(inLog, { timeout: 4000 }).toBe(true)                                   // scrolled into the log's visible area
+  // the focus stays in the composer: the person just sent a message and keeps typing (Design, 2026-11-14)
+  expect(await page.evaluate(() => document.querySelector('agui-chat')!.shadowRoot!.activeElement?.tagName)).toBe('TEXTAREA')
+  await expect(page.locator('agui-chat [data-card-id="f1"][data-spot]')).toHaveCount(0, { timeout: 4000 })   // the glow ends
+  expect((bodies[bodies.length - 1].forwardedProps as { capabilities?: string[] }).capabilities).toContain('card.focus')
+  await say(page, 'And the other one')
+  await expect.poll(() => page.evaluate(() => (window as unknown as { missing?: { card_id: string } }).missing?.card_id)).toBe('gone')
+  await expect(page.locator('agui-chat [data-card-id]')).toHaveCount(1)
+})
+
+test('card_focus with reduced motion: the log jumps to the card at once, no glide', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const { inLog } = await focusThread(page)
+  await say(page, 'Show me that card again')
+  await expect(page.locator('agui-chat [data-card-id="f1"][data-spot]')).toHaveCount(1)
+  await page.waitForTimeout(100)
+  expect(await inLog()).toBe(true)   // there within 100 ms of the highlight
 })

@@ -1,0 +1,30 @@
+name: heldout_lang_cards_cover_de
+tags: [heldout, lang, cards]
+persona: >-
+  A driver who writes only in German, halfway through a car insurance quote for a 2019 Toyota Corolla, unsure which
+  cover level to take. They ask the assistant to help choose and answer its question.
+goal: Choose the cover level with the assistant's help.
+start:
+  page: /insure
+  form: car_insurance
+  values:
+    make: {id: toyota, name: Toyota}
+    model: {id: corolla, name: Corolla}
+    year: "2019"
+    vin: JTDBR32E720123456
+    usage: {id: personal, name: Personal}
+    driver_name: Jonas Weber
+    driver_birth: "1984-02-11"
+    license_year: "2004"
+    accidents: {id: "0", name: None}
+knows:
+  - Wants theft and fire covered, not damage to the own car
+turns: 4
+expect:
+  answered_by: [form]
+  cards: [ask]
+  cards_in_language: true                          # none of the form's English labels or notes on any card
+  never_ask_words: ["Third-party liability", "liability", "theft", "everything", "own damage", "Cover level"]
+  never_fill_words: ["Cover level", "liability"]   # Owner's phase 2
+  fields: {coverage: standard}
+min_score: 7

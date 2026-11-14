@@ -1,0 +1,13 @@
+name: lang_cards_english_no_translate
+tags: [cards]
+persona: A person writing in English who asks the assistant to help pick the loan type for home repairs.
+goal: Choose the loan type with the assistant's help.
+start: {page: /apply, form: loan_application}
+knows:
+  - About 400 000 for home repairs, no collateral
+turns: 3
+expect:
+  answered_by: [form]
+  never_model_kinds: [translate]     # an English conversation needs no card translation (18db8fe)
+  fields: {loan_type: consumer}
+min_score: 7

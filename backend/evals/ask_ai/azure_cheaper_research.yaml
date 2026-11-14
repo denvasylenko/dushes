@@ -1,0 +1,10 @@
+name: azure_cheaper_research
+ask: Use Azure OpenAI with a cheaper model for research
+runs: 5
+# One provider, a cheaper model per role: research stays on Azure with its own deployment (the owner's finding:
+# the answer mixed in a second provider, openai:gpt-5-mini with OPENAI_API_KEY).
+says:
+  - ["AzureChatOpenAI"]
+  - ["research"]
+  - ["azure_deployment"]
+never_says: ["OPENAI_API_KEY", "openai:gpt-5-mini"]

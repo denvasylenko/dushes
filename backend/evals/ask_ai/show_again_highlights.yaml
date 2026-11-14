@@ -1,0 +1,12 @@
+name: show_again_highlights
+# CPO, 2026-11-14: the person asks to see a card that is still in sight (the last 3 answers). The assistant does not
+# draw a copy: it points at the card (CUSTOM card_focus {card_id}) with one short line.
+# The widget says it can do that with forwardedProps.capabilities: [card.focus].
+turns:
+  - Use Azure OpenAI with a cheaper model for research
+  - Show me the config for that
+capabilities: [card.focus]
+runs: 5
+first_turn_cards: true
+highlights_first_card: true
+never_says: ["sorry", "apolog", "above", "below"]   # the text names the card; where it is, the page shows

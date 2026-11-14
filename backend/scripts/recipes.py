@@ -33,6 +33,8 @@ A scenario (evals/recipes/<name>.yaml):
       tool_args: {use_skill: {name: gift_cards}}   # a call of this tool with these arguments
       executed: {submit_request: false}     # the tool ran (true) or never ran (false): a result that is not an error
       cards: [confirm]                      # card kinds shown: set_fields, ask, confirm, upload, review, blocks
+      never_says: ["on the right"]          # none of these in any reply's text (e.g. no visible form to point at)
+      max_cards: {confirm: 1}               # at most this many cards of a kind in the whole run (one confirmation per send)
     transcribe: {file: hello.wav, words: [haircut, tuesday]}   # instead of turns: POST /agent/transcribe
 
 A run is a hit when every `expect` condition holds. The report goes to scripts/runs/recipes-<time>.json, and
@@ -62,7 +64,7 @@ RECIPES = HERE / "demo" / "recipes"
 SCENARIOS = HERE / "evals" / "recipes"
 SITE_DATA = HERE.parent / "site" / "src" / "data" / "recipes.json"
 KEYS = {"name", "recipe", "form", "page", "runs", "card", "turns", "client_tools", "documents", "expect", "transcribe", "tags", "answer"}
-EXPECT_KEYS = {"tools", "order", "never_tools", "tool_args", "executed", "cards"}
+EXPECT_KEYS = {"tools", "order", "never_tools", "tool_args", "executed", "cards", "never_says", "max_cards"}
 
 
 class RecipeError(ValueError):
@@ -339,16 +341,23 @@ def _arg_match(args: dict, want: dict) -> bool:
 
 
 def _ran(results: list[str]) -> bool:
-    bad = ("not executed", "a card or question is already waiting", "declined", "cancelled", "error")
+    bad = ("not executed", "a card or question is already waiting", "declined", "cancelled", "error", "the user declined",
+           "the user did not confirm")
     return any(r and not r.lower().startswith(bad) for r in results)
 
 
 def verdict(sc: RecipeScenario, calls: list[tuple[str, dict]], results: dict[str, list[str]],
-            cards: list[str] | None = None) -> list[dict]:
+            cards: list[str] | None = None, log: list[str] | None = None) -> list[dict]:
     names = [n for n, _a in calls]
     e, out = sc.expect, []
+    said = " ".join(x[2:] for x in log or [] if x.startswith("\U0001f916 ")).lower()   # every reply's text
+    for bad in e.get("never_says") or []:
+        out.append({"check": f"never says {bad}", "ok": str(bad).lower() not in said})
     for k in e.get("cards") or []:
         out.append({"check": f"shows a {k} card", "ok": k in (cards or [])})
+    for k, n in (e.get("max_cards") or {}).items():
+        shown = (cards or []).count(k)
+        out.append({"check": f"at most {n} {k} card{'s' if int(n) != 1 else ''}", "ok": shown <= int(n), "detail": f"{shown} shown"})
     for t in e.get("tools") or []:
         out.append({"check": f"calls {t}", "ok": t in names})
     if e.get("order") and e.get("tools"):
@@ -376,14 +385,14 @@ def play(sc: RecipeScenario, http, guide, i: int, offline: bool = False) -> dict
             if t.get("attach"):
                 visit.attach(t["attach"])
             visit.say(t.get("say") or "")
-        checks, log = verdict(sc, visit.tools, {}, [c.get("type") for c in visit.cards]), visit.log
+        checks, log = verdict(sc, visit.tools, {}, [c.get("type") for c in visit.cards], visit.log), visit.log
     else:
         chat = FormChat(http, sc.form, sc.card, sc.client_tools, sc.answer)
         for t in sc.turns:
             if t.get("attach"):
                 chat.attach(t["attach"])
             chat.turn(t.get("say"), t.get("prefill"))
-        checks, log = verdict(sc, chat.calls, chat.results, chat.cards), chat.log
+        checks, log = verdict(sc, chat.calls, chat.results, chat.cards, chat.log), chat.log
     hit = all(c["ok"] for c in checks)
     RUNS.mkdir(exist_ok=True)
     path = RUNS / f"recipe-{sc.name}-r{i + 1}{'-offline' if offline else ''}.txt"   # offline never overwrites live

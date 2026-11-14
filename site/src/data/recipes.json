@@ -8,6 +8,15 @@
     "date": "2026-11-14",
     "report": "backend/scripts/runs/recipes-20261114-163438.json"
   },
+  "chat-only-form": {
+    "runs": 20,
+    "hits": 12,
+    "scenarios": 2,
+    "tool": "",
+    "model": "claude-haiku-5-5",
+    "date": "2026-11-14",
+    "report": "backend/scripts/runs/recipes-20261115-000003.json"
+  },
   "confirm-side-effect": {
     "runs": 20,
     "hits": 19,

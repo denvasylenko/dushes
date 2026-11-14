@@ -1,0 +1,320 @@
+{
+ "runs": [
+  {
+   "date": "2026-11-11",
+   "time": "21:55",
+   "kind": "speed",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "scripted",
+    "judge": "none"
+   },
+   "scenarios": 5,
+   "repeat": 1,
+   "average": null,
+   "heldout": null,
+   "report": "backend/scripts/bench-20261111-215528.json",
+   "comparable": "speed",
+   "note": "median first word question 3.4s, fill 1.6s, choice 6.5s, documents 2.2s, booking 4.0s"
+  },
+  {
+   "date": "2026-11-11",
+   "time": "22:29",
+   "kind": "speed",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "scripted",
+    "judge": "none"
+   },
+   "scenarios": 2,
+   "repeat": 1,
+   "average": null,
+   "heldout": null,
+   "report": "backend/scripts/bench-20261111-222921.json",
+   "comparable": "speed",
+   "note": "median first word question 3.2s, fill 1.8s"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "00:43",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-haiku-5-5",
+    "judge": "claude-haiku-5-5"
+   },
+   "scenarios": 8,
+   "repeat": 1,
+   "average": 7.69,
+   "heldout": null,
+   "report": "backend/scripts/runs/evals-20261114-004351.json",
+   "comparable": "judge claude-haiku-5-5",
+   "note": "the judge was the agent's own model"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "00:59",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-haiku-5-5",
+    "judge": "claude-haiku-5-5"
+   },
+   "scenarios": 8,
+   "repeat": 1,
+   "average": 8.44,
+   "heldout": null,
+   "report": "backend/scripts/runs/evals-20261114-005947.json",
+   "comparable": "judge claude-haiku-5-5",
+   "note": "the judge was the agent's own model"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "02:04",
+   "kind": "speed",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "scripted",
+    "judge": "none"
+   },
+   "scenarios": 5,
+   "repeat": 2,
+   "average": null,
+   "heldout": null,
+   "report": "backend/scripts/bench-20261114-020431.json",
+   "comparable": "speed",
+   "note": "median first word question 3.5s, fill 0.8s, choice 2.4s, documents 4.7s, booking 1.1s"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "02:41",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-haiku-5-5",
+    "judge": "claude-haiku-5-5"
+   },
+   "scenarios": 19,
+   "repeat": 1,
+   "average": 6.92,
+   "heldout": null,
+   "report": "backend/scripts/runs/evals-20261114-024127.json",
+   "comparable": "judge claude-haiku-5-5",
+   "note": "the judge was the agent's own model"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "03:03",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-haiku-5-5",
+    "judge": "claude-haiku-5-5"
+   },
+   "scenarios": 19,
+   "repeat": 1,
+   "average": 6.95,
+   "heldout": null,
+   "report": "backend/scripts/runs/evals-20261114-030351.json",
+   "comparable": "judge claude-haiku-5-5",
+   "note": "the judge was the agent's own model"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "03:28",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-haiku-5-5",
+    "judge": "claude-haiku-5-5"
+   },
+   "scenarios": 32,
+   "repeat": 1,
+   "average": 7.72,
+   "heldout": 7.42,
+   "report": "backend/scripts/runs/evals-20261114-032821.json",
+   "comparable": "judge claude-haiku-5-5",
+   "note": "the judge was the agent's own model"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "03:55",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-haiku-5-5",
+    "judge": "claude-haiku-5-5"
+   },
+   "scenarios": 32,
+   "repeat": 1,
+   "average": 7.72,
+   "heldout": 8.75,
+   "report": "backend/scripts/runs/evals-20261114-035504.json",
+   "comparable": "judge claude-haiku-5-5",
+   "note": "the judge was the agent's own model"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "14:54",
+   "kind": "full round",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-haiku-5-5",
+    "judge": "claude-haiku-5-5"
+   },
+   "scenarios": 197,
+   "repeat": 1,
+   "average": 7.03,
+   "heldout": 6.74,
+   "report": "backend/scripts/runs/evals-20261114-145402.json",
+   "comparable": "judge claude-haiku-5-5",
+   "note": ""
+  },
+  {
+   "date": "2026-11-14",
+   "time": "15:52",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-sonnet-5-5",
+    "judge": "claude-sonnet-5-5"
+   },
+   "scenarios": 11,
+   "repeat": 1,
+   "average": 7.36,
+   "heldout": 8.12,
+   "report": "backend/scripts/runs/evals-20261114-155255.json",
+   "comparable": "judge claude-sonnet-5-5",
+   "note": ""
+  },
+  {
+   "date": "2026-11-14",
+   "time": "16:15",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-sonnet-5-5",
+    "judge": "claude-sonnet-5-5"
+   },
+   "scenarios": 13,
+   "repeat": 1,
+   "average": 7.96,
+   "heldout": 7.38,
+   "report": "backend/scripts/runs/evals-20261114-161527.json",
+   "comparable": "judge claude-sonnet-5-5",
+   "note": ""
+  },
+  {
+   "date": "2026-11-14",
+   "time": "17:14",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-sonnet-5-5",
+    "judge": "claude-sonnet-5-5"
+   },
+   "scenarios": 5,
+   "repeat": 1,
+   "average": 7.5,
+   "heldout": 5.0,
+   "report": "backend/scripts/runs/evals-20261114-171404.json",
+   "comparable": "judge claude-sonnet-5-5",
+   "note": ""
+  },
+  {
+   "date": "2026-11-14",
+   "time": "17:21",
+   "kind": "recipes",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "scripted",
+    "judge": "none"
+   },
+   "scenarios": 2,
+   "repeat": 10,
+   "average": 9.5,
+   "heldout": null,
+   "report": "backend/scripts/runs/recipes-20261114-172942.json",
+   "comparable": "tool calls",
+   "note": "19 of 20 runs called the expected tool (average = hits per 10 runs)"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "17:31",
+   "kind": "speed",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "scripted",
+    "judge": "none"
+   },
+   "scenarios": 5,
+   "repeat": 3,
+   "average": null,
+   "heldout": null,
+   "report": "backend/scripts/bench-20261114-173127.json",
+   "comparable": "speed",
+   "note": "median first word question 2.5s, fill 0.9s, choice 1.7s, documents 1.7s, booking 2.4s"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "18:32",
+   "kind": "scenario set",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "claude-sonnet-5-5",
+    "judge": "claude-sonnet-5-5"
+   },
+   "scenarios": 5,
+   "repeat": 1,
+   "average": 8.5,
+   "heldout": 8.5,
+   "report": "backend/scripts/runs/evals-20261114-183208.json",
+   "comparable": "judge claude-sonnet-5-5",
+   "note": ""
+  },
+  {
+   "date": "2026-11-14",
+   "time": "18:32",
+   "kind": "recipes",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "scripted",
+    "judge": "none"
+   },
+   "scenarios": 2,
+   "repeat": 10,
+   "average": 9.5,
+   "heldout": null,
+   "report": "backend/scripts/runs/recipes-20261114-184049.json",
+   "comparable": "tool calls",
+   "note": "19 of 20 runs called the expected tool (average = hits per 10 runs)"
+  },
+  {
+   "date": "2026-11-14",
+   "time": "18:43",
+   "kind": "speed",
+   "models": {
+    "agent": "claude-haiku-5-5",
+    "user": "scripted",
+    "judge": "none"
+   },
+   "scenarios": 5,
+   "repeat": 3,
+   "average": null,
+   "heldout": null,
+   "report": "backend/scripts/bench-20261114-184309.json",
+   "comparable": "speed",
+   "note": "median first word question 3.0s, fill 1.1s, choice 2.1s, documents 1.7s, booking 0.9s"
+  }
+ ],
+ "left_out": [
+  "evals-20261114-005409.json: 8 of 8 scenarios did not run (the server was down)",
+  "evals-20261114-010902.json: 7 of 8 scenarios did not run (the server was down)",
+  "evals-20261114-010923.json: 8 of 8 scenarios did not run (the server was down)",
+  "evals-20261114-165949.json: 5 of 5 scenarios did not run (the server was down)",
+  "evals-20261114-203120.json: another host's pilot (Herefront's cabinet) on a harness that did not yet know its form routes",
+  "recipes-20261114-163438.json: the prefill and confirm fixtures were wrong (a locked step, a Sunday); rerun later",
+  "recipes-20261114-171027.json: the confirm runner missed a held tool's result (fixed in the runner)",
+  "recipes-20261114-171816.json: the confirm runner missed a held tool's result (fixed in the runner)"
+ ]
+}

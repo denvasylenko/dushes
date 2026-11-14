@@ -1,0 +1,13 @@
+name: recipe_chat_only_form_no
+recipe: chat-only-form
+form: deputy_change
+card: confirm_no                # the user gives the values but closes the confirmation: nothing is sent
+runs: 10
+turns:
+  - Can I change my deputy?
+  - Dana Whitfield, dana.whitfield@northwind.example, from 1 March 2027, I am on vacation.
+  - Send it.
+expect:
+  cards: [confirm]
+  executed: {submit_deputy_change: false}
+  never_says: ["look at the form", "in the form on", "on the right", "on the left", "the field on", "fill in the form", "scroll", "the form above", "the form below"]   # no form is visible

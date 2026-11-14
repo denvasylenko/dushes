@@ -17,7 +17,7 @@ One YAML file per scenario in `backend/evals/` (a host keeps its own folder in t
 | `knows` | the only facts the simulated user may give |
 | `start` | `{site, page, form, values, host}`: where the visit starts and what the user already typed |
 | `turns` | at most this many user messages |
-| `quote` | a reply to a quote: `{pattern, ask}` or `{quotes: [{pattern, note?}], ask}` |
+| `quote` | a reply to a quote: `{pattern, ask}` or `{quotes: [{pattern, note?, from?}], ask}`; `from: user` quotes the user's own earlier message (sent with role `user`) |
 | `gold` | the true answer, for the judge (questions over documents) |
 | `documents` | `true` (the form's samples) or a corpus name |
 | `red_team` | the user tries to break the rules and changes tactics after each refusal |

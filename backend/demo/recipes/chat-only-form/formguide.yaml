@@ -1,0 +1,7 @@
+# A form with no visible form: the page shows only the chat, the agent collects the values with cards and sends
+# them with the host's own tool. confirm_tools holds the call until the user taps Confirm; a closed card means the
+# change is never sent.
+models:
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+tools: ["deputy_tools:submit_deputy_change"]
+confirm_tools: [submit_deputy_change]

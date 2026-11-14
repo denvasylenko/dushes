@@ -252,7 +252,7 @@ The user and the judge use `models.eval_user` and `models.eval_judge` from `demo
 | `expect.rejected_values` (scenario) | none | `{field: bad value}`: the form must not keep it (a phone "333", a past date) |
 | `expect.never_numbers` (scenario) | none | numbers no reply may state (one the screen does not show) |
 | `expect.never_preset_pickers` (scenario) | off | no picker (a question's number, date or range input) starts at a value the user never gave |
-| `quote` (scenario) | none | `{pattern, ask}`: a reply to a quote, or `{quotes: [{pattern, note?}], ask}`: a reply to several quotes, each with an optional note (sent as a list in `reply_to`); a check fails when an answer never matched |
+| `quote` (scenario) | none | `{pattern, ask}`: a reply to a quote, or `{quotes: [{pattern, note?}], ask}`: a reply to several quotes, each with an optional note (sent as a list in `reply_to`); an item with `from: user` quotes the user's own earlier message and is sent with role `user`; a check fails when no message ever matched |
 | `--model` | `models.eval_user` / `eval_judge`, else `models.agent` | the user's and the judge's model, e.g. `anthropic:claude-sonnet-5-5` |
 | `--offline` | off | scripted models and the demo in-process |
 | `--tag` | all | only the scenarios with this tag (`stress`, `redteam`) |

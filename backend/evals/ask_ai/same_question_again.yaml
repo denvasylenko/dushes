@@ -1,0 +1,11 @@
+name: same_question_again
+# Complaint 25 (the owner's screenshot): the landing starter asked twice in one thread. The second answer points to
+# the cards already shown instead of showing the same code card again, and it does not apologise for the first.
+# Measured 2026-11-14, 5 runs: 1/5 on f316897 (before fe6dc61 and 463acba), 5/5 after.
+turns:
+  - Use Azure OpenAI with a cheaper model for research
+  - Use Azure OpenAI with a cheaper model for research
+runs: 5
+first_turn_cards: true
+no_repeated_cards: true
+never_says: ["sorry", "apolog", "my earlier reply", "my previous", "instead of in cards", "let me correct", "I should have"]

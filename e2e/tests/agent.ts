@@ -41,3 +41,25 @@ export async function fakeMic(page: Page): Promise<void> {
     }
   })
 }
+
+/** A streamed agent inside the page: each /agent/run answers with the next script, its events `gapMs` apart, so a
+ *  turn lasts long enough for what only slow turns show (the steps line appears after the first second). */
+export async function slowAgent(page: Page, scripts: Event[][], gapMs = 500): Promise<void> {
+  await page.addInitScript(({ scripts, gapMs }) => {
+    let i = 0
+    const real = window.fetch.bind(window)
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (!url.includes('/agent/run')) return real(input, init)
+      const events = scripts[Math.min(i++, scripts.length - 1)]
+      const enc = new TextEncoder()
+      const body = new ReadableStream<Uint8Array>({
+        async start(c) {
+          for (const e of events) { c.enqueue(enc.encode(`data: ${JSON.stringify(e)}\n\n`)); await new Promise((r) => setTimeout(r, gapMs)) }
+          c.close()
+        },
+      })
+      return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
+    }
+  }, { scripts, gapMs })
+}

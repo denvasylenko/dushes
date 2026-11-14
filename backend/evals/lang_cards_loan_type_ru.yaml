@@ -1,0 +1,19 @@
+name: lang_cards_loan_type_ru
+tags: [lang, cards]
+persona: >-
+  A person who writes only in Russian and opens the loan application without knowing which loan type to pick. They
+  ask the assistant to help choose the loan type and answer its question.
+goal: Choose the loan type with the assistant's help.
+start: {page: /apply, form: loan_application}
+knows:
+  - Wants money for home repairs, about 400 000, without collateral
+turns: 4
+expect:
+  answered_by: [form]
+  cards: [ask]
+  cards_in_language: true                          # none of the form's English labels or notes on any card
+  # CPO rule: everything on a card is in the user's language; option ids stay the form's (consumer, mortgage...)
+  never_ask_words: ["Consumer loan", "Mortgage", "Car loan", "Refinancing", "Loan type"]
+  never_fill_words: ["Consumer loan", "Loan type"]   # the fill card: Owner's phase 2, fails until it lands
+  fields: {loan_type: consumer}
+min_score: 7

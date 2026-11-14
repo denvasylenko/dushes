@@ -1,0 +1,8 @@
+name: anthropic_cheaper_research
+ask: Use Anthropic for the agent and a cheaper Anthropic model for research
+runs: 5
+says:
+  - ["research"]
+  - ["anthropic"]
+  - ["haiku"]
+never_says: ["OPENAI_API_KEY", "openai:", "AzureChatOpenAI", "azure_deployment"]

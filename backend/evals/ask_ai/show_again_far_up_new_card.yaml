@@ -1,0 +1,15 @@
+name: show_again_far_up_new_card
+# The other side of "highlight, not a duplicate": four other questions later the first card is out of sight (older
+# than the last 3 answers), so "show me the config" draws a card again, with a new id, and highlights nothing.
+turns:
+  - Use Azure OpenAI with a cheaper model for research
+  - How do I add the chat widget to a page?
+  - Which languages do the cards support?
+  - How do I keep conversations after a restart?
+  - How do I run the scenario evals?
+  - Show me the config for Azure OpenAI with a cheaper research model again
+capabilities: [card.focus]
+runs: 3
+first_turn_cards: true
+new_card_no_highlight: true
+never_says: ["sorry", "apolog", "above"]   # the card is drawn below this line: "above" would point at nothing

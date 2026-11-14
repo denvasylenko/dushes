@@ -1,0 +1,12 @@
+name: no_apology_no_repeat
+# A follow-up in the same thread (CPO): the second answer neither apologises for nor "corrects" the first, and it
+# does not show the first answer's code card again.
+turns:
+  - How do I pick a model provider?
+  - And which key sets the research model?
+runs: 5
+first_turn_cards: true
+no_repeated_cards: true
+says:
+  - ["research"]
+never_says: ["sorry", "apolog", "my earlier reply", "my previous", "instead of in cards", "let me correct", "I should have"]

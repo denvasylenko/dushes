@@ -297,6 +297,7 @@ class Visit:
         self.suggestions: list[list[str]] = []   # each set of quick replies offered, in order
         self.stats: list[dict] = []        # per run: ttft_ms, total_ms, tools, tool_errors, output_tokens, model_ms
         self.replies: list[tuple[str, str]] = []   # (message id, text) of every assistant reply, as the widget keeps them
+        self.said: list[tuple[str, str]] = []      # (message id, text) of every message the user sent
         self.go(path)
 
     # ------------------------------------------------------------ the page
@@ -333,7 +334,9 @@ class Visit:
         quotes = reply_to if isinstance(reply_to, list) else [reply_to] if reply_to else []
         self.log.append(f"\n👤 {text}" + "".join(f"  (replying to the quote \"{q.get('quote')}\"" + (f" with the note \"{q['note']}\"" if q.get("note") else "")
                                                 + ")" for q in quotes))
-        body: dict[str, Any] = {"threadId": self.thread, "messages": [{"role": "user", "content": text}], "state": self.state()}
+        mid = f"user-{len(self.said) + 1}"   # the widget gives each user message an id: a quote of one's own message names it
+        self.said.append((mid, text))
+        body: dict[str, Any] = {"threadId": self.thread, "messages": [{"id": mid, "role": "user", "content": text}], "state": self.state()}
         if reply_to:
             body["forwardedProps"] = {"reply_to": reply_to}
         self._run(body)
@@ -385,7 +388,8 @@ class Visit:
                     self.stats.append({"ttft_ms": v.get("ttft_ms"), "total_ms": v.get("total_ms"),
                                        "tools": len(v.get("tools") or []),
                                        "tool_errors": sum(1 for t in v.get("tools") or [] if t.get("error")),
-                                       "output_tokens": (v.get("tokens") or {}).get("output"), "model_ms": v.get("model_ms")})
+                                       "output_tokens": (v.get("tokens") or {}).get("output"), "model_ms": v.get("model_ms"),
+                                       "kinds": [str(m.get("kind")) for m in v.get("models") or []]})
                 elif name == "ui_directive" and self.form:
                     self.form.directive(e["value"])
                     self.log.append(f"   🔦 highlight {e['value'].get('target')}")
@@ -430,6 +434,14 @@ class Visit:
         """The conversation as the server keeps it, with who answered each message."""
         r = self.http.get(f"{self.site}/threads/{self.thread}")
         self.messages = r.json().get("messages", []) if r.status_code == 200 else []
+        for m in self.messages:   # another host may call the site agent "site"
+            if m.get("agent") == "site":
+                m["agent"] = "dushes"
+        answered = any(line.startswith("\U0001f916 ") for line in self.log)
+        if answered and not any(m.get("role") == "assistant" for m in self.messages):
+            # the chat answered but the host's thread route gave no messages: the text checks would be meaningless
+            self.errors.append(f"no thread messages from the host: GET {self.site}/threads/<id> answered {r.status_code} "
+                               "without the assistant's replies (checks on the text cannot be trusted)")
         return self.messages
 
     def transcript(self) -> str:

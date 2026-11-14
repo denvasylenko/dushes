@@ -83,11 +83,26 @@ def test_the_docs_get_the_evals_and_models_numbers(tmp_path):
     d = eval_summary.site_evals(rep, eval_summary.RUNS / "evals-x.json", eval_summary.HAIKU, tmp_path / "evals.json")
     assert d["date_from"] == "2026-11-14" and d["date_to"] == "2026-11-15" and d["heldout"] == {"average": 9.0, "min": 9, "count": 1}
     assert d["worst"][0] == {"name": "lab_b_fill", "score": 5, "reason": "It invented a price."} and d["target"]["met"]
-    row = model_bench.row(rep, {"anthropic:claude-haiku-5-5": {"input": 0.1, "output": 0.5, "cache_read": 0.01}}, {})
-    m = model_bench.site_models([row], "Apple M1 Pro, 16 GB", [], tmp_path / "models.json")
-    assert m["models"][0]["model"] == "Claude Haiku 5.5" and m["models"][0]["bar"] and m["cheapest_passing"] == "anthropic:claude-haiku-5-5"
+    prices = {"checked": "2026-11-14", "source": "https://example.test/pricing",
+              "models": {"claude-haiku-5-5": {"input": 0.1, "output": 0.5, "cache_read": 0.01},
+                         "claude-sonnet-5-5": {"input": 3, "output": 15, "cache_read": 0.3}}}
+    assert model_bench.row(rep, prices, {})["cost_per_turn"] is not None
+    assert model_bench.wilson(9, 10) == [0.596, 0.982] and model_bench.wilson(0, 0) is None
+    rj = tmp_path / "rejudge.json"
+    rj.write_text(json.dumps({"second_judge": "openai:other", "n": 2, "report": "missing.json", "mean_first": 7.0, "mean_second": 6.5,
+                              "rows": [{"name": "a", "first": 9, "second": 8.5, "diff": -0.5}, {"name": "b", "first": 5, "second": 3, "diff": -2}]}))
+    m = model_bench.site_models([rep], prices, "Apple M1 Pro, 16 GB", [], [rj], tmp_path / "models.json")
+    one = m["models"][0]
+    assert one["id"] == "anthropic:claude-haiku-5-5" and not one["local"] and one["runs"] == 2 and one["passes"] == 1
+    assert one["pass_rate"] == 0.5 and one["interval95"] == model_bench.wilson(1, 2) and one["code_check_failures"] == 1
+    assert one["sets"]["heldout"]["pass_rate"] == 1.0 and one["sets"]["form"]["scenarios"] == 2
+    assert one["ttft_p50_s"] == 0.9 and one["turn_p95_s"] == 4.0 and one["cost_per_turn_usd"] == 0.00011
+    assert one["quality_per_dollar"] == round(0.5 / 0.00011)
+    assert one["losses"][0]["scenario"] == "lab_b_fill" and one["losses"][0]["failed_checks"] == ["x"]
+    assert m["second_judge"] == {"model": "openai:other", "sample": 2, "agreement": 0.5, "means": {"missing.json": {"first": 7.0, "second": 6.5}}}
+    assert m["method"]["judge_model"] == "claude-sonnet-5-5" and m["method"]["prices_checked"] == "2026-11-14" and m["total_cost_usd"] is not None
     with pytest.raises(SystemExit, match="not comparable"):
-        model_bench.site_models([row, {**row, "commit": "def"}], "", [], tmp_path / "models.json")
+        model_bench.site_models([rep, {**rep, "commit": "def"}], prices, "", [], None, tmp_path / "models.json")
 
 
 def test_bench_prices_a_turn_from_the_price_file():
@@ -138,3 +153,14 @@ def test_bench_prices_a_call_without_a_model_id_by_the_turns_model():
            "models": [{**call, "model": "claude-haiku-5-5"}, {**call, "model": None}]}
     out = bench.summarize([run], prices)
     assert "unpriced_models" not in out and out["cost_usd"] > 0
+
+
+def test_a_recipe_can_forbid_words_in_the_replies():
+    sc = recipes.load(recipes.SCENARIOS / "recipe_chat_only_form_yes.yaml")
+    bad = recipes.verdict(sc, [], {}, [], ["\n\U0001f464 hi", "\U0001f916 Look at the form on the right."])
+    assert [c["check"] for c in bad if c["check"].startswith("never says") and not c["ok"]] == ["never says look at the form", "never says on the right"]
+    assert all(c["ok"] for c in recipes.verdict(sc, [], {}, [], ["\U0001f916 Who is the new deputy?"]) if c["check"].startswith("never says"))
+    assert not recipes._ran(["The user declined; the tool was not run."]) and recipes._ran(["Deputy change DP-1 sent."])
+    two = recipes.verdict(sc, [], {}, ["confirm", "set_fields", "confirm"], [])
+    assert [c["ok"] for c in two if c["check"] == "at most 1 confirm card"] == [False]
+    assert [c["ok"] for c in recipes.verdict(sc, [], {}, ["confirm"], []) if c["check"] == "at most 1 confirm card"] == [True]

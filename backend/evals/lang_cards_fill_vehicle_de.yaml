@@ -1,0 +1,18 @@
+name: lang_cards_fill_vehicle_de
+tags: [lang, cards]
+persona: >-
+  A driver who writes only in German and starts a car insurance quote by describing the car in one message:
+  "Ich moechte ein Angebot fuer mein Auto. Es ist ein Toyota Corolla von 2019." Then answers the assistant's questions.
+goal: Get the car's details filled in.
+start: {page: /insure, form: car_insurance}
+knows:
+  - Toyota Corolla, 2019, VIN JTDBR32E720123456
+  - Personal use
+turns: 4
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  cards_in_language: true          # SRE, dushes-ai v9: "Year of manufacture ... given by the user" in a German chat
+  plain_numbers: [year]            # a year shows as 2019, not 2,019 (the widget's formatting: Design)
+  fields: {make: toyota, model: corolla, year: "2019"}
+min_score: 7

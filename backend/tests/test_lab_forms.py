@@ -201,3 +201,65 @@ def test_a_preset_picker_is_caught():
     assert not next(c for c in evals.checks(sc, V()) if c["check"] == "never presets a picker")["ok"]
     V.cards = [{"type": "ask", "question": "Licence year?", "input": {"type": "number", "min": 2026, "max": 2026}}]
     assert next(c for c in evals.checks(sc, V()) if c["check"] == "never presets a picker")["ok"]
+
+
+def test_cards_in_the_users_language():
+    sc = evals.Scenario(name="x", persona="p", goal="g", never_ask_words=["Consumer loan", "Mortgage"], never_fill_words=["Loan type"])
+
+    class V:
+        cards = [{"type": "ask", "question": "Quale prestito?", "options": [{"id": "consumer", "label": "Prestito personale"}, {"id": "mortgage", "label": "Mortgage"}]},
+                 {"type": "set_fields", "changes": [{"name": "loan_type", "label": "Loan type", "display": "Prestito personale"}]}]
+        messages, forms, tools, sources, errors, log, path = [], {}, [], [], [], [], "/"
+    ok = {c["check"]: c["ok"] for c in evals.checks(sc, V())}
+    assert ok == {"no question card shows Consumer loan": True, "no question card shows Mortgage": False,
+                  "no field-change card shows Loan type": False}
+
+
+def test_cards_in_language_derives_the_english_from_the_form():
+    sc = evals.Scenario(name="x", persona="p", goal="g", cards_in_language=True, plain_numbers=["year"])
+
+    class F:
+        config = {"props": {"year": {"label": "Year of manufacture"}, "make": {"label": "Make", "options": [{"id": "toyota", "name": "Toyota"}]},
+                            "usage": {"label": "How the car is used", "options": [{"id": "commute", "name": "Commuting to work"}]}}, "state": {}}
+
+    class V:
+        cards = [{"type": "set_fields", "changes": [{"name": "year", "label": "Year of manufacture", "display": "2,019", "reason": "given by the user"},
+                                                    {"name": "make", "label": "Marke", "display": "Toyota"}]}]
+        messages, tools, sources, errors, log, path = [], [], [], [], [], "/"
+        forms = {"f": F()}
+    ok = {c["check"]: c for c in evals.checks(sc, V())}
+    assert not ok["cards are in the user's language"]["ok"] and "Year of manufacture" in ok["cards are in the user's language"]["detail"]
+    assert "Toyota" not in ok["cards are in the user's language"]["detail"]   # a one-word brand is the same in every language
+    assert not ok["year shows without a thousands separator"]["ok"]
+    V.cards = [{"type": "set_fields", "changes": [{"name": "year", "label": "Baujahr", "display": "2019", "reason": "von Ihnen genannt"}]}]
+    ok = {c["check"]: c["ok"] for c in evals.checks(sc, V())}
+    assert ok["cards are in the user's language"] and ok["year shows without a thousands separator"]
+
+
+def test_a_quote_of_the_users_own_message_is_sent_with_the_user_role(tmp_path):
+    """quote item `from: user`: the text is selected in the user's own message; reply_to carries role "user"."""
+    import evals
+    from harness_client import Visit
+    q = evals._quote(tmp_path / "q.yaml", {"quotes": [{"pattern": "500 000", "from": "user"}], "ask": "make it 300 000"})
+    v = Visit.__new__(Visit)
+    v.said, v.replies = [("user-1", "I want 500 000 for 36 months")], [("a1", "500 000 over 36 months it is.")]
+    assert evals.find_quotes(v, q) == [{"message_id": "user-1", "quote": "500 000", "role": "user"}]
+    assert evals.find_quote(v, "500 000") == {"message_id": "a1", "quote": "500 000"}
+    with pytest.raises(evals.ScenarioError):
+        evals._quote(tmp_path / "q.yaml", {"quotes": [{"pattern": "x", "from": "assistant"}], "ask": "y"})
+    assert evals.load_scenario(evals.EVALS / "quote_own_message_amount.yaml").quote["items"][0]["from"] == "user"
+
+
+def test_ask_ai_highlight_not_a_duplicate_is_checked_in_code():
+    import ask_ai_evals as aa
+    card = {"id": "card_aaaaaaaa", "blocks": [{"code": "x"}]}
+    ok = lambda checks: [c["ok"] for c in checks]
+    first = {"cards": [card], "highlights": []}
+    hl = {"highlights_first_card": True}
+    assert ok(aa.highlight_checks(hl, [first, {"cards": [], "highlights": [{"card_id": "card_aaaaaaaa"}]}])) == [True, True, True]
+    assert ok(aa.highlight_checks(hl, [first, {"cards": [{**card, "id": "card_bbbbbbbb"}], "highlights": []}])) == [True, False, False]
+    assert ok(aa.highlight_checks(hl, [{"cards": [{"blocks": []}], "highlights": []}, {"cards": [], "highlights": []}]))[0] is False
+    new = {"new_card_no_highlight": True}
+    assert ok(aa.highlight_checks(new, [first, {"cards": [{**card, "id": "card_bbbbbbbb"}], "highlights": []}])) == [True, True]
+    assert ok(aa.highlight_checks(new, [first, {"cards": [], "highlights": [{"card_id": "card_aaaaaaaa"}]}])) == [False, False]
+    assert {q["name"] for q in aa.load()} >= {"show_again_highlights", "show_again_far_up_new_card"}

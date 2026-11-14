@@ -1,0 +1,18 @@
+name: lang_cards_loan_type_it
+tags: [lang, cards]
+persona: >-
+  A person who writes only in Italian, on the loan application, unsure which loan type fits buying a used car. They
+  ask the assistant to help choose and answer its question.
+goal: Choose the loan type with the assistant's help.
+start: {page: /apply, form: loan_application}
+knows:
+  - Wants to buy a 2021 Skoda for about 900 000
+turns: 4
+expect:
+  answered_by: [form]
+  cards: [ask]
+  cards_in_language: true                          # none of the form's English labels or notes on any card
+  never_ask_words: ["Consumer loan", "Mortgage", "Car loan", "Refinancing", "Loan type"]
+  never_fill_words: ["Car loan", "Loan type"]   # Owner's phase 2
+  fields: {loan_type: auto}
+min_score: 7

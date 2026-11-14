@@ -42,7 +42,7 @@ KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_sco
 START_KEYS = {"page", "form", "values", "site", "host"}   # host: for a host's own runner (e.g. Herefront)
 EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
-               "never_preset_pickers"}
+               "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
 RUBRIC = """Score the assistant from 0 to 10 (10: a person would be fully satisfied). Take points off for:
 - truth: a fact about the business (prices, rates, rules, hours, partners) that the site or its documents do not
@@ -102,6 +102,11 @@ class Scenario:
     rejected_values: dict[str, Any] = field(default_factory=dict)    # {field: a bad value the form must not keep}
     never_numbers: list[str] = field(default_factory=list)           # numbers no reply may state (not on the screen)
     never_preset_pickers: bool = False                     # no picker (a question's input) starts at a value the user never gave
+    never_ask_words: list[str] = field(default_factory=list)    # words no question card may show (question, option labels)
+    never_fill_words: list[str] = field(default_factory=list)   # words no field-change card may show (labels, displays)
+    never_model_kinds: list[str] = field(default_factory=list)   # model calls that must not happen (translate in English)
+    cards_in_language: bool = False                        # no card shows the form's own English labels or English notes
+    plain_numbers: list[str] = field(default_factory=list)       # fields whose value a card shows without a thousands separator
     never_tools: list[str] = field(default_factory=list)    # tools it must not call (no researcher when the site knows)
     sources: list[str] = field(default_factory=list)        # source chips that must be shown: "file" or "file > section"
     corpus: str | None = None                               # documents: <name>: demo/research_corpora/<name>/ for the form
@@ -141,14 +146,19 @@ def load_scenario(path: Path) -> Scenario:
                     never_suggests=[str(x) for x in exp.get("never_suggests") or []],
                     never_says_after_card=[str(x) for x in exp.get("never_says_after_card") or []],
                     rejected_values=dict(exp.get("rejected_values") or {}), never_numbers=[str(x) for x in exp.get("never_numbers") or []],
-                    never_preset_pickers=bool(exp.get("never_preset_pickers")), sources=[str(x) for x in exp.get("sources") or []],
+                    never_preset_pickers=bool(exp.get("never_preset_pickers")),
+                    never_ask_words=[str(x) for x in exp.get("never_ask_words") or []],
+                    never_fill_words=[str(x) for x in exp.get("never_fill_words") or []],
+                    never_model_kinds=[str(x) for x in exp.get("never_model_kinds") or []],
+                    cards_in_language=bool(exp.get("cards_in_language")), plain_numbers=[str(x) for x in exp.get("plain_numbers") or []], sources=[str(x) for x in exp.get("sources") or []],
                     corpus=raw["documents"] if isinstance(raw.get("documents"), str) else None, gold=str(raw.get("gold") or "").strip(), quote=_quote(path, raw.get("quote")))
 
 
 def _quote(path: Path, q: Any) -> dict:
     """quote: {pattern, ask} or {quotes: [{pattern, note?}], ask}: once the answers contain every pattern, the user
     selects those texts (with a note on each where given) and sends `ask` as a reply to them, like the widget:
-    forwardedProps.reply_to = [{message_id, quote, note?}] (a single object for the one-pattern form)."""
+    forwardedProps.reply_to = [{message_id, quote, note?}] (a single object for the one-pattern form). An item with
+    `from: user` selects the text in the user's OWN earlier message instead and is sent with role "user"."""
     if not q:
         return {}
     import re
@@ -156,8 +166,8 @@ def _quote(path: Path, q: Any) -> dict:
         raise ScenarioError(f"{path.name}: quote takes pattern and ask, or quotes and ask")
     items = [{"pattern": q["pattern"]}] if "pattern" in q else list(q["quotes"] or [])
     for it in items:
-        if not isinstance(it, dict) or "pattern" not in it or set(it) - {"pattern", "note"}:
-            raise ScenarioError(f"{path.name}: each of quote.quotes takes pattern and note")
+        if not isinstance(it, dict) or "pattern" not in it or set(it) - {"pattern", "note", "from"} or it.get("from", "user") != "user":
+            raise ScenarioError(f"{path.name}: each of quote.quotes takes pattern, note and from (user)")
         try:
             re.compile(str(it["pattern"]))
         except re.error as e:
@@ -165,13 +175,14 @@ def _quote(path: Path, q: Any) -> dict:
     return {"items": [{k: str(v) for k, v in it.items()} for it in items], "ask": str(q["ask"]), "list": "quotes" in q}
 
 
-def find_quote(visit: Visit, pattern: str) -> dict | None:
-    """The newest answer that contains `pattern`: {message_id, quote} with the matched text (at most 300 characters)."""
+def find_quote(visit: Visit, pattern: str, own: bool = False) -> dict | None:
+    """The newest answer (own: the newest message of the user) that contains `pattern`: {message_id, quote} with the
+    matched text (at most 300 characters), plus role "user" for the user's own message, as the widget sends it."""
     import re
-    for mid, text in reversed(visit.replies):
+    for mid, text in reversed(visit.said if own else visit.replies):
         m = re.search(pattern, text)
         if m:
-            return {"message_id": mid, "quote": m.group(0)[:300]}
+            return {"message_id": mid, "quote": m.group(0)[:300], **({"role": "user"} if own else {})}
     return None
 
 
@@ -179,7 +190,7 @@ def find_quotes(visit: Visit, q: dict) -> dict | list | None:
     """Every quote of the scenario found in the answers (in the scenario's order), or None while one is missing."""
     found = []
     for it in q["items"]:
-        rt = find_quote(visit, it["pattern"])
+        rt = find_quote(visit, it["pattern"], it.get("from") == "user")
         if not rt:
             return None
         found.append({**rt, **({"note": it["note"]} if it.get("note") else {})})
@@ -384,6 +395,30 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         out.append({"check": "never repeats a question", "ok": not twice and not filled,
                     "detail": ("asked twice: " + "; ".join(twice) if twice else "") + (" asked about filled: " + ", ".join(filled) if filled else ""),
                     "cap": CAP_OTHER})
+    for kind, words, texts in (("question", sc.never_ask_words, _card_texts(visit, "ask")),
+                               ("field-change", sc.never_fill_words, _card_texts(visit, "set_fields"))):
+        for w in words:   # the card's own payload, in the user's language: no English label left (a card is not prose)
+            hit = next((t for t in texts if _says(t, w)), None)
+            out.append({"check": f"no {kind} card shows {w}", "ok": hit is None, "detail": (hit or "")[:160], "cap": CAP_OTHER})
+    kinds = [k for st in getattr(visit, "stats", []) for k in st.get("kinds") or []]
+    for k in sc.never_model_kinds:
+        out.append({"check": f"no {k} model call", "ok": k not in kinds, "detail": f"{kinds.count(k)} call(s)", "cap": CAP_OTHER})
+    if sc.cards_in_language:   # the form's English labels, its multi-word option names and English notes: none on a card
+        english = set(ENGLISH_NOTES)
+        for f in visit.forms.values():
+            for pr in (f.config.get("props") or {}).values():
+                if len(str(pr.get("label") or "")) >= 4:
+                    english.add(str(pr["label"]))
+                english.update(str(o.get("name")) for o in pr.get("options") or [] if len(str(o.get("name") or "").split()) >= 2)
+        texts = _card_texts(visit, "ask") + _card_texts(visit, "set_fields")
+        found = sorted({w for w in english for t in texts if _says(t, w)})
+        out.append({"check": "cards are in the user's language", "ok": not found, "detail": ", ".join(found)[:200], "cap": CAP_OTHER})
+    for name in sc.plain_numbers:
+        import re
+        shown = [str(x.get("display") or "") for c in visit.cards if c.get("type") == "set_fields" for x in c.get("changes") or [] if x.get("name") == name]
+        bad = [d for d in shown if re.search(r"\d[,.\u00a0\u202f ]\d{3}\b", d)]
+        out.append({"check": f"{name} shows without a thousands separator", "ok": bool(shown) and not bad,
+                    "detail": ", ".join(bad) or ("not on a card" if not shown else ""), "cap": CAP_OTHER})
     if sc.never_preset_pickers:
         preset = [c for c in visit.cards if c.get("type") == "ask" and isinstance(c.get("input"), dict) and c["input"].get("value") not in (None, "")]
         out.append({"check": "never presets a picker", "ok": not preset,
@@ -425,10 +460,26 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         out.append({"check": f"reaches {sc.reaches}", "ok": visit.path == sc.reaches, "detail": f"ended on {visit.path}", "cap": CAP_OTHER})
     if sc.quote:
         out.append({"check": "replies to a quote", "ok": any("replying to the quote" in x for x in visit.log),
-                    "detail": "no answer contained " + " and ".join(i["pattern"] for i in sc.quote["items"]), "cap": CAP_OTHER})
+                    "detail": "no message contained " + " and ".join(i["pattern"] for i in sc.quote["items"]), "cap": CAP_OTHER})
     if visit.errors:
         out.append({"check": "no run errors", "ok": False, "detail": "; ".join(visit.errors)[:300], "cap": CAP_OTHER})
     return out
+
+
+ENGLISH_NOTES = ("given by the user", "given by you", "from the chat", "from your message", "Given by you in the chat")
+
+
+def _card_texts(visit: Visit, kind: str) -> list[str]:
+    """What cards of a kind show: a question and its option labels; a change card's labels and displays."""
+    out: list[str] = []
+    for c in visit.cards:
+        if c.get("type") != kind:
+            continue
+        if kind == "ask":
+            out += [str(c.get("question") or "")] + [str(o.get("label") or "") for o in c.get("options") or []]
+        else:
+            out += [str(x.get(k) or "") for x in c.get("changes") or [] for k in ("label", "display", "shown", "reason", "note")]
+    return [t for t in out if t]
 
 
 def _replies_after_first_card(visit: Visit) -> list[str]:

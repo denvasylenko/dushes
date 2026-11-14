@@ -1,0 +1,10 @@
+name: show_again_old_page_new_card
+# A page whose widget cannot scroll to a card (no card.focus capability) gets the card drawn again, as before:
+# nothing is pointed at, so the person is never told "above" with nothing happening.
+turns:
+  - Use Azure OpenAI with a cheaper model for research
+  - Show me the config for that
+runs: 5
+first_turn_cards: true
+new_card_no_highlight: true
+never_says: ["sorry", "apolog", "above"]

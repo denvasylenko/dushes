@@ -1,0 +1,29 @@
+name: quote_own_message_amount
+tags: [quote]
+persona: >-
+  Someone starting a consumer loan application. Their first message is exactly "I want 500 000 for 36 months".
+  They accept what the assistant proposes. Then they change their mind: they select "500 000" in their OWN first
+  message and reply to it with a new figure.
+goal: Start with 500 000 for 36 months, then lower the amount to 300 000 by replying to their own earlier figure.
+start:
+  page: /apply
+  form: loan_application
+  values:
+    loan_type: {id: consumer, name: Consumer loan}
+knows:
+  - Wants a consumer loan; first 500 000 for 36 months, then decides 300 000 is enough
+  - The 500 000 was their own figure, said in their own message, not something the assistant said
+quote:
+  quotes:
+    - {pattern: "500[\\s\\u00a0,.]?000", from: user}
+  ask: make it 300 000
+turns: 4
+# The quote is of the user's own message (the widget sends role "user"): the agent must read 500 000 as the user's
+# figure and change it, never as part of its own earlier answer (Owner, 2026-11-14).
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields:
+    loan_amount: "300000"
+  never_says: ["as I said", "I mentioned", "my earlier answer", "my previous answer", "as I mentioned"]
+min_score: 7
