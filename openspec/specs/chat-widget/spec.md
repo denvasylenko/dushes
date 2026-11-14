@@ -43,16 +43,18 @@ With `typing="plain"`, text SHALL appear as it arrives without effects. With `pr
 - **THEN** text, cards and the panel appear without animation
 
 ### Requirement: Live tool steps
-While a run is active, the widget SHALL show the agent's tool calls as a step list:
-- each step has a label from the label map, or the tool name;
-- the step in progress shows a spinner, and a finished step a tick;
-- a failed step is marked.
-
-Steps SHALL be collapsible, and `tool-steps="off"` SHALL hide them.
+While a run is active, the widget SHALL show the agent's tool calls as one line of fixed height, in the place of the typing dots: a spinner and the current step's label (from the label map, or the tool name), changed in place. A chevron SHALL open the step list (collapsed by default): a tick for a finished step, a mark for a failed one, and a repeated step merged into one row with its count. When the run ends the line SHALL read "Done in N s" in the same place; `tool-steps="off"` SHALL hide it.
 
 #### Scenario: A search step
-- **WHEN** the agent calls `search_fields` and it returns
-- **THEN** a labelled step appears with a spinner and turns into a tick
+- **WHEN** the agent searches the business documents twice and answers after 4 s
+- **THEN** one line reads "Searching the business documents…" while it works and "Done in 4 s ›" after, and its list has one row "Searching the business documents (2)"
+
+### Requirement: Quick answers show no steps line
+The steps line SHALL appear only after the first second of a run, so an answer quicker than that shows no line at all; the content SHALL NOT move when the line appears, changes or ends.
+
+#### Scenario: A quick look-up
+- **WHEN** the agent calls a tool and answers within half a second
+- **THEN** only the answer appears, with no steps line above it
 
 ### Requirement: Built-in themes load on demand
 The widget SHALL build in `default`; `contrast`, `glass`, `bold` and `messenger` SHALL ship as packs loaded the first time a chat uses one, showing the default look until the pack arrives.
@@ -192,14 +194,14 @@ A plugin MAY name tools as `quietSteps`. A turn whose steps are all such tools S
 
 #### Scenario: Only looking at the form
 - **WHEN** the formguide agent calls `get_fields` and answers
-- **THEN** no "Steps: 1" line appears above the answer
+- **THEN** no steps line appears above the answer
 
 ### Requirement: Sub-steps
-`CUSTOM tool_progress` events SHALL add sub-steps under their parent step. Frontend tool calls SHALL appear as steps only when they have a label.
+`CUSTOM tool_progress` events (a tool's own sub-steps) SHALL NOT add rows: the line and the list name the tool only. Frontend tool calls SHALL appear as steps only when they have a label.
 
 #### Scenario: Document research
 - **WHEN** the agent calls `ask_documents` and the researcher searches twice
-- **THEN** the user sees "Searching the business documents" with two sub-steps, each ticked when done
+- **THEN** the user sees "Searching the business documents…", with no "Searching" rows under it
 
 ### Requirement: Interrupt renderer registry
 The widget SHALL render each interrupt with the renderer registered for its `type`. Interrupts arrive as `CUSTOM on_interrupt` with a JSON value, or as `RUN_FINISHED.outcome.interrupts`. A renderer SHALL return an element and resolve with a resume value; the widget SHALL then resume the same thread with that value. An interrupt with no renderer SHALL show a generic card with the raw payload and Skip. Pending interrupts SHALL be restored after a reload when the host provides a restore URL.

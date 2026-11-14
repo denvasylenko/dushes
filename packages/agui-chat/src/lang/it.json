@@ -15,6 +15,7 @@
   "copied": "Copiato",
   "skip": "Salta",
   "steps": "{n} passaggi",
+  "doneIn": "Fatto in {s} s",
   "working": "Sto lavorando\u2026",
   "mic": "Detta",
   "micStop": "Ferma dettatura",

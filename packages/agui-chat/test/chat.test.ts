@@ -102,7 +102,7 @@ describe('<agui-chat>', () => {
     expect($$(el, '.msg.me')).toHaveLength(1)
   })
 
-  it('shows tool steps with sub-steps, and hides them when off', async () => {
+  it('shows the steps as one line that ends as "Done in N s" (no sub-steps), and hides it when off', async () => {
     mockRuns(run(
       { type: 'TOOL_CALL_START', toolCallId: 'c1', toolCallName: 'ask_documents' },
       { type: 'TOOL_CALL_ARGS', toolCallId: 'c1', delta: '{}' }, { type: 'TOOL_CALL_END', toolCallId: 'c1' },
@@ -111,14 +111,39 @@ describe('<agui-chat>', () => {
       ...text('m1', 'Done.')))
     const el = await mount()
     el.use(formguide({ getState: () => ({ config: {}, jsx_hash: 'h' }), applyChanges: async () => ({}) }))
+    ;(el as unknown as { _stepsAfter: number })._stepsAfter = 0   // no first-second wait in a test
     await el.send('rate?')
+    await tick(5)
     const steps = $(el, '.steps')
-    expect(steps.textContent).toContain('Searching the business documents')
-    expect(steps.textContent).toContain('Steps: 1')
-    expect($$(el, '.steps li.ok').length).toBe(2)
+    expect(steps.querySelector('.steps-t')!.textContent).toBe('Done in 1 s')   // the same line, in place
+    expect(steps.querySelector('li')!.textContent).toBe('Searching the business documents')
+    expect($$(el, '.steps li').length).toBe(1)                                 // its sub-step is not a row
     expect(steps.classList.contains('collapsed')).toBe(true)
     el.setAttribute('tool-steps', 'off')
     expect(steps.hidden).toBe(true)
+  })
+
+  it('a slow turn: one line after the first second, the text changes in place, a repeated step merges', async () => {
+    const steps: AguiEvent[] = []
+    for (const [id, name] of [['a', 'ask_documents'], ['b', 'ask_documents'], ['c', 'get_fields']]) steps.push({ type: 'TOOL_CALL_START', toolCallId: id, toolCallName: name }, { type: 'TOOL_CALL_END', toolCallId: id })
+    let release = (): void => {}
+    const el = await mount()
+    el.use(formguide({ getState: () => ({ config: {}, jsx_hash: 'h' }), applyChanges: async () => ({}) }))
+    const enc = (evs: AguiEvent[]) => new TextEncoder().encode(evs.map((e) => `data: ${JSON.stringify(e)}\n\n`).join(''))
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new ReadableStream<Uint8Array>({ start(c) {   // a server that is slow to answer
+      c.enqueue(enc([{ type: 'RUN_STARTED', threadId: 't', runId: 'r' }, ...steps]))
+      release = () => { c.enqueue(enc([...text('m', 'Done.'), { type: 'RUN_FINISHED', threadId: 't', runId: 'r' }])); c.close() }
+    } }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } })))
+    ;(el as unknown as { _stepsAfter: number })._stepsAfter = 30
+    const sent = el.send('rate?')
+    await tick(5)
+    const line = $(el, '.steps')
+    expect(line.hidden).toBe(true)                                           // not in the first moment
+    await tick(40)
+    expect(line.hidden).toBe(false)
+    expect(line.querySelector('.steps-t')!.textContent).toBe('Reading the section\u2026')
+    expect($$(el, '.steps li').map((l) => l.textContent)).toEqual(['Searching the business documents (2)', 'Reading the section'])
+    release(); await sent
   })
 
   it('renders an interrupt with a registered renderer and resumes with its value', async () => {
@@ -510,7 +535,7 @@ describe('formguide plugin', () => {
     el.options = { toolSteps: true }                             // re-applying options keeps it hidden
     expect(($(el, '.steps') as HTMLElement).hidden).toBe(true)
     ;({ el } = await withPlugin(run(...step('g', 'get_fields'), ...step('x', 'extract_from_attachment'), ...text('m', 'Read it.'))))
-    expect(($(el, '.steps') as HTMLElement).hidden).toBe(false)  // a real step: the list shows, with both
+    expect(($(el, '.steps') as HTMLElement).hidden).toBe(true)   // a quick answer: no line at all
     expect($$(el, '.steps li')).toHaveLength(2)
   })
 

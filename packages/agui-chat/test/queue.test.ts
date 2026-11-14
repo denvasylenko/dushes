@@ -145,6 +145,21 @@ describe('the message queue', () => {
     expect($$(el, '.msg.queued').map((m) => m.querySelector('.bubble')!.textContent)).toEqual(['another'])
   })
 
+  it('a double tap queues once; Esc stops the answer and brings the suggestions back', async () => {
+    const el = await mount(), a = agent()
+    el.agent = a as never
+    ;(el as unknown as { _suggestions: string[] })._suggestions = ['Book a table']
+    ;(el as unknown as { _renderQuick: () => void })._renderQuick()
+    void el.send('Book a table')
+    await tick(5)
+    await el.send('again'); await el.send('again')
+    expect($$(el, '.msg.queued')).toHaveLength(1)
+    el.shadowRoot!.querySelector('textarea')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }))
+    await tick(20)
+    expect(a.runs[0].aborted).toBe(true)
+    expect($$(el, '.chip').map((c) => c.textContent)).toEqual(['Book a table'])
+  })
+
   it('the queue survives a reload', async () => {
     const el = await mount(), a = agent()
     el.agent = a as never

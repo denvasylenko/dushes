@@ -134,8 +134,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 @keyframes word { from { opacity: 0; filter: blur(3px); } to { opacity: 1; filter: blur(0); } }
 
 /* live tool steps */
-.steps { margin: 0 0 14px; font-size: 13px; color: var(--agui-ink-3); }
-.steps > button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 2px 0; cursor: pointer; color: var(--agui-ink-3); }
+.steps { margin: 0 0 14px; font-size: 13px; color: var(--agui-ink-2); }
+/* one line, one height (the dots' row, which it replaces): the text changes in place, the mark turns while it works */
+.steps > button { display: inline-flex; align-items: center; gap: 8px; min-height: 26px; max-width: 100%; border: 0; background: none; padding: 0; cursor: pointer; color: inherit; font: inherit; text-align: left; }
+.steps-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.steps > button > .mark { width: 14px; height: 14px; flex: none; border-radius: var(--agui-radius-pill); border: 2px solid var(--agui-line-2); border-top-color: var(--agui-link); animation: turn .8s linear infinite; }
+.steps.done > button > .mark { display: none; }
 .steps > button::after { content: "\\203A"; transition: transform .2s; } .steps.openlist > button::after { transform: rotate(90deg); }
 .steps ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 7px; }
 .steps.collapsed ul { display: none; }

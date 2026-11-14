@@ -17,6 +17,7 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "copied": "Copied",
     "skip": "Skip",
     "steps": "Steps: {n}",
+    "doneIn": "Done in {s} s",
     "working": "Working\u2026",
     "mic": "Dictate",
     "micStop": "Stop dictation",

@@ -15,6 +15,7 @@
   "copied": "Copiado",
   "skip": "Omitir",
   "steps": "{n} pasos",
+  "doneIn": "Listo en {s} s",
   "working": "Trabajando\u2026",
   "mic": "Dictar",
   "micStop": "Detener dictado",

@@ -113,8 +113,9 @@ const darkNow = (scheme: string): boolean => scheme === 'dark' ||
   (scheme !== 'light' && typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches)
 
 interface AiItem { id: string; text: string; el: HTMLElement; body: HTMLElement; st: TypewriterState; done: boolean; raf: number; typed: () => void }
-interface StepsItem { el: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement; steps: Map<string, HTMLElement>; count: number }
-// a step list with only routine look-ups (plugins' quietSteps) stays hidden: class "quiet"
+interface StepsItem { el: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement; text: HTMLElement; steps: Map<string, HTMLElement>; count: number
+  t0: number; show?: ReturnType<typeof setTimeout>; last?: { label: string; li: HTMLElement; n: number } }
+// one line of steps, hidden (class "quiet") for routine look-ups (plugins' quietSteps) and for the first second
 interface PendingCall { id: string; name: string; args: string }
 
 /** After this long with only the dots, a quiet "Still working…" appears. */
@@ -160,6 +161,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _abort: AbortController | null = null
   private _ai: AiItem | null = null
   private _steps: StepsItem | null = null
+  private _stepsAfter = 1000   // an answer quicker than this shows no steps line at all
+  private _runT0 = 0
+  private _prevQuick: { s: string[]; a: unknown[] } | null = null   // the suggestions a send took away: Stop brings them back
   private _dots: HTMLElement | null = null
   private _quick: HTMLElement | null = null
   private _suggestions: string[] = []
@@ -638,6 +642,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     send.setAttribute('aria-keyshortcuts', 'Enter')
     panel.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && (!pill.hidden || !cap.hidden)) { e.preventDefault(); this._closePop(true); return }
+      if (e.key === 'Escape' && this._busy && !e.defaultPrevented) { e.preventDefault(); this.stop(); return }   // Esc stops the answer first
       if (!this._popup && !(this._heroSheet && this.$.wrap.classList.contains('open'))) return
       if (e.key === 'Escape' && this.$.box.classList.contains('rec')) { e.preventDefault(); this._dropDictation(); return }   // drop the recording first
       if (e.key === 'Escape') { e.preventDefault(); this.close() }
@@ -1450,7 +1455,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     }
   }
 
-  private _clearQuick(): void { this._quick?.remove(); this._quick = null; this._suggestions = []; this._applies = [] }
+  private _clearQuick(): void {
+    if (this._suggestions.length) this._prevQuick = { s: this._suggestions, a: this._applies }
+    this._quick?.remove(); this._quick = null; this._suggestions = []; this._applies = []
+  }
 
   private _renderQuick(): void {
     this._quick?.remove()
@@ -1568,6 +1576,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   private async _run(args: { resume?: { card_id: string; value: unknown }; forwardedProps?: Record<string, unknown>; follow?: AsyncIterable<AguiEvent> }): Promise<void> {
+    this._runT0 = Date.now()
     if (!args.follow) this._lastRun = args   // Try again re-runs a request, never a followed stream
     const extra: Parameters<AguiChatElement['_input']>[0] = { forwardedProps: args.forwardedProps }
     if (args.resume) {
@@ -1616,6 +1625,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (aborted) {
       if (this._sendNow) { this._dequeue(this._sendNow); return }   // Send now stopped this turn for a queued message
       this._paused = 'stop'; this._queueHints()
+      const prev = this._prevQuick
+      if (prev && !this._suggestions.length) { this._suggestions = prev.s; this._applies = prev.a as never; this._renderQuick() }   // the choices are back
       this.notice(this.t('stopped')); return
     }
     if (failed) {
@@ -1628,6 +1639,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       return
     }
     this.dispatchEvent(new CustomEvent('agui:run-end', { detail: { threadId: this._thread } }))
+    this._prevQuick = null
     if (this._pendingCalls.length && !this._interrupted) await this._runFrontendTools()
     else if (!this._interrupted) { const thread = this._thread; void this._typing.then(() => { if (this._thread === thread) this._renderQuick() }) }   // quick replies last
     this._paused = ''
@@ -1639,6 +1651,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _enqueue(text: string, saved?: { id: string; replies: ReplyTo[] }): void {
     const replies = saved?.replies ?? this._replies
     const files = saved ? [] : this._files
+    const last = this._queue.at(-1)
+    if (!saved && last && last.text === text && !replies.length && !files.length && !last.replies.length) return   // a double tap queues once
     if (!saved) { this._setReplies([]); this._files = []; this._renderFiles() }
     const id = saved?.id ?? uid()
     const quotes = replyList(replies)
@@ -1851,7 +1865,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       setTimeout(() => this.removeMessage(id), 180)
     } else if (name === 'tool_progress') {
       const p = value as { parent_id?: string; name?: string; input?: unknown }
-      if (p?.parent_id) this._addSubStep(p.parent_id, p.name ?? '')
+      void p   // a tool's own sub-steps are not shown: the line names the tool
     } else if (name === 'suggestions') {
       const items = (value as { items?: unknown[] })?.items
       this._suggestions = Array.isArray(items) ? items.map(String).slice(0, 5) : []
@@ -1944,59 +1958,69 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     return s.charAt(0).toUpperCase() + s.slice(1)
   }
 
+  /** One line of fixed height: the current step, changed in place ("Searching the business documents…"); the chevron
+   *  opens the list. It shows only after the first second, so a quick answer has none. */
   private _ensureSteps(): StepsItem {
     if (this._steps) return this._steps
-    const list = h('ul')
-    const toggle = h('button', { type: 'button', 'aria-expanded': 'true' }, this.t('working')) as HTMLButtonElement
-    const el = h('div', { class: 'steps openlist quiet', part: 'steps' }, toggle, list)
+    const list = h('ul', { id: `steps-${uid()}` })
+    const text = h('span', { class: 'steps-t' }, this.t('working'))
+    const toggle = h('button', { type: 'button', 'aria-expanded': 'false', 'aria-controls': list.id }, h('span', { class: 'mark', 'aria-hidden': 'true' }), text) as HTMLButtonElement
+    const el = h('div', { class: 'steps collapsed quiet', part: 'steps', role: 'status' }, toggle, list)
     toggle.addEventListener('click', () => {
       const closed = el.classList.toggle('collapsed')
       el.classList.toggle('openlist', !closed)
       toggle.setAttribute('aria-expanded', String(!closed))
     })
-    el.hidden = true   // shown with the first step that is not a routine look-up
-    this._steps = { el, list, toggle, steps: new Map(), count: 0 }
+    el.hidden = true
+    this._steps = { el, list, toggle, text, steps: new Map(), count: 0, t0: this._runT0 || Date.now() }
     this._append(el)
     return this._steps
   }
 
   private _addStep(id: string, name: string, label?: string): void {
     const s = this._ensureSteps()
-    const li = h('li', { class: 'run' }, h('span', { class: 'mark' }), h('span', null, label ?? this._label(name)))
-    s.steps.set(id, li)
+    const text = label ?? this._label(name)
+    if (!text) return
     s.count++
-    if (!this._plugins.some((p) => p.quietSteps?.includes(name))) {   // a real step: the list shows
-      s.el.classList.remove('quiet')
-      s.el.hidden = !this._opts.toolSteps
+    let li: HTMLElement
+    if (s.last && s.last.label === text) {   // the same step again: one row, "(2)"
+      li = s.last.li
+      li.lastElementChild!.textContent = `${text} (${++s.last.n})`
+      li.className = 'run'
+    } else {
+      li = h('li', { class: 'run' }, h('span', { class: 'mark' }), h('span', null, text))
+      s.last = { label: text, li, n: 1 }
+      s.list.appendChild(li)
     }
-    s.list.appendChild(li)
-    this._scroll()
-  }
-
-  private _addSubStep(parent: string, name: string): void {
-    const li = this._steps?.steps.get(parent)
-    if (!li) return
-    let ul = li.querySelector('ul')
-    if (!ul) { ul = h('ul'); li.classList.add('has-sub'); li.appendChild(ul) }
-    ul.querySelectorAll('li.run').forEach((x) => x.classList.replace('run', 'ok'))
-    ul.appendChild(h('li', { class: 'sub run' }, h('span', { class: 'mark' }), h('span', null, this._label(name))))
+    s.steps.set(id, li)
+    s.text.textContent = `${text}\u2026`
+    if (!this._plugins.some((p) => p.quietSteps?.includes(name)) && !s.show) {   // a real step: the line shows after the first second
+      s.show = setTimeout(() => {
+        if (this._steps !== s || s.el.classList.contains('done')) return
+        s.el.classList.remove('quiet')
+        s.el.hidden = !this._opts.toolSteps
+        if (this._dots && !s.el.hidden) this._dots.hidden = true   // the line takes the dots' place: one row, no jump
+        this._scroll()
+      }, Math.max(0, this._stepsAfter - (Date.now() - s.t0)))
+    }
   }
 
   private _doneStep(id: string): void {
     const li = this._steps?.steps.get(id)
-    if (!li) return
-    li.classList.replace('run', 'ok')
-    li.querySelectorAll('li.run').forEach((x) => x.classList.replace('run', 'ok'))
+    if (li) li.classList.replace('run', 'ok')
   }
 
+  /** The end: the line says how long it took ("Done in 4 s ›"), in the same place; a line never shown stays hidden. */
   private _finishSteps(failed: boolean): void {
     const s = this._steps
     if (!s) return
+    clearTimeout(s.show)
     s.el.querySelectorAll('li.run').forEach((x) => x.classList.replace('run', failed ? 'fail' : 'ok'))
-    s.toggle.textContent = this.t('steps', { n: s.count })
-    s.el.classList.add('collapsed')
+    s.text.textContent = failed ? this.t('steps', { n: s.count }) : this.t('doneIn', { s: Math.max(1, Math.round((Date.now() - s.t0) / 1000)) })
+    s.el.classList.add('done', 'collapsed')
     s.el.classList.remove('openlist')
     s.toggle.setAttribute('aria-expanded', 'false')
+    s.el.removeAttribute('role')
   }
 
   // ------------------------------------------------------------------ frontend tools
