@@ -1,13 +1,11 @@
-import { createContext, useContext, useEffect, useRef } from 'react'
+import { createContext, useContext } from 'react'
 import type { Config, JsxNode, Option, Props, UiState } from './types'
 import { DateInput, NumberInput, Select } from './controls'
 
-export type Highlight = { target: string; hint: string; ts: number; also?: string[] } | null
 
 type Ctx = {
   config: Config
   ui: UiState
-  highlight: Highlight
   setValue: (name: string, value: unknown, immediate: boolean) => void
   setTab: (tabs: string, tab: string) => void
   toggleAccordion: (name: string) => void
@@ -56,7 +54,7 @@ function Tabs({ node, off }: { node: JsxNode; off: boolean }) {
             role="tab"
             data-name={t.name}
             aria-selected={t === active}
-            className={`tab ${t === active ? 'active' : ''} ${p(c, t.name).disabled ? 'locked' : ''} ${c.highlight?.target === t.name ? 'pulse' : ''}`}
+            className={`tab ${t === active ? 'active' : ''} ${p(c, t.name).disabled ? 'locked' : ''}`}
             onClick={() => c.setTab(node.name, t.name)}
             title={p(c, t.name).disabled ? 'Not available yet' : undefined}
           >
@@ -73,7 +71,7 @@ function Accordion({ node, props, off }: { node: JsxNode; props: Props; off: boo
   const c = useContext(FormCtx)
   const open = c.ui.openAccordions.includes(node.name)
   return (
-    <section className={`acc ${open ? 'open' : ''} ${c.highlight?.target === node.name ? 'pulse' : ''}`} data-name={node.name}>
+    <section className={`acc ${open ? 'open' : ''}`} data-name={node.name}>
       <button className="acc-head" onClick={() => c.toggleAccordion(node.name)} aria-expanded={open}>
         <span className="chev">{open ? '▾' : '▸'}</span>
         {props.label ?? node.name}
@@ -85,16 +83,9 @@ function Accordion({ node, props, off }: { node: JsxNode; props: Props; off: boo
 
 function Field({ node, props }: { node: JsxNode; props: Props }) {
   const c = useContext(FormCtx)
-  const ref = useRef<HTMLDivElement>(null)
   const value = c.config.state[node.name]
-  const lit = c.highlight?.target === node.name
-  const ringed = lit || !!c.highlight?.also?.includes(node.name)   // one of several fields shown together
   const off = !!props.disabled
   const ro = !!props.readonly
-
-  useEffect(() => {
-    if (lit) ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [lit, c.highlight?.ts])
 
   const common = {
     id: node.name,
@@ -130,14 +121,13 @@ function Field({ node, props }: { node: JsxNode; props: Props }) {
     }
     case 'Checkbox':
       return (
-        <div ref={ref} data-name={node.name} className={`field check ${ringed ? 'pulse' : ''} ${off ? 'off' : ''}`}>
+        <div data-name={node.name} className={`field check ${off ? 'off' : ''}`}>
           <label>
             <input type="checkbox" {...common} checked={value === true}
               onChange={(e) => c.setValue(node.name, e.target.checked, true)} />
             {props.label}{props.required && <b className="req">*</b>}
           </label>
           {props.error && <div className="err">{props.error}</div>}
-          {lit && c.highlight!.hint && <div className="bubble">{c.highlight!.hint}</div>}
         </div>
       )
     case 'FileUpload': {
@@ -174,13 +164,12 @@ function Field({ node, props }: { node: JsxNode; props: Props }) {
       )
   }
   return (
-    <div ref={ref} data-name={node.name} className={`field ${ringed ? 'pulse' : ''} ${off ? 'off' : ''} ${ro ? 'ro' : ''} ${props.error ? 'has-err' : ''}`}>
+    <div data-name={node.name} className={`field ${off ? 'off' : ''} ${ro ? 'ro' : ''} ${props.error ? 'has-err' : ''}`}>
       <label htmlFor={node.name}>
         {props.label ?? node.name}{props.required && <b className="req">*</b>}
       </label>
       {input}
       {props.error && <div className="err">{props.error}</div>}
-      {lit && c.highlight!.hint && <div className="bubble">{c.highlight!.hint}</div>}
     </div>
   )
 }

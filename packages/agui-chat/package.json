@@ -23,6 +23,7 @@
     "#theme-loader": "./src/theme-loader.ts",
     "#editor-loader": "./src/editor-loader.ts",
     "#tip-loader": "./src/tip-loader.ts",
+    "#highlight-loader": "./src/highlight-loader.ts",
     "#blocks-loader": "./src/blocks-loader.ts",
     "#charts-loader": "./src/charts-loader.ts"
   },
@@ -41,6 +42,10 @@
       "types": "./dist/types/formguide/index.d.ts",
       "import": "./dist/formguide.js"
     },
+    "./highlight": {
+      "types": "./dist/types/highlight.d.ts",
+      "import": "./dist/highlight.js"
+    },
     "./react": {
       "types": "./dist/types/react.d.ts",
       "import": "./dist/react.js"
@@ -54,7 +59,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json --noEmit && vite build && vite build --config vite.iife.config.ts && vite build --config vite.editor.config.ts && vite build --config vite.tip.config.ts && vite build --config vite.blocks.config.ts && vite build --config vite.charts.config.ts && node scripts/lang-files.mjs && tsc -p tsconfig.types.json && node scripts/size.mjs",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && vite build --config vite.iife.config.ts && vite build --config vite.editor.config.ts && vite build --config vite.tip.config.ts && vite build --config vite.highlight.config.ts && vite build --config vite.blocks.config.ts && vite build --config vite.charts.config.ts && node scripts/lang-files.mjs && tsc -p tsconfig.types.json && node scripts/size.mjs",
     "test": "vitest run",
     "dev": "vite build --watch",
     "prepublishOnly": "npm run build && npm test"

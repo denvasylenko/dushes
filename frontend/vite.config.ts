@@ -15,6 +15,7 @@ export default defineConfig({
     alias: [
       { find: /^@formguide\/agui-chat\/formguide$/, replacement: `${widget}/formguide/index.ts` },
       { find: /^@formguide\/agui-chat\/react$/, replacement: `${widget}/react.ts` },
+      { find: /^@formguide\/agui-chat\/highlight$/, replacement: `${widget}/highlight.ts` },
       { find: /^@formguide\/agui-chat$/, replacement: `${widget}/index.ts` },
     ],
   },

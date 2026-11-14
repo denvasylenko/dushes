@@ -1,0 +1,48 @@
+---
+/** A live showcase of the field highlight (@formguide/agui-chat/highlight): a small form, the agent's two highlights
+ *  (a changed value, "look here") and the three looks, drawn by the shipped module. Nothing is sent anywhere. */
+import Tile from './ui/Tile.astro'
+import Button from './ui/Button.astro'
+import Segmented from './ui/Segmented.astro'
+---
+<Tile class="hls not-content">
+  <div class="hls-form">
+    <label data-name="loan_type" class="hls-field"><span>Loan type</span><input value="Personal" readonly /></label>
+    <label data-name="amount" class="hls-field"><span>Loan amount</span><input value="12 000" readonly /></label>
+    <label data-name="term" class="hls-field"><span>Term, months</span><input value="36" readonly /></label>
+  </div>
+  <div class="hls-acts">
+    <Segmented label="Look" name="hl-style" options={[['ring', 'Ring'], ['glow', 'Glow'], ['pulse', 'Pulse']]} inline />
+    <div class="hls-btns">
+      <Button variant="filled" data-hl="changed">The agent fills a field</Button>
+      <Button data-hl="look">Look here</Button>
+    </div>
+  </div>
+</Tile>
+
+<style>
+  .hls { display: grid; gap: 20px; }
+  .hls-form { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .hls-field { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--fg-surface, var(--sl-color-bg)); }
+  .hls-field span { font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); }
+  .hls-field input { border: 0; padding: 0; background: transparent; color: var(--fg-ink); font: inherit; outline: none; }
+  .hls-acts { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+  .hls-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+</style>
+
+<script>
+  import { highlightField } from '../../../packages/agui-chat/src/highlight'
+  const box = document.querySelector<HTMLElement>('.hls')
+  let style: 'ring' | 'glow' | 'pulse' = 'ring'
+  const names = ['loan_type', 'amount', 'term']
+  let i = 0
+  box?.addEventListener('ui-change', (e) => { style = (e as CustomEvent<{ value: typeof style }>).detail.value })
+  box?.querySelector('[data-hl=changed]')?.addEventListener('click', () => {
+    const name = names[i++ % names.length]
+    const input = box.querySelector<HTMLInputElement>(`[data-name=${name}] input`)
+    if (input && name === 'amount') input.value = input.value === '12 000' ? '15 000' : '12 000'
+    highlightField(name, { root: box, style })
+  })
+  box?.querySelector('[data-hl=look]')?.addEventListener('click', () =>
+    highlightField('term', { root: box, kind: 'look', hint: '12 to 60 months', style }))
+</script>

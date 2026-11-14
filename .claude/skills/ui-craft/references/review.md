@@ -13,6 +13,8 @@
 - [ ] Keyboard: sensible Tab order, visible focus only for keyboard focus, `Esc` closes, `Enter` confirms, number keys on question cards.
 - [ ] `prefers-reduced-motion`: nothing moves.
 - [ ] Nothing important only on hover.
+- [ ] No layout shift: nothing above the eyes moves; new content below or in a pinned zone; status is one line changing in place;
+      heights ease over ~200 ms; auto-scroll only when the reader is already at the bottom (check: scroll up while an answer streams).
 
 ## How to check in the browser
 
@@ -23,7 +25,7 @@ The demo server: `cd backend && uv run uvicorn demo.app:app --port 8000 --reload
 - The widget's own tests: `cd packages/agui-chat && npm test` (behaviour and speed budgets).
 - Reset the window size to `desktop` afterwards.
 
-## Audit: scoring a surface on the eleven laws
+## Audit: scoring a surface on the twelve laws
 
 Each law 0–2 (0 broken, 1 partly, 2 exemplary), out of 22. ≥ 19: the level of the references; 13–18: good, with quick wins; < 13: redesign (a new mini-brief). Law 11 (like Apple) is checked against `apple-components.md`.
 

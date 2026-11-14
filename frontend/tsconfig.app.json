@@ -28,7 +28,8 @@
     "paths": {
       "@formguide/agui-chat": ["../packages/agui-chat/src/index.ts"],
       "@formguide/agui-chat/formguide": ["../packages/agui-chat/src/formguide/index.ts"],
-      "@formguide/agui-chat/react": ["../packages/agui-chat/src/react.ts"]
+      "@formguide/agui-chat/react": ["../packages/agui-chat/src/react.ts"],
+      "@formguide/agui-chat/highlight": ["../packages/agui-chat/src/highlight.ts"]
     }
   },
   "include": ["src"]

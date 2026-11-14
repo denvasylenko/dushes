@@ -4,6 +4,7 @@
  */
 import { schemaForm, type FormSchema, type FormState, type Directive } from '../../../packages/agui-chat/src/formguide/index'
 import { buildSelect } from '../components/ui/ui'
+import { highlightField } from '../../../packages/agui-chat/src/highlight'
 
 type Values = Record<string, unknown>
 
@@ -145,14 +146,9 @@ export function mountForm(root: HTMLElement): DemoForm {
     progress.style.setProperty('--p', String(done / all.length))
   }
 
+  /** The fields the chat filled: the widget's own highlight (@formguide/agui-chat/highlight), not a copy. */
   function flash(names: string[]): void {
-    for (const n of names) {
-      const el = root.querySelector<HTMLElement>(`[data-name="${n}"]`)
-      if (!el) continue
-      el.classList.remove('df-flash')
-      void el.offsetWidth
-      el.classList.add('df-flash')
-    }
+    for (const n of names) highlightField(n, { root })
   }
 
   function scrollTo(el: HTMLElement): void {   // inside the form panel only: never move the page
@@ -181,10 +177,7 @@ export function mountForm(root: HTMLElement): DemoForm {
       const el = root.querySelector<HTMLElement>(`[data-name="${d.target}"]`)
       if (!el) return
       scrollTo(el)
-      el.classList.remove('df-look')
-      void el.offsetWidth
-      el.classList.add('df-look')
-      if (d.hint) el.dataset.hint = d.hint
+      highlightField(el, { kind: 'look', hint: d.hint, scroll: false })   // the panel scrolled itself: the page stays
       if (matchMedia('(pointer: fine)').matches) el.querySelector<HTMLElement>('input, .ui-select-btn, button')?.focus({ preventScroll: true })   // no keyboard popping up on a phone
     },
     reset() { values = {}; tab = 'applicant'; render() },

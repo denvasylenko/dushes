@@ -8,6 +8,7 @@ export default defineConfig({
   // language packs: chunks loaded with import() (the one-script build swaps in a <script> loader)
   resolve: { alias: { '#lang-loader': new URL('./src/lang-loader.ts', import.meta.url).pathname,
     '#theme-loader': new URL('./src/theme-loader.ts', import.meta.url).pathname,
+    '#highlight-loader': new URL('./src/highlight-loader.ts', import.meta.url).pathname,
     '#tip-loader': new URL('./src/tip-loader.ts', import.meta.url).pathname,
     '#editor-loader': new URL('./src/editor-loader.ts', import.meta.url).pathname,
     '#blocks-loader': new URL('./src/blocks-loader.ts', import.meta.url).pathname,
@@ -17,7 +18,7 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: true,
     lib: {
-      entry: { 'agui-chat': 'src/index.ts', formguide: 'src/formguide/index.ts', react: 'src/react.ts', 'react-hook-form': 'src/rhf.ts' },
+      entry: { 'agui-chat': 'src/index.ts', formguide: 'src/formguide/index.ts', react: 'src/react.ts', 'react-hook-form': 'src/rhf.ts', highlight: 'src/highlight.ts' },
       formats: ['es'],
     },
     rollupOptions: { external: ['react', 'react/jsx-runtime'] },

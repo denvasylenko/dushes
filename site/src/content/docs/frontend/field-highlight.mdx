@@ -1,0 +1,81 @@
+---
+title: Field highlight
+description: "The ring and the green blink a field gets when the agent changes it, and the ring, scroll and hint of “look here”: one small module any page can put on its own fields."
+tableOfContents: false
+---
+import HighlightShowcase from '../../../components/HighlightShowcase.astro';
+import { Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+When the agent fills a field, the field gets a ring and blinks twice, so the eye finds what changed. When the agent says "look here", the page scrolls to the field, focuses it and shows the agent's hint in the field's corner, gone after a few seconds. Try both:
+
+<HighlightShowcase />
+
+With the chat's formguide plugin this happens by itself for every field it fills (turn it off with `highlight: false`). Without the chat, or for a field of your own, call it yourself. The module is small and loads on first use; the chat's own bundle does not carry it.
+
+<Tabs>
+  <TabItem label="JavaScript">
+```js
+import { highlightField } from '@formguide/agui-chat/highlight'
+
+highlightField('amount')                                        // [data-name="amount"], else [name="amount"]
+highlightField('email', { kind: 'look', hint: 'As on your ID' })  // scroll, focus, the hint
+const stop = highlightField(el, { style: 'glow' })               // an element; stop() ends it early
+```
+  </TabItem>
+  <TabItem label="React">
+```jsx
+import { HighlightTarget, useHighlight } from '@formguide/agui-chat/react'
+
+<HighlightTarget name="amount"><input name="amount" /></HighlightTarget>
+
+const highlight = useHighlight()
+highlight('amount')
+```
+  </TabItem>
+  <TabItem label="Any HTML">
+```html
+<script src="agui-chat.iife.js"></script>   <!-- agui-chat.highlight.js next to it loads on first use -->
+<agui-highlight name="amount"><input name="amount"></agui-highlight>
+<script>AguiChat.highlightField('amount')</script>
+```
+  </TabItem>
+</Tabs>
+
+A string target is found as `[data-name]`, then `[name]`; an input inside a `[data-name]` box rings the box. Calling it again on the same field starts over. With reduced motion the field gets a steady ring for the same time, no blink. The module brings its own stylesheet, to the page or to the shadow root that holds the field.
+
+## Make it yours
+
+The field carries `data-agui-highlight="changed|look"` and `data-agui-highlight-style="ring|glow|pulse"` while it is highlighted, so you can restyle it with an attribute selector. The colours and motion come from CSS variables: the shared `--hf-*` tokens first (herefront-ui), then the widget's own, then the default look.
+
+```css
+.my-form { --agui-highlight-color: #0a7; --agui-highlight-width: 2px; --agui-highlight-count: 3; }
+```
+
+## Every option
+
+| Option | Default | What it does |
+|---|---|---|
+| `kind` | `'changed'` | `'changed'`: mark the field; `'look'`: also scroll to it, focus it (not on a touch screen) and show `hint` |
+| `hint` | none | for `'look'`: a small pill in the field's top-right corner; it fades after 4 s and goes at the next tap or key |
+| `hintAt` | `'inside'` | `'below'` puts the hint in a bubble under the field (also used when the field is too small for the pill) |
+| `style` | `'ring'` | `'ring'`, `'glow'` or `'pulse'` |
+| `root` | the document | where a string target is looked for |
+| `scroll` | only for `'look'` | scroll the field into view |
+
+| Variable | Default | What it sets |
+|---|---|---|
+| `--agui-highlight-color` | green for changed, the system highlight for look (`--hf-ok` / `--hf-accent` first) | the ring's colour |
+| `--agui-highlight-width` | `3px` (`--hf-hl-w` first) | the ring's width |
+| `--agui-highlight-mix` | `45%` (`--hf-hl-mix` first) | how strong the colour is |
+| `--agui-highlight-ms` | `1200` | the effect's length, in ms |
+| `--agui-highlight-count` | `2` | how many blinks |
+| `--agui-highlight-radius` | the field's own | the ring's corners |
+
+The functions, the two attributes, the variables and the wrapper names (`HighlightTarget`, `useHighlight`, `<agui-highlight>`) are public API; the timings and the shade of green are not.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="The chat widget" description="Install it, connect it, every option." href="../widget/" />
+  <LinkCard title="Connect your form" description="data-name on your fields, and how the agent reaches them." href="../connect-your-form/" />
+</CardGrid>

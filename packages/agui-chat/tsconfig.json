@@ -11,7 +11,7 @@
     "noUnusedLocals": true,
     "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true,
-    "paths": { "#lang-loader": ["./src/lang-loader.ts"], "#theme-loader": ["./src/theme-loader.ts"], "#editor-loader": ["./src/editor-loader.ts"], "#tip-loader": ["./src/tip-loader.ts"], "#blocks-loader": ["./src/blocks-loader.ts"], "#charts-loader": ["./src/charts-loader.ts"] }
+    "paths": { "#lang-loader": ["./src/lang-loader.ts"], "#theme-loader": ["./src/theme-loader.ts"], "#editor-loader": ["./src/editor-loader.ts"], "#tip-loader": ["./src/tip-loader.ts"], "#highlight-loader": ["./src/highlight-loader.ts"], "#blocks-loader": ["./src/blocks-loader.ts"], "#charts-loader": ["./src/charts-loader.ts"] }
   },
   "include": ["src", "test"]
 }

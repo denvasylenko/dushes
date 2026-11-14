@@ -58,6 +58,7 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined;
     chat.use(formguide({
       getState: () => ({ ...form.state(), ...(jsxHash ? { jsx_hash: jsxHash } : {}) }),
       applyChanges: (changes) => form.apply(changes),
+      highlight: false,   // form.apply highlights the fields itself (also on Undo)
       onDirective: (d) => form.reveal(d),
       undoSeconds: 30,
     }))
@@ -127,18 +128,8 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined;
   /* Employment (chips) and Term (segmented) are the design system's choice groups; Term fills the row */
   .df-field > .ui-seg { align-self: stretch; }
   .df-field > .ui-seg > button { flex: 1 1 0; }
-  .df-flash { animation: df-flash 1.4s cubic-bezier(.2, .8, .2, 1); }
-  .df-look { animation: df-look 1.1s cubic-bezier(.2, .8, .2, 1) 2; }
-  .df-look[data-hint]::after {
-    content: attr(data-hint); position: absolute; right: 8px; top: 6px; font: 500 var(--sl-text-2xs) var(--sl-font);
-    color: var(--sl-color-accent-high); background: var(--sl-color-accent-low); border-radius: 999px; padding: 2px 8px;
-    animation: df-fade 4s forwards;
-  }
-  @keyframes df-flash { 0% { background: var(--sl-color-accent-low); } 100% { background: transparent; } }
-  @keyframes df-look { 0% { box-shadow: 0 0 0 0 var(--sl-color-accent); } 100% { box-shadow: 0 0 0 10px transparent; } }
-  @keyframes df-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+  /* the filled and look-here fields: the widget's own highlight (@formguide/agui-chat/highlight), see form.ts */
   @media (prefers-reduced-motion: reduce) {
-    .df-flash, .df-look, .df-look[data-hint]::after { animation-duration: .01s; }
     .df-progress::after { transition: none; }
   }
 

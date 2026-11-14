@@ -1,9 +1,10 @@
 /** React wrapper: <AguiChat url="/agent/run" plugins={[formguide({...})]} onEvent={...} />. */
-import { createElement, forwardRef, useEffect, useImperativeHandle, useRef, type ComponentType, type CSSProperties } from 'react'
+import { createElement, forwardRef, useEffect, useImperativeHandle, useRef, type ComponentType, type CSSProperties, type HTMLAttributes, type ReactNode } from 'react'
 import './index'
 import { DEFAULTS, type AguiChatElement } from './element'
 import type { AguiEvent, ChatOptions, FrontendTool, Plugin, Renderer } from './types'
 import type { AgentLike } from './transport'
+import { highlightField } from './highlight'
 
 export interface AguiChatProps extends Partial<ChatOptions> {
   plugins?: Plugin[]
@@ -68,3 +69,12 @@ export function reactSlot<D = unknown>(createRoot: CreateRoot, Component: Compon
   }
 }
 
+/** A box for a field of your own that the chat (or your code) can highlight: <HighlightTarget name="amount"><input/></HighlightTarget>.
+ *  It renders a div (or `as`) with data-name; the highlight rings the box, never the bare input. */
+export function HighlightTarget({ name, as = 'div', children, ...rest }: { name: string; as?: string; children?: ReactNode } & HTMLAttributes<HTMLElement>) {
+  return createElement(as, { ...rest, 'data-name': name }, children)
+}
+
+/** highlightField for your own code: const highlight = useHighlight(); highlight('amount') */
+export const useHighlight = (): typeof highlightField => highlightField
+export type { HighlightOptions } from './highlight'

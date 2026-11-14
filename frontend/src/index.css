@@ -71,11 +71,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .err { color: var(--err); font-size: 12px; }
 .file { display: flex; gap: 8px; align-items: center; font-size: 12px; }
 
-.pulse { outline: 2px solid var(--hl); outline-offset: 3px; animation: pulse 1.2s ease-in-out 3; }
-.bubble {
-  position: absolute; top: 100%; left: 0; margin-top: 6px; z-index: 5; max-width: 280px;
-  background: var(--hl); color: #1c1300; padding: 6px 9px; border-radius: 6px; font-size: 12px;
-}
+/* a filled or look-here field: the widget's own highlight (@formguide/agui-chat/highlight) */
 
 /* chat */
 .chat-pane { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }

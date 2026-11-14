@@ -13,7 +13,7 @@ import type { AguiEvent, ChatApi, Interrupt, Plugin, RendererContext, Restored, 
 import { appliedLine, askCard, confirmCard, fieldCard, undoLine, uploadCard } from './cards'
 import { CAPABILITIES, receiptEl, reviewCard, sourcesEl } from './pickers'
 import { FG_STRINGS, TOOL_LABELS } from './i18n'
-import { lookAt, ring } from './hint'
+import { highlightField, lookAt } from '../highlight-lazy'
 
 export { schemaForm, normOption } from './schema'
 export { calendar, dateField, timeGrid, isoOf } from './calendar'
@@ -44,6 +44,9 @@ export interface FormguideOptions {
   onDirective?: (d: Directive) => void
   /** Where formguide's router is mounted (threads, attachments). Default: the run URL without /run. */
   baseUrl?: string
+  /** Highlight every field the chat fills (the ring and the green blink, @formguide/agui-chat/highlight); false when
+   *  your page draws its own. Default true. */
+  highlight?: boolean
   /** Field-change card features; all on by default. */
   fieldCard?: Partial<FieldCardFlags>
   /** How long Undo stays available after a card is applied, in seconds. */
@@ -84,7 +87,7 @@ export interface Ctx extends FormguideOptions { base: (chat: ChatApi) => string;
  * onDirective to open them first. */
 export function defaultDirective(d: Directive): void {
   lookAt(d.target, d.hint)
-  for (const n of d.also ?? []) ring(n)
+  for (const n of d.also ?? []) highlightField(n, { kind: 'look' })
 }
 
 /** A pending card or question from GET /threads/{id} (a transcript entry) -> an interrupt payload. */
@@ -107,7 +110,11 @@ export function formguide(opts: FormguideOptions): Plugin {
     { detail: { fields: Object.keys(changes), values: changes, undo }, bubbles: true, composed: true }))
   const ctx: Ctx = {
     ...opts, flags,
-    applyChanges: async (changes) => { const cfg = await opts.applyChanges(changes); told(changes); return cfg },
+    applyChanges: async (changes) => {
+      const cfg = await opts.applyChanges(changes); told(changes)
+      if (opts.highlight !== false) requestAnimationFrame(() => { for (const n of Object.keys(changes)) highlightField(n) })   // after the page drew the new values
+      return cfg
+    },
     revertChanges: async (previous) => { const r = await (opts.revertChanges ?? opts.applyChanges)(previous); told(previous, true); return r },
     onDirective: opts.onDirective ?? defaultDirective,   // cards show the field they filled, with or without a host callback
     base: (chat) => (opts.baseUrl ?? chat.options.url.replace(/\/run\/?$/, '')).replace(/\/$/, ''),

@@ -52,7 +52,7 @@ Answer in writing, in the reply to the user or in the OpenSpec change's `design.
 
 If you cannot name one main action, the screen or card does too much. Split it, or hide the secondary.
 
-## The eleven laws
+## The twelve laws
 
 In detail, with examples from our code: `references/principles.md`.
 
@@ -67,6 +67,7 @@ In detail, with examples from our code: `references/principles.md`.
 9. **Fingers and keyboard.** Tap targets ≥ 44×44 on a phone; nothing important only on hover. On a computer: `Esc` closes, `Enter` confirms, number keys pick options, `Tab` moves in a sensible order.
 10. **Quiet and system.** Only tokens (`--agui-*` in `packages/agui-chat/src/styles.ts`), one type scale, one spacing scale, one radius scale, one accent colour, motion with meaning, `prefers-reduced-motion` respected. Scales: `references/tokens.md`.
 11. **Like Apple.** Every component looks and behaves like its counterpart at Apple (iOS / macOS): the same shape, the same press, swipe and keyboard behaviour, the same words for the same action. Before you ship a component, answer: how does Apple do it, what happens on tap, hold, swipe and key, and what did I do differently, and why. Reference: `references/apple-components.md`.
+12. **No layout shift** (the owner's rule, 14.11.2026). What is above the reader's eyes does not move. New content appears below or in a pinned zone (suggestions above the input, not inserted mid-thread). A work status is one line that changes in place, not a list that later collapses. Every height change eases over ~200 ms (instant with reduced motion). Auto-scroll only when the reader is already at the bottom.
 
 ## What we never do (hard rules)
 

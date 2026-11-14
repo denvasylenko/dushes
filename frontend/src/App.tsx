@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formguide } from '@formguide/agui-chat/formguide'
+import { highlightField } from '@formguide/agui-chat/highlight'
 import { Select } from './controls'
 import { AguiChat } from '@formguide/agui-chat/react'
 import type { AguiChatElement } from '@formguide/agui-chat'
 import { javaEvent, javaForm, javaForms, registerLayout, FRONTEND_TOOLS, type FormState } from './api'
-import { FormProvider, Render, type Highlight } from './Form'
+import { FormProvider, Render } from './Form'
 import { parseJsx } from './jsx'
 import Manager from './Manager'
 import { TraceLine, TracePanel, type RunStats, type Turn } from './Trace'
@@ -76,7 +77,6 @@ export default function App() {
   const [form, setForm] = useState<LoadedForm | null>(null)
   const [config, setConfig] = useState<Config | null>(null)
   const [ui, setUi] = useState<UiState>(EMPTY_UI)
-  const [highlight, setHighlight] = useState<Highlight>(null)
   const [agentCtx, setAgentCtx] = useState<AgentCtx>(null)
   const [showCtx, setShowCtx] = useState(false)
   const [turns, setTurns] = useState<Turn[]>([])   // this conversation's run_stats, newest first (the trace)
@@ -174,17 +174,13 @@ export default function App() {
 
   const applyDirective = useCallback((d: UiDirective) => {
     reveal(d.reveal)
-    setHighlight({ target: d.target, hint: d.hint, ts: Date.now(), also: d.also })
+    // the widget's own "look here" (@formguide/agui-chat/highlight): ring, scroll, focus, the hint; after the tab opens
     window.setTimeout(() => {
-      document.querySelector(`[data-name="${d.target}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      highlightField(d.target, { kind: 'look', hint: d.hint })
+      for (const n of d.also ?? []) highlightField(n, { kind: 'look' })
     }, 60)
   }, [reveal])
 
-  useEffect(() => {
-    if (!highlight) return
-    const t = window.setTimeout(() => setHighlight(null), 7000)
-    return () => window.clearTimeout(t)
-  }, [highlight])
 
   // ------------------------------------------------------------ the chat: <agui-chat> + the formguide plugin
   const plugins = useMemo(() => [formguide({
@@ -243,8 +239,8 @@ export default function App() {
   }
 
   const ctxValue = useMemo(
-    () => (config ? { config, ui, highlight, setValue, setTab, toggleAccordion, setFocused } : null),
-    [config, ui, highlight, setValue, setTab, toggleAccordion, setFocused],
+    () => (config ? { config, ui, setValue, setTab, toggleAccordion, setFocused } : null),
+    [config, ui, setValue, setTab, toggleAccordion, setFocused],
   )
 
   const header = (
