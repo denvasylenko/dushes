@@ -236,3 +236,19 @@ def test_whole_config_card_puts_yaml_first():
         "b2": Block("b2", "yaml", "formguide.yaml", "model: x", "u#every-key-in-one-file", "Configuration", "Every key in one file")})
     card = whole_config_card(c)
     assert [b["lang"] for b in card["blocks"]] == ["yaml", "python"]
+
+
+def test_earlier_cards_are_named_so_the_model_does_not_apologise(tmp_path):
+    client, model = _client(tmp_path)
+    body = {"threadId": "t9", "runId": "r1", "state": {}, "tools": [], "context": [], "forwardedProps": {}, "messages": [
+        {"id": "m1", "role": "user", "content": "How do I pick a provider?"},
+        {"id": "m2", "role": "assistant", "content": "Set `models:` in the config.", "toolCalls": [
+            {"id": "c1", "type": "function", "function": {"name": "show_code", "arguments": "{}"}},
+            {"id": "c2", "type": "function", "function": {"name": "suggest_next", "arguments": "{}"}}]},
+        {"id": "m3", "role": "user", "content": "And for Azure?"}]}
+    with client as c:
+        assert c.post("/ask/run", json=body, headers={"Accept": "text/event-stream"}).status_code == 200
+    earlier = next(m.content for m in model.calls[0] if "Set `models:`" in str(m.content))
+    assert "[cards shown to the reader with this answer: show_code]" in earlier        # suggest_next is not a card
+    system = model.calls[0][0].content
+    assert "Never apologise for the format of an earlier answer" in system

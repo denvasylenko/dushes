@@ -97,3 +97,10 @@ Asked for the whole configuration (every key, all options, the full file), the a
 #### Scenario: Every key
 - **WHEN** a reader asks "Show me the whole configuration with every key"
 - **THEN** the answer has a code card with the complete `formguide.yaml` and its Python equivalent as tabs
+
+### Requirement: No apologies and no repeated cards
+The docs assistant SHALL know that its earlier answers showed cards (the history names the cards each earlier answer showed), SHALL NOT apologise for or correct the format of an earlier answer, and SHALL NOT show again a card the reader already has unless they ask for it.
+
+#### Scenario: A follow-up question
+- **WHEN** the reader asks a second question after an answer that showed a code card
+- **THEN** the answer starts with the answer itself, with no apology, and does not repeat the earlier card

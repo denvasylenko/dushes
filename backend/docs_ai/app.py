@@ -76,6 +76,15 @@ def _text(content: Any) -> str:
     return str(content or "")
 
 
+def _cards(m: Any) -> str:
+    """A note of the cards an earlier answer showed (its tool calls), so the model knows they were on screen:
+    without it an earlier answer reads as plain text only, and the model apologises and shows them again."""
+    calls = getattr(m, "tool_calls", None) or []
+    names = [str(getattr(getattr(c, "function", None), "name", "") or "") for c in calls]
+    shown = [n for n in names if n.startswith("show_")]
+    return f"\n[cards shown to the reader with this answer: {', '.join(shown)}]" if shown else ""
+
+
 class Quota:
     """Questions per conversation and per site per day. In memory: one process."""
 
@@ -153,7 +162,8 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
             inp = RunAgentInput.model_validate(await request.json())
         except (ValidationError, ValueError) as e:
             raise HTTPException(422, f"not an AG-UI RunAgentInput: {e}") from None
-        history = [(m.role, _text(getattr(m, "content", ""))) for m in inp.messages if m.role in ("user", "assistant")]
+        history = [(m.role, _text(getattr(m, "content", "")) + _cards(m)) for m in inp.messages
+                   if m.role in ("user", "assistant")]
         question = next((t for r, t in reversed(history) if r == "user"), "").strip()
         if not question:
             raise HTTPException(400, "no question")
