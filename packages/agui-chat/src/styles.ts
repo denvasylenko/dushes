@@ -69,6 +69,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .msg.me { display: flex; flex-direction: column; align-items: flex-end; }
 .msg.me > div:not(.att-row) { background: var(--agui-bubble-user-bg, var(--agui-soft)); color: var(--agui-bubble-user-ink, inherit); border-radius: var(--agui-bubble-radius, var(--agui-radius-lg)); padding: 10px 15px; max-width: 85%; white-space: pre-wrap; }
 .msg.ai { color: var(--agui-bubble-ai-ink, inherit); }
+.msg.gone { opacity: 0; transition: opacity .18s var(--agui-ease); }
 .msg.ai p { margin: 0 0 10px; } .msg.ai p:last-child { margin-bottom: 0; }
 .msg.ai ul { margin: 4px 0 10px; padding-left: 20px; } .msg.ai li { margin: 3px 0; }
 .msg.ai a { color: var(--agui-link); }

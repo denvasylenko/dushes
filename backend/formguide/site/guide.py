@@ -175,6 +175,22 @@ def handoff_message(note: str, language: str = "") -> str:
     return f"{HANDED} On the site the user said: {note}{say}"
 
 
+
+class Said:
+    """A form agent's words of one run, by message: a lead it takes back (CUSTOM text_retract) is left out."""
+
+    def __init__(self) -> None:
+        self.parts: dict[str, str] = {}
+
+    def see(self, ev: dict[str, Any]) -> None:
+        if ev["type"] == "TEXT_MESSAGE_CONTENT":
+            self.parts[ev["messageId"]] = self.parts.get(ev["messageId"], "") + ev["delta"]
+        elif ev["type"] == "CUSTOM" and ev.get("name") == "text_retract":
+            self.parts.pop(str((ev.get("value") or {}).get("messageId")), None)
+
+    def text(self) -> str:
+        return "".join(self.parts.values())
+
 class Dushes:
     def __init__(self, form_guide: FormGuide, site: SiteMap, model: Any = None,
                  knowledge_namespaces: list[str] | None = None, router_model: Any = None, *,
@@ -238,7 +254,7 @@ class Dushes:
         """('site' | 'form' | '', what they said last) from the site transcript (form turns carry form_id)."""
         if not thread_id:
             return "", ""
-        e = next((x for x in reversed(self.forms.transcripts.list(thread_id)) if x["kind"] == "assistant"), None)
+        e = next((x for x in reversed(self.forms.transcripts.list(thread_id)) if x["kind"] == "assistant" and x.get("text")), None)
         if not e:
             return "", ""
         return ("form" if e.get("form_id") else "site"), str(e.get("text") or "")
@@ -347,7 +363,7 @@ class Dushes:
             kw["capabilities"] = with_hand_back(kw.get("capabilities"))   # the form agent may give the message back
             from ..transcript import pending_card
             open_card = pending_card(tx.list(form_thread)) if resume is not None else None
-            said: list[str] = []
+            said = Said()
             back = None
             async for ev in self.forms.run(form_thread, message=message, state=form, resume=resume,
                                            run_id=run_id, **kw):
@@ -356,16 +372,15 @@ class Dushes:
                     continue
                 if back is not None:   # the form's turn ended with hand_back: Dushes answers next
                     continue
-                if ev["type"] == "TEXT_MESSAGE_CONTENT":
-                    said.append(ev["delta"])
+                said.see(ev)
                 yield ev
             if open_card:   # what the user did with the form's card, as a fact the site agent and the router see
                 done = next((e for e in tx.list(form_thread) if e["id"] == open_card["id"]), None)
                 fact = card_outcome(done) if done else None
                 if fact:
                     tx.append(thread_id, new_entry("card_result", text=fact, form_id=fid))
-            if "".join(said).strip():
-                tx.append(thread_id, new_entry("assistant", text="".join(said), form_id=fid))
+            if said.text().strip():
+                tx.append(thread_id, new_entry("assistant", text=said.text(), form_id=fid))
             if back is None or not typed:
                 return
             async for ev in self._site_turn(thread_id, typed, state, run_id, host, form_kwargs, recorded=True):
@@ -432,16 +447,15 @@ class Dushes:
         # the form agent answers now, in this same run: its words and cards follow Dushes' open_form
         fid, form = handed["form_id"], handed["form"]
         form_thread = f"{thread_id}-{fid}"[:100]
-        out: list[str] = []
+        out = Said()
         async for ev in self.forms.run(form_thread, message=handoff_message(handed["note"], handed["language"]),
                                        state=form, run_id=run_id, **form_kwargs):
             if ev["type"] == "RUN_STARTED":
                 continue
-            if ev["type"] == "TEXT_MESSAGE_CONTENT":
-                out.append(ev["delta"])
+            out.see(ev)
             yield ev
-        if "".join(out).strip():
-            tx.append(thread_id, new_entry("assistant", text="".join(out), form_id=fid))
+        if out.text().strip():
+            tx.append(thread_id, new_entry("assistant", text=out.text(), form_id=fid))
 
 
 def create_dushes_router(site: Dushes, host: Any = None):

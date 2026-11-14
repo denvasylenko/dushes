@@ -203,7 +203,7 @@ guide = FormGuide(GuideConfig(
 | --- | --- | --- |
 | an object (Python only) | `ChatOpenAI(model="gpt-5")` | used as it is |
 | `"provider:model"` | `"openai:gpt-5"` | `init_chat_model("openai:gpt-5")` |
-| `{provider, model, ...}` | `{provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}` | `init_chat_model(model, model_provider=provider, **rest)` |
+| `{provider, model, ...}` | `{provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}` | `init_chat_model(model, model_provider=provider, **rest)`; `effort: low \| medium \| high` maps to Anthropic `output_config.effort` or OpenAI `reasoning_effort` (the default agent uses `low`: the first words come soonest) |
 | `{class, ...}` | `{class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5}` | the class, called with the other keys |
 
 The strings and dicts work in Python too (`Models(research="openai:gpt-5-mini")`). Extra keys go to the model's constructor unchanged: `temperature`, `max_tokens`, `timeout`, `max_retries`, Anthropic's `output_config: {effort: low}`.

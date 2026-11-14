@@ -106,6 +106,27 @@ describe('actions under an answer', () => {
   })
 })
 
+describe('a lead taken back', () => {
+  it('text_retract removes the lead written before the tools; the answer stays', async () => {
+    const el = await mount()
+    el.agent = { run: () => ({ subscribe: (o: Obs) => {
+      setTimeout(() => {
+        for (const e of [{ type: 'RUN_STARTED', threadId: 't', runId: 'r' },
+          { type: 'TEXT_MESSAGE_START', messageId: 'lead', role: 'assistant' }, { type: 'TEXT_MESSAGE_CONTENT', messageId: 'lead', delta: 'Sure. Let me look at the form first.' },
+          { type: 'TEXT_MESSAGE_END', messageId: 'lead' },
+          { type: 'CUSTOM', name: 'text_retract', value: { messageId: 'lead' } },
+          { type: 'TEXT_MESSAGE_START', messageId: 'ans', role: 'assistant' }, { type: 'TEXT_MESSAGE_CONTENT', messageId: 'ans', delta: 'The form has two tabs.' },
+          { type: 'TEXT_MESSAGE_END', messageId: 'ans' }, { type: 'RUN_FINISHED', threadId: 't', runId: 'r' }]) o.next(e)
+        o.complete()
+      })
+      return { unsubscribe() {} }
+    } }) } as never
+    await el.send('what is in it?')
+    await tick(250)
+    expect($$(el, '.msg.ai').map((m) => m.dataset.messageId)).toEqual(['ans'])
+  })
+})
+
 describe('back to the latest message', () => {
   it('shows a jump button when scrolled up, with the dots while the assistant works', async () => {
     const el = await mount()

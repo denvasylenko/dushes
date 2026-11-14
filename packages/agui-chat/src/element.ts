@@ -796,7 +796,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const log = this.$.log
     this._stick = true
     this.$.jump.hidden = true
-    log.scrollTo?.({ top: log.scrollHeight, behavior: matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+    log.scrollTo?.({ top: log.scrollHeight, behavior: globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
     if (!log.scrollTo) log.scrollTop = log.scrollHeight
   }
 
@@ -1246,6 +1246,12 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       if (typeof v === 'string') { try { v = JSON.parse(v) } catch { v = { type: 'unknown', text: v } } }
       const it = v as Interrupt
       this._showInterrupt({ ...it, card_id: it.card_id ?? it.id ?? uid() }, false)
+    } else if (name === 'text_retract') {   // a lead the server took back: the answer came after the tools
+      const id = String((value as { messageId?: string } | null)?.messageId ?? '')
+      const el = [...this.$.log.querySelectorAll<HTMLElement>('[data-message-id]')].find((x) => x.dataset.messageId === id)
+      if (!el || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { this.removeMessage(id); return }
+      el.classList.add('gone')   // fades, then goes; the answer takes its place
+      setTimeout(() => this.removeMessage(id), 180)
     } else if (name === 'tool_progress') {
       const p = value as { parent_id?: string; name?: string; input?: unknown }
       if (p?.parent_id) this._addSubStep(p.parent_id, p.name ?? '')

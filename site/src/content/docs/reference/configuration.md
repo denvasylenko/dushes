@@ -39,7 +39,7 @@ A cheaper model is fine for `research` and `memory`; `extract` needs a model tha
 | Form | Example | What happens |
 |---|---|---|
 | string `provider:model` | `"openai:gpt-5"` | `init_chat_model("openai:gpt-5")` |
-| dict with `provider` + `model` | `{provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}` | `init_chat_model(model, model_provider=provider, **rest)`; the other keys are constructor arguments of the provider's class |
+| dict with `provider` + `model` | `{provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}` | `init_chat_model(model, model_provider=provider, **rest)`; the other keys are constructor arguments of the provider's class. `effort` (`low`, `medium`, `high`): how hard the model thinks before it answers, Anthropic `output_config.effort` or OpenAI `reasoning_effort`; `low` (the default agent) gives the first words soonest |
 | dict with `class` | `{class: "langchain_openai:AzureChatOpenAI", azure_deployment: gpt-5, ...}` | imports the class and calls it with the other keys; use this for any class `init_chat_model` does not know, including your own `BaseChatModel` |
 
 In code, also an instance: `Models(agent=AzureChatOpenAI(...))`.
@@ -52,7 +52,7 @@ model: "openai:gpt-5"              # every role uses it
 
 ```yaml
 models:                            # per role; unset roles fall back as in the table above
-  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
   research: "anthropic:claude-haiku-5-5"
 ```
 

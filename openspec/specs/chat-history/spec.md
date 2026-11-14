@@ -13,7 +13,7 @@ The system SHALL keep, per thread, a display transcript of what the user saw, in
 - **THEN** the transcript still contains every earlier user message and assistant reply
 
 ### Requirement: What the transcript records
-The transcript SHALL record, in order, with an id and a timestamp: user messages with the names of attached files, the assistant's replies (full text, not internal notes), tool activity, confirmation cards with their proposed changes and status, errors, and notices (for example that older turns were summarized for the assistant).
+The transcript SHALL record, in order, with an id and a timestamp: user messages with the names of attached files, the assistant's replies (full text, not internal notes; a lead taken back with `text_retract` is kept out), tool activity, confirmation cards with their proposed changes and status, errors, and notices (for example that older turns were summarized for the assistant).
 
 #### Scenario: A turn with a tool and a reply
 - **WHEN** the user asks where a field is and the agent focuses it and answers

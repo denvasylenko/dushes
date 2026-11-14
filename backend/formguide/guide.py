@@ -253,6 +253,7 @@ class FormGuide:
                       prefill: dict[str, Any] | None, capabilities: list[str] | None = None) -> AsyncIterator[dict]:
         """The run's AG-UI events, with the transcript kept in step (the body of run())."""
         texts: dict[str, str] = {}
+        entries: dict[str, tuple[str, str]] = {}   # message id -> (transcript entry id, its text)
         calls: dict[str, dict] = {}
         interrupts: list[dict] = []
         said: list[str] = []          # this run's answer, for quick replies
@@ -266,7 +267,14 @@ class FormGuide:
                 texts[ev["messageId"]] = texts.get(ev["messageId"], "") + ev["delta"]
             elif t == "TEXT_MESSAGE_END" and texts.get(ev["messageId"], "").strip():
                 said.append(texts[ev["messageId"]])
-                tx.append(thread_id, new_entry("assistant", text=texts.pop(ev["messageId"])))
+                text = texts.pop(ev["messageId"])
+                entries[ev["messageId"]] = (tx.append(thread_id, new_entry("assistant", text=text))["id"], text)
+            elif name == "text_retract":   # taken back: a reload does not show it, quick replies do not read it
+                eid, text = entries.pop(str((ev.get("value") or {}).get("messageId")), ("", ""))
+                if eid:
+                    tx.update(thread_id, eid, text="", retracted=True)
+                    if text in said:
+                        said.remove(text)
             elif name == "agent_context":
                 context = (ev.get("value") or {}).get("text") or ""
             elif t == "RUN_ERROR":
@@ -445,7 +453,7 @@ class FormGuide:
         for e in self.transcripts.list(check_thread_id(thread_id)):
             if e["kind"] == "user":
                 out.append({"id": e["id"], "role": "user", "content": e.get("text", "")})
-            elif e["kind"] == "assistant":
+            elif e["kind"] == "assistant" and not e.get("retracted"):
                 out.append({"id": e["id"], "role": "assistant", "content": e.get("text", "")})
             elif e["kind"] == "tool" and e.get("call_id"):
                 out.append({"id": f"{e['id']}-call", "role": "assistant", "toolCalls": [{
@@ -534,6 +542,8 @@ class FormGuide:
                     yield {"type": "CUSTOM", "name": "ui_directive", "value": chunk["directive"]}
                 elif k == "note":
                     yield {"type": "CUSTOM", "name": "agent_note", "value": chunk["text"]}
+                elif k == "text_retract":   # a lead written before tools, taken back: the answer came after them
+                    yield {"type": "CUSTOM", "name": "text_retract", "value": {"messageId": chunk["id"]}}
                 elif k == "sources":
                     yield {"type": "CUSTOM", "name": "sources", "value": {"items": chunk["items"]}}
                 elif k == "hand_back":   # Dushes answers this message instead

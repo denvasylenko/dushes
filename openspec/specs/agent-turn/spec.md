@@ -47,6 +47,20 @@ Short text that precedes a tool call SHALL be withheld from the user when the mo
 - **WHEN** the model writes "Need field names." right before a tool call while the user writes in a non-Latin script
 - **THEN** the text is sent as an `agent_note` event, not as chat text
 
+### Requirement: The words start early
+The reply SHALL start streaming once its text is clearly a reply: when a second sentence begins (after at least 40 characters) or after 160 characters, not only when the whole reply is written; a one-line lead before a tool SHALL still be held back as above.
+
+#### Scenario: A two-sentence answer
+- **WHEN** the model writes "The amount is up to 900 000. The term is from one to seven years."
+- **THEN** the first words reach the chat as soon as the second sentence starts
+
+### Requirement: A lead written before tools is taken back
+When text of up to 240 characters was shown before a tool call (not a card's own sentence) and the model writes its answer after the tools, the server SHALL send `CUSTOM text_retract {messageId}` before the answer; the chat SHALL remove that message, and the transcript and the quick replies SHALL leave it out. Longer text SHALL never be taken back.
+
+#### Scenario: "Let me look" then the answer
+- **WHEN** the model writes "Sure, I can help with that. Let me look at the form first.", calls `get_outline` and then answers
+- **THEN** the lead disappears as the answer starts, and a reload shows the answer only
+
 ### Requirement: Append-only history
 The system prompt SHALL be frozen for a thread at its first turn. If the form's instructions change later (documents recompiled, skills edited), the new instructions SHALL be delivered inside the next user message as `<updated_instructions>`, once per change (again only after a compaction may have summarized the update away). If the provider still rejects earlier reasoning blocks, the call SHALL be retried once without them.
 

@@ -2,7 +2,7 @@
 data_dir: ../data
 
 models:
-  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}   # low: the first words come soonest
   research: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}
   compile: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}
   extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}

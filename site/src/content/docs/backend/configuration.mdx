@@ -42,7 +42,7 @@ Each step twice: first as YAML, then the same in Python. Pick one; you never nee
 
    ```yaml title="formguide.yaml"
    models:
-     agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}
+     agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
      research: "anthropic:claude-haiku-5-5"
    memory: {model: "anthropic:claude-haiku-5-5"}
    ```
@@ -147,7 +147,7 @@ data_dir: data                       # formguide's own files: deps/, layouts/, k
 # --- Models --------------------------------------------------------------------------------------
 model: "anthropic:claude-haiku-5-5"   # one model for every role; or per role (wins over model:):
 models:
-  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000}   # required: the conversation
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}   # required: the conversation
   research: "anthropic:claude-haiku-5-5"     # the document researcher        default: agent
   compile: "anthropic:claude-haiku-5-5"        # documents -> domain pack rules default: agent
   extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}  # scans, prefill   default: agent

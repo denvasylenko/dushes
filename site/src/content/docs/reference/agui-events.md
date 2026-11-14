@@ -17,6 +17,7 @@ A run starts with `RUN_STARTED` and ends with exactly one `RUN_FINISHED` or `RUN
 | `CUSTOM receipt` | a confirmed host tool returned `{receipt: {title?, number?, eta?}}`: the same plus `card_id` of the confirmation | turn that confirmation into a receipt |
 | `CUSTOM suggestions` | quick replies `{items, applies?}`; each may carry validated field changes | show chips; a chip with `applies` fills fields at once |
 | `CUSTOM run_stats` | right before the terminal event: timings, tokens, cache hits | nothing, or a debug line ([Speed and tracing](../../backend/observability/)) |
+| `CUSTOM text_retract` | `{messageId}`: a short lead written before tools, taken back because the answer came after them | remove that message (`<agui-chat>` fades it out) |
 | `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
 | `RUN_FINISHED` | the end; in structured mode `outcome.interrupts[]` carries the card | |
 | `RUN_ERROR` | the end, with a message | show a human error and "Try again" |

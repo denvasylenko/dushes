@@ -15,6 +15,7 @@ from ..cards import answer_text as card_answer_text
 
 import json
 import logging
+import re
 import unicodedata
 import uuid
 from datetime import datetime
@@ -44,6 +45,17 @@ if TYPE_CHECKING:
 log = logging.getLogger("formguide")
 
 PREAMBLE_CHARS = 240  # shorter text right before a tool call may be an internal note
+# The words start to flow early: once a second sentence begins (EARLY_MIN chars at least), or after EARLY_CHARS.
+# A one-line "let me look" before a tool is still held back; a longer lead shown before tools is taken back
+# (text_retract) when the model writes its answer again after them.
+EARLY_CHARS = 160
+EARLY_MIN = 40
+_SECOND = re.compile(r"[.!?\u2026]['\")\u00bb\u201d]*\s+\S")   # a sentence ends and the next one starts
+
+
+def flows(held: str) -> bool:
+    """The held text is clearly a reply: it may be shown now."""
+    return len(held) >= EARLY_CHARS or (len(held) >= EARLY_MIN and bool(_SECOND.search(held)))
 
 
 class AgentState(TypedDict, total=False):
@@ -61,6 +73,7 @@ class AgentState(TypedDict, total=False):
     stop_reason: str
     tool_round: int
     said: bool      # the user saw some text this turn
+    lead_id: str | None   # a short lead shown before this turn's tools: taken back if the model writes again
     nudged: bool    # we already asked the model to reply with text
     limited: bool   # the turn used up max_tool_rounds: the model was asked to reply without more tools
     handed_back: str | None   # hand_back was called: the turn ends, Dushes answers
@@ -225,7 +238,7 @@ def build_graph(guide: FormGuide):
         return {
             "messages": [*(state.get("messages") or []), *new],
             "snapshot": ctx.ov.snapshot(), "version": version, "pending": None, "tool_round": 0,
-            "said": False, "nudged": False, "limited": False, "handed_back": None, "attachments": [], "system_prompt": frozen,
+            "said": False, "lead_id": None, "nudged": False, "limited": False, "handed_back": None, "attachments": [], "system_prompt": frozen,
             "prompt_sent": current if current != frozen else "",
             "pending_client": None, "client_results": {}, "turn_sources": None,
         }
@@ -261,16 +274,22 @@ def build_graph(guide: FormGuide):
         msg_id = str(uuid.uuid4())
         started = False
         held = ""
+        shown = 0          # chars of this call on the page
+        lead = state.get("lead_id")   # an earlier call's lead, still on the page
         calling = False
         full = None
 
         def flush() -> None:
-            nonlocal started, held
+            nonlocal started, held, shown, lead
             if not held:
                 return
             if not started:
+                if lead:   # the answer comes again after the tools: the lead written before them goes
+                    w({"kind": "text_retract", "id": lead})
+                    lead = None
                 w({"kind": "text_start", "id": msg_id})
                 started = True
+            shown += len(held)
             w({"kind": "text_delta", "id": msg_id, "delta": held})
             held = ""
 
@@ -295,7 +314,7 @@ def build_graph(guide: FormGuide):
                 text = chunk.text
                 if text and not calling:
                     held += text
-                    if started or len(held) > PREAMBLE_CHARS:
+                    if started or flows(held):
                         flush()
                 elif text:
                     held += text
@@ -339,9 +358,15 @@ def build_graph(guide: FormGuide):
             w({"kind": "error", "message": "the model declined to answer this request"})
         log.info("llm round=%s tools=%s usage=%s", state.get("tool_round"),
                  [c["name"] for c in msg.tool_calls], msg.usage_metadata)
+        # a short lead before tools (not a card's own sentence) may be taken back once the answer comes after them
+        to_tools = bool(msg.tool_calls) and not any(c["name"] in CARD_TOOLS for c in msg.tool_calls)
+        if started and to_tools and shown <= PREAMBLE_CHARS:
+            lead = msg_id
+        elif started:
+            lead = None   # this call's words stay: an older lead is no longer the last thing said before an answer
         return {"messages": [*history, msg],
                 "stop_reason": "tool_use" if msg.tool_calls else "end_turn",
-                "said": bool(state.get("said")) or started}
+                "said": bool(state.get("said")) or started, "lead_id": lead}
 
     def route_llm(state: AgentState) -> str:
         if state.get("stop_reason") != "tool_use":

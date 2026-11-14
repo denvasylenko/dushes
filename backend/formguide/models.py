@@ -4,7 +4,8 @@ AzureChatOpenAI, ChatGoogleGenerativeAI, a local model, or your own BaseChatMode
 A model can be given as
 - an instance:  AzureChatOpenAI(azure_deployment="gpt-5", api_version=...)
 - a string:     "anthropic:claude-haiku-5-5", "openai:gpt-5", "azure_openai:my-deployment"
-- a dict:       {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 16000}
+- a dict:       {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 16000, "effort": "low"}
+                (effort: low | medium | high; Anthropic output_config.effort, OpenAI reasoning_effort)
 - a class dict: {"class": "langchain_openai:AzureChatOpenAI", "azure_deployment": "gpt-5", ...}
 Strings and dicts go through langchain.chat_models.init_chat_model; the provider's
 LangChain package must be installed (langchain-anthropic, langchain-openai, ...).
@@ -38,13 +39,19 @@ def build_model(spec: ModelSpec) -> BaseChatModel:
         return import_object(d.pop("class"))(**d)
     model = d.pop("model")
     provider = d.pop("provider", None)
+    effort = d.pop("effort", None)
+    if effort:   # how hard the model thinks before it answers: "low" answers soonest
+        if (provider or "").startswith("anthropic") or str(model).startswith("claude"):
+            d["output_config"] = {**(d.get("output_config") or {}), "effort": effort}
+        elif (provider or "").startswith(("openai", "azure")) or str(model).startswith(("gpt", "o1", "o3", "o4")):
+            d.setdefault("reasoning_effort", effort)
     return init_chat_model(model, model_provider=provider, **d)
 
 
 def anthropic_defaults() -> dict[str, ModelSpec]:
     """Defaults when nothing is configured (needs ANTHROPIC_API_KEY)."""
     return {
-        "agent": {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 16000},
+        "agent": {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 16000, "effort": "low"},
         "research": {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 8000},
         "compile": {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 16000},
         "extract": {"provider": "anthropic", "model": "claude-haiku-5-5", "max_tokens": 8000},
