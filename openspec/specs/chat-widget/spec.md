@@ -168,26 +168,30 @@ A user who scrolled up SHALL stay where they read while new text arrives, and a 
 - **WHEN** the user scrolls up during an answer
 - **THEN** the view stays, the button shows the dots, and a tap on it scrolls to the end
 
-### Requirement: The image view's buttons stay with the picture
-In the large view of an image, the close button (and the pencil under it) SHALL sit beside the picture's top right corner, or on it where the screen has no room beside it.
+### Requirement: The image view's bar
+The large view of an image SHALL show a bar on top: close on the left, the file's name with "1 of 2" under it in the middle, and the pencil on the right when the picture can be marked up. Esc, the close button or a tap beside the picture SHALL close it.
 
-#### Scenario: A wide screenshot on a computer
-- **WHEN** the user opens a wide screenshot on a 1000 px wide window
-- **THEN** the close button sits just right of the picture's top right corner, not in the corner of the screen
+#### Scenario: A screenshot on a phone
+- **WHEN** the user taps a screenshot in a message on a 390 px screen
+- **THEN** it opens over the chat with x, its name and the pencil in a bar at the top
 
 ### Requirement: Paging the images of a message
-The large view of an image sent with a message SHALL page through that message's images only, with a previous and next arrow and "1 of 2" under the picture, the arrow keys and a swipe; it SHALL not wrap around, and an image still in the composer SHALL have no pager.
+The large view SHALL page through the images of the same message, or of the composer, with a swipe, the arrow keys and, with a mouse, a previous and next arrow beside the picture; it SHALL not wrap around, and an arrow at an end SHALL be dimmed.
 
 #### Scenario: Two screenshots in one message
 - **WHEN** the user opens the first of two images sent with a message and presses the right arrow key
 - **THEN** the second image shows with "2 of 2", and the next arrow is dimmed
 
-### Requirement: Marking up an attached image
-An image still in the composer SHALL offer a pencil in its large view. It SHALL load the markup editor on demand (pen, rectangle, text, a colour, a line width, undo, redo, clear, Save, close) and Save SHALL replace the attachment with the marked-up copy, uploaded like any file, in the same place in the row. A sent image SHALL only be viewed.
+### Requirement: Marking up an image
+While attachments are on, the large view SHALL offer a pencil for a picture it can read back (an attachment, or a picture from this site). The pencil SHALL load markup on demand: on top close, undo, redo and one check mark; at the bottom one tool button with the pen, frame, text and colours. The check mark SHALL put the marked-up copy in the composer: in place of an image still there, as a new attachment otherwise.
 
 #### Scenario: Circling a button
-- **WHEN** the user opens a pasted screenshot, taps the pencil, circles a button and taps Save
-- **THEN** the composer shows the marked-up copy in place of the screenshot
+- **WHEN** the user opens a sent screenshot, taps the pencil, circles a button and taps the check mark
+- **THEN** the view closes and the composer holds the marked-up copy, ready to send with a few words
+
+#### Scenario: Back to the picture
+- **WHEN** the user draws, then taps x or presses Esc
+- **THEN** markup closes, the picture stays open, and the pencil brings the drawing back
 
 ### Requirement: Hero mode
 With `mode="hero"` the chat SHALL show only the composer until the first message (no header, no message list, no empty state). The first message SHALL grow it into the chat in place on screens 760 px wide and more (messages above the composer, at most 70% of the viewport high), and open it as a full-screen sheet with a close button on narrower screens. Closing SHALL return to the field and keep the conversation.

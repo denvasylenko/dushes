@@ -1484,15 +1484,22 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   private _tile(name: string, preview: string | undefined, remove?: (tile: HTMLElement) => void, busy = false, edit?: number): HTMLElement {
     const ext = (name.match(/\.([a-z0-9]{1,5})$/i)?.[1] ?? '').toUpperCase()
     const tile = h('span', { class: `att${preview ? '' : ' doc'}${busy ? ' busy' : ''}`, part: 'attachment', title: name },
-      preview ? h('button', { class: 'att-open', type: 'button', 'aria-label': name, onclick: (e: Event) => this._zoom(e.currentTarget as HTMLElement, edit === undefined ? undefined : (blob) => this._replaceFile(edit, blob, name)) }, h('img', { src: preview, alt: '' }))
+      preview ? h('button', { class: 'att-open', type: 'button', 'aria-label': name, ...(edit === undefined ? {} : { 'data-file': String(edit) }), onclick: (e: Event) => this._zoom(e.currentTarget as HTMLElement) }, h('img', { src: preview, alt: '' }))
         : [h('span', { class: 'att-name' }, name), ext ? h('span', { class: 'att-ext' }, ext) : null])
     if (remove) tile.append(h('button', { class: 'att-x', type: 'button', 'aria-label': `${this.t('remove')} ${name}`, onclick: () => remove(tile) }, '\u00d7'))
     return tile
   }
 
-  /** The image, large, over the chat (its code loads the first time, with the markup editor). */
-  private _zoom(opener: HTMLElement, edit?: (image: Blob) => void): void {
-    void loadZoom().then((open) => open({ wrap: this.$.wrap, t: this.t.bind(this), icon: (el, n) => this._icon(el, n) }, opener, edit)).catch(() => {})
+  /** The image, large, over the chat (its code loads the first time, with the markup editor). While attachments are
+   *  on, its pencil marks up any picture: the copy replaces an image still in the composer, or joins the composer. */
+  private _zoom(opener: HTMLElement): void {
+    const mark = this.$.clip.hidden ? undefined : (from: HTMLElement, image: Blob, name: string): void => {
+      const i = from.dataset.file
+      if (i !== undefined && this._files[+i]) this._replaceFile(+i, image, name)
+      else void this._upload([new File([image], `${(name || 'image').replace(/\.[a-z0-9]{1,5}$/i, '')}-markup.png`, { type: 'image/png' })])
+      if (finePointer()) (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true })   // the next step is to say what to do with it
+    }
+    void loadZoom().then((open) => open({ wrap: this.$.wrap, t: this.t.bind(this), icon: (el, n) => this._icon(el, n), mark }, opener)).catch(() => {})
   }
 
   /** Put a marked-up copy in place of an attachment: uploaded like any file, at the same place in the row. */

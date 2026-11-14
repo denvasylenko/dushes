@@ -506,31 +506,7 @@ button.bubble-q { cursor: pointer; }
 .box > .files.more-right { mask-image: linear-gradient(to right, black calc(100% - 28px), transparent); }
 .box > .files.more-left { mask-image: linear-gradient(to right, transparent, black 28px); }
 .box > .files.more-left.more-right { mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent); }
-/* the image, large: a dimmed backdrop, the picture fitted to the screen, a close button */
-.zoom { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0;
-  display: grid; place-items: center; padding: 48px 16px; box-sizing: border-box; animation: zoom-in .2s var(--agui-ease) both; cursor: zoom-out;
-  background: color-mix(in srgb, black 86%, transparent); }   /* dark in both schemes, like Photos */
-.zoom::backdrop { background: transparent; }
-.zoom:not([open]) { display: none; }
-.zoom img { max-width: calc(100vw - 32px); max-height: calc(100vh - 112px); width: auto; height: auto; object-fit: contain; border-radius: var(--agui-radius-sm); box-shadow: 0 20px 60px -20px var(--agui-shadow); cursor: default; }
-.zoom-fig { position: relative; display: inline-block; line-height: 0; }   /* the picture and its own buttons */
-.zoom-fig img { display: block; }
-.zoom-x { position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; border: 0; border-radius: 50%;
-  display: grid; place-items: center; background: color-mix(in srgb, black 55%, transparent); color: white; cursor: pointer;
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-@media (hover: none) { .zoom-x { width: 44px; height: 44px; } }
-.zoom-x svg { width: 20px; height: 20px; }
-.zoom-pager { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); display: flex; align-items: center; gap: 4px; color: white; line-height: normal; }
-.zoom-go { width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; color: inherit; display: grid; place-items: center; cursor: pointer; }
-.zoom-go:hover:not(:disabled) { background: color-mix(in srgb, white 14%, transparent); }
-.zoom-go:disabled { opacity: .3; cursor: default; }
-.zoom-n { min-width: 64px; text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
-.zoom-edit { top: 52px; }   /* the pencil under the close button, on the picture */
-@media (hover: none) { .zoom-edit { top: 60px; } }
-.zoom-fig.out .zoom-x { top: 0; right: auto; left: calc(100% + 8px); background: color-mix(in srgb, white 18%, transparent); }
-.zoom-fig.out .zoom-edit { top: 44px; }
-@media (min-width: 700px) { .zoom img { max-width: calc(100vw - 136px); } }   /* room beside it for its buttons */
-@keyframes zoom-in { from { opacity: 0; } to { opacity: 1; } }
+/* the image view and markup bring their own styles (zoom.ts, editor.ts), loaded with them */
 .att.doc { width: auto; min-width: 120px; max-width: 200px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 28px 8px 10px; }
 .att-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .att-ext { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--agui-ink-2); }
@@ -556,7 +532,7 @@ button.bubble-q { cursor: pointer; }
 .att-row .att.doc { width: auto; height: auto; min-height: 52px; padding: 8px 12px; background: var(--agui-bg); }
 @keyframes att-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
 @keyframes att-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .att-new, .att-out, .files-in, .att.busy::after, .zoom { animation: none; } .att-x { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .att-new, .att-out, .files-in, .att.busy::after { animation: none; } .att-x { transition: none; } }
 .chip.file { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 11px; cursor: default; }
 .chip.file .btn { padding: 2px 7px; }
 .hint { text-align: center; font-size: 12px; line-height: 16px; color: var(--agui-ink-2); margin-top: 7px; min-height: 16px; }   /* one line, always the same height: nothing below jumps */

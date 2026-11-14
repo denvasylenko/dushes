@@ -1,81 +1,140 @@
 /**
- * The image view: an image large over the chat, x or Esc or a tap beside it closes it; the images sent with one
- * message page with arrows, keys and a swipe; an image still in the composer gets the pencil (markup). Loaded the first
- * time an image is opened, with the markup editor (agui-chat.editor.js next to the one-script build).
+ * The image view, like Photos and the Claude app: the picture over the chat, a bar on top with x, the file's name and
+ * "1 of 2", and a pencil; the images of one message (or of the composer) page with a swipe, the arrows beside the
+ * picture and the arrow keys. The pencil opens markup (editor.ts); its check mark puts the marked-up copy in the
+ * composer: in place of the image when it is still there, as a new attachment otherwise. Loaded the first time an
+ * image is opened (agui-chat.editor.js next to the one-script build), with its own styles, so the chat stays small.
  */
 import { h } from './dom'
-import { openEditor } from './editor'
+import { openEditor, type Shape } from './editor'
 
 export interface ZoomHost {
   wrap: HTMLElement
   t: (key: string, vars?: Record<string, string | number>) => string
   icon: (el: HTMLElement, name: 'close') => void
+  /** Present when a marked-up copy can go into the composer (uploads are on): takes the opener the copy belongs to. */
+  mark?: (opener: HTMLElement, image: Blob, name: string) => void
 }
 
-export function openZoom(host: ZoomHost, opener: HTMLElement, edit?: (image: Blob) => void): void {
-  // the images sent with the same message page with \u2039 1 of 2 \u203a, \u2190 / \u2192 and a swipe; one in the composer stays alone
-  const own = opener.closest('.att-row')
+const CSS = `
+.zoom { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; box-sizing: border-box;
+  display: grid; grid-template-rows: auto minmax(0, 1fr); color: white; animation: zoom-in .2s var(--agui-ease) both;
+  background: black; }   /* black in both schemes, like Photos: nothing of the chat shows through */
+.zoom::backdrop { background: transparent; }
+.zoom:not([open]) { display: none; }
+.zoom-top { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 12px;
+  padding: max(10px, env(safe-area-inset-top, 0px)) 12px 10px; }
+.zoom-title { text-align: center; min-width: 0; line-height: 1.25; }
+.zoom-name { display: block; font: 600 15px/20px var(--agui-font, inherit); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zoom-n { display: block; font-size: 13px; color: color-mix(in srgb, white 64%, transparent); font-variant-numeric: tabular-nums; }
+.zoom-x, .mk-round { width: 44px; height: 44px; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; padding: 0;
+  background: color-mix(in srgb, white 14%, transparent); color: white; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.zoom-x:hover, .mk-round:hover:not(:disabled) { background: color-mix(in srgb, white 22%, transparent); }
+.zoom-x svg { width: 20px; height: 20px; }
+.zoom-x:focus-visible, .mk-round:focus-visible, .zoom-go:focus-visible, .mk-pal button:focus-visible { outline: 2px solid var(--agui-accent); outline-offset: 2px; }
+.zoom-stage { position: relative; min-height: 0; touch-action: pan-y; cursor: zoom-out; --side: 16px; }
+/* centred in what is left under the bar, never bigger than it: absolute, so a tall photo cannot stretch the row */
+.zoom-stage img { position: absolute; inset: 0 var(--side) 24px; margin: auto; max-width: calc(100% - 2 * var(--side)); max-height: calc(100% - 24px);
+  width: auto; height: auto; object-fit: contain; border-radius: var(--agui-radius-sm); cursor: default; }
+.zoom-go { position: absolute; top: calc(50% - 34px); width: 44px; height: 44px; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  background: color-mix(in srgb, white 14%, transparent); color: white; }
+.zoom-go.prev { left: 16px; } .zoom-go.next { right: 16px; }
+.zoom-go:disabled { opacity: .3; cursor: default; }
+@media (hover: none) { .zoom-go { display: none; } }   /* a phone swipes */
+@media (min-width: 700px) and (hover: hover) { .zoom-stage { --side: 76px; } }   /* room for the arrows beside the picture */
+.zoom.marking .zoom-top, .zoom.marking .zoom-stage { visibility: hidden; }
+@keyframes zoom-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .zoom { animation: none; } }
+`
+
+/** A picture we may draw on and read back: ours (blob:, data:) or from this site; another site's would taint the canvas. */
+const markable = (src: string): boolean => {
+  try { return /^(blob|data):/.test(src) || new URL(src, location.href).origin === location.origin } catch { return false }
+}
+
+const PENCIL = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20zM14 7l3 3"/></svg>'
+
+export function openZoom(host: ZoomHost, opener: HTMLElement, legacyEdit?: (image: Blob) => void): void {
+  // the images of one message page together; so do the ones in the composer
+  const own = opener.closest('.att-row, .files')
   const openers = own ? [...own.querySelectorAll<HTMLElement>('.att-open')] : [opener]
   const pic = (b: HTMLElement): HTMLImageElement | null => (b instanceof HTMLImageElement ? b : b.querySelector('img'))   // a picture in an answer opens itself
-  const row = openers.map((b) => ({ src: pic(b)?.getAttribute('src') ?? '', name: b.getAttribute('aria-label') ?? pic(b)?.alt ?? '' }))
+  const row = openers.map((b) => ({ el: b, src: pic(b)?.getAttribute('src') ?? '', name: b.getAttribute('aria-label') || pic(b)?.alt || '' }))
   let at = Math.max(0, openers.indexOf(opener))
-  // a modal <dialog>: the browser puts it above everything on the page (no stacking context can cover it), Esc closes it
+  const drawn = new Map<number, Shape[]>()   // what was drawn on each image while the view is open: x in markup keeps it
+
   const x = h('button', { class: 'zoom-x', type: 'button', 'aria-label': host.t('close') }); host.icon(x, 'close')
-  const img = h('img', { src: row[at]?.src, alt: row[at]?.name }) as HTMLImageElement
-  // the buttons sit on the picture's corner and the pager under it, not in the corners of the screen
-  const fig = h('div', { class: 'zoom-fig' }, img, x)
-  // beside the picture's top right corner when there is room (nothing covers it); on it otherwise (a phone)
-  const place = (): void => { fig.classList.toggle('out', fig.getBoundingClientRect().right + 52 <= innerWidth) }
-  img.addEventListener('load', place)
-  addEventListener('resize', place)
-  const view = h('dialog', { class: 'zoom', part: 'zoom', 'aria-label': row[at]?.name }, fig) as HTMLDialogElement
-  let swiped = false
-  if (row.length > 1) {
-    const count = h('span', { class: 'zoom-n', 'aria-live': 'polite' })
-    const step = (d: number) => {
-      const b = h('button', { class: 'zoom-go', type: 'button', 'aria-label': host.t(d < 0 ? 'prevImage' : 'nextImage') })
-      b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}"/></svg>`
-      b.addEventListener('click', (e) => { e.stopPropagation(); show(at + d) })
-      return b
-    }
-    const prev = step(-1), next = step(1)
-    // like Photos: no wrap-around, the arrow at an end is dimmed
-    const show = (i: number): void => {
-      at = Math.max(0, Math.min(row.length - 1, i))
-      img.src = row[at].src; img.alt = row[at].name; view.setAttribute('aria-label', row[at].name)
-      count.textContent = host.t('nOfTotal', { n: at + 1, total: row.length })
-      prev.disabled = at === 0; next.disabled = at === row.length - 1
-    }
-    fig.append(h('div', { class: 'zoom-pager', part: 'zoom-pager' }, prev, count, next))
-    show(at)
-    view.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight') { e.preventDefault(); show(at + 1) }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); show(at - 1) }
-    })
-    let x0 = 0
-    view.addEventListener('pointerdown', (e) => { x0 = e.clientX })
-    view.addEventListener('pointerup', (e) => { const dx = e.clientX - x0; if (Math.abs(dx) > 40) { swiped = true; show(at + (dx < 0 ? 1 : -1)) } })
+  const name = h('span', { class: 'zoom-name' })
+  const count = h('span', { class: 'zoom-n', 'aria-live': 'polite' })
+  const pencil = h('button', { class: 'zoom-x zoom-edit', type: 'button', 'aria-label': host.t('markup') })
+  pencil.innerHTML = PENCIL
+  const img = h('img', { alt: '' }) as HTMLImageElement
+  const stage = h('div', { class: 'zoom-stage' }, img)
+  const view = h('dialog', { class: 'zoom', part: 'zoom' },
+    h('style', {}, CSS), h('div', { class: 'zoom-top' }, x, h('span', { class: 'zoom-title' }, name, count), pencil), stage) as HTMLDialogElement
+
+  const canMark = (i: number): boolean => !!row[i]?.src && markable(row[i].src) && (!!host.mark || (!!legacyEdit && row[i].el === opener))
+  const go = (d: number): HTMLButtonElement => {
+    const b = h('button', { class: `zoom-go ${d < 0 ? 'prev' : 'next'}`, type: 'button', 'aria-label': host.t(d < 0 ? 'prevImage' : 'nextImage') }) as HTMLButtonElement
+    b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}"/></svg>`
+    b.addEventListener('click', (e) => { e.stopPropagation(); show(at + d) })
+    return b
   }
+  const prev = go(-1), next = go(1)
+  if (row.length > 1) stage.append(prev, next)
+  // like Photos: no wrap-around, the arrow at an end is dimmed
+  const show = (i: number, slide = 0): void => {
+    const to = Math.max(0, Math.min(row.length - 1, i))
+    if (to !== at && slide && !matchMedia?.('(prefers-reduced-motion: reduce)').matches) img.animate?.([{ transform: `translateX(${slide * 40}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' })
+    at = to
+    img.src = row[at].src; img.alt = row[at].name
+    name.textContent = row[at].name; view.setAttribute('aria-label', row[at].name)
+    count.textContent = row.length > 1 ? host.t('nOfTotal', { n: at + 1, total: row.length }) : ''
+    count.hidden = row.length < 2
+    prev.disabled = at === 0; next.disabled = at === row.length - 1
+    pencil.style.visibility = canMark(at) ? '' : 'hidden'
+  }
+  show(at)
+
+  let marking = false
+  view.addEventListener('keydown', (e) => {
+    if (marking) return
+    if (e.key === 'ArrowRight') { e.preventDefault(); show(at + 1, 1) }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); show(at - 1, -1) }
+  })
+  let x0 = 0, y0 = 0, swiped = false
+  stage.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY })
+  stage.addEventListener('pointerup', (e) => {
+    const dx = e.clientX - x0
+    if (row.length > 1 && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(e.clientY - y0)) { swiped = true; show(at + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1) }
+  })
   const close = (): void => { view.close() }
   x.addEventListener('click', close)
-  view.addEventListener('click', (e) => { if (swiped) { swiped = false; return } if (e.target === view) close() })   // a tap beside the picture
-  view.addEventListener('close', () => { view.remove(); removeEventListener('resize', place) })
-  // an image still in the composer can be marked up (the editor loads now): Save puts the marked-up copy in its place
-  if (edit) {
-    const pencil = h('button', { class: 'zoom-x zoom-edit', type: 'button', 'aria-label': host.t('markup') })
-    pencil.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20zM14 7l3 3"/></svg>'
-    pencil.addEventListener('click', (e) => {
-      e.stopPropagation()
-      void Promise.resolve(openEditor).then((open) => {
-        img.hidden = true; x.hidden = true; pencil.hidden = true
-        open({ src: row[at].src, name: row[at].name, mount: view, t: (k) => host.t(k), onSave: (blob) => { edit(blob); close() }, onClose: close })
-      }).catch(() => { pencil.hidden = true })   // no editor file next to the script: the view stays
+  stage.addEventListener('click', (e) => { if (swiped) { swiped = false; return } if (e.target === stage) close() })   // a tap beside the picture
+  view.addEventListener('cancel', (e) => { if (marking) e.preventDefault() })   // Esc in markup leaves markup only (the editor handles it)
+  view.addEventListener('close', () => view.remove())
+
+  pencil.addEventListener('click', (e) => {
+    e.stopPropagation()
+    if (!canMark(at)) return
+    const i = at, item = row[i]
+    marking = true; view.classList.add('marking')
+    openEditor({
+      src: item.src, name: item.name, mount: view, t: (k) => host.t(k), shapes: drawn.get(i),
+      onDone: (image) => {
+        marking = false
+        if (host.mark) host.mark(item.el, image, item.name); else legacyEdit?.(image)
+        close()
+      },
+      onCancel: (shapes) => {
+        marking = false; view.classList.remove('marking')
+        drawn.set(i, shapes)
+        pencil.focus({ preventScroll: true })
+      },
     })
-    fig.append(pencil)
-  }
+  })
+
   host.wrap.append(view)
   if (typeof view.showModal === 'function') view.showModal(); else view.setAttribute('open', '')
-  requestAnimationFrame(place)
   x.focus({ preventScroll: true })
-
 }
