@@ -60,11 +60,17 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "goodAnswer": "Good answer",
     "badAnswer": "Bad answer",
     "reply": "Reply",
-    "replyVoice": "Reply by voice",
     "cancelReply": "Cancel the reply",
     "toQuoted": "Show the quoted message",
     "wholeAnswer": "Reply to the whole answer",
     "showMore": "Show more",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "replyTo": "Reply to {name}",
+    "addToChat": "Add to chat",
+    "dictateReply": "Dictate a reply",
+    "withReply": "With reply",
+    "quotedReply": "My replies are on the quotes above.",
+    "replyQueued": "Added. It goes with your next message.",
+    "newLine": "New line"
   }
 }

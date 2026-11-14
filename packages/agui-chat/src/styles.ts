@@ -79,7 +79,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .mode-inline .close, .mode-page .close { display: none; }
 
 /* messages */
-.log { flex: 1; overflow-y: auto; padding: 22px 20px 12px; background: var(--agui-log-bg, transparent); overscroll-behavior: contain; min-height: 0; }
+.log { position: relative; flex: 1; overflow-y: auto; padding: 22px 20px 12px; background: var(--agui-log-bg, transparent); overscroll-behavior: contain; min-height: 0; }
 .empty { padding: 22px 2px 10px; }
 .empty h3 { font-size: 28px; line-height: 1.15; letter-spacing: -0.035em; margin: 0 0 8px; text-wrap: balance; }
 .empty p { margin: 0 0 18px; color: var(--agui-ink-2); font-size: 15px; line-height: 1.45; }
@@ -333,8 +333,16 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .foot { padding: 10px 14px max(14px, env(safe-area-inset-bottom, 0px)); background: var(--agui-composer-area-bg, transparent); }
 .box { display: flex; align-items: flex-end; gap: 8px; background: var(--agui-composer-bg, var(--agui-bg)); border: 1px solid var(--agui-composer-border, var(--agui-line-2));
   border-radius: var(--agui-composer-radius, var(--agui-radius-lg));
-  padding: 8px 8px 8px 18px; box-shadow: 0 1px 2px color-mix(in srgb, var(--agui-shadow) 15%, transparent); transition: border-color .2s, box-shadow .2s; }
-.box:focus-within { border-color: var(--agui-ink-3); }
+  padding: 8px 8px 8px 18px; box-shadow: var(--agui-composer-shadow, var(--sh)); transition: border-color .2s, box-shadow .2s var(--agui-ease); }
+.box:focus-within { border-color: var(--agui-ink-3); box-shadow: var(--agui-composer-shadow-focus, var(--sh-f)); }
+/* the composer sits a little above the page, as in the Claude app; a little more when focused. In dark a shadow
+   would smudge, so it stays faint and the border carries the edge. composerShadow: soft (default), raised, none */
+.wrap { --sh: 0 1px 2px color-mix(in srgb, var(--agui-shadow) 12%, transparent), 0 4px 16px -6px color-mix(in srgb, var(--agui-shadow) 22%, transparent);
+  --sh-f: 0 1px 2px color-mix(in srgb, var(--agui-shadow) 14%, transparent), 0 8px 24px -8px color-mix(in srgb, var(--agui-shadow) 34%, transparent); }
+.wrap.shadow-raised { --sh: 0 2px 4px color-mix(in srgb, var(--agui-shadow) 14%, transparent), 0 12px 32px -10px color-mix(in srgb, var(--agui-shadow) 40%, transparent);
+  --sh-f: 0 2px 4px color-mix(in srgb, var(--agui-shadow) 16%, transparent), 0 16px 40px -10px color-mix(in srgb, var(--agui-shadow) 50%, transparent); }
+:host(.dark) .wrap { --sh: 0 1px 2px color-mix(in srgb, var(--agui-shadow) 20%, transparent); --sh-f: 0 2px 10px -4px color-mix(in srgb, var(--agui-shadow) 45%, transparent); }
+.wrap.shadow-none { --sh: none; --sh-f: none; }
 .box.drop { border-color: var(--agui-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-accent) 25%, transparent); }   /* a file dragged over it */
 .box textarea { flex: 1; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 16px/1.4 var(--agui-font);
   padding: 7px 0; max-height: 180px; min-height: 24px; }
@@ -351,30 +359,46 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .nudge .box { animation: nudge .4s; }
 @keyframes nudge { 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
 .files[hidden] { display: none; }
-/* reply to a part of an answer: the capsule over a selection (the iOS edit menu), the quote bar, the quote in a bubble */
-.sel-pill { position: absolute; z-index: 6; display: flex; align-items: center; padding: 4px; gap: 4px; border-radius: 999px;
-  background: color-mix(in srgb, var(--agui-soft) 88%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
-  box-shadow: 0 8px 28px -6px var(--agui-shadow), 0 0 0 .5px var(--agui-line-2);
+/* reply to a part of an answer, as in the Claude app: a small reply window over the selection (the quote, a field, the
+   mic, Add to chat), one grey tile per collected quote in the composer, and the quotes in the sent bubble */
+.sel-cap { position: absolute; z-index: 6; display: flex; padding: 4px; border-radius: var(--agui-radius-pill);
+  background: var(--agui-panel-bg, var(--agui-bg)); box-shadow: 0 6px 20px -6px var(--agui-shadow), 0 0 0 .5px var(--agui-line-2);
   animation: pill-in .15s var(--agui-ease) both; }
-.sel-pill[hidden] { display: none; }
-@keyframes pill-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
-.pill-b { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent;
-  color: var(--agui-ink); font: 500 15px/1 var(--agui-font); cursor: pointer; transition: background .15s var(--agui-ease); }
-.pill-b:hover, .pill-b:active { background: var(--agui-line); }
-.pill-b[hidden] { display: none; }
-.pill-mic { width: 32px; padding: 0; justify-content: center; position: relative; }
-.pill-mic::before { content: ''; position: absolute; left: -2px; top: 8px; bottom: 8px; width: 1px; background: var(--agui-line-2); }
-.pill-b svg { width: 17px; height: 17px; flex: none; }
-.pill-ico { display: grid; color: var(--agui-ink-2); }
-@media (pointer: coarse) { .sel-pill { padding: 2px; } .pill-b { height: 44px; padding: 0 16px; } .pill-mic { width: 44px; padding: 0; } }
-.box > .reply-bar { order: -2; flex: 1 0 100%; display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0 0 4px; padding: 0 0 8px;
-  border-bottom: 1px solid var(--agui-line); color: var(--agui-ink-2); font-size: 13px; animation: att-in .15s var(--agui-ease) both; }
-.box > .reply-bar[hidden] { display: none; }
-.reply-ico { display: grid; color: var(--agui-accent); } .reply-ico svg { width: 16px; height: 16px; }
-.reply-q { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.box .reply-x { width: 28px; height: 28px; flex: none; margin: -4px -6px -4px 0; }
-.box .reply-x svg { width: 14px; height: 14px; }
-@media (pointer: coarse) { .box .reply-x { width: 44px; height: 44px; margin: -12px -14px -12px -4px; } }
+.sel-cap[hidden] { display: none; }
+.cap-b { height: 32px; padding: 0 14px; border: 0; border-radius: var(--agui-radius-pill); background: transparent; color: var(--agui-ink);
+  font: 15px/1 var(--agui-font); cursor: pointer; transition: background .15s var(--agui-ease); }
+.cap-b:hover, .cap-b:active { background: var(--agui-soft); }
+@media (pointer: coarse) { .cap-b { height: 44px; padding: 0 18px; } }
+.sel-pop { position: absolute; z-index: 6; width: min(360px, calc(100% - 16px)); display: grid; gap: 4px; padding: 12px 8px 4px 16px;
+  border-radius: var(--agui-radius); background: var(--agui-panel-bg, var(--agui-bg));
+  box-shadow: 0 10px 32px -8px var(--agui-shadow), 0 0 0 .5px var(--agui-line-2); animation: pill-in .15s var(--agui-ease) both; }
+.sel-pop[hidden] { display: none; }
+@keyframes pill-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.pop-q { padding: 0 8px 0 10px; border-left: 2px solid var(--agui-ink-3); color: var(--agui-ink-2); font-size: 14px; line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pop-row { display: flex; align-items: center; gap: 4px; }
+.pop-in { flex: 1; min-width: 0; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 15px/1.4 var(--agui-font);
+  padding: 8px 0; max-height: 120px; }
+.pop-in::placeholder { color: var(--agui-ink-3); }
+.sel-pop .ib { width: 36px; height: 36px; flex: none; } .sel-pop .ib svg { width: 20px; height: 20px; }
+@media (pointer: coarse) { .sel-pop .ib { width: 44px; height: 44px; } .pop-in { font-size: 16px; padding: 11px 0; } }
+.box > .reply-list { order: -2; flex: 1 0 100%; display: grid; gap: 8px; min-width: 0; margin: 2px 0 6px -4px; animation: att-in .15s var(--agui-ease) both; }
+.box > .reply-list[hidden] { display: none; }
+.reply-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; padding: 6px 6px 6px 12px; border-radius: var(--agui-radius);
+  background: var(--agui-soft); color: var(--agui-ink-2); font-size: 15px; }
+.rc-ico { display: grid; flex: none; } .rc-ico svg { width: 18px; height: 18px; }
+.rc-q { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--agui-ink-2); }
+.rc-note { position: relative; flex: none; border: 1px solid var(--agui-line-2); background: transparent; color: var(--agui-ink-2); font: 13px/1 var(--agui-font);
+  padding: 4px 10px; cursor: pointer; border-radius: var(--agui-radius-pill); }
+.rc-note:hover, .rc-note[aria-expanded=true] { background: var(--agui-bg); }
+.rc-note-t { flex: 1 0 100%; padding: 0 8px 8px 24px; white-space: pre-wrap; color: var(--agui-ink-2); }
+.rc-note-t[hidden] { display: none; }
+.reply-chip .rc-x { width: 32px; height: 32px; flex: none; } .reply-chip .rc-x svg { width: 16px; height: 16px; }
+@media (pointer: coarse) { .reply-chip { min-height: 44px; } .reply-chip .rc-x { width: 44px; height: 44px; margin: -8px -4px -8px 0; } .rc-note::before { content: ""; position: absolute; inset: -10px -4px; } }
+.bq-note { margin: 4px 0 12px 10px; font-size: 13px; color: var(--agui-ink-2); white-space: pre-wrap; }
+.msg.me .bq-note { color: color-mix(in srgb, currentColor 78%, transparent); }
+.bubble-text { display: block; }
+.bubble-q + .bubble-text, .bq-note + .bubble-text { margin-top: 8px; }
 .bubble-q { display: block; width: 100%; margin: 0 0 4px; padding: 4px 8px; border: 0; border-left: 2px solid var(--agui-accent); border-radius: 0 6px 6px 0;
   background: color-mix(in srgb, var(--agui-accent) 6%, transparent); color: var(--agui-ink-2); font: 13px/1.35 var(--agui-font); text-align: left; white-space: normal; }
 button.bubble-q { cursor: pointer; }
@@ -410,7 +434,7 @@ button.bubble-q { cursor: pointer; }
 .box > .files { order: -1; flex: 1 0 100%; display: flex; gap: 8px; overflow-x: auto; margin: 2px 0 4px -10px; padding: 2px; scrollbar-width: none; }
 .att { position: relative; flex: none; width: 64px; height: 64px; border-radius: 12px; overflow: hidden; background: var(--agui-soft);
   border: 1px solid var(--agui-line); }
-.att-new { animation: att-in .2s var(--agui-ease) both; }
+.att-new { animation: att-in .2s var(--agui-ease) both; }   /* grows in from .92, fading in */
 .att img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .att-open { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
 /* many attachments: the row scrolls, and the edge with more behind it fades */
@@ -448,6 +472,16 @@ button.bubble-q { cursor: pointer; }
 .att-x { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; display: grid; place-items: center;
   background: color-mix(in srgb, var(--agui-ink) 72%, transparent); color: var(--agui-bg); font-size: 14px; line-height: 1; cursor: pointer; }
 .att-x::before { content: ''; position: absolute; inset: -10px; }   /* a finger-sized target */
+@media (pointer: coarse) { .att-x::before { inset: -12px; } }   /* 44 px on touch */
+/* with a mouse the x shows on hover or keyboard focus, as in the Claude app; a phone has no hover, so there it stays */
+@media (hover: hover) and (pointer: fine) {
+  .att-x { opacity: 0; transform: scale(.8); transition: opacity .15s var(--agui-ease), transform .15s var(--agui-ease); }
+  .att:hover .att-x, .att:focus-within .att-x { opacity: 1; transform: none; }
+}
+.att-out { animation: att-out .18s var(--agui-ease) both; pointer-events: none; }
+@keyframes att-out { to { opacity: 0; transform: scale(.92); } }
+.files-in { animation: files-in .2s var(--agui-ease) both; }
+@keyframes files-in { from { opacity: 0; max-height: 0; margin-top: 0; margin-bottom: 0; } to { opacity: 1; max-height: 140px; } }
 .att.busy::after { content: ''; position: absolute; inset: 0; margin: auto; width: 20px; height: 20px; border-radius: 50%;
   border: 2px solid color-mix(in srgb, var(--agui-bg) 60%, transparent); border-top-color: var(--agui-bg); animation: att-spin .8s linear infinite; }
 .att.busy { background: color-mix(in srgb, var(--agui-ink) 25%, var(--agui-soft)); }
@@ -457,7 +491,7 @@ button.bubble-q { cursor: pointer; }
 .att-row .att.doc { width: auto; height: auto; min-height: 52px; padding: 8px 12px; background: var(--agui-bg); }
 @keyframes att-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
 @keyframes att-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .att-new, .att.busy::after, .zoom { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .att-new, .att-out, .files-in, .att.busy::after, .zoom { animation: none; } .att-x { transition: none; } }
 .chip.file { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 11px; cursor: default; }
 .chip.file .btn { padding: 2px 7px; }
 .hint { text-align: center; font-size: 12px; line-height: 16px; color: var(--agui-ink-3); margin-top: 7px; min-height: 16px; }   /* one line, always the same height: nothing below jumps */

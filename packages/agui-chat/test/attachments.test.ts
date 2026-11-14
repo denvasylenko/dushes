@@ -37,6 +37,7 @@ describe('attachments in the composer', () => {
     expect(tiles[1].textContent).toContain('passport scan.pdf')
     expect(tiles[1].querySelector('.att-ext')!.textContent).toBe('PDF')
     ;(tiles[1].querySelector('.att-x') as HTMLButtonElement).click()
+    await new Promise((r) => setTimeout(r, 220))                              // it shrinks away first
     expect(box.querySelectorAll('.files .att')).toHaveLength(1)
   })
 

@@ -58,12 +58,18 @@
   "goodAnswer": "Buena respuesta",
   "badAnswer": "Mala respuesta",
   "reply": "Responder",
-  "replyVoice": "Responder por voz",
   "cancelReply": "Cancelar la respuesta",
   "toQuoted": "Ver el mensaje citado",
   "wholeAnswer": "Respuesta a todo el mensaje",
   "showMore": "Ver m\u00e1s",
-  "showLess": "Ver menos"
+  "showLess": "Ver menos",
+  "replyTo": "Responder a {name}",
+  "addToChat": "A\u00f1adir al chat",
+  "dictateReply": "Dictar una respuesta",
+  "withReply": "Con respuesta",
+  "quotedReply": "Mis respuestas est\u00e1n en las citas de arriba.",
+  "replyQueued": "A\u00f1adido. Se enviar\u00e1 con tu pr\u00f3ximo mensaje.",
+  "newLine": "Nueva l\u00ednea"
  },
  "formguide": {
   "fillTitle": "\u00bfRellenar estos campos?",

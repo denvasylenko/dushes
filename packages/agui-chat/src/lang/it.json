@@ -58,12 +58,18 @@
   "goodAnswer": "Buona risposta",
   "badAnswer": "Risposta sbagliata",
   "reply": "Rispondi",
-  "replyVoice": "Rispondi a voce",
   "cancelReply": "Annulla la risposta",
   "toQuoted": "Mostra il messaggio citato",
   "wholeAnswer": "Risposta a tutto il messaggio",
   "showMore": "Mostra di pi\u00f9",
-  "showLess": "Mostra meno"
+  "showLess": "Mostra meno",
+  "replyTo": "Rispondi a {name}",
+  "addToChat": "Aggiungi alla chat",
+  "dictateReply": "Detta una risposta",
+  "withReply": "Con risposta",
+  "quotedReply": "Le mie risposte sono sulle citazioni qui sopra.",
+  "replyQueued": "Aggiunto. Partir\u00e0 con il tuo prossimo messaggio.",
+  "newLine": "Nuova riga"
  },
  "formguide": {
   "fillTitle": "Compilare questi campi?",

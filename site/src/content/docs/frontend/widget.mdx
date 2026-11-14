@@ -190,15 +190,22 @@ Files attached with the paperclip, pasted (a screenshot, Ctrl+V) or dropped show
 
 ## Reply to a part of an answer
 
-Select a few words in an answer and a small capsule appears: **Reply** and the microphone. Reply puts the words in a quote bar above the field (× or Esc removes it); the microphone does the same and starts dictating. The sent message shows the quote above its text, and a tap on the quote scrolls back to the answer and highlights it. Reply under an answer, next to Copy, quotes the whole of it (the keyboard's way in), and on a phone so does a swipe left on the answer. On a phone the capsule sits under the selection.
+Select a few words in an answer and a small **Reply** capsule appears, as in the Claude app (scrolling away takes it off). Reply opens a window: the quote on one line, a field "Reply to Assistant" and **Add to chat**.
+- **Enter** in the window (or **Add to chat**) puts the quote, with what you typed as its reply, into the composer as a grey tile, under the ones already there, so you can collect several. **Enter** in the composer then sends them in one message.
+- **× on a tile**, or **Esc** in the field, takes a quote back.
 
-The run carries the quote for the server, once:
+The sent message shows every quote above its text, each with its reply, and a tap on a quote scrolls back to the answer. **Reply** under an answer, next to Copy, quotes the whole of it, and on a phone so does a swipe left on the answer.
+
+The run carries the quotes for the server, once:
 
 ```json
-{ "forwardedProps": { "reply_to": { "message_id": "msg_42", "quote": "the fee is 2%" } } }
+{ "forwardedProps": { "reply_to": [
+  { "message_id": "msg_42", "quote": "the fee is 2%", "note": "per month?" },
+  { "message_id": "msg_42", "whole": true }
+] } }
 ```
 
-`quote` is the selection's plain text, at most 300 characters. A reply to the whole answer, from Reply under it or a swipe, is sent as `{"message_id": "msg_42", "whole": true}` with no quote, and the server looks the answer up; the quote shows the assistant's name over the answer's start, as in Telegram. A restored user message with `reply_to` shows its quote again. Turn it off with `reply="off"`; restyle it with the parts `selection-menu`, `reply` and `message-quote`.
+`quote` is the selection's plain text, at most 300 characters; `note` is the reply typed for that quote; `whole: true` means the whole answer (the server looks it up). A restored user message with `reply_to` (a list, or one object from an older server) shows its quotes again. Turn it off with `reply="off"`; restyle it with the parts `selection-menu` (the capsule), `reply-window`, `reply` (the tiles) and `message-quote`.
 
 ## Long messages fold
 
@@ -284,6 +291,8 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `voice` | `voice` | `auto` | how speech becomes text: `auto` (the server when it transcribes; without one, the browser's recognition in Chromium on a computer and Android, elsewhere a recording for the server), `browser` (the browser only), `server` (always the server), `off` (no mic). Chrome's recognition sends the audio to Google: use `server` for sensitive data |
 | `dictation` | `dictation` | — | the old name of `voice` (`browser`, `server`, `auto`), used when `voice` is left at `auto` |
 | `reply` | `reply` | on | Reply on a selected part of an answer, and swipe to reply on a phone |
+| `shortcutHints` | `shortcut-hints` | on | tooltips with keys on the composer's buttons (Send ↵, New line ⇧↵, Dictate ⌘D); never on touch screens |
+| `composerShadow` | `composer-shadow` | `soft` | the composer's shadow: `soft`, `raised` or `none`; exact values with `--agui-composer-shadow` and `--agui-composer-shadow-focus` |
 | `collapseLines` | `collapse-lines` | `8` | a message taller than this many lines folds, with Show more; `0`: never |
 | `collapseAnswers` | `collapse-answers` | off | fold the assistant's long answers too |
 | `transcribe-url` | `transcribeUrl` | next to `url` | where recordings go for server dictation |

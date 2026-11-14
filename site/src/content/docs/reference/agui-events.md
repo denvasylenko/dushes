@@ -56,7 +56,7 @@ All of these are optional: a client that ignores them still works.
 
 ### Reply to a quote
 
-When the user replies to a part of an answer, that run's `forwardedProps.reply_to` is `{message_id, quote}`: the id of the agent message (its `TEXT_MESSAGE_START.messageId`) and the quoted plain text, at most 300 characters. A reply to the whole answer is `{message_id, whole: true}`, with no quote. It is sent with that one run only, never inside `messages`. A server that restores a thread may return the user message with the same `reply_to`, and the chat draws the quote above it again. A restore response with `transcription: true` tells the chat the server transcribes, so `voice: auto` records for it.
+When the user replies to parts of answers, that run's `forwardedProps.reply_to` is a list, in the order collected (at most ten): `{message_id, quote, note?}` for a selection (the quoted plain text, at most 300 characters) or `{message_id, whole: true, note?}` for a whole answer. `message_id` is the agent message's `TEXT_MESSAGE_START.messageId`, and `note` is the user's reply to that quote. It is sent with that one run only, never inside `messages`. An older client sends one object; a server treats it as a list of one. A server that restores a thread returns the user message with `reply_to` as a list, and the chat draws the quotes above it again. A restore response with `transcription: true` tells the chat the server transcribes, so `voice: auto` records for it.
 
 ### Capabilities
 

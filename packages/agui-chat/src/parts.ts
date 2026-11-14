@@ -14,7 +14,7 @@ export const PARTS: [string, string][] = [
   ['.quick', 'suggestions'], ['.wait', 'typing'], ['.notice', 'notice'], ['.error', 'error'],
   ['.foot', 'composer'], ['.box', 'composer-box'], ['.box textarea', 'input'], ['.send', 'send'], ['.mic', 'mic'],
   ['.clip', 'attach'], ['.files', 'attachments'], ['.hint', 'hint'],
-  ['.sel-pill', 'selection-menu'], ['.reply-bar', 'reply'], ['.bubble-q', 'message-quote'], ['.fold-btn', 'fold-toggle'],
+  ['.sel-cap', 'selection-menu'], ['.sel-pop', 'reply-window'], ['.reply-list', 'reply'], ['.reply-chip', 'reply-quote'], ['.bubble-q', 'message-quote'], ['.fold-btn', 'fold-toggle'],
   // shared controls
   ['.chip', 'chip'], ['.chip.act', 'action-chip'], ['.chip.on', 'chip-selected'],
   ['.btn', 'button'], ['.btn.pri', 'button-primary'], ['.btn.sec', 'button-secondary'], ['.btn.link', 'button-link'],

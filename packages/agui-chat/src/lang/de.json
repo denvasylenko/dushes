@@ -58,12 +58,18 @@
   "goodAnswer": "Gute Antwort",
   "badAnswer": "Schlechte Antwort",
   "reply": "Antworten",
-  "replyVoice": "Per Sprache antworten",
   "cancelReply": "Antwort abbrechen",
   "toQuoted": "Zitierte Nachricht zeigen",
   "wholeAnswer": "Antwort auf die ganze Nachricht",
   "showMore": "Mehr anzeigen",
-  "showLess": "Weniger anzeigen"
+  "showLess": "Weniger anzeigen",
+  "replyTo": "Antwort an {name}",
+  "addToChat": "Zum Chat hinzuf\u00fcgen",
+  "dictateReply": "Antwort diktieren",
+  "withReply": "Mit Antwort",
+  "quotedReply": "Meine Antworten stehen bei den Zitaten oben.",
+  "replyQueued": "Hinzugef\u00fcgt. Es geht mit deiner n\u00e4chsten Nachricht mit.",
+  "newLine": "Neue Zeile"
  },
  "formguide": {
   "fillTitle": "Diese Felder ausf\u00fcllen?",

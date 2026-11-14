@@ -6,6 +6,7 @@ import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, recognitionBlocked, record, recordingSupported, speechReliable, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
+import { ariaKeys, attachTip, TIP_CSS } from './tip'
 import { hasTheme, themeCss, THEME_PACKS, loadTheme } from './themes'
 import { watchParts } from './parts'
 import { runAgent, runHttp, uid, type AgentLike } from './transport'
@@ -32,6 +33,10 @@ const wholeWords = (range: Range): string => {
   return s.trim() ? s : all
 }
 
+/** reply_to as sent or restored: a list (one object from an old server counts as a list of one), empty quotes left out. */
+const replyList = (v: ReplyTo | ReplyTo[] | null | undefined): ReplyTo[] =>
+  (Array.isArray(v) ? v : v ? [v] : []).filter((r) => r && r.message_id !== undefined && (r.whole || (r.quote ?? '').trim())).slice(0, 10)
+
 export const DEFAULTS: ChatOptions = {
   url: '/agent/run', threadId: undefined, persistThread: true, mode: 'floating', typing: 'words', toolSteps: true, mic: true, quickReplies: true,
   theme: 'default', scheme: '', lang: '', title: '', subtitle: '', intro: '', placeholder: '', footnote: '', starters: [], resumeStyle: 'command',
@@ -39,7 +44,7 @@ export const DEFAULTS: ChatOptions = {
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, voice: 'auto', dictation: '', transcribeUrl: '', attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined, icons: {}, render: {},
-  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, modal: true, launcher: 'auto', launcherLabel: '', reply: true, collapseLines: 8, collapseAnswers: false,
+  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, modal: true, launcher: 'auto', launcherLabel: '', reply: true, composerShadow: 'soft', shortcutHints: true, collapseLines: 8, collapseAnswers: false,
 }
 
 /** attribute -> [option, parser] */
@@ -53,7 +58,7 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   'mic-auto-send': ['micAutoSend', bool], voice: ['voice', String], dictation: ['dictation', String], 'transcribe-url': ['transcribeUrl', String], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
   'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
   'bubble-side': ['bubbleSide', String], greeting: ['greeting', String], 'greeting-delay': ['greetingDelay', Number], motion: ['motion', String],
-  reply: ['reply', bool], 'collapse-lines': ['collapseLines', Number], 'collapse-answers': ['collapseAnswers', bool], modal: ['modal', bool], launcher: ['launcher', String], 'launcher-label': ['launcherLabel', String],
+  reply: ['reply', bool], 'composer-shadow': ['composerShadow', String], 'shortcut-hints': ['shortcutHints', bool], 'collapse-lines': ['collapseLines', Number], 'collapse-answers': ['collapseAnswers', bool], modal: ['modal', bool], launcher: ['launcher', String], 'launcher-label': ['launcherLabel', String],
   'message-actions': ['messageActions', (v) => (!v || /^(off|none|false)$/.test(v) ? [] : v.split(',').map((x) => x.trim()).filter(Boolean))],
 }
 
@@ -71,6 +76,7 @@ const ACT: Record<string, string> = {
   like: 'M7 11v9H4v-9h3zm0 0 4-7a2 2 0 0 1 3 2l-1 4h5.5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 20H7',
   down: 'M12 5v14M6 13l6 6 6-6',
   reply: 'M10 8 5 12.5 10 17M5.5 12.5H14a5 5 0 0 1 5 5V19',
+  addChat: 'M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1zM12 8v6M9 11h6',
 }
 const actSvg = (d: string): string => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
 
@@ -89,12 +95,12 @@ let sheet: CSSStyleSheet | null = null
 function styles(root: ShadowRoot): (css: string) => void {
   try {
     sheet ??= new CSSStyleSheet()
-    if (!sheet.cssRules.length) sheet.replaceSync(CSS)
+    if (!sheet.cssRules.length) sheet.replaceSync(CSS + TIP_CSS)
     const theme = new CSSStyleSheet()
     root.adoptedStyleSheets = [sheet, theme]   // later sheet, same specificity: the theme wins
     return (css) => theme.replaceSync(css)
   } catch {   // no constructable stylesheets: <style> elements in the same order
-    root.appendChild(h('style', null, CSS))
+    root.appendChild(h('style', null, CSS + TIP_CSS))
     const theme = root.appendChild(h('style'))
     return (css) => { theme.textContent = css }
   }
@@ -171,11 +177,25 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _files: Attachment[] = []
   private _sending: Attachment[] = []
   private $: Record<string, HTMLElement> = {}
-  private _reply: ReplyTo | null = null   // the part of an answer the next message replies to
+  private _replies: ReplyTo[] = []   // the quotes the next message replies to, in the order they were collected
   private _picked: ReplyTo | null = null   // what the selection capsule would quote
   private _serverVoice = false   // the server said it transcribes (restore: transcription)
   private _selT: ReturnType<typeof setTimeout> | undefined
-  private _onSel = (): void => { clearTimeout(this._selT); this._selT = setTimeout(() => this._showPill(), 150) }
+  private _onSel = (): void => {
+    if (this._winOpen() && (this._popBusy() || this.$.pill.contains(this.root.activeElement))) return   // the window's field took the selection
+    clearTimeout(this._selT); this._selT = setTimeout(() => this._showPill(), 150)
+  }
+  /** A tap anywhere but the reply window closes it. */
+  private _onDown = (e: Event): void => {
+    const p = this.$.pill, c = this.$.cap, path = e.composedPath()
+    if (p && ((!p.hidden && !path.includes(p)) || (c && !c.hidden && !path.includes(c)))) this._closePop(true)
+  }
+  /** Typing right after a selection goes into the reply window's field (no click first); copying still works. */
+  private _onKey = (e: KeyboardEvent): void => {
+    const p = this.$.pill, f = this.$.popIn as HTMLTextAreaElement | undefined
+    if (!p || p.hidden || !f || e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1 || e.composedPath().some((x) => x instanceof HTMLElement && x.matches('input, textarea, select, [contenteditable]'))) return
+    f.focus({ preventScroll: true })   // the key lands in the field
+  }
   private root!: ShadowRoot
 
   get threadId(): string { return this._thread }
@@ -284,8 +304,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   /** The system scheme and newly defined themes, while connected. */
   private _listen(on: boolean): void {
     const mq = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null
-    if (on) { mq?.addEventListener?.('change', this._onScheme); window.addEventListener('agui:themes', this._onThemes); document.addEventListener('selectionchange', this._onSel) }
-    else { mq?.removeEventListener?.('change', this._onScheme); window.removeEventListener('agui:themes', this._onThemes); document.removeEventListener('selectionchange', this._onSel) }
+    if (on) { mq?.addEventListener?.('change', this._onScheme); window.addEventListener('agui:themes', this._onThemes); document.addEventListener('selectionchange', this._onSel); document.addEventListener('pointerdown', this._onDown, true); document.addEventListener('keydown', this._onKey, true) }
+    else { mq?.removeEventListener?.('change', this._onScheme); window.removeEventListener('agui:themes', this._onThemes); document.removeEventListener('selectionchange', this._onSel); document.removeEventListener('pointerdown', this._onDown, true); document.removeEventListener('keydown', this._onKey, true) }
   }
 
   /** The scheme ("theme" auto/light/dark still means the scheme) and the theme's CSS. */
@@ -385,7 +405,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
 
   private _switchThread(id: string, restore = true): void {
     this._dropDictation()
-    this._setReply(null)
+    this._setReplies([])
     this.stop()
     this._setThread(id, true)
     this._messages = []
@@ -406,7 +426,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   async send(text: string): Promise<void> {
     text = String(text ?? '').trim()
     if (!text && this._files.length) text = this.t('useAttached')
-    if (!text || this._busy) return
+    const noted = this._replies.some((r) => r.note)
+    if ((!text && !noted) || this._busy) return
     if (this._hero) this.open()   // the field grows into the chat (a sheet on a phone)
     this._dropDictation()   // a chip or starter answered: the half-dictated text is stale (the composer's own send stopped it already)
     this._clearQuick()
@@ -416,12 +437,13 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._sending = this._files
     this._files = []
     this._renderFiles()
-    const reply = this._reply
-    this._setReply(null)
-    this._userBubble(text, this._sending.map((f) => f.filename), this._sending.map((f) => this._previews.get(f.id)), reply)
-    this._messages.push({ id: uid(), role: 'user', content: text })
-    const sent = reply && (reply.whole ? { message_id: reply.message_id, whole: true } : { message_id: reply.message_id, quote: reply.quote })
-    await this._run(sent ? { forwardedProps: { reply_to: sent } } : {})
+    const replies = this._replies
+    this._setReplies([])
+    this._userBubble(text, this._sending.map((f) => f.filename), this._sending.map((f) => this._previews.get(f.id)), replies)
+    // the replies are on the quotes: the message still carries a short text so the turn has one
+    this._messages.push({ id: uid(), role: 'user', content: text || this.t('quotedReply') })
+    const sent = replies.map((r) => ({ message_id: r.message_id, ...(r.whole ? { whole: true } : { quote: r.quote }), ...(r.note ? { note: r.note } : {}) }))
+    await this._run(sent.length ? { forwardedProps: { reply_to: sent } } : {})
   }
 
   /** A request through the chat's connection: headers (object or function), credentials, the request hook
@@ -527,21 +549,26 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const picker = h('input', { type: 'file', multiple: true, hidden: true }) as HTMLInputElement
     const send = h('button', { class: 'send', type: 'button', part: 'send' }); this._icon(send, 'send')
     const files = h('div', { class: 'files', part: 'attachments' })
-    // the quote the next message replies to: a reply icon, the quote on one line, a close button
-    const replyIco = h('span', { class: 'reply-ico', 'aria-hidden': 'true' }); replyIco.innerHTML = actSvg(ACT.reply)
-    const replyQ = h('span', { class: 'reply-q', id: 'reply-q' })
-    const replyX = h('button', { class: 'ib reply-x', type: 'button', onclick: () => { this._setReply(null); input.focus() } }); this._icon(replyX, 'close')
-    const replyBar = h('div', { class: 'reply-bar', part: 'reply', hidden: true }, replyIco, replyQ, replyX)
-    const box = h('div', { class: 'box' }, replyBar, files, clip, recX, input, wave, mic, send)
-    // the capsule over a selection in an answer: Reply and the mic, like the iOS edit menu
-    const pillReply = h('button', { class: 'pill-b pill-reply', type: 'button' }, h('span', { class: 'pill-ico', 'aria-hidden': 'true' }), h('span', { class: 'pill-t' }))
-    ;(pillReply.firstChild as HTMLElement).innerHTML = actSvg(ACT.reply)
-    const pillMic = h('button', { class: 'pill-b pill-mic', type: 'button' }); this._icon(pillMic, 'mic')
-    const pill = h('div', { class: 'sel-pill', part: 'selection-menu', role: 'toolbar', hidden: true }, pillReply, pillMic)
-    pill.addEventListener('pointerdown', (e) => e.preventDefault())   // the selection stays until a button reads it
-    pill.addEventListener('mousedown', (e) => e.preventDefault())
-    pillReply.addEventListener('click', () => this._replyTo(this._picked, false))
-    pillMic.addEventListener('click', () => this._replyTo(this._picked, true))
+    // the quotes the next message replies to: one grey tile each, stacked (several go in one message)
+    const replyList = h('div', { class: 'reply-list', part: 'reply', role: 'list', id: 'reply-list', hidden: true })
+    const box = h('div', { class: 'box' }, replyList, files, clip, recX, input, wave, mic, send)
+    // as in the Claude app, two steps: a small capsule over a selection (Reply), then a reply window (the quote on one
+    // line, a field "Reply to …", Add to chat)
+    const capReply = h('button', { class: 'cap-b cap-reply', type: 'button' })
+    const cap = h('div', { class: 'sel-cap', part: 'selection-menu', role: 'toolbar', hidden: true }, capReply)
+    cap.addEventListener('pointerdown', (e) => e.preventDefault())   // the selection stays until Reply reads it
+    capReply.addEventListener('click', () => this._openWin())
+    const popQ = h('div', { class: 'pop-q', id: 'pop-q' })
+    const popIn = h('textarea', { class: 'pop-in', rows: 1 }) as HTMLTextAreaElement
+    const popAdd = h('button', { class: 'ib pop-add', type: 'button' }); popAdd.innerHTML = actSvg(ACT.addChat)
+    const pill = h('div', { class: 'sel-pop', part: 'reply-window', role: 'dialog', 'aria-describedby': 'pop-q', hidden: true }, popQ, h('div', { class: 'pop-row' }, popIn, popAdd))
+    pill.addEventListener('pointerdown', (e) => { if (e.target !== popIn) e.preventDefault() })   // the button keeps the focus in the field
+    popIn.addEventListener('input', () => { popIn.style.height = 'auto'; popIn.style.height = `${Math.min(120, popIn.scrollHeight)}px` })
+    popIn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this._popAdd(); return }   // into the composer, under the others
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this._closePop(true) }
+    })
+    popAdd.addEventListener('click', () => this._popAdd())
     const hint = h('div', { class: 'hint', 'aria-live': 'polite' })
     // the way back to the latest message when the user has scrolled up; while the assistant works it shows the dots
     const jump = h('button', { class: 'jump', part: 'jump', type: 'button', hidden: true, onclick: () => this._toLatest() },
@@ -549,17 +576,16 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     ;(jump.firstChild as HTMLElement).innerHTML = actSvg(ACT.down)
     const foot = h('div', { class: 'foot', part: 'composer' }, jump, box, hint, picker)
     const panel = h('section', { class: 'panel', part: 'panel', role: 'dialog' }, head, log, foot)
-    panel.append(pill)
     wrap.append(scrim, panel, greet, fab)
     this.root.appendChild(wrap)
-    this.$ = { jump, wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, replyBar, replyQ, replyX, pill, pillReply, pillMic, fabLabel: fab.querySelector('.fab-label') as HTMLElement }
+    this.$ = { jump, wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, replyList, pill, cap, capReply, popQ, popIn, popAdd, fabLabel: fab.querySelector('.fab-label') as HTMLElement }
     this._swipe(log)
     recX.addEventListener('click', () => { this._dropDictation(); (input as HTMLTextAreaElement).focus() })
     files.hidden = true
     log.addEventListener('scroll', () => {
       this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
       jump.hidden = this._stick
-      pill.hidden = true
+      if (!this._winOpen()) this._closePop()   // the capsule goes; an open window moves with its text
     }, { passive: true })
     files.addEventListener('scroll', () => this._fadeFiles(), { passive: true })
     clip.addEventListener('click', () => picker.click())
@@ -582,13 +608,22 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     box.addEventListener('dragleave', () => box.classList.remove('drop'))
     box.addEventListener('drop', (e) => { box.classList.remove('drop'); takeFiles((e as DragEvent).dataTransfer?.files, e) })
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this._reply && !box.classList.contains('rec')) { e.preventDefault(); e.stopPropagation(); this._setReply(null); return }
+      // Esc takes the last quote back (one at a time)
+      if (e.key === 'Escape' && this._replies.length && !box.classList.contains('rec')) { e.preventDefault(); e.stopPropagation(); this._setReplies(this._replies.slice(0, -1)); return }
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this._submit() }
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'd' && !mic.hidden) { e.preventDefault(); this._toggleMic() }   // Dictate, as its tooltip says
     })
     send.addEventListener('click', () => (this._busy ? this.stop() : this._submit()))
     mic.addEventListener('click', () => this._toggleMic())
+    // shortcut tooltips, as in the Claude app: only keys that work here
+    const hints = (): boolean => this._opts.shortcutHints !== false
+    attachTip(send, panel, () => (this._busy ? [{ label: this.t('stop') }] : [{ label: this.t('send'), keys: ['Enter'] }, { label: this.t('newLine'), keys: ['Shift', 'Enter'] }]), hints)
+    attachTip(mic, panel, () => [{ label: this.t('mic'), keys: ['Mod', 'D'] }], hints)
+    attachTip(clip, panel, () => [{ label: this.t('attach') }], hints)
+    attachTip(popAdd, panel, () => [{ label: this.t('addToChat'), keys: ['Enter'] }], hints)
+    send.setAttribute('aria-keyshortcuts', 'Enter'); mic.setAttribute('aria-keyshortcuts', ariaKeys(['Mod', 'D']))
     panel.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !pill.hidden) { e.preventDefault(); pill.hidden = true; return }
+      if (e.key === 'Escape' && (!pill.hidden || !cap.hidden)) { e.preventDefault(); this._closePop(true); return }
       if (!this._popup && !(this._heroSheet && this.$.wrap.classList.contains('open'))) return
       if (e.key === 'Escape' && this.$.box.classList.contains('rec')) { e.preventDefault(); this._dropDictation(); return }   // drop the recording first
       if (e.key === 'Escape') { e.preventDefault(); this.close() }
@@ -600,7 +635,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _submit(): void {
     const input = this.$.input as HTMLTextAreaElement
     const text = input.value.trim()
-    if (!text && !this._files.length) {
+    if (!text && !this._files.length && !this._replies.some((r) => r.note)) {
       this.$.foot.classList.remove('nudge'); void this.$.foot.offsetWidth; this.$.foot.classList.add('nudge')
       return
     }
@@ -782,7 +817,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const wrap = this.$.wrap
     // the launcher's look: auto (a pill with its label for the panel, a round button for the bubble), round, pill or none
     const look = ['round', 'pill', 'none'].includes(o.launcher) ? o.launcher : o.mode === 'bubble' ? 'round' : 'pill'
-    wrap.className = `wrap mode-${o.mode} side-${o.bubbleSide === 'left' ? 'left' : 'right'} motion-${o.motion} launcher-${look}${wrap.classList.contains('open') ? ' open' : ''}${wrap.classList.contains('nonmodal') ? ' nonmodal' : ''}`
+    wrap.className = `wrap mode-${o.mode} side-${o.bubbleSide === 'left' ? 'left' : 'right'} motion-${o.motion} launcher-${look} shadow-${['raised', 'none'].includes(o.composerShadow) ? o.composerShadow : 'soft'}${wrap.classList.contains('open') ? ' open' : ''}${wrap.classList.contains('nonmodal') ? ' nonmodal' : ''}`
     this._applyTheme()
     this.classList.toggle('calm', reducedMotion())
     this.style.setProperty('--agui-fade', `${o.fadeMs}ms`)
@@ -792,7 +827,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.fab.setAttribute('aria-label', o.launcherLabel || this.t('open'))
     // icons (options.icons) and the host's own header and composer (options.render)
     this._icon(this.$.logo, 'logo'); this._icon(this.$.fabIco, 'logo'); this._icon(this.$.fabX, 'close'); this._icon(this.$.btnNew, 'plus'); this._icon(this.$.btnClose, 'close')
-    this._icon(this.$.mic, 'mic'); this._icon(this.$.pillMic, 'mic'); this._icon(this.$.replyX, 'close'); this._icon(this.$.clip, 'clip'); this._icon(this.$.send, this._busy ? 'stop' : 'send')
+    this._icon(this.$.mic, 'mic'); this._icon(this.$.clip, 'clip'); this._icon(this.$.send, this._busy ? 'stop' : 'send')
     const launcher = this.renderSlot('launcher', { open: wrap.classList.contains('open'), unread: this.$.fab.classList.contains('unread') })
     this.$.fabOwn.replaceChildren(...(launcher ? [launcher] : []))
     this.$.fab.classList.toggle('own', !!launcher)
@@ -807,11 +842,12 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.btnNew.setAttribute('aria-label', this.t('newChat'))
     this.$.jump.setAttribute('aria-label', this.t('toLatest')); this.$.jump.title = this.t('toLatest')
     this.$.btnClose.setAttribute('aria-label', this.t('close'))
-    this.$.replyX.setAttribute('aria-label', this.t('cancelReply'))
-    this.$.replyBar.setAttribute('aria-label', this.t('reply'))
-    this.$.pillReply.querySelector('.pill-t')!.textContent = this.t('reply')
-    this.$.pillMic.setAttribute('aria-label', this.t('replyVoice')); this.$.pillMic.title = this.t('replyVoice')
-    if (!o.reply) { this.$.pill.hidden = true; this._setReply(null) }
+    this.$.replyList.setAttribute('aria-label', this.t('reply'))
+    this.$.capReply.textContent = this.t('reply')
+    this.$.popAdd.setAttribute('aria-label', this.t('addToChat'))
+    this.$.pill.setAttribute('aria-label', this.t('reply'))
+    if (!o.reply) { this._closePop(); this._setReplies([]) }
+    else if (this._replies.length) this._renderReplies()   // the language may have changed
     this.$.panel.setAttribute('aria-label', o.title || this.t('title'))
     // modal: false keeps the page beside the panel usable (a site next to its assistant): no scrim, no focus trap;
     // a phone still gets the sheet over the page
@@ -880,13 +916,15 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (!log.scrollTo) log.scrollTop = log.scrollHeight
   }
 
-  private _userBubble(text: string, files: string[] = [], previews: (string | undefined)[] = [], reply?: ReplyTo | null): void {
+  private _userBubble(text: string, files: string[] = [], previews: (string | undefined)[] = [], reply?: ReplyTo | ReplyTo[] | null): void {
+    const quotes = replyList(reply)
     const own = this.renderSlot('user', text, files)
     this._lastUser = text
     // the images and files sit above the bubble, on their own, like a photo sent in Messages
     const el = this._append(h('div', { class: 'msg me', part: 'message user' },
       own ?? [files.length ? h('div', { class: 'att-row', part: 'message-attachments' }, files.map((f, i) => this._tile(f, previews[i]))) : null,
-        text ? h('div', { class: 'bubble' }, reply && (reply.quote || reply.whole) ? this._quoteEl(reply) : null, text) : null]))
+        text || quotes.length ? h('div', { class: 'bubble' }, ...quotes.flatMap((r) => [this._quoteEl(r), r.note ? h('div', { class: 'bq-note' }, r.note) : null]),
+          text && text !== this.t('quotedReply') ? (quotes.length ? h('span', { class: 'bubble-text' }, text) : text) : null) : null]))
     const bubble = el.querySelector<HTMLElement>(':scope > .bubble')
     if (bubble) this._fold(bubble)
     void el
@@ -918,44 +956,127 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     return text ? { range, msg, text } : null
   }
 
-  /** The capsule over the selection: above it with a mouse, under it on a touch screen (the system's menu is above). */
+  /** Step one: a small capsule over the selection (Reply); a scroll or a tap elsewhere takes it away. */
   private _showPill(): void {
-    const pill = this.$.pill
-    if (!pill) return
+    const cap = this.$.cap
+    if (!cap) return
     const s = this._opts.reply ? this._selection() : null
-    if (!s) { pill.hidden = true; this._picked = null; return }
+    if (!s) { this._closePop(); return }
+    if (!this.$.pill.hidden) this._closePop(true)   // a new selection: the open window keeps what was typed as a tile
     this._picked = { message_id: s.msg.dataset.messageId ?? '', quote: s.text }
-    this.$.pillMic.hidden = !this._opts.mic || !this._micMode()
-    pill.hidden = false
-    const r = s.range.getBoundingClientRect(), p = this.$.panel.getBoundingClientRect()
-    const w = pill.offsetWidth, ht = pill.offsetHeight
-    const touch = !!globalThis.matchMedia?.('(pointer: coarse)').matches
-    let top = r.top - p.top - ht - 8
-    if (touch || top < 8) top = r.bottom - p.top + (touch ? 28 : 8)   // past the selection handles
-    pill.style.left = `${Math.max(8, Math.min(p.width - w - 8, r.left - p.left + r.width / 2 - w / 2))}px`
-    pill.style.top = `${Math.max(8, Math.min(p.height - ht - 8, top))}px`
+    this._anchor = { msg: s.msg, rect: s.range.getBoundingClientRect() }
+    this._place(cap)
   }
 
-  /** Reply (or reply by voice) to a quote: the quote bar in the composer, the field focused, dictation started. */
-  private _replyTo(r: ReplyTo | null, voice: boolean): void {
+  private _anchor: { msg: HTMLElement; rect: DOMRect } | null = null
+
+  /** Put the capsule or the window by the selection, in the log (it scrolls with its text, never pinned to an edge):
+   *  above it with a mouse, under it on a touch screen (the system's menu is above), right after the quoted message
+   *  so Tab reaches it there. */
+  private _place(el: HTMLElement): void {
+    const a = this._anchor
+    if (!a) return
+    const log = this.$.log
+    if (el.previousElementSibling !== a.msg && el.previousElementSibling?.previousElementSibling !== a.msg) a.msg.after(el)
+    el.hidden = false
+    const r = a.rect, l = log.getBoundingClientRect()
+    const w = el.offsetWidth, ht = el.offsetHeight
+    const touch = !!globalThis.matchMedia?.('(pointer: coarse)').matches
+    const y = (v: number): number => v - l.top + log.scrollTop   // a point on screen -> a point in the log's content
+    let top = y(r.top) - ht - 8
+    if (touch || r.top - ht - 8 < l.top) top = y(r.bottom) + (touch ? 28 : 8)   // under it: the system's menu, or no room above
+    el.style.left = `${Math.max(8, Math.min(log.clientWidth - w - 8, r.left - l.left + r.width / 2 - w / 2))}px`
+    el.style.top = `${Math.max(4, top)}px`
+  }
+
+  /** Step two, after Reply: the window with the quote and a field "Reply to …"; the field takes the focus. */
+  private _openWin(): void {
+    const r = this._picked
     if (!r) return
-    this._setReply(r)
+    this.$.cap.hidden = true
+    this.$.popQ.textContent = r.quote ?? ''
+    const field = this.$.popIn as HTMLTextAreaElement
+    field.placeholder = this.t('replyTo').replace('{name}', this._opts.title || this.t('title'))
+    field.setAttribute('aria-label', field.placeholder)
+    field.value = ''; field.style.height = 'auto'
+    this._place(this.$.pill)
+    field.focus({ preventScroll: true })
+  }
+
+  /** The user is typing in the reply window (keep it open whatever the page's selection does). */
+  private _popBusy(): boolean {
+    const p = this.$.pill
+    return !!p && !p.hidden && (p.contains(this.root.activeElement) || !!(this.$.popIn as HTMLTextAreaElement).value.trim())
+  }
+
+  /** The window is open (it stays through a scroll; the capsule does not). */
+  private _winOpen(): boolean { return !!this.$.pill && !this.$.pill.hidden }
+
+  private _closePop(keep = false): void {
+    if (!this.$.pill) return
+    const typed = (this.$.popIn as HTMLTextAreaElement).value.trim()
+    if (keep && typed && this._picked && !this.$.pill.hidden) { this._popAdd(false); return }   // never lose a typed reply
+    this.$.pill.hidden = true
+    if (this.$.cap) this.$.cap.hidden = true
+    this._picked = null
+  }
+
+  /** Enter or Add to chat: the quote (with what was typed, as its reply) goes into the composer under the others;
+   *  nothing is sent until the user sends the message. */
+  private _popAdd(focus = true): void {
+    const field = this.$.popIn as HTMLTextAreaElement, r = this._picked
+    if (!r) return
+    const note = field.value.trim().slice(0, 1000)
+    field.value = ''
+    if (!focus) { this._addReply(note ? { ...r, note } : r); this.$.pill.hidden = true; this.$.cap.hidden = true; this._picked = null; return }
+    this._replyTo(note ? { ...r, note } : r, false)
+  }
+
+  private _clearSelection(): void {
     const root = this.root as ShadowRoot & { getSelection?: () => Selection | null }
     ;(root.getSelection?.() ?? document.getSelection())?.removeAllRanges()
-    this.$.pill.hidden = true
-    this._picked = null
+  }
+
+  /** A quote into the composer (at most 10; the same one twice is kept once), the field focused, dictation started. */
+  private _replyTo(r: ReplyTo | null, voice: boolean): void {
+    if (!r) return
+    this._addReply(r)
+    this._clearSelection()
+    this._closePop()
     if (!(voice && globalThis.matchMedia?.('(pointer: coarse)').matches)) (this.$.input as HTMLTextAreaElement).focus()   // dictating on a phone: no keyboard over the wave
     if (voice && !this._mic) this._toggleMic()
   }
 
-  private _setReply(r: ReplyTo | null): void {
-    this._reply = r
-    if (!this.$.replyBar) return
-    this.$.replyBar.hidden = !r
-    this.$.replyQ.replaceChildren(...(r ? [this._quoteWho(r), r.whole ? ' ' : '', this._quoteText(r)].filter((x) => x) as (Node | string)[] : []))
-    this.$.replyQ.title = this.$.replyQ.textContent ?? ''
+  private _addReply(r: ReplyTo): void {
+    const same = (x: ReplyTo): boolean => x.message_id === r.message_id && !!x.whole === !!r.whole && (x.quote ?? '') === (r.quote ?? '')
+    const rest = this._replies.filter((x) => !same(x))
+    this._setReplies([...rest, r].slice(-10))
+  }
+
+  private _setReplies(list: ReplyTo[]): void {
+    this._replies = list
+    if (!this.$.replyList) return
+    this._renderReplies()
+  }
+
+  /** One grey tile per quote: the reply icon, the quote on one line, "With reply" when it has one (a tap shows it), x. */
+  private _renderReplies(): void {
+    const box = this.$.replyList
+    box.hidden = !this._replies.length
+    box.replaceChildren(...this._replies.map((r, i) => {
+      const ico = h('span', { class: 'rc-ico', 'aria-hidden': 'true' }); ico.innerHTML = actSvg(ACT.reply)
+      const q = h('span', { class: 'rc-q' }, r.whole ? `${this._opts.title || this.t('title')} \u00b7 ${this._quoteText(r)}` : `\u201c${this._quoteText(r)}\u201d`)
+      q.title = q.textContent ?? ''
+      const note = r.note ? h('div', { class: 'rc-note-t', hidden: true, id: `rc-note-${i}` }, r.note) : null
+      const more = r.note ? h('button', { class: 'rc-note', type: 'button', 'aria-expanded': 'false', 'aria-controls': `rc-note-${i}`,
+        onclick: () => { const open = note!.hidden; note!.hidden = !open; more!.setAttribute('aria-expanded', String(open)) } }, this.t('withReply')) : null
+      const x = h('button', { class: 'ib rc-x', type: 'button', 'aria-label': `${this.t('cancelReply')}: ${(q.textContent ?? '').slice(0, 40)}`, title: this.t('cancelReply'),
+        onclick: () => { this._setReplies(this._replies.filter((_, k) => k !== i)); (this.$.input as HTMLTextAreaElement).focus() } })
+      this._icon(x, 'close')
+      return h('div', { class: 'reply-chip', role: 'listitem' }, ico, q, more, x, note)
+    }))
     // the field says what it replies to (a screen reader hears it with the field)
-    if (r) this.$.input.setAttribute('aria-describedby', 'reply-q'); else this.$.input.removeAttribute('aria-describedby')
+    if (this._replies.length) this.$.input.setAttribute('aria-describedby', 'reply-list'); else this.$.input.removeAttribute('aria-describedby')
   }
 
   /** What a quote shows: the selected text, or for the whole answer its label and the answer's first line. */
@@ -1157,12 +1278,12 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   /** A tile for an attachment: an image's thumbnail, or a document's name and type; × removes it from the message. */
-  private _tile(name: string, preview: string | undefined, remove?: () => void, busy = false, edit?: number): HTMLElement {
+  private _tile(name: string, preview: string | undefined, remove?: (tile: HTMLElement) => void, busy = false, edit?: number): HTMLElement {
     const ext = (name.match(/\.([a-z0-9]{1,5})$/i)?.[1] ?? '').toUpperCase()
     const tile = h('span', { class: `att${preview ? '' : ' doc'}${busy ? ' busy' : ''}`, part: 'attachment', title: name },
       preview ? h('button', { class: 'att-open', type: 'button', 'aria-label': name, onclick: (e: Event) => this._zoom(e.currentTarget as HTMLElement, edit === undefined ? undefined : (blob) => this._replaceFile(edit, blob, name)) }, h('img', { src: preview, alt: '' }))
         : [h('span', { class: 'att-name' }, name), ext ? h('span', { class: 'att-ext' }, ext) : null])
-    if (remove) tile.append(h('button', { class: 'att-x', type: 'button', 'aria-label': `${this.t('remove')} ${name}`, onclick: remove }, '\u00d7'))
+    if (remove) tile.append(h('button', { class: 'att-x', type: 'button', 'aria-label': `${this.t('remove')} ${name}`, onclick: () => remove(tile) }, '\u00d7'))
     return tile
   }
 
@@ -1248,16 +1369,29 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   private _renderFiles(): void {
-    // only a tile that was not there before plays its entrance: removing or adding one leaves the others still
-    const before = new Set([...this.$.files.querySelectorAll<HTMLElement>('.att')].map((t) => t.title))
-    queueMicrotask(() => this.$.files.querySelectorAll<HTMLElement>('.att').forEach((t) => { if (!before.has(t.title)) t.classList.add('att-new') }))
+    // only a tile that was not there before plays its entrance; the others slide to their new place (no jump)
+    const was = new Map([...this.$.files.querySelectorAll<HTMLElement>('.att')].map((t) => [t.title, t.getBoundingClientRect().left]))
+    const wasHidden = this.$.files.hidden
     this.$.files.replaceChildren(
-      ...this._files.map((f, i) => this._tile(f.filename, this._previews.get(f.id), () => {
-        this._files.splice(i, 1); this._renderFiles(); this._syncSend()
+      ...this._files.map((f, i) => this._tile(f.filename, this._previews.get(f.id), (tile) => {
+        const drop = (): void => {
+          const k = this._files.indexOf(f)
+          if (k >= 0) this._files.splice(k, 1)
+          this._renderFiles(); this._syncSend()
+        }
+        if (reducedMotion() || !tile.animate) drop()
+        else { tile.classList.add('att-out'); setTimeout(drop, 180) }   // it shrinks away, then the others close the gap
         if (finePointer()) (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true })   // the composer keeps its focus: no border flash
       }, false, i)),
       ...this._uploading.map((u) => this._tile(u.name, u.preview, undefined, true)))
     this.$.files.hidden = !this._files.length && !this._uploading.length
+    if (wasHidden && !this.$.files.hidden && !reducedMotion()) { this.$.files.classList.remove('files-in'); void this.$.files.offsetWidth; this.$.files.classList.add('files-in') }
+    this.$.files.querySelectorAll<HTMLElement>('.att').forEach((t) => {
+      const x0 = was.get(t.title)
+      if (x0 === undefined) { t.classList.add('att-new'); return }
+      const dx = x0 - t.getBoundingClientRect().left
+      if (dx && !reducedMotion()) t.animate?.([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.28, .11, .32, 1)' })
+    })
     requestAnimationFrame(() => this._fadeFiles())
   }
 
@@ -1338,7 +1472,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       this.$.log.replaceChildren()
       this._stick = true
       for (const m of r.messages) {
-        if (m.role === 'user' && m.content) this._userBubble(m.content, [], [], m.reply_to)
+        if (m.role === 'user' && (m.content || m.reply_to)) this._userBubble(m.content ?? '', [], [], m.reply_to)
         else if (m.role === 'assistant' && m.content) {
           const body = h('div', { class: 'body' }); body.innerHTML = this._html(m.content); this._assistantDone(body, m.content)
           this._append(h('div', { class: 'msg ai', part: 'message assistant', 'data-message-id': m.id }, body))

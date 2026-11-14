@@ -16,7 +16,7 @@ export interface Message {
   /** an activity's payload (role "activity") */
   activity?: Record<string, unknown>
   /** a user message that answers part of an earlier agent message (restored from the server; never sent back) */
-  reply_to?: ReplyTo
+  reply_to?: ReplyTo | ReplyTo[]
 }
 
 /** What the user replies to: a part of an agent's message (`quote`) or all of it (`whole`). */
@@ -26,6 +26,8 @@ export interface ReplyTo {
   quote?: string
   /** a reply to the whole answer (a swipe or Reply under it): no quote, the server looks the answer up */
   whole?: boolean
+  /** the user's own comment on this quote (typed in the reply window, then added to the chat) */
+  note?: string
 }
 
 export interface ToolSpec { name: string; description: string; parameters?: Record<string, unknown> }
@@ -202,6 +204,12 @@ export interface ChatOptions {
   launcher: 'auto' | 'round' | 'pill' | 'none'
   /** The launcher's words ("Ask the assistant", "Edit with AI"); default: the language's "Open". */
   launcherLabel: string
+  /** The composer's shadow: 'soft' (default; a little lift, a touch more when focused), 'raised' or 'none'.
+   *  Exact values: --agui-composer-shadow and --agui-composer-shadow-focus (a theme can set them). */
+  composerShadow: 'soft' | 'raised' | 'none'
+  /** Tooltips with keyboard shortcuts on the composer's buttons ("Send ↵", "Dictate ⌘D"), after a moment of hover or
+   *  on keyboard focus; never on a touch screen. Default on. */
+  shortcutHints: boolean
   /** The actions under an answer, in order: built-in `copy`, `reply` (quotes the whole answer), `retry` (the latest answer), `speak`, `like`, `dislike`,
    *  or your own `{id, label, icon?, hint?}` (icon: an SVG path on a 24 grid). [] or `message-actions="off"`: none.
    *  Default ['copy', 'reply']. Every tap fires `agui:message-action` {id, messageId, text, pressed?}. */

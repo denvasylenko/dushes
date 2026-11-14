@@ -22,7 +22,10 @@ import { gzipSync } from 'node:zlib'
 // 54 KB since replying to a part of an answer (the selection capsule, the quote bar and the quote in a bubble, swipe
 // to reply) and the voice option (2026-11-14): +2.8 KB. Folding long messages took it to 54.6 KB; the blocks' CSS then
 // moved into agui-chat.blocks.js (formguide/blocks-css.ts, added to a shadow root with the first card): 54.6 -> 53.0 KB
-const BUDGET = 54 * 1024
+// 55 KB since the composer as in the Claude app (2026-11-14): replies in two steps (a Reply capsule, a reply window) with
+// several quote tiles, attachments that grow in and slide, the composer shadow, shortcut tooltips (tip.ts); the CSS
+// minifier was fixed on the way (an apostrophe in a comment had stopped it): 54.6 -> 52.3 KB, then these features
+const BUDGET = 55 * 1024
 const file = new URL('../dist/agui-chat.iife.js', import.meta.url)
 const size = gzipSync(readFileSync(file)).length
 console.log(`agui-chat.iife.js: ${(size / 1024).toFixed(1)} KB gzipped (budget ${BUDGET / 1024} KB)`)

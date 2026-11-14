@@ -58,12 +58,18 @@
   "goodAnswer": "Bonne r\u00e9ponse",
   "badAnswer": "Mauvaise r\u00e9ponse",
   "reply": "R\u00e9pondre",
-  "replyVoice": "R\u00e9pondre \u00e0 la voix",
   "cancelReply": "Annuler la r\u00e9ponse",
   "toQuoted": "Afficher le message cit\u00e9",
   "wholeAnswer": "R\u00e9ponse \u00e0 tout le message",
   "showMore": "Afficher plus",
-  "showLess": "Afficher moins"
+  "showLess": "Afficher moins",
+  "replyTo": "R\u00e9pondre \u00e0 {name}",
+  "addToChat": "Ajouter au chat",
+  "dictateReply": "Dicter une r\u00e9ponse",
+  "withReply": "Avec r\u00e9ponse",
+  "quotedReply": "Mes r\u00e9ponses sont sur les citations ci-dessus.",
+  "replyQueued": "Ajout\u00e9. Il partira avec votre prochain message.",
+  "newLine": "Nouvelle ligne"
  },
  "formguide": {
   "fillTitle": "Remplir ces champs ?",
