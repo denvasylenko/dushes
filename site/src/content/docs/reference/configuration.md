@@ -118,6 +118,9 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `confirm_tools` | none | tool names that always need the user's confirmation: the call is held, the user sees a confirm card, and the tool runs only on yes |
 | `tracing` | none | `{callbacks: ["module:factory"], tags: [...], otel?: {exporter, endpoint?, headers?, service_name?, sample_ratio?}}`; `otel` exports Dushes' spans over OpenTelemetry (`otlp`, `zipkin`, `azure_monitor`, `console`, `host` or a `module:factory`), see [Speed and tracing](../../agents/shared/observability/#opentelemetry-azure-monitor-zipkin-jaeger-datadog-any-otlp-backend). LangChain callback handlers (Langfuse, Phoenix, your own) and extra tags for every turn. LangSmith needs only `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` in the environment. See [Speed and tracing](../../agents/shared/observability/) |
 | `suggestions` | off | quick replies after answers: `true`, or `{enabled, model, max, timeout}`; `model` defaults to the memory model, `max` 3 (up to 5), `timeout` 4 s. Sent as `CUSTOM suggestions {items, applies?}` (`applies`: validated field changes for chips that fill fields); a failure or timeout sends nothing |
+| `language` | none | cards in this language, not guessed: `en`, `ru`, `uk`, `de`, `fr`, `es` or `it`; a form's own `props[<root>].language` wins ([Languages](../../agents/shared/languages/)) |
+| `languages` | none | the languages a conversation may be in; the first is the default |
+| `translate_missing` | `true` | a cheap model (the memory model) translates card text the form has no `i18n` label or option `names` for; `false` never calls one |
 
 ## Field specs: how each component stores its value
 

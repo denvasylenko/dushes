@@ -1,0 +1,87 @@
+---
+title: Languages
+description: "Cards in the user's language. Set the language and give the form its own translations: no model calls at all. A cheap model only fills what the form does not translate."
+---
+import { Tabs, TabItem, Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"Cards and their options in the user's language"} when={"Your users write in more than one language"} write={"`language` (or `languages`) in `formguide.yaml`, and `i18n` / `names` on your form's props"} />
+
+The agent always answers in the language the user writes in. Cards are different: their questions, options and labels come from your form. This page makes them speak the same language. The values sent to your form never change, whatever the language on screen.
+
+## The free path: your translations, no model calls
+
+Set the language, and let your form carry its own translations. Nothing is translated by a model.
+
+<Tabs syncKey="side">
+  <TabItem label="YAML">
+    ```yaml title="formguide.yaml"
+    language: de        # cards in German; one of en, ru, uk, de, fr, es, it
+    ```
+  </TabItem>
+  <TabItem label="Python">
+    ```python
+    config = GuideConfig(..., language="de")
+    ```
+  </TabItem>
+</Tabs>
+
+Then, in the form you send with every run, give each field and option its words in that language:
+
+```json title="config.props (part)"
+{
+  "loan_application": { "language": "de" },
+  "loan_type": {
+    "label": "Loan type",
+    "i18n": { "de": { "label": "Kreditart" } },
+    "options": [
+      { "id": "car", "name": "Car loan", "names": { "de": "Autokredit" } },
+      { "id": "personal", "name": "Personal loan", "names": { "de": "Privatkredit" } }
+    ]
+  }
+}
+```
+
+- `props[field].i18n[lang].label`: the field's label in that language.
+- An option's `names[lang]`: the option's name in that language; its `id` is what the form gets back.
+- `props[<form root>].language`: the language this form's cards are shown in; it wins over the server's setting. Use it when one server hosts forms for different languages. (The language the labels are written in is told from the labels themselves, English when it cannot be told.)
+
+## When the user's language is not set
+
+Without `language`, the language is taken from what the user writes (en, ru, uk, de, fr, es, it), and kept for the conversation.
+
+```yaml title="formguide.yaml"
+languages: [de, en]     # the languages a conversation may be in; the first is the default
+```
+
+The order the language is chosen in: the form's `language`, else the server's `language`, else the language of the message (limited to `languages` when set: a language outside the list is ignored), else the one this conversation already had.
+
+- Telling the language needs a message with a couple of ordinary words: "ok", a name or a number keeps the conversation's earlier language.
+- On a page without a form, the site agent's own turns do not send the `language` event yet; form conversations do.
+
+## The fallback: a cheap model for the rest
+
+Card text your form has no translation for goes to a cheap model: one batched call per card, remembered per language, so the same string is translated once. It uses the memory model (else the researcher's), and it is counted in `run_stats` as `kind: translate`. A slow or failed translation never holds a card back: after 2 seconds the card shows in the form's own words. The cache is in memory, so after a restart a string is translated once more.
+
+```yaml title="formguide.yaml"
+translate_missing: false    # never call a model: untranslated text stays as the form wrote it
+```
+
+<Aside type="tip">Every string your form translates itself is one the model never sees. Give the fields and options people meet most their own `i18n` and `names`, and the model fallback costs close to nothing.</Aside>
+
+## Every option
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `language` | none | cards in this language, not guessed; one of `en`, `ru`, `uk`, `de`, `fr`, `es`, `it` |
+| `languages` | none | the languages a conversation may be in; the first is the default |
+| `translate_missing` | `true` | a cheap model translates card text the form does not |
+
+In the form: `props[field].i18n[lang].label`, an option's `names[lang]`, and `props[<form root>].language`. On the wire: `CUSTOM language {lang}`, and `language` on cards and in the restore ([AG-UI events](../../../reference/agui-events/)).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Types and the contract" description="Every prop the form sends, i18n included." href="../../../frontend/connect-your-form/contract/" />
+  <LinkCard title="Configuration keys" description="Every key with its default." href="../../../reference/configuration/" />
+</CardGrid>

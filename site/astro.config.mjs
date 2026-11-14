@@ -170,6 +170,7 @@ export default defineConfig({
 						{ label: 'Install and serve', slug: 'agents/shared/install' },
 						{ label: 'Configuration', slug: 'agents/shared/configuration' },
 						{ label: 'Models and providers', slug: 'agents/shared/models' },
+						{ label: 'Languages', slug: 'agents/shared/languages' },
 						{ label: 'Business documents', slug: 'agents/shared/business-documents' },
 						{ label: 'Persistence and history', slug: 'agents/shared/persistence' },
 						{ label: 'Deploy and secure', slug: 'agents/shared/deploy' },

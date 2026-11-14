@@ -77,8 +77,11 @@ interface ElementProps {
   options?: unknown[]               // the allowed choices right now ({id, name} by default)
   placeholder?: string              // a format hint
   error?: string                    // your backend's validation message
+  i18n?: Record<string, { label?: string }>   // per language: cards show this label, no model call
+  language?: string                 // on the form's root element: the language its cards are shown in (wins over the server's `language`)
   [other: string]: unknown          // passed along, ignored
 }
+// an option may carry its name per language: { id: "car", name: "Car loan", names: { de: "Autokredit" } }
 interface UiState {
   activeTabs?: Record<string, string>   // tab set name -> open tab name
   openAccordions?: string[]
