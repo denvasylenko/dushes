@@ -17,7 +17,7 @@
 
 ## 3. Lookup and search
 - [ ] 3.1 Reference → Configuration: one table of every server key and widget option (side, default, group, link); widget columns fixed and grouped
-- [ ] 3.2 Search: Reference rows as entries, a boost for keys, synonyms
+- [x] 3.2 Search: guides before contracts (Specifications last, at most 3), Reference first for code-like queries, a section named by the query as the target, pages indexed by their own title (synonyms not done)
 
 ## 4. Any framework
 - [ ] 4.1 "A form without a backend" page with HTML and Vue tabs (after `schemaForm` is exported)

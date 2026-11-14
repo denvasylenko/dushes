@@ -63,7 +63,6 @@ const SUGGESTED = [
     const clear = dlg.querySelector<HTMLButtonElement>('[data-spot-clear]')!
     const status = dlg.querySelector<HTMLElement>('[data-spot-status]')!
     const suggested: Row[] = JSON.parse(dlg.dataset.suggested ?? '[]').map((s: Row) => ({ ...s, group: 'Suggested' }))
-    const ORDER = ['Recent', 'Get started', 'Frontend', 'Agents', 'Reference', 'Specifications', 'Guides', 'Ask AI', 'Retry', 'Suggested']
     const RECENT = 'fg-spot-recent'
     let rows: Row[] = []
     let active = 0
@@ -168,7 +167,15 @@ const SUGGESTED = [
       dlg.querySelector('.ui-spot-wait')?.remove()
       const by = new Map<string, Row[]>()
       rows.forEach((r) => by.set(r.group, [...(by.get(r.group) ?? []), r]))
-      const order = ORDER.filter((g) => by.has(g))
+      // groups in the order of their best result (the index's ranking); a query that looks like code (FormGuide.run,
+      // memory.keep_turns, confirm_tools) wants the reference first; contracts and the extra rows always come last
+      const code = /[._(]/.test(q)
+      const rank = new Map<string, number>()
+      rows.forEach((r, n) => { if (!rank.has(r.group)) rank.set(r.group, n) })
+      const TAIL = ['Specifications', 'Ask AI', 'Retry', 'Suggested']
+      const pinned = ['Recent', ...(code ? ['Reference'] : [])]
+      const middle = [...rank.keys()].filter((g) => !pinned.includes(g) && !TAIL.includes(g)).sort((a, b) => rank.get(a)! - rank.get(b)!)
+      const order = [...pinned, ...middle, ...TAIL].filter((g) => by.has(g))
       rows = order.flatMap((g) => by.get(g)!)   // rows in drawn order, so data-i matches
       let i = 0
       list.innerHTML = (note ? `<p class="ui-spot-note">${note}</p>` : '') + order.map((g) => {
@@ -222,7 +229,7 @@ const SUGGESTED = [
       try {
         const res = await engine.debouncedSearch(q, {}, 60)
         if (!res || my !== seq) return
-        data = await Promise.all(res.results.slice(0, 12).map((r) => r.data()))
+        data = await Promise.all(res.results.slice(0, 20).map((r) => r.data()))   // 20, so specs cannot crowd out the guides
       } catch { return failed() }
       if (my !== seq) return
 
@@ -236,12 +243,15 @@ const SUGGESTED = [
       const seen = new Map<string, number>()
       const found: Row[] = data.filter((d) => hit(d.excerpt) || d.sub_results?.some((x) => hit(x.excerpt))).map((d) => {
         // the section with the most hits, unless that is the page's top
-        const best = [...(d.sub_results ?? [])].sort((a, b) => (b.locations?.length ?? 0) - (a.locations?.length ?? 0))[0]
-        const sub = best && !best.url.endsWith('#_top') && best.url.includes('#') ? best : undefined
+        // a section named like a typed word ("run" in FormGuide.run) wins, then the one with the most hits
+        const named = (d.sub_results ?? []).find((x) => terms.includes(norm(x.title)) || q.toLowerCase().split(/[\s.]+/).includes(x.title.toLowerCase()))
+        const best = named ?? [...(d.sub_results ?? [])].sort((a, b) => (b.locations?.length ?? 0) - (a.locations?.length ?? 0))[0]
         const title = d.meta.title ?? d.url
+        const whole = norm(title) === terms.join('')   // the page's own name: open the page, not a section of it
+        const sub = !whole && best && !best.url.endsWith('#_top') && best.url.includes('#') ? best : undefined
         const section = sub && sub.title !== title && !title.toLowerCase().startsWith(sub.title.toLowerCase()) ? sub.title : undefined
         return { title, url: sub?.url ?? d.url.replace(/#_top$/, ''), crumb: section, excerpt: excerptOf(sub?.excerpt ?? d.excerpt, [sub?.title ?? '', title]), group: groupOf(d.url) }
-      }).filter((r) => { const g = seen.get(r.group) ?? 0; seen.set(r.group, g + 1); return g < 5 })
+      }).filter((r) => { const g = seen.get(r.group) ?? 0; seen.set(r.group, g + 1); return g < (r.group === 'Specifications' ? 3 : 5) })   // contracts are a last resort
       found.forEach((r) => { r.loc = where(r.url) || undefined })
 
       if (!found.length) {

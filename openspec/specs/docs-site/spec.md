@@ -182,3 +182,14 @@ The site SHALL have a Benchmarks page with Dushes' own measured numbers (tokens 
 #### Scenario: A dated live table
 - **WHEN** a reader opens Benchmarks
 - **THEN** the live turn table names the date, the model and the command that produced it
+
+### Requirement: Search ranks guides before contracts
+The site's search SHALL group results by section in the order of each section's best match, with Specifications last and at most three of them, so behaviour contracts never crowd out the guides. A query that looks like code (it contains `.`, `_` or `(`) SHALL list the Reference first, and a section whose title is a word of the query SHALL be the row's target. A query that is a page's own title SHALL open that page, not a section of it; every page SHALL be indexed under its own title.
+
+#### Scenario: A method name
+- **WHEN** a reader searches for `FormGuide.run`
+- **THEN** the first row is Python API › run and opens that section
+
+#### Scenario: A page's name
+- **WHEN** a reader searches for "card gallery"
+- **THEN** the first row is the Card gallery page itself
