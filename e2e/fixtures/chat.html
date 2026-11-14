@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>agui-chat e2e</title>
+  <style>html, body { margin: 0; height: 100%; } agui-chat { display: block; height: 100vh; }</style>
+</head>
+<body>
+  <!-- The widget as a host page embeds it; the tests answer /agent/run and /agent/transcribe themselves. -->
+  <agui-chat mode="inline" url="/agent/run" transcribe-url="/agent/transcribe" typing="plain" persist-thread="off"
+             lang="en" attach="on"></agui-chat>
+  <script src="../../packages/agui-chat/dist/agui-chat.iife.js"></script>
+</body>
+</html>

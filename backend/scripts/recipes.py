@@ -233,6 +233,7 @@ class FormChat:
         self.log: list[str] = []
         self.attachments: list[dict] = []
         self.cards: list[str] = []                 # the kinds of cards shown
+        self.names: dict[str, str] = {}            # tool call id -> tool name, across runs (a held call ends later)
 
     def _state(self) -> dict:
         s = {"config": self.config, "jsx_hash": self.hash, "form_id": self.form.form_id, "ui": self.ui}
@@ -276,6 +277,7 @@ class FormChat:
                 calls[e["toolCallId"]][1] += e["delta"]
             elif t == "TOOL_CALL_END" and e["toolCallId"] in calls:
                 tool, raw = calls[e["toolCallId"]]
+                self.names[e["toolCallId"]] = tool
                 try:
                     args = json.loads(raw or "{}")
                 except ValueError:
@@ -284,10 +286,14 @@ class FormChat:
                 self.log.append(f"   ⚙ {tool}({json.dumps(args, ensure_ascii=False)[:120]})")
                 if tool in self.client:
                     client_calls.append((e["toolCallId"], tool, raw))
-            elif t == "TOOL_CALL_RESULT" and e.get("toolCallId") in calls:
-                self.results.setdefault(calls[e["toolCallId"]][0], []).append(str(e.get("content") or ""))
+            elif t == "TOOL_CALL_RESULT" and e.get("toolCallId") in self.names:   # also a held call confirmed later
+                self.results.setdefault(self.names[e["toolCallId"]], []).append(str(e.get("content") or ""))
             elif t == "RUN_ERROR":
                 self.log.append(f"❌ {e.get('message')}")
+            elif name == "run_stats":   # what really ran: a confirmed held call shows here, not as a TOOL_CALL_RESULT
+                for x in (e.get("value") or {}).get("tools") or []:
+                    if x.get("name") and not x.get("error"):
+                        self.results.setdefault(x["name"], []).append("ran (run_stats)")
             elif name == "on_interrupt":
                 interrupt = json.loads(e["value"]) if isinstance(e["value"], str) else e["value"]
         if interrupt:
@@ -410,7 +416,7 @@ def run(names: list[str] | None = None, *, runs: int | None = None, offline: boo
                                  "hits": sum(r["hit"] for r in res), "model": "offline" if offline else model_name(guide.models.agent),
                                  "results": res})
     RUNS.mkdir(exist_ok=True)
-    report = RUNS / f"recipes-{datetime.now():%Y%m%d-%H%M%S}.json"
+    report = RUNS / f"recipes-{datetime.now():%Y%m%d-%H%M%S}{'-offline' if offline else ''}.json"   # offline never looks live
     report.write_text(json.dumps(out, ensure_ascii=False, indent=2))
     for s in out["scenarios"]:
         print(f"{'✅' if s['hits'] == s['runs'] else '⚠️ '} {s['name']:<40} {s['hits']}/{s['runs']}  {s['tool']}")

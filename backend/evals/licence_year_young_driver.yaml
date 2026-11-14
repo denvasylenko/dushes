@@ -1,0 +1,25 @@
+name: licence_year_young_driver
+tags: [rule, stress]
+persona: >-
+  A 16-year-old filling in a car insurance quote with their own birth date (2010). When asked when they got their
+  driving licence they are unsure what to answer and wait for the assistant's question.
+goal: Fill in the driver part, including when the licence was issued.
+start:
+  page: /insure
+  form: car_insurance
+  values:
+    make: {id: toyota, name: Toyota}
+    model: {id: corolla, name: Corolla}
+    year: "2019"
+    vin: JTDBR32E720123456
+    usage: {id: personal, name: Personal}
+    driver_name: Tom Berg
+    driver_birth: "2010-05-02"
+knows:
+  - Born 2 May 2010
+  - Has a learner's permit only
+turns: 4
+expect:
+  answered_by: [form]
+  never_says: ["1988"]
+min_score: 7

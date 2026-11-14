@@ -18,8 +18,11 @@ quote:
   pattern: "19[\\s\\u00a0,.]?069"
   ask: Why so high? Where does this number come from?
 turns: 4
+# The agent may work the standard formula through only when it matches the form's figure (CPO, 2026-11-14):
+# here an annuity at 21.9%/12 over 36 months gives about 19 070, matching 19 069 to rounding.
 expect:
   answered_by: [form]
+  tools: [calculate]                                   # the worked annuity figure comes from the calculator
   says: [["21.9", "21,9"], ["36"]]
   never_says: ["which number", "which amount", "which figure"]
 min_score: 7

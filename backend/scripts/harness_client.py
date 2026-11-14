@@ -382,7 +382,9 @@ class Visit:
         if kind == "ask":
             reply = self.answer(interrupt)
             opts = ", ".join(o.get("label", "") for o in interrupt.get("options") or [])
-            self.log.append(f"   ❓ question card: {interrupt.get('question')} [{opts}] → the user answered "
+            inp = interrupt.get("input") or {}
+            shown = f" (input {json.dumps({k: inp[k] for k in ('type', 'min', 'max', 'value') if k in inp}, ensure_ascii=False)})" if inp else ""
+            self.log.append(f"   ❓ question card: {interrupt.get('question')} [{opts}]{shown} → the user answered "
                             f"{json.dumps(reply, ensure_ascii=False) if reply else 'nothing (closed it)'}")
             self._resume({"answer": reply} if reply else {"accepted": False}, depth)
         elif "changes" in interrupt and self.form:

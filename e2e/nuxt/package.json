@@ -1,0 +1,14 @@
+{
+  "name": "formguide-e2e-nuxt",
+  "private": true,
+  "type": "module",
+  "description": "The Nuxt 3 (SSR) stand of the formguide Vue benchmark (QA).",
+  "scripts": {
+    "build": "nuxi build",
+    "start": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "nuxt": "^3.15.0",
+    "vue": "^3.5.13"
+  }
+}

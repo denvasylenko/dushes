@@ -1,0 +1,12 @@
+{
+  "name": "formguide-e2e",
+  "private": true,
+  "description": "Cross-browser checks of the <agui-chat> widget (QA): Playwright on Chromium, Firefox and WebKit, against a scripted agent.",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

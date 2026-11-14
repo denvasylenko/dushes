@@ -56,7 +56,7 @@ def test_bench_writes_the_docs_speed_numbers(tmp_path):
     target = tmp_path / "speed.json"
     target.write_text(json.dumps({"model": "x", "scenarios": [{"name": "fill", "label": "fill (long)", "short": "fill"}]}))
     run = lambda ttft, turn: {"ttft_ms": ttft, "turn_ms": turn, "tools": 2, "tokens": {"input": 1000, "output": 100},
-                              "cache_hit_rate": 0.9, "models_used": [{"model": "claude-haiku-5-5"}]}
+                              "cache_hit_rate": 0.9, "models_used": [{"model": "claude-haiku-5-5"}], "tool_names": ["propose_changes"]}
     rows = [{"scenario": "fill", "ttft_median_ms": 800, "turn_median_ms": 5200, "runs": [run(800, 5200), run(900, 5000)]}]
     a = argparse.Namespace(commit="abc1234", base="https://dushes-ai.fly.dev", repeat=2, model=None,
                            prices=str(recipes.HERE.parent / "site" / "src" / "data" / "prices.json"))
@@ -65,6 +65,8 @@ def test_bench_writes_the_docs_speed_numbers(tmp_path):
     assert d["scenarios"][0] == {"name": "fill", "label": "fill (long)", "short": "fill", "ttft_s": 0.8, "turn_s": 5.2,
                                  "tools": 2, "tokens_in": 1000, "tokens_out": 100, "cache": 0.9}
     assert bench.git_commit("https://dushes-ai.fly.dev") == ""
+    docs = [{"scenario": "documents", "ttft_median_ms": 900, "turn_median_ms": 4000, "runs": [run(900, 4000)]}]
+    assert bench.site_speed(docs, a, [], target)["scenarios"] == []   # a documents turn without ask_documents is left out
     assert d["prices"]["model_id"] == "claude-haiku-5-5" and d["prices"]["checked"] and d["prices"]["source"].startswith("https://")
 
 
@@ -126,3 +128,13 @@ def test_site_bench_verdicts_and_sets():
             assert page, p
             part = p["expect"].get("tab") or p["expect"].get("accordion") or p["expect"].get("section")
             assert not part or page.part(part), p
+
+
+def test_bench_prices_a_call_without_a_model_id_by_the_turns_model():
+    import bench
+    prices = json.loads((recipes.HERE.parent / "site" / "src" / "data" / "prices.json").read_text())
+    call = {"input_tokens": 1000, "cache_read_tokens": 0, "cache_write_tokens": 0, "output_tokens": 10}
+    run = {"ttft_ms": 1, "total_ms": 1, "model_ms": 1, "tool_ms": 0, "tools": [], "tokens": {"input": 2000, "output": 20, "cache_read": 0},
+           "models": [{**call, "model": "claude-haiku-5-5"}, {**call, "model": None}]}
+    out = bench.summarize([run], prices)
+    assert "unpriced_models" not in out and out["cost_usd"] > 0

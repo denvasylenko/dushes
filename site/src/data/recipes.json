@@ -10,12 +10,12 @@
   },
   "confirm-side-effect": {
     "runs": 20,
-    "hits": 0,
+    "hits": 19,
     "scenarios": 2,
     "tool": "",
     "model": "claude-haiku-5-5",
     "date": "2026-11-14",
-    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+    "report": "backend/scripts/runs/recipes-20261114-184049.json"
   },
   "frontend-tool": {
     "runs": 10,
@@ -55,12 +55,12 @@
   },
   "prefill": {
     "runs": 10,
-    "hits": 3,
+    "hits": 10,
     "scenarios": 1,
     "tool": "propose_changes",
     "model": "claude-haiku-5-5",
     "date": "2026-11-14",
-    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+    "report": "backend/scripts/runs/recipes-20261114-171027.json"
   },
   "researcher": {
     "runs": 10,
@@ -78,7 +78,7 @@
     "tool": "open_form, propose_changes",
     "model": "claude-haiku-5-5",
     "date": "2026-11-14",
-    "report": "backend/scripts/runs/recipes-20261114-163438.json"
+    "report": "backend/scripts/runs/recipes-20261114-171027.json"
   },
   "skill-scoped-to-one-form": {
     "runs": 20,

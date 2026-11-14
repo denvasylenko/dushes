@@ -29,7 +29,7 @@ SCENARIOS: list[tuple[str, str, str]] = [   # name, form, message
     ("question", "loan_application", "Where do I start?"),
     ("fill", "loan_application", "My name is Anna Petrova, born 12 April 1990."),
     ("choice", "loan_application", "I'd like to apply for a loan, help me pick the type."),
-    ("documents", "loan_application", "What is the interest rate for a car loan?"),
+    ("documents", "loan_application", "Can I repay the loan early, and does it cost anything?"),   # only the documents say
     ("booking", "barber_booking", "Book me a haircut and beard trim next Tuesday around 3pm."),
 ]
 
@@ -118,10 +118,13 @@ def summarize(runs: list[dict], prices: dict | None, model: str | None = None) -
            "tool_ms": sum(r["tool_ms"] for r in runs), "runs": len(runs),
            "tools": sum(len(r["tools"]) for r in runs), "model_calls": sum(len(r["models"]) for r in runs),
            "models_used": [{"model": m.get("model")} for r in runs for m in r["models"] if m.get("model")],
+           "tool_names": sorted({t.get("name") for r in runs for t in r["tools"] if t.get("name")}),
            "tokens": tok, "cache_hit_rate": round(tok["cache_read"] / tok["input"], 3) if tok["input"] else None}
     if prices and "models" in prices:   # the price file: per call, with cache writes and the long-prompt tier
         calls = [m for r in runs for m in r["models"]]
-        priced = [(m, price_for(prices, m.get("model"), model)) for m in calls]
+        ids = [m["model"] for m in calls if m.get("model")]
+        main = model or (max(set(ids), key=ids.count) if ids else None)   # a call without a model id: the turn's model
+        priced = [(m, price_for(prices, m.get("model"), main)) for m in calls]
         missing = sorted({str(m.get("model")) for m, p in priced if p is None})
         out["cost_usd"] = round(sum(call_cost(m, p) for m, p in priced if p), 5)
         if missing:
@@ -134,6 +137,7 @@ def summarize(runs: list[dict], prices: dict | None, model: str | None = None) -
 
 
 SPEED = Path(__file__).resolve().parents[2] / "site" / "src" / "data" / "benchmarks" / "speed.json"
+NEEDS = {"documents": "ask_documents"}   # a row the docs may show only when its turn really used this tool
 
 
 def model_label(model_id: str) -> str:
@@ -164,6 +168,10 @@ def site_speed(rows: list[dict], a: argparse.Namespace, argv: list[str], target:
     out = []
     for r in rows:
         ok = [x for x in r["runs"] if "error" not in x]
+        need = NEEDS.get(r["scenario"])
+        if need and not all(need in (x.get("tool_names") or []) for x in ok):
+            print(f"site numbers: {r['scenario']} left out: not every run called {need} (no documents on the server?)")
+            continue
         med = lambda f: statistics.median(f(x) for x in ok)  # noqa: E731
         prev = names.get(r["scenario"], {})
         out.append({"name": r["scenario"], "label": prev.get("label", r["scenario"]), "short": prev.get("short", r["scenario"]),
@@ -206,11 +214,19 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--prices", type=Path, help='JSON per 1M tokens: site/src/data/prices.json, or a flat '
                     '{"input": .., "output": .., "cache_read": ..}')
     ap.add_argument("--model", help="with the price file: the model to price calls by (default: each call's own model)")
+    ap.add_argument("--documents", action="store_true",
+                    help="first load and compile each form's sample documents (demo/samples/kb), as the documents turn needs")
     ap.add_argument("--site", action="store_true", help="write the medians to the docs: site/src/data/benchmarks/speed.json")
     ap.add_argument("--commit", help="the server's git short sha (default: this checkout's, for a local server; else empty)")
     a = ap.parse_args(argv)
     prices = json.loads(a.prices.read_text()) if a.prices else None
     client = Client(a.base, (a.user, a.password) if a.password else None)
+    if a.documents:   # a documents turn means nothing on a server whose form has no documents
+        sys.path.insert(0, str(Path(__file__).parent))
+        from harness_client import setup_documents
+        for form_id in dict.fromkeys(f for _n, f, _m in SCENARIOS if not a.only or _n in a.only):
+            if (Path(__file__).resolve().parents[1] / "demo" / "samples" / "kb" / form_id).is_dir():
+                setup_documents(client.http, form_id)
 
     results: dict[str, list[dict]] = {}
     for name, form_id, message in SCENARIOS:

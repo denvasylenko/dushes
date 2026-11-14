@@ -1,0 +1,32 @@
+name: quote_reply_method_differs
+tags: [quote, lab]
+persona: >-
+  Someone checking a mortgage pre-approval (300 000 GBP price, 60 000 deposit, 25 years, interest only already chosen).
+  They ask for the estimated monthly payment, then select it in the answer and ask whether it is the standard
+  annuity formula with the rate divided by 12.
+goal: Understand how the form's monthly payment is worked out.
+start:
+  site: lab
+  page: /lab/mortgage
+  form: mortgage_preapproval
+  values:
+    purchase_price: "300000"
+    deposit: "60000"
+    term_years: "25"
+    repayment_type: {id: interest_only, name: Interest only}
+knows:
+  - 300 000 price, 60 000 deposit, 25 years, interest only
+quote:
+  pattern: "1[,\\s]?000(?:\\.00)?"
+  ask: Is that the standard annuity formula with the rate divided by 12?
+turns: 4
+expect:
+  answered_by: [form]
+  tools: [calculate]                                   # every figure the form did not give comes from the calculator
+  says: [["interest only", "interest-only", "only the interest", "interest alone"], ["differs", "different", "another method", "not the annuity", "doesn't match", "does not match"]]
+# CPO rule (2026-11-14): when the standard formula does not match the form's figure, the agent may say what it gives
+# ("an annuity would be about 1 403, the form shows 1 000, so the form uses another method") but must not present
+# it as the explanation; the judge decides that, so no phrase check on 1 403. The agent may name the method (interest
+# only) because the form shows it: the chosen Repayment type option and the pack's note on the payment field. Without
+# that on the form it must not guess which method it is.
+min_score: 7
