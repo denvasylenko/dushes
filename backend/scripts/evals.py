@@ -39,8 +39,8 @@ BASELINE = EVALS / "baseline.json"
 CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold"}
-START_KEYS = {"page", "form", "values", "site", "host"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards",
+START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -91,6 +91,8 @@ class Scenario:
     tags: list[str] = field(default_factory=list)
     red_team: bool = False                                  # the user tries to break the assistant's rules
     values: dict[str, Any] = field(default_factory=dict)    # what the user typed into the form before the chat
+    ui: dict[str, Any] = field(default_factory=dict)        # merged into state.ui, e.g. {form_visible: false}: a form shown only in the chat
+    never_points: bool = False                              # no ui_directive event (nothing on the page is opened or focused)
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
     file: str = ""
     tools: list[str] = field(default_factory=list)          # tools the assistant must call (a recipe's own tool)
@@ -140,6 +142,7 @@ def load_scenario(path: Path) -> Scenario:
                     min_score=float(raw.get("min_score", 6)), attach=[str(x) for x in raw.get("attach") or []],
                     documents=raw.get("documents") is True, tags=[str(x) for x in raw.get("tags") or []],
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
+                    ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")),
                     fields=dict(exp.get("fields") or {}), file=path.name, site=_site(start), tools=[str(x) for x in exp.get("tools") or []],
                     never_tools=[str(x) for x in exp.get("never_tools") or []], never_cards=[str(x) for x in exp.get("never_cards") or []],
                     never_repeat_questions=bool(exp.get("never_repeat_questions")),
@@ -451,6 +454,9 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         out.append({"check": f"calls {tool}", "ok": tool in called, "detail": f"called: {sorted(called)}"[:300], "cap": CAP_OTHER})
     for tool in sc.never_tools:
         out.append({"check": f"never calls {tool}", "ok": tool not in called, "detail": f"called: {sorted(called)}"[:300], "cap": CAP_OTHER})
+    if sc.never_points:   # a form the person does not see: nothing on the page is opened, scrolled to or focused
+        n = getattr(visit.form, "directives", 0) if visit.form else 0
+        out.append({"check": "never points at a place on the page (ui_directive)", "ok": n == 0, "detail": f"{n} ui_directive events", "cap": CAP_OTHER})
     shown = [" > ".join(x for x in (str(s.get("title") or ""), str(s.get("section") or "")) if x) for s in visit.sources]
     for src in sc.sources:   # "file" matches any section of it; "file > section" that section
         want = src.replace("\u203a", ">").lower()
@@ -548,6 +554,8 @@ def _play(sc: Scenario, http: httpx.Client, user: User | None, judge_model: Any,
     if sc.corpus and sc.form:   # a researcher corpus, uploaded as a manager would (no compile: the researcher reads it)
         upload_corpus(http, sc.form, sc.corpus)
     visit = Visit(http, sc.page, answer=(user.choose if user else None), site=sc.site)
+    if sc.ui and visit.form:       # e.g. form_visible: false, as a page that shows only the chat sends it
+        visit.form.ui.update(sc.ui)
     if sc.values and visit.form:   # the user typed these into the form before writing
         visit.form.apply(sc.values)
         visit.log.append(f"\u270f\ufe0f  the user typed into the form: {json.dumps(sc.values, ensure_ascii=False)[:200]}")

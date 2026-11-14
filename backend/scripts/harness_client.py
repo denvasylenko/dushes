@@ -249,6 +249,7 @@ class Form:
         self.ui: dict[str, Any] = {"activeTabs": {}, "openAccordions": [], "focused": None,
                                    "now": datetime.now().strftime("%Y-%m-%d %A %H:%M")}
         self.attachments: list[dict] = []
+        self.directives = 0   # ui_directive events: the agent pointed at a place in the form on the page
 
     def apply(self, changes: dict[str, Any]) -> None:
         r = _json(self.http.post(EVENT_URL, json={"form_id": self.form_id, "state": self.config["state"],
@@ -256,6 +257,7 @@ class Form:
         self.config = r["config"] if isinstance(r, dict) and isinstance(r.get("config"), dict) and "props" not in r else r   # {config, ...} or the config
 
     def directive(self, d: dict) -> None:
+        self.directives += 1
         for s in d.get("reveal") or []:
             if s["type"] == "tab":
                 self.ui["activeTabs"][s["tabs"]] = s["tab"]

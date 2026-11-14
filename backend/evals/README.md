@@ -15,7 +15,7 @@ One YAML file per scenario in `backend/evals/` (a host keeps its own folder in t
 | `tags` | the kind (`fill`, `fix`, `mind`, `voice`, `lang`, `dump`, `inject`, `offtopic`, `rule`, `facts`, `quote`, `dumb`...), plus `heldout`, `stress`, `redteam` |
 | `persona`, `goal` | who the simulated user is and what they came for (English by default; the language they write in is part of the persona) |
 | `knows` | the only facts the simulated user may give |
-| `start` | `{site, page, form, values, host}`: where the visit starts and what the user already typed |
+| `start` | `{site, page, form, values, host, ui}`: where the visit starts and what the user already typed; `ui` is merged into `state.ui` (e.g. `{form_visible: false}`: the page shows only the chat) |
 | `turns` | at most this many user messages |
 | `quote` | a reply to a quote: `{pattern, ask}` or `{quotes: [{pattern, note?, from?}], ask}`; `from: user` quotes the user's own earlier message (sent with role `user`) |
 | `gold` | the true answer, for the judge (questions over documents) |
@@ -40,6 +40,7 @@ Every failed check caps the score: a failed `never_says` at 3, any other at 5, s
 | `fields` | the form's final value differs (`null` = must stay empty, e.g. a consent) |
 | `reaches` | the visit ends on another page |
 | `tools` / `never_tools` | a tool was not called / was called (a recipe's own tool; no researcher when the site knows) |
+| `never_points_at_the_page` | no `ui_directive` event: nothing on the page is opened, scrolled to or focused (a form the person does not see) |
 | `sources` | the source chips do not cite this document or section |
 | `never_repeat_questions` | a question is asked twice, or asks about a field an earlier card filled |
 | `never_suggests` | a quick reply offers what is already done ("Pick a day" after a booking) |

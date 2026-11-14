@@ -1,0 +1,30 @@
+name: hidden_form_deputy
+tags: [lab, hidden]
+persona: >-
+  An employee on the staff portal who sees only a chat, no form anywhere on the page. They want Dana Whitfield
+  (dana.whitfield@alderfinch.example) as their deputy from 1 March 2027 because of a vacation. Midway they ask
+  "where do I type the email?" because they see no field for it.
+goal: Change the deputy to Dana Whitfield from 1 March 2027 (vacation), entirely in the chat.
+start:
+  page: /lab/alder-finch-portal
+  form: deputy_change_plain
+  ui: {form_visible: false}     # the page shows only the chat (openspec/changes/hidden-form)
+knows:
+  - "The deputy is Dana Whitfield, dana.whitfield@alderfinch.example"
+  - "Starts 1 March 2027; the reason is a vacation"
+  - "There is no form on the screen, only this chat; asks once where to type the email"
+turns: 6
+# The person does not see the form: the agent never refers to a place on the page, never opens or focuses a
+# field there, and still collects every value through cards (Owner's contract, 2026-11-15).
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields:
+    deputy_name: Dana Whitfield
+    deputy_email: dana.whitfield@alderfinch.example
+    start_date: "2027-03-01"
+    reason: vacation
+  never_tools: [focus_field]
+  never_points_at_the_page: true
+  never_says: ["the form", "on the right", "on the left", "on the page", "scroll", "field above", "field below", " tab"]
+min_score: 7

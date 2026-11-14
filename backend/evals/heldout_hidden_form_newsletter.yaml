@@ -1,0 +1,23 @@
+name: heldout_hidden_form_newsletter
+tags: [lab, hidden, heldout]
+persona: >-
+  A coffee drinker who opened the roaster's page in a small chat bubble: no form is visible, only the chat. They
+  want the monthly newsletter at nora.lindqvist@example.com and first ask "where do I put my email?".
+goal: Sign up for the newsletter with nora.lindqvist@example.com without ever seeing a form.
+start:
+  page: /lab/coffee-newsletter
+  form: newsletter_signup
+  ui: {form_visible: false}
+knows:
+  - "The email is nora.lindqvist@example.com"
+  - "Sees no form and no field, only the chat; asks where to put the email before giving it"
+turns: 5
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields:
+    email: nora.lindqvist@example.com
+  never_tools: [focus_field]
+  never_points_at_the_page: true
+  never_says: ["the form", "on the right", "on the left", "on the page", "scroll", "field above", "field below", " tab"]
+min_score: 7
