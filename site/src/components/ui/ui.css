@@ -460,6 +460,11 @@ button.ui-tab { border: 0; background: none; cursor: pointer; min-height: 44px; 
   font: 400 16px/1.2 var(--sl-font); text-align: start; cursor: pointer; transition: border-color var(--fg-dur-instant) var(--fg-ease);
 }
 .ui-select-btn.is-empty .ui-select-val { color: var(--fg-ink-3); }
+/* quiet: a toolbar pop-up button, a pill on the fill with no border (the theme in the header) */
+.ui-select--quiet .ui-select-btn { width: auto; min-height: var(--fg-h-sm); gap: 6px; padding: 0 10px 0 12px; border-color: transparent;
+  border-radius: var(--fg-r-pill); background: var(--fg-fill); font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
+@media (hover: hover) { .ui-select--quiet .ui-select-btn:hover { border-color: transparent; color: var(--fg-ink); } }
+.ui-select--quiet .ui-select-btn > .ui-icon { width: 12px; height: 12px; }
 .ui-select-val { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ui-select-btn > .ui-icon { flex: none; width: 14px; height: 14px; color: var(--fg-ink-2); }
 @media (hover: hover) { .ui-select-btn:hover { border-color: var(--fg-ink-3); } }
@@ -520,3 +525,36 @@ html.ui-select-lock { overflow: hidden; }
 }
 .ui-masonry > * { margin: 0; min-width: 0; }
 .ui-masonry[data-on] { grid-auto-rows: 1px; row-gap: 0; }
+
+/* ---------- Parameter list: one entry per name, as in Xcode's Quick Help "Parameters" ----------
+   The label line (name, type, default) over the description; a hairline between entries; the same on a phone,
+   where the label line wraps; nothing scrolls sideways. Starlight's prose margins are reset inside. */
+.ui-params { margin-block: 1.5rem; }
+.ui-params:first-child { margin-top: 0; }
+.ui-params:last-child { margin-bottom: 0; }
+.sl-markdown-content .ui-params :is(.ui-params-list, .ui-param, .ui-param-head, .ui-params-title, .ui-params-returns, .ui-params-example) { margin-block: 0; }
+.sl-markdown-content .ui-params .ui-param-desc { margin: 4px 0 0; }
+.ui-params-sig { margin-bottom: 16px; }
+.ui-params-title { font: 600 var(--fg-fs-sub)/1.3 var(--sl-font); color: var(--fg-ink-2); padding-bottom: 8px; border-bottom: 1px solid var(--fg-line); }
+.ui-params-list { padding: 0; }
+.ui-param { padding-block: 12px; border-bottom: 1px solid var(--fg-line); scroll-margin-top: calc(var(--sl-nav-height) + 16px); }
+.ui-param-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: 400; }
+.ui-param-name { text-decoration: none; color: var(--fg-ink); border-radius: var(--fg-r-sm); }
+.ui-param-name code { font: 600 var(--fg-fs-callout)/1.4 var(--sl-font-mono); background: none; padding: 0; color: inherit; overflow-wrap: anywhere; }
+@media (hover: hover) { .ui-param-name:hover code { text-decoration: underline; text-decoration-color: var(--fg-line); text-underline-offset: 3px; } }
+.ui-param-name:focus-visible { outline: 3px solid var(--fg-focus); outline-offset: 2px; }
+@media (pointer: coarse) { .ui-param-name { padding-block: 8px; margin-block: -8px; } }   /* a 44px target, the layout unmoved */
+.ui-param-type { align-self: center; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.ui-param-req { font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-warn); }
+.ui-param-def { font: var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-3); }
+.ui-param-def code { font: var(--fg-fs-footnote)/1.3 var(--sl-font-mono); background: none; padding: 0; color: var(--fg-ink-2); overflow-wrap: anywhere; }
+.ui-param-desc { font-size: var(--fg-fs-callout); line-height: 1.5; color: var(--fg-ink-2); }
+.sl-markdown-content .ui-param-desc > :first-child { margin-top: 0; }
+.sl-markdown-content .ui-param-desc > * + * { margin-top: 8px; }
+.ui-param-desc code { overflow-wrap: break-word; }
+/* the entry a link points at: a soft accent field, out to 8px past the text either side */
+.ui-param:target { margin-inline: -8px; padding-inline: 8px; border-radius: var(--fg-r-sm); background: var(--fg-accent-soft); }
+.ui-param:target .ui-param-def { color: var(--fg-ink-2); }   /* ink-3 is under 4.5:1 on the accent field */
+.ui-params-returns { padding-top: 16px; }
+.sl-markdown-content .ui-params .ui-params-returns .ui-param-desc { margin-top: 8px; }
+.sl-markdown-content .ui-params .ui-params-example { margin-top: 12px; }

@@ -8,7 +8,7 @@ name: Docs
 on:
   push:
     branches: [main]
-    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/check_english.py", "scripts/check_links.py", "scripts/check_exports.py", ".github/workflows/docs.yml"]
+    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/check_english.py", "scripts/check_links.py", "scripts/check_exports.py", "scripts/check_contrast.py", ".github/workflows/docs.yml"]
   pull_request:
     paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/**"]
   workflow_dispatch:
@@ -44,6 +44,8 @@ jobs:
       - name: Install
         working-directory: site
         run: npm ci
+      - name: Text contrast of the ink tokens (light and dark, on the page, a tile and a menu)
+        run: python3 scripts/check_contrast.py
       - name: Install the widget's dependencies (the site builds the widget from its sources, e.g. chart.js)
         working-directory: packages/agui-chat
         run: npm ci

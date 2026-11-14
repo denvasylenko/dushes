@@ -4,7 +4,7 @@ description: 'Every control the docs use, live in light and dark, with the snipp
 ---
 import { LinkCard as SlLinkCard, CardGrid } from '@astrojs/starlight/components';
 import SearchSpecimen from '../../../components/SearchSpecimen.astro';
-import { Badge, Button, Compare, Entries, Entry, Masonry, Icon, Metric, Metrics, SectionTabs, Select, SourceList, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
+import { Badge, Button, Compare, Entries, Entry, Masonry, Icon, Metric, Metrics, Param, ParamList, SectionTabs, Select, SourceList, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
 
 Every piece of interface on this site comes from one folder, `site/src/components/ui/`. Each primitive is shaped like its Apple counterpart, built from the tokens in `site/src/styles/theme.css`, and shown below working. A new pattern is added there first and shown on this page, then used.
 
@@ -373,6 +373,40 @@ import { SectionTabs } from './ui'
 
 The header (`components/Header.astro`) feeds it from `starlight-sidebar-topics`. Its row is part of `--sl-nav-height` on a computer, so the sidebar, the page, **On this page** and anchor scrolling all start below it.
 
+## Parameter list
+
+What a function, an endpoint, an event or a configuration block takes, one entry per name: Xcode's Quick Help **Parameters**, and the entry pattern of the Stripe and docs.python.org references. Each entry has the name in mono, its type as a mono Badge, the default (or **Required**), and the description under it, with a hairline between entries.
+- One layout at every width. On a phone the label line wraps above its description, so a long description never pushes the page sideways, unlike a table.
+- `signature` puts the call on top, in a wrapping Code panel labelled with `kind`. The `returns` slot adds a short Returns section. The `example` slot adds an Example in a Disclosure, closed until asked for.
+- Every entry is an anchor (`#thread_id`, `#agent.model`), so a guide can link to one key. The linked entry gets a soft accent field.
+
+<Specimen layout="col">
+  <div style="width:100%">
+    <ParamList kind="async method" signature="FormGuide.suggest_prefill(state, *, data=None, text=None, attachment_ids=None, thread_id=None)">
+      <Param name="state" type="dict" required id="ds-state">The form as the app has it now: `config`, `jsx_hash`, `form_id`.</Param>
+      <Param name="data" type="dict | None" default="None" id="ds-data">Values the app already knows, such as a profile, keyed by field name.</Param>
+      <Param name="text" type="str | None" default="None" id="ds-text">Free text to read values from, such as a pasted email.</Param>
+      <Param name="thread_id" type="str | None" default="None" id="ds-thread_id">The conversation to attach the uploaded documents from.</Param>
+      <Fragment slot="returns">A dict of validated values the form can apply, with the field each came from.</Fragment>
+      <Fragment slot="example">
+        <CodePanel label="python" code={`values = await guide.suggest_prefill(state, data={"email": user.email})`} />
+      </Fragment>
+    </ParamList>
+  </div>
+</Specimen>
+
+```mdx
+import { Param, ParamList } from '../../../components/ui'
+
+<ParamList kind="async method" signature="FormGuide.suggest_prefill(state, *, data=None, thread_id=None)">
+  <Param name="state" type="dict" required>The form as the app has it now.</Param>
+  <Param name="data" type="dict | None" default="None">Values the app already knows.</Param>
+  <Fragment slot="returns">A dict of validated values.</Fragment>
+</ParamList>
+```
+
+`title` names the list (**Parameters** by default, or **Keys**, **Fields**, **Query**). Set `title=""` to drop it. The description is Markdown in MDX. In `llms-full.txt` and the `.md` exports each entry becomes one list line: the name, then the type and default, then the description.
+
 ## Select
 
 One choice from a list, as a pop-up button. It works like macOS: the button shows the choice, and its menu marks the chosen option with a check. On a phone the list is a sheet from the bottom over a dimmed page, as on iOS.
@@ -386,6 +420,7 @@ One choice from a list, as a pop-up button. It works like macOS: the button show
   <div style="width:min(100%,18rem)">
     <Select label="Car make" placeholder="Choose…" options={[['toyota', 'Toyota'], ['honda', 'Honda'], ['tesla', 'Tesla']]} />
   </div>
+  <Select quiet label="Theme (example)" options={[['light', 'Light'], ['dark', 'Dark'], ['auto', 'Auto']]} value="auto" />
 </Specimen>
 
 ```astro
@@ -394,6 +429,8 @@ import { Select } from './ui'
 ---
 <Select label="Loan type" value="personal" options={[['auto', 'Car loan'], ['personal', 'Personal loan']]} />
 ```
+
+`quiet` is the toolbar pop-up button for a setting in a bar: a pill on the fill with no border, footnote size, 44 px on touch. The header's theme picker is one. It drives Starlight's own picker, which stays hidden and keeps the theme logic.
 
 It fires a bubbling `ui-change` with `{value}`. For markup made by script, such as the landing demo's form, `buildSelect({ options, value, label, onChange })` from `ui.ts` makes the same element.
 

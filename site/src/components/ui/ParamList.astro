@@ -1,0 +1,32 @@
+---
+/**
+ * Parameter list: what a function, an endpoint, an event or a configuration block takes, one entry per name, as in
+ * Xcode's Quick Help "Parameters" (and the Stripe and docs.python.org references). Each entry is a <Param>: the name
+ * in mono, its type as a mono Badge, the default (or Required), and the description under it, a hairline between
+ * entries. The same layout on a phone: the label line wraps above its description, nothing scrolls sideways.
+ *
+ * Optional, around the entries:
+ * - `signature`: the call itself on top, in a wrapping Code panel labelled with `kind` ("async method").
+ * - slot "returns": a short Returns section under the entries.
+ * - slot "example": an Example in a Disclosure, closed until asked for.
+ * `title` names the list ("Parameters" by default; "Keys", "Fields", "Query"); `title=""` drops it.
+ */
+import CodePanel from './CodePanel.astro'
+import Disclosure from './Disclosure.astro'
+interface Props { title?: string; signature?: string; kind?: string; class?: string; [attr: string]: unknown }
+const { title = 'Parameters', signature, kind, class: cls, ...rest } = Astro.props
+const returns = Astro.slots.has('returns')
+const example = Astro.slots.has('example')
+---
+<section class:list={['ui-params', cls]} {...rest}>
+  {signature && <CodePanel class="ui-params-sig" label={kind} code={signature} copy={false} wrap />}
+  {title && <p class="ui-params-title">{title}</p>}
+  <dl class="ui-params-list"><slot /></dl>
+  {returns && (
+    <div class="ui-params-returns">
+      <p class="ui-params-title">Returns</p>
+      <div class="ui-param-desc"><slot name="returns" /></div>
+    </div>
+  )}
+  {example && <Disclosure class="ui-params-example" summary="Example"><slot name="example" /></Disclosure>}
+</section>

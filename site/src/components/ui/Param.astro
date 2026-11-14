@@ -1,0 +1,22 @@
+---
+/**
+ * Param: one entry of a Parameter list. `name` in mono; `type` as a mono Badge; `default` in ink-3 ("Default `None`"),
+ * or `required` as a word in the warning colour; `deprecated` strikes nothing out but says so. The description is the
+ * slot (Markdown in MDX). Each entry is an anchor: `#<id>`, by default the name ("thread_id", "agent.model"),
+ * highlighted softly when it is the target of a link.
+ */
+import Badge from './Badge.astro'
+interface Props { name: string; type?: string; default?: string; required?: boolean; deprecated?: boolean; id?: string; class?: string }
+const { name, type, default: def, required = false, deprecated = false, id, class: cls } = Astro.props
+const anchor = id ?? name.toLowerCase().replace(/[^a-z0-9_.-]+/g, '-').replace(/^-+|-+$/g, '')
+---
+<div class:list={['ui-param', cls]} id={anchor}>
+  <dt class="ui-param-head">
+    <a class="ui-param-name" href={`#${anchor}`}><code>{name}</code></a>
+    {type && <Badge mono class="ui-param-type">{type}</Badge>}
+    {required && <span class="ui-param-req">Required</span>}
+    {def !== undefined && <span class="ui-param-def">Default <code>{def}</code></span>}
+    {deprecated && <Badge variant="warn" class="ui-param-dep">Deprecated</Badge>}
+  </dt>
+  <dd class="ui-param-desc"><slot /></dd>
+</div>

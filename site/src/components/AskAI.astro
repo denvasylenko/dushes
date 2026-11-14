@@ -86,6 +86,10 @@ const OPEN = [
 <style is:global>
   /* on a computer the header's Ask AI opens the panel: no second launcher in the corner */
   @media (min-width: 50rem) { agui-chat.ask-chat::part(fab) { display: none; } }
+  /* on a phone the corner launcher is a grey pill (Button gray on the raised surface), not a filled accent one: the
+     page's own actions keep the colour; the page ends with room for it, so it never covers the last links */
+  agui-chat.ask-chat::part(fab) { background: var(--fg-elevated); color: var(--fg-ink); box-shadow: var(--fg-shadow-pop), inset 0 0 0 1px var(--fg-fill-2); }   /* the edge in ink at 14%: it holds over a dark code block */
+  @media (max-width: 50rem) { :root:has(agui-chat.ask-chat) .main-frame { padding-bottom: calc(var(--fg-h-lg) + 36px); } }
   .ask { position: relative; display: flex; }
   .ask .ui-icon.is-fill { color: var(--fg-accent-ink); }
   .ask .ui-pop { width: 15rem; }

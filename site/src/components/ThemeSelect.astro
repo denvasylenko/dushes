@@ -1,0 +1,38 @@
+---
+/**
+ * The theme picker (header on a computer, menu footer on a phone): our quiet Select instead of the browser's
+ * <select>. Starlight's own picker stays in the page, hidden, and keeps doing the work (localStorage, the system
+ * scheme, the inline script that sets the theme before paint); ours only drives it and follows it. The labels come
+ * from Starlight's translations, so they follow the page's language.
+ */
+import Default from '@astrojs/starlight/components/ThemeSelect.astro'
+import { Select } from './ui'
+const t = Astro.locals.t
+---
+<div class="fg-theme">
+  <div class="fg-theme-native"><Default /></div>
+  <Select quiet data-fg-theme label={t('themeSelect.accessibleLabel')} value="auto"
+    options={[['light', t('themeSelect.light')], ['dark', t('themeSelect.dark')], ['auto', t('themeSelect.auto')]]} />
+</div>
+
+<script>
+  import { setSelectValue } from './ui/ui'
+  const native = (box: Element) => box.closest('.fg-theme')?.querySelector<HTMLSelectElement>('starlight-theme-select select')
+  // ours follows Starlight's (set before paint, or by the design-system page's switch)
+  const sync = () => document.querySelectorAll<HTMLElement>('[data-fg-theme]').forEach((b) => { const s = native(b); if (s) setSelectValue(b, s.value) })
+  document.addEventListener('ui-change', (e) => {
+    const box = (e.target as Element).closest?.('[data-fg-theme]')
+    const s = box && native(box)
+    if (!s) return
+    s.value = (e as CustomEvent<{ value: string }>).detail.value
+    s.dispatchEvent(new Event('change'))
+    sync()   // the other picker on the page (header and menu) shows the same
+  })
+  sync()
+  new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+</script>
+
+<style>
+  .fg-theme { display: flex; align-items: center; }
+  .fg-theme-native { display: none; }
+</style>

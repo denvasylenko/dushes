@@ -1,0 +1,124 @@
+---
+title: Python API
+description: FormGuide and Dushes, their methods, the config objects and the app factories.
+---
+import { ParamList, Param } from '../../../components/ui';
+
+```python
+from formguide import FormGuide, GuideConfig, load_config, Models, KnowledgeBase, BM25Index, VectorStoreIndex, \
+    SkillRegistry, DomainPackRegistry
+```
+
+## Building a guide
+
+| Call | Does |
+| --- | --- |
+| `load_config(path)` | reads `formguide.yaml` into a `GuideConfig` (unknown keys fail with their name) |
+| `GuideConfig(...)` | the same in code: models, domain packs, knowledge, skills, tools, stores, memory, `interrupt_mode` |
+| `FormGuide(config)` | the guide: the agent graph and everything it needs |
+| `formguide.server.create_router(guide, debug=False)` | the router for your own app ([HTTP API](../http-api/)) |
+
+<ParamList kind="function" signature="formguide.app.create_app(config=None, *, prefix='/agent', cors=None, debug=False, static_dir=None)" id="create-app">
+  <Param name="config" type="GuideConfig | FormGuide | str | Path | None" default="None" id="create-app-config">A config, a ready guide, or the path of a `formguide.yaml`.</Param>
+  <Param name="prefix" type="str" default="'/agent'">Where the agent's routes are mounted.</Param>
+  <Param name="cors" type="list[str] | None" default="None">Allowed origins for a page on another host.</Param>
+  <Param name="debug" type="bool" default="False" id="create-app-debug">Adds `GET /debug/{thread_id}`, which shows the model's history: development only.</Param>
+  <Param name="static_dir" type="str | Path | None" default="None">A folder of static files served at the root, e.g. your built page.</Param>
+  <Fragment slot="returns">A FastAPI app.</Fragment>
+</ParamList>
+
+## Dushes: the assistant for a whole site
+
+```python
+from formguide.site import Dushes, SiteMap, create_dushes_router
+```
+
+| Call | Does |
+| --- | --- |
+| `SiteMap.load(path or dict)` | the site map: pages with `path`, `title`, `description`, `keywords`, `form`, `tabs`, `accordions`, `sections` |
+| `Dushes(form_guide, site_map, model=None, ...)` | the site assistant above your `FormGuide`; `model` defaults to the form guide's agent model. Keyword options: `knowledge_namespaces`, `router_model`, `context`, `instructions`, `style`, `history`, `tools`, `suggestions`, `form_for` ([Site agent](../../agents/site-agent/)) |
+| `create_dushes_router(dushes, host=None)` | its FastAPI router ([HTTP API](../http-api/#dushes-the-site-assistant)); `host(request)` builds your object for every run |
+| `SiteGuide`, `create_site_router` | the old names, kept as aliases |
+
+### `Dushes` methods
+
+<ParamList kind="async method" signature="Dushes.run(thread_id, *, message=None, state=None, resume=None, run_id=None, handoff=False, host=None, reply_to=None, **form_kwargs)" id="dushes-run">
+  <Param name="thread_id" type="str" required id="dushes-run-thread-id">The site conversation.</Param>
+  <Param name="message" type="str | None" default="None" id="dushes-run-message">The user's new message.</Param>
+  <Param name="state" type="dict | None" default="None" id="dushes-run-state">The page: `{page: {path, title}, form?}`; `form` is the form's state on a form page.</Param>
+  <Param name="resume" type="dict | None" default="None" id="dushes-run-resume">The answer to a card, passed to the UI agent.</Param>
+  <Param name="run_id" type="str | None" default="None" id="dushes-run-run-id">Your id for this turn.</Param>
+  <Param name="handoff" type="bool" default="False">The run once a form has opened: the UI agent starts with what the user already said on the site.</Param>
+  <Param name="host" type="Any" default="None">Your object for this run, built by the router's `host(request)`.</Param>
+  <Param name="reply_to" type="list[dict] | None" default="None" id="dushes-run-reply-to">The parts of earlier messages the user answers, as for `FormGuide.run`.</Param>
+  <Fragment slot="returns">An async iterator of AG-UI events: the site agent's answer, or the UI agent's events on a form page. Other keyword arguments go to `FormGuide.run`.</Fragment>
+</ParamList>
+
+| Method | Does |
+| --- | --- |
+| `thread(thread_id, form_id=None)` | every turn the user saw (AG-UI messages) and the open card of the form on the current page |
+| `async ask_documents(question)` | an answer from the site's business documents, with sources (the researcher) |
+
+## `FormGuide` methods
+
+### run
+
+<ParamList kind="async method" signature="FormGuide.run(thread_id, *, message=None, state=None, resume=None, run_id=None, client_tools=None, tool_results=None, prefill=None, capabilities=None, trace_context=None, reply_to=None)" id="run">
+  <Param name="thread_id" type="str" required id="run-thread-id">The conversation.</Param>
+  <Param name="message" type="str | None" default="None">The user's new message.</Param>
+  <Param name="state" type="dict | None" default="None">The form now: `{config, jsx_hash, form_id, ui?, attachments?}`. Sent with a new message, after frontend tools and with prefill.</Param>
+  <Param name="resume" type="dict | None" default="None">The answer to the card the last turn showed. A field-change card: `{accepted, config?, ui?, names?, comment?}`; a question: `{answer: {ids?, text?}}` (`{accepted: False}` skips); an upload request: `{attachment_ids}`; a confirmation: `{accepted}`.</Param>
+  <Param name="run_id" type="str | None" default="None">Your id for this turn; a new one when omitted.</Param>
+  <Param name="client_tools" type="list[dict] | None" default="None">The frontend tools the client declared: `[{name, description, parameters}]`.</Param>
+  <Param name="tool_results" type="dict[str, str] | None" default="None">After frontend tools ran: `{tool_call_id: content}`, with `state`.</Param>
+  <Param name="prefill" type="dict | None" default="None">A prefilled start: `{data?, text?, attachment_ids?}`, with `state` (see `suggest_prefill`).</Param>
+  <Param name="capabilities" type="list[str] | None" default="None">The cards and variants the client renders; `None` means all.</Param>
+  <Param name="trace_context" type="dict[str, str] | None" default="None">The caller's W3C trace headers `{traceparent, tracestate}`; with OpenTelemetry on, the turn joins that trace.</Param>
+  <Param name="reply_to" type="list[dict] | None" default="None">The parts of earlier messages the user answers: `[{message_id, quote | whole, note?}]`. The agent reads each quote before the message.</Param>
+  <Fragment slot="returns">An async iterator of AG-UI events, as plain dicts with the protocol's camelCase keys. Everything the user sees is also kept in the thread's display transcript.</Fragment>
+</ParamList>
+
+### run_detached
+
+<ParamList kind="async method" signature="FormGuide.run_detached(**kw)" id="run-detached" title="">
+  <Fragment slot="returns">`run()` as a background task, with the same arguments: the caller streams its events, and when the caller goes away (the tab closed, the page reloaded) the turn still finishes and records its result in the transcript. A turn for a thread whose turn is still running waits for it first.</Fragment>
+</ParamList>
+
+### register_form
+
+<ParamList kind="method" signature="FormGuide.register_form(jsx, form_id=None, domain=None, config=None)" id="register-form">
+  <Param name="jsx" type="str" required>The form's layout: elements and nesting, no code.</Param>
+  <Param name="form_id" type="str | None" default="None" id="register-form-form-id">The form's id.</Param>
+  <Param name="domain" type="dict | None" default="None">A domain pack shipped with the form. Keep packs in the server config in production: an inline pack applies to every chat of that form.</Param>
+  <Param name="config" type="dict | None" default="None">A sample `{props, state}`: the warnings then also say where values or options cannot be read with your field specs.</Param>
+  <Fragment slot="returns">`{jsx_hash, ...}` and warnings. Parsed and cached once per JSX.</Fragment>
+</ParamList>
+
+### suggest_prefill
+
+<ParamList kind="async method" signature="FormGuide.suggest_prefill(state, *, data=None, text=None, attachment_ids=None, thread_id=None)" id="suggest-prefill">
+  <Param name="state" type="dict" required id="suggest-prefill-state">The form now, as for `run`.</Param>
+  <Param name="data" type="dict | None" default="None">Values your app already has, by field name or in your own shape.</Param>
+  <Param name="text" type="str | None" default="None">Free text to read values from.</Param>
+  <Param name="attachment_ids" type="list[str] | None" default="None">Uploaded documents to read values from.</Param>
+  <Param name="thread_id" type="str | None" default="None" id="suggest-prefill-thread-id">The conversation the attachments belong to.</Param>
+  <Fragment slot="returns">Validated values for the form, without a chat.</Fragment>
+</ParamList>
+
+### Conversations, documents and attachments
+
+| Method | Does |
+| --- | --- |
+| `thread(thread_id, form_id=None)` | the display transcript, the pending card and whether a turn is still running |
+| `thread_messages(thread_id)` | the transcript as AG-UI messages |
+| `async delete_thread(thread_id)` | forget a conversation |
+| `add_document(namespace, filename, data)` / `delete_document(namespace, doc_id)` | manage business documents |
+| `async compile_knowledge(form_id, jsx, config)` | compile the documents in the form's scope into its domain pack |
+| `save_attachment(thread_id, filename, data)` | store a user document for the next run |
+| `async history(thread_id)` / `recent_runs(thread_id)` | the model's history and recent run stats, for debugging |
+| `stop(thread_id)` | stop the thread's running turn (the chat's Stop); `True` when one was running |
+| `running(thread_id)` | whether a turn is running for the thread |
+| `feedback(thread_id, value, card_id=None)` | keep a thumbs rating (`1` or `-1`) from the chat in the thread's transcript |
+| `warm_up()` | load what the first request would wait for (the Whisper model) in the background; `create_app` calls it, call it yourself when you mount the router |
+
+Every key of `GuideConfig` and its YAML form: [Configuration keys](../configuration/#every-key).

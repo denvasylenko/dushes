@@ -153,6 +153,18 @@ Every component on the docs site SHALL be built from the primitives in `site/src
 - **WHEN** the site is used on a touch screen
 - **THEN** every Button, Chip, segment and Copy button is at least 44 px tall, and hover styles do not stick after a tap
 
+#### Scenario: Secondary text stays readable
+- **WHEN** text uses the ink tokens (`--fg-ink`, `--fg-ink-2`, `--fg-ink-3`) on the page, a tile or a menu, in light or dark
+- **THEN** its contrast is at least 4.5:1, and the docs CI fails (`scripts/check_contrast.py`) when a token change brings any pair below that
+
+#### Scenario: A reference entry with many parameters
+- **WHEN** a reference page lists what a method, endpoint, event or configuration block takes
+- **THEN** it uses the Parameter list primitive: one entry per name with its type, default or Required, and the description under it, a hairline between entries, the same layout on a phone; every entry is a link anchor; and in the `.md` exports each entry is one list line with the name, type, default and description
+
+#### Scenario: A reference table on a computer
+- **WHEN** a Markdown table in the docs is wider than the page column
+- **THEN** its cells wrap (code included, a long value breaking only where it cannot fit), rows are top-aligned, and at 50rem and wider the first column keeps 11rem and, in a table of two or three columns, the last keeps 16rem, so a name is not split and the description stays readable; a name is never broken mid-word, so a table whose values cannot fit scrolls inside its own box while the page does not
+
 ### Requirement: Design system page
 The Reference section SHALL have a "Design system" page that shows every primitive live, with its states and a usage snippet, and a switch that previews the page in light and dark.
 

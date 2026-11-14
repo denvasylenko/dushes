@@ -185,6 +185,16 @@ function setSelect(box: HTMLElement, open: boolean, focus: 'option' | 'button' |
   }
 }
 
+/** Set a Select's value from outside (no ui-change): the check and the button's text follow. */
+export function setSelectValue(box: HTMLElement, value: string): void {
+  const opt = box.querySelector<HTMLElement>(`[role="option"][data-value="${CSS.escape(value)}"]`)
+  if (!opt) return
+  box.querySelectorAll('[role="option"]').forEach((x) => x.setAttribute('aria-selected', String(x === opt)))
+  const btn = box.querySelector<HTMLElement>('.ui-select-btn')!
+  btn.classList.remove('is-empty')
+  btn.querySelector('.ui-select-val')!.textContent = opt.textContent ?? ''
+}
+
 function choose(opt: HTMLElement): void {
   const box = opt.closest<HTMLElement>('[data-ui-select]')
   if (!box) return

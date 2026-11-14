@@ -26,10 +26,40 @@ export function htmlToText(html: string): string {
 /** Example files a page includes with `import x from '…/public/examples/<file>?raw'` and shows with <Code code={x} />. */
 const examples = import.meta.glob('../../public/examples/*', { query: '?raw', eager: true, import: 'default' }) as Record<string, string>;
 
+/** One attribute of a component tag: name="value", or a bare name (true). */
+const attr = (tag: string, name: string): string | true | undefined => {
+  const m = tag.match(new RegExp(`\\s${name.replace('.', '\\.')}(?:="([^"]*)")?(?=[\\s/>])`))
+  return m ? (m[1] ?? true) : undefined
+}
+
+/** A Parameter list (ui/ParamList + Param) -> the signature, a title line and one list line per entry. */
+function paramsToMd(part: string): string {
+  return part
+    .replace(/^[ \t]*<ParamList\b[^>]*>/gm, (tag) => {
+      const sig = attr(tag, 'signature'), kind = attr(tag, 'kind'), title = attr(tag, 'title')
+      const head = typeof sig === 'string' ? `${typeof kind === 'string' ? `${kind}: ` : ''}\`${sig}\`\n\n` : ''
+      return `${head}${title === '' ? '' : `**${typeof title === 'string' ? title : 'Parameters'}**\n`}`
+    })
+    .replace(/^[ \t]*<Param\b[^>]*>/gm, (tag) => {
+      const type = attr(tag, 'type'), def = attr(tag, 'default')
+      const bits = [typeof type === 'string' ? type : '', attr(tag, 'required') ? 'required' : '',
+        typeof def === 'string' ? `default \`${def}\`` : '', attr(tag, 'deprecated') ? 'deprecated' : ''].filter(Boolean)
+      return `- \`${attr(tag, 'name')}\`${bits.length ? ` (${bits.join(', ')})` : ''}: `
+    })
+    .replace(/^[ \t]*<Fragment\s+slot="returns"\s*>/gm, '\n**Returns:** ')
+    .replace(/^[ \t]*<Fragment\s+slot="example"\s*>/gm, '\n**Example:**\n')
+    // a Code panel given its code inline: the code itself, as a code block
+    .replace(/^[ \t]*<CodePanel\b([^>]*?)code=\{`([^`]*)`\}[^>]*\/>/gm, (_m, a, code) => {
+      const label = attr(` ${a}`, 'label')
+      return `\`\`\`${typeof label === 'string' ? label : ''}\n${code}\n\`\`\``
+    })
+    .replace(/[ \t]*<\/(ParamList|Param)>/g, '')
+}
+
 /** The components of one prose part (never inside a code block) -> Markdown equivalents. */
 function proseToMd(part: string, raw: Record<string, string>): string {
   const stash: string[] = []
-  return part
+  return paramsToMd(part)
     .replace(/<Arch[^>]*?fragment="([a-z]+)"[^>]*\/>/g, (_m, p) => htmlToText(fragments[`../fragments/${p}.html`] ?? ''))
     .replace(/<ArchFigure[^>]*\/>/g, '')
     // the "at a glance" block: three plain lines (the attributes are JSON strings)

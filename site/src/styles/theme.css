@@ -27,7 +27,7 @@
   /* ink and surfaces */
   --fg-ink: var(--sl-color-white);
   --fg-ink-2: var(--sl-color-gray-2);
-  --fg-ink-3: var(--sl-color-gray-3);
+  --fg-ink-3: hsl(224, 6%, 63%);   /* dark: its own step (Starlight's gray-3 is 4.47:1 on a tile); >= 4.6:1 on the page, a tile and a menu */
   --fg-surface: var(--sl-color-bg-nav);                                   /* a tile on the page */
   --fg-sunken: var(--sl-color-bg);                                        /* code inside a tile */
   --fg-elevated: color-mix(in srgb, var(--sl-color-gray-6), var(--sl-color-white) 6%); /* a menu over the page */
@@ -72,6 +72,7 @@
   --fg-h-lg: 44px;
 }
 :root[data-theme='light'] {
+  --fg-ink-3: var(--sl-color-gray-3);   /* light: Starlight's gray-3, 6.5:1 or more */
   --fg-fill: color-mix(in srgb, var(--sl-color-white) 6%, transparent);
   --fg-fill-2: color-mix(in srgb, var(--sl-color-white) 11%, transparent);
   --fg-thumb: var(--sl-color-black);
@@ -94,8 +95,15 @@ h1#_top { text-wrap: balance; }
 .site-title { font-weight: 600; }
 .sl-markdown-content h2 { text-wrap: balance; }
 .sl-markdown-content table { display: block; overflow-x: auto; max-width: 100%; }
-.sl-markdown-content td code { white-space: nowrap; }
-@media (max-width: 50rem) { .sl-markdown-content td code { white-space: normal; } }
+/* tables wrap at every width (no nowrap code): the description stays readable and on screen; a long value breaks
+   only when it cannot fit; on a computer the name column is wide enough that a key or a flag is not split at its
+   hyphens, and the description keeps a readable width; rows read top-aligned, like a list */
+.sl-markdown-content td code { overflow-wrap: break-word; }
+.sl-markdown-content :is(td, th) { line-height: 1.5; vertical-align: top; }
+@media (min-width: 50rem) {
+  .sl-markdown-content td:first-child { min-width: 11rem; }
+  .sl-markdown-content tr:not(:has(> :nth-child(4))) > td:last-child { min-width: 16rem; }   /* 2-3 columns: the description */
+}
 
 /* the landing page */
 [data-has-hero] .hero { padding-block: clamp(2rem, 6vw, 5rem) clamp(1.5rem, 4vw, 3rem); }
@@ -139,6 +147,11 @@ h1#_top { text-wrap: balance; }
 }
 /* a phone: Starlight's menu button with a 44 px target, the same icon */
 @media (max-width: 50rem) { :root { --sl-menu-button-size: 44px; } .sl-menu-button svg { width: 20px; height: 20px; } }
+/* the menu button is a plain glyph like the Search glyph beside it (an iOS bar button), not Starlight's solid disc
+   (white in dark, black in light); with the menu open it sits on a quiet fill, the way a toggled bar button does */
+.sl-menu-button, :root[data-theme='light'] .sl-menu-button { background-color: transparent; color: var(--fg-ink); box-shadow: none; padding: 0; align-items: center; justify-content: center; }
+.sl-menu-button:has(~ :popover-open), :root[data-theme='light'] .sl-menu-button:has(~ :popover-open) { background-color: var(--fg-fill); }
+.sl-menu-button:focus-visible { outline: 3px solid var(--fg-focus); outline-offset: 0; }
 /* light: a header edge you can see on white */
 :root[data-theme='light'] header.header { border-bottom-color: var(--sl-color-hairline); }
 /* the phone menu: a Segmented control of the topics over the shown topic's pages (components/Sidebar.astro) */
@@ -194,3 +207,12 @@ h1#_top { text-wrap: balance; }
   background: var(--fg-accent-soft); color: var(--fg-accent-ink); box-shadow: inset 0 0 0 1px var(--fg-line); font-weight: 600;
 }
 .sl-markdown-content .sl-steps > li::after { width: 1.5px; background: var(--fg-step-line); }
+
+/* code blocks on a touch screen: Copy is always shown there (no hover), so it never sits over the first line. A
+   terminal block's title bar grows to hold it (44px plus 4px around); a block with no bar keeps a 44px band at the top for it */
+@media (pointer: coarse) {
+  .expressive-code .copy button { width: 44px; height: 44px; }
+  .expressive-code .frame.is-terminal .header { min-height: 52px; box-sizing: border-box; }
+  .expressive-code .frame.is-terminal .copy { inset-block-start: 4px; }
+  .expressive-code .frame:not(.has-title):not(.is-terminal) pre { padding-top: 52px; }
+}
