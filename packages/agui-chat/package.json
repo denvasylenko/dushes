@@ -1,6 +1,7 @@
 {
   "name": "@formguide/agui-chat",
   "version": "0.3.0",
+  "license": "Apache-2.0",
   "description": "An installable AG-UI chat: a framework-free Web Component (<agui-chat>) with a formguide plugin and a React wrapper",
   "keywords": [
     "ag-ui",
@@ -28,7 +29,9 @@
     "#charts-loader": "./src/charts-loader.ts"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "NOTICE"
   ],
   "main": "./dist/agui-chat.js",
   "module": "./dist/agui-chat.js",

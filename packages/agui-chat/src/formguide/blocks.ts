@@ -69,7 +69,7 @@ const safeUrl = (u: unknown, img = false): string => {
 }
 const md = (s: unknown, cls: string): HTMLElement => { const e = h('div', { class: cls }); e.innerHTML = mdInline(str(s)); return e }
 
-// line icons in the SF Symbols spirit: 24 grid, 1.8 stroke, round caps
+// line icons drawn for this project, in an Apple-like style: 24 grid, 1.8 stroke, round caps
 const ICON: Record<string, string> = {
   call: 'M5 4h3l2 5-2.5 1.5a11 11 0 0 0 6 6L15 14l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2',
   route: 'M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5',
