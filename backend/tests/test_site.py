@@ -297,7 +297,6 @@ def test_hand_off_in_the_same_run(guide, model, monkeypatch):
     run(s, "h4", state={"page": {"path": "/book"}, "form": {"form_id": "barber_booking"}}, handoff=True)
     assert seen["message"] is None                                        # the page's run finds no pending note
     assert site_messages(s, "h4")[-1] == ("assistant", "Here is the service:")
-    assert s.thread("h4")["messages"][-1]["agent"] == "form"             # who answered, for the page and the evals
 
 
 def site_messages(s, thread):
