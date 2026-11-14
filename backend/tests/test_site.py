@@ -476,7 +476,7 @@ def test_dushes_gives_a_form_question_to_the_form(site, guide, model, monkeypatc
     types = [e["type"] for e in ev]
     assert types.count("RUN_STARTED") == 1 and types.count("RUN_FINISHED") == 1
     assert seen["thread_id"] == "tf1-loan_application" and seen["message"].startswith("where are you located?")
-    assert not seen["caps"] or "hand_back" not in seen["caps"]                     # no ping-pong back to Dushes
+    assert "hand_back" in seen["caps"]   # the same tool list as the form's other turns (thinking blocks stay valid)
     msgs = [(m["role"], m["content"]) for m in site.thread("tf1")["messages"]]
     assert msgs[-1] == ("assistant", "The Collateral tab opens once you pick a car loan.")
     assert "to_form" in {(t.get("function") or t)["name"] if isinstance(t, dict) else t.name for t in model.bound}
@@ -489,3 +489,23 @@ def test_no_to_form_after_a_hand_back_or_off_a_form_page(guide, model):
     assert "to_form" not in {(t.get("function") or t)["name"] if isinstance(t, dict) else t.name for t in model.bound}
     prompt = model.calls[-1][0].content
     assert "work out a price, rate, payment or total yourself" in prompt
+
+
+def test_take_me_there_on_a_form_page_stays_with_the_form(site, guide):
+    st = form_state(guide)
+    assert site.route("can you navigate me there?", st) == "form"
+    assert site.route("take me to the income section", st) == "form"            # a word of this form
+    assert site.route("take me to the barbershop prices", st) == "site"         # another page
+    assert site.route("navigate somewhere else", st) == "unclear"                 # no target: the model decides
+
+
+def test_a_form_that_hands_back_after_to_form_lets_dushes_answer(site, guide, model, monkeypatch):
+    async def fake_run(thread_id, **kw):
+        yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": "r"}
+        yield {"type": "CUSTOM", "name": "hand_back", "value": {"reason": "about the shop"}}
+        yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": "r"}
+    monkeypatch.setattr(site.forms, "run", fake_run)
+    model.script = [say("site"), say("", ("t1", "to_form", {"reason": "?"})), say("We open at 10:00.")]
+    ev = run(site, "tf9", message="when do you open, and is my form ok?", state=form_state(guide))
+    assert "We open at 10:00." in "".join(e.get("delta", "") for e in ev)
+    assert [e["type"] for e in ev].count("RUN_STARTED") == 1

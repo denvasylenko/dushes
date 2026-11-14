@@ -55,6 +55,8 @@ SCOPE = "site"   # the knowledge scope of Dushes
 log = logging.getLogger("formguide.site")
 _NAV = re.compile(r"\b(go to|go back to|take me|open (the|my|a|an|up)|show me the|navigate|switch to|back to|where (is|can i find)|"
                   r"which page|another page|home ?page|main page)\b", re.I)
+# "there", "here": a move that points back into the conversation, so a place in this form on a form page
+_HERE = re.compile(r"\b(there|here|to it|this (one|part|section|field|tab|step))\b", re.I)
 # navigation words of other languages (written as escapes: the repository is English-only); they send the
 # message to the router model rather than straight to Dushes, since "open" may mean a form section too
 _NAV_OTHER = re.compile("|".join([
@@ -271,6 +273,17 @@ class Dushes:
             return "form"
         return self._about_site(message, state, thread_id)
 
+    def _other_page(self, text: str, here: Any) -> bool:
+        """The message names another page of the site by its title or keywords (the form page's own words do not count)."""
+        own = set(here.keywords) | {here.title.lower()} if here else set()
+        for p in self.site.pages:
+            if here and p.path == here.path:
+                continue
+            words = [w for w in (p.title.lower(), *p.keywords) if w not in own]
+            if any(re.search(rf"(?<!\w){re.escape(w)}(?!\w)", text) for w in words if len(w) > 2):
+                return True
+        return False
+
     def _last_speaker(self, thread_id: str | None) -> tuple[str, str]:
         """('site' | 'form' | '', what they said last) from the site transcript (form turns carry form_id)."""
         if not thread_id:
@@ -283,19 +296,18 @@ class Dushes:
     def _about_site(self, message: str, state: dict[str, Any], thread_id: str | None = None) -> str:
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
         text = message.lower()
-        if _NAV.search(text):
-            return "site"   # an explicit move: go to, open, take me ...
+        if _NAV.search(text):   # an explicit move: go to, open, take me ...
+            if self._other_page(text, here):
+                return "site"   # to another page of the site
+            if _HERE.search(text) or names_a_field(message, state.get("form") or {}):
+                return "form"   # "take me there", "open the income section": a place in this form
+            return "unclear"
         if _NAV_OTHER.search(text):
             return "unclear"   # a move in another language, or a form section: the model decides
         if _BUSINESS.search(text):
             return "unclear"   # where the business is, how to reach it: rarely the form's
-        own = set(here.keywords) | {here.title.lower()} if here else set()   # the form page's own words stay with the form
-        for p in self.site.pages:   # another page named by its title or keywords
-            if here and p.path == here.path:
-                continue
-            words = [w for w in (p.title.lower(), *p.keywords) if w not in own]
-            if any(re.search(rf"(?<!\w){re.escape(w)}(?!\w)", text) for w in words if len(w) > 2):
-                return "unclear"   # "a car loan" on the loan form is the form's; "the barbershop prices" is not
+        if self._other_page(text, here):
+            return "unclear"   # "a car loan" on the loan form is the form's; "the barbershop prices" is not
         if self._last_speaker(thread_id)[0] == "site":
             return "unclear"   # Dushes spoke last: the message may answer it
         if is_question(message) and not names_a_field(message, state.get("form") or {}):
@@ -496,9 +508,14 @@ class Dushes:
             fid = str(form.get("form_id") or "form")
             form_thread = f"{thread_id}-{fid}"[:100]
             out = Said()
+            again = None
+            kw = {**form_kwargs, "capabilities": with_hand_back(form_kwargs.get("capabilities"))}   # one tool list per thread
             async for ev in self.forms.run(form_thread, message=message, state=form, run_id=run_id,
-                                           **({"reply_to": as_list(reply_to)} if reply_to else {}), **form_kwargs):
-                if ev["type"] == "RUN_STARTED":
+                                           **({"reply_to": as_list(reply_to)} if reply_to else {}), **kw):
+                if ev["type"] == "CUSTOM" and ev.get("name") == "hand_back":
+                    again = ev.get("value") or {}
+                    continue
+                if ev["type"] == "RUN_STARTED" or again is not None:
                     continue
                 out.see(ev)
                 yield ev
@@ -506,6 +523,12 @@ class Dushes:
                 tx.append(thread_id, new_entry("assistant", text=out.text(), form_id=fid, **out.first_id()))
             for card in out.cards:
                 tx.append(thread_id, new_entry("display", card=card, form_id=fid))
+            if again is not None:   # the form gave it back: Dushes answers itself (recorded: no to_form now)
+                async for ev in self._site_turn(thread_id, message, state, run_id, host, form_kwargs, recorded=True,
+                                                reply_to=reply_to):
+                    if ev["type"] != "RUN_STARTED":
+                        yield ev
+                return
             return
         if not handed:
             yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
@@ -514,8 +537,11 @@ class Dushes:
         fid, form = handed["form_id"], handed["form"]
         form_thread = f"{thread_id}-{fid}"[:100]
         out = Said()
+        kw = {**form_kwargs, "capabilities": with_hand_back(form_kwargs.get("capabilities"))}   # one tool list per thread
         async for ev in self.forms.run(form_thread, message=handoff_message(handed["note"], handed["language"]),
-                                       state=form, run_id=run_id, **form_kwargs):
+                                       state=form, run_id=run_id, **kw):
+            if ev["type"] == "CUSTOM" and ev.get("name") == "hand_back":
+                continue   # just handed over: the form agent answers this one
             if ev["type"] == "RUN_STARTED":
                 continue
             out.see(ev)

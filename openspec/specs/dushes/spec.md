@@ -194,3 +194,17 @@ Dushes' prompt SHALL say not to add up discounts or work out a price, rate, paym
 - **WHEN** the user asks for the rate with a salary-client discount and a life-insurance discount
 - **THEN** Dushes quotes both conditions and what they apply to and does not state a combined rate
 
+
+### Requirement: A move on a form page
+On a page with a form, an explicit move ("take me", "navigate", "go to") SHALL go to Dushes only when it names another page of the site; when it points back into the conversation ("there", "here") or uses a word of this form's fields, it SHALL go to the form agent, which shows the place in the form; otherwise the router model SHALL decide.
+
+#### Scenario: Navigate me there
+- **WHEN** on the insurance quote page the user says "can you navigate me there?" after the form agent named a section
+- **THEN** the form agent answers and highlights that section, and the user stays on the page
+
+### Requirement: One tool list per form conversation
+Every form-agent turn in one conversation (a typed message, a message given by to_form, a hand-off) SHALL offer the same tools, hand_back included; a form agent that hands back a message given by to_form SHALL let Dushes answer it, without to_form.
+
+#### Scenario: Thinking blocks stay valid
+- **WHEN** a conversation mixes typed form turns, to_form turns and a hand-off
+- **THEN** the form agent's tool list is the same in every turn and the provider accepts its earlier reasoning

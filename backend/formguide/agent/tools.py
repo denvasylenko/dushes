@@ -116,10 +116,13 @@ TOOLS: list[dict[str, Any]] = [
                           "fills it at once)"},
                 "multiple": {"type": "boolean", "description": "several choices allowed"},
                 "allow_text": {"type": "boolean", "description": "a typed answer allowed; default true"},
-                "input": {"type": "object", "description": "the kind of typed answer, shown as a picker",
+                "input": {"type": "object", "description": "the kind of typed answer, shown as a picker. Narrow min / max with "
+                          "what the user already gave (a date that cannot come before another one) and set `value` to "
+                          "the likeliest answer; without `value` the picker starts at the field's value or empty",
                           "properties": {"type": {"type": "string",
                                                   "enum": ["text", "number", "date", "time", "datetime", "address"]},
-                                         "min": {"type": ["string", "number"]}, "max": {"type": ["string", "number"]}}},
+                                         "min": {"type": ["string", "number"]}, "max": {"type": ["string", "number"]},
+                                         "value": {"type": ["string", "number"], "description": "where the picker starts"}}},
             },
             "required": ["question"],
         },
@@ -715,6 +718,8 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
     inp = _question_input(a.get("input"))
     if inp and field_name and inp.get("type") == "number":
         inp = _range_from_field(ctx, field_name, inp)
+    if inp:
+        inp = _start_value(ctx, field_name, inp)
     if inp and inp.get("type") == "address" and not ctx.can("ask.address"):
         inp = {"type": "text"}
     if inp:
@@ -864,13 +869,44 @@ def _question_input(raw: Any) -> dict | None:
     if not isinstance(raw, dict) or raw.get("type") not in INPUT_TYPES:
         raise ToolError(f"input.type must be one of {', '.join(INPUT_TYPES)}")
     out: dict[str, Any] = {"type": raw["type"]}
-    for k in ("min", "max"):
+    for k in ("min", "max", "value"):
         if raw.get(k) in (None, ""):
             continue
         if not interaction_ok(out["type"], raw[k]):
             raise ToolError(f"input.{k} {raw[k]!r} is not a valid {out['type']}")
         out[k] = raw[k]
+    if "min" in out and "max" in out and _num_or_text(out["type"], out["min"]) > _num_or_text(out["type"], out["max"]):
+        raise ToolError(f"input.min {out['min']!r} is after input.max {out['max']!r}: no answer fits; tell the user why")
     return out
+
+
+def _num_or_text(kind: str, v: Any) -> Any:
+    """A bound as a comparable value: numbers as numbers, dates and times as their ISO text."""
+    return float(v) if kind == "number" else str(v)
+
+
+def _start_value(ctx: ToolCtx, name: str | None, inp: dict) -> dict:
+    """Where a number or date picker starts: the model's `value`, else the field's own value; always inside
+    min / max (the nearest bound when outside). No value: the client starts empty, not at a midpoint."""
+    if inp.get("type") not in ("number", "date"):
+        return inp
+    v = inp.get("value")
+    if v in (None, "") and name:
+        e = ctx.ov[name]
+        v = e.value if e.filled and not e.unreadable and not isinstance(e.value, (dict, list)) else None
+    if v in (None, ""):
+        return {k: x for k, x in inp.items() if k != "value"}
+    try:
+        val = _num_or_text(inp["type"], v)
+        lo = _num_or_text(inp["type"], inp["min"]) if "min" in inp else None
+        hi = _num_or_text(inp["type"], inp["max"]) if "max" in inp else None
+    except (TypeError, ValueError):
+        return {k: x for k, x in inp.items() if k != "value"}
+    if lo is not None and val < lo:
+        v = inp["min"]
+    elif hi is not None and val > hi:
+        v = inp["max"]
+    return {**inp, "value": v}
 
 
 def _t_request_file(a: dict, ctx: ToolCtx) -> str:
