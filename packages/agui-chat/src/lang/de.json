@@ -140,7 +140,11 @@
   "calApple": "Apple Kalender",
   "calGoogle": "Google Kalender",
   "calOutlook": "Outlook",
-  "addHours": "Zeiten hinzuf\u00fcgen"
+  "addHours": "Zeiten hinzuf\u00fcgen",
+  "showData": "Daten anzeigen",
+  "noData": "Keine Daten f\u00fcr diesen Zeitraum",
+  "limit": "Limit",
+  "latest": "zuletzt"
  },
  "tools": {
   "get_outline": "Sehe mir das Formular an",

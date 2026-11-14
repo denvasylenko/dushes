@@ -141,7 +141,11 @@
   "calApple": "Calendrier Apple",
   "calGoogle": "Google Agenda",
   "calOutlook": "Outlook",
-  "addHours": "Ajouter des horaires"
+  "addHours": "Ajouter des horaires",
+  "showData": "Afficher les donn\u00e9es",
+  "noData": "Aucune donn\u00e9e pour cette p\u00e9riode",
+  "limit": "limite",
+  "latest": "dernier"
  },
  "tools": {
   "get_outline": "Je regarde le formulaire",

@@ -106,6 +106,42 @@ describe('actions under an answer', () => {
   })
 })
 
+describe('a panel beside the page', () => {
+  it('modal: false drops the scrim and aria-modal, so the page beside it stays usable', async () => {
+    const el = await mount({ mode: 'floating' })
+    expect($(el, '.panel').getAttribute('aria-modal')).toBe('true')
+    el.setAttribute('modal', 'off')
+    expect($(el, '.wrap').classList.contains('nonmodal')).toBe(true)
+    expect($(el, '.panel').hasAttribute('aria-modal')).toBe(false)
+    el.options = { modal: true }
+    expect($(el, '.panel').getAttribute('aria-modal')).toBe('true')
+  })
+})
+
+describe('the launcher in every mode', () => {
+  it('auto: a pill for the panel, a round button for the bubble; round, pill, none and its words are options', async () => {
+    const el = await mount({ mode: 'floating' })
+    const wrap = $(el, '.wrap'), fab = $(el, '.fab')
+    expect(wrap.classList.contains('launcher-pill')).toBe(true)
+    el.setAttribute('mode', 'bubble')
+    expect(wrap.classList.contains('launcher-round')).toBe(true)
+    el.options = { mode: 'floating', launcher: 'round' }
+    expect(wrap.classList.contains('launcher-round')).toBe(true)
+    el.options = { launcher: 'pill', launcherLabel: 'Edit with AI' }
+    expect($(el, '.fab-label').textContent).toBe('Edit with AI')
+    expect(fab.getAttribute('aria-label')).toBe('Edit with AI')
+    el.setAttribute('launcher', 'none')
+    expect(wrap.classList.contains('launcher-none')).toBe(true)   // the page's own button calls chat.open()
+  })
+
+  it('render.launcher replaces the content in the panel mode too', async () => {
+    const el = await mount({ mode: 'floating' })
+    el.options = { render: { launcher: () => { const s = document.createElement('span'); s.className = 'mine'; s.textContent = '✦ Herefront AI'; return s } } }
+    expect($(el, '.fab').classList.contains('own')).toBe(true)
+    expect($(el, '.fab-own .mine').textContent).toBe('✦ Herefront AI')
+  })
+})
+
 describe('a lead taken back', () => {
   it('text_retract removes the lead written before the tools; the answer stays', async () => {
     const el = await mount()

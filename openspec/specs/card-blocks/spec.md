@@ -6,7 +6,7 @@ Cards of the host's own, composed from small blocks that look like the chat's ow
 ## Requirements
 
 ### Requirement: Cards from blocks
-The widget SHALL render a card of type `blocks` from its `blocks` list, in order. Known blocks are `title`, `text`, `note`, `row`, `image`, `place`, `stat`, `diff`, `steps`, `progress`, `swatches`, `choice`, `field`, `hours`, `preview`, `buttons`, `links` and `divider`; consecutive `row` blocks SHALL form one grouped list. An unknown block SHALL be skipped. Colours SHALL come from the theme and a block's `tone` only.
+The widget SHALL render a card of type `blocks` from its `blocks` list, in order. Known blocks are `title`, `text`, `note`, `row`, `image`, `place`, `stat`, `diff`, `steps`, `progress`, `swatches`, `choice`, `field`, `hours`, `preview`, `chart`, `buttons`, `links` and `divider`; consecutive `row` blocks SHALL form one grouped list. An unknown block SHALL be skipped. Colours SHALL come from the theme and a block's `tone` only.
 
 #### Scenario: A venue card
 - **WHEN** a card has a `place` block and a `buttons` block with "Yes, mine" and "No"
@@ -53,6 +53,20 @@ An `hours` block SHALL edit `[{days: [0..6] (0 = Monday), from, to}]`: presets i
 #### Scenario: Weekdays nine to six
 - **WHEN** the user taps the preset "Mon–Fri 09:00–18:00" and Save
 - **THEN** the values hold `hours: [{days: [0, 1, 2, 3, 4], from: "09:00", to: "18:00"}]`
+
+### Requirement: Charts in cards
+A `chart` block SHALL draw one of six forms in the theme's colours: `bar` (columns, `highlight` keeps one in colour and greys the rest), `line`, `area`, `barList`, `stacked` (each part's share in a legend) and `meter` (a value against `max`, with a `limit` mark, red over the limit). Columns, line and area SHALL load Chart.js only when such a chart shows.
+
+#### Scenario: A rate over six months
+- **WHEN** a card has `{type: "chart", kind: "line", unit: "%", labels: [Jun..Nov], series: [{name: "Rate", data: [...]}]}`
+- **THEN** a line is drawn with its last point marked, the axis reads "17%", "18%", and "Show data" lists the six months
+
+### Requirement: A chart's data and its text form
+A `chart` SHALL take `data: [{label, value}]` or `labels` with `series: [{name, data}]` (at most 8 series, 60 points), format numbers in the chat's language with `unit`, show a legend for two or more series, a text summary for screen readers and the numbers in a table under "Show data", and say "No data for this period" instead of drawing empty axes.
+
+#### Scenario: Nothing to show
+- **WHEN** a chart comes with `data: []`
+- **THEN** the card says "No data for this period"
 
 ### Requirement: Card specs become tools
 A card spec (`type`, `description`, `data`, `blocks`, `wait`) in the config SHALL become a model tool `show_<type>` whose parameters are `data`. Calling it SHALL send the card filled from the arguments: as an interrupt that waits for the answer when `wait` is true, else as a `CUSTOM card` event while the turn goes on.

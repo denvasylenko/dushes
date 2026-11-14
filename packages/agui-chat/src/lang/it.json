@@ -141,7 +141,11 @@
   "calApple": "Calendario Apple",
   "calGoogle": "Google Calendar",
   "calOutlook": "Outlook",
-  "addHours": "Aggiungi orari"
+  "addHours": "Aggiungi orari",
+  "showData": "Mostra i dati",
+  "noData": "Nessun dato per questo periodo",
+  "limit": "limite",
+  "latest": "ultimo"
  },
  "tools": {
   "get_outline": "Guardo il modulo",

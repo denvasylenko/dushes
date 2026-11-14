@@ -180,6 +180,15 @@ export interface ChatOptions {
   /** A line under the composer ("The assistant can make mistakes", "Don't type passwords"); a hint or an error takes
    *  its place while shown. Empty: none. */
   footnote: string
+  /** Floating panel: false keeps the page beside it usable (no scrim, a tap on the page does not close it, no focus
+   *  trap), like a sidebar next to the site it talks about. On a phone it is still a sheet over the page. Default true. */
+  modal: boolean
+  /** The launcher in every popup mode: 'auto' (a pill with its label for the panel, a round button for the bubble),
+   *  'round', 'pill' (an icon and `launcherLabel`) or 'none' (your own button opens the chat with chat.open()).
+   *  render.launcher replaces its content in any of them. Colours come from the theme's accent. */
+  launcher: 'auto' | 'round' | 'pill' | 'none'
+  /** The launcher's words ("Ask the assistant", "Edit with AI"); default: the language's "Open". */
+  launcherLabel: string
   /** The actions under an answer, in order: built-in `copy`, `retry` (the latest answer), `speak`, `like`, `dislike`,
    *  or your own `{id, label, icon?, hint?}` (icon: an SVG path on a 24 grid). [] or `message-actions="off"`: none.
    *  Default ['copy']. Every tap fires `agui:message-action` {id, messageId, text, pressed?}. */

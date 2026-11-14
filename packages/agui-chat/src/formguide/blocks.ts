@@ -16,6 +16,7 @@
 import { h, mdInline } from '../dom'
 import type { Interrupt, RendererContext } from '../types'
 import { blocksShell, hoursText, weekdays, type Hours } from './blocks-base'
+import { chartBlock, sparkline } from './chart'
 
 export type Tone = 'accent' | 'ok' | 'danger' | 'muted'
 /** A button's answer: its id, its label, the card's values, and the button itself (its `fills`). */
@@ -190,8 +191,10 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
           b.subtitle ? h('div', { class: 'muted' }, str(b.subtitle)) : null),
         Number.isFinite(rating) && rating > 0 ? h('span', { class: 'bk-rating' }, `★ ${rating.toFixed(1)}`) : null)
     }
-    case 'stat':
-      return h('div', { class: `bk-stat${tone(b.tone)}`, part }, h('div', { class: 'bk-big' }, str(b.value)), b.label ? h('div', { class: 'muted' }, str(b.label)) : null)
+    case 'stat':   // a big number, its label, a change ("+12%", toned) and a sparkline of how it got there
+      return h('div', { class: `bk-stat${tone(b.tone)}`, part }, h('div', { class: 'bk-big' }, str(b.value)), b.label ? h('div', { class: 'muted' }, str(b.label)) : null,
+        b.change ? h('div', { class: `bk-change${tone(b.changeTone ?? (String(b.change).trim().startsWith('-') ? 'danger' : 'ok'))}` }, str(b.change)) : null, sparkline(b.spark))
+    case 'chart': return chartBlock(b, c)
     case 'diff':
       return h('div', { class: 'bk-diff', part }, b.label ? h('div', { class: 'muted bk-small' }, str(b.label)) : null,
         h('div', null, h('s', { class: 'muted' }, str(b.from)), h('span', { class: 'bk-arrow', 'aria-hidden': 'true' }, '→'), h('b', null, str(b.to))))

@@ -38,6 +38,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .mode-floating.open .panel { transform: none; visibility: visible; }
 .scrim { position: fixed; inset: 0; z-index: 2147483000; background: var(--agui-scrim); opacity: 0; pointer-events: none; transition: opacity .3s; }
 .mode-floating.open .scrim { opacity: 1; pointer-events: auto; }
+@media (min-width: 761px) { .mode-floating.nonmodal .scrim { display: none; } }   /* a sidebar: the page beside it stays usable */
 .mode-inline .scrim, .mode-page .scrim, .mode-inline .fab, .mode-page .fab { display: none; }
 .fab { position: fixed; z-index: 2147482999; right: max(20px, env(safe-area-inset-right, 0px)); bottom: max(20px, env(safe-area-inset-bottom, 0px));
   display: flex; align-items: center; gap: 9px; border: 0; border-radius: var(--agui-radius-pill); padding: 13px 20px 13px 16px; cursor: pointer;
@@ -46,6 +47,23 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .fab.show { transform: none; opacity: 1; }
 .mode-floating.open .fab { opacity: 0; pointer-events: none; }
 .fab svg, .spark { width: 18px; height: 18px; flex: none; }
+/* the launcher's look in every popup mode: none, round (an icon), pill (an icon and its words); its own content replaces both */
+.launcher-none .fab { display: none !important; }
+.launcher-round:not(.mode-bubble) .fab { width: var(--agui-launcher-size, 56px); height: var(--agui-launcher-size, 56px); padding: 0; justify-content: center; }
+.launcher-round:not(.mode-bubble) .fab-label { display: none; }
+.launcher-round:not(.mode-bubble) .fab svg { width: 24px; height: 24px; }
+.mode-bubble.launcher-pill .fab { width: auto; height: auto; padding: 13px 20px 13px 16px; gap: 9px; }
+.mode-bubble.launcher-pill .fab-label { display: inline; }
+.mode-bubble.launcher-pill .fab-ico, .mode-bubble.launcher-pill .fab-x { position: static; transform: none; transition: none; }
+.mode-bubble.launcher-pill .fab-ico svg, .mode-bubble.launcher-pill .fab-x svg { width: 18px; height: 18px; }
+.mode-bubble.launcher-pill .fab-x { display: none; opacity: 1; }
+.mode-bubble.launcher-pill.open .fab-ico { display: none; } .mode-bubble.launcher-pill.open .fab-x { display: grid; }
+.mode-bubble.launcher-pill.open .fab { width: var(--agui-launcher-size, 60px); height: var(--agui-launcher-size, 60px); padding: 0; justify-content: center; }   /* open: just the close button */
+.mode-bubble.launcher-pill.open .fab-label { display: none; }
+.wrap:not(.mode-bubble) .fab.own { padding: 0; overflow: hidden; }
+.wrap:not(.mode-bubble) .fab.own .fab-ico, .wrap:not(.mode-bubble) .fab.own .fab-label { display: none; }
+.mode-bubble.launcher-pill .fab.own { padding: 0; overflow: hidden; } .mode-bubble.launcher-pill .fab.own .fab-label { display: none; }
+.mode-bubble.launcher-pill .fab-own { position: static; }
 
 /* header */
 .head { display: flex; align-items: center; gap: 12px; padding: 14px 14px 12px 20px; border-bottom: 1px solid var(--agui-header-border, var(--agui-line));
@@ -216,6 +234,36 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .bk-need { font-size: 13px; line-height: 16px; min-height: 16px; }   /* its place is kept: the button never moves */
 .bk-cal + .bk-link, .bk-link + .bk-cal, .bk-cal + .bk-cal { border-top: 1px solid var(--agui-line); }
 .bk-menu .bk-link { padding-left: 46px; border-top: 1px solid var(--agui-line); }
+.bk-chart { display: grid; gap: 10px; min-width: 0; }
+.bk-chart-t .bk-small { margin-top: 2px; }
+.bk-canvas { position: relative; min-width: 0; }
+.bk-canvas canvas { display: block; }
+.bk-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--agui-ink-2); }
+.bk-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.bk-legend i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.bk-data summary { font-size: 12px; color: var(--agui-ink-3); cursor: pointer; width: max-content; }
+.bk-data table { width: 100%; margin-top: 6px; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.bk-data th, .bk-data td { padding: 4px 0; text-align: right; border-top: 1px solid var(--agui-line); font-weight: 400; }
+.bk-data th[scope=row] { text-align: left; color: var(--agui-ink-2); }
+.bk-barlist { display: grid; gap: 10px; }
+.bk-bl-t { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--agui-ink-2); }
+.bk-num { font-variant-numeric: tabular-nums; color: var(--agui-ink); }
+.bk-track { height: 6px; margin-top: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-soft); overflow: hidden; }
+.bk-track > i { display: block; height: 100%; border-radius: inherit; background: var(--agui-link); }
+.bk-stack { display: flex; gap: 2px; height: 12px; }
+.bk-stack > i { min-width: 2px; }
+.bk-stack > i:first-child { border-radius: 4px 0 0 4px; } .bk-stack > i:last-child { border-radius: 0 4px 4px 0; } .bk-stack > i:only-child { border-radius: 4px; }
+.bk-meter { position: relative; height: 8px; border-radius: var(--agui-radius-pill); background: var(--agui-soft); }
+.bk-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--agui-link); }
+.bk-meter.over > i { background: var(--agui-danger); }
+.bk-meter > b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--agui-ink-2); }
+.bk-meter-l { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.bk-empty { padding: 12px 0; text-align: center; }
+.bk-change { font-size: 13px; font-weight: 600; margin-top: 2px; }
+.bk-change.tone-ok { color: var(--agui-ok); } .bk-change.tone-danger { color: var(--agui-danger); }
+.bk-spark { display: block; width: 100%; height: 36px; margin-top: 8px; }
+.bk-spark .l { fill: none; stroke: var(--agui-link); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.bk-spark .a { fill: color-mix(in srgb, var(--agui-link) 10%, transparent); }
 .bk-field { display: grid; gap: 4px; }
 .bk-field .text-in { margin-top: 0; }
 .bk-links { display: grid; border: 1px solid var(--agui-option-border, var(--agui-line)); border-radius: var(--agui-radius-sm); background: var(--agui-option-bg, var(--agui-bg)); overflow: hidden; }

@@ -243,6 +243,9 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `intro` | `intro` | a short greeting | the line in an empty chat |
 | | `starters` | `[]` | opening messages to tap (the server's `starters` win) |
 | `placeholder` | `placeholder` | from the language | the composer's hint |
+| `launcher` | `launcher` | `auto` | the launcher: `round`, `pill` (icon and words), `none` (open it with `chat.open()`); `auto`: a pill for the panel, a round one for the bubble |
+| `launcherLabel` | `launcher-label` | "Open" | the launcher's words |
+| `modal` | `modal` | `true` | floating panel: `off` keeps the page beside it usable (no scrim, a tap on the page leaves it open); a phone still gets the sheet |
 | `messageActions` | `message-actions` | `copy` | the actions under an answer (comma-separated in the attribute): `copy`, `retry`, `speak`, `like`, `dislike`, your own `{id, label, icon?, hint?}`; `off` hides them |
 | `footnote` | `footnote` | none | a line under the composer ("The assistant can make mistakes"); a hint or an error takes its place while shown |
 | `lang` | `lang` | the page's language | `en`, `ru`, `uk`, `de`, `fr`, `it`, `es` (all but `en` load on first use) |

@@ -45,7 +45,7 @@ const FONTS = { system: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inte
 // ------------------------------------------------------------------ state
 const S = {
   opt: { mode: 'inline', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, messageActions: ['copy'], mic: true, micAutoSend: false,
-    dictation: 'browser', attach: true, attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: 'Want me to book you a haircut?', motion: 'spring',
+    dictation: 'browser', attach: true, attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: 'Want me to book you a haircut?', motion: 'spring', modal: true, launcher: 'auto', launcherLabel: '',
     title: 'Barbershop', subtitle: 'formguide · playground', intro: '', placeholder: '', footnote: '' },
   preset: 'default', light: {}, dark: {},
   shape: { radius: 14, 'radius-sm': 10, 'radius-lg': 20, 'radius-pill': 999, font: 'system', 'panel-width': 460 },
@@ -379,6 +379,9 @@ const BLOCK_CATALOG = {
   links: { name: 'Links', help: 'act at once: call, route, web, calendar, share, copy, chat', make: () => ({ type: 'links', items: [
     { kind: 'route', label: 'Route to the barbershop', value: 'Arbat 12, Moscow' }, { kind: 'call', label: 'Call the barbershop', value: '+7 495 000 00 00' }] }),
     fields: [['items', 'One per line: kind | label | value', 'links']] },
+  chart: { name: 'Chart', help: 'columns, line, area, bar list, parts of a whole or a meter, in the theme\u2019s colours', make: () => ({ type: 'chart', kind: 'bar', title: 'Visits by day',
+    data: [{ label: 'Mon', value: 12 }, { label: 'Tue', value: 30 }, { label: 'Wed', value: 18 }, { label: 'Thu', value: 41 }, { label: 'Fri', value: 26 }] }),
+    fields: [['kind', 'Kind', 'chart'], ['title', 'Title'], ['unit', 'Unit (%, \u20ac, min)'], ['data', 'One per line: label | value', 'points']] },
   divider: { name: 'Divider', help: 'a hairline', make: () => ({ type: 'divider' }), fields: [] },
 }
 const TEMPLATES = Object.fromEntries(SAMPLES.filter(([, p]) => p.type === 'blocks').map(([n, p]) => [n.replace(/^Blocks: /, ''), p]))
@@ -398,12 +401,15 @@ const lines = {
     })],
   swatches: [(v) => (v ?? []).map((s) => [s.id, s.label, (s.colors ?? []).join(' ')].join(' | ')).join('\n'),
     (t) => t.split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((p) => p[0]).map(([id, label, cols]) => ({ id, label: label || id, colors: (cols ?? '').split(/\s+/).filter(Boolean) }))],
+  points: [(v) => (v ?? []).map((p) => [p.label, p.value].join(' | ')).join('\n'),
+    (t) => t.split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((p) => p[0]).map(([label, value]) => ({ label, value: Number(value) || 0 }))],
   csv: [(v) => (v ?? []).map((o) => (typeof o === 'string' ? o : o.label)).join(', '), (t) => t.split(',').map((x) => x.trim()).filter(Boolean)],
 }
 const CHOICES = {
   tone: [['', 'Default'], ['accent', 'Accent'], ['ok', 'Success'], ['danger', 'Danger'], ['muted', 'Muted']],
   icon: [['', 'None'], ['calendar', 'Calendar'], ['route', 'Pin'], ['call', 'Phone'], ['web', 'Globe'], ['chat', 'Chat'], ['check', 'Tick']],
   ratio: [['16:9', '16:9'], ['4:3', '4:3'], ['1:1', 'Square']],
+  chart: [['bar', 'Columns'], ['line', 'Line'], ['area', 'Area'], ['barList', 'Bar list'], ['stacked', 'Parts of a whole'], ['meter', 'Meter']],
   input: [['text', 'Text'], ['tel', 'Phone'], ['email', 'Email'], ['number', 'Number'], ['date', 'Date'], ['url', 'Link']],
 }
 
@@ -446,7 +452,7 @@ function builderSection() {
         el('button', { class: 'icon-x', type: 'button', 'aria-label': 'Remove', onclick: () => { b.blocks.splice(i, 1); render(); changed() } }, '×')))
     const fields = cat.fields.map(([key, label, kind]) => {
       let ctl
-      if (kind === 'tone' || kind === 'icon' || kind === 'ratio' || kind === 'input') {
+      if (kind === 'tone' || kind === 'icon' || kind === 'ratio' || kind === 'input' || kind === 'chart') {
         ctl = el('select', { onchange: (e) => { if (e.target.value) blk[key] = e.target.value; else delete blk[key]; changed() } },
           CHOICES[kind].map(([v, l]) => el('option', { value: v, selected: String(blk[key] ?? '') === v }, l)))
       } else if (kind === 'bool') {
@@ -499,6 +505,13 @@ const sections = [
         ['spring', 'Spring', 'the window grows out of the launcher with a small overshoot, like iOS. Lively.'],
         ['gentle', 'Gentle', 'the same path without the overshoot, a little quicker. Calm.'],
         ['none', 'None', 'only fades in and out. Also used whenever the device asks for reduced motion.']], () => S.opt.motion, (v) => { S.opt.motion = v }),
+      choice('Launcher', 'The button that opens the chat when it is closed.', [
+        ['auto', 'Auto', 'a pill with its words for the drawer, a round button for the bubble.'],
+        ['round', 'Round', 'just the icon.'],
+        ['pill', 'Pill', 'the icon and its words.'],
+        ['none', 'None', 'hidden: your own button or field opens the chat with chat.open().']], () => S.opt.launcher, (v) => { S.opt.launcher = v }),
+      row('Launcher words', 'What the pill says (and screen readers read).', text(() => S.opt.launcherLabel, (v) => { S.opt.launcherLabel = v }, 'Ask the assistant')),
+      row('Over the page', 'Drawer mode: a scrim covers the page and a tap on it closes the chat. Off: the page beside it stays usable, like a sidebar.', sw(() => S.opt.modal, (v) => { S.opt.modal = v })),
       row('Greeting', 'Bubble mode: a speech bubble next to the closed launcher, once per visitor.', text(() => S.opt.greeting, (v) => { S.opt.greeting = v }, 'Need help?'))),
     ...group('Conversation',
       choice('Answer appears', 'How the assistant\'s text shows up while it is being written.', [
@@ -728,7 +741,7 @@ function themeObject() {
 }
 const changedOptions = () => {
   const base = { mode: 'floating', scheme: 'auto', lang: '', typing: 'words', toolSteps: true, quickReplies: true, messageActions: ['copy'], mic: true, micAutoSend: false, dictation: 'browser', attach: true,
-    attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: '', motion: 'spring', title: '', subtitle: '', intro: '', placeholder: '', footnote: '' }
+    attachMultiple: true, attachMaxMb: 20, bubbleSide: 'right', greeting: '', motion: 'spring', modal: true, launcher: 'auto', launcherLabel: '', title: '', subtitle: '', intro: '', placeholder: '', footnote: '' }
   return Object.fromEntries(Object.entries(S.opt).filter(([k, v]) => v !== base[k]))
 }
 const renderSlots = () => {

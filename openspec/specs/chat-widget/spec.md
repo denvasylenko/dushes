@@ -82,6 +82,20 @@ Attached files SHALL show inside the composer box, above the text: an image as a
 - **WHEN** the user pastes a screenshot into the composer
 - **THEN** its thumbnail appears in the composer; a tap shows it large
 
+### Requirement: The launcher in every mode
+The `launcher` option SHALL set the launcher's look in every popup mode: `round` (an icon), `pill` (an icon and `launcherLabel`), `none` (hidden: the page opens the chat with `chat.open()`), or `auto` (a pill for the panel, a round button for the bubble). `render.launcher` SHALL replace its content in any mode, and its colours SHALL come from the theme's accent.
+
+#### Scenario: Edit with AI
+- **WHEN** a page sets `mode: "floating", launcher: "pill", launcherLabel: "Edit with AI"`
+- **THEN** the closed chat shows a pill with the spark and "Edit with AI", named so for screen readers
+
+### Requirement: A panel beside the page
+With `modal: false`, the floating panel SHALL leave the page beside it usable on screens wider than 760 px: no scrim, a tap on the page SHALL not close it, focus SHALL not be trapped and the panel SHALL not be `aria-modal`. On a phone it SHALL stay a sheet over the page.
+
+#### Scenario: A draft site next to its assistant
+- **WHEN** the host sets `modal: false` and the user taps the site beside the open panel
+- **THEN** the site gets the tap and the panel stays open
+
 ### Requirement: Actions under an answer
 Every answer SHALL end with its actions from `messageActions` (default `copy`): `copy` copies the answer's text, `retry` (on the latest answer only) sends the last message again, `speak` reads it aloud, `like` and `dislike` are a pressed pair, and an action of the host's own `{id, label, icon?, hint?}` shows its label and hint as the tooltip. 
 

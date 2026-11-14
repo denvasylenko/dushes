@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 BLOCKS = frozenset({"title", "text", "note", "row", "image", "place", "stat", "diff", "steps", "progress",
-                    "swatches", "choice", "field", "buttons", "links", "divider", "hours", "preview"})
+                    "swatches", "choice", "field", "buttons", "links", "divider", "hours", "preview", "chart"})
 TYPES = {"string": "string", "number": "number", "integer": "integer", "boolean": "boolean",
          "string[]": "array", "object[]": "array", "object": "object"}
 _PH = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")

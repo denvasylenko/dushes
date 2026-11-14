@@ -21,7 +21,7 @@ export const DEFAULTS: ChatOptions = {
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, dictation: 'browser', transcribeUrl: '', attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined, icons: {}, render: {},
-  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy'], onMessageAction: undefined,
+  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy'], onMessageAction: undefined, modal: true, launcher: 'auto', launcherLabel: '',
 }
 
 /** attribute -> [option, parser] */
@@ -35,6 +35,7 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   'mic-auto-send': ['micAutoSend', bool], dictation: ['dictation', String], 'transcribe-url': ['transcribeUrl', String], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
   'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
   'bubble-side': ['bubbleSide', String], greeting: ['greeting', String], 'greeting-delay': ['greetingDelay', Number], motion: ['motion', String],
+  modal: ['modal', bool], launcher: ['launcher', String], 'launcher-label': ['launcherLabel', String],
   'message-actions': ['messageActions', (v) => (!v || /^(off|none|false)$/.test(v) ? [] : v.split(',').map((x) => x.trim()).filter(Boolean))],
 }
 
@@ -501,7 +502,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const panel = h('section', { class: 'panel', part: 'panel', role: 'dialog' }, head, log, foot)
     wrap.append(scrim, panel, greet, fab)
     this.root.appendChild(wrap)
-    this.$ = { jump, wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, fabLabel: fab.lastElementChild as HTMLElement }
+    this.$ = { jump, wrap, fab, fabIco, fabX, fabOwn, greet, greetText, scrim, panel, head, title, sub, btnNew, btnClose, log, input, mic, send, hint, foot, clip, picker, files, box, logo, recX, wave, bars, fabLabel: fab.querySelector('.fab-label') as HTMLElement }
     recX.addEventListener('click', () => { this._dropDictation(); (input as HTMLTextAreaElement).focus() })
     files.hidden = true
     log.addEventListener('scroll', () => {
@@ -537,7 +538,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       if (!this._popup && !(this._heroSheet && this.$.wrap.classList.contains('open'))) return
       if (e.key === 'Escape' && this.$.box.classList.contains('rec')) { e.preventDefault(); this._dropDictation(); return }   // drop the recording first
       if (e.key === 'Escape') { e.preventDefault(); this.close() }
-      if (e.key === 'Tab') this._trapFocus(e)
+      if (e.key === 'Tab' && (this._opts.modal !== false || innerWidth <= 760)) this._trapFocus(e)
     })
     requestAnimationFrame(() => fab.classList.add('show'))
   }
@@ -711,13 +712,16 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._ensureLang()
     const o = this._opts
     const wrap = this.$.wrap
-    wrap.className = `wrap mode-${o.mode} side-${o.bubbleSide === 'left' ? 'left' : 'right'} motion-${o.motion}${wrap.classList.contains('open') ? ' open' : ''}`
+    // the launcher's look: auto (a pill with its label for the panel, a round button for the bubble), round, pill or none
+    const look = ['round', 'pill', 'none'].includes(o.launcher) ? o.launcher : o.mode === 'bubble' ? 'round' : 'pill'
+    wrap.className = `wrap mode-${o.mode} side-${o.bubbleSide === 'left' ? 'left' : 'right'} motion-${o.motion} launcher-${look}${wrap.classList.contains('open') ? ' open' : ''}${wrap.classList.contains('nonmodal') ? ' nonmodal' : ''}`
     this._applyTheme()
     this.classList.toggle('calm', reducedMotion())
     this.style.setProperty('--agui-fade', `${o.fadeMs}ms`)
     this.$.title.textContent = o.title || this.t('title')
     this.$.sub.textContent = o.subtitle || this.t('subtitle')
-    this.$.fabLabel.textContent = this.t('open')
+    this.$.fabLabel.textContent = o.launcherLabel || this.t('open')
+    this.$.fab.setAttribute('aria-label', o.launcherLabel || this.t('open'))
     // icons (options.icons) and the host's own header and composer (options.render)
     this._icon(this.$.logo, 'logo'); this._icon(this.$.fabIco, 'logo'); this._icon(this.$.fabX, 'close'); this._icon(this.$.btnNew, 'plus'); this._icon(this.$.btnClose, 'close')
     this._icon(this.$.mic, 'mic'); this._icon(this.$.clip, 'clip'); this._icon(this.$.send, this._busy ? 'stop' : 'send')
@@ -736,8 +740,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.jump.setAttribute('aria-label', this.t('toLatest')); this.$.jump.title = this.t('toLatest')
     this.$.btnClose.setAttribute('aria-label', this.t('close'))
     this.$.panel.setAttribute('aria-label', o.title || this.t('title'))
-    if (o.mode === 'floating') this.$.panel.setAttribute('aria-modal', 'true'); else this.$.panel.removeAttribute('aria-modal')
-    if (o.mode === 'bubble') this.$.fab.setAttribute('aria-label', this.t('open'))
+    // modal: false keeps the page beside the panel usable (a site next to its assistant): no scrim, no focus trap;
+    // a phone still gets the sheet over the page
+    this.$.wrap.classList.toggle('nonmodal', o.modal === false)
+    if (o.mode === 'floating' && o.modal !== false) this.$.panel.setAttribute('aria-modal', 'true'); else this.$.panel.removeAttribute('aria-modal')
     const input = this.$.input as HTMLTextAreaElement
     input.placeholder = o.placeholder || this.t('placeholder')
     this.$.hint.dataset.footnote = o.footnote   // the line under the composer when there is no hint or error

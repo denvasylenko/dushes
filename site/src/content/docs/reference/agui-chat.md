@@ -46,6 +46,9 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `quickReplies` (`quick-replies`) | `true` | starter chips in an empty chat and suggested replies after answers |
 | `starters` | — | opening messages for an empty chat (Dushes also reads them from the domain pack) |
 | `title`, `subtitle`, `intro`, `placeholder` | localized defaults | the header, the empty-chat text, the composer hint |
+| `launcher` | `auto` | the launcher in every popup mode: `auto` (a pill with its words for the panel, a round button for the bubble), `round`, `pill`, `none` (your own button calls `chat.open()`); `render.launcher` replaces its content in any of them |
+| `launcherLabel` | the language's "Open" | the launcher's words ("Edit with AI") and its accessible name |
+| `modal` | `true` | floating panel: `false` (`modal="off"`) keeps the page beside it usable, like a sidebar next to the site it talks about: no scrim, a tap on the page does not close it, no focus trap; on a phone it is still a sheet |
 | `messageActions` | `['copy']` | the actions under an answer, in order: `copy`, `retry` (the latest answer), `speak`, `like`, `dislike`, or your own `{id, label, icon?, hint?}` (icon: an SVG path on a 24 grid; label and hint are the tooltip). `[]` or `message-actions="off"`: none |
 | `onMessageAction` | — | `(id, {messageId, text, pressed?}) => true?`: a tap on an action; return `true` to skip the built-in behaviour |
 | `footnote` | none | a line under the composer ("The assistant can make mistakes"); a hint or an error takes its place while shown |
