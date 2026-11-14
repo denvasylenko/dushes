@@ -145,3 +145,10 @@ A number or date question MAY carry `input.value`, where the picker starts, only
 #### Scenario: A licence year
 - **WHEN** the agent asks for the licence year with `min` 2028 and a suggested 1988
 - **THEN** the picker starts at 2028, not at 1988
+
+### Requirement: Cards in the conversation's language
+Everything a user reads on a card SHALL be in the conversation's language: for a field's options the agent SHALL pass `{id, label}` with the label in the user's language, and the server SHALL keep that label with the form's option id; on a field-change card the agent MAY pass each row's `label` and `shown` value in the user's language. The values sent to the form SHALL NOT change.
+
+#### Scenario: A Russian user on an English form
+- **WHEN** a user writing in Russian is asked the loan type on an English form
+- **THEN** the card's options are in Russian and the chosen value is the form's option id

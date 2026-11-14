@@ -91,7 +91,9 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Ask the user one question with clickable options and wait for the answer. Use it when "
                        "the user must choose between known options or settle an ambiguity (e.g. which loan "
                        "type). Pass `field` to offer that field's current options (optionally `options` to offer "
-                       "only some of them). Never use it to confirm values: propose_changes does that.",
+                       "only some of them). When the user writes in another language than the form, pass the "
+                       "options as {id, label} with the label in the user's language: the id stays the form's. "
+                       "Never use it to confirm values: propose_changes does that.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -230,6 +232,10 @@ TOOLS: list[dict[str, Any]] = [
                             "name": {"type": "string"},
                             "value": {"type": ["string", "number", "boolean", "array", "null"], "items": {"type": "string"}},
                             "reason": {"type": "string"},
+                            "label": {"type": "string", "description": "the field's label in the user's language, "
+                                      "when it is not the form's"},
+                            "shown": {"type": "string", "description": "the value as the user reads it, in their "
+                                      "language (the value itself stays the form's)"},
                             "issue": {"type": "string", "description": "only when a rule or document flags this "
                                       "valid value (e.g. income low for the payment): one short sentence"},
                             "add_row": {"type": "string", "description": "a list's name: add a row"},
@@ -694,7 +700,9 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
                 if o is None:
                     bad.append(repr(key))
                 elif not any(str(p["id"]) == str(o["id"]) for p in opts):
-                    opts.append({"id": str(o["id"]), "label": o["name"], **_details(x)})
+                    mine = str(x.get("label") or "").strip() if isinstance(x, dict) and x.get("id") else ""
+                    # the label in the user's language when the model gave one with the id; the form's name otherwise
+                    opts.append({"id": str(o["id"]), "label": mine[:80] or o["name"], **_details(x)})
             if bad:
                 raise ToolError(f"{n.name}: no option {', '.join(bad)}. Use get_options to see them.")
         else:
@@ -1113,6 +1121,13 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
                     errors.append(str(err))
     if errors and not ok:
         raise ToolError("no change passed validation:\n" + "\n".join(errors))
+    mine = {str(ch.get("name")): ch for ch in changes if isinstance(ch, dict) and ch.get("name")}
+    for row in ok:   # the card in the user's language: the agent's label and shown value; the value stays the form's
+        ch = mine.get(row["name"]) or {}
+        if str(ch.get("label") or "").strip():
+            row["label"] = str(ch["label"]).strip()[:80]
+        if str(ch.get("shown") or "").strip() and not row.get("cleared"):
+            row["display"] = str(ch["shown"]).strip()[:120]
     x = ctx.last_extraction
     if x and ctx.can("set.document") and any(c.get("confidence") for c in ok):
         ctx.pending_source = {"kind": "document", "title": x.get("title") or "", "attachment_id": x.get("attachment_id"),
