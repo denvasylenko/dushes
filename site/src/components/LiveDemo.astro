@@ -36,6 +36,7 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined;
   import { mountForm } from '../demo/form'
   import { QUICKSTART, ScriptedAgent, STARTERS } from '../demo/agent'
   import { landingLayout, liveDemo } from '../demo/live'
+  import { runAgent } from '../../../packages/agui-chat/src/transport'
 
   const REPLAY = 'Replays recorded turns · no server'
   const RECORDED = 'This is a recorded run.'
@@ -49,12 +50,24 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined;
     const setCap = (t: string) => { const c = root.querySelector<HTMLElement>('[data-cap]'); if (c) c.textContent = t }
     let jsxHash: string | null = null
     const url = root.dataset.agentUrl
-    if (url) void landingLayout(url).then((hash) => {   // the real agent only when the host knows the form
-      if (!hash) { chat.setAttribute('subtitle', REPLAY); setCap(RECORDED); root.removeAttribute('data-live'); return }   // the host does not know the form: the replay, quietly
-      jsxHash = hash
-      const demo = liveDemo(url, agent, QUICKSTART, () => { chat.setAttribute('subtitle', REPLAY); setCap(RECORDED); root.removeAttribute('data-live') })
-      chat.options = { transport: demo.transport }
-    })
+    if (url) {
+      const toReplay = () => { chat.setAttribute('subtitle', REPLAY); setCap(RECORDED); root.removeAttribute('data-live') }
+      // the layout lookup starts at once; a message sent before it answers waits for it (the chat shows it thinking)
+      // and then goes live, instead of falling to the replay
+      const ready = landingLayout(url).then((hash) => {
+        if (!hash) { toReplay(); return null }   // the host does not know the form: the replay, quietly
+        jsxHash = hash
+        return liveDemo(url, agent, QUICKSTART, toReplay)
+      })
+      chat.options = {
+        transport: async function* (input, ctx) {
+          const demo = await ready
+          if (!demo) { yield* runAgent(agent, input, ctx.signal); return }
+          const state = (input.state ?? {}) as Record<string, unknown>
+          yield* demo.transport({ ...input, state: { ...state, jsx_hash: jsxHash } }, ctx)   // the state was read before the hash came
+        },
+      }
+    }
     chat.use(formguide({
       getState: () => ({ ...form.state(), ...(jsxHash ? { jsx_hash: jsxHash } : {}) }),
       applyChanges: (changes) => form.apply(changes),

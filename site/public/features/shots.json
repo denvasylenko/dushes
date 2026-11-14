@@ -7,8 +7,8 @@
     "scale": 2,
     "date": "2026-11-14",
     "widget_version": "0.3.0",
-    "commit": "c184c96+uncommitted",
-    "what": "The ring the widget's field highlight puts on the fields a card just filled (Applicant tab of the landing demo, 4 fields, cropped to 3:2)"
+    "commit": "329389e+uncommitted",
+    "what": "The widget's highlight ring on the fields a card just filled, live from the landing demo script (after Fill in; ring frozen at its peak), cropped to 3:2"
   },
   {
     "file": "features/change-highlight-dark-390.png",
@@ -18,8 +18,8 @@
     "scale": 2,
     "date": "2026-11-14",
     "widget_version": "0.3.0",
-    "commit": "c184c96+uncommitted",
-    "what": "The ring the widget's field highlight puts on the fields a card just filled (Applicant tab of the landing demo, 3 of 4 fields, cropped to 4:5)"
+    "commit": "329389e+uncommitted",
+    "what": "The widget's highlight ring on the fields a card just filled, live from the landing demo script (after Fill in; ring frozen at its peak), cropped to 4:5"
   },
   {
     "file": "features/change-highlight-light-1280.png",
@@ -29,8 +29,8 @@
     "scale": 2,
     "date": "2026-11-14",
     "widget_version": "0.3.0",
-    "commit": "c184c96+uncommitted",
-    "what": "The ring the widget's field highlight puts on the fields a card just filled (Applicant tab of the landing demo, 4 fields, cropped to 3:2)"
+    "commit": "329389e+uncommitted",
+    "what": "The widget's highlight ring on the fields a card just filled, live from the landing demo script (after Fill in; ring frozen at its peak), cropped to 3:2"
   },
   {
     "file": "features/change-highlight-light-390.png",
@@ -40,8 +40,8 @@
     "scale": 2,
     "date": "2026-11-14",
     "widget_version": "0.3.0",
-    "commit": "c184c96+uncommitted",
-    "what": "The ring the widget's field highlight puts on the fields a card just filled (Applicant tab of the landing demo, 3 of 4 fields, cropped to 4:5)"
+    "commit": "329389e+uncommitted",
+    "what": "The widget's highlight ring on the fields a card just filled, live from the landing demo script (after Fill in; ring frozen at its peak), cropped to 4:5"
   },
   {
     "file": "features/server-voice-dark-1280.png",
