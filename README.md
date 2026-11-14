@@ -48,6 +48,10 @@ The product is **Dushes**. The Python package, the CLI and the code are named **
 - [Benchmarks](https://dushes-ai.fly.dev/get-started/benchmarks/): how well Dushes does in scored test runs
 - Recipes: tested setups for common cases (coming soon)
 
+## License
+
+Apache License 2.0: see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
 ## Work on this repository
 
 ```bash

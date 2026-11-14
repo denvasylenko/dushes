@@ -1,0 +1,14 @@
+---
+/** Starlight's footer (edit link, previous / next) and one line: the license and what the site itself is built with. */
+import Default from '@astrojs/starlight/components/Footer.astro';
+const LICENSE = 'https://github.com/denvasylenko/dushes/blob/main/LICENSE'
+---
+<Default />
+<p class="site-license">
+  Dushes is open source under the <a href={LICENSE}>Apache License 2.0</a>.
+  This site is built with Starlight and Mermaid (MIT) and uses the Space Grotesk and IBM Plex Mono fonts (OFL-1.1).
+</p>
+
+<style>
+  .site-license { margin: 2rem 0 0; color: var(--fg-ink-2); font-size: var(--fg-fs-footnote); }
+</style>
