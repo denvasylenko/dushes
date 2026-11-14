@@ -7,9 +7,9 @@
  */
 import { h } from '../dom'
 import { blocksNow, loadBlocks } from '#blocks-loader'
-import { pad, parse, type DateLimits } from './dates'
+import { parse, type DateLimits } from './dates'
 
-export { isoOf, type DateLimits } from './dates'
+export { isoOf, timeGrid, type DateLimits } from './dates'
 
 type CalendarOpts = { lang: string; value?: string | null; limits?: DateLimits; t: (k: string) => string;
   onPick: (iso: string, label: string) => void; past?: boolean }
@@ -47,11 +47,3 @@ export function dateField(opts: { lang: string; value?: string | null; limits?: 
   return { el: h('div', { class: 'date-field' }, face), value: () => value }
 }
 
-/** Times every `step` minutes from `from` to `to` ("HH:MM"), as chips. */
-export function timeGrid(opts: { from?: string; to?: string; step?: number; onPick: (t: string) => void }): HTMLElement {
-  const toMin = (s: string) => { const [a, b] = s.split(':').map(Number); return a * 60 + (b || 0) }
-  const from = toMin(opts.from ?? '09:00'), to = toMin(opts.to ?? '19:00'), step = Math.max(5, opts.step ?? 30)
-  const times: string[] = []
-  for (let m = from; m <= to && times.length < 48; m += step) times.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`)
-  return h('div', { class: 'chips slots times' }, times.map((t) => h('button', { type: 'button', class: 'chip', part: 'chip', onclick: () => opts.onPick(t) }, t)))
-}

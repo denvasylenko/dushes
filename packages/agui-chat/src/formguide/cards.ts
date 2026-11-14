@@ -310,7 +310,7 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
     const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, labels))
     easeHeight(card, () => {
       acts.replaceWith(line)
-      card.querySelectorAll('.chips, .opts, .cmp, .strip, .range, .fields, .search, .note, .num').forEach((x) => x.remove())
+      card.querySelectorAll('.chips, .opts, .cmp, .strip, .range, .fields, .search, .note, .num, .typed-slot').forEach((x) => x.remove())
       text?.remove()
       err.remove()
     })

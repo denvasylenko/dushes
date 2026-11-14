@@ -529,7 +529,31 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       body.prepend(box)
       this._fold(box)
     }
-    this._actions(body, text)
+    this._texts.set(body, text)   // the turn's actions come once, when the turn ends (_turnActions)
+  }
+
+  private _texts = new WeakMap<HTMLElement, string>()
+
+  /** One turn, one group: the actions row goes once after the turn's last piece (its text or its card), and Copy
+   *  takes every text part of it. `all` redoes every turn (a restored conversation), else the latest one. */
+  private _turnActions(all = false): void {
+    const turns: HTMLElement[][] = [[]]
+    for (const k of this.$.log.children as unknown as HTMLElement[]) {
+      if (k.matches('.msg.me')) turns.push([])
+      else if (!k.matches('.msg.queued, .wait, .steps, .notice, .error, .applied')) turns[turns.length - 1].push(k)
+    }
+    for (const turn of all ? turns : turns.slice(-1)) {
+      const bodies = turn.filter((k) => k.matches('.msg.ai[data-message-id]')).map((k) => k.querySelector<HTMLElement>(':scope > .body')).filter((b): b is HTMLElement => !!b && this._texts.has(b))
+      if (!bodies.length) continue
+      turn.forEach((k) => { if (k.matches('.turn-acts')) k.remove(); else k.querySelector(':scope > .body > .msg-acts')?.remove() })   // a resumed turn: the row moves to its new end
+      const pieces = turn.filter((k) => k.isConnected && !k.matches('.turn-acts'))
+      const last = pieces[pieces.length - 1], body = bodies[bodies.length - 1]
+      const text = bodies.map((b) => this._texts.get(b)).join('\n\n')
+      if (last.contains(body)) { this._actions(body, text); continue }
+      const holder = h('div', { class: 'msg ai turn-acts' })   // after a card: the row under it, still this answer's
+      last.after(holder)
+      this._actions(body, text, holder)
+    }
   }
 
   // ------------------------------------------------------------------ DOM
@@ -1274,9 +1298,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   }
 
   /** The actions under an answer: copy, try again, read aloud, a good or bad answer, and the host's own. */
-  private _actions(body: HTMLElement, text: string): void {
+  private _actions(body: HTMLElement, text: string, holder: HTMLElement = body): void {
     const list = this._opts.messageActions ?? []
-    if (!list.length || body.querySelector(':scope > .msg-acts')) return
+    if (!list.length || holder.querySelector(':scope > .msg-acts')) return
     const id = body.closest('[data-message-id]')?.getAttribute('data-message-id') ?? ''
     const bar = h('div', { class: 'msg-acts', part: 'message-actions', role: 'toolbar' })
     const emit = (action: string, pressed?: boolean): boolean => {
@@ -1309,7 +1333,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
           speechSynthesis.cancel()
           b.setAttribute('aria-pressed', String(on))
           if (on) {
-            const u = new SpeechSynthesisUtterance(body.innerText || text); u.lang = this.lang
+            const u = new SpeechSynthesisUtterance(text || body.innerText); u.lang = this.lang
             u.onend = () => b.setAttribute('aria-pressed', 'false')
             speechSynthesis.speak(u)
           }
@@ -1324,9 +1348,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     // "Try again" belongs to the latest answer only
     this.$.log.querySelectorAll('.msg-acts .act-retry').forEach((x) => x.remove())
     this.$.log.querySelectorAll('.msg.ai.last').forEach((x) => x.classList.remove('last'))
-    body.append(bar)
-    body.closest('.msg')?.classList.add('last')
-    queueMicrotask(() => body.closest('.msg')?.classList.add('last'))
+    holder.append(bar)
+    holder.closest('.msg')?.classList.add('last')
+    queueMicrotask(() => holder.closest('.msg')?.classList.add('last'))
   }
 
   private async _upload(list: File[], at?: number): Promise<void> {
@@ -1558,6 +1582,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       }
     }
     if (r.interrupt) this._showInterrupt(r.interrupt, true)
+    this._turnActions(true)
     this._renderEmpty()
     // hero: a turn still running reopens the chat; on a computer, so does a conversation to come back to
     if (this._hero && (r.follow || r.running || (r.messages?.length && !this._heroSheet))) this.open()
@@ -1651,6 +1676,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._showDots(false)
     this._finishSteps(!!failed || aborted)
     this._setBusy(false)
+    { const thread = this._thread; void this._typing.then(() => { if (this._thread === thread) this._turnActions() }) }
     if (aborted) {
       if (this._sendNow) { this._dequeue(this._sendNow); return }   // Send now stopped this turn for a queued message
       this._paused = 'stop'; this._queueHints()

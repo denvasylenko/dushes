@@ -168,6 +168,33 @@ describe('the message queue', () => {
     expect(el.shadowRoot!.querySelector('.quick')).toBeNull()
   })
 
+  it('one turn, one group: no actions while it streams, one row at the end, Copy takes every part', async () => {
+    const el = await mount()
+    let finish = (): void => {}
+    el.agent = { run: () => ({ subscribe: (o: Obs) => {
+      setTimeout(() => {
+        o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' })
+        for (const [id, t] of [['p1', 'The fee is 2%.'], ['p2', 'Early repayment is free.']]) {
+          o.next({ type: 'TEXT_MESSAGE_START', messageId: id, role: 'assistant' }); o.next({ type: 'TEXT_MESSAGE_CONTENT', messageId: id, delta: t }); o.next({ type: 'TEXT_MESSAGE_END', messageId: id })
+        }
+      })
+      finish = () => { o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }
+      return { unsubscribe() {} }
+    } }) } as never
+    const write = vi.fn(async () => {})
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: write } })
+    void el.send('fee?')
+    await tick(20)
+    expect($$(el, '.msg-acts')).toHaveLength(0)                            // still running: no actions yet
+    finish(); await tick(20)
+    const rows = $$(el, '.msg-acts')
+    expect(rows).toHaveLength(1)
+    expect(rows[0].closest('.msg')!.getAttribute('data-message-id')).toBe('p2')   // after the last part
+    ;(rows[0].querySelector('.act-copy') as HTMLButtonElement).click()
+    await tick()
+    expect(write).toHaveBeenCalledWith('The fee is 2%.\n\nEarly repayment is free.')
+  })
+
   it('the queue survives a reload', async () => {
     const el = await mount(), a = agent()
     el.agent = a as never

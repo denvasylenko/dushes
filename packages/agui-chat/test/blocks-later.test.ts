@@ -11,7 +11,8 @@ const load = vi.hoisted(() => ({ ready: null as Blocks | null, pending: [] as { 
 vi.mock('#blocks-loader', async () => {
   const real = await import('../src/formguide/blocks')
   const { monthCalendar } = await import('../src/formguide/month')
-  const b: Blocks = { blocksCard: real.blocksCard, blocksRenderer: real.blocksRenderer, calendar: monthCalendar }
+  const { realTypedView } = await import('../src/formguide/typed')
+  const b: Blocks = { blocksCard: real.blocksCard, blocksRenderer: real.blocksRenderer, calendar: monthCalendar, typedView: realTypedView }
   return {
     blocksNow: () => load.ready,
     loadBlocks: () => load.ready ? Promise.resolve(load.ready) : new Promise<Blocks>((ok, fail) => {
@@ -37,6 +38,18 @@ beforeEach(() => { document.body.innerHTML = ''; load.ready = null; load.pending
 afterEach(() => { vi.unstubAllGlobals() })
 
 describe('cards from blocks, loaded on demand', () => {
+  it('a typed question shown before the blocks arrive keeps its room, then gets its slider', async () => {
+    const el = await mount()
+    void el.showCard({ type: 'ask', question: 'How much?', field: 'amount', label: 'Amount', allow_text: true,
+      input: { type: 'number', min: 5000, max: 60000, step: 1000, value: 20000 } })
+    await tick()
+    expect($(el, '.card .typed-slot')).not.toBeNull()
+    expect(($(el, '.card input.text-in, .card textarea') as HTMLElement | null)?.hidden ?? true).toBe(true)   // no plain field flashing first
+    await arrive()
+    expect($(el, '.card .typed-slot')).toBeNull()
+    expect($(el, '.card .range input[type=range]')).not.toBeNull()
+  })
+
   it('the month grid comes with the blocks: drawn in the same element once they arrive', async () => {
     const { calendar } = await import('../src/formguide/calendar')
     const slot = calendar({ lang: 'en', t: (k) => k, onPick: () => {} })

@@ -149,7 +149,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .steps ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 7px; }
 .steps.collapsed ul { display: none; }
 .steps li { display: flex; align-items: center; gap: 9px; animation: rise .35s var(--agui-ease) both; }
-.steps li ul { margin: 4px 0 0 25px; gap: 4px; } .steps li.has-sub { flex-wrap: wrap; } .steps li.has-sub > ul { flex-basis: 100%; }
 .steps li .mark { width: 16px; height: 16px; border-radius: var(--agui-radius-pill); border: 2px solid var(--agui-line-2); flex: none; display: grid; place-items: center; }
 .steps li.run .mark { border-color: var(--agui-line-2); border-top-color: var(--agui-link); animation: turn .8s linear infinite; }
 .steps li.ok { color: var(--agui-ink-2); }
@@ -157,7 +156,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.6l4.5-5' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   animation: tick .3s both; }
 .steps li.fail .mark { border-color: var(--agui-danger); background: var(--agui-danger); }
-.steps li.sub .mark { width: 12px; height: 12px; border-width: 1.5px; background-size: 8px; }
 @keyframes turn { to { transform: rotate(360deg); } }
 @keyframes tick { from { transform: scale(.6); } to { transform: none; } }
 
@@ -182,6 +180,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 }
 
 /* cards inside the conversation */
+/* one turn, one group: inside an answer its text, cards and actions sit close (about 8 px); turns keep 20 px */
+.msg.ai + .card, .card + .card, .card + .msg.ai { margin-top: -12px; }
+.msg.ai.turn-acts { margin-top: -16px; }
 .card { margin: 4px 0 20px; border: 1px solid var(--agui-card-border, var(--agui-line)); border-radius: var(--agui-card-radius, var(--agui-radius));
   background: var(--agui-card-bg, var(--agui-surface)); color: var(--agui-card-ink, inherit); padding: var(--agui-card-padding, 14px);
   -webkit-backdrop-filter: var(--agui-card-blur, none); backdrop-filter: var(--agui-card-blur, none);   /* glass: a translucent card-bg + blur */
@@ -189,7 +190,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 .bk-wait { min-height: 88px; }
 .tone-accent { color: var(--agui-link); } .tone-ok { color: var(--agui-ok); } .tone-danger { color: var(--agui-danger); } .tone-muted { color: var(--agui-ink-2); }
-.chip:disabled { opacity: .4; cursor: default; text-decoration: line-through; }
+.chip:disabled { color: var(--agui-ink-3); border-color: var(--agui-line); cursor: default; }   /* a closed day, as in the iOS calendar: quiet, never struck through (a strike reads as an error) */
 /* a finished card (.card.done) is quieter by its shape, never by opacity: its text and Undo keep full contrast */
 .chip input[type=checkbox] { accent-color: var(--agui-accent); width: 15px; height: 15px; }
 /* a card closed by a new message keeps what was asked, not the controls */

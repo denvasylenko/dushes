@@ -105,6 +105,13 @@ Every answer SHALL end with its actions from `messageActions` (default `copy`): 
 - **WHEN** the host sets `messageActions: ['copy', 'like', 'dislike']` and the user taps the thumbs-down
 - **THEN** it is pressed, the thumbs-up is not, and `agui:message-action` carries `{id: "dislike", pressed: true}`
 
+### Requirement: One turn, one group
+An answer's turn (every text part and card of a run, until the next user message) SHALL read as one group: no actions while it streams, then one actions row after its last piece, text or card; `copy` SHALL copy every text part of the turn. Inside a turn pieces SHALL sit about 8 px apart; turns keep their wider gap. A restored conversation SHALL be grouped the same way.
+
+#### Scenario: Text, then a booking card
+- **WHEN** the assistant writes a sentence and then shows a question card in the same run
+- **THEN** the card sits close under the sentence and one row of Copy and Reply follows the card once the run ends
+
 ### Requirement: The host hears every action
 Every tap on an action under an answer SHALL fire `agui:message-action` `{id, messageId, text, pressed?}` and call `onMessageAction`, which skips the built-in behaviour by returning true.
 
@@ -118,6 +125,13 @@ On a computer the actions under an answer SHALL show on hover or focus, except u
 #### Scenario: An older answer
 - **WHEN** the pointer rests on an earlier answer
 - **THEN** its actions fade in
+
+### Requirement: Unavailable choices are quiet
+A chip that cannot be chosen (a closed day, the chips while an action applies) SHALL be disabled and shown in the tertiary ink with no strike-through, as the iOS calendar shows unavailable days.
+
+#### Scenario: A closed day
+- **WHEN** the day strip offers Monday, which is closed
+- **THEN** the Monday chip is grey and cannot be tapped, and it is not struck through
 
 ### Requirement: Back to the latest message
 A user who scrolled up SHALL stay where they read while new text arrives, and a round button over the composer SHALL bring them to the latest message; while the assistant works it SHALL show three dots instead of its arrow. Sending a message SHALL bring the view down.
