@@ -100,6 +100,7 @@ class Eff:
 
 class Overlay:
     def __init__(self, layout: LayoutIndex, config: dict[str, Any], pii: set[str] | None = None):
+        layout = layout.for_config(config)   # every repeat's rows, for this config
         self.layout = layout
         self.pii = pii or set()
         props = config.get("props") or {}
@@ -109,8 +110,13 @@ class Overlay:
         for name in layout.order:  # preorder: a parent always comes before its children
             n = layout.nodes[name]
             p = props.get(name)
+            if p is None and n.template:   # a row field without props of its own: the template field's
+                p = props.get(n.template)
             missing = p is None and n.is_field
             p = p or {}
+            if n.role == "row" and not p.get("label"):   # "Line 2": the repeat's row_label and the row number
+                own = props.get(n.parent or "") or {}
+                p = {**p, "label": f"{own.get('row_label') or 'Line'} {int(n.name.rsplit('.', 1)[1]) + 1}"}
             spec = layout.components.spec(n.tag) if n.is_field else None
             opts, owarn = read_options(spec, p) if n.role in CHOICE or n.role == "multiselect" else (None, None)
             raw = state.get(name)

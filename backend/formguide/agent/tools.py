@@ -215,7 +215,9 @@ TOOLS: list[dict[str, Any]] = [
                        "A dropdown whose options depend on another field in the same call (a car model after "
                        "its make) may be included with the option's name: it is applied after the others. "
                        "Only the user can upload files. To clear a field the user asks to empty, pass an empty "
-                       "string as its value.",
+                       "string as its value. A list (Repeat) has rows named list.N.field (N from 0): fill them by "
+                       "name; add a row with {add_row: list, values: {field: value}, index?} and remove one with "
+                       "{remove_row: list, index}.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -229,8 +231,11 @@ TOOLS: list[dict[str, Any]] = [
                             "reason": {"type": "string"},
                             "issue": {"type": "string", "description": "only when a rule or document flags this "
                                       "valid value (e.g. income low for the payment): one short sentence"},
+                            "add_row": {"type": "string", "description": "a list's name: add a row"},
+                            "remove_row": {"type": "string", "description": "a list's name: remove the row `index`"},
+                            "index": {"type": "integer", "description": "the row, from 0 (add: where to insert)"},
+                            "values": {"type": "object", "description": "add_row: the new row's values by field"},
                         },
-                        "required": ["name", "value"],
                     },
                 }
             },
@@ -955,6 +960,75 @@ def _t_confirm_action(a: dict, ctx: ToolCtx) -> str:
     return ""
 
 
+def _row_changes(ctx: ToolCtx, rows: list[dict], sets: list[dict], errors: list[str]) -> list[dict]:
+    """add_row / remove_row items -> card rows {op, container, index, values?, name, label, display}. Every
+    index refers to the form before this card; a row that is removed cannot be set on the same card."""
+    if ctx.caps is None or "rows" not in ctx.caps:
+        errors.append("rows cannot be added or removed in this chat: fill only the rows the form has, and tell "
+                      "the user lines are added in the form itself")
+        return []
+    lay, out = ctx.ov.layout, []
+    removed: dict[str, set[int]] = {}
+    plan: dict[str, list[int]] = {}   # rows added / removed per list, for min / max
+    for ch in rows:
+        try:
+            rep = str(ch.get("add_row") or ch.get("remove_row") or "")
+            n = lay.get(rep)
+            if not n or n.role != "repeat":
+                raise ToolError(f"{rep!r} is not a list (Repeat)")
+            e = ctx.ov[rep]
+            if not e.editable:
+                raise ToolError(f"{rep} is {'hidden' if not e.visible else 'disabled or read-only'}")
+            count = len(n.children)
+            label = e.props.get("row_label") or "Line"
+            if "remove_row" in ch:
+                i = ch.get("index")
+                if not isinstance(i, int) or not 0 <= i < count:
+                    raise ToolError(f"{rep}: no row {i!r} (rows 0-{count - 1})")
+                plan.setdefault(rep, []).append(-1)
+                removed.setdefault(rep, set()).add(i)
+                vals_now = [ctx.ov.display_value(ctx.ov[f]) for f in lay.nodes[f"{rep}.{i}"].children
+                            if lay.nodes[f].is_field and ctx.ov[f].filled][:2]
+                out.append({"op": "remove_row", "container": rep, "index": i, "name": f"{rep}.{i}",
+                            "label": f"{label} {i + 1}", "display": " \u00d7 ".join(v.strip('"') for v in vals_now) or "\u2014",
+                            "kind": "row", "reason": ch.get("reason", "")})
+                continue
+            i = ch.get("index", count)
+            if not isinstance(i, int) or not 0 <= i <= count:
+                raise ToolError(f"{rep}: a new row goes at 0-{count}")
+            plan.setdefault(rep, []).append(1)
+            fields = {t.name: t for t in lay.template(rep)}
+            given = ch.get("values") if isinstance(ch.get("values"), dict) else {}
+            bad = [k for k in given if k not in fields]
+            if bad:
+                raise ToolError(f"{rep}: no field {', '.join(bad)} in a row (fields: {', '.join(fields)})")
+            vals: dict[str, Any] = {}
+            for k, v in given.items():
+                ref = f"{rep}.0.{k}" if f"{rep}.0.{k}" in ctx.ov.eff else None
+                vals[k] = form_value(ctx, ref, _norm_value(ctx, ref, v)) if ref else v
+            shown = " \u00d7 ".join(str(given[k]) for k in list(given)[:2]) or "\u2014"
+            out.append({"op": "add_row", "container": rep, "index": i, "values": vals, "name": f"{rep}.{i}",
+                        "label": f"New {label.lower()} {i + 1}", "display": shown, "kind": "row",
+                        "reason": ch.get("reason", "")})
+        except ToolError as err:
+            errors.append(str(err))
+    for rep, deltas in plan.items():
+        e, n = ctx.ov[rep], lay.nodes[rep]
+        after = len(n.children) + sum(deltas)
+        hi, lo = e.props.get("max_rows"), e.props.get("min_rows")
+        if isinstance(hi, int) and after > hi:
+            errors.append(f"{rep} holds at most {hi} rows: the list is full, tell the user")
+            out = [r for r in out if r["container"] != rep]
+        elif isinstance(lo, int) and after < lo:
+            errors.append(f"{rep} needs at least {lo} rows: a row cannot be removed")
+            out = [r for r in out if r["container"] != rep]
+    for ch in sets:   # a field of a row this card removes
+        hit = lay.repeat_of(str(ch.get("name") or "")) if isinstance(ch, dict) else None
+        if hit and hit[1] in removed.get(hit[0], set()):
+            raise ToolError(f"{ch['name']} is in a row this card removes: set it or remove the row, not both")
+    return out
+
+
 def _unchanged(e: Any, val: Any) -> bool:
     """The field already holds this value (compared as the user sees it)."""
     if not e.filled or e.unreadable:
@@ -973,7 +1047,12 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
     if not isinstance(changes, list) or not changes:
         raise ToolError("INVALID_JSON: changes must be a non-empty list")
     ok, errors, later = [], [], []
+    rows = [ch for ch in changes if isinstance(ch, dict) and ("add_row" in ch or "remove_row" in ch)]
+    if rows:
+        ok += _row_changes(ctx, rows, [ch for ch in changes if ch not in rows], errors)
     for ch in changes:
+        if ch in rows:
+            continue
         try:
             if not isinstance(ch, dict) or "name" not in ch or "value" not in ch:
                 raise ToolError("each item must be {name, value}")

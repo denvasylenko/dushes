@@ -85,12 +85,14 @@ class FieldSpec:
 class ComponentMap:
     """Your component library: JSX tag -> role. Configured once per library, not per form.
 
-    Container roles: tabs, tab, accordion, section, form. Field roles: FIELD_ROLES.
+    Container roles: tabs, tab, accordion, section, form, repeat (a list of rows: its children are the template of
+    one row, written once). Field roles: FIELD_ROLES.
     A field tag maps to a role string or to a FieldSpec / dict describing how the
     component stores its value. Unknown tags are kept (role "unknown") and reported.
     """
     containers: dict[str, str] = field(default_factory=lambda: {
-        "Tabs": "tabs", "Tab": "tab", "Accordion": "accordion", "Section": "section", "Form": "form"})
+        "Tabs": "tabs", "Tab": "tab", "Accordion": "accordion", "Section": "section", "Form": "form",
+        "Repeat": "repeat"})
     fields: dict[str, Any] = field(default_factory=lambda: {
         "Input": "text", "NumberInput": "number", "TextArea": "text", "DatePicker": "date",
         "Dropdown": "select", "RadioGroup": "radio", "MultiSelect": "multiselect", "Checkbox": "bool",
@@ -120,10 +122,11 @@ class Node:
     depth: int
     children: list[str] = field(default_factory=list)
     text: str | None = None
+    template: str | None = None   # a row's field: the template field it repeats ("qty" for "items.1.qty")
 
     @property
     def is_container(self) -> bool:
-        return self.role in ("tabs", "tab", "accordion", "section", "form", "container")
+        return self.role in ("tabs", "tab", "accordion", "section", "form", "container", "repeat", "row")
 
     @property
     def is_field(self) -> bool:
@@ -139,6 +142,12 @@ class LayoutIndex:
         self.root: str | None = None
         self.warnings: list[str] = []
         self._parse(jsx)
+        self._rows: dict[tuple, LayoutIndex] = {}
+        self.base = self   # the parsed layout (an expanded one points back to it: its repeats' templates)
+        self.repeats = [n for n in self.order if self.nodes[n].role == "repeat"]
+        for r in self.repeats:
+            if any(d.role == "repeat" for d in self.descendants(r)):
+                self.warnings.append(f"a repeat inside the repeat {r} is not supported: its rows are not expanded")
 
     # ------------------------------------------------------------ parsing
     def _parse(self, jsx: str) -> None:
@@ -194,6 +203,85 @@ class LayoutIndex:
         else:
             self.root = self.root or name
         return node
+
+    # ------------------------------------------------------------ rows
+    def row_count(self, name: str, config: dict[str, Any]) -> int:
+        """How many rows the repeat `name` shows: props[name].rows, else the row keys in the config, else
+        min_rows, else none."""
+        props = config.get("props") or {}
+        own = props.get(name) or {}
+        n = own.get("rows")
+        if isinstance(n, int) and not isinstance(n, bool) and n >= 0:
+            return n
+        seen = -1
+        pre = name + "."
+        for key in [*props, *(config.get("state") or {})]:
+            if key.startswith(pre):
+                head = key[len(pre):].split(".", 1)[0]
+                if head.isdigit():
+                    seen = max(seen, int(head))
+        if seen >= 0:
+            return seen + 1
+        m = own.get("min_rows")
+        return m if isinstance(m, int) and not isinstance(m, bool) and m > 0 else 0
+
+    def for_config(self, config: dict[str, Any]) -> LayoutIndex:
+        """This layout with every repeat's template expanded into its rows for this config: row containers
+        `items.0` and row fields `items.0.qty`. A layout without repeats is returned as it is."""
+        if not self.repeats:
+            return self
+        counts = tuple(self.row_count(r, config) for r in self.repeats)
+        if counts not in self._rows:
+            self._rows[counts] = self._expand(dict(zip(self.repeats, counts)))
+        return self._rows[counts]
+
+    def _expand(self, counts: dict[str, int]) -> LayoutIndex:
+        out = object.__new__(LayoutIndex)
+        out.components, out.jsx_hash, out.root = self.components, self.jsx_hash, self.root
+        out.nodes, out.order, out.warnings = {}, [], list(self.warnings)
+        out._rows, out.repeats, out.base = {}, list(self.repeats), self
+        inside = {d.name for r in self.repeats for d in self.descendants(r)}
+
+        def put(node: Node) -> None:
+            out.nodes[node.name] = node
+            out.order.append(node.name)
+            if node.parent and node.parent in out.nodes:
+                out.nodes[node.parent].children.append(node.name)
+
+        def clone(src: Node, name: str, addr: str, parent: str, depth: int, prefix: str) -> None:
+            put(Node(addr, src.tag, src.role, name, parent, depth, text=src.text,
+                     template=src.name if src.is_field else None))
+            for k, ch in enumerate(src.children, 1):
+                c = self.nodes[ch]
+                clone(c, prefix + c.name, f"{addr}.{k}", name, depth + 1, prefix)
+
+        for name in self.order:
+            if name in inside:
+                continue
+            n = self.nodes[name]
+            put(Node(n.addr, n.tag, n.role, n.name, n.parent, n.depth, text=n.text))
+            if n.role == "repeat" and name in counts:
+                for i in range(counts[name]):
+                    row = f"{name}.{i}"
+                    put(Node(f"{n.addr}.{i + 1}", "Row", "row", row, name, n.depth + 1))
+                    for k, ch in enumerate(n.children, 1):
+                        c = self.nodes[ch]
+                        clone(c, f"{row}.{c.name}", f"{n.addr}.{i + 1}.{k}", row, n.depth + 2, f"{row}.")
+        return out
+
+    def template(self, repeat: str) -> list[Node]:
+        """The fields of one row of a repeat, as written once in the JSX."""
+        return [d for d in self.base.descendants(repeat) if d.is_field]
+
+    def repeat_of(self, name: str) -> tuple[str, int, str] | None:
+        """(repeat, row, template field) for a row name like "items.1.qty"; None for any other name."""
+        for r in self.repeats:
+            pre = r + "."
+            if name.startswith(pre):
+                head, _, rest = name[len(pre):].partition(".")
+                if head.isdigit() and rest:
+                    return r, int(head), rest
+        return None
 
     # ------------------------------------------------------------ queries
     def get(self, name: str) -> Node | None:

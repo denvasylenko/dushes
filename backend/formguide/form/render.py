@@ -113,6 +113,10 @@ def container_line(ov: Overlay, n: Node, loc: Location | None, deps: DepStore | 
             flags += " open"
     if loc and n.name == loc.focus:
         flags += " [FOCUS]"
+    if n.role == "repeat":   # a list: how many rows, and the limits the agent must keep to
+        lo, hi = e.props.get("min_rows"), e.props.get("max_rows")
+        flags += f" list, rows {len(n.children)}" + (f" of max {hi}" if isinstance(hi, int) else "") + (
+            f", min {lo}" if isinstance(lo, int) and lo > 0 else "")
     return f"{n.addr} [{n.tag} {n.name}]{_q(e.label)}{_req(ov, n.name)}{flags}"
 
 
@@ -222,6 +226,10 @@ def render_container(ov: Overlay, name: str, deps: DepStore, loc: Location | Non
             if c.role == "tabs" and ov[ch].visible:
                 for t in c.children:
                     lines.append("  " + container_line(ov, lay.nodes[t], loc, deps))
+            if c.role == "row" and ov[ch].visible:   # a list's row: its fields right under it
+                for f in c.children:
+                    if lay.nodes[f].is_field and ov[f].visible:
+                        lines.append("  " + field_card(ov, ov[f], deps, pack))
         elif ov[ch].visible:
             lines.append(field_card(ov, ov[ch], deps, pack))
         else:
