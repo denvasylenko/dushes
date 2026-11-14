@@ -3,10 +3,10 @@
 data_dir: ../data
 
 models:
-  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}
-  research: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 4000}
-  compile: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000}
-  extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 4000}
+  agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000, effort: low}
+  research: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 4000, effort: low}
+  compile: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000, effort: low}
+  extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 4000, effort: low}
 
 domain_packs: {dir: domain_packs}
 knowledge:

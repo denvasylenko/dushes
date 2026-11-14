@@ -1,0 +1,143 @@
+{
+  "props": {
+    "landing_loan": {
+      "label": "Loan application"
+    },
+    "tabs": {},
+    "full_name": {
+      "label": "Full name",
+      "visible": true,
+      "disabled": false,
+      "required": true
+    },
+    "email": {
+      "label": "Email",
+      "visible": true,
+      "disabled": false,
+      "required": true
+    },
+    "employment": {
+      "label": "Employment",
+      "visible": true,
+      "disabled": false,
+      "required": false,
+      "options": [
+        {
+          "id": "employed",
+          "name": "Employed"
+        },
+        {
+          "id": "self",
+          "name": "Self-employed"
+        },
+        {
+          "id": "retired",
+          "name": "Retired"
+        }
+      ]
+    },
+    "monthly_income": {
+      "label": "Monthly income, $",
+      "visible": true,
+      "disabled": false,
+      "required": false,
+      "placeholder": "After tax"
+    },
+    "applicant": {
+      "label": "Applicant",
+      "visible": true
+    },
+    "loan_type": {
+      "label": "Loan type",
+      "visible": true,
+      "disabled": false,
+      "required": true,
+      "options": [
+        {
+          "id": "auto",
+          "name": "Car loan"
+        },
+        {
+          "id": "personal",
+          "name": "Personal loan"
+        },
+        {
+          "id": "mortgage",
+          "name": "Mortgage"
+        }
+      ]
+    },
+    "car_make": {
+      "label": "Car make",
+      "visible": false,
+      "disabled": false,
+      "required": false,
+      "options": [
+        {
+          "id": "toyota",
+          "name": "Toyota"
+        },
+        {
+          "id": "honda",
+          "name": "Honda"
+        },
+        {
+          "id": "tesla",
+          "name": "Tesla"
+        },
+        {
+          "id": "ford",
+          "name": "Ford"
+        }
+      ]
+    },
+    "amount": {
+      "label": "Amount, $",
+      "visible": true,
+      "disabled": false,
+      "required": false
+    },
+    "term": {
+      "label": "Term",
+      "visible": true,
+      "disabled": false,
+      "required": false,
+      "options": [
+        {
+          "id": "12",
+          "name": "12 months"
+        },
+        {
+          "id": "24",
+          "name": "24 months"
+        },
+        {
+          "id": "36",
+          "name": "36 months"
+        },
+        {
+          "id": "48",
+          "name": "48 months"
+        },
+        {
+          "id": "60",
+          "name": "60 months"
+        }
+      ]
+    },
+    "loan": {
+      "label": "Loan",
+      "visible": true
+    }
+  },
+  "state": {
+    "full_name": null,
+    "email": null,
+    "employment": null,
+    "monthly_income": null,
+    "loan_type": null,
+    "car_make": null,
+    "amount": null,
+    "term": null
+  }
+}
