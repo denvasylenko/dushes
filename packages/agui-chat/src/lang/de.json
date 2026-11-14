@@ -56,7 +56,11 @@
   "toLatest": "Zur neuesten Nachricht",
   "readAloud": "Vorlesen",
   "goodAnswer": "Gute Antwort",
-  "badAnswer": "Schlechte Antwort"
+  "badAnswer": "Schlechte Antwort",
+  "reply": "Antworten",
+  "replyVoice": "Per Sprache antworten",
+  "cancelReply": "Antwort abbrechen",
+  "toQuoted": "Zitierte Nachricht zeigen"
  },
  "formguide": {
   "fillTitle": "Diese Felder ausf\u00fcllen?",

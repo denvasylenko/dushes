@@ -98,9 +98,12 @@ describe('server dictation', () => {
     expect(calls[0].url).toBe('/speech')
   })
 
-  it('browser dictation stays the default: no recognition, no mic', async () => {
+  it('voice: auto is the default: no reliable recognition, so it records for the server; voice: browser has no mic here', async () => {
     setup(() => new Response('{}'))
     const el = await mount({})
-    expect($(el, '.mic').hidden).toBe(true)
+    expect($(el, '.mic').hidden).toBe(false)
+    expect((el as unknown as { _micMode: () => string })._micMode()).toBe('server')
+    const only = await mount({ voice: 'browser' })
+    expect($(only, '.mic').hidden).toBe(true)
   })
 })

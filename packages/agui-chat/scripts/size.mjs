@@ -19,7 +19,9 @@ import { gzipSync } from 'node:zlib'
 // 50 KB since the card blocks moved to an on-demand file, agui-chat.blocks.js (formguide/blocks.ts; 2026-11-14:
 // 53.1 -> 48.7 KB). blocksCard and hoursText stay sync in the bundle; the blocks' CSS stays too (about 1.5 KB) and is the next to move
 // 51 KB since the launcher in every mode (round, pill, none), a panel beside the page and the chart styles (2026-11-14)
-const BUDGET = 51 * 1024
+// 54 KB since replying to a part of an answer (the selection capsule, the quote bar and the quote in a bubble, swipe
+// to reply) and the voice option (2026-11-14): +2.8 KB. Next: move the blocks' CSS into agui-chat.blocks.js (about 1.5 KB)
+const BUDGET = 54 * 1024
 const file = new URL('../dist/agui-chat.iife.js', import.meta.url)
 const size = gzipSync(readFileSync(file)).length
 console.log(`agui-chat.iife.js: ${(size / 1024).toFixed(1)} KB gzipped (budget ${BUDGET / 1024} KB)`)

@@ -56,7 +56,11 @@
   "toLatest": "Ir al \u00faltimo mensaje",
   "readAloud": "Leer en voz alta",
   "goodAnswer": "Buena respuesta",
-  "badAnswer": "Mala respuesta"
+  "badAnswer": "Mala respuesta",
+  "reply": "Responder",
+  "replyVoice": "Responder por voz",
+  "cancelReply": "Cancelar la respuesta",
+  "toQuoted": "Ver el mensaje citado"
  },
  "formguide": {
   "fillTitle": "\u00bfRellenar estos campos?",

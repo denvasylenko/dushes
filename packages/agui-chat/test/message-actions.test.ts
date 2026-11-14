@@ -58,7 +58,7 @@ describe('actions under an answer', () => {
     el.agent = agent('Hello **there**') as never
     await el.send('hi')
     await tick(5)
-    expect($$(el, '.msg.ai .msg-acts .act').map((b) => b.getAttribute('aria-label'))).toEqual(['Copy'])
+    expect($$(el, '.msg.ai .msg-acts .act').map((b) => b.getAttribute('aria-label'))).toEqual(['Copy', 'Reply'])
     ;($(el, '.act-copy') as HTMLButtonElement).click()
     await tick()
     expect(writeText).toHaveBeenCalledWith('Hello **there**')

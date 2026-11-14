@@ -188,6 +188,18 @@ Files attached with the paperclip, pasted (a screenshot, Ctrl+V) or dropped show
 - On a touch screen buttons, chips and links are at least 44 px tall, and the chat does not move the focus by itself (that would open the keyboard). With a mouse, a new card's first option gets the focus, so number keys work at once.
 - The send button looks quiet while the box is empty but still reacts: an empty send shakes the composer.
 
+## Reply to a part of an answer
+
+Select a few words in an answer and a small capsule appears: **Reply** and the microphone. Reply puts the words in a quote bar above the field (× or Esc removes it); the microphone does the same and starts dictating. The sent message shows the quote above its text, and a tap on the quote scrolls back to the answer and highlights it. Reply under an answer, next to Copy, quotes the whole of it (the keyboard's way in), and on a phone so does a swipe right on the answer. On a phone the capsule sits under the selection.
+
+The run carries the quote for the server, once:
+
+```json
+{ "forwardedProps": { "reply_to": { "message_id": "msg_42", "quote": "the fee is 2%" } } }
+```
+
+`quote` is the selection's plain text, at most 300 characters. A restored user message with `reply_to` shows its quote again. Turn it off with `reply="off"`; restyle it with the parts `selection-menu`, `reply` and `message-quote`.
+
 ## Start with prefill
 
 Your page already knows the user? Start the chat with that data instead of a message. The agent answers with one card of the values it can fill now ([what the server does](../../agents/ui-agent/prefill/)).
@@ -213,11 +225,13 @@ Some things appear only when the backend enables them; the widget draws them whe
 | opening messages in an empty chat | `starters` in the form's [domain pack](../../agents/ui-agent/domain-packs/) |
 | a confirmation before a risky action | the server's `confirm_tools` ([Skills and tools](../../agents/ui-agent/skills/#every-option)) |
 | file requests, dates, sliders, reviews | built in; every card is in the [card gallery](../card-gallery/) |
-| dictation where the browser cannot (Firefox, a blocked recognition service) | `dictation="auto"` here and the server's [`transcription`](../../reference/configuration/#every-key) (a local Whisper) |
+| dictation where the browser's own is unreliable (iPhone, Safari, Firefox, a blocked service) | `voice="auto"` (the default) and the server's [`transcription`](../../reference/configuration/#every-key) (a local Whisper) |
 
 ```html
-<!-- the browser's recognition where it works; else the chat records and the server transcribes -->
-<agui-chat url="/agent/run" dictation="auto"></agui-chat>
+<!-- the default: Chrome's recognition on a computer and on Android; elsewhere the chat records and the server transcribes -->
+<agui-chat url="/agent/run" voice="auto"></agui-chat>
+<!-- sensitive data: Chrome's recognition sends the audio to Google, so always transcribe on your server -->
+<agui-chat url="/agent/run" voice="server"></agui-chat>
 ```
 
 Files work like in a messenger: the paperclip, a screenshot pasted with Cmd+V / Ctrl+V, or a file dropped on the composer (when uploads are on).
@@ -246,7 +260,7 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `launcher` | `launcher` | `auto` | the launcher: `round`, `pill` (icon and words), `none` (open it with `chat.open()`); `auto`: a pill for the panel, a round one for the bubble |
 | `launcherLabel` | `launcher-label` | "Open" | the launcher's words |
 | `modal` | `modal` | `true` | floating panel: `off` keeps the page beside it usable (no scrim, a tap on the page leaves it open); a phone still gets the sheet |
-| `messageActions` | `message-actions` | `copy` | the actions under an answer (comma-separated in the attribute): `copy`, `retry`, `speak`, `like`, `dislike`, your own `{id, label, icon?, hint?}`; `off` hides them |
+| `messageActions` | `message-actions` | `copy,reply` | the actions under an answer (comma-separated in the attribute): `copy`, `reply` (quote the whole answer), `retry`, `speak`, `like`, `dislike`, your own `{id, label, icon?, hint?}`; `off` hides them |
 | `footnote` | `footnote` | none | a line under the composer ("The assistant can make mistakes"); a hint or an error takes its place while shown |
 | `lang` | `lang` | the page's language | `en`, `ru`, `uk`, `de`, `fr`, `it`, `es` (all but `en` load on first use) |
 | `theme` | `theme` | `default` | a theme name or object ([Themes](../themes/)) |
@@ -259,7 +273,9 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `mic` | `mic` | on | dictation, where the browser supports it |
 | `mic-lang` | `micLang` | the chat's language | BCP 47, e.g. `ru-RU` |
 | `mic-auto-send` | `micAutoSend` | off | send when dictation stops |
-| `dictation` | `dictation` | `browser` | `browser`, `server` (record, transcribe on the server) or `auto` (the server where the browser cannot) |
+| `voice` | `voice` | `auto` | how speech becomes text: `auto` (the browser's recognition in Chromium on a computer and Android, elsewhere record and transcribe on the server), `browser` (the browser only), `server` (always the server), `off` (no mic). Chrome's recognition sends the audio to Google: use `server` for sensitive data |
+| `dictation` | `dictation` | — | the old name of `voice` (`browser`, `server`, `auto`), used when `voice` is left at `auto` |
+| `reply` | `reply` | on | Reply on a selected part of an answer, and swipe to reply on a phone |
 | `transcribe-url` | `transcribeUrl` | next to `url` | where recordings go for server dictation |
 | `attach` | `attach` | on | the paperclip, when something can upload |
 | `attach-accept` | `attachAccept` | what the plugin accepts | e.g. `.pdf,.jpg` |

@@ -15,7 +15,12 @@ export interface Message {
   activityType?: string
   /** an activity's payload (role "activity") */
   activity?: Record<string, unknown>
+  /** a user message that answers part of an earlier agent message (restored from the server; never sent back) */
+  reply_to?: ReplyTo
 }
+
+/** The part of an agent's message the user replies to: its id and the quoted plain text (at most 300 characters). */
+export interface ReplyTo { message_id: string; quote: string }
 
 export interface ToolSpec { name: string; description: string; parameters?: Record<string, unknown> }
 
@@ -189,12 +194,15 @@ export interface ChatOptions {
   launcher: 'auto' | 'round' | 'pill' | 'none'
   /** The launcher's words ("Ask the assistant", "Edit with AI"); default: the language's "Open". */
   launcherLabel: string
-  /** The actions under an answer, in order: built-in `copy`, `retry` (the latest answer), `speak`, `like`, `dislike`,
+  /** The actions under an answer, in order: built-in `copy`, `reply` (quotes the whole answer), `retry` (the latest answer), `speak`, `like`, `dislike`,
    *  or your own `{id, label, icon?, hint?}` (icon: an SVG path on a 24 grid). [] or `message-actions="off"`: none.
-   *  Default ['copy']. Every tap fires `agui:message-action` {id, messageId, text, pressed?}. */
+   *  Default ['copy', 'reply']. Every tap fires `agui:message-action` {id, messageId, text, pressed?}. */
   messageActions: (string | MessageAction)[]
   /** A tap on an action under an answer; return true when you handled it (the built-in behaviour is skipped). */
   onMessageAction?: (id: string, message: { id: string; messageId: string; text: string; pressed?: boolean }) => boolean | void
+  /** Reply to a part of an answer: selecting text in an agent's message offers Reply and the mic; on a phone a swipe
+   *  right replies to the whole message. The run carries forwardedProps.reply_to {message_id, quote}. Default on. */
+  reply: boolean
   starters: string[]
   /** How to answer an interrupt: forwardedProps.command.resume (CopilotKit, ag-ui-langgraph) or AG-UI 1.0 resume[]. */
   resumeStyle: 'command' | 'resume'
@@ -226,10 +234,17 @@ export interface ChatOptions {
   micLang: string
   /** Send the message as soon as dictation stops. */
   micAutoSend: boolean
-  /** Who recognises speech: the browser, the server (the chat records and posts to `transcribeUrl`), or
-   * `auto`: the browser where it works, else the server. */
-  dictation: 'browser' | 'server' | 'auto'
-  /** Where recordings go for `dictation: server | auto`; empty = `transcribe` next to `url`. */
+  /** How the mic turns speech into text:
+   *  - `auto` (default): the browser's own recognition where it is reliable (Chromium on a computer and on Android),
+   *    elsewhere (iPhone, Safari, Firefox) the chat records and the server transcribes (`transcribeUrl`);
+   *  - `browser`: the browser only (for sites whose users are on Chrome); no mic where it has none;
+   *  - `server`: always record and transcribe on the server;
+   *  - `off`: no mic.
+   *  Chrome's recognition sends the audio to Google: sites with sensitive data should use `server`. */
+  voice: 'auto' | 'browser' | 'server' | 'off'
+  /** @deprecated the old name of `voice` (browser, server, auto); used when `voice` is left at `auto`. */
+  dictation: '' | 'browser' | 'server' | 'auto'
+  /** Where recordings go for `voice: server | auto`; empty = `transcribe` next to `url`. */
   transcribeUrl: string
   /** Show the paperclip when a plugin (or `upload`) can upload files. */
   attach: boolean

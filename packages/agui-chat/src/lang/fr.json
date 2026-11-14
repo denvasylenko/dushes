@@ -56,7 +56,11 @@
   "toLatest": "Aller au dernier message",
   "readAloud": "Lire \u00e0 voix haute",
   "goodAnswer": "Bonne r\u00e9ponse",
-  "badAnswer": "Mauvaise r\u00e9ponse"
+  "badAnswer": "Mauvaise r\u00e9ponse",
+  "reply": "R\u00e9pondre",
+  "replyVoice": "R\u00e9pondre \u00e0 la voix",
+  "cancelReply": "Annuler la r\u00e9ponse",
+  "toQuoted": "Afficher le message cit\u00e9"
  },
  "formguide": {
   "fillTitle": "Remplir ces champs ?",

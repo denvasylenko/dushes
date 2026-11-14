@@ -56,7 +56,11 @@
   "toLatest": "Vai all'ultimo messaggio",
   "readAloud": "Leggi ad alta voce",
   "goodAnswer": "Buona risposta",
-  "badAnswer": "Risposta sbagliata"
+  "badAnswer": "Risposta sbagliata",
+  "reply": "Rispondi",
+  "replyVoice": "Rispondi a voce",
+  "cancelReply": "Annulla la risposta",
+  "toQuoted": "Mostra il messaggio citato"
  },
  "formguide": {
   "fillTitle": "Compilare questi campi?",

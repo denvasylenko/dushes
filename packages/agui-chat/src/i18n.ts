@@ -58,6 +58,10 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "toLatest": "Jump to the latest",
     "readAloud": "Read aloud",
     "goodAnswer": "Good answer",
-    "badAnswer": "Bad answer"
+    "badAnswer": "Bad answer",
+    "reply": "Reply",
+    "replyVoice": "Reply by voice",
+    "cancelReply": "Cancel the reply",
+    "toQuoted": "Show the quoted message"
   }
 }

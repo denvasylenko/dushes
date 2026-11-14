@@ -28,7 +28,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .card:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 22%, transparent); }
 
 /* layout: floating (button + side panel), inline (fills its box), page (the whole window) */
-.panel { display: flex; flex-direction: column; background: var(--agui-panel-bg, var(--agui-bg)); color: var(--agui-panel-ink, var(--agui-ink)); min-height: 0; text-align: left; }
+.panel { position: relative; display: flex; flex-direction: column; background: var(--agui-panel-bg, var(--agui-bg)); color: var(--agui-panel-ink, var(--agui-ink)); min-height: 0; text-align: left; }
 .mode-inline { height: 100%; }
 .mode-inline .panel { height: 100%; border: 1px solid var(--agui-line); border-radius: var(--agui-radius); overflow: hidden; }
 .mode-page .panel { position: fixed; inset: 0; z-index: 2147483001; }   /* above the host page's own sticky bars */
@@ -444,6 +444,45 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .nudge .box { animation: nudge .4s; }
 @keyframes nudge { 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
 .files[hidden] { display: none; }
+/* reply to a part of an answer: the capsule over a selection (the iOS edit menu), the quote bar, the quote in a bubble */
+.sel-pill { position: absolute; z-index: 6; display: flex; align-items: center; padding: 4px; gap: 4px; border-radius: 999px;
+  background: color-mix(in srgb, var(--agui-soft) 88%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: 0 8px 28px -6px var(--agui-shadow), 0 0 0 .5px var(--agui-line-2);
+  animation: pill-in .15s var(--agui-ease) both; }
+.sel-pill[hidden] { display: none; }
+@keyframes pill-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+.pill-b { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent;
+  color: var(--agui-ink); font: 500 15px/1 var(--agui-font); cursor: pointer; transition: background .15s var(--agui-ease); }
+.pill-b:hover, .pill-b:active { background: var(--agui-line); }
+.pill-b[hidden] { display: none; }
+.pill-mic { width: 32px; padding: 0; justify-content: center; position: relative; }
+.pill-mic::before { content: ''; position: absolute; left: -2px; top: 8px; bottom: 8px; width: 1px; background: var(--agui-line-2); }
+.pill-b svg { width: 17px; height: 17px; flex: none; }
+.pill-ico { display: grid; color: var(--agui-ink-2); }
+@media (pointer: coarse) { .sel-pill { padding: 2px; } .pill-b { height: 44px; padding: 0 16px; } .pill-mic { width: 44px; padding: 0; } }
+.box > .reply-bar { order: -2; flex: 1 0 100%; display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0 0 4px; padding: 0 0 8px;
+  border-bottom: 1px solid var(--agui-line); color: var(--agui-ink-2); font-size: 13px; animation: att-in .15s var(--agui-ease) both; }
+.box > .reply-bar[hidden] { display: none; }
+.reply-ico { display: grid; color: var(--agui-accent); } .reply-ico svg { width: 16px; height: 16px; }
+.reply-q { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.box .reply-x { width: 28px; height: 28px; flex: none; margin: -4px -6px -4px 0; }
+.box .reply-x svg { width: 14px; height: 14px; }
+@media (pointer: coarse) { .box .reply-x { width: 44px; height: 44px; margin: -12px -14px -12px -4px; } }
+.bubble-q { display: block; width: 100%; margin: 0 0 4px; padding: 4px 8px; border: 0; border-left: 2px solid var(--agui-accent); border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--agui-accent) 6%, transparent); color: var(--agui-ink-2); font: 13px/1.35 var(--agui-font); text-align: left; white-space: normal; }
+button.bubble-q { cursor: pointer; }
+.bq-t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (pointer: coarse) { button.bubble-q { min-height: 44px; display: flex; align-items: center; } }
+.msg.ai { position: relative; }
+.msg.ai::before { content: ''; position: absolute; inset: -6px -8px; border-radius: var(--agui-radius-sm); background: color-mix(in srgb, var(--agui-accent) 12%, transparent);
+  opacity: 0; pointer-events: none; }
+.msg.ai.flash::before { animation: flash 1.2s var(--agui-ease); }
+@keyframes flash { 0%, 40% { opacity: 1; } 100% { opacity: 0; } }
+.msg.ai:not(.swiping) { transition: transform .2s var(--agui-ease); }
+.swipe-ico { position: absolute; left: -40px; top: 50%; width: 32px; height: 32px; margin-top: -16px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--agui-soft); color: var(--agui-ink-2); opacity: 0; transition: background .15s, color .15s; }
+.swipe-ico.go { background: var(--agui-accent); color: var(--agui-on-accent, var(--agui-bg)); }
+.swipe-ico svg { width: 16px; height: 16px; }
 /* attachments inside the composer, above the text, like Messages: an image's thumbnail, a document's name and type */
 .box { flex-wrap: wrap; }
 .box > .files { order: -1; flex: 1 0 100%; display: flex; gap: 8px; overflow-x: auto; margin: 2px 0 4px -10px; padding: 2px; scrollbar-width: none; }

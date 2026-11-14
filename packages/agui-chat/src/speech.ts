@@ -11,6 +11,15 @@ interface Recognition {
 export const speechSupported = (): boolean =>
   typeof window !== 'undefined' && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/** Where the browser's own recognition can be trusted: Chromium off iOS (Chrome, Edge, Android). Safari's works once
+ * and then hears nothing, every browser on an iPhone is Safari inside, and Firefox has none: those record instead. */
+export const speechReliable = (): boolean => {
+  if (!speechSupported() || typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  const ios = !/Android/i.test(ua) && (/iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+  return !!(window as unknown as { chrome?: unknown }).chrome && !ios && !/CriOS|FxiOS|EdgiOS|Firefox/.test(ua)
+}
+
 export interface Dictation {
   /** Stop listening; the last words may still arrive (a final result). */
   stop(): void
