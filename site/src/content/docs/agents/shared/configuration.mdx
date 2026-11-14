@@ -3,7 +3,7 @@ title: Configuration
 description: Start with one line, add what you need step by step. Every key has a default except the model.
 ---
 import { Steps, Tabs, TabItem, LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
-import { Summary } from '../../../../components/ui';
+import { Summary, Disclosure } from '../../../../components/ui';
 
 <Summary what={"Every server setting, step by step, in YAML and the same in Python."} when={"You want more than the defaults: models per role, documents, history."} write={"`formguide.yaml` (or `GuideConfig(...)`); only `model` is required."} />
 
@@ -20,118 +20,160 @@ Check any file without calling a model: `formguide check --config formguide.yaml
 
 ## Build it up
 
-Each step twice: first as YAML, then the same in Python. Pick one; you never need both. In the Python snippets `cfg` is the config you are building (`cfg = GuideConfig()`, or `cfg = load_config("formguide.yaml")` to start from a file), and the last line of your app is `guide = FormGuide(cfg)`. Every name is imported in the snippet that uses it.
+Each step in YAML or in Python: pick a tab, the whole page follows it. You never need both. In the Python snippets `cfg` is the config you are building (`cfg = GuideConfig()`, or `cfg = load_config("formguide.yaml")` to start from a file), and the last line of your app is `guide = FormGuide(cfg)`. Every name is imported in the snippet that uses it.
 
 <Steps>
 
 1. **The minimum: a model.** Everything else has a default: history in memory, documents in `data/kb`, no domain pack.
 
-   ```yaml title="formguide.yaml"
-   model: "anthropic:claude-haiku-5-5"
-   ```
-   ```python title="app.py"
-   from formguide import FormGuide, GuideConfig, Models
+   <Tabs syncKey="side">
+     <TabItem label="YAML">
+      ```yaml title="formguide.yaml"
+      model: "anthropic:claude-haiku-5-5"
+      ```
+     </TabItem>
+     <TabItem label="Python">
+      ```python title="app.py"
+      from formguide import FormGuide, GuideConfig, Models
 
-   guide = FormGuide(GuideConfig(models=Models(agent="anthropic:claude-haiku-5-5")))
-   ```
+      guide = FormGuide(GuideConfig(models=Models(agent="anthropic:claude-haiku-5-5")))
+      ```
+     </TabItem>
+   </Tabs>
 
 
    No file at all works too: `FORMGUIDE_MODEL=openai:gpt-5 formguide serve`.
 
 2. **A model per role.** A cheaper model for research and memory; one that reads scans for extraction. Unset roles fall back. See [Models and providers](../models/).
 
-   ```yaml title="formguide.yaml"
-   models:
-     agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
-     research: "anthropic:claude-haiku-5-5"
-   memory: {model: "anthropic:claude-haiku-5-5"}
-   ```
-   ```python title="app.py"
-   from formguide import Models
-   from formguide.config import MemoryConfig
-   from langchain_anthropic import ChatAnthropic       # pip install langchain-anthropic
+   <Tabs syncKey="side">
+     <TabItem label="YAML">
+      ```yaml title="formguide.yaml"
+      models:
+        agent: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 16000, effort: low}
+        research: "anthropic:claude-haiku-5-5"
+      memory: {model: "anthropic:claude-haiku-5-5"}
+      ```
+     </TabItem>
+     <TabItem label="Python">
+      ```python title="app.py"
+      from formguide import Models
+      from formguide.config import MemoryConfig
+      from langchain_anthropic import ChatAnthropic       # pip install langchain-anthropic
 
-   cfg.models = Models(agent=ChatAnthropic(model="claude-haiku-5-5", max_tokens=16000),
-                       research="anthropic:claude-haiku-5-5")
-   cfg.memory = MemoryConfig(model="anthropic:claude-haiku-5-5")
-   ```
+      cfg.models = Models(agent=ChatAnthropic(model="claude-haiku-5-5", max_tokens=16000),
+                          research="anthropic:claude-haiku-5-5")
+      cfg.memory = MemoryConfig(model="anthropic:claude-haiku-5-5")
+      ```
+     </TabItem>
+   </Tabs>
 
 
 3. **What your form is about.** A domain pack per form: persona, flow hints, glossary, PII fields, opening messages. See [Domain packs](../../ui-agent/domain-packs/).
 
-   ```yaml title="formguide.yaml"
-   domain_packs: {dir: domain_packs}        # domain_packs/<form_id>.json
-   ```
-   ```python title="app.py"
-   from formguide import DomainPackRegistry
+   <Tabs syncKey="side">
+     <TabItem label="YAML">
+      ```yaml title="formguide.yaml"
+      domain_packs: {dir: domain_packs}        # domain_packs/<form_id>.json
+      ```
+     </TabItem>
+     <TabItem label="Python">
+      ```python title="app.py"
+      from formguide import DomainPackRegistry
 
-   cfg.domain_packs = DomainPackRegistry(directory="domain_packs")
-   ```
+      cfg.domain_packs = DomainPackRegistry(directory="domain_packs")
+      ```
+     </TabItem>
+   </Tabs>
 
 
 4. **The business's documents.** Managers upload policies; each form sees its scope. BM25 by default, or any LangChain vector store. See [Business documents](../business-documents/).
 
-   ```yaml title="formguide.yaml"
-   knowledge:
-     dir: data/kb
-     index: bm25                            # or {factory: "my_app.vectors:make_store"}
-     scopes: {loan_application: [loan_application, bank_common]}
-   ```
-   ```python title="app.py"
-   from formguide import KnowledgeBase, VectorStoreIndex
+   <Tabs syncKey="side">
+     <TabItem label="YAML">
+      ```yaml title="formguide.yaml"
+      knowledge:
+        dir: data/kb
+        index: bm25                            # or {factory: "my_app.vectors:make_store"}
+        scopes: {loan_application: [loan_application, bank_common]}
+      ```
+     </TabItem>
+     <TabItem label="Python">
+      ```python title="app.py"
+      from formguide import KnowledgeBase, VectorStoreIndex
 
-   cfg.knowledge = KnowledgeBase("data/kb", index=VectorStoreIndex(my_vector_store),   # or leave index out: BM25
-                                 scopes={"loan_application": ["loan_application", "bank_common"]})
-   ```
+      cfg.knowledge = KnowledgeBase("data/kb", index=VectorStoreIndex(my_vector_store),   # or leave index out: BM25
+                                    scopes={"loan_application": ["loan_application", "bank_common"]})
+      ```
+     </TabItem>
+   </Tabs>
 
 
 5. **Know-how and your own tools.** Skills load instructions on demand; tools call your APIs. See [Skills and tools](../../ui-agent/skills/).
 
-   ```yaml title="formguide.yaml"
-   skills: {dir: skills}                    # skills/<name>/SKILL.md
-   tools: ["my_app.tools:check_credit_score"]
-   confirm_tools: [check_credit_score]      # ask the user before it runs
-   ```
-   ```python title="app.py"
-   from formguide import SkillRegistry
-   from my_app.tools import check_credit_score   # a LangChain @tool
+   <Tabs syncKey="side">
+     <TabItem label="YAML">
+      ```yaml title="formguide.yaml"
+      skills: {dir: skills}                    # skills/<name>/SKILL.md
+      tools: ["my_app.tools:check_credit_score"]
+      confirm_tools: [check_credit_score]      # ask the user before it runs
+      ```
+     </TabItem>
+     <TabItem label="Python">
+      ```python title="app.py"
+      from formguide import SkillRegistry
+      from my_app.tools import check_credit_score   # a LangChain @tool
 
-   cfg.skills = SkillRegistry.from_dir("skills")
-   cfg.tools = [check_credit_score]
-   cfg.confirm_tools = ["check_credit_score"]
-   ```
+      cfg.skills = SkillRegistry.from_dir("skills")
+      cfg.tools = [check_credit_score]
+      cfg.confirm_tools = ["check_credit_score"]
+      ```
+     </TabItem>
+   </Tabs>
 
 
 6. **History that survives restarts.** The model's history and what the user saw. See [Persistence and history](../persistence/).
 
-   ```yaml title="formguide.yaml"
-   checkpointer: {sqlite: data/checkpoints.sqlite}
-   transcripts: {dir: data/transcripts}
-   ```
-   ```python title="app.py"
-   from formguide import FileTranscriptStore, sqlite_checkpointer
+   <Tabs syncKey="side">
+     <TabItem label="YAML">
+      ```yaml title="formguide.yaml"
+      checkpointer: {sqlite: data/checkpoints.sqlite}
+      transcripts: {dir: data/transcripts}
+      ```
+     </TabItem>
+     <TabItem label="Python">
+      ```python title="app.py"
+      from formguide import FileTranscriptStore, sqlite_checkpointer
 
-   cfg.checkpointer = sqlite_checkpointer("data/checkpoints.sqlite")   # or any LangGraph saver: Postgres, Redis
-   cfg.transcripts = FileTranscriptStore("data/transcripts")
-   ```
+      cfg.checkpointer = sqlite_checkpointer("data/checkpoints.sqlite")   # or any LangGraph saver: Postgres, Redis
+      cfg.transcripts = FileTranscriptStore("data/transcripts")
+      ```
+     </TabItem>
+   </Tabs>
 
 
 7. **Polish.** Quick replies, long-chat compaction, tracing, the card channel.
 
-   ```yaml title="formguide.yaml"
-   suggestions: {enabled: true, max: 3}
-   memory: {max_history_tokens: 60000, keep_turns: 4}
-   tracing: {callbacks: ["my_app.tracing:langfuse_handler"]}
-   interrupt_mode: legacy                   # legacy (CopilotKit) | structured (AG-UI 1.0) | both
-   ```
-   ```python title="app.py"
-   from formguide.config import MemoryConfig, SuggestionsConfig, TracingConfig
+   <Tabs syncKey="side">
+     <TabItem label="YAML">
+      ```yaml title="formguide.yaml"
+      suggestions: {enabled: true, max: 3}
+      memory: {max_history_tokens: 60000, keep_turns: 4}
+      tracing: {callbacks: ["my_app.tracing:langfuse_handler"]}
+      interrupt_mode: legacy                   # legacy (CopilotKit) | structured (AG-UI 1.0) | both
+      ```
+     </TabItem>
+     <TabItem label="Python">
+      ```python title="app.py"
+      from formguide.config import MemoryConfig, SuggestionsConfig, TracingConfig
 
-   cfg.suggestions = SuggestionsConfig(enabled=True, max=3)
-   cfg.memory = MemoryConfig(max_history_tokens=60_000, keep_turns=4)
-   cfg.tracing = TracingConfig(callbacks=[langfuse_handler])   # handlers, or factories that return one
-   cfg.interrupt_mode = "legacy"
-   ```
+      cfg.suggestions = SuggestionsConfig(enabled=True, max=3)
+      cfg.memory = MemoryConfig(max_history_tokens=60_000, keep_turns=4)
+      cfg.tracing = TracingConfig(callbacks=[langfuse_handler])   # handlers, or factories that return one
+      cfg.interrupt_mode = "legacy"
+      ```
+     </TabItem>
+   </Tabs>
 
 
 </Steps>
@@ -139,6 +181,11 @@ Each step twice: first as YAML, then the same in Python. Pick one; you never nee
 ## Every key in one file
 
 All of Dushes' configuration on one screen: every key, its default, and what it does. Copy it and delete what you do not need; only a model is required.
+
+<Disclosure summary="Every key, with its default and what it does" panel>
+
+<Tabs syncKey="side">
+<TabItem label="YAML">
 
 ```yaml title="formguide.yaml"
 # Paths are relative to this file. ${VAR} is replaced from the environment.
@@ -237,7 +284,10 @@ tracing:                             # LangSmith needs only LANGSMITH_TRACING=tr
   otel: {exporter: otlp, endpoint: "http://collector:4317"}   # OpenTelemetry (formguide[otel]); default: off
 ```
 
-The same in Python. Every field of `GuideConfig`, with the defaults where they are not obvious:
+</TabItem>
+<TabItem label="Python">
+
+Every field of `GuideConfig`, with the defaults where they are not obvious:
 
 ```python title="app.py"
 from formguide import (FormGuide, GuideConfig, Models, ComponentMap, DomainPackRegistry, KnowledgeBase, BM25Index,
@@ -279,6 +329,11 @@ guide = FormGuide(GuideConfig(
     tracing=TracingConfig(callbacks=[], tags=["staging"], otel={"exporter": "otlp", "endpoint": "http://collector:4317"}),
 ))
 ```
+
+</TabItem>
+</Tabs>
+
+</Disclosure>
 
 Each key in a table, with links to the guides: [Configuration reference](../../../reference/configuration/). A working file: [`demo/formguide.yaml`](https://github.com/denvasylenko/dushes/blob/main/backend/demo/formguide.yaml).
 
