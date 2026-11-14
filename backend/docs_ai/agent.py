@@ -86,9 +86,7 @@ say so in one sentence, call search_docs once with other words, and if still not
 - Answer in the language of the question. Call tools without announcing them.
 - Earlier answers in this conversation are shown here as their sentence only: their cards were on the reader's screen \
 too, even when no note says so. Never apologise for the format of an earlier answer or say you are correcting it, and \
-do not show again a card the reader already has unless they ask for it: answer the new question. When they do \
-ask to see one again, call the same tool and write one short line ("Here it is, above."): a card still on their \
-screen is scrolled to and highlighted, not drawn twice.
+do not show again a card the reader already has unless they ask for it: answer the new question.
 
 Gallery cards for show_card:
 {specimens}
@@ -300,11 +298,21 @@ def card_label(card: dict) -> str:
 
 def card_key(card: dict) -> str:
     """What a card shows, as one string: two cards with the same key are the same card to the reader."""
-    return json.dumps({k: v for k, v in card.items() if k != "id"}, sort_keys=True, ensure_ascii=False, default=str)
+    kind = card.get("kind")
+    if kind == "code":   # the blocks are quoted from the docs; the caption is the model's wording and varies
+        what: Any = [b.get("id") for b in card.get("blocks") or [] if isinstance(b, dict)]
+    elif kind == "pages":
+        what = [p.get("url") for p in card.get("pages") or [] if isinstance(p, dict)]
+    elif kind == "live":
+        what = card.get("specimen")
+    else:
+        what = {k: v for k, v in card.items() if k not in ("id", "kind", "title", "caption")}
+    return json.dumps([kind, what], sort_keys=True, ensure_ascii=False, default=str)
 
 
 async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: list[tuple[str, str]],
-                 thread_id: str, run_id: str, shown: list[str] | None = None) -> AsyncIterator[dict]:
+                 thread_id: str, run_id: str, shown: list[str] | None = None,
+                 on_screen: list[str] | None = None) -> AsyncIterator[dict]:
     """One answer as AG-UI events (dicts): text first, then the cards, then the follow-ups."""
     yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
     prev = " ".join(t for r, t in history if r == "user")[-400:]
@@ -329,6 +337,14 @@ async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: l
     if shown:   # the client sends back only the text of earlier answers: say which cards went with them
         system += ("\n\nCards the reader already has from your earlier answers in this conversation:\n"
                    + "\n".join(f"- {s}" for s in shown[-12:]))
+        if on_screen:   # this page scrolls to a card it still has and marks it, instead of drawing it twice
+            system += ("\nStill on the reader's screen: " + "; ".join(on_screen) + ". When they ask to see one of "
+                       'THESE again, call the same tool and write one short line ("Here it is, above."): the page '
+                       "shows them the card they already have. Any other card you show again is drawn again: never "
+                       'say "above" for it.')
+        else:
+            system += ('\nWhen the reader asks to see one of these again, show it again and say so in one short '
+                       'line; never say it is "above".')
     msgs: list[Any] = [SystemMessage(system)]
     for role, text in history:
         msgs.append(HumanMessage(text) if role == "user" else AIMessage(text))

@@ -199,7 +199,9 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
             now = answers[tid]
             seen = shown.get(tid, ())
             async for ev in answer(state["model"], corpus, question, history[-7:-1], tid, inp.run_id,
-                                   shown=[c["label"] for c in seen]):
+                                   shown=[c["label"] for c in seen],
+                                   on_screen=[c["label"] for c in seen
+                                              if can_focus and now - c["answer"] <= VISIBLE_ANSWERS]):
                 if ev.get("type") == "CUSTOM" and ev.get("name") == "docs_card":
                     card = dict(ev.get("value") or {})
                     key = card_key(card)

@@ -301,3 +301,24 @@ def test_a_page_without_card_focus_gets_the_card_again(tmp_path):
         _ask(c, "azure openai agent")
         again = [e["name"] for e in _events(_ask(c, "show me the config for that").text) if e["type"] == "CUSTOM"]
     assert "docs_card" in again and "card_focus" not in again
+
+
+def test_a_reworded_caption_is_still_the_same_card_and_above_is_said_only_when_true(tmp_path):
+    from docs_ai.agent import card_key
+    from .conftest import say
+
+    a = {"kind": "code", "caption": "Azure for the agent", "blocks": [{"id": "b1", "code": "x"}], "id": "card_1"}
+    b = {"kind": "code", "caption": "Azure OpenAI with a cheaper research model", "blocks": [{"id": "b1", "code": "x"}]}
+    assert card_key(a) == card_key(b) and card_key(a) != card_key({**b, "blocks": [{"id": "b2"}]})
+
+    def show():
+        return say("Set the roles under `models:`.", ("c1", "show_code", {"blocks": ["b1"]}))
+    client, model = _client(tmp_path, script=[show(), say("ok"), show(), say("ok"), show(), say("ok")])
+    with client as c:
+        _ask(c, "azure openai agent", caps=["card.focus"])
+        _ask(c, "show me the config for that", caps=["card.focus"])
+        with_focus = model.calls[-1][0].content
+        _ask(c, "show me the config for that")
+        without = model.calls[-1][0].content
+    assert "Still on the reader's screen" in with_focus and '"Here it is, above."' in with_focus
+    assert "Still on the reader's screen" not in without and 'never say it is "above"' in without
