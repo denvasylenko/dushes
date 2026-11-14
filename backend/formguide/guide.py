@@ -295,6 +295,8 @@ class FormGuide:
             elif name == "sources":   # shown under the answer: held until the run ends
                 held_sources.append(ev)
                 continue
+            elif name == "card":       # a display card: kept, so a reload shows it in its place
+                tx.append(thread_id, new_entry("display", card=ev.get("value") or {}))
             elif name == "receipt":    # turns the confirmation card it follows into a receipt
                 conf = next((e for e in reversed(tx.list(thread_id)) if e["kind"] == "confirm"), None)
                 ev = {**ev, "value": {**ev["value"], **({"card_id": conf["id"]} if conf else {})}}
@@ -455,6 +457,8 @@ class FormGuide:
                 out.append({"id": e["id"], "role": "user", "content": e.get("text", "")})
             elif e["kind"] == "assistant" and not e.get("retracted"):
                 out.append({"id": e["id"], "role": "assistant", "content": e.get("text", "")})
+            elif e["kind"] == "display":   # AG-UI 1.0 activity message: the chat draws the card again
+                out.append({"id": e["id"], "role": "activity", "activityType": "card", "activity": e.get("card") or {}})
             elif e["kind"] == "tool" and e.get("call_id"):
                 out.append({"id": f"{e['id']}-call", "role": "assistant", "toolCalls": [{
                     "id": e["call_id"], "type": "function",

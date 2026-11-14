@@ -93,6 +93,12 @@ def test_a_display_card_is_an_event_and_the_turn_goes_on(tmp_path):
     assert card["blocks"][0]["items"][0]["value"] == "Arbat 12"
     assert interrupt_value(ev) is None
     assert "shown to the user" in tool_result(model, "c1")
+    # a reload shows it again in its place: an AG-UI activity message between the words
+    msgs = guide.thread_messages("k2")
+    kinds = [(m["role"], m.get("activityType")) for m in msgs if m["role"] in ("activity", "user") or m.get("content")]
+    assert ("activity", "card") in kinds
+    restored = next(m for m in msgs if m["role"] == "activity")
+    assert restored["activity"]["blocks"][0]["items"][0]["value"] == "Arbat 12"
 
 
 def test_only_clients_that_draw_blocks_get_the_card_tools(tmp_path):

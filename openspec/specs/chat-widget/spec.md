@@ -110,6 +110,13 @@ A user who scrolled up SHALL stay where they read while new text arrives, and a 
 - **WHEN** the user scrolls up during an answer
 - **THEN** the view stays, the button shows the dots, and a tap on it scrolls to the end
 
+### Requirement: The image view's buttons stay with the picture
+In the large view of an image, the close button (and the pencil under it) SHALL sit beside the picture's top right corner, or on it where the screen has no room beside it.
+
+#### Scenario: A wide screenshot on a computer
+- **WHEN** the user opens a wide screenshot on a 1000 px wide window
+- **THEN** the close button sits just right of the picture's top right corner, not in the corner of the screen
+
 ### Requirement: Paging the images of a message
 The large view of an image sent with a message SHALL page through that message's images only, with a previous and next arrow and "1 of 2" under the picture, the arrow keys and a swipe; it SHALL not wrap around, and an image still in the composer SHALL have no pager.
 

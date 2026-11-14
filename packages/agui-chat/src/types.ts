@@ -1,7 +1,7 @@
 import type { Theme } from './themes'
 /** AG-UI wire types the chat uses (a subset of @ag-ui/core, kept local so the package has no dependencies). */
 
-export type Role = 'user' | 'assistant' | 'tool' | 'system'
+export type Role = 'user' | 'assistant' | 'tool' | 'system' | 'activity'
 
 export interface ToolCall { id: string; type: 'function'; function: { name: string; arguments: string } }
 
@@ -11,6 +11,10 @@ export interface Message {
   content?: string
   toolCalls?: ToolCall[]
   toolCallId?: string
+  /** role "activity" (AG-UI 1.0): what it is, e.g. "card" (a display card from blocks, content: its payload) */
+  activityType?: string
+  /** an activity's payload (role "activity") */
+  activity?: Record<string, unknown>
 }
 
 export interface ToolSpec { name: string; description: string; parameters?: Record<string, unknown> }

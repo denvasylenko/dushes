@@ -429,6 +429,9 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .zoom-n { min-width: 64px; text-align: center; font-size: 15px; font-variant-numeric: tabular-nums; }
 .zoom-edit { top: 52px; }   /* the pencil under the close button, on the picture */
 @media (hover: none) { .zoom-edit { top: 60px; } }
+.zoom-fig.out .zoom-x { top: 0; right: auto; left: calc(100% + 8px); background: color-mix(in srgb, white 18%, transparent); }
+.zoom-fig.out .zoom-edit { top: 44px; }
+@media (min-width: 700px) { .zoom img { max-width: calc(100vw - 136px); } }   /* room beside it for its buttons */
 @keyframes zoom-in { from { opacity: 0; } to { opacity: 1; } }
 .att.doc { width: auto; min-width: 120px; max-width: 200px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 28px 8px 10px; }
 .att-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

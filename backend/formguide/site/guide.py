@@ -181,9 +181,12 @@ class Said:
 
     def __init__(self) -> None:
         self.parts: dict[str, str] = {}
+        self.cards: list[dict[str, Any]] = []   # display cards of the run: kept after its words, so a reload shows them
 
     def see(self, ev: dict[str, Any]) -> None:
-        if ev["type"] == "TEXT_MESSAGE_CONTENT":
+        if ev["type"] == "CUSTOM" and ev.get("name") == "card":
+            self.cards.append(ev.get("value") or {})
+        elif ev["type"] == "TEXT_MESSAGE_CONTENT":
             self.parts[ev["messageId"]] = self.parts.get(ev["messageId"], "") + ev["delta"]
         elif ev["type"] == "CUSTOM" and ev.get("name") == "text_retract":
             self.parts.pop(str((ev.get("value") or {}).get("messageId")), None)
@@ -328,8 +331,10 @@ class Dushes:
         """{messages, pending_card}: every turn the user saw (AG-UI messages) and the open card of the form on
         the current page, if any."""
         check_thread_id(thread_id)
-        msgs = [{"id": e["id"], "role": e["kind"], "content": e.get("text", "")}
-                for e in self.forms.transcripts.list(thread_id) if e["kind"] in ("user", "assistant") and e.get("text")]
+        msgs = [{"id": e["id"], "role": "activity", "activityType": "card", "activity": e.get("card") or {}} if e["kind"] == "display" else
+                {"id": e["id"], "role": e["kind"], "content": e.get("text", "")}
+                for e in self.forms.transcripts.list(thread_id)
+                if (e["kind"] in ("user", "assistant") and e.get("text")) or (e["kind"] == "display" and e.get("card"))]
         pending = None
         if form_id:
             pending = self.forms.thread(f"{thread_id}-{form_id}"[:100]).get("pending_card")
@@ -381,6 +386,8 @@ class Dushes:
                     tx.append(thread_id, new_entry("card_result", text=fact, form_id=fid))
             if said.text().strip():
                 tx.append(thread_id, new_entry("assistant", text=said.text(), form_id=fid))
+            for card in said.cards:
+                tx.append(thread_id, new_entry("display", card=card, form_id=fid))
             if back is None or not typed:
                 return
             async for ev in self._site_turn(thread_id, typed, state, run_id, host, form_kwargs, recorded=True):
@@ -456,6 +463,8 @@ class Dushes:
             yield ev
         if out.text().strip():
             tx.append(thread_id, new_entry("assistant", text=out.text(), form_id=fid))
+        for card in out.cards:
+            tx.append(thread_id, new_entry("display", card=card, form_id=fid))
 
 
 def create_dushes_router(site: Dushes, host: Any = None):

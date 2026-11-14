@@ -95,6 +95,6 @@ Unknown option names are ignored with a console warning.
 | `agui:run-start`, `agui:run-end`, `agui:error` | run lifecycle |
 | `agui:thread` | the thread id changed (`event.detail`) |
 
-A plugin is `{ name, renderers?, tools?, toolLabels?, quietSteps?, i18n?, beforeRun?(input, chat), onEvent?(event, chat), onStop?(chat), restore?(threadId, chat), attach? }` (`quietSteps`: tools whose steps alone show no step list; `onStop`: the user pressed Stop); `onEvent` returning `true` stops the chat's own handling of that event.
+A plugin is `{ name, renderers?, tools?, toolLabels?, quietSteps?, i18n?, beforeRun?(input, chat), onEvent?(event, chat), onStop?(chat), restore?(threadId, chat), attach? }` (`restore` resolves `{messages, interrupt?, starters?, running?, follow?}`; a message `{id, role: 'activity', activityType: 'card', activity: <card>}` draws a display card again in its place, and is not sent back as history) (`quietSteps`: tools whose steps alone show no step list; `onStop`: the user pressed Stop); `onEvent` returning `true` stops the chat's own handling of that event.
 
 

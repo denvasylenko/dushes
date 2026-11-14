@@ -66,6 +66,24 @@ describe('no animation frames (a hidden pane, an occluded window)', () => {
   })
 })
 
+describe('cards after a reload', () => {
+  it('an activity message draws its card again in its place, and is not sent back as history', async () => {
+    const el = document.createElement('agui-chat') as AguiChatElement
+    el.options = { mode: 'inline', typing: 'plain', lang: 'en', persistThread: false }
+    const seen: AguiEvent[] = []
+    const route = { type: 'blocks', name: 'route', blocks: [{ type: 'text', text: 'Arbat 12' }] }
+    const host: Plugin = { name: 'h', restore: async () => ({ messages: [
+      { id: 'u1', role: 'user', content: 'How do I get there?' }, { id: 'a1', role: 'assistant', content: 'Here is the route.' },
+      { id: 'c1', role: 'activity', activityType: 'card', activity: route }] }),
+    onEvent: (ev) => { seen.push(ev); return ev.type === 'CUSTOM' && ev.name === 'card' } }
+    el.use(host)
+    document.body.appendChild(el)
+    await tick(50)
+    expect(seen).toEqual([expect.objectContaining({ type: 'CUSTOM', name: 'card', value: route })])
+    expect((el as unknown as { _messages: { role: string }[] })._messages.map((m) => m.role)).toEqual(['user', 'assistant'])
+  })
+})
+
 describe('follow after a reload', () => {
   for (const typing of ['words', 'plain']) {
     it(`plays Herefront's dump: cards, then the text in one burst (${typing})`, async () => {

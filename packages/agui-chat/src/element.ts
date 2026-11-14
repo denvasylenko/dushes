@@ -919,6 +919,10 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const img = h('img', { src: row[at]?.src, alt: row[at]?.name }) as HTMLImageElement
     // the buttons sit on the picture's corner and the pager under it, not in the corners of the screen
     const fig = h('div', { class: 'zoom-fig' }, img, x)
+    // beside the picture's top right corner when there is room (nothing covers it); on it otherwise (a phone)
+    const place = (): void => { fig.classList.toggle('out', fig.getBoundingClientRect().right + 52 <= innerWidth) }
+    img.addEventListener('load', place)
+    addEventListener('resize', place)
     const view = h('dialog', { class: 'zoom', part: 'zoom', 'aria-label': row[at]?.name }, fig) as HTMLDialogElement
     let swiped = false
     if (row.length > 1) {
@@ -950,7 +954,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const close = (): void => { view.close() }
     x.addEventListener('click', close)
     view.addEventListener('click', (e) => { if (swiped) { swiped = false; return } if (e.target === view) close() })   // a tap beside the picture
-    view.addEventListener('close', () => view.remove())
+    view.addEventListener('close', () => { view.remove(); removeEventListener('resize', place) })
     // an image still in the composer can be marked up (the editor loads now): Save puts the marked-up copy in its place
     if (edit) {
       const pencil = h('button', { class: 'zoom-x zoom-edit', type: 'button', 'aria-label': this.t('markup') })
@@ -966,6 +970,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     }
     this.$.wrap.append(view)
     if (typeof view.showModal === 'function') view.showModal(); else view.setAttribute('open', '')
+    requestAnimationFrame(place)
     x.focus({ preventScroll: true })
   }
 
@@ -1068,7 +1073,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (!r) { this._renderEmpty(); return }
     this._starters = r.starters ?? []
     if (r.messages?.length) {
-      this._messages = r.messages
+      this._messages = r.messages.filter((m) => m.role !== 'activity')   // cards are shown, not sent back as history
       this.$.log.replaceChildren()
       this._stick = true
       for (const m of r.messages) {
@@ -1076,6 +1081,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
         else if (m.role === 'assistant' && m.content) {
           const body = h('div', { class: 'body' }); body.innerHTML = this._html(m.content); this._assistantDone(body, m.content)
           this._append(h('div', { class: 'msg ai', part: 'message assistant', 'data-message-id': m.id }, body))
+        } else if (m.role === 'activity') {   // a card shown during that turn (a route, a booking): drawn again in its place
+          const value = m.activity ?? (typeof m.content === 'object' ? m.content as Record<string, unknown> : null)
+          if (value) this._plugins.some((p) => p.onEvent?.({ type: 'CUSTOM', name: m.activityType ?? 'card', value } as AguiEvent, this) === true)
         }
       }
     }

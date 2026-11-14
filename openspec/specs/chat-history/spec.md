@@ -52,6 +52,13 @@ The system SHALL return a thread's transcript and its pending card or question, 
 - **WHEN** the user reloads the page while a question is pending
 - **THEN** the thread's `pending_card` is the question entry with `kind: "question"`, and answering it resumes the turn
 
+### Requirement: Display cards survive a reload
+A display card (`CUSTOM card`) SHALL be kept in the transcript in its place, and the restored conversation SHALL return it as an AG-UI activity message `{role: "activity", activityType: "card", activity: <the card>}`; the chat SHALL draw it again there and SHALL not send it back as history.
+
+#### Scenario: A route after a reload
+- **WHEN** the assistant showed a route card and the user reloads the page
+- **THEN** the card is shown again under the words it came with
+
 ### Requirement: Start over
 The system SHALL allow deleting a thread's transcript and model history.
 

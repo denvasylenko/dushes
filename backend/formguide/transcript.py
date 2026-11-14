@@ -14,6 +14,7 @@ model's history, never this. Entries, in order:
                                       "status": pending|answered|dismissed, "files"?: [{id, filename}]}
     {"id", "ts", "kind": "confirm",   "title", "message", "confirm_label", "danger", "tool"?, "args"?,
                                       "status": pending|accepted|rejected|dismissed}
+    {"id", "ts", "kind": "display",   "card": {type: blocks, name, blocks, ...}}   (a display card, CUSTOM card)
     {"id", "ts", "kind": "error",     "text"}
     {"id", "ts", "kind": "notice",    "text"}
 
