@@ -297,6 +297,7 @@ def test_hand_off_in_the_same_run(guide, model, monkeypatch):
     run(s, "h4", state={"page": {"path": "/book"}, "form": {"form_id": "barber_booking"}}, handoff=True)
     assert seen["message"] is None                                        # the page's run finds no pending note
     assert site_messages(s, "h4")[-1] == ("assistant", "Here is the service:")
+    assert s.thread("h4")["messages"][-1]["agent"] == "form"             # who answered, for the page and the evals
 
 
 def site_messages(s, thread):
@@ -414,3 +415,13 @@ def test_a_form_card_outcome_reaches_the_site_history(site, guide, model, monkey
     assert card_outcome({"kind": "card", "status": "rejected", "changes": [{"label": "Item 5", "display": "X"}]}) \
         == "[Form card] The user rejected: Item 5 = X"
     assert card_outcome({"kind": "card", "status": "pending"}) is None
+
+
+def test_an_answer_with_only_suggestions_is_not_asked_again(guide, model):
+    s = Dushes(guide, SiteMap.load(SITE), suggestions=True)
+    model.script = [say("Ledgerline is the bank's credit bureau.", ("g1", "suggest_next", {"options": ["What does it check?"]})),
+                    say("Ledgerline is the bank's credit bureau.")]   # a second round would repeat the answer
+    ev = run(s, "dup1", message="What is Ledgerline?", state={"page": {"path": "/"}})
+    assert "".join(e.get("delta", "") for e in ev).count("credit bureau") == 1
+    assert len(model.calls) == 1
+    assert [e["value"] for e in ev if e.get("name") == "suggestions"] == [{"items": ["What does it check?"]}]
