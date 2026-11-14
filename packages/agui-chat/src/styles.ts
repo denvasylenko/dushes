@@ -21,9 +21,9 @@ export const CSS = `
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; }
-button:focus, input:focus, [tabindex]:focus { outline: none; }
+button:focus, input:focus, a:focus, [tabindex]:focus { outline: none; }
 /* a soft ring for the keyboard only */
-button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: none;
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 35%, transparent); }
 .card:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 22%, transparent); }
 
@@ -201,7 +201,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 .chip { border: 1px solid var(--agui-chip-border, var(--agui-line-2)); background: var(--agui-chip-bg, var(--agui-bg)); color: var(--agui-chip-ink, var(--agui-ink-2));
   border-radius: var(--agui-chip-radius, var(--agui-radius-pill)); padding: 8px 13px;
   font: 13px/1.2 var(--agui-font); cursor: pointer; text-align: left; transition: border-color .2s, color .2s, background .2s; }
-.chip:hover { border-color: var(--agui-ink-3); color: var(--agui-ink); }
+@media (hover: hover) { .chip:not(:disabled):hover { border-color: var(--agui-ink-3); color: var(--agui-ink); } }
 .chip.on { background: var(--agui-chip-on-bg, var(--agui-accent)); border-color: var(--agui-chip-on-bg, var(--agui-accent)); color: var(--agui-chip-on-ink, var(--agui-on-accent)); }
 .chip kbd { font: 11px/1 var(--agui-font); color: var(--agui-ink-3); margin-right: 6px; display: none; }
 /* number-key hints only once the user works from the keyboard (the card or an option has keyboard focus) */

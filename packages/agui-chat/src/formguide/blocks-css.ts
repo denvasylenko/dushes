@@ -33,7 +33,10 @@ export const BLOCKS_CSS = `
 .bk-sw { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--agui-line-2); border-radius: var(--agui-radius-sm); background: var(--agui-option-bg, var(--agui-bg));
   color: inherit; font: inherit; text-align: left; cursor: pointer; transition: transform .12s, border-color .15s; }
 .bk-sw:active { transform: scale(.97); }
-.bk-sw.on { border-color: var(--agui-link); box-shadow: 0 0 0 2px color-mix(in srgb, var(--agui-link) 35%, transparent); }
+.bk-sw.on { border-color: var(--agui-link); box-shadow: inset 0 0 0 1px var(--agui-link); }   /* chosen: a solid 2 px edge */
+.bk-sw:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 35%, transparent); }
+.bk-sw.on:focus-visible { box-shadow: inset 0 0 0 1px var(--agui-link), 0 0 0 3px color-mix(in srgb, var(--agui-link) 35%, transparent); }
+@media (hover: hover) { .bk-sw:not(.on):hover { border-color: var(--agui-ink-3); } }
 .bk-sw-c { display: flex; height: 28px; border-radius: 6px; overflow: hidden; }
 .bk-sw-c > i { flex: 1; }
 .bk-group { display: grid; gap: 8px; }
@@ -48,11 +51,12 @@ export const BLOCKS_CSS = `
 .bk-times .text-in { width: auto; flex: 1; min-width: 0; margin-top: 0; }
 .bk-add { justify-self: start; }
 .bk-preview { position: relative; display: block; overflow: hidden; aspect-ratio: 16 / 10; border-radius: var(--agui-radius-sm); border: 1px solid var(--agui-line); background: var(--agui-soft); }
+.bk-preview:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 35%, transparent); }
 .bk-preview.tall { aspect-ratio: 9 / 16; max-width: 220px; justify-self: center; width: 100%; }
 .bk-preview iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; pointer-events: none; background: white; }
 .bk-need { font-size: 13px; line-height: 16px; min-height: 16px; }   /* its place is kept: the button never moves */
 .bk-cal + .bk-link, .bk-link + .bk-cal, .bk-cal + .bk-cal { border-top: 1px solid var(--agui-line); }
-.bk-menu .bk-link { padding-left: 46px; border-top: 1px solid var(--agui-line); }
+.bk-menu .bk-link { padding-left: 42px; border-top: 1px solid var(--agui-line); }
 .bk-chart { display: grid; gap: 10px; min-width: 0; }
 .bk-chart-t .bk-small { margin-top: 2px; }
 .bk-canvas { position: relative; min-width: 0; }

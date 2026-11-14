@@ -300,7 +300,7 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       const set = (): void => { values[name] = rows.map((r) => ({ ...r, days: [...r.days].sort((a, x) => a - x) })); card.dispatchEvent(new Event('bk-change')) }
       const draw = (): void => {
         box.replaceChildren()
-        if (presets.length) box.append(h('div', { class: 'chips' }, presets.map((p) => h('button', { class: 'chip', type: 'button',
+        if (presets.length) box.append(h('div', { class: 'chips' }, presets.map((p) => h('button', { class: `chip${JSON.stringify(p) === JSON.stringify(values[name]) ? ' on' : ''}`, type: 'button',
           'aria-pressed': String(JSON.stringify(p) === JSON.stringify(values[name])), onclick: () => { rows = structuredClone(p); set(); draw() } }, hoursText(p, lang)))))
         rows.forEach((r, i) => {
           const time = (k: 'from' | 'to') => h('input', { class: 'text-in', type: 'time', value: r[k], 'aria-label': k,
