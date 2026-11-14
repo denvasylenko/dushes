@@ -166,3 +166,5 @@ def test_a_recipe_can_forbid_words_in_the_replies():
     two = recipes.verdict(sc, [], {}, ["confirm", "set_fields", "confirm"], [])
     assert [c["ok"] for c in two if c["check"] == "at most 1 confirm card"] == [False]
     assert [c["ok"] for c in recipes.verdict(sc, [], {}, ["confirm"], []) if c["check"] == "at most 1 confirm card"] == [True]
+    held = lambda c: [x["ok"] for x in recipes.verdict(sc, [], {}, [], [], c) if x["check"].startswith("every confirm card")]
+    assert held(["submit_deputy_change"]) == [True] and held([None, "submit_deputy_change"]) == [False] and held([]) == [False]

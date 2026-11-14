@@ -11,4 +11,5 @@ expect:
   cards: [confirm]
   executed: {submit_deputy_change: true}
   max_cards: {confirm: 1}        # one confirmation per send: a tool in confirm_tools asks by itself
+  held_confirm: submit_deputy_change   # the system's card only: the agent never asks "Send?" itself (the owner, 2026-11-15)
   never_says: ["look at the form", "in the form on", "on the right", "on the left", "the field on", "fill in the form", "scroll", "the form above", "the form below"]   # no form is visible

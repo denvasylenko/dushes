@@ -35,6 +35,7 @@ A scenario (evals/recipes/<name>.yaml):
       cards: [confirm]                      # card kinds shown: set_fields, ask, confirm, upload, review, blocks
       never_says: ["on the right"]          # none of these in any reply's text (e.g. no visible form to point at)
       max_cards: {confirm: 1}               # at most this many cards of a kind in the whole run (one confirmation per send)
+      held_confirm: submit_request          # every confirm card is the held tool's own (it carries `tool`), never the agent's confirm_action
     transcribe: {file: hello.wav, words: [haircut, tuesday]}   # instead of turns: POST /agent/transcribe
 
 A run is a hit when every `expect` condition holds. The report goes to scripts/runs/recipes-<time>.json, and
@@ -64,7 +65,7 @@ RECIPES = HERE / "demo" / "recipes"
 SCENARIOS = HERE / "evals" / "recipes"
 SITE_DATA = HERE.parent / "site" / "src" / "data" / "recipes.json"
 KEYS = {"name", "recipe", "form", "page", "runs", "card", "turns", "client_tools", "documents", "expect", "transcribe", "tags", "answer"}
-EXPECT_KEYS = {"tools", "order", "never_tools", "tool_args", "executed", "cards", "never_says", "max_cards"}
+EXPECT_KEYS = {"tools", "order", "never_tools", "tool_args", "executed", "cards", "never_says", "max_cards", "held_confirm"}
 
 
 class RecipeError(ValueError):
@@ -235,6 +236,7 @@ class FormChat:
         self.log: list[str] = []
         self.attachments: list[dict] = []
         self.cards: list[str] = []                 # the kinds of cards shown
+        self.confirms: list[str | None] = []       # per confirm card: the held tool it belongs to, None for confirm_action
         self.names: dict[str, str] = {}            # tool call id -> tool name, across runs (a held call ends later)
 
     def _state(self) -> dict:
@@ -329,7 +331,9 @@ class FormChat:
             self._resume({"accepted": ok, "config": self.config, "ui": self.ui}, depth)
         else:
             ok = kind == "confirm" and self.card == "accept"
-            self.log.append(f"   📋 {kind} card → {'confirmed' if ok else 'closed'}")
+            if kind == "confirm":   # a held tool's card names its tool; the agent's own confirm_action does not
+                self.confirms.append(it.get("tool") or None)
+            self.log.append(f"   📋 {kind} card{' of ' + str(it['tool']) if it.get('tool') else ''} → {'confirmed' if ok else 'closed'}")
             self._resume({"accepted": ok, "config": self.config, "ui": self.ui}, depth)
 
 
@@ -347,7 +351,7 @@ def _ran(results: list[str]) -> bool:
 
 
 def verdict(sc: RecipeScenario, calls: list[tuple[str, dict]], results: dict[str, list[str]],
-            cards: list[str] | None = None, log: list[str] | None = None) -> list[dict]:
+            cards: list[str] | None = None, log: list[str] | None = None, confirms: list[str | None] | None = None) -> list[dict]:
     names = [n for n, _a in calls]
     e, out = sc.expect, []
     said = " ".join(x[2:] for x in log or [] if x.startswith("\U0001f916 ")).lower()   # every reply's text
@@ -358,6 +362,10 @@ def verdict(sc: RecipeScenario, calls: list[tuple[str, dict]], results: dict[str
     for k, n in (e.get("max_cards") or {}).items():
         shown = (cards or []).count(k)
         out.append({"check": f"at most {n} {k} card{'s' if int(n) != 1 else ''}", "ok": shown <= int(n), "detail": f"{shown} shown"})
+    if e.get("held_confirm"):
+        got = confirms or []
+        out.append({"check": f"every confirm card is the held {e['held_confirm']}'s own", "ok": bool(got) and all(t == e["held_confirm"] for t in got),
+                    "detail": ", ".join(t or "the agent's confirm_action" for t in got) or "no confirm card"})
     for t in e.get("tools") or []:
         out.append({"check": f"calls {t}", "ok": t in names})
     if e.get("order") and e.get("tools"):
@@ -392,7 +400,7 @@ def play(sc: RecipeScenario, http, guide, i: int, offline: bool = False) -> dict
             if t.get("attach"):
                 chat.attach(t["attach"])
             chat.turn(t.get("say"), t.get("prefill"))
-        checks, log = verdict(sc, chat.calls, chat.results, chat.cards, chat.log), chat.log
+        checks, log = verdict(sc, chat.calls, chat.results, chat.cards, chat.log, chat.confirms), chat.log
     hit = all(c["ok"] for c in checks)
     RUNS.mkdir(exist_ok=True)
     path = RUNS / f"recipe-{sc.name}-r{i + 1}{'-offline' if offline else ''}.txt"   # offline never overwrites live
