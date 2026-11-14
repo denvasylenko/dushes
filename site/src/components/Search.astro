@@ -1,0 +1,312 @@
+---
+/**
+ * Search, like Spotlight: a ⌘K pill in the header opens a sheet over the page. Results come instantly from the
+ * site's Pagefind index, grouped Guides, Reference and Specs. With nothing typed the sheet shows recent and suggested
+ * pages. Whenever something is typed and the site has an assistant server, the last row is "Ask AI" with the typed
+ * question. With no match the sheet says so and still offers the suggested pages; when the index cannot load it says
+ * so and offers Try again.
+ * Keyboard: ↑ ↓ move (stopping at the ends), Return opens, ⌘ Return opens in a new tab, Esc clears and then closes;
+ * ⌘K, Ctrl+K or / open it. On a phone the trigger is an icon and the sheet fills the screen with an iOS search bar.
+ */
+import { Icon } from './ui'
+const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+const askAi = Boolean(import.meta.env.PUBLIC_ASK_AI_URL)   // no assistant server: no Ask AI row
+const SUGGESTED = [
+  { title: 'Quickstart', url: `${base}/get-started/quickstart/`, group: 'Guides' },
+  { title: 'The chat widget', url: `${base}/frontend/widget/`, group: 'Guides' },
+  { title: 'Card gallery', url: `${base}/frontend/card-gallery/`, group: 'Guides' },
+  { title: 'Configuration keys', url: `${base}/reference/configuration/`, group: 'Reference' },
+]
+---
+<div class="ui-spot-host">
+  <button type="button" class="ui-spot-pill" data-spot-open aria-haspopup="dialog" aria-label="Search the docs" aria-keyshortcuts="Control+K">
+    <Icon name="search" />
+    <span class="ui-spot-pill-label">Search</span>
+    <kbd class="ui-spot-kbd" data-spot-key>Ctrl K</kbd>
+  </button>
+
+  <dialog class="ui-spot" aria-label="Search the docs" data-spot data-base={base} data-ask={askAi ? 'on' : undefined} data-suggested={JSON.stringify(SUGGESTED)}>
+    <div class="ui-spot-sheet">
+      <div class="ui-spot-field">
+        <div class="ui-spot-bar">
+          <Icon name="search" class="ui-spot-glass" />
+          <input class="ui-spot-input" type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" enterkeyhint="go"
+            role="combobox" aria-expanded="false" aria-controls="ui-spot-list" aria-autocomplete="list" aria-label="Search the docs" />
+          <button type="button" class="ui-spot-clear" data-spot-clear aria-label="Clear" hidden><span class="ui-spot-clear-disc"><Icon name="close" /></span></button>
+        </div>
+        <button type="button" class="ui-spot-cancel" data-spot-close>Cancel</button>
+      </div>
+      <div class="ui-spot-list" id="ui-spot-list" role="listbox" aria-label="Results"></div>
+      <p class="ui-spot-foot" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span><kbd>esc</kbd> close</span></p>
+      <p class="ui-sr" aria-live="polite" data-spot-status></p>
+    </div>
+  </dialog>
+</div>
+
+<script>
+  import { ICONS, type IconName } from './ui/icons'
+
+  type Row = { title: string; url: string; group: string; loc?: string; crumb?: string; excerpt?: string; icon?: IconName; ask?: string; retry?: boolean }
+  type Pagefind = {
+    options(o: Record<string, unknown>): Promise<void>
+    debouncedSearch(q: string, o?: Record<string, unknown>, ms?: number): Promise<{ results: { data(): Promise<PfData> }[] } | null>
+  }
+  type PfData = { url: string; excerpt: string; meta: { title?: string }; sub_results?: { title: string; url: string; excerpt: string; locations?: number[] }[] }
+
+  const dlg = document.querySelector<HTMLDialogElement>('[data-spot]')
+  const pill = document.querySelector<HTMLButtonElement>('[data-spot-open]')
+  if (dlg && pill) {
+    const base = dlg.dataset.base ?? ''
+    const canAsk = dlg.dataset.ask === 'on'
+    const input = dlg.querySelector<HTMLInputElement>('.ui-spot-input')!
+    const list = dlg.querySelector<HTMLElement>('.ui-spot-list')!
+    const clear = dlg.querySelector<HTMLButtonElement>('[data-spot-clear]')!
+    const status = dlg.querySelector<HTMLElement>('[data-spot-status]')!
+    const suggested: Row[] = JSON.parse(dlg.dataset.suggested ?? '[]').map((s: Row) => ({ ...s, group: 'Suggested' }))
+    const ORDER = ['Recent', 'Get started', 'Frontend', 'Agents', 'Reference', 'Specifications', 'Guides', 'Ask AI', 'Retry', 'Suggested']
+    const RECENT = 'fg-spot-recent'
+    let rows: Row[] = []
+    let active = 0
+    let pf: Pagefind | null | undefined
+    let waitTimer = 0
+
+    // ⌘ on Apple devices (navigator.platform: the user agent is spoofed by some devtools)
+    if (/(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+      pill.querySelector('[data-spot-key]')!.textContent = '⌘K'
+      pill.setAttribute('aria-keyshortcuts', 'Meta+K')
+    }
+
+    const svg = (name: IconName) => `<svg class="ui-icon" viewBox="0 0 16 16" aria-hidden="true">${ICONS[name]}</svg>`
+    const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const plain = (html: string) => html.replace(/<[^>]*>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+    const path = (url: string) => (url.startsWith(base) ? url.slice(base.length) : url).replace(/[#?].*$/, '')
+    // results are grouped by the header tab their page lives in; specs get their own group
+    const TAB: Record<string, string> = { 'get-started': 'Get started', frontend: 'Frontend', agents: 'Agents', reference: 'Reference' }
+    const groupOf = (url: string) => {
+      const [top, next] = path(url).split('/').filter(Boolean)
+      return top === 'reference' && next === 'specifications' ? 'Specifications' : TAB[top] ?? 'Guides'
+    }
+    // folders named as the sidebar names them (a folder not listed: its name, capitalised)
+    const LABELS: Record<string, string> = {
+      'get-started': 'Get started', frontend: 'Frontend', agents: 'Agents', reference: 'Reference',
+      shared: 'Server and setup', 'how-it-works': 'How it works', 'ui-agent': 'UI agent', 'site-agent': 'Site agent',
+      'connect-your-form': 'Connect your form', specifications: 'Specifications',
+    }
+    // where a page lives inside its tab ("Server and setup"), shown muted above the title; "›" is kept for headings
+    const where = (url: string) => path(url).split('/').filter(Boolean).slice(1, -1).filter((s) => s !== 'specifications')
+      .map((s) => LABELS[s] ?? s.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase())).join(' \u00b7 ')
+
+    // an excerpt worth a line: starts near the first hit, is not mostly code, does not repeat the title
+    const excerptOf = (html: string, heads: string[]): string | undefined => {
+      const text = plain(html)
+      const code = (text.match(/[{}()[\];=<>/\\|$`]/g) ?? []).length
+      if (code / Math.max(text.length, 1) > 0.06 || /\b(import|export|const|=>)\b|^\s*[{<[]/.test(text)) return undefined
+      let out = html
+      const at = out.indexOf('<mark>')
+      if (at > 40) {   // trim the lead-in to the few words before the hit
+        const before = plain(out.slice(0, at)).split(/\s+/).slice(-4).join(' ')
+        out = '\u2026' + esc(before) + (before ? ' ' : '') + out.slice(at)
+      }
+      for (const head of heads) {   // the page or section title repeated at the start: drop it, marks and all
+        const p = plain(out).trimStart()
+        if (head && p.toLowerCase().startsWith(head.toLowerCase())) out = dropChars(out, plain(out).length - p.length + head.length)
+      }
+      out = out.replace(/^(?:<mark>[\s.:,;)\]}–—-]*<\/mark>|\s|[.:,;)\]}–—-])+/, '')   // what the cut left: an empty mark, punctuation, a closing bracket
+      return plain(out).trim() ? out : undefined
+    }
+    // remove the first n characters of text from html, keeping the tags after them balanced (<mark> only)
+    const dropChars = (html: string, n: number) => {
+      let i = 0, open = false
+      while (i < html.length && n > 0) {
+        if (html.startsWith('<mark>', i)) { open = true; i += 6; continue }
+        if (html.startsWith('</mark>', i)) { open = false; i += 7; continue }
+        const ent = html.slice(i).match(/^&[#a-z0-9]+;/i)
+        i += ent ? ent[0].length : 1
+        n--
+      }
+      if (html.startsWith('</mark>', i)) { open = false; i += 7 }
+      return (open ? '<mark>' : '') + html.slice(i)
+    }
+
+    const recent = (): Row[] => { try { return JSON.parse(localStorage.getItem(RECENT) ?? '[]').slice(0, 4) } catch { return [] } }
+    const remember = (r: Row) => {
+      if (r.ask || r.retry) return
+      try {
+        const keep = recent().filter((x) => x.url !== r.url)
+        localStorage.setItem(RECENT, JSON.stringify([{ title: r.title, url: r.url, group: 'Recent' }, ...keep].slice(0, 4)))
+      } catch { /* private mode: no recents */ }
+    }
+    const emptyRows = () => {
+      const rec = recent()
+      return [...rec, ...suggested.filter((s) => !rec.some((r) => r.url === s.url))]
+    }
+
+    const load = async (): Promise<Pagefind | null> => {
+      if (pf !== undefined) return pf
+      try {
+        const mod = (await import(/* @vite-ignore */ `${base}/pagefind/pagefind.js`)) as Pagefind
+        await mod.options({ baseUrl: `${base}/` })
+        pf = mod
+      } catch { pf = null }   // offline, a failed deploy, or the dev server (the index exists only in a build)
+      return pf
+    }
+
+    const rowHtml = (r: Row, n: number) => {
+      const body = r.ask
+        ? `<span class="ui-spot-title">Ask AI: \u201c${esc(r.ask)}\u201d</span><span class="ui-spot-sub">Answers from these pages, with code</span>`
+        : r.retry
+          ? `<span class="ui-spot-title">Try again</span>`
+          : `${r.loc ? `<span class="ui-spot-loc">${esc(r.loc)}</span>` : ''}<span class="ui-spot-title">${esc(r.title)}${r.crumb ? `<span class="ui-spot-crumb"> \u203a ${esc(r.crumb)}</span>` : ''}</span>${r.excerpt ? `<span class="ui-spot-sub">${r.excerpt}</span>` : ''}`
+      const icon = r.icon ?? (r.ask ? 'sparkle' : r.retry ? 'replay' : r.group === 'Recent' ? 'clock' : 'doc')
+      return `<a class="ui-spot-row" role="option" id="ui-spot-o${n}" data-i="${n}" href="${esc(r.ask || r.retry ? '#' : r.url)}" tabindex="-1" aria-selected="false">`
+        + `<span class="ui-spot-ico">${svg(icon)}</span><span class="ui-spot-text">${body}</span><span class="ui-spot-go">${svg('chevron')}</span></a>`
+    }
+
+    const draw = (q: string, note = '', say?: string) => {
+      clearTimeout(waitTimer)
+      list.classList.remove('is-busy')
+      dlg.querySelector('.ui-spot-wait')?.remove()
+      const by = new Map<string, Row[]>()
+      rows.forEach((r) => by.set(r.group, [...(by.get(r.group) ?? []), r]))
+      const order = ORDER.filter((g) => by.has(g))
+      rows = order.flatMap((g) => by.get(g)!)   // rows in drawn order, so data-i matches
+      let i = 0
+      list.innerHTML = (note ? `<p class="ui-spot-note">${note}</p>` : '') + order.map((g) => {
+        const id = `ui-spot-g-${g.replace(/\W/g, '')}`
+        const label = g === 'Retry' ? '' : `<p class="ui-spot-gh" id="${id}" role="presentation">${g}</p>`
+        return `<div class="ui-spot-group" role="group"${label ? ` aria-labelledby="${id}"` : ' aria-label="Try again"'}>${label}${by.get(g)!.map((r) => rowHtml(r, i++)).join('')}</div>`
+      }).join('')
+      list.scrollTop = 0
+      setActive(0)
+      const found = rows.filter((r) => !['Recent', 'Suggested', 'Ask AI', 'Retry'].includes(r.group)).length
+      status.textContent = say ?? (q ? (found ? `${found} result${found === 1 ? '' : 's'}` : 'No pages match') : '')
+    }
+
+    const setActive = (n: number) => {
+      const opts = [...list.querySelectorAll<HTMLElement>('[role="option"]')]
+      if (!opts.length) { input.removeAttribute('aria-activedescendant'); return }
+      active = Math.max(0, Math.min(opts.length - 1, n))   // stops at the ends, like Spotlight
+      opts.forEach((o, k) => o.setAttribute('aria-selected', String(k === active)))
+      input.setAttribute('aria-activedescendant', opts[active].id)
+      opts[active].scrollIntoView({ block: 'nearest' })
+    }
+
+    // while the index answers: the last rows stay, dimmed; "Searching…" only if it takes a while
+    const busy = () => {
+      list.classList.add('is-busy')
+      clearTimeout(waitTimer)
+      waitTimer = window.setTimeout(() => {
+        if (dlg.querySelector('.ui-spot-wait')) return
+        list.insertAdjacentHTML('beforebegin', '<p class="ui-spot-wait" role="status">Searching\u2026</p>')
+      }, 150)
+    }
+
+    let seq = 0
+    const update = async () => {
+      const q = input.value.trim()
+      clear.hidden = !input.value
+      const my = ++seq
+      if (!q) { rows = emptyRows(); return draw('') }
+      const ask: Row[] = canAsk ? [{ title: '', url: '#', group: 'Ask AI', ask: q }] : []
+      busy()
+      const failed = () => {
+        if (my !== seq) return
+        pf = undefined   // Try again loads it afresh
+        rows = [...ask, { title: '', url: '#', group: 'Retry', retry: true }]
+        draw(q, 'Search isn\u2019t available right now.', 'Search isn\u2019t available right now')
+      }
+      const engine = await load()
+      if (my !== seq) return
+      if (!engine) return failed()
+      let data: PfData[]
+      try {
+        const res = await engine.debouncedSearch(q, {}, 60)
+        if (!res || my !== seq) return
+        data = await Promise.all(res.results.slice(0, 12).map((r) => r.data()))
+      } catch { return failed() }
+      if (my !== seq) return
+
+      // a real hit: some marked word matches a typed word (Pagefind also marks loose matches, like a lone "x")
+      const norm = (t: string) => t.toLowerCase().replace(/<[^>]*>|&[a-z]+;/g, '').replace(/[^\p{L}\p{N}_]+/gu, '')
+      const terms = q.split(/\s+/).map(norm).filter(Boolean)
+      const hit = (html: string) => [...html.matchAll(/<mark>(.*?)<\/mark>/g)].some(([, m]) => {
+        const w = norm(m)
+        return terms.some((t) => w.length >= Math.min(3, t.length) && (w.startsWith(t.slice(0, 4)) || t.startsWith(w)))
+      })
+      const seen = new Map<string, number>()
+      const found: Row[] = data.filter((d) => hit(d.excerpt) || d.sub_results?.some((x) => hit(x.excerpt))).map((d) => {
+        // the section with the most hits, unless that is the page's top
+        const best = [...(d.sub_results ?? [])].sort((a, b) => (b.locations?.length ?? 0) - (a.locations?.length ?? 0))[0]
+        const sub = best && !best.url.endsWith('#_top') && best.url.includes('#') ? best : undefined
+        const title = d.meta.title ?? d.url
+        const section = sub && sub.title !== title && !title.toLowerCase().startsWith(sub.title.toLowerCase()) ? sub.title : undefined
+        return { title, url: sub?.url ?? d.url.replace(/#_top$/, ''), crumb: section, excerpt: excerptOf(sub?.excerpt ?? d.excerpt, [sub?.title ?? '', title]), group: groupOf(d.url) }
+      }).filter((r) => { const g = seen.get(r.group) ?? 0; seen.set(r.group, g + 1); return g < 5 })
+      found.forEach((r) => { r.loc = where(r.url) || undefined })
+
+      if (!found.length) {
+        rows = [...ask, ...suggested]
+        return draw(q, `No pages match \u201c${esc(q)}\u201d.${canAsk ? '' : ' Try other words, or start here:'}`)
+      }
+      rows = [...found, ...ask]
+      draw(q)
+    }
+
+    const choose = (n: number, newTab = false) => {
+      const r = rows[n]
+      if (!r) return
+      if (r.retry) { void update(); return }
+      if (r.ask) {
+        dlg.close()
+        document.dispatchEvent(new CustomEvent('ask-ai', { detail: { question: r.ask } }))
+        return
+      }
+      remember(r)
+      if (newTab) window.open(r.url, '_blank', 'noopener')
+      else { dlg.close(); location.href = r.url }
+    }
+
+    const open = () => {
+      if (dlg.open) return
+      dlg.showModal()
+      input.setAttribute('aria-expanded', 'true')
+      document.documentElement.classList.add('ui-spot-on')
+      input.select()
+      void update()
+      void load()
+    }
+    dlg.addEventListener('close', () => { document.documentElement.classList.remove('ui-spot-on'); input.setAttribute('aria-expanded', 'false') })
+
+    document.addEventListener('click', (e) => { if ((e.target as Element).closest?.('[data-spot-open]')) open() })   // the pill, or any other trigger
+    dlg.querySelector('[data-spot-close]')!.addEventListener('click', () => dlg.close())
+    clear.addEventListener('click', () => { input.value = ''; input.focus(); void update() })
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close() })   // a tap on the dimmed page
+    input.addEventListener('input', () => void update())
+
+    list.addEventListener('click', (e) => {
+      const row = (e.target as Element).closest<HTMLElement>('.ui-spot-row')
+      if (!row) return
+      const r = rows[Number(row.dataset.i)]
+      if ((e.metaKey || e.ctrlKey) && r && !r.ask && !r.retry) { remember(r); return }   // a new tab: the browser does it
+      e.preventDefault()
+      choose(Number(row.dataset.i))
+    })
+    list.addEventListener('pointermove', (e) => {
+      if ((e as PointerEvent).pointerType !== 'mouse') return
+      const row = (e.target as Element).closest<HTMLElement>('.ui-spot-row')
+      if (row && Number(row.dataset.i) !== active) setActive(Number(row.dataset.i))
+    })
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); setActive(active + (e.key === 'ArrowDown' ? 1 : -1)) }
+      else if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); choose(active, e.metaKey || e.ctrlKey) }
+      else if (e.key === 'Escape' && input.value) { e.preventDefault(); input.value = ''; void update() }   // first Esc clears, the next closes
+    })
+
+    document.addEventListener('keydown', (e) => {
+      const typing = (e.target as Element)?.closest?.('input, textarea, select, [contenteditable="true"], agui-chat')
+      if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (dlg.open) dlg.close(); else open() }
+      else if (e.key === '/' && !typing && !dlg.open) { e.preventDefault(); open() }
+    })
+  }
+</script>

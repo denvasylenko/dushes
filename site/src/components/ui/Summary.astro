@@ -2,7 +2,8 @@
 /**
  * Summary: a guide's "at a glance" block, first under the title, lead and page actions. Three labelled rows
  * (What / When you need it / You write) and an optional jump to the example. Values may hold `inline code`
- * in backticks; for richer text use the slots of the same names (what, when, write).
+ * in backticks; for richer text use the slots of the same names (what, when, write). The labels are left out of the
+ * search index, so a search snippet never runs "What" into the value.
  */
 import Button from './Button.astro'
 interface Props { what?: string; when?: string; write?: string; jump?: string; jumpLabel?: string; labels?: [string, string, string]; class?: string }
@@ -18,7 +19,7 @@ const rows = [
 ---
 <section class:list={['ui-summary', 'not-content', cls]} aria-label="At a glance">
   <dl>
-    {rows.map(([label, html]) => <div class="ui-summary-row"><dt>{label}</dt><dd set:html={html} /></div>)}
+    {rows.map(([label, html]) => <div class="ui-summary-row"><dt data-pagefind-ignore>{label}</dt><dd set:html={html} /></div>)}
   </dl>
   {jump && <div class="ui-summary-jump"><Button variant="plain" size="sm" href={jump} icon="chevron">{jumpLabel}</Button></div>}
 </section>

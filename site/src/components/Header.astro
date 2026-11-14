@@ -1,0 +1,20 @@
+---
+/**
+ * The header: Starlight's own row (logo, search, Ask AI, GitHub, theme) and, on a computer, a second row with the
+ * site's sections as tabs (the SectionTabs primitive), fed by starlight-sidebar-topics. On a phone the sections stay in the
+ * menu as a segmented row (Sidebar.astro), so the header keeps one row.
+ */
+import Default from '@astrojs/starlight/components/Header.astro'
+import { SectionTabs } from './ui'
+// @ts-expect-error: the plugin's virtual module has no types
+import config from 'virtual:starlight-sidebar-topics/config'
+type Topic = { label: string; link: string; isCurrent: boolean }
+// the current topic from the plugin's middleware; a page it skips (the landing) gets the configured topics, none current
+const topics: Topic[] = (Astro.locals as { starlightSidebarTopics?: { topics: Topic[] } }).starlightSidebarTopics?.topics
+  ?? (config as { label: unknown; link?: string }[]).filter((t) => typeof t.label === 'string' && t.link).map((t) => ({ label: t.label as string, link: t.link!, isCurrent: false }))
+const here = Astro.url.pathname.replace(/\/$/, '')
+---
+<div class="fg-header">
+  <div class="fg-header-main"><Default><slot /></Default></div>
+  {topics.length > 0 && <SectionTabs class="fg-header-tabs" items={topics.map((t) => ({ label: t.label, href: t.link, current: t.isCurrent ? (here === t.link.replace(/\/$/, '') ? 'page' : 'true') : undefined }))} />}
+</div>

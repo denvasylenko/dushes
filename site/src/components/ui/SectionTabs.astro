@@ -1,0 +1,16 @@
+---
+/**
+ * Tabs: the site's top-level sections as a row of links under the header, the current one underlined in the
+ * accent (a web local navigation, like apple.com's product bar or docs.langchain.com's tabs). Links, not a tablist:
+ * each tab is a page. The current tab carries aria-current: "page" on the section's own first page, "true" (the
+ * section you are in) on a page inside it; on the landing none does. `current: true` means "page".
+ */
+interface Item { label: string; href: string; current?: boolean | 'page' | 'true' }
+interface Props { items: Item[]; label?: string; class?: string }
+const { items, label = 'Sections', class: cls } = Astro.props
+---
+<nav class:list={['ui-tabs', cls]} aria-label={label}>
+  {items.map(({ label, href, current }) => (
+    <a class="ui-tab" href={href} aria-current={current === true ? 'page' : current || undefined}>{label}</a>
+  ))}
+</nav>

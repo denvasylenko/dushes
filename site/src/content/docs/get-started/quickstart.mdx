@@ -69,7 +69,7 @@ Or do it yourself, below. The steps set up the **form assistant**, the base of b
    }).then((r) => r.json())
    ```
 
-2. **Add the chat** and give it two functions: the current form, and how to apply accepted values.
+2. **Add the chat** and give it two functions: the current form, and how to apply accepted values. The script is built from the repository: `cd packages/agui-chat && npm install && npm run build` puts `agui-chat.iife.js` in `dist/`.
 
    ```html
    <agui-chat url="http://localhost:8000/agent/run"></agui-chat>
@@ -86,7 +86,7 @@ Or do it yourself, below. The steps set up the **form assistant**, the base of b
 
 </Steps>
 
-`config` is `{props, state}`: each element's settings and each field's value. What exactly goes in it: [Send the form with every message](../../frontend/connect-your-form/state/).
+`config` is `{props, state}`: each element's settings and each field's value. How the form and the agent talk: [Connect your form](../../frontend/connect-your-form/); what exactly goes in `config`: [Send the form each run](../../frontend/connect-your-form/state/).
 
 <Aside type="caution">The endpoints authenticate nobody: see [Deploy and secure](../../agents/shared/deploy/) before going live.</Aside>
 

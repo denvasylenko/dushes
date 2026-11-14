@@ -2,7 +2,7 @@
 title: Domain packs
 description: One JSON per form tells the agent who it is, how the form flows, what fields mean and what to never repeat.
 ---
-import { Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Tabs, TabItem, LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
 import { Summary } from '../../../../components/ui';
 
 <Summary what={"One JSON per form: the agent's voice, the flow, the terms"} when={"The agent should sound like your business and know your terms."} write={"`domain_packs/<form_id>.json` with `persona`, `glossary`, `rules`, `starters`."} />
@@ -58,6 +58,8 @@ The first match wins, so a form can ship its own pack and override the server's.
 flowchart LR
   A["inline<br/><small>POST /layouts {domain}</small>"] --> B["provider<br/><small>your function</small>"] --> C["packs<br/><small>in the YAML</small>"] --> D["dir<br/><small>&lt;form_id&gt;.json</small>"] --> E["default<br/><small>neutral persona</small>"]
 ```
+
+<Aside type="caution" title="An inline pack is server-wide">A pack sent with `POST /layouts {domain}` is kept in memory for that `form_id` across the whole server, ahead of every other source, until a restart: one client's pack changes the persona and rules for every chat of that form. In production, don't send `domain` with the form from an untrusted client: keep packs in the server config (`domain_packs`).</Aside>
 
 <Tabs syncKey="pack">
   <TabItem label="A folder">

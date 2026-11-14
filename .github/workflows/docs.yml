@@ -1,8 +1,9 @@
 name: Docs
 
-# Builds the documentation site (site/, Astro Starlight; specs rendered from openspec/specs/) and deploys it to GitHub Pages.
+# Checks the documentation site (specs, English, a full build of site/) on every change. The docs are served from
+# https://dushes-ai.fly.dev (deploy/docs-ai/); GitHub Pages only redirects: every old /dushes/<page> address goes to
+# the same page there, so nothing serves two copies.
 # Requires Settings → Pages → Build and deployment → Source: "GitHub Actions".
-# Site: https://denvasylenko.github.io/dushes/
 
 on:
   push:
@@ -51,12 +52,24 @@ jobs:
         env:
           PUBLIC_ASK_AI_URL: ${{ vars.PUBLIC_ASK_AI_URL }}   # the docs assistant; unset = Ask AI offers Claude / ChatGPT
         run: npm run build
+      - name: Redirect stub for GitHub Pages (every page -> the same page on the canonical host)
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p pages
+          cat > pages/index.html <<'HTML'
+          <!doctype html><meta charset="utf-8"><title>Dushes docs moved</title>
+          <meta name="robots" content="noindex">
+          <link rel="canonical" href="https://dushes-ai.fly.dev/">
+          <script>location.replace('https://dushes-ai.fly.dev' + location.pathname.replace(/^\/dushes/, '') + location.search + location.hash)</script>
+          <p>The docs moved to <a href="https://dushes-ai.fly.dev/">dushes-ai.fly.dev</a>.</p>
+          HTML
+          cp pages/index.html pages/404.html
       - uses: actions/configure-pages@v5
         if: github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:
-          path: site/dist
+          path: pages
 
   deploy:
     if: github.event_name != 'pull_request'

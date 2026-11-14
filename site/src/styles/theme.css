@@ -46,6 +46,7 @@
   /* depth */
   --fg-shadow-pop: 0 18px 50px -18px hsla(0, 0%, 0%, .55), 0 0 0 1px var(--sl-color-hairline-light);
   --fg-shadow-lift: 0 18px 50px -24px hsla(0, 0%, 0%, .45);
+  --fg-scrim: hsla(0, 0%, 0%, .32);                                        /* the page dimmed under a sheet */
   /* type (px steps of the ui-craft scale) */
   --fg-fs-caption: 11px;
   --fg-fs-footnote: 12px;
@@ -79,6 +80,7 @@
   --fg-ok: var(--sl-color-green-high);
   --fg-shadow-pop: 0 18px 50px -18px hsla(224, 30%, 20%, .28), 0 0 0 1px var(--sl-color-hairline-light);
   --fg-shadow-lift: 0 18px 50px -24px hsla(224, 30%, 20%, .25);
+  --fg-scrim: hsla(224, 20%, 20%, .18);
 }
 /* touch screens: every pressable is at least 44 px */
 @media (pointer: coarse) { :root { --fg-h-sm: 44px; --fg-h-md: 44px; } }
@@ -118,3 +120,35 @@ h1#_top { text-wrap: balance; }
 
 /* the landing and the card gallery: a wider canvas next to the sidebar */
 :root:has(.cg), :root:has([data-demo]) { --sl-content-width: 68rem; }
+
+/*
+ * The header's second row (components/Header.astro): the section tabs, on a computer only. --sl-nav-height grows by
+ * the row, so everything Starlight places under the header (the sidebar, the main frame, "On this page", the
+ * scroll padding of anchors) follows; the site title stays in the first row.
+ */
+.fg-header { display: flex; flex-direction: column; height: 100%; }
+.fg-header-main { flex: none; height: 100%; }
+.ui-tabs.fg-header-tabs { display: none; }   /* ui.css loads after this file */
+@media (min-width: 50rem) {
+  :root { --fg-tabs-h: 44px; --sl-nav-height: calc(4rem + var(--fg-tabs-h)); }
+  .fg-header-main { height: calc(4rem - 2 * var(--sl-nav-pad-y)); }
+  .site-title, .site-title img { height: calc(4rem - 2 * var(--sl-nav-pad-y)); }
+  .ui-tabs.fg-header-tabs { display: flex; margin: auto 0 calc(-1 * var(--sl-nav-pad-y)) -12px; }
+  .sb-topics { display: none; }   /* the tabs show the sections; the sidebar shows only the current one's pages */
+}
+/* a phone: Starlight's menu button with a 44 px target, the same icon */
+@media (max-width: 50rem) { :root { --sl-menu-button-size: 44px; } .sl-menu-button svg { width: 20px; height: 20px; } }
+/* light: a header edge you can see on white */
+:root[data-theme='light'] header.header { border-bottom-color: var(--sl-color-hairline); }
+/* the phone menu: a Segmented control of the topics over the shown topic's pages (components/Sidebar.astro) */
+.sb-phone { margin-bottom: 1rem; }
+.sb-phone .sb-seg { margin-bottom: 1rem; }
+.sb-phone .ui-seg { display: flex; width: 100%; }
+.sb-phone .ui-seg > button { flex: 1 1 0; min-width: 0; padding-inline: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 50rem) { .sb-phone ~ sl-sidebar-state-persist { display: none; } }
+@media (min-width: 50rem) {
+  .sb-phone { display: none; }
+  /* a page with no sidebar of its own (the landing, 404) has the menu on a phone only */
+  :root:has([data-fg-phone-only]) { --sl-content-inline-start: 0rem; }
+  :root:has([data-fg-phone-only]) .sidebar-pane { display: none; }
+}

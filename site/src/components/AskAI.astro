@@ -30,8 +30,9 @@ const OPEN = [
   ]
   const box = document.querySelector<HTMLElement>('[data-ask-ai]')
   const url = box?.dataset.askAi
-  const btn = box?.querySelector<HTMLButtonElement>('[data-ask-open]')
-  if (box && btn && url) {
+  // the header has one Ask AI and the phone menu's footer another: wire every copy
+  const btns = [...document.querySelectorAll<HTMLButtonElement>('[data-ask-ai] [data-ask-open]')]
+  if (box && btns.length && url) {
     let chat: HTMLElementTagNameMap['agui-chat'] | null = null
     const make = async () => {
       if (chat) return chat
@@ -58,9 +59,16 @@ const OPEN = [
     // the floating button (also on phones, where the header has no room) appears once the page is idle
     ;(window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 800)))(() => void make())
     // the header button toggles: a second tap closes the panel, like the panel's own close button
-    btn.addEventListener('click', async () => {
+    btns.forEach((btn) => btn.addEventListener('click', async () => {
       const c = await make()
       if (c.shadowRoot?.querySelector('.wrap')?.classList.contains('open')) c.close(); else c.open()
+    }))
+    // search's "Ask AI: '…'" row: open the panel and ask the typed question
+    document.addEventListener('ask-ai', async (e) => {
+      const q = (e as CustomEvent<{ question?: string }>).detail?.question?.trim()
+      const c = await make()
+      c.open()
+      if (q) void c.send(q)
     })
   } else if (box) {
     // no assistant server: the menu offers this page in Claude or ChatGPT (the Menu primitive opens and closes it)
@@ -70,8 +78,8 @@ const OPEN = [
       return location.origin + (p === base ? `${base}/index` : p) + '.md'
     }
     const q = encodeURIComponent(`Read ${md()} (Dushes documentation) and help me with it.`)
-    box.querySelector<HTMLAnchorElement>('[data-open="claude"]')!.href = `https://claude.ai/new?q=${q}`
-    box.querySelector<HTMLAnchorElement>('[data-open="chatgpt"]')!.href = `https://chatgpt.com/?q=${q}`
+    document.querySelectorAll<HTMLAnchorElement>('[data-ask-ai] [data-open="claude"]').forEach((a) => { a.href = `https://claude.ai/new?q=${q}` })
+    document.querySelectorAll<HTMLAnchorElement>('[data-ask-ai] [data-open="chatgpt"]').forEach((a) => { a.href = `https://chatgpt.com/?q=${q}` })
   }
 </script>
 

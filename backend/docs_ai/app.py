@@ -1,7 +1,7 @@
 """The docs assistant as an AG-UI endpoint for the site's <agui-chat>.
 
-    DOCS_AI_CORPUS=https://denvasylenko.github.io/dushes/llms-full.txt \
-    DOCS_AI_ORIGINS=https://denvasylenko.github.io ANTHROPIC_API_KEY=... \
+    DOCS_AI_CORPUS=https://dushes-ai.fly.dev/llms-full.txt \
+    DOCS_AI_ORIGINS=https://dushes-ai.fly.dev ANTHROPIC_API_KEY=... \
     uv run uvicorn docs_ai.app:app --port 8100
 
 POST /ask/run takes an AG-UI RunAgentInput and streams: RUN_STARTED, a "search_docs" step, a short answer,

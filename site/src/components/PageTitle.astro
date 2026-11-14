@@ -16,7 +16,7 @@ const isSpec = entry.id.startsWith('reference/specifications/') && entry.id !== 
 {!splash && (
   <>
     {desc && !isSpec && <p class="pt-lead">{desc}</p>}
-    <div class="pt-actions" data-page-actions>
+    <div class="pt-actions" data-page-actions data-pagefind-ignore>
       <CopyButton label="Copy page" auto={false} data-copy-page />
       <Button size="sm" href="https://claude.ai/new" target="_blank" rel="noopener" data-open="claude">Open in Claude</Button>
       <Button size="sm" href="https://chatgpt.com/" target="_blank" rel="noopener" data-open="chatgpt">Open in ChatGPT</Button>

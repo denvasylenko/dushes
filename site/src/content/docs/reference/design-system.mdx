@@ -3,7 +3,8 @@ title: 'Design system'
 description: 'Every control the docs use, live in light and dark, with the snippet to copy.'
 ---
 import { LinkCard as SlLinkCard, CardGrid } from '@astrojs/starlight/components';
-import { Badge, Button, Compare, Entries, Entry, Masonry, Icon, Metric, Metrics, SourceList, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
+import SearchSpecimen from '../../../components/SearchSpecimen.astro';
+import { Badge, Button, Compare, Entries, Entry, Masonry, Icon, Metric, Metrics, SectionTabs, SourceList, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
 
 Every piece of interface on this site comes from one folder, `site/src/components/ui/`. Each primitive is shaped like its Apple counterpart, built from the tokens in `site/src/styles/theme.css`, and shown below working. A new pattern is added there first and shown on this page, then used.
 
@@ -347,33 +348,43 @@ import { SourceList } from './ui'
 
 `icon` is a Starlight icon name and `current` sets `aria-current`. The sidebar (`components/Sidebar.astro`) feeds it from `starlight-sidebar-topics`, which still decides the current topic and filters the tree.
 
-## Search
+## Section tabs
 
-Search works like Spotlight. A pill in the header (an icon on a phone) opens a sheet over the page, and **⌘K**, **Ctrl K** or **/** opens it from anywhere. Results come instantly from the site's index, grouped **Guides**, **Reference** and **Specs**, with the matched section after the page title.
-- With nothing typed, the sheet shows recent and suggested pages.
-- Whenever something is typed, the last row is **Ask AI** with that question, so a search with no match still has a next step. A site built without an assistant has no such row; instead, a search with no match suggests fewer or other words.
-- From the keyboard: ↑ ↓ move, Return opens, ⌘ Return opens in a new tab, and Esc clears the field and then closes the sheet.
-- On a phone the sheet fills the screen, with **Cancel** beside the field.
+The site's sections as a row of links under the header, like the product bar on apple.com or the tabs on LangChain's docs. The current section is underlined in the accent and carries `aria-current="page"`. The others are grey and turn ink on hover, with a hairline underline under a mouse. On the landing page no tab is current. The header shows them on a computer only; on a phone the sections are a segmented row in the menu (Source list). It is named `SectionTabs` so it is never mistaken for Starlight's content `Tabs`.
 
 <Specimen layout="col">
-  <Button variant="gray" icon="search" data-spot-open>Open search</Button>
-  <div class="ui-spot-sheet ui-spot-sheet--static" style="width:100%">
-    <div class="ui-spot-field">
-      <Icon name="search" class="ui-spot-glass" />
-      <input class="ui-spot-input" value="theme" aria-label="Search (example)" readonly />
-    </div>
-    <div class="ui-spot-list" role="listbox" aria-label="Results (example)">
-      <div class="ui-spot-group" role="group">
-        <p class="ui-spot-gh">Guides</p>
-      <a class="ui-spot-row" role="option" aria-selected="true" href="#search"><span class="ui-spot-ico"><Icon name="doc" /></span><span class="ui-spot-text"><span class="ui-spot-title">Themes and styling<span class="ui-spot-crumb"> › Tokens</span></span><span class="ui-spot-sub">Every <mark>theme</mark> token the widget reads, with a live playground.</span></span><span class="ui-spot-go"><Icon name="chevron" /></span></a>
-      <a class="ui-spot-row" role="option" aria-selected="false" href="#search"><span class="ui-spot-ico"><Icon name="doc" /></span><span class="ui-spot-text"><span class="ui-spot-title">Card gallery</span><span class="ui-spot-sub">Cards follow the <mark>theme</mark>, so they look like the chat.</span></span><span class="ui-spot-go"><Icon name="chevron" /></span></a>
-      </div>
-      <div class="ui-spot-group" role="group">
-        <p class="ui-spot-gh">Ask AI</p>
-      <a class="ui-spot-row" role="option" aria-selected="false" href="#search"><span class="ui-spot-ico"><Icon name="sparkle" /></span><span class="ui-spot-text"><span class="ui-spot-title">Ask AI: “theme”</span><span class="ui-spot-sub">Answers from these pages, with code</span></span><span class="ui-spot-go"><Icon name="chevron" /></span></a>
-      </div>
-    </div>
-  </div>
+  <SectionTabs label="Sections (example)" items={[
+    { label: 'Get started', href: '#section-tabs' },
+    { label: 'Frontend', href: '#section-tabs', current: true },
+    { label: 'Agents', href: '#section-tabs' },
+    { label: 'Reference', href: '#section-tabs' },
+  ]} />
+</Specimen>
+
+```astro
+---
+import { SectionTabs } from './ui'
+---
+<SectionTabs label="Sections" items={[
+  { label: 'Get started', href: '/get-started/' },
+  { label: 'Frontend', href: '/frontend/', current: true },
+]} />
+```
+
+The header (`components/Header.astro`) feeds it from `starlight-sidebar-topics`. Its row is part of `--sl-nav-height` on a computer, so the sidebar, the page, **On this page** and anchor scrolling all start below it.
+
+## Search
+
+Search works like Spotlight. A pill in the header (an icon on a phone) opens a sheet over the page, and **⌘K**, **Ctrl K** or **/** opens it from anywhere. Results come instantly from the site's index, grouped by the header tab their page lives in (**Get started**, **Frontend**, **Agents**, **Reference**) plus **Specifications**. A muted line above the title says where the page lives inside its tab (“Server and setup”); “›” after the title names the matched heading.
+- With nothing typed, the sheet shows recent and suggested pages.
+- Whenever something is typed, the last row is **Ask AI** with that question, so a search with no match still has a next step. A site built without an assistant has no such row.
+- With no match the sheet says so and still offers the suggested pages. If the index can't load, it says so and offers **Try again**.
+- While results load, the previous rows stay, dimmed; **Searching…** appears only if it takes longer than 150 ms.
+- From the keyboard: ↑ ↓ move (stopping at the ends), Return opens, ⌘ Return opens in a new tab, and Esc clears the field and then closes the sheet. The selected row takes the accent. On touch screens nothing is preselected and only a pressed row shows.
+- On a phone the sheet fills the screen, with an iOS search bar and **Cancel** beside it.
+
+<Specimen layout="col">
+  <SearchSpecimen />
 </Specimen>
 
 The search is `components/Search.astro`, which replaces Starlight's own search. It reads the same Pagefind index through its JavaScript API. Its styles are the `.ui-spot` block in `ui.css`. Any element with `data-spot-open` opens it, and the Ask AI row fires an `ask-ai` event that the header's Ask AI answers.

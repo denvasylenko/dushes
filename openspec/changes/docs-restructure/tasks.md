@@ -5,7 +5,7 @@
 - [x] 1.4 Prose: "Site agent (Dushes)" / "UI agent (FormGuide)", the researcher on the UI agent pages; room under Site agent for its capabilities; one place per fact (Shared); update llms outputs, Ask AI prompts and the setup prompt links
 
 ## 2. Header and search (docs design-system session)
-- [x] 2.1 Topic switcher from the design system: a `SourceList` at the top of the sidebar (macOS source list), a segmented row on phones; header tabs dropped as a second "you are here"
+- [ ] 2.1 Header tabs under the header row (Get started · Frontend · Agents · Reference, active underlined, as LangChain Docs); sidebar without the topic list on desktop; segmented row in the phone menu
 - [ ] 2.2 Spotlight-like search sheet over the Pagefind index: groups, keyboard, empty state, "Ask AI: '…'" row
 
 ## 3. Generated reference

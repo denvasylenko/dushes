@@ -1,0 +1,86 @@
+---
+/**
+ * The search sheet's states, drawn in place for the Design system page: results, nothing typed, no match, and the
+ * phone sheet. Static markup with the same classes as Search.astro; "Open search" opens the real one.
+ */
+import { Button, Icon, Segmented } from './ui'
+type R = { ico: 'doc' | 'clock' | 'sparkle'; title: string; loc?: string; crumb?: string; sub?: string; sel?: boolean }
+const STATES = [['results', 'Results'], ['empty', 'Empty'], ['none', 'No match'], ['phone', 'Phone']] as const
+const results: [string, R[]][] = [
+  ['Frontend', [
+    { ico: 'doc', title: 'Themes and styling', crumb: 'Tokens', sub: 'Every <mark>theme</mark> token the widget reads, with a live playground.', sel: true },
+    { ico: 'doc', title: 'Card gallery', sub: 'Cards follow the <mark>theme</mark>, so they look like the chat.' },
+  ]],
+  ['Agents', [{ ico: 'doc', title: 'Configuration', loc: 'Server and setup', crumb: 'Every key', sub: '<mark>theme</mark>: a preset name or your own tokens.' }]],
+  ['Ask AI', [{ ico: 'sparkle', title: 'Ask AI: “theme”', sub: 'Answers from these pages, with code' }]],
+]
+const empty: [string, R[]][] = [
+  ['Recent', [{ ico: 'clock', title: 'Blocks', sel: true }, { ico: 'clock', title: 'React' }]],
+  ['Suggested', [{ ico: 'doc', title: 'Quickstart' }, { ico: 'doc', title: 'The chat widget' }, { ico: 'doc', title: 'Configuration keys' }]],
+]
+const none: [string, R[]][] = [
+  ['Ask AI', [{ ico: 'sparkle', title: 'Ask AI: “billing portal”', sub: 'Answers from these pages, with code', sel: true }]],
+  ['Suggested', [{ ico: 'doc', title: 'Quickstart' }, { ico: 'doc', title: 'The chat widget' }]],
+]
+const views: Record<string, { q: string; groups: [string, R[]][]; note?: string; phone?: boolean }> = {
+  results: { q: 'theme', groups: results },
+  empty: { q: '', groups: empty },
+  none: { q: 'billing portal', groups: none, note: 'No pages match “billing portal”.' },
+  phone: { q: 'theme', groups: results.slice(0, 2), phone: true },
+}
+---
+<div class="ds-spot not-content">
+  <div class="ds-spot-bar">
+    <Segmented label="State" options={STATES} value="results" data-ds-spot />
+    <Button variant="gray" size="sm" icon="search" data-spot-open>Open search</Button>
+  </div>
+  {Object.entries(views).map(([k, v]) => (
+    <div class="ds-spot-view" data-view={k} hidden={k !== 'results'}>
+      <div class:list={['ui-spot-sheet', 'ui-spot-sheet--static', { 'ui-spot-sheet--phone': v.phone }]}>
+        <div class="ui-spot-field">
+          <div class="ui-spot-bar">
+            <Icon name="search" class="ui-spot-glass" />
+            <input class="ui-spot-input" value={v.q} placeholder="Search the docs" aria-label={`Search (example: ${k})`} readonly tabindex="-1" />
+            {v.q && <span class="ui-spot-clear" aria-hidden="true"><span class="ui-spot-clear-disc"><Icon name="close" /></span></span>}
+          </div>
+          {v.phone && <span class="ui-spot-cancel">Cancel</span>}
+        </div>
+        <div class="ui-spot-list" role="listbox" aria-label={`Results (example: ${k})`}>
+          {v.note && <p class="ui-spot-note">{v.note}</p>}
+          {v.groups.map(([g, rows]) => (
+            <div class="ui-spot-group" role="group" aria-label={g}>
+              <p class="ui-spot-gh">{g}</p>
+              {rows.map((r) => (
+                <span class="ui-spot-row" role="option" aria-selected={String(!v.phone && !!r.sel)}>
+                  <span class="ui-spot-ico"><Icon name={r.ico} /></span>
+                  <span class="ui-spot-text">
+                    {r.loc && <span class="ui-spot-loc">{r.loc}</span>}
+                    <span class="ui-spot-title">{r.title}{r.crumb && <span class="ui-spot-crumb"> › {r.crumb}</span>}</span>
+                    {r.sub && <span class="ui-spot-sub" set:html={r.sub} />}
+                  </span>
+                  <span class="ui-spot-go"><Icon name="chevron" /></span>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+        {!v.phone && <p class="ui-spot-foot" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span><kbd>esc</kbd> close</span></p>}
+      </div>
+    </div>
+  ))}
+</div>
+
+<script>
+  document.querySelector('[data-ds-spot]')?.addEventListener('ui-change', (e) => {
+    const v = (e as CustomEvent<{ value: string }>).detail.value
+    document.querySelectorAll<HTMLElement>('.ds-spot-view').forEach((el) => { el.hidden = el.dataset.view !== v })
+  })
+</script>
+
+<style>
+  .ds-spot { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+  .ds-spot-bar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  .ds-spot-bar > :global(.ui-field) { flex: 1 1 20rem; max-width: 26rem; }
+  .ds-spot-view[data-view='phone'] { display: flex; justify-content: center; }
+  .ds-spot-view[hidden] { display: none; }
+</style>

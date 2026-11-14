@@ -5,7 +5,7 @@ description: The small parts every card of your own is made of; they follow the 
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 import CardGallery from '../../../components/CardGallery.astro';
 import BlocksSheet from '../../../components/BlocksSheet.astro';
-import { Summary } from '../../../components/ui';
+import { Badge, Summary } from '../../../components/ui';
 
 <Summary what={"The small parts your own cards are built from."} when={"You declared a card and want to see how it looks"} write={"A list of blocks: `title`, `row`, `place`, `buttons`, ..."} />
 
@@ -148,6 +148,10 @@ With a bundler the blocks are part of `@formguide/agui-chat/formguide`: every ca
 await AguiChat.loadBlocks()   // agui-chat.blocks.js is here: blocksCard draws at once
 chat.renderers.set('booking', (card, ctx) => AguiChat.blocksCard({ blocks: card.blocks }, ctx, (action, label, values) => ctx.resolve({ action, values })))
 ```
+
+## Next format
+
+<Badge variant="neutral">Under study</Badge> [A2UI](https://a2ui.org) is under study as the future format for cards the agent composes from your own components. Nothing to configure yet.
 
 ## Style them
 

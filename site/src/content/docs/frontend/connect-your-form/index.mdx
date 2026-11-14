@@ -27,6 +27,19 @@ The colleague **never types into the form itself**. Every suggestion is shown to
 That is the whole contract. Every message typed in TypeScript, with what `jsx_hash`, `config` and `ui` are: [Types and the contract](contract/).
 
 
+## Works with any framework
+
+"JSX" here does not mean React. The form skeleton is JSX-like markup that names your form's elements and how they nest: tags plus a `name`, no `{…}` expressions. It is plain text, so any backend or framework can write or generate it (Python, Java, Node, a CMS); the demo's form backend builds it in Python.
+
+| Part | What it is | Works with |
+| --- | --- | --- |
+| the chat | `<agui-chat>`, a standard Web Component | any page: React, Vue, Angular, Svelte, server-rendered, plain HTML |
+| the skeleton | JSX-like text: elements, nesting, `name` | any language that can write a string |
+| the page | each element's outer DOM node carries `data-name`, so the agent can point at it | any markup |
+| values and props | JSON in `config`, sent with every message | any language |
+
+Today your app writes or generates the skeleton; it is not read from the live page automatically. How to write it: [Register the skeleton](skeleton/).
+
 ## Words used on this page
 
 | Word | Plain meaning |

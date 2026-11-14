@@ -1,5 +1,6 @@
 ---
-title: 'Configuration'
+prev: false
+title: 'Configuration keys'
 description: 'Models per provider and every YAML key with its default.'
 ---
 

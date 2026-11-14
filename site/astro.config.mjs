@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import mermaid from 'astro-mermaid';
 import starlightSidebarTopics from 'starlight-sidebar-topics';
+import { fgNav } from './src/nav/plugin.mjs';
 
 const repo = 'https://github.com/denvasylenko/dushes';
 
@@ -10,7 +11,7 @@ const repo = 'https://github.com/denvasylenko/dushes';
 const base = process.env.DOCS_BASE ?? '/dushes';
 
 export default defineConfig({
-	site: process.env.DOCS_SITE ?? 'https://denvasylenko.github.io',
+	site: process.env.DOCS_SITE ?? 'https://dushes-ai.fly.dev',   // the canonical docs host (Ask AI and the live demo)
 	base,
 	// every address published before docs-restructure -> the page that holds its content now
 	redirects: Object.fromEntries(Object.entries({
@@ -100,11 +101,11 @@ export default defineConfig({
 			social: [{ icon: 'github', label: 'GitHub', href: repo }],
 			editLink: { baseUrl: `${repo}/edit/main/site/` },
 			lastUpdated: false,
-			components: { PageTitle: './src/components/PageTitle.astro', SiteTitle: './src/components/SiteTitle.astro', SocialIcons: './src/components/SocialIcons.astro', Sidebar: './src/components/Sidebar.astro' },
+			components: { PageTitle: './src/components/PageTitle.astro', SiteTitle: './src/components/SiteTitle.astro', SocialIcons: './src/components/SocialIcons.astro', Sidebar: './src/components/Sidebar.astro', Search: './src/components/Search.astro', Header: './src/components/Header.astro' },
 			head: [{ tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', title: 'llms.txt', href: `${process.env.DOCS_BASE ?? '/dushes'}/llms.txt` } }],
 			customCss: ['@fontsource-variable/space-grotesk', '@fontsource/ibm-plex-mono/400.css', '@fontsource/ibm-plex-mono/500.css', './src/styles/theme.css', './src/components/ui/ui.css'],
 			expressiveCode: { themes: ['github-dark-default', 'github-light'], styleOverrides: { borderRadius: '10px' } },
-			plugins: [starlightSidebarTopics([
+			plugins: [fgNav(), starlightSidebarTopics([
 				{ label: 'Get started', link: '/get-started/', icon: 'rocket', items: [
 					{ label: 'Overview', slug: 'get-started' },
 					{ label: 'Quickstart', slug: 'get-started/quickstart' },

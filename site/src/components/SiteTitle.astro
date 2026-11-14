@@ -5,8 +5,11 @@
  */
 import Default from '@astrojs/starlight/components/SiteTitle.astro';
 import { Button } from './ui';
+// no sidebar on a computer (the landing, 404): no toggle, and the logo sits at the pane's edge
+const { hasSidebar } = Astro.locals.starlightRoute
+const toggle = hasSidebar && !(Astro.locals as { fgPhoneOnly?: boolean }).fgPhoneOnly
 ---
-<Button variant="quiet" iconOnly icon="sidebar" class="sb-toggle" data-sb-toggle aria-label="Hide the sidebar" aria-pressed="false" title="Hide the sidebar" />
+{toggle && <Button variant="quiet" iconOnly icon="sidebar" class="sb-toggle" data-sb-toggle aria-label="Hide the sidebar" aria-pressed="false" title="Hide the sidebar" />}
 <Default />
 
 <script is:inline>

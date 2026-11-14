@@ -8,6 +8,9 @@ import type { AguiEvent, RunAgentInput } from '../../../packages/agui-chat/src/t
 import type { DemoForm } from './form'
 import { EMPLOYMENT, LOAN_TYPES, TERMS } from './form'
 
+// the widget turns only absolute http(s) URLs into links, so the demo links the page by its full address
+const QUICKSTART = new URL(`${import.meta.env.BASE_URL.replace(/\/?$/, '/')}get-started/quickstart/`, location.origin).href
+
 type Step = { wait?: number; ev: AguiEvent } | { wait?: number; text: string } | { wait?: number; tool: string; ms?: number }
 
 const PROFILE = {
@@ -194,7 +197,7 @@ export class ScriptedAgent {
 
   private fallback(): Step[] {
     return [
-      { text: 'This demo replays recorded turns, so it understands only a few requests. Try a suggestion below. The real agent answers anything about your form: [run it in three commands](get-started/quickstart/).' },
+      { text: `This demo replays recorded turns, so it understands only a few requests. Try a suggestion below. The real agent answers anything about your form: [run it in three commands](${QUICKSTART}).` },
       this.suggestions(STARTERS),
     ]
   }

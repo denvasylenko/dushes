@@ -1,161 +1,58 @@
 # Dushes
 
-An AI assistant for your product's interface: it answers from your pages and documents, takes people to the right page, tab or field, and fills forms with them after they confirm. Two ready modes: **Dushes** (a whole site or app) and the **form assistant** (a large form: it shows where to click, explains fields, reads user documents and fills fields with the user's confirmation). The Python package and its code names are `formguide`. The core is form-agnostic and provider-agnostic; everything domain-specific is configured.
+**Dushes is a chat assistant for your site or app: it answers questions from your pages and documents, takes people to the right page or field, and fills in forms with them, changing nothing until they confirm.**
 
-Documentation: **https://denvasylenko.github.io/dushes/** — guides for the backend and the frontend with copyable examples and diagrams, the API reference, the specs, a live demo of the chat filling a form (no server needed), and **Ask AI** on every page. Every page is also Markdown (`<page>.md`), with `llms.txt` for AI tools. The site's source is [`site/`](site) (Astro Starlight; `cd site && npm install && npm run dev`); the pages are Markdown under [`site/src/content/docs/`](site/src/content/docs), and the specs are rendered from [`openspec/specs/`](openspec/specs) on every build. Start with:
-- [Quickstart](https://denvasylenko.github.io/dushes/get-started/quickstart/), then [Backend](https://denvasylenko.github.io/dushes/agents/shared/configuration/) (configuration step by step, models, documents, skills, deploy) and [Frontend](https://denvasylenko.github.io/dushes/frontend/) (the widget, React, react-hook-form, CopilotKit, any AG-UI client);
-- [Card gallery](https://denvasylenko.github.io/dushes/frontend/card-gallery/) — every card the chat can show, live, with the event behind it and the answer it sends back;
-- [How the form and the agent talk](https://denvasylenko.github.io/dushes/frontend/connect-your-form/) — what the form sends, what comes back, how each component must behave;
-- [Configuration keys](https://denvasylenko.github.io/dushes/reference/configuration/) — every YAML key with its default;
-- [System overview](https://denvasylenko.github.io/dushes/agents/how-it-works/) and [Architecture in text](https://denvasylenko.github.io/dushes/agents/how-it-works/architecture/);
-- [Speed and tracing](https://denvasylenko.github.io/dushes/agents/shared/observability/) — turn timings, LangSmith and Langfuse, the live benchmark;
-- [Specifications](https://denvasylenko.github.io/dushes/reference/specifications/) — behaviour contracts per capability, maintained with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec list --specs`, `openspec validate --all --strict`).
+![The chat proposes six values for a loan form; the user ticks them and fills them in with one tap](docs/images/chat-fills-a-form.png)
 
-## Quick start
+**[Try it live](https://dushes-ai.fly.dev/demo/site.html)** · **[Docs](https://dushes-ai.fly.dev/)** · [Card gallery](https://dushes-ai.fly.dev/frontend/card-gallery/) · [Benchmarks](https://dushes-ai.fly.dev/get-started/benchmarks/)
+
+## Quickstart
 
 ```bash
 pip install "formguide[all] @ git+https://github.com/denvasylenko/dushes.git#subdirectory=backend"
-formguide init my-agent                            # formguide.yaml, a domain pack, a skill
-formguide check --config my-agent/formguide.yaml   # loads it and reports; calls no model
+formguide init my-agent
 ANTHROPIC_API_KEY=... formguide serve --config my-agent/formguide.yaml --cors "*"
 ```
 
-The agent is now an AG-UI endpoint at `POST http://localhost:8000/agent/run`. The only required setting is the model: `model: "openai:gpt-5"` in the YAML, or `FORMGUIDE_MODEL=openai:gpt-5` with no file at all. Extras: `anthropic`, `openai`, `server`, `research`, `sqlite`, `all`; the core needs only LangGraph, LangChain core, Pydantic, PyYAML and pypdf. Or copy [`backend/formguide/`](backend/formguide) into your project.
-
-## Connect a frontend (AG-UI first)
-
-**The quickest way is the ready-made chat**, [`<agui-chat>`](https://denvasylenko.github.io/dushes/frontend/widget/): a Web Component (one `<script>` tag, npm, or a React wrapper) with the formguide plugin. It streams answers with a typewriter, shows the agent's steps, draws every card (field changes with edit and Undo, questions, file requests, confirmations), dictation, attachments and quick replies; every part is configurable.
+Then put the chat on your page:
 
 ```html
-<agui-chat url="/agent/run"></agui-chat>
-<script src="agui-chat.iife.js"></script>
-<script>
-  document.querySelector('agui-chat').use(AguiChat.formguide({ getState, applyChanges }))
-</script>
+<script src="agui-chat.iife.js"></script>   <!-- build it: cd packages/agui-chat && npm install && npm run build (dist/) -->
+<agui-chat url="http://localhost:8000/agent/run"></agui-chat>
 ```
 
-Any AG-UI client works as is too. Each run carries the form in `state`; cards are interrupts; frontend tools and prefill use the protocol's own fields. See the [Integrate page](https://denvasylenko.github.io/dushes/#integrate) for the whole wire format.
+Step by step, from loading the widget to connecting your own form: [Quickstart](https://dushes-ai.fly.dev/get-started/quickstart/).
 
-```ts
-import { HttpAgent } from "@ag-ui/client"           // or CopilotKit's re-export
+## What it can do
 
-const agent = new HttpAgent({ url: "/agent/run", threadId })
-agent.setState({ config, jsx_hash, form_id })        // the form as your backend last built it
-agent.addMessage({ id: crypto.randomUUID(), role: "user", content: "Where do I start?" })
-await agent.runAgent({ tools: frontendTools }, {
-  onCustomEvent: ({ event }) => event.name === "on_interrupt" && showCard(JSON.parse(event.value)),
-})
-// on_interrupt has a `type`: "set_fields" (a field-change card) or "ask" (a question card with options)
-// answer a card: agent.runAgent({ forwardedProps: { command: { resume: { accepted, config, names? } } } })
-// answer a question:            ... resume: { answer: { ids: ["auto"] } }  or  { answer: { text } }  or  { accepted: false }
-// prefill:       agent.runAgent({ forwardedProps: { prefill: { data: profile } } })
-```
+| | What it does | Status |
+| --- | --- | --- |
+| **Know** | Answers questions from your pages and documents, and cites the source | available |
+| **Show** | Opens the right page, tab or section, and highlights the field | available |
+| **Fill** | Suggests values for your form; the user accepts, edits or rejects each one | available |
+| **Do** | Runs actions you define, after the user confirms | available; Undo for quick actions planned |
+| **Analyze** | Shows charts and tables in the chat | charts available; questions about the user's data planned |
 
-- **CopilotKit 1.86**: [`examples/copilotkit/`](examples/copilotkit) — `CopilotKitProvider` with an `HttpAgent` (no CopilotKit runtime server), cards with `useInterrupt`, a frontend tool with `useFrontendTool`, prefill.
-- **`<agui-chat>`**: the demo UI ([`frontend/src/App.tsx`](frontend/src/App.tsx), React wrapper) and a plain-HTML playground that configures everything live and gives the code to copy ([`examples/widget-html/`](examples/widget-html), served at http://localhost:8000/examples/widget/).
-- **Cards**: field-change cards (a checkbox per row; `names` keeps a subset) and question cards (`ask_user`: options from the model or from a field, single or multiple choice, typed answers); payloads in [Cards and answers](https://denvasylenko.github.io/dushes/frontend/cards/#25-which-one-the-question-card). `interrupt_mode: legacy` (default; `CUSTOM on_interrupt`, what CopilotKit reads), `structured` (AG-UI 1.0 `RUN_FINISHED.outcome` + `resume[]`) or `both`.
-- **Restore a chat**: `GET /agent/threads/{id}?format=agui` returns AG-UI messages for `setMessages`.
+Works with any LangChain model (Anthropic, OpenAI, Azure, Gemini, Ollama and more) and any frontend. The chat is a standard Web Component. It uses the open AG-UI protocol, so CopilotKit and other AG-UI clients work too.
 
-## Use it from Python
+## Names
 
-```python
-from formguide.app import create_app
-app = create_app("formguide.yaml", cors=["https://my.app"])        # a whole FastAPI app
+The product is **Dushes**. The Python package, the CLI and the code are named **`formguide`** (for example, the `FormGuide` class).
 
-from formguide import FormGuide, load_config                     # or inside your own FastAPI app
-from formguide.server import create_router
-guide = FormGuide(load_config("formguide.yaml"))
-app.include_router(create_router(guide), prefix="/agent")
-```
+## Learn more
 
-The endpoints do not authenticate anyone: put them behind your own auth (and rate limiting) before they face the internet. A thread id is the only key to a conversation. `GET /debug/{thread_id}` exists only with `debug=True`.
+- [Docs](https://dushes-ai.fly.dev/): guides, reference and a live demo, with **Ask AI** on every page
+- [Card gallery](https://dushes-ai.fly.dev/frontend/card-gallery/): every card the chat can show, live
+- [Connect your form](https://dushes-ai.fly.dev/frontend/connect-your-form/): what your form sends and what comes back
+- [Configuration keys](https://dushes-ai.fly.dev/reference/configuration/): every setting with its default
+- [Benchmarks](https://dushes-ai.fly.dev/get-started/benchmarks/): how well Dushes does in scored test runs
+- Recipes: tested setups for common cases (coming soon)
 
-Without a web framework, call the guide directly:
-
-```python
-info = guide.register_form(jsx, form_id="loan_application", domain=optional_pack)   # once per JSX
-state = {"config": config, "jsx_hash": info["jsx_hash"], "form_id": "loan_application", "ui": ui}
-async for event in guide.run(thread_id, message="Where do I enter my tax id?", state=state):
-    ...   # AG-UI events as dicts: TEXT_MESSAGE_*, TOOL_CALL_*, CUSTOM ui_directive / on_interrupt, RUN_FINISHED
-async for event in guide.run(thread_id, resume={"accepted": True, "config": new_config}):
-    ...   # after the user answered a confirmation card
-await guide.suggest_prefill(state, data=profile)    # values to prefill, without a chat
-```
-
-## Configure
-
-Everything can be set in code (`GuideConfig`) or YAML (`load_config`). The full reference — how to write a model for each provider, which role falls back to which, every key with its default — is [Configuration](https://denvasylenko.github.io/dushes/reference/configuration/); a working file is [`demo/formguide.yaml`](backend/demo/formguide.yaml).
-
-| What | Options |
-|---|---|
-| Models (per role: agent, research, compile, extract, memory) | `model: "openai:gpt-5"` for all roles; or per role: any LangChain `BaseChatModel`, `"provider:model"` strings, `{provider, model, ...}`, `{class: "langchain_openai:AzureChatOpenAI", ...}` |
-| Component library | `components:` JSX tag → role, or a field spec saying how the component stores its value (id or option object, `"Y"`/`"N"`, `"31.05.1990"`, your own codec); see [Value formats](https://denvasylenko.github.io/dushes/frontend/connect-your-form/value-formats/) |
-| Domain packs | shipped with the form › `provider` callable › `packs` dict › JSON dir › neutral default |
-| Business documents | `KnowledgeBase(root, index=BM25Index() \| VectorStoreIndex(any LangChain VectorStore), scopes={form: [namespaces]})` |
-| Skills | folders with `SKILL.md` (name, description, forms, tools) or `Skill(...)` in code |
-| Extra tools | any LangChain `BaseTool`; frontend tools come from the client per run |
-| History | model history: any LangGraph checkpointer (in memory by default; `sqlite_checkpointer(path)`, Postgres, Redis); display transcript: any `TranscriptStore` (files by default) |
-| Long chats | `MemoryConfig(max_history_tokens, keep_turns, model)` |
-| Cards | `interrupt_mode`: `legacy` · `structured` · `both` |
-
-Model requirements: tool calling (agent, research), structured output (compile, extract, prefill from text), vision / PDF input (extracting from scans).
-
-Card and prefill values are written in the form's own format. Since component value formats were added, a number goes out as a JSON number (`250000`) by default; set `value: string` on the number component to keep `"250000"`.
-
-## Layout
-
-```
-backend/
-  formguide/        the library — guide.py · agui.py · server.py · app.py · cli.py · prefill.py · agent/ · form/ · knowledge/
-  demo/             an example integration: mock form backend, FastAPI app, YAML config, skills, samples
-  tests/            offline tests (scripted model, no API keys)
-  scripts/          chat_harness.py: live conversations with the running demo
-packages/agui-chat/ the chat widget: <agui-chat> Web Component, formguide plugin, React wrapper (npm run build / test)
-frontend/           demo UI (React) using the widget; the library does not need it
-site/               the documentation site (Astro Starlight) with a live scripted demo
-backend/docs_ai/    the docs assistant behind the site's Ask AI, and host.py: the site + Ask AI + the live demo in one app (deploy: deploy/docs-ai/)
-examples/copilotkit CopilotKit 1.86 client
-examples/widget-html the widget from one script tag, with a live settings panel
-```
-
-## Run the demo
+## Work on this repository
 
 ```bash
-cd packages/agui-chat && npm install && npm run build && cd ../..   # the chat widget (also for /examples/widget/)
-cd frontend && npm install && npm run build && cd ..
-cd backend && ANTHROPIC_API_KEY=... uv run uvicorn demo.app:app --port 8000 --reload --reload-dir formguide --reload-dir demo
+cd backend && uv run pytest -q                 # offline tests, no API keys
+cd site && npm install && npm run dev          # the docs at http://localhost:4321/dushes/
 ```
 
-Open http://localhost:8000. Two demo forms with nothing in common: `loan_application` (221 fields, 8 tabs, nested up to 4 levels) and `barber_booking` (a 4-step wizard). "Manager: documents" uploads business documents for a form (`demo/samples/kb/` has examples); 📎 in the chat attaches a user document (`demo/samples/attachments/`). 🎤 dictates a message through the browser's speech recognition (Chrome, Edge, Safari; the language select above the chat sets the chat's language and dictation, Auto = the browser's; Chrome sends the audio to its own speech service). The chat is [`<agui-chat>`](https://denvasylenko.github.io/dushes/frontend/widget/); http://localhost:8000/examples/widget/ shows it from one script tag with a panel that switches every option live.
-
-Note: `--reload` watches `.py` files only; after editing `formguide.yaml`, touch a `.py` file or restart.
-
-## Test
-
-```bash
-cd backend && uv run pytest -q                                          # offline
-cd backend && uv run python scripts/chat_harness.py                     # live, needs the demo server with a key
-cd backend && uv run python scripts/chat_harness.py --form barber_booking
-cd packages/agui-chat && npm test                                    # the chat widget (Vitest)
-cd backend && uv run python scripts/bench.py --repeat 3                 # live speed benchmark (see Speed and tracing on the docs site)
-```
-
-## How it works (short)
-
-- **Context.** Each message brings the fresh config. The model sees a collapsed outline, the open section and what changed since the last message: ~1K tokens instead of ~16K of raw config. Details come through tools.
-- **Protocol.** Strict AG-UI: input validated as `RunAgentInput`, every event validated and encoded with the official package; server tools stream as tool calls with results; frontend tools end the run and their results come back as `tool` messages.
-- **Prefill.** Known data is validated against the form (field names directly, anything else through extraction); the agent proposes what is editable now and keeps the rest for locked steps.
-- **Changes.** The agent never writes the config. `propose_changes` validates (visible, enabled, not read-only, value in options) and interrupts; the frontend shows a card, applies the change through the form backend and resumes with the new config.
-- **Dependencies.** Inferred from config diffs (the config does not declare them) and persisted per form.
-- **Business documents.** Compiled once into rules and field notes in the domain pack; a deep-agent researcher (`deepagents`, read-only `/docs/` filesystem + ranked search) handles the long tail and returns a cited answer.
-- **User documents.** Read by a separate extraction call; only the values (with confidence and evidence) enter the conversation.
-- **Long chats.** Older turns are compacted into a conversation memory by a cheap model (goal, values not yet in the form, decisions, rejections, next step); the form state is never summarized because it is rebuilt from the config every turn.
-- **Chat history.** The conversation the user sees is a separate display transcript: compaction never touches it, and with durable stores it survives reloads and restarts (`GET /threads/{id}` restores it, including a pending card).
-- **Append-only history.** The system prompt is frozen per thread; knowledge updates arrive as `<updated_instructions>` in a new message. Models that bind reasoning to the exact prefix (Claude Opus 5.5) otherwise reject earlier reasoning blocks; if a provider still rejects them, the turn is retried once without them.
-
-## Next steps
-
-- Auth on the knowledge-base endpoints (anyone can upload or delete documents today).
-- Embeddings for field search (`form/search.py`) like the knowledge index already supports.
-- PII tokenization for chat text and attachments in strict regimes.
-- Run the live harness against OpenAI / Azure (only offline payload checks so far).
+To run the demo app on your machine, see [Live demo](https://dushes-ai.fly.dev/get-started/live-demo/). Where each part lives: `backend/formguide/` is the library, `packages/agui-chat/` the chat widget and `site/` the docs.

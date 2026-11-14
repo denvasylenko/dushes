@@ -1,14 +1,53 @@
 ---
 /**
- * The sidebar: the topic switcher (the SourceList primitive, fed by starlight-sidebar-topics, which still decides
- * the current topic and filters the tree) above Starlight's own page tree.
+ * The sidebar.
+ * - On a computer: Starlight's tree of the current topic (starlight-sidebar-topics narrows it); the topics are the
+ *   header tabs.
+ * - On a phone (the menu sheet): a Segmented control of the topics over every topic's page list; switching shows that
+ *   topic's list in place, and only tapping a page navigates. The lists come from `locals.fgTopics` (nav/middleware.ts
+ *   keeps the unfiltered sidebar). On a page outside every topic (the landing, 404) the first topic is shown.
+ * Starlight's own tree stays for the computer, and its menu footer (theme, GitHub) for the phone.
  */
 import Default from '@astrojs/starlight/components/Sidebar.astro'
-import { SourceList } from './ui'
-const { hasSidebar } = Astro.locals.starlightRoute
-const topics = (Astro.locals as { starlightSidebarTopics?: { isPageWithTopic: boolean; topics: { label: string; link: string; icon?: string; isCurrent: boolean; badge?: { text: string; variant?: never }; attrs?: Record<string, unknown> }[] } }).starlightSidebarTopics
+import SidebarSublist from '@astrojs/starlight/components/SidebarSublist.astro'
+import { Segmented, SourceList } from './ui'
+
+type Topic = { label: string; link: string; icon?: string; isCurrent: boolean; badge?: { text: string; variant?: never }; attrs?: Record<string, unknown> }
+type Group = { type: string; label: string; entries: Parameters<typeof SidebarSublist>[0]['sublist'] }
+const locals = Astro.locals as { starlightSidebarTopics?: { isPageWithTopic: boolean; topics: Topic[] }; fgTopics?: Group[]; fgPhoneOnly?: boolean }
+const topics = locals.starlightSidebarTopics?.topics ?? []
+// the unfiltered sidebar has one group per topic, labelled by its index ("0", "1", ...)
+const lists = (locals.fgTopics ?? []).filter((g) => g.type === 'group' && /^\d+$/.test(g.label))
+const current = topics.findIndex((t) => t.isCurrent)
+const shown = current >= 0 ? current : 0
+const phone = topics.length > 0 && lists.length === topics.length
 ---
-{hasSidebar && topics?.isPageWithTopic && (
-  <SourceList label="Topics" items={topics.topics.map((t) => ({ label: t.label, href: t.link, icon: t.icon, current: t.isCurrent, badge: t.badge, attrs: t.attrs }))} />
+{phone ? (
+  <div class="sb-phone">
+    <Segmented class="sb-seg" aria-label="Topics" data-sb-topics options={topics.map((t, i) => [String(i), t.label] as const)} value={String(shown)} />
+    {lists.map((g, i) => (
+      <div class="sb-list" data-sb-list={String(i)} hidden={i !== shown}><SidebarSublist sublist={g.entries} /></div>
+    ))}
+  </div>
+) : topics.length > 0 && locals.starlightSidebarTopics?.isPageWithTopic && (
+  <SourceList class="sb-topics" label="Topics" items={topics.map((t) => ({ label: t.label, href: t.link, icon: t.icon, current: t.isCurrent, badge: t.badge, attrs: t.attrs }))} />
 )}
+{locals.fgPhoneOnly && <span data-fg-phone-only hidden></span>}
 <Default><slot /></Default>
+
+<script>
+  import { setChoice } from './ui/ui'
+  // switch the shown topic list in place; navigation happens only on a page link. The segment's state is set here
+  // too, so the thumb, aria-checked and the list always move together, whichever handler sees the tap first.
+  const group = document.querySelector<HTMLElement>('[data-sb-topics]')
+  const show = (v: string) => {
+    if (!group) return
+    setChoice(group, v)
+    document.querySelectorAll<HTMLElement>('[data-sb-list]').forEach((l) => { l.hidden = l.dataset.sbList !== v })
+  }
+  group?.addEventListener('ui-change', (e) => show((e as CustomEvent<{ value: string }>).detail.value))
+  group?.addEventListener('click', (e) => {
+    const b = (e.target as Element).closest<HTMLElement>('[role="radio"]')
+    if (b?.dataset.value) show(b.dataset.value)
+  })
+</script>

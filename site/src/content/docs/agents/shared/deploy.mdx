@@ -31,6 +31,13 @@ import { Summary } from '../../../../components/ui';
 
 </Steps>
 
+## Known limits
+
+- The document endpoints (`/kb/*`) have no auth of their own: anyone who reaches them can upload or delete documents. Put them behind your auth, as above.
+- Chat text and attachments are not tokenized: personal data reaches the model as the user wrote it. Strict regimes need their own redaction in front of the server.
+- Field search matches words, not meaning; the document index already takes embeddings.
+- Live conversation tests run on Anthropic models; OpenAI and Azure are covered by offline payload checks only.
+
 ## What to keep on disk
 
 `data_dir` holds learned field dependencies, registered layouts, documents, attachments and transcripts. Mount it as a volume, or point each store elsewhere (a SQL checkpointer, your own transcript store, a vector store).
