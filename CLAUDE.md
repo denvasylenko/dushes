@@ -19,7 +19,7 @@ Documentation is maintained continuously, in the same change as the code — nev
   - the landing demo (`site/src/demo/`) replays the real widget's events: when card payloads or event shapes change, update the script there too; the card gallery (`site/src/demo/gallery.ts`, page `frontend/card-gallery`) has one specimen per card and variant: a new card or variant gets a specimen there;
   - backend pages show server code only (YAML and Python tabs, HTTP calls), frontend pages browser code only; each backend and widget page ends with "Every option";
   - the site also publishes `llms.txt`, `llms-full.txt` and `<page>.md` (built from the pages, nothing to edit); the docs assistant behind Ask AI (`backend/docs_ai/`, deployed from `deploy/docs-ai/`) reads `llms-full.txt`, so it follows the docs without changes.
-  - Check it builds: `cd site && npm run build`, then `python3 scripts/check_links.py site/dist` (every internal link and anchor; CI runs both).
+  - Check it builds: `cd site && npm run build`, then `python3 scripts/check_links.py site/dist` (every internal link and anchor) and `python3 scripts/check_exports.py site/dist` (no code line lost in the `.md` exports AI tools read); CI runs all three. Example files a page shows live in `site/public/examples/` and are included with `?raw`, so the page shows the file that was run.
   - Benchmarks and recipe numbers are never typed: they come from `site/src/data/` (`benchmarks/*.json`, `recipes.json`), written by QA's scripts; the page says how old a report is and flags it after 14 days.
 - **README.md** — update usage, configuration or run instructions when they change.
 - Before finishing any task that touched behaviour, run:

@@ -22,6 +22,27 @@ import Flow from '../../components/Flow.astro';
 import SetupPrompt from '../../components/SetupPrompt.astro';
 import { Entries, Entry } from '../../components/ui';
 
+export const demoBase = import.meta.env.PUBLIC_DEMO_URL ? import.meta.env.PUBLIC_DEMO_URL.replace(/\/?$/, '/') : null;
+
+## See it on a form
+
+The UI agent on a loan application, right here in your browser.
+
+<LiveDemo />
+
+<Stats />
+
+## Two ways in
+
+<Entries label="Two ways in">
+  <Entry icon="compass" eyebrow="The whole product" title="Site agent" text="One chat that knows every page of your site or app." points={['Answers about any page', 'Opens the right page or tab', 'Hands over to a form']} href="agents/site-agent/" demo={demoBase ? `${demoBase}site.html` : undefined} />
+  <Entry icon="form" eyebrow="One screen" title="UI agent" text="One guide that knows the screen in front of the user: every field of your form." points={['Shows where to click', 'Reads the user\'s documents', 'Fills fields after a yes']} href="agents/ui-agent/" demo={demoBase ?? undefined} />
+</Entries>
+
+Both run on one base: any LangChain model, your business documents, the `<agui-chat>` widget with its cards and themes, and one Python package (`formguide`).
+
+## Set it up
+
 <Tabs syncKey="pkg">
   <TabItem label="pip">
     ```bash
@@ -40,26 +61,7 @@ import { Entries, Entry } from '../../components/ui';
   </TabItem>
 </Tabs>
 
-export const demoBase = import.meta.env.PUBLIC_DEMO_URL ? import.meta.env.PUBLIC_DEMO_URL.replace(/\/?$/, '/') : null;
-
-## Two ways in
-
-<Entries label="Two ways in">
-  <Entry icon="compass" eyebrow="The whole product" title="Site agent" text="One chat that knows every page of your site or app." points={['Answers about any page', 'Opens the right page or tab', 'Hands over to a form']} href="agents/site-agent/" demo={demoBase ? `${demoBase}site.html` : undefined} />
-  <Entry icon="form" eyebrow="One screen" title="UI agent" text="One guide that knows the screen in front of the user: every field of your form." points={['Shows where to click', 'Reads the user\'s documents', 'Fills fields after a yes']} href="agents/ui-agent/" demo={demoBase ?? undefined} />
-</Entries>
-
-Both run on one base: any LangChain model, your business documents, the `<agui-chat>` widget with its cards and themes, and one Python package (`formguide`).
-
 <SetupPrompt />
-
-## See it on a form
-
-One scenario, played in your browser: the form assistant on a loan application.
-
-<LiveDemo />
-
-<Stats />
 
 ## One exchange, five steps
 

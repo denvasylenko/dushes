@@ -7,6 +7,8 @@ import { Summary } from '../../../components/ui';
 
 <Summary what={"The chat widget as a React component."} when={"Your form is a React app."} write={"`<AguiChat url=\"/agent/run\" plugins={[formguide({...})]} />`."} />
 
+<Aside type="note" title="Getting the package">`@formguide/agui-chat` is not on npm yet. Build it from the repository (`cd packages/agui-chat && npm install && npm run build`), then `npm pack` there and install the `.tgz` in your app. The imports below then work as written.</Aside>
+
 ```tsx title="LoanPage.tsx"
 import { useMemo, useRef } from 'react'
 import { AguiChat } from '@formguide/agui-chat/react'

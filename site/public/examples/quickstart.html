@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My form with an assistant</title>
+</head>
+<body>
+  <!-- your form: each field's outer element carries data-name, so the agent can point at it -->
+  <form id="my-form">
+    <p data-name="full_name"><label>Full name <input name="full_name"></label></p>
+    <p data-name="email"><label>Email <input name="email" type="email"></label></p>
+    <p data-name="loan_type"><label>Loan type
+      <select name="loan_type"><option value="">Choose…</option><option value="car">Car loan</option><option value="personal">Personal loan</option></select>
+    </label></p>
+  </form>
+
+  <agui-chat url="http://localhost:8000/agent/run"></agui-chat>
+
+  <!-- the chat: built from the repository for now (packages/agui-chat: npm install && npm run build), or this copy to try it -->
+  <script src="https://dushes-ai.fly.dev/widget/agui-chat.iife.js"></script>
+  <script type="module">
+    const AGENT = 'http://localhost:8000/agent'
+    const form = document.getElementById('my-form')
+    const LABELS = { full_name: 'Full name', email: 'Email', loan_type: 'Loan type' }
+    const OPTIONS = { loan_type: [{ id: 'car', name: 'Car loan' }, { id: 'personal', name: 'Personal loan' }] }
+
+    // 1. The form's layout, sent once: elements and how they nest, no code. The server returns its id.
+    const jsx = '<Form name="my_form"><Input name="full_name" /><Input name="email" /><Dropdown name="loan_type" /></Form>'
+    const { jsx_hash } = await fetch(`${AGENT}/layouts`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsx, form_id: 'my_form' }),
+    }).then((r) => r.json())
+
+    // 2. The form as it is now: each element's settings (props) and each field's value (state).
+    const config = () => ({
+      props: Object.fromEntries(Object.keys(LABELS).map((n) => [n, { label: LABELS[n], ...(OPTIONS[n] ? { options: OPTIONS[n] } : {}) }])),
+      state: Object.fromEntries(Object.keys(LABELS).map((n) => [n, form.elements[n].value || null])),
+    })
+
+    // 3. Values the user accepted on a card: put them in the form, return the form as it is now.
+    const apply = (changes) => {
+      for (const [name, value] of Object.entries(changes)) form.elements[name].value = value ?? ''
+      return config()
+    }
+
+    document.querySelector('agui-chat').use(AguiChat.formguide({
+      getState: () => ({ config: config(), jsx_hash, form_id: 'my_form' }),
+      applyChanges: apply,
+    }))
+  </script>
+</body>
+</html>

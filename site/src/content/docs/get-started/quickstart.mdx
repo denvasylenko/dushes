@@ -1,12 +1,13 @@
 ---
 title: Quickstart
-description: A running assistant and a chat on your page in five minutes. Backend first, then the page.
+description: "A running assistant and a chat on a page: three commands for the server, one HTML file for the page. About fifteen minutes."
 ---
-import { Steps, Aside, Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Steps, Aside, Tabs, TabItem, LinkCard, CardGrid, Code } from '@astrojs/starlight/components';
+import example from '../../../../public/examples/quickstart.html?raw';
 import SetupPrompt from '../../../components/SetupPrompt.astro';
 import { Summary } from '../../../components/ui';
 
-<Summary what={"The shortest path from nothing to a working assistant."} when={"Your first hour with Dushes."} write={"`pip install`, one line of `formguide.yaml`, `formguide serve`, one HTML tag."} />
+<Summary what={"The shortest path from nothing to a working assistant."} when={"Your first hour with Dushes."} write={"`pip install`, one line of `formguide.yaml`, `formguide serve`, one HTML file."} />
 
 <SetupPrompt />
 
@@ -56,37 +57,29 @@ Or do it yourself, below. The steps set up the **form assistant**, the base of b
 
 </Steps>
 
-## Frontend
+## The page
 
-<Steps>
+One HTML file: a small form, the chat, and the two functions that connect them. Save it as `index.html`, or [download it](../../examples/quickstart.html).
 
-1. **Register your form once.** Send its JSX skeleton; keep the `jsx_hash`.
+<Code code={example} lang="html" title="index.html" />
 
-   ```ts
-   const { jsx_hash } = await fetch('http://localhost:8000/agent/layouts', {
-     method: 'POST', headers: { 'Content-Type': 'application/json' },
-     body: JSON.stringify({ jsx: '<Form name="my_form"><Input name="full_name" /></Form>', form_id: 'my_form' }),
-   }).then((r) => r.json())
-   ```
+Serve the folder and open it:
 
-2. **Add the chat** and give it two functions: the current form, and how to apply accepted values. The script is built from the repository: `cd packages/agui-chat && npm install && npm run build` puts `agui-chat.iife.js` in `dist/`.
+```bash
+python3 -m http.server 8080      # then open http://localhost:8080
+```
 
-   ```html
-   <agui-chat url="http://localhost:8000/agent/run"></agui-chat>
-   <script src="agui-chat.iife.js"></script>
-   <script>
-     document.querySelector('agui-chat').use(AguiChat.formguide({
-       getState: () => ({ config: myForm.config, jsx_hash, form_id: 'my_form' }),
-       applyChanges: (changes) => myForm.apply(changes),     // returns the new config
-     }))
-   </script>
-   ```
+Ask "Where do I start?" The agent reads the form, points at fields and proposes values on a card; accept it and the fields fill in.
 
-3. **Ask** "Where do I start?" The agent reads the form, points at fields and proposes values on cards.
+What the file does, in its three numbered parts:
 
-</Steps>
+1. **The layout, once.** Your form's elements and how they nest, as JSX-like text (no React). The server keeps it and returns its id, `jsx_hash`.
+2. **The form as it is now.** `config` is `{props, state}`: each element's settings and each field's value. The chat sends it with every message.
+3. **Accepted values.** When the user accepts a card, `apply` puts the values in your form and returns the new `config`.
 
-`config` is `{props, state}`: each element's settings and each field's value. How the form and the agent talk: [Connect your form](../../frontend/connect-your-form/); what exactly goes in `config`: [Send the form each run](../../frontend/connect-your-form/state/).
+<Aside type="note" title="Where the chat script comes from">The widget is not on npm yet. To try it, the file loads the copy this site serves. For your app, build it from the repository: `cd packages/agui-chat && npm install && npm run build` puts `agui-chat.iife.js` in `dist/`.</Aside>
+
+More on each part: [Connect your form](../../frontend/connect-your-form/); every key of `config`: [Send the form each run](../../frontend/connect-your-form/state/); React, react-hook-form and others: [Choose a client](../../frontend/).
 
 <Aside type="caution">The endpoints authenticate nobody: see [Deploy and secure](../../agents/shared/deploy/) before going live.</Aside>
 
