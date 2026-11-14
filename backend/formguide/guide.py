@@ -45,6 +45,7 @@ from .stats import RunStats, activate, deactivate
 from .suggestions import suggest
 
 stats_log = logging.getLogger("formguide.stats")
+from .reply import as_list
 from .transcript import FileTranscriptStore, check_thread_id, new_entry, pending_card
 
 
@@ -163,8 +164,12 @@ class FormGuide:
                   resume: dict[str, Any] | None = None, run_id: str | None = None,
                   client_tools: list[dict] | None = None, tool_results: dict[str, str] | None = None,
                   prefill: dict[str, Any] | None = None, capabilities: list[str] | None = None,
-                  trace_context: dict[str, str] | None = None) -> AsyncIterator[dict]:
+                  trace_context: dict[str, str] | None = None,
+                  reply_to: list[dict[str, Any]] | None = None) -> AsyncIterator[dict]:
         """One turn, as AG-UI events (plain dicts with the protocol's camelCase keys).
+
+        `reply_to` ([{message_id, quote | whole, note?}]): the user answers those parts of earlier messages; the
+        agent reads each quote (and its note) before the message and the transcript keeps the list on the user's entry.
 
         - a new user message: `message` + `state` = {config, jsx_hash, form_id, ui?, attachments?};
         - a resume after a field-change card: `resume` = {accepted, config?, ui?, names?, comment?};
@@ -218,7 +223,8 @@ class FormGuide:
                     tx.update(thread_id, e["id"], result=tool_results[e["call_id"]])
             if message:
                 files = [a.get("filename") for a in (state or {}).get("attachments") or []]
-                tx.append(thread_id, new_entry("user", text=message, files=files))
+                tx.append(thread_id, new_entry("user", text=message, files=files,
+                                               **({"reply_to": as_list(reply_to)} if reply_to else {})))
             elif prefill:
                 tx.append(thread_id, new_entry("notice", text="The form was prefilled from data the app already has."))
         mode = self.config.interrupt_mode
@@ -231,7 +237,8 @@ class FormGuide:
         open_calls: set[str] = set()   # tool calls without a result: frontend tools
         token = activate(stats)   # the graph's nodes record into it (see stats.py)
         try:
-            async for ev in self._events(thread_id, mode, stats, tx, message=message, state=state, resume=resume,
+            from .reply import quoted, resolve
+            async for ev in self._events(thread_id, mode, stats, tx, message=quoted(message, resolve(reply_to, tx.list(thread_id))), state=state, resume=resume,
                                          run_id=run_id, client_tools=client_tools, tool_results=tool_results,
                                          prefill=prefill, capabilities=capabilities):
                 if stats.span is not None:
@@ -268,7 +275,7 @@ class FormGuide:
             elif t == "TEXT_MESSAGE_END" and texts.get(ev["messageId"], "").strip():
                 said.append(texts[ev["messageId"]])
                 text = texts.pop(ev["messageId"])
-                entries[ev["messageId"]] = (tx.append(thread_id, new_entry("assistant", text=text))["id"], text)
+                entries[ev["messageId"]] = (tx.append(thread_id, new_entry("assistant", text=text, message_id=ev["messageId"]))["id"], text)
             elif name == "text_retract":   # taken back: a reload does not show it, quick replies do not read it
                 eid, text = entries.pop(str((ev.get("value") or {}).get("messageId")), ("", ""))
                 if eid:
@@ -444,7 +451,7 @@ class FormGuide:
         For an empty thread of a form whose domain pack has `starters`, those opening messages too."""
         entries = self.transcripts.list(check_thread_id(thread_id))
         out = {"thread_id": thread_id, "transcript": entries, "pending_card": pending_card(entries),
-               "running": self.running(thread_id)}
+               "running": self.running(thread_id), "transcription": bool(self.transcriber)}
         if not entries and form_id:
             out["starters"] = starters_of(self.packs.get(form_id))
         return out
@@ -454,9 +461,10 @@ class FormGuide:
         out: list[dict[str, Any]] = []
         for e in self.transcripts.list(check_thread_id(thread_id)):
             if e["kind"] == "user":
-                out.append({"id": e["id"], "role": "user", "content": e.get("text", "")})
+                out.append({"id": e["id"], "role": "user", "content": e.get("text", ""),
+                            **({"reply_to": as_list(e["reply_to"])} if e.get("reply_to") else {})})
             elif e["kind"] == "assistant" and not e.get("retracted"):
-                out.append({"id": e["id"], "role": "assistant", "content": e.get("text", "")})
+                out.append({"id": e.get("message_id") or e["id"], "role": "assistant", "content": e.get("text", "")})
             elif e["kind"] == "display":   # AG-UI 1.0 activity message: the chat draws the card again
                 out.append({"id": e["id"], "role": "activity", "activityType": "card", "activity": e.get("card") or {}})
             elif e["kind"] == "tool" and e.get("call_id"):

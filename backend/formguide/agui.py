@@ -86,8 +86,14 @@ def run_kwargs(body: dict[str, Any]) -> dict[str, Any]:
             "state": inp.state if isinstance(inp.state, dict) else {}, "resume": resume,
             "client_tools": tools, "tool_results": tool_results, "prefill": fwd.get("prefill"),
             "capabilities": fwd.get("capabilities"),
+            **({"reply_to": rt} if (rt := _reply_to(fwd.get("reply_to"))) else {}),
             **({"trace_context": {k: str(fwd[k]) for k in ("traceparent", "tracestate") if fwd.get(k)}}
                if fwd.get("traceparent") else {})}
+
+
+def _reply_to(raw: Any) -> list[dict[str, Any]] | None:
+    from .reply import clean
+    return clean(raw)
 
 
 def encoder(accept: str | None = None) -> EventEncoder:

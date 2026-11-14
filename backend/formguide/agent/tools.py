@@ -325,10 +325,26 @@ def _check_args(name: str, args: Any) -> dict:
 
 
 def _need(ctx: ToolCtx, name: str):
-    n = ctx.ov.layout.get(name)
-    if not n:
-        raise ToolError(f"no element with name={name!r}. Use search_fields.")
-    return n
+    """The element by its name; also by its outline number ("1.2") or its exact on-screen label when that is unique."""
+    lay = ctx.ov.layout
+    n = lay.get(name)
+    if n:
+        return n
+    key = str(name).strip()
+    hits = [x for x in lay.nodes.values() if x.addr == key]
+    if len(hits) == 1:
+        return hits[0]
+    label = key.rsplit("/", 1)[-1].strip().casefold()   # "Section / Label" -> "label"
+    hits = [x for x in lay.nodes.values()
+            if x.is_field and label and (ctx.ov[x.name].label or "").strip().casefold() == label]
+    if len(hits) == 1:
+        return hits[0]
+    import difflib
+    names = [x.name for x in lay.nodes.values() if x.is_field]
+    close = difflib.get_close_matches(key, names, n=3, cutoff=0.5)
+    hint = f" Did you mean {', '.join(close)}?" if close else ""
+    raise ToolError(f"no element with name={name!r}.{hint} The name is the word after the number in the outline "
+                    f"(\"1.2 email Input\" is the field email). Use search_fields.")
 
 
 def card_schemas(cards: dict[str, Any], caps: frozenset[str] | None) -> list[dict]:
@@ -903,6 +919,13 @@ def _t_confirm_action(a: dict, ctx: ToolCtx) -> str:
     return ""
 
 
+def _unchanged(e: Any, val: Any) -> bool:
+    """The field already holds this value (compared as the user sees it)."""
+    if not e.filled or e.unreadable:
+        return False
+    return val == e.value or vals.display(val) == vals.display(e.value)
+
+
 def _empty(value: Any) -> bool:
     return value is None or value == [] or (isinstance(value, str) and not value.strip())
 
@@ -942,6 +965,9 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
             if e.readonly:
                 raise ToolError(f"{n.name} is read-only, computed by the form")
             val = _norm_value(ctx, n.name, ch["value"])
+            if _unchanged(e, val):   # nothing to change: a card would claim it was filled in
+                raise ToolError(f"{n.name} already has this value ({vals.display(e.value)}): nothing changes; "
+                                "tell the user it is already set, without a card")
             # card text for the user: language-neutral; `value` is in the form's own format
             ok.append({"name": n.name, "label": e.label or n.name, "kind": n.role,
                        "value": form_value(ctx, n.name, val),

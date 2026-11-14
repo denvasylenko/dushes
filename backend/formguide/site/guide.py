@@ -34,6 +34,7 @@ import uuid
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
+from ..reply import as_list
 from ..transcript import check_thread_id, new_entry
 
 try:   # module level: the router's annotations are resolved here (postponed annotations)
@@ -204,6 +205,11 @@ class Said:
     def text(self) -> str:
         return "".join(self.parts.values())
 
+    def first_id(self) -> dict[str, str]:
+        """{"message_id": the run's first kept message} for its transcript entry, or {}."""
+        mid = next(iter(self.parts), None)
+        return {"message_id": mid} if mid else {}
+
 class Dushes:
     def __init__(self, form_guide: FormGuide, site: SiteMap, model: Any = None,
                  knowledge_namespaces: list[str] | None = None, router_model: Any = None, *,
@@ -349,7 +355,8 @@ class Dushes:
         the current page, if any."""
         check_thread_id(thread_id)
         msgs = [{"id": e["id"], "role": "activity", "activityType": "card", "activity": e.get("card") or {}} if e["kind"] == "display" else
-                {"id": e["id"], "role": e["kind"], "content": e.get("text", ""),
+                {"id": (e.get("message_id") or e["id"]) if e["kind"] == "assistant" else e["id"], "role": e["kind"], "content": e.get("text", ""),
+                 **({"reply_to": as_list(e["reply_to"])} if e["kind"] == "user" and e.get("reply_to") else {}),
                  # who answered: a form agent's words carry the form id in the site thread
                  **({"agent": "form" if e.get("form_id") else "dushes"} if e["kind"] == "assistant" else {})}
                 for e in self.forms.transcripts.list(thread_id)
@@ -357,12 +364,13 @@ class Dushes:
         pending = None
         if form_id:
             pending = self.forms.thread(f"{thread_id}-{form_id}"[:100]).get("pending_card")
-        return {"thread_id": thread_id, "messages": msgs, "pending_card": pending}
+        return {"thread_id": thread_id, "messages": msgs, "pending_card": pending,
+                "transcription": bool(self.forms.transcriber)}
 
     # ------------------------------------------------------------ a turn
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None, handoff: bool = False,
-                  host: Any = None, **form_kwargs: Any) -> AsyncIterator[dict]:
+                  host: Any = None, reply_to: list[dict[str, Any]] | None = None, **form_kwargs: Any) -> AsyncIterator[dict]:
         check_thread_id(thread_id)
         state = state or {}
         run_id = run_id or str(uuid.uuid4())
@@ -383,12 +391,14 @@ class Dushes:
             self._carry_files(thread_id, form_thread, form, resume)
             tx = self.forms.transcripts
             if typed:
-                tx.append(thread_id, new_entry("user", text=typed, form_id=fid))
+                tx.append(thread_id, new_entry("user", text=typed, form_id=fid, **({"reply_to": as_list(reply_to)} if reply_to else {})))
             kw["capabilities"] = with_hand_back(kw.get("capabilities"))   # the form agent may give the message back
             from ..transcript import pending_card
             open_card = pending_card(tx.list(form_thread)) if resume is not None else None
             said = Said()
             back = None
+            if typed and reply_to:
+                kw["reply_to"] = reply_to   # the form agent reads the quote too
             async for ev in self.forms.run(form_thread, message=message, state=form, resume=resume,
                                            run_id=run_id, **kw):
                 if ev["type"] == "CUSTOM" and ev.get("name") == "hand_back":
@@ -404,20 +414,22 @@ class Dushes:
                 if fact:
                     tx.append(thread_id, new_entry("card_result", text=fact, form_id=fid))
             if said.text().strip():
-                tx.append(thread_id, new_entry("assistant", text=said.text(), form_id=fid))
+                tx.append(thread_id, new_entry("assistant", text=said.text(), form_id=fid, **said.first_id()))
             for card in said.cards:
                 tx.append(thread_id, new_entry("display", card=card, form_id=fid))
             if back is None or not typed:
                 return
-            async for ev in self._site_turn(thread_id, typed, state, run_id, host, form_kwargs, recorded=True):
+            async for ev in self._site_turn(thread_id, typed, state, run_id, host, form_kwargs, recorded=True,
+                                            reply_to=reply_to):
                 if ev["type"] != "RUN_STARTED":   # one run: the form's RUN_STARTED already went out
                     yield ev
             return
-        async for ev in self._site_turn(thread_id, message, state, run_id, host, form_kwargs):
+        async for ev in self._site_turn(thread_id, message, state, run_id, host, form_kwargs, reply_to=reply_to):
             yield ev
 
     async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
-                         host: Any, form_kwargs: dict[str, Any], recorded: bool = False) -> AsyncIterator[dict]:
+                         host: Any, form_kwargs: dict[str, Any], recorded: bool = False,
+                         reply_to: list[dict[str, Any]] | None = None) -> AsyncIterator[dict]:
         """Dushes' turn (and a same-run hand-off to a form). `recorded`: the user's message is already in
         the transcript (the form agent gave it back)."""
         tx = self.forms.transcripts
@@ -426,7 +438,9 @@ class Dushes:
         if recorded and history and history[-1][0] == "user":
             history = history[:-1]   # the message itself goes last, not twice
         if message and not recorded:
-            tx.append(thread_id, new_entry("user", text=message))
+            tx.append(thread_id, new_entry("user", text=message, **({"reply_to": as_list(reply_to)} if reply_to else {})))
+        from ..reply import quoted, resolve
+        heard = resolve(reply_to, tx.list(thread_id))
         said: list[str] = []
         page = ((state.get("page") or {}).get("path")) or "/"
         ctx = SiteRunCtx(thread_id=thread_id, page=page, state=state, message=message or "", host=host)
@@ -460,7 +474,8 @@ class Dushes:
         give = to_form if state.get("form") and message and not recorded else None
         has_docs = bool(self.forms.knowledge.documents_for(SCOPE))
         failed = False
-        async for ev in agent.answer(self.model or self.forms.models.agent, self.site, message or "", history, page,
+        first_mid = None
+        async for ev in agent.answer(self.model or self.forms.models.agent, self.site, quoted(message, heard) or "", history, page,
                                      thread_id, run_id, keep, doc_passages=self.doc_passages(message or "") if has_docs else "",
                                      ask_docs=self.ask_documents if has_docs else None, live=live,
                                      instructions=self.instructions, style=self.style, tools=self.tools, ctx=ctx,
@@ -468,11 +483,12 @@ class Dushes:
                                      stay_on_form=self._filling(thread_id, state), to_form=give):
             if ev["type"] == "TEXT_MESSAGE_CONTENT":
                 said.append(ev["delta"])
+                first_mid = first_mid or ev.get("messageId")
             elif ev["type"] == "RUN_ERROR":
                 failed = True
             yield ev
         if said:
-            tx.append(thread_id, new_entry("assistant", text="".join(said)))
+            tx.append(thread_id, new_entry("assistant", text="".join(said), **({"message_id": first_mid} if first_mid else {})))
         if failed:
             return
         if back and not handed:   # the form agent answers the message itself, in this run (no hand_back now)
@@ -480,13 +496,14 @@ class Dushes:
             fid = str(form.get("form_id") or "form")
             form_thread = f"{thread_id}-{fid}"[:100]
             out = Said()
-            async for ev in self.forms.run(form_thread, message=message, state=form, run_id=run_id, **form_kwargs):
+            async for ev in self.forms.run(form_thread, message=message, state=form, run_id=run_id,
+                                           **({"reply_to": as_list(reply_to)} if reply_to else {}), **form_kwargs):
                 if ev["type"] == "RUN_STARTED":
                     continue
                 out.see(ev)
                 yield ev
             if out.text().strip():
-                tx.append(thread_id, new_entry("assistant", text=out.text(), form_id=fid))
+                tx.append(thread_id, new_entry("assistant", text=out.text(), form_id=fid, **out.first_id()))
             for card in out.cards:
                 tx.append(thread_id, new_entry("display", card=card, form_id=fid))
             return
@@ -504,7 +521,7 @@ class Dushes:
             out.see(ev)
             yield ev
         if out.text().strip():
-            tx.append(thread_id, new_entry("assistant", text=out.text(), form_id=fid))
+            tx.append(thread_id, new_entry("assistant", text=out.text(), form_id=fid, **out.first_id()))
         for card in out.cards:
             tx.append(thread_id, new_entry("display", card=card, form_id=fid))
 

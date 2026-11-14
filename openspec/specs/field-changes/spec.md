@@ -116,3 +116,10 @@ A deferred row SHALL carry `deferred: true`, `value: null`, `lookup` (the propos
 #### Scenario: A brand change
 - **WHEN** the make changes from Toyota to Kia and the model list still holds Toyota's models
 - **THEN** the Model row for "Sportage" is deferred with `after: ["car_make"]`
+
+### Requirement: No card for a value the field already has
+A proposed value equal to the field's current value (as the user sees it) SHALL NOT become a card row; the agent SHALL be told the field already has it, and a proposal of only such values SHALL make no card.
+
+#### Scenario: Gender is already set
+- **WHEN** the user asks to fill in gender and it is already Male, and the agent proposes Male
+- **THEN** no "Filled in" card appears and the agent says gender is already set

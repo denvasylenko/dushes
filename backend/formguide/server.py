@@ -179,7 +179,8 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
             t = guide.thread(thread_id, form_id)
             if format == "agui":
                 return {"thread_id": thread_id, "messages": guide.thread_messages(thread_id),
-                        "pending_card": t["pending_card"], "running": t["running"], **({"starters": t["starters"]} if "starters" in t else {})}
+                        "pending_card": t["pending_card"], "running": t["running"], "transcription": t["transcription"],
+                        **({"starters": t["starters"]} if "starters" in t else {})}
             return t
         except ValueError as e:
             raise bad(e) from None

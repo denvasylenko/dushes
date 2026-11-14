@@ -122,3 +122,10 @@ The tool-round limit SHALL count the rounds since the user's last input: a new m
 - **WHEN** the model keeps calling tools past the limit after one message
 - **THEN** the turn ends with a short reply saying what is done and what comes next
 
+
+### Requirement: A blocking form rule is not a refusal
+When a form error or rule blocks sending (an age or date limit), the agent SHALL say what blocks it and why, that the user can change the value if it was a mistake, and SHALL keep helping with the rest of the form; it SHALL NOT refuse to continue, and what it says it will or will not do SHALL match what it does in the same and the next turns.
+
+#### Scenario: Under the age limit
+- **WHEN** the birth date makes the applicant 17, the form says the applicant must be 18 to 75, and the user asks to fill in other fields
+- **THEN** the agent explains the age rule blocks sending and fills the other fields

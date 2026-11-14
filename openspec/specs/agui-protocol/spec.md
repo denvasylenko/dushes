@@ -101,3 +101,35 @@ All of them SHALL validate as AG-UI `CUSTOM` events.
 #### Scenario: Stats at the end
 - **WHEN** a run finishes
 - **THEN** `run_stats` comes right before `RUN_FINISHED`
+
+### Requirement: A reply to a quote
+A run MAY carry `forwardedProps.reply_to`, a list in the order the user collected the quotes: `[{message_id, quote, note?} | {message_id, whole: true, note?}]`; a single such object (an older client) SHALL be read as a list of one. The server SHALL collapse each quote's whitespace and cut it to 300 characters (ending with "…" when cut), cut a note to 1000 characters, drop empty quotes and keep at most 10; no field SHALL change nothing, so older clients keep working.
+
+#### Scenario: Asking why about a number
+- **WHEN** the user selects "The monthly payment is 32 945" and writes "why so high?"
+- **THEN** the agent reads the quote before the message, and after a reload the quote shows above the user's bubble
+
+#### Scenario: An older client
+- **WHEN** a run has no `reply_to`
+- **THEN** the turn is the same as before
+
+### Requirement: The agent reads every quote with its note
+Both the form agent and Dushes SHALL read, before the message text, one line per quote in order: "[The user replies to this part of your earlier answer: «…»]", followed by " Their comment: «…»" when the quote has a note.
+
+#### Scenario: Two quotes, each with a comment
+- **WHEN** the user quotes "18.9% a year" with the note "too high" and "60 months" with no note, and sends "can we do better?"
+- **THEN** the agent reads the two quote lines in that order, the first with its comment, then "can we do better?"
+
+### Requirement: A reply to a whole answer
+A `reply_to` item MAY be `{message_id, whole: true}` (a swipe or the Reply action on a message). The server SHALL find that answer by `message_id` in the thread's transcript and give the agent "[The user replies to your whole earlier answer: «…»]" with the beginning of its text, or "(your previous answer)" when it is not found; the stored item SHALL stay as the client sent it.
+
+#### Scenario: Swiping an answer
+- **WHEN** the user swipes the answer about opening hours and asks "why?"
+- **THEN** the agent reads that the user replies to the whole answer about opening hours
+
+### Requirement: A quote in the history
+The user's transcript entry SHALL keep the plain message text and the `reply_to` list, and the restored user message (`GET /threads/{id}`, `/site/threads/{id}`, the thread's AG-UI messages) SHALL carry `reply_to` as a list, an entry stored with a single object included, so a reload draws every quote and note above the bubble.
+
+#### Scenario: A reload
+- **WHEN** the page reloads after a reply to two quotes
+- **THEN** the restored user message is `{role: user, content, reply_to: [{message_id, quote, note?}, {message_id, quote}]}`
