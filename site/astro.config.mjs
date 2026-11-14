@@ -29,6 +29,7 @@ export default defineConfig({
 			sidebar: [
 				{ label: 'Get started', items: [
 					{ label: 'Overview', slug: 'getting-started/overview' },
+					{ label: 'Benchmarks', slug: 'getting-started/benchmarks' },
 					{ label: 'Quickstart', slug: 'getting-started/quick-start' },
 					{ label: 'Run the demo app', slug: 'getting-started/demo-app' },
 				] },

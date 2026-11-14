@@ -145,7 +145,7 @@ def _pieces(text: str, size: int = 2400) -> list[str]:
 def read(source: str, timeout: float = 20) -> str:
     """A URL (https://.../llms-full.txt) or a local path."""
     if re.match(r"https?://", source):
-        req = urllib.request.Request(source, headers={"User-Agent": "formguide-docs-ai"})
+        req = urllib.request.Request(source, headers={"User-Agent": "dushes-docs-ai"})
         with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 — the configured docs URL
             return r.read().decode("utf-8")
     return Path(source).read_text(encoding="utf-8")

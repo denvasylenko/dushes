@@ -1,7 +1,7 @@
 # formguide's public host: the docs site, Ask AI and the live demo in one app (backend/docs_ai/host.py).
 # Build context: the repository root.
 #   fly deploy . --config deploy/docs-ai/fly.toml --dockerfile deploy/docs-ai/Dockerfile --ignorefile deploy/docs-ai/.dockerignore
-ARG SITE_URL=https://formguide-docs-ai.fly.dev
+ARG SITE_URL=https://dushes-ai.fly.dev
 
 # 1. the one-script widget (for the playground), the docs site (with Ask AI, demo and playground) and the demo page
 FROM node:24-slim AS web

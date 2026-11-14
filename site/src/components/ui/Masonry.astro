@@ -1,0 +1,14 @@
+---
+/**
+ * Masonry: a gallery that fills the free space. Tiles of any height are packed into columns (a short one sits right
+ * under its neighbour, no gap below it), in reading order left to right; one column on a phone. Each tile's height
+ * is watched, so an image that loads later or a disclosure that opens moves the tiles under it, nothing else.
+ * Without script it is a plain grid of rows.
+ */
+interface Props { min?: string; gap?: string; label?: string; class?: string; [k: string]: unknown }
+const { min = '15rem', gap = '12px', label, class: cls, ...rest } = Astro.props
+---
+<div class:list={['ui-masonry', 'not-content', cls]} data-ui-masonry style={`--ui-m-min:${min};--ui-m-gap:${gap}`}
+  role={label ? 'group' : undefined} aria-label={label} {...rest}><slot /></div>
+
+<script>import './ui.ts'</script>

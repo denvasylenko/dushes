@@ -1,0 +1,17 @@
+---
+/**
+ * Metric: one measured number, big and calm (Apple's "at a glance" figures). `value` is the number with its unit
+ * ("93%", "8 ms", "1.2k"), `label` one line of what it means, `detail` an optional muted line (how it was measured),
+ * `href` an optional source shown as a small "Source" link. Place it in <Metrics>.
+ */
+import Icon from './Icon.astro'
+interface Props { value: string; label: string; detail?: string; href?: string; source?: string; class?: string }
+const { value, label, detail, href, source = 'Source', class: cls } = Astro.props
+const ext = href ? /^https?:/.test(href) : false
+---
+<div class:list={['ui-metric', cls]}>
+  <p class="ui-metric-value">{value}</p>
+  <p class="ui-metric-label">{label}</p>
+  {detail && <p class="ui-metric-detail">{detail}</p>}
+  {href && <a class="ui-metric-src" href={href} {...(ext ? { target: '_blank', rel: 'noopener' } : {})}>{source}<Icon name={ext ? 'external' : 'chevron'} /></a>}
+</div>

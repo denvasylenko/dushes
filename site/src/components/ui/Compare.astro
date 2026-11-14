@@ -1,0 +1,33 @@
+---
+/**
+ * Compare: 2-6 items on one scale as horizontal bars. Our row (`highlight`) is drawn in the accent, the others muted;
+ * each value sits at the end of its bar. `better` adds a small caption ("Lower is better" / "Higher is better"),
+ * `unit` names the scale, `note` is a muted line under it (the source, the method). The bars scale to the largest
+ * value, or to `max` when given (e.g. 100 for percentages). The list reads as text to a screen reader.
+ */
+interface Item { label: string; value: number; display?: string; highlight?: boolean }
+interface Props { items: Item[]; title?: string; unit?: string; note?: string; better?: 'lower' | 'higher'; max?: number; class?: string }
+const { items, title, unit, note, better, max, class: cls } = Astro.props
+const top = (max ?? Math.max(...items.map((i) => i.value), 0)) || 1
+const caption = [unit, better && (better === 'lower' ? 'Lower is better' : 'Higher is better')].filter(Boolean)
+---
+<figure class:list={['ui-compare', 'not-content', cls]}>
+  {(title || caption.length > 0) && (
+    <figcaption class="ui-compare-head">
+      {title && <span class="ui-compare-title">{title}</span>}
+      {caption.length > 0 && <span class="ui-compare-cap">{caption.join(' · ')}</span>}
+    </figcaption>
+  )}
+  <ul class="ui-compare-list">
+    {items.map((i) => (
+      <li class:list={['ui-compare-row', { 'is-us': i.highlight }]}>
+        <span class="ui-compare-label">{i.label}</span>
+        <span class="ui-compare-track">
+          <span class="ui-compare-bar" style={`--w:${Math.max(0, Math.min(1, i.value / top))}`} aria-hidden="true" />
+          <span class="ui-compare-val">{i.display ?? String(i.value)}</span>
+        </span>
+      </li>
+    ))}
+  </ul>
+  {note && <p class="ui-compare-note">{note}</p>}
+</figure>

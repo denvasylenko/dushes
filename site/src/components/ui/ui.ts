@@ -8,6 +8,7 @@
  *                           arrow keys move between the items
  *   [data-ui-copy]          a Copy button: copies the selector's text, or the code of the closest .ui-code when empty
  *   input.ui-range          a slider: keeps the accent track (--p) and its <output data-ui-out-for=id> current
+ *   [data-ui-masonry]       a gallery: each tile spans as many 1px rows as it is tall, kept current as tiles resize
  */
 
 /** Select `value` in a choice group (no event: the caller already knows). */
@@ -72,6 +73,22 @@ function setMenu(menu: HTMLElement, open: boolean, focus: 'first' | 'trigger' | 
   if (focus === 'trigger') trigger.focus()
 }
 
+/**
+ * Pack a Masonry gallery: every tile spans as many 1px grid rows as it is tall (plus the gap), so a short tile sits
+ * right under its neighbour. Watches each tile, so later growth (an image, a font, a disclosure) re-packs. Call it
+ * for a gallery built after load; the ones in the page are packed on their own.
+ */
+export function masonry(grid: HTMLElement): void {
+  if (grid.dataset.on !== undefined) return
+  const gap = () => parseFloat(getComputedStyle(grid).columnGap) || 0
+  const span = (el: HTMLElement) => { el.style.gridRowEnd = `span ${Math.max(1, Math.ceil(el.getBoundingClientRect().height + gap()))}` }
+  const ro = new ResizeObserver((entries) => entries.forEach((e) => span(e.target as HTMLElement)))
+  const watch = (el: Element) => { if (el instanceof HTMLElement) { span(el); ro.observe(el) } }
+  grid.dataset.on = ''
+  ;[...grid.children].forEach(watch)
+  new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach(watch))).observe(grid, { childList: true })
+}
+
 const openMenus = () => [...document.querySelectorAll<HTMLElement>('[data-ui-menu]')].filter((m) => m.querySelector('.ui-pop:not([hidden])'))
 
 if (!(window as { __fgUi?: boolean }).__fgUi) {
@@ -129,6 +146,7 @@ if (!(window as { __fgUi?: boolean }).__fgUi) {
 
   const init = () => {
     document.querySelectorAll<HTMLInputElement>('input.ui-range').forEach(syncRange)
+    document.querySelectorAll<HTMLElement>('[data-ui-masonry]').forEach(masonry)
     document.querySelectorAll('[data-ui-choice]').forEach((g) => {
       const on = g.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]') ?? g.querySelector<HTMLElement>('[role="radio"]')
       g.querySelectorAll<HTMLElement>('[role="radio"]').forEach((r) => { r.tabIndex = r === on ? 0 : -1 })

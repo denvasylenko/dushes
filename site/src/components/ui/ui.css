@@ -257,9 +257,54 @@
 .ui-entry-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: auto; padding-top: 8px; }
 @media (max-width: 50rem) { .ui-entry { padding: 20px; border-radius: var(--fg-r-tile); } }
 
+/* ---------- Metrics: big measured numbers, calm, 2-4 across (1-2 on a phone) ---------- */
+.ui-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: 12px; margin: 1.5rem 0; }
+.ui-metric { display: flex; flex-direction: column; gap: 4px; padding: 18px 18px 16px; border-radius: var(--fg-r-panel);
+  background: var(--fg-surface); box-shadow: inset 0 0 0 1px var(--fg-line); min-width: 0; }
+.ui-metric p { margin: 0; }
+.ui-metric-value { font: 700 clamp(1.75rem, 4vw, 2.25rem)/1.05 var(--fg-display, var(--sl-font)); letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums; color: var(--fg-ink); overflow-wrap: anywhere; }
+.ui-metric-label { font-size: var(--fg-fs-callout); line-height: 1.35; color: var(--fg-ink); text-wrap: pretty; }
+.ui-metric-detail { font-size: var(--fg-fs-footnote); line-height: 1.4; color: var(--fg-ink-3); text-wrap: pretty; }
+.ui-metric-src { margin-top: auto; padding-top: 6px; align-self: flex-start; display: inline-flex; align-items: center; gap: 3px;
+  font-size: var(--fg-fs-footnote); color: var(--fg-accent-ink); text-decoration: none; min-height: 24px; }
+.ui-metric-src .ui-icon { width: 12px; height: 12px; }
+@media (hover: hover) { .ui-metric-src:hover { text-decoration: underline; } }
+@media (pointer: coarse) { .ui-metric-src { min-height: 44px; } }
+
+/* ---------- Compare: a few items on one scale, ours in the accent ---------- */
+.ui-compare { margin: 1.5rem 0; padding: 18px 20px; border-radius: var(--fg-r-panel); background: var(--fg-surface); box-shadow: inset 0 0 0 1px var(--fg-line); }
+.ui-compare-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 0 0 12px; }
+.ui-compare-title { font: 600 var(--fg-fs-callout)/1.3 var(--sl-font); color: var(--fg-ink); }
+.ui-compare-cap { font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); }
+.ui-compare-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ui-compare-row { display: grid; grid-template-columns: minmax(6rem, 11rem) 1fr; align-items: center; gap: 12px; margin: 0; }
+.ui-compare-label { font-size: var(--fg-fs-sub); line-height: 1.3; color: var(--fg-ink-2); min-width: 0; }
+.ui-compare-track { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ui-compare-bar { flex: none; height: 12px; min-width: 3px; border-radius: var(--fg-r-pill);
+  width: calc((100% - 6.5rem) * var(--w)); background: color-mix(in srgb, var(--fg-ink) 22%, transparent); }
+.ui-compare-val { flex: none; font: 500 var(--fg-fs-sub)/1 var(--sl-font); font-variant-numeric: tabular-nums; color: var(--fg-ink-2); white-space: nowrap; }
+.ui-compare-row.is-us .ui-compare-label { color: var(--fg-ink); font-weight: 600; }
+.ui-compare-row.is-us .ui-compare-bar { background: var(--fg-accent); }
+.ui-compare-row.is-us .ui-compare-val { color: var(--fg-accent-ink); font-weight: 600; }
+.ui-compare-note { margin: 12px 0 0; font-size: var(--fg-fs-footnote); line-height: 1.4; color: var(--fg-ink-3); text-wrap: pretty; }
+@media (max-width: 50rem) {
+  .ui-compare { padding: 16px; }
+  .ui-compare-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+
 /* ---------- motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .ui-btn, .ui-chip, .ui-seg > button, .ui-disc-chev, .ui-linkcard, .ui-linkcard > .ui-icon, .ui-menu-item, .ui-swatch, .ui-range::-webkit-slider-thumb { transition: none; }
   .ui-btn:active, .ui-chip:active, .ui-swatch:active, .ui-linkcard:active { transform: none; }
   .ui-pop { animation: none; }
 }
+
+/* ---------- Masonry: tiles of any height packed into columns, reading order kept ---------- */
+/* without script: rows of tiles; ui.ts turns on [data-on] and spans each tile over 1px rows by its own height */
+.ui-masonry {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--ui-m-min, 15rem)), 1fr));
+  gap: var(--ui-m-gap, 12px); align-items: start;
+}
+.ui-masonry > * { margin: 0; min-width: 0; }
+.ui-masonry[data-on] { grid-auto-rows: 1px; row-gap: 0; }

@@ -3,7 +3,7 @@ title: 'Design system'
 description: 'Every control the docs use, live in light and dark, with the snippet to copy.'
 ---
 import { LinkCard as SlLinkCard, CardGrid } from '@astrojs/starlight/components';
-import { Badge, Button, Entries, Entry, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
+import { Badge, Button, Compare, Entries, Entry, Masonry, Metric, Metrics, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
 
 Every piece of interface on this site comes from one folder, `site/src/components/ui/`. Each primitive is shaped like its Apple counterpart, built from the tokens in `site/src/styles/theme.css`, and shown below working. A new pattern is added there first and shown on this page, then used.
 
@@ -257,6 +257,69 @@ import { Entries, Entry } from '../../components/ui';
   <Entry icon="compass" title="Dushes" text="One chat across every page." href="backend/dushes/" demo={demoUrl} />
   <Entry icon="form" title="Form assistant" text="Next to a long form." href="getting-started/quick-start/" />
 </Entries>
+```
+
+## Masonry
+
+A gallery of tiles of different heights that fills the free space: a short tile sits right under its neighbour, with no gap below it. The tiles read left to right, become one column on a phone, and re-pack when a tile grows (an image loads, a font arrives). Use it where tiles are independent specimens, as on [Blocks](../../frontend/blocks/). Keep a plain grid where tiles open in place (a code disclosure) or should line up as rows; a re-pack there moves tiles away from the reader.
+
+<Specimen layout="col">
+  <Masonry label="Tiles of any height" min="10rem">
+    {[64, 120, 40, 96, 150, 56, 88, 72].map((h, i) => <div class="ui-tile ui-tile--sm" style={`height:${h + 40}px;font:600 var(--fg-fs-sub)/1 var(--sl-font-mono);color:var(--fg-ink-2)`}>{i + 1}</div>)}
+  </Masonry>
+</Specimen>
+
+```mdx
+import { Masonry } from '../../components/ui';
+
+<Masonry label="Every block" min="15rem" gap="12px">
+  <figure>…</figure>
+  <figure>…</figure>
+</Masonry>
+```
+
+`min` is a column's smallest width; `gap` is the space between tiles in both directions. Each direct child is a tile. A gallery built by script after load is packed with `masonry(el)` from `ui.ts`.
+
+## Metrics
+
+Measured numbers, big and calm: a value with its unit, one line of what it means, an optional muted line on how it was measured, and an optional **Source** link. Two to four sit in a row; on a phone, one or two.
+
+<Specimen layout="col">
+  <Metrics>
+    <Metric value="93%" label="fewer tokens than the full form" detail="221-field form: 1,210 vs 16,582 tokens" />
+    <Metric value="8 ms" label="an example latency" detail="illustrative, to show the layout" />
+    <Metric value="1.2k" label="an example count" href="#metrics" />
+  </Metrics>
+</Specimen>
+
+```mdx
+import { Metrics, Metric } from '../../components/ui';
+
+<Metrics>
+  <Metric value="93%" label="fewer tokens than the full form" detail="221-field form: 1,210 vs 16,582 tokens" />
+  <Metric value="8 ms" label="to build the model's context" href="https://example.com/method" />
+</Metrics>
+```
+
+## Compare
+
+Two to six items on one scale, as horizontal bars. Our row is drawn in the accent and the others are muted; each value sits at the end of its bar. `better` adds a small caption, `unit` names the scale and `note` cites the source. Bars scale to the largest value, or to `max` (say, 100 for percentages).
+
+<Specimen layout="col">
+  <Compare title="Tokens the model sees per turn" unit="tokens" better="lower" note="The same 221-field form, measured on one turn."
+    items={[{ label: 'Dushes', value: 1210, display: '1,210', highlight: true }, { label: 'The whole form', value: 16582, display: '16,582' }]} />
+  <Compare title="A higher-is-better scale" unit="%" better="higher" max={100} note="Illustrative numbers, to show the layout."
+    items={[{ label: 'Ours', value: 72, display: '72%', highlight: true }, { label: 'Option B', value: 41, display: '41%' }, { label: 'Option C', value: 1.5, display: '<2%' }]} />
+</Specimen>
+
+```mdx
+import { Compare } from '../../components/ui';
+
+<Compare title="Tokens the model sees per turn" unit="tokens" better="lower" note="The same 221-field form."
+  items={[
+    { label: 'Dushes', value: 1210, display: '1,210', highlight: true },
+    { label: 'The whole form', value: 16582, display: '16,582' },
+  ]} />
 ```
 
 ## Tokens

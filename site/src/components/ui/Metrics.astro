@@ -1,0 +1,6 @@
+---
+/** Metrics: a row of big-number Metric tiles, 2-4 across on a computer, 1-2 on a phone. */
+interface Props { class?: string; label?: string }
+const { class: cls, label = 'At a glance' } = Astro.props
+---
+<div class:list={['ui-metrics', 'not-content', cls]} role="group" aria-label={label}><slot /></div>

@@ -163,3 +163,10 @@ The Reference section SHALL have a "Design system" page that shows every primiti
 #### Scenario: Checking a component in both themes
 - **WHEN** a reader switches "Preview in" to Light or Dark on the design-system page
 - **THEN** the whole site's theme changes and every specimen shows that theme
+
+### Requirement: Benchmarks page
+The site SHALL have a Benchmarks page with Dushes' own measured numbers (tokens the model sees, its own overhead per turn, live turn timings with their date, model and how to reproduce them) and the public agent benchmarks as context, saying plainly that Dushes was not scored on them.
+
+#### Scenario: A dated live table
+- **WHEN** a reader opens Benchmarks
+- **THEN** the live turn table names the date, the model and the command that produced it

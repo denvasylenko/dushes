@@ -4,15 +4,16 @@
  * with no chat around it, so you see what you compose a card from at a glance.
  */
 import { SHEET } from '../demo/gallery'
+import { Masonry } from './ui'
 ---
-<div class="bs not-content" aria-label="Every block">
+<Masonry class="bs" label="Every block" min="15rem" gap="12px">
   {SHEET.map(([type, blocks]) => (
     <figure class="bs-cell">
       <figcaption><code>{type}</code></figcaption>
       <agui-chat mode="inline" persist-thread="off" attach="off" typing="plain" lang="en" data-blocks={JSON.stringify(blocks)}></agui-chat>
     </figure>
   ))}
-</div>
+</Masonry>
 
 <script>
   import '../../../packages/agui-chat/src/index'
@@ -49,7 +50,7 @@ import { SHEET } from '../demo/gallery'
 </script>
 
 <style is:global>
-  .bs { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 12px; margin: 1.5rem 0 2rem; align-items: start; }
+  .bs { margin: 1.5rem 0 2rem; }   /* the packing is the Masonry primitive's */
   .bs-cell { margin: 0; padding: 10px 10px 10px; border-radius: var(--fg-r-panel, 16px); background: var(--fg-fill, var(--sl-color-gray-6)); }
   .bs-cell figcaption { margin: 0 4px 6px; }
   .bs-cell figcaption code { font-size: .8rem; color: var(--fg-accent-ink, var(--sl-color-accent)); background: none; padding: 0; }

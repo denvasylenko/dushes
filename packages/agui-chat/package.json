@@ -15,7 +15,7 @@
     "url": "git+https://github.com/denvasylenko/dushes.git",
     "directory": "packages/agui-chat"
   },
-  "homepage": "https://formguide-docs-ai.fly.dev/frontend/chat-widget/",
+  "homepage": "https://dushes-ai.fly.dev/frontend/chat-widget/",
   "bugs": "https://github.com/denvasylenko/dushes/issues",
   "type": "module",
   "imports": {

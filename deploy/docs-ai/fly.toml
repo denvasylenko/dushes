@@ -1,7 +1,7 @@
 # formguide's public host: the docs site at /, Ask AI at /ai, the live demo at /demo (backend/docs_ai/host.py).
-#   fly secrets set ANTHROPIC_API_KEY=... -a formguide-docs-ai
+#   fly secrets set ANTHROPIC_API_KEY=... -a dushes-ai
 #   fly deploy . --config deploy/docs-ai/fly.toml --dockerfile deploy/docs-ai/Dockerfile --ignorefile deploy/docs-ai/.dockerignore
-app = "formguide-docs-ai"
+app = "dushes-ai"
 primary_region = "fra"
 
 [env]
