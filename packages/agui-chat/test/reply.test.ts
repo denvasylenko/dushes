@@ -25,6 +25,7 @@ async function mount(attrs: Record<string, string> = {}): Promise<AguiChatElemen
   return el
 }
 const $ = (el: AguiChatElement, s: string) => el.shadowRoot!.querySelector(s) as HTMLElement
+const $$ = (el: AguiChatElement, s: string) => [...el.shadowRoot!.querySelectorAll(s)] as HTMLElement[]
 /** Select `text` inside `node` the way a user would, then let the capsule appear. */
 async function select(el: AguiChatElement, node: Element, text: string): Promise<void> {
   const t = [...node.querySelectorAll('*'), node].flatMap((n) => [...n.childNodes]).find((c) => c.nodeType === 3 && c.textContent!.includes(text))!
@@ -138,8 +139,13 @@ describe('more ways to reply', () => {
     await el.send('hours?')
     await tick(5)
     ;($(el, '.act-reply') as HTMLButtonElement).click()
-    expect($(el, '.reply-q').textContent).toBe('Opening hours are 9 to 6 on weekdays.')
-    ;($(el, '.reply-x') as HTMLButtonElement).click()
+    expect($(el, '.reply-q').textContent).toBe('Assistant Opening hours are 9 to 6 on weekdays.')
+    expect($(el, 'textarea').getAttribute('aria-describedby')).toBe('reply-q')
+    await el.send('and on Saturday?')
+    expect(seen[1].forwardedProps).toMatchObject({ reply_to: { message_id: 'm1', whole: true } })
+    expect((seen[1].forwardedProps as { reply_to: Record<string, unknown> }).reply_to).not.toHaveProperty('quote')
+    expect([...el.shadowRoot!.querySelectorAll('.bubble-q')].at(-1)!.getAttribute('aria-label')).toContain('Reply to the whole answer')
+    await tick(5)
     await select(el, $(el, '.msg.ai .body'), 'ng hours are 9 to 6 on wee')
     ;($(el, '.pill-reply') as HTMLButtonElement).click()
     expect($(el, '.reply-q').textContent).toBe('hours are 9 to 6 on')
@@ -155,6 +161,31 @@ describe('more ways to reply', () => {
   })
 })
 
+describe('long messages fold', () => {
+  it('a tall bubble shows its start and Show more; Show less folds it again; short ones stay', async () => {
+    const tall = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function (this: HTMLElement) { return this.textContent!.length > 200 ? 600 : 40 })
+    const shown = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(40)
+    const el = await mount(), seen: Record<string, unknown>[] = []
+    el.agent = agent('Ok.', seen) as never
+    await el.send('short')
+    await el.send('pasted '.repeat(60))
+    const btns = [...el.shadowRoot!.querySelectorAll<HTMLButtonElement>('.fold-btn')]
+    expect(btns).toHaveLength(1)
+    const box = [...el.shadowRoot!.querySelectorAll<HTMLElement>('.msg.me .bubble')].at(-1)!
+    expect(box.classList.contains('folded')).toBe(true)
+    expect(btns[0].textContent).toBe('Show more')
+    expect(btns[0].getAttribute('aria-controls')).toBe(box.id)
+    btns[0].click()
+    expect(box.classList.contains('folded')).toBe(false)
+    expect(btns[0].textContent).toBe('Show less')
+    expect(btns[0].getAttribute('aria-expanded')).toBe('true')
+    btns[0].click()
+    expect(box.classList.contains('folded')).toBe(true)
+    expect($$(el, '.msg.ai .fold-btn')).toHaveLength(0)
+    tall.mockRestore(); shown.mockRestore()
+  })
+})
+
 describe('the voice option', () => {
   it('off hides the mic; server records even where the browser could listen', async () => {
     vi.stubGlobal('webkitSpeechRecognition', class {})
@@ -166,5 +197,23 @@ describe('the voice option', () => {
     vi.stubGlobal('navigator', { ...navigator, mediaDevices: { getUserMedia: async () => ({}) } })
     el.setAttribute('voice', 'auto')   // jsdom is not Chrome: auto records for the server
     expect((el as unknown as { _micMode: () => string })._micMode()).toBe('server')
+  })
+
+  it('auto prefers the server when its restore says it transcribes, even in Chrome', async () => {
+    vi.stubGlobal('webkitSpeechRecognition', class {})
+    vi.stubGlobal('chrome', {})
+    vi.stubGlobal('MediaRecorder', class {})
+    vi.stubGlobal('navigator', { ...navigator, userAgent: 'Mozilla/5.0 (Macintosh) Chrome/131', mediaDevices: { getUserMedia: async () => ({}) } })
+    const el = document.createElement('agui-chat') as AguiChatElement
+    for (const [k, v] of Object.entries({ mode: 'inline', lang: 'en', 'persist-thread': 'off' })) el.setAttribute(k, v)
+    let say!: (v: unknown) => void
+    el.plugins = [{ name: 'h', restore: () => new Promise((r) => { say = r }) }] as never
+    document.body.appendChild(el)
+    await tick()
+    const mode = () => (el as unknown as { _micMode: () => string })._micMode()
+    expect(mode()).toBe('browser')
+    say({ messages: [], transcription: true })
+    await tick(5)
+    expect(mode()).toBe('server')
   })
 })

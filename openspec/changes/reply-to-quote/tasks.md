@@ -6,11 +6,14 @@
 - [x] 1.2 Quote bar in the composer: icon, one-line quote, close button, Esc; mic starts dictation
 - [x] 1.3 `reply_to` in `forwardedProps` for the run; the quote above the user bubble; a tap scrolls to the message and highlights it
 - [x] 1.4 Restore: `reply_to` on user messages drawn, and stripped from the history sent back
-- [x] 1.5 Swipe right on an agent message on touch replies to the whole message
+- [x] 1.5 Swipe left on an agent message on touch replies to the whole message
 - [x] 1.6 Option `reply` and attribute `reply`; parts `selection-menu`, `reply` and `message-quote`
 - [x] 1.7 Texts (reply, replyVoice, cancelReply, toQuoted) in English and the 6 packs
 - [x] 1.8 Tests in `test/reply.test.ts`
 - [x] 1.9 `voice` option (auto, browser, server, off) with reliable-browser detection; `dictation` kept as the old name
+
+- [x] 1.10 A reply to the whole answer as `{message_id, whole: true}`; `voice: auto` prefers the server when the restore says `transcription: true` or `transcribeUrl` is set
+- [x] 1.11 Long messages fold (`collapseLines`, `collapseAnswers`), with Show more and Show less, `aria-expanded` and the part `fold-toggle`
 
 ## 2. Docs
 

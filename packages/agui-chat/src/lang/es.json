@@ -60,7 +60,10 @@
   "reply": "Responder",
   "replyVoice": "Responder por voz",
   "cancelReply": "Cancelar la respuesta",
-  "toQuoted": "Ver el mensaje citado"
+  "toQuoted": "Ver el mensaje citado",
+  "wholeAnswer": "Respuesta a todo el mensaje",
+  "showMore": "Ver m\u00e1s",
+  "showLess": "Ver menos"
  },
  "formguide": {
   "fillTitle": "\u00bfRellenar estos campos?",

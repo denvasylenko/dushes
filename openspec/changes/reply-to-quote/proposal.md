@@ -9,7 +9,8 @@ A long answer often has one line the user wants to ask about. Today they retype 
 - **Selection menu.** Selecting text in an agent's message shows a small capsule above the selection, like the iOS edit menu, with Reply and a microphone. On touch screens it goes under the selection, so it does not cover the system's own selection menu. There is no capsule for the user's own messages, cards or tool steps.
 - **Reply.** Reply puts a quote bar at the top of the composer and focuses the field. The bar holds a reply icon, the quote on one line with "…", and a close button. The microphone does the same and starts dictation at once.
 - **Removing the quote.** The close button or Esc removes it, with no Undo.
-- **Swipe to reply.** On a phone, swiping right on an agent's message replies to the whole message, as in Telegram.
+- **Reply to the whole answer.** Reply under an answer does it, and so does a swipe left on a phone, as in Telegram. The run carries `reply_to {message_id, whole: true}` with no quote, and the server looks the answer up.
+- **Long messages fold.** A user's bubble taller than `collapseLines` (8) lines shows its start, fading out, with Show more and Show less. Answers fold only with `collapseAnswers`.
 - **Sending.** The run carries `forwardedProps.reply_to = {message_id, quote}`, the quote being plain text of at most 300 characters. The user's bubble shows the quote above its text. A tap on it scrolls to the quoted message and briefly highlights it.
 - **After a reload**, a restored user message with `reply_to` shows its quote again.
 - **The `voice` option** (`auto` by default, `browser`, `server`, `off`) chooses how the mic turns speech into text. `auto` uses the browser's own recognition only where it is reliable (Chromium on a computer and Android), and otherwise records for the server. `dictation` stays as the old name. The docs say that Chrome's recognition sends the audio to Google.
@@ -21,7 +22,7 @@ A long answer often has one line the user wants to ask about. Today they retype 
 (none)
 
 ### Modified Capabilities
-- `chat-widget`: the `voice` option, the selection menu, the quote bar, the quoted bubble, swipe to reply, `reply_to` in the run and on restored messages.
+- `chat-widget`: the `voice` option (auto prefers the server when it transcribes), folding long messages, the selection menu, the quote bar, the quoted bubble, swipe to reply, `reply_to` in the run and on restored messages.
 
 ## Impact
 

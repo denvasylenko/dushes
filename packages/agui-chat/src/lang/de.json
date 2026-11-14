@@ -60,7 +60,10 @@
   "reply": "Antworten",
   "replyVoice": "Per Sprache antworten",
   "cancelReply": "Antwort abbrechen",
-  "toQuoted": "Zitierte Nachricht zeigen"
+  "toQuoted": "Zitierte Nachricht zeigen",
+  "wholeAnswer": "Antwort auf die ganze Nachricht",
+  "showMore": "Mehr anzeigen",
+  "showLess": "Weniger anzeigen"
  },
  "formguide": {
   "fillTitle": "Diese Felder ausf\u00fcllen?",

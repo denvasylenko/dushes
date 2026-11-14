@@ -19,8 +19,14 @@ export interface Message {
   reply_to?: ReplyTo
 }
 
-/** The part of an agent's message the user replies to: its id and the quoted plain text (at most 300 characters). */
-export interface ReplyTo { message_id: string; quote: string }
+/** What the user replies to: a part of an agent's message (`quote`) or all of it (`whole`). */
+export interface ReplyTo {
+  message_id: string
+  /** the quoted plain text of a selection (at most 300 characters) */
+  quote?: string
+  /** a reply to the whole answer (a swipe or Reply under it): no quote, the server looks the answer up */
+  whole?: boolean
+}
 
 export interface ToolSpec { name: string; description: string; parameters?: Record<string, unknown> }
 
@@ -77,6 +83,8 @@ export interface Restored {
   /** the running turn's events again (the host's follow stream, from the start of the turn): the chat plays them
    *  as a live run, so the answer goes on word by word after a reload; preferred over `running` */
   follow?: () => AsyncIterable<AguiEvent>
+  /** the server transcribes recordings (its `transcription` config): `voice: auto` records for it */
+  transcription?: boolean
 }
 
 export interface Attachment { id: string; filename: string; [k: string]: unknown }
@@ -201,8 +209,14 @@ export interface ChatOptions {
   /** A tap on an action under an answer; return true when you handled it (the built-in behaviour is skipped). */
   onMessageAction?: (id: string, message: { id: string; messageId: string; text: string; pressed?: boolean }) => boolean | void
   /** Reply to a part of an answer: selecting text in an agent's message offers Reply and the mic; on a phone a swipe
-   *  right replies to the whole message. The run carries forwardedProps.reply_to {message_id, quote}. Default on. */
+   *  left replies to the whole message. The run carries forwardedProps.reply_to {message_id, quote} (or {message_id,
+   *  whole: true} for the whole message). Default on. */
   reply: boolean
+  /** Long messages fold: a bubble taller than this many lines shows its start, fading out, with Show more under it.
+   *  0 turns folding off. Default 8. */
+  collapseLines: number
+  /** Fold the assistant's long answers too (default off, so an answer is never hidden). */
+  collapseAnswers: boolean
   starters: string[]
   /** How to answer an interrupt: forwardedProps.command.resume (CopilotKit, ag-ui-langgraph) or AG-UI 1.0 resume[]. */
   resumeStyle: 'command' | 'resume'
@@ -235,8 +249,9 @@ export interface ChatOptions {
   /** Send the message as soon as dictation stops. */
   micAutoSend: boolean
   /** How the mic turns speech into text:
-   *  - `auto` (default): the browser's own recognition where it is reliable (Chromium on a computer and on Android),
-   *    elsewhere (iPhone, Safari, Firefox) the chat records and the server transcribes (`transcribeUrl`);
+   *  - `auto` (default): the server when it transcribes (its restore says `transcription: true`, or `transcribeUrl`
+   *    is set); without one, the browser's own recognition where it is reliable (Chromium on a computer and on
+   *    Android), and elsewhere (iPhone, Safari, Firefox) a recording for the server;
    *  - `browser`: the browser only (for sites whose users are on Chrome); no mic where it has none;
    *  - `server`: always record and transcribe on the server;
    *  - `off`: no mic.

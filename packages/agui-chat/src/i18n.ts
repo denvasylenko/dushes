@@ -62,6 +62,9 @@ export const STRINGS: Record<string, Record<string, string>> = {
     "reply": "Reply",
     "replyVoice": "Reply by voice",
     "cancelReply": "Cancel the reply",
-    "toQuoted": "Show the quoted message"
+    "toQuoted": "Show the quoted message",
+    "wholeAnswer": "Reply to the whole answer",
+    "showMore": "Show more",
+    "showLess": "Show less"
   }
 }

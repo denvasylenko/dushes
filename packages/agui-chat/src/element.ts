@@ -39,7 +39,7 @@ export const DEFAULTS: ChatOptions = {
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, voice: 'auto', dictation: '', transcribeUrl: '', attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined, icons: {}, render: {},
-  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, modal: true, launcher: 'auto', launcherLabel: '', reply: true,
+  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, modal: true, launcher: 'auto', launcherLabel: '', reply: true, collapseLines: 8, collapseAnswers: false,
 }
 
 /** attribute -> [option, parser] */
@@ -53,7 +53,7 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   'mic-auto-send': ['micAutoSend', bool], voice: ['voice', String], dictation: ['dictation', String], 'transcribe-url': ['transcribeUrl', String], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
   'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
   'bubble-side': ['bubbleSide', String], greeting: ['greeting', String], 'greeting-delay': ['greetingDelay', Number], motion: ['motion', String],
-  reply: ['reply', bool], modal: ['modal', bool], launcher: ['launcher', String], 'launcher-label': ['launcherLabel', String],
+  reply: ['reply', bool], 'collapse-lines': ['collapseLines', Number], 'collapse-answers': ['collapseAnswers', bool], modal: ['modal', bool], launcher: ['launcher', String], 'launcher-label': ['launcherLabel', String],
   'message-actions': ['messageActions', (v) => (!v || /^(off|none|false)$/.test(v) ? [] : v.split(',').map((x) => x.trim()).filter(Boolean))],
 }
 
@@ -173,6 +173,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private $: Record<string, HTMLElement> = {}
   private _reply: ReplyTo | null = null   // the part of an answer the next message replies to
   private _picked: ReplyTo | null = null   // what the selection capsule would quote
+  private _serverVoice = false   // the server said it transcribes (restore: transcription)
   private _selT: ReturnType<typeof setTimeout> | undefined
   private _onSel = (): void => { clearTimeout(this._selT); this._selT = setTimeout(() => this._showPill(), 150) }
   private root!: ShadowRoot
@@ -324,6 +325,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._hideGreeting()
     this.$.panel.setAttribute('aria-hidden', 'false')
     if (finePointer()) setTimeout(() => (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true }), 60)   // a phone would open its keyboard
+    requestAnimationFrame(() => this.$.log.querySelectorAll<HTMLElement>('.fold-later').forEach((x) => this._fold(x)))   // laid out now
     if (!was) this.dispatchEvent(new CustomEvent('agui:open'))   // the page can hide what the open chat covers
   }
 
@@ -418,7 +420,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._setReply(null)
     this._userBubble(text, this._sending.map((f) => f.filename), this._sending.map((f) => this._previews.get(f.id)), reply)
     this._messages.push({ id: uid(), role: 'user', content: text })
-    await this._run(reply ? { forwardedProps: { reply_to: reply } } : {})
+    const sent = reply && (reply.whole ? { message_id: reply.message_id, whole: true } : { message_id: reply.message_id, quote: reply.quote })
+    await this._run(sent ? { forwardedProps: { reply_to: sent } } : {})
   }
 
   /** A request through the chat's connection: headers (object or function), credentials, the request hook
@@ -484,6 +487,12 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
   private _assistantDone(body: HTMLElement, text: string): void {
     const own = this.renderSlot('assistant', text)
     if (own) body.replaceChildren(own)
+    if (this._opts.collapseAnswers && !body.querySelector(':scope > .ans')) {   // a long answer folds too, when asked for
+      const box = h('div', { class: 'ans' })
+      box.append(...[...body.childNodes].filter((c) => !(c instanceof HTMLElement && c.classList.contains('msg-acts'))))
+      body.prepend(box)
+      this._fold(box)
+    }
     this._actions(body, text)
   }
 
@@ -520,7 +529,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     const files = h('div', { class: 'files', part: 'attachments' })
     // the quote the next message replies to: a reply icon, the quote on one line, a close button
     const replyIco = h('span', { class: 'reply-ico', 'aria-hidden': 'true' }); replyIco.innerHTML = actSvg(ACT.reply)
-    const replyQ = h('span', { class: 'reply-q' })
+    const replyQ = h('span', { class: 'reply-q', id: 'reply-q' })
     const replyX = h('button', { class: 'ib reply-x', type: 'button', onclick: () => { this._setReply(null); input.focus() } }); this._icon(replyX, 'close')
     const replyBar = h('div', { class: 'reply-bar', part: 'reply', hidden: true }, replyIco, replyQ, replyX)
     const box = h('div', { class: 'box' }, replyBar, files, clip, recX, input, wave, mic, send)
@@ -609,6 +618,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (d === 'off') return null
     if (d === 'server') return recordingSupported() ? 'server' : null
     if (d === 'auto') {
+      if ((this._serverVoice || this._opts.transcribeUrl) && recordingSupported()) return 'server'   // our own server first
       if (speechReliable() && !this._speechBlocked) return 'browser'
       if (recordingSupported()) return 'server'
       return speechSupported() && !this._speechBlocked ? 'browser' : null   // cannot record: the browser's, however it does
@@ -846,6 +856,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this.$.log.querySelector('.empty')?.remove()
     const before = this._dots && this._dots.isConnected ? this._dots : null
     this.$.log.insertBefore(el, before)
+    if (el.querySelector('.fold-later')) el.querySelectorAll<HTMLElement>('.fold-later').forEach((x) => this._fold(x))
     this._scroll()
     return el
   }
@@ -875,7 +886,9 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     // the images and files sit above the bubble, on their own, like a photo sent in Messages
     const el = this._append(h('div', { class: 'msg me', part: 'message user' },
       own ?? [files.length ? h('div', { class: 'att-row', part: 'message-attachments' }, files.map((f, i) => this._tile(f, previews[i]))) : null,
-        text ? h('div', { class: 'bubble' }, reply?.quote ? this._quoteEl(reply) : null, text) : null]))
+        text ? h('div', { class: 'bubble' }, reply && (reply.quote || reply.whole) ? this._quoteEl(reply) : null, text) : null]))
+    const bubble = el.querySelector<HTMLElement>(':scope > .bubble')
+    if (bubble) this._fold(bubble)
     void el
     this._scroll(true)   // your own message always brings the view down
   }
@@ -939,17 +952,72 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     this._reply = r
     if (!this.$.replyBar) return
     this.$.replyBar.hidden = !r
-    this.$.replyQ.textContent = r?.quote ?? ''
-    this.$.replyQ.title = r?.quote ?? ''
+    this.$.replyQ.replaceChildren(...(r ? [this._quoteWho(r), r.whole ? ' ' : '', this._quoteText(r)].filter((x) => x) as (Node | string)[] : []))
+    this.$.replyQ.title = this.$.replyQ.textContent ?? ''
+    // the field says what it replies to (a screen reader hears it with the field)
+    if (r) this.$.input.setAttribute('aria-describedby', 'reply-q'); else this.$.input.removeAttribute('aria-describedby')
+  }
+
+  /** What a quote shows: the selected text, or for the whole answer its label and the answer's first line. */
+  private _quoteText(r: ReplyTo): string {
+    if (!r.whole) return r.quote ?? ''
+    const el = [...(this.$.log?.querySelectorAll<HTMLElement>('.msg.ai[data-message-id]') ?? [])].find((x) => x.dataset.messageId === r.message_id)
+    const body = el?.querySelector<HTMLElement>('.body')
+    const first = quoteOf([...(body?.children ?? [])].filter((c) => !c.classList.contains('msg-acts') && !c.classList.contains('fold-btn'))
+      .map((c) => (c as HTMLElement).innerText || c.textContent || '').join(' ')).slice(0, 120)
+    return first || this.t('wholeAnswer')
+  }
+
+  /** Who a whole-answer quote is from (the chat's title, "Assistant"), shown on its first line. */
+  private _quoteWho(r: ReplyTo): HTMLElement | null {
+    return r.whole ? h('b', { class: 'bq-who' }, this._opts.title || this.t('title')) : null
+  }
+
+  /** A long message folds: its start, fading out, and Show more / Show less under it (aria-expanded). */
+  private _fold(box: HTMLElement): void {
+    const n = Number(this._opts.collapseLines)
+    if (!n || n < 1 || box.dataset.fold) return
+    if (!box.isConnected || !box.clientHeight) { box.classList.add('fold-later'); return }   // not laid out yet (a closed bubble)
+    box.classList.remove('fold-later')
+    const cs = getComputedStyle(box)
+    const fs = parseFloat(cs.fontSize) || 16, raw = parseFloat(cs.lineHeight)   // px, or a bare number (a multiple of the font size)
+    const lh = !raw ? 1.5 * fs : /px$/.test(cs.lineHeight) ? raw : raw * fs
+    const quote = box.querySelector<HTMLElement>(':scope > .bubble-q')
+    const top = quote ? quote.offsetHeight + (parseFloat(getComputedStyle(quote).marginBottom) || 0) : 0
+    const limit = Math.round(top + lh * n + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0))
+    if (box.scrollHeight <= limit + lh * 2) return   // a line or two more is not worth hiding
+    box.dataset.fold = '1'
+    box.id ||= `fold-${uid()}`
+    box.style.setProperty('--fold-h', `${limit}px`)
+    box.classList.add('folded')
+    const btn = h('button', { class: 'fold-btn', part: 'fold-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': box.id }, this.t('showMore')) as HTMLButtonElement
+    const toggle = (): void => {
+      const log = this.$.log, top = box.getBoundingClientRect().top
+      log.style.overflowAnchor = 'none'
+      const open = box.classList.toggle('folded') === false
+      btn.textContent = this.t(open ? 'showLess' : 'showMore')
+      btn.setAttribute('aria-expanded', String(open))
+      log.scrollTop += box.getBoundingClientRect().top - top   // the text opens downwards from where it was read
+      log.style.overflowAnchor = ''
+      if (open) return
+      const b = btn.getBoundingClientRect(), l = log.getBoundingClientRect()   // folded again: keep the button in view
+      if (b.top < l.top || b.bottom > l.bottom) btn.scrollIntoView?.({ block: 'nearest' })
+    }
+    btn.addEventListener('click', toggle)
+    // Tab into a folded answer (a link in it): it opens, so the focus is never on something hidden
+    box.addEventListener('focusin', () => { if (box.classList.contains('folded')) toggle() })
+    box.after(btn)
   }
 
   /** The quote above a user's text: a button to the quoted answer, or plain text when that answer is not in the log. */
   private _quoteEl(r: ReplyTo): HTMLElement {
     const there = [...this.$.log.querySelectorAll<HTMLElement>('.msg.ai[data-message-id]')].some((x) => x.dataset.messageId === r.message_id)
-    const t = h('span', { class: 'bq-t' }, r.quote)
+    const t = h('span', { class: 'bq-t' }, this._quoteText(r))
+    const label = r.whole ? this.t('wholeAnswer') : null
     return there
-      ? h('button', { class: 'bubble-q', part: 'message-quote', type: 'button', title: this.t('toQuoted'), onclick: () => this._toQuoted(r.message_id) }, t)
-      : h('div', { class: 'bubble-q', part: 'message-quote' }, t)
+      ? h('button', { class: 'bubble-q', part: 'message-quote', type: 'button', title: this.t('toQuoted'), 'aria-label': label ? `${label}: ${t.textContent}` : null,
+        onclick: () => this._toQuoted(r.message_id) }, this._quoteWho(r), t)
+      : h('div', { class: 'bubble-q', part: 'message-quote', 'aria-label': label ? `${label}: ${t.textContent}` : null }, this._quoteWho(r), t)
   }
 
   /** A tap on a quote in the user's bubble: the quoted answer, centred and highlighted for a moment. */
@@ -962,7 +1030,8 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     setTimeout(() => el.classList.remove('flash'), 1300)
   }
 
-  /** On a touch screen, a swipe right on an answer replies to the whole of it (as in Telegram). */
+  /** On a touch screen, a swipe left on an answer replies to the whole of it (as in Telegram; the iOS back gesture
+   *  goes the other way). */
   private _swipe(log: HTMLElement): void {
     let msg: HTMLElement | null = null, x0 = 0, y0 = 0, dx = 0, dir: 'x' | 'y' | null = null
     const ico = h('span', { class: 'swipe-ico', 'aria-hidden': 'true' }); ico.innerHTML = actSvg(ACT.reply)
@@ -976,13 +1045,13 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     log.addEventListener('touchmove', (e) => {
       if (!msg) return
       const t = e.touches[0], mx = t.clientX - x0, my = t.clientY - y0
-      if (!dir && Math.hypot(mx, my) > 10) dir = Math.abs(mx) > Math.abs(my) * 1.5 && mx > 0 ? 'x' : 'y'
+      if (!dir && Math.hypot(mx, my) > 10) dir = Math.abs(mx) > Math.abs(my) * 1.5 && mx < 0 ? 'x' : 'y'
       if (dir !== 'x') return
       e.preventDefault()
-      dx = Math.max(0, Math.min(72, mx * 0.6))
-      if (!ico.isConnected) msg.prepend(ico)
+      dx = Math.max(0, Math.min(72, -mx * 0.6))   // how far left, as a positive distance
+      if (!ico.isConnected) msg.append(ico)
       msg.classList.add('swiping')
-      msg.style.transform = `translateX(${dx}px)`
+      msg.style.transform = `translateX(${-dx}px)`
       ico.style.opacity = String(Math.min(1, dx / 56))
       if (dx >= 56 && !ico.classList.contains('go')) navigator.vibrate?.(8)   // a tick: it will reply
       ico.classList.toggle('go', dx >= 56)
@@ -994,11 +1063,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
       if (dir !== 'x') return
       m.classList.remove('swiping'); m.style.transform = ''
       ico.remove(); ico.classList.remove('go')
-      if (dx >= 56) {
-        const body = m.querySelector<HTMLElement>('.body')
-        const quote = quoteOf(body?.innerText || body?.textContent || '')
-        if (quote) this._replyTo({ message_id: m.dataset.messageId ?? '', quote }, false)
-      }
+      if (dx >= 56) this._replyTo({ message_id: m.dataset.messageId ?? '', whole: true }, false)
     }
     log.addEventListener('touchend', end)
     log.addEventListener('touchcancel', end)
@@ -1032,9 +1097,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
           b.innerHTML = actSvg(ACT.done); b.classList.add('done')
           setTimeout(() => { b.innerHTML = actSvg(ACT.copy); b.classList.remove('done') }, 1500)
         } else if (kind === 'reply') {   // the whole answer (a swipe does the same on a phone)
-          const shown = [...body.children].filter((c) => !c.classList.contains('msg-acts')).map((c) => (c as HTMLElement).innerText || c.textContent || '').join(' ')
-          const quote = quoteOf(shown) || quoteOf(text)
-          if (quote) this._replyTo({ message_id: id || body.parentElement?.getAttribute('data-message-id') || '', quote }, false)
+          this._replyTo({ message_id: id || body.parentElement?.getAttribute('data-message-id') || '', whole: true }, false)
         } else if (kind === 'retry') {
           if (this._lastUser && !this._busy) void this.send(this._lastUser)
         } else if (kind === 'speak') {
@@ -1268,6 +1331,7 @@ export class AguiChatElement extends HTMLElement implements ChatApi {
     if (this._messages.length !== seen || (this._busy && !seen)) return
     if (!r) { this._renderEmpty(); return }
     this._starters = r.starters ?? []
+    if (r.transcription) { this._serverVoice = true; this._apply() }
     if (r.messages?.length) {
       // cards are shown, not sent back as history; a reply's quote is drawn, never sent back in messages
       this._messages = r.messages.filter((m) => m.role !== 'activity').map((m) => { const { reply_to, ...rest } = m; void reply_to; return rest })

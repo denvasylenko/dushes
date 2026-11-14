@@ -45,7 +45,7 @@ describe('a sent message', () => {
     await tick(20)
     await el.send('look')
     const msg = $(el, '.msg.me')
-    expect([...msg.children].map((c) => c.className)).toEqual(['att-row', 'bubble'])
+    expect([...msg.children].map((c) => c.classList[0])).toEqual(['att-row', 'bubble'])
     expect($(el, '.msg.me .bubble').textContent).toBe('look')
   })
 })

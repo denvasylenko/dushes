@@ -17,6 +17,38 @@ import { h, mdInline } from '../dom'
 import type { Interrupt, RendererContext } from '../types'
 import { blocksShell, hoursText, weekdays, type Hours } from './blocks-base'
 import { chartBlock, sparkline } from './chart'
+import { BLOCKS_CSS } from './blocks-css'
+
+// the blocks' styles go into each shadow root a card from blocks lands in: once, before the theme (the theme wins)
+let sheet: CSSStyleSheet | null | undefined
+const styled = new WeakSet<Node>()
+function adopt(root: Node): void {
+  if (styled.has(root) || !(root instanceof ShadowRoot)) return
+  styled.add(root)
+  try {
+    sheet ??= new CSSStyleSheet()
+    if (!sheet.cssRules.length) sheet.replaceSync(BLOCKS_CSS)
+    const list = [...root.adoptedStyleSheets]
+    list.splice(Math.min(1, list.length), 0, sheet)   // after the chat's base sheet, before its theme
+    root.adoptedStyleSheets = list
+  } catch {   // no constructable stylesheets: a <style> right after the base one
+    const style = h('style', null, BLOCKS_CSS)
+    const base = root.querySelector('style')
+    if (base) base.after(style); else root.prepend(style)
+  }
+}
+/** Style the card where it is shown: now if it is in the chat already, else as soon as it gets there. */
+function styleWhenShown(card: HTMLElement): void {
+  const root = card.getRootNode()
+  if (root !== card && root instanceof ShadowRoot) return adopt(root)
+  let tries = 0
+  const check = (): void => {
+    const r = card.getRootNode()
+    if (r instanceof ShadowRoot) return adopt(r)
+    if (++tries < 120) requestAnimationFrame(check)   // appended later (a host's own renderer): keep looking for ~2 s
+  }
+  queueMicrotask(check)
+}
 
 export type Tone = 'accent' | 'ok' | 'danger' | 'muted'
 /** A button's answer: its id, its label, the card's values, and the button itself (its `fills`). */
@@ -151,6 +183,7 @@ export function pickerBlocks(it: Item): Block[] {
 export function blocksCard(it: Interrupt | Record<string, unknown>, c: RendererContext, answer: Answer | null, onAction?: OnAction, into?: HTMLElement): HTMLElement {
   const values: Record<string, unknown> = {}
   const card = into ?? blocksShell(it)
+  styleWhenShown(card)
   let group: HTMLElement | null = null
   const blocks = Array.isArray(it.blocks) ? it.blocks : it.groups ? pickerBlocks(it as Item) : []
   for (const b of list(blocks) as Block[]) {
