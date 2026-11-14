@@ -1,0 +1,130 @@
+---
+/**
+ * "What the chat can do": one tile per feature. Live tiles run the shipped <agui-chat> with a one-reply scripted
+ * agent; card tiles replay a card gallery specimen; link tiles point at the place that shows the feature.
+ * Specimens mount when scrolled into view; nothing leaves the page.
+ */
+import { FEATURES, PLANNED } from '../demo/features'
+import { Badge, Button, Segmented, Tile } from './ui'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import SHOTS from '../../public/features/shots.json'
+const size = (file: string) => {   // a PNG's width and height from its header
+  const b = readFileSync(join(process.cwd(), 'public', file))   // the build runs in site/
+  return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) }
+}
+type Shot = { file: string; feature: string; theme: string; width: number; date: string; widget_version: string; what: string }
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/')
+const shot = (feature: string, theme: string, width: number) => (SHOTS as Shot[]).find((x) => x.feature === feature && x.theme === theme && x.width === width)
+const day = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+const md = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/`([^`]+)`/g, '<code>$1</code>')
+---
+<div class="cf not-content">
+  {FEATURES.map((f) => (
+    <Tile as="section" class="cf-tile" id={f.id} aria-labelledby={`${f.id}-h`} data-feature={f.id}>
+      <h2 class="cf-h" id={`${f.id}-h`}>{f.title}</h2>
+      <p class="cf-why">{f.why}</p>
+      {f.show.kind !== 'link' && (
+        <div class="cf-stage">
+          <agui-chat mode="inline" persist-thread="off" title="Assistant" subtitle="Recorded reply" placeholder="Message"
+            {...(f.show.kind === 'live' ? (f.show.attrs ?? {}) : {})}
+            {...(f.show.kind === 'live' && !f.show.upload ? { attach: 'off' } : {})}></agui-chat>
+        </div>
+      )}
+      {f.try && <p class="cf-try"><span>Try it:</span> {f.try}</p>}
+      {f.show.kind === 'live' && f.show.shadow && (
+        <Segmented label="Composer shadow" inline options={[['soft', 'Soft'], ['raised', 'Raised'], ['none', 'None']]} data-shadow />
+      )}
+      {(f.shots ?? []).map((id) => {
+        const d = shot(id, 'light', 1280), dp = shot(id, 'light', 390), k = shot(id, 'dark', 1280), kp = shot(id, 'dark', 390)
+        if (!d || !k) return null
+        return (
+          <figure class="cf-shot">
+            <picture class="cf-light">{dp && <source media="(max-width: 50rem)" srcset={base + dp.file} {...size(dp.file)} />}<img src={base + d.file} alt={d.what} loading="lazy" {...size(d.file)} /></picture>
+            <picture class="cf-dark">{kp && <source media="(max-width: 50rem)" srcset={base + kp.file} {...size(kp.file)} />}<img src={base + k.file} alt={k.what} loading="lazy" {...size(k.file)} /></picture>
+            <figcaption>{d.what}.<br />Widget {d.widget_version} · {day(d.date)}</figcaption>
+          </figure>
+        )
+      })}
+      <div class="cf-acts">
+        {f.show.kind === 'link'
+          ? <Button variant="gray" size="sm" href={f.show.href}>{f.show.label}</Button>
+          : <Button variant="plain" size="sm" data-replay>Replay</Button>}
+        <Button variant="plain" size="sm" href={f.ref.href}>Reference: <code>{f.ref.label}</code></Button>
+      </div>
+    </Tile>
+  ))}
+
+  <Tile as="section" variant="sunken" class="cf-tile cf-planned" aria-labelledby="planned-h">
+    <h2 class="cf-h" id="planned-h">Coming next <Badge variant="neutral">Planned</Badge></h2>
+    <ul>{PLANNED.map((p) => <li set:html={md(p)} />)}</ul>
+  </Tile>
+</div>
+
+<script>
+  import '../../../packages/agui-chat/src/index'
+  import { formguide } from '../../../packages/agui-chat/src/formguide/index'
+  import type { AguiChatElement } from '../../../packages/agui-chat/src/element'
+  import { FEATURES, OneReplyAgent } from '../demo/features'
+  import { SPECIMENS, playSpecimen } from '../demo/gallery'
+
+  const scheme = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
+  let n = 0
+
+  function mount(tile: HTMLElement): void {
+    const f = FEATURES.find((x) => x.id === tile.dataset.feature)
+    const chat = tile.querySelector('agui-chat') as AguiChatElement | null
+    if (!f || !chat || tile.dataset.mounted) return
+    tile.dataset.mounted = '1'
+    chat.setAttribute('scheme', scheme())
+    const replay = tile.querySelector<HTMLElement>('[data-replay]')
+    if (f.show.kind === 'card') {
+      const s = SPECIMENS.find((x) => x.id === (f.show as { specimen: string }).specimen)
+      if (!s) return
+      const play = playSpecimen(chat, s, formguide)
+      replay?.addEventListener('click', () => play.replay())
+      return
+    }
+    if (f.show.kind !== 'live') return
+    const live = f.show
+    const agent = new OneReplyAgent(live.reply)
+    chat.agent = agent
+    if (live.upload) chat.options = { upload: async (file: File) => ({ id: `local_${++n}`, filename: file.name }) }
+    tile.querySelector('[data-shadow]')?.addEventListener('ui-change', (e) =>
+      chat.setAttribute('composer-shadow', (e as CustomEvent<{ value: string }>).detail.value))
+    const start = () => { void chat.send(live.user) }
+    replay?.addEventListener('click', () => { chat.stop(); chat.reset(); agent.reset(); start() })
+    start()
+  }
+
+  const tiles = [...document.querySelectorAll<HTMLElement>('[data-feature]')]
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { mount(e.target as HTMLElement); io.unobserve(e.target) }
+    }), { rootMargin: '300px 0px' })
+    tiles.forEach((t) => io.observe(t))
+  } else tiles.forEach(mount)
+
+  new MutationObserver(() => document.querySelectorAll('.cf agui-chat').forEach((c) => c.setAttribute('scheme', scheme())))
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+</script>
+
+<style>
+  /* layout only: every control is a primitive from ./ui */
+  .cf { display: grid; align-items: start; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); margin: 1.5rem 0 2.5rem; }
+  .cf-tile { display: flex; flex-direction: column; gap: 12px; }
+  .cf-h { font-size: var(--fg-fs-headline); line-height: 1.25; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .cf-why { margin: 0; color: var(--fg-ink-2); }
+  .cf-stage { height: min(400px, 60svh); border-radius: var(--fg-r-ctl); overflow: hidden; }
+  .cf-stage agui-chat { display: block; height: 100%; }
+  .cf-try { margin: 0; font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
+  .cf-try span { font-weight: 600; color: var(--fg-ink); }
+  .cf-acts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: auto; }
+  .cf-shot { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .cf-shot img { display: block; width: 100%; height: auto; max-height: 420px; object-fit: cover; object-position: top; border-radius: var(--fg-r-ctl); border: 1px solid var(--fg-line); }
+  .cf-shot figcaption { font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
+  .cf-dark { display: none; }
+  :global(:root[data-theme='dark']) .cf-dark { display: block; }
+  :global(:root[data-theme='dark']) .cf-light { display: none; }
+  .cf-planned ul { margin: 0; padding-left: 1.1rem; color: var(--fg-ink-2); }
+</style>

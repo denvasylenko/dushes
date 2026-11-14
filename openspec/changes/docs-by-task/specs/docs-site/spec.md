@@ -35,3 +35,21 @@ The docs SHALL give a cost per turn in dollars, computed at build time from a be
 
 - **WHEN** a developer reads the Limits and cost page
 - **THEN** it shows the dollar cost of each benchmark scenario with the model and the date of the run
+
+### Requirement: A results guide per agent
+
+Each agent (the site agent, the UI agent, the researcher) SHALL have a guide to getting good results on the developer's own setup: the host's instructions, domain knowledge, skills and tools, form integration and how to check the setup. A statement backed by a measured result SHALL say so; anything else SHALL be marked as advice.
+
+#### Scenario: Writing the host's instructions
+
+- **WHEN** a developer reads the UI agent's guide on instructions
+- **THEN** it shows a good and a bad example, says why, and marks which points come from eval results
+
+### Requirement: A prompt for the developer's coding agent
+
+Every results guide SHALL offer a copyable prompt for a coding agent that lists what to collect from the project, in what form, how to wire it, and asks the agent to report what is missing.
+
+#### Scenario: Copying the prompt
+
+- **WHEN** a developer copies the prompt from the site agent's guide into Claude Code
+- **THEN** the prompt names the site map, forms, documents and tone to collect and the pages to follow

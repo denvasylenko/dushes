@@ -135,6 +135,7 @@ export default defineConfig({
 					{ label: 'Cards and UI', items: [
 						{ label: 'Cards and answers', slug: 'frontend/cards' },
 						{ label: 'Blocks', slug: 'frontend/blocks' },
+						{ label: 'What the chat can do', slug: 'frontend/what-the-chat-can-do', badge: { text: 'live', variant: 'tip' } },
 						{ label: 'Field highlight', slug: 'frontend/field-highlight', badge: { text: 'live', variant: 'tip' } },
 						{ label: 'Card gallery', slug: 'frontend/card-gallery', badge: { text: 'live', variant: 'tip' } },
 						{ label: 'Themes and styling', slug: 'frontend/themes' },

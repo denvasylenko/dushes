@@ -10,6 +10,11 @@
 - [ ] 2.3 Limits and cost (with cost per turn from data); History and memory; Deploy
 - [ ] 2.4 Retire "Build it up", the repeated Azure and every-key blocks; redirects for moved anchors
 
+## 2b. Get the result you want (one guide per agent: site agent, UI agent, researcher)
+- [x] 2b.1 Facts from Owner (what the defaults and prompts expect) and QA (what failed in the evals and why); anything not measured is marked as advice
+- [ ] 2b.2 Per agent: the host's instructions (what goes in, order, what to leave out, length; a good and a bad example), domain knowledge (packs, documents, site map, field notes), skills and tools (descriptions that get called, scoping, pitfalls), form integration (data-name, skeleton, value formats: the Form Lab mistakes), check your setup (a mini eval and what a good score looks like)
+- [ ] 2b.3 "Copy for your coding agent" on every guide: a prompt saying what to collect from the project (site map, forms, documents, tone), in what form, how to wire it, and to report what is missing; built on the landing's setup prompt
+
 ## 3. Lookup and search
 - [ ] 3.1 Reference → Configuration: one table of every server key and widget option (side, default, group, link); widget columns fixed and grouped
 - [ ] 3.2 Search: Reference rows as entries, a boost for keys, synonyms

@@ -1,0 +1,134 @@
+[
+  {
+    "file": "features/change-highlight-dark-1280.png",
+    "feature": "change-highlight",
+    "theme": "dark",
+    "width": 1280,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c184c96+uncommitted",
+    "what": "The ring the widget's field highlight puts on the fields a card just filled (Applicant tab of the landing demo, 4 fields, cropped to 3:2)"
+  },
+  {
+    "file": "features/change-highlight-dark-390.png",
+    "feature": "change-highlight",
+    "theme": "dark",
+    "width": 390,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c184c96+uncommitted",
+    "what": "The ring the widget's field highlight puts on the fields a card just filled (Applicant tab of the landing demo, 3 of 4 fields, cropped to 4:5)"
+  },
+  {
+    "file": "features/change-highlight-light-1280.png",
+    "feature": "change-highlight",
+    "theme": "light",
+    "width": 1280,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c184c96+uncommitted",
+    "what": "The ring the widget's field highlight puts on the fields a card just filled (Applicant tab of the landing demo, 4 fields, cropped to 3:2)"
+  },
+  {
+    "file": "features/change-highlight-light-390.png",
+    "feature": "change-highlight",
+    "theme": "light",
+    "width": 390,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c184c96+uncommitted",
+    "what": "The ring the widget's field highlight puts on the fields a card just filled (Applicant tab of the landing demo, 3 of 4 fields, cropped to 4:5)"
+  },
+  {
+    "file": "features/server-voice-dark-1280.png",
+    "feature": "server-voice",
+    "theme": "dark",
+    "width": 1280,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c4cba26+uncommitted",
+    "what": "Server voice: the live recording wave with its timer"
+  },
+  {
+    "file": "features/server-voice-dark-390.png",
+    "feature": "server-voice",
+    "theme": "dark",
+    "width": 390,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c4cba26+uncommitted",
+    "what": "Server voice: the live recording wave with its timer"
+  },
+  {
+    "file": "features/server-voice-light-1280.png",
+    "feature": "server-voice",
+    "theme": "light",
+    "width": 1280,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c4cba26+uncommitted",
+    "what": "Server voice: the live recording wave with its timer"
+  },
+  {
+    "file": "features/server-voice-light-390.png",
+    "feature": "server-voice",
+    "theme": "light",
+    "width": 390,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c4cba26+uncommitted",
+    "what": "Server voice: the live recording wave with its timer"
+  },
+  {
+    "file": "features/server-voice-transcribing-dark-1280.png",
+    "feature": "server-voice-transcribing",
+    "theme": "dark",
+    "width": 1280,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c4cba26+uncommitted",
+    "what": "Server voice: the recording sent, \"Transcribing\u2026\""
+  },
+  {
+    "file": "features/server-voice-transcribing-dark-390.png",
+    "feature": "server-voice-transcribing",
+    "theme": "dark",
+    "width": 390,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c4cba26+uncommitted",
+    "what": "Server voice: the recording sent, \"Transcribing\u2026\""
+  },
+  {
+    "file": "features/server-voice-transcribing-light-1280.png",
+    "feature": "server-voice-transcribing",
+    "theme": "light",
+    "width": 1280,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c4cba26+uncommitted",
+    "what": "Server voice: the recording sent, \"Transcribing\u2026\""
+  },
+  {
+    "file": "features/server-voice-transcribing-light-390.png",
+    "feature": "server-voice-transcribing",
+    "theme": "light",
+    "width": 390,
+    "scale": 2,
+    "date": "2026-11-14",
+    "widget_version": "0.3.0",
+    "commit": "c4cba26+uncommitted",
+    "what": "Server voice: the recording sent, \"Transcribing\u2026\""
+  }
+]

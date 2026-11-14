@@ -1,5 +1,8 @@
 ---
-/** The five steps of one exchange, as a row of numbered cards (a column on phones). */
+/**
+ * The five steps of one exchange as a stepper: numbered markers on one line, each over its card (a timeline down the
+ * left on phones). The line between the markers carries the order, so no arrows float between the cards.
+ */
 const steps = [
   ['register', 'Register', 'POST the form skeleton once; keep its jsx_hash.'],
   ['send', 'Send', 'Every message carries the current form: props, values, what is open.'],
@@ -8,24 +11,43 @@ const steps = [
   ['apply', 'Apply', 'The user taps Fill in; your backend applies it; the agent goes on.'],
 ];
 ---
-<ol class="flow not-content">
+<ol class="flow not-content" aria-label="One exchange, in order">
   {steps.map(([id, verb, text], i) => (
-    <li class="ui-tile ui-tile--sm" data-step={id}><span class="flow-n">{String(i + 1).padStart(2, '0')}</span><b>/{verb.toLowerCase()}</b><p>{text}</p></li>
+    <li data-step={id}>
+      <span class="flow-n" aria-hidden="true">{i + 1}</span>
+      <div class="ui-tile ui-tile--sm flow-card"><b>/{verb.toLowerCase()}</b><p>{text}</p></div>
+    </li>
   ))}
 </ol>
 <style>
-  /* each step is a small Tile (ui.css); this lays them out and draws the arrows between them */
-  .flow { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-  li { position: relative; margin: 0; }
-  .flow-n { display: block; font: 500 var(--fg-fs-footnote) var(--sl-font-mono); color: var(--fg-ink-3); }
-  b { display: block; margin: 6px 0 4px; font: 600 var(--sl-text-lg) var(--sl-font-mono); color: var(--fg-accent-ink); letter-spacing: -0.01em; }
-  p { margin: 0; font-size: var(--sl-text-sm); color: var(--fg-ink-2); }
-  li:not(:last-child)::after {
-    content: ''; position: absolute; right: -9px; top: 50%; width: 6px; height: 6px; border-top: 1.5px solid var(--sl-color-gray-4);
-    border-right: 1.5px solid var(--sl-color-gray-4); transform: translateY(-50%) rotate(45deg);
+  /*
+   * Each step: a numbered marker, then its card (a small Tile, ui.css). The connector is a 1.5px line from one marker
+   * to the next (the weight of the card's edge, ink-3), so the row reads as one sequence; it turns downward on a phone.
+   */
+  .flow { --gap: 12px; --dot: 28px; list-style: none; padding: 0; margin: 1.5rem 0 0;
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); counter-reset: step; }
+  li { position: relative; margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .flow-n {
+    position: relative; z-index: 1; display: grid; place-items: center; width: var(--dot); height: var(--dot); margin-left: 16px;   /* in line with the card's text */
+    border-radius: var(--fg-r-pill); background: var(--fg-accent-soft); color: var(--fg-accent-ink);
+    font: 600 var(--fg-fs-sub)/1 var(--sl-font); box-shadow: inset 0 0 0 1px var(--fg-line), 0 0 0 4px var(--sl-color-bg);
   }
+  li:not(:last-child)::before {
+    content: ''; position: absolute; top: calc(var(--dot) / 2 - .75px); height: 1.5px; border-radius: 1px;
+    left: calc(16px + var(--dot) + 8px); width: calc(100% + var(--gap) - var(--dot) - 16px);
+    background: var(--fg-step-line);
+  }
+  .flow-card { flex: 1; }
+  b { display: block; margin: 0 0 4px; font: 600 var(--fg-fs-headline) var(--sl-font-mono); color: var(--fg-accent-ink); letter-spacing: -0.01em; }
+  p { margin: 0; font-size: var(--fg-fs-callout); color: var(--fg-ink-2); }
+  /* narrower than five cards fit: a timeline down the left, each card beside its marker */
   @media (max-width: 50rem) {
-    .flow { grid-template-columns: minmax(0, 1fr); }
-    li:not(:last-child)::after { right: auto; left: 50%; top: auto; bottom: -9px; transform: translateX(-50%) rotate(135deg); }
+    .flow { grid-template-columns: minmax(0, 1fr); --gap: 12px; }
+    li { flex-direction: row; align-items: flex-start; gap: 14px; }
+    .flow-n { margin: 12px 0 0; flex: none; }
+    li:not(:last-child)::before {
+      top: calc(12px + var(--dot) + 8px); left: calc(var(--dot) / 2 - .75px); width: 1.5px;
+      height: calc(100% + var(--gap) - var(--dot) - 16px);
+    }
   }
 </style>

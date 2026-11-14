@@ -24,7 +24,7 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined;
       <noscript><p class="demo-nojs">The live demo needs JavaScript. It shows the chat filling this form; see the <a href="get-started/quickstart/">quick start</a> to run the real agent.</p></noscript>
     </div>
     <div class="demo-chat">
-      <agui-chat mode="inline" persist-thread="off" attach="off" title="Loan assistant" subtitle={agentUrl ? 'Live agent' : 'Replays recorded turns · no server'}></agui-chat>
+      <agui-chat mode="inline" persist-thread="off" attach="off" title="Loan assistant" subtitle={agentUrl ? 'Live agent · a few messages a day' : 'Replays recorded turns · no server'}></agui-chat>
     </div>
   </div>
   <p class="demo-cap">The real <code>&lt;agui-chat&gt;</code> widget and its form plugin. <span data-cap>{agentUrl ? 'Ask anything about the form.' : 'Only the agent is scripted: tap a suggestion.'}</span>{live && <> Try the real agents: <a href={live}>a big form</a> or <a href={`${live.replace(/\/?$/, '/')}site.html`}>a whole site</a>.</>}</p>

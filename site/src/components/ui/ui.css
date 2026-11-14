@@ -83,6 +83,7 @@
 .ui-seg > button[aria-checked='true'] { background: var(--fg-thumb); color: var(--fg-ink); font-weight: 600; box-shadow: var(--fg-thumb-shadow); }
 .ui-seg--inline { display: inline-flex; }
 .ui-seg--inline > button { flex: none; }
+@media (pointer: coarse) { .ui-seg > button { min-height: var(--fg-h-lg); } }   /* every segment is a 44px target on touch */
 
 /* ---------- Disclosure: <details> with our chevron, centred on the summary's first text line ---------- */
 .ui-disc > summary {
