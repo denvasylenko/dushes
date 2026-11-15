@@ -7,6 +7,8 @@ import { Summary } from '../../../../components/ui';
 
 <Summary what={"A sub-agent that reads your documents and answers in a few lines, with sources"} when={"Users ask about rules, rates or policies that the compiled knowledge does not cover"} write={"`pip install \"formguide[research]\"`; optionally `models: {research: ...}`"} />
 
+See it answer hard questions from large documents, with the page each answer came from: the [researcher demo](demo/). How often it is right, on which model and at what cost: [Benchmarks](../../get-started/benchmarks/).
+
 ## The pattern
 
 The researcher runs apart from the conversation. An agent hands it one question; it searches and reads as many sections as it needs, with read-only access, and gives back a short answer with the sections it came from. The long reading never enters the chat's context, so the conversation stays small and fast. The chat shows each source as a chip under the answer.

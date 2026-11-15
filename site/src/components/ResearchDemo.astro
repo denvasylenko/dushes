@@ -1,0 +1,188 @@
+---
+/**
+ * The researcher's demo: pick a document set, ask one of the hard questions, read the answer with its sources
+ * (document, section, page). Until the live endpoint exists it replays answers recorded in QA's runs
+ * (src/data/research-demo.json, written from those runs, never typed) through the real <agui-chat>: the text, then
+ * the shipped `sources` chips. The documents of the set are listed beside the chat and the pages an answer used
+ * light up. With no recorded answers yet the page says so; nothing is invented.
+ */
+import { Badge, Button, ChipGroup, Segmented } from './ui'
+import data from '../data/research-demo.json'
+import { longDate } from '../lib/bench'
+
+interface Source { document: string; path?: string; page?: number; quote?: string }
+interface Answer { text: string; sources?: Source[]; seconds?: number; cost_usd?: number; depth?: string }
+interface Question { id: string; set: string; question: string; kind?: string; answers: Record<string, Answer> }
+interface DocSet { id: string; name: string; about?: string; documents: { id: string; title: string; pages?: number }[] }
+const d = data as { recorded: string | null; models: Record<string, string>; sets: DocSet[]; questions: Question[] }
+const sets = d.sets.filter((s) => d.questions.some((q) => q.set === s.id))
+const models = Object.entries(d.models).filter(([id]) => d.questions.some((q) => q.answers[id]))
+const ready = sets.length > 0 && models.length > 0 && !!d.recorded
+const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
+---
+{ready ? (
+  <div class="rd ui-tile ui-tile--lg not-content" data-rd data-recorded={longDate(d.recorded!)}>
+    <script type="application/json" data-rd-data set:html={JSON.stringify({ models: d.models, sets, questions: d.questions })} />
+    <div class="rd-controls">
+      <ChipGroup label="Documents" options={sets.map((s) => ({ value: s.id, label: s.name }))} data-set />
+      {models.length > 1 && <Segmented label="Answered by" options={models.map(([id, name]) => [id, name] as const)} data-model />}
+    </div>
+    <p class="rd-rec"><Badge>Recorded</Badge> <span data-rec-line></span></p>
+    <div class="rd-qs">
+      <p class="rd-cap">Hard questions to try</p>
+      {sets.map((s, i) => (
+        <div class="rd-qlist" data-for={s.id} hidden={i > 0}>
+          {d.questions.filter((q) => q.set === s.id).map((q) => <Button variant="gray" size="sm" data-q={q.id}>{q.question}</Button>)}
+        </div>
+      ))}
+    </div>
+    <div class="rd-grid">
+      <div class="rd-docs" aria-live="polite">
+        {sets.map((s, i) => (
+          <div class="rd-set" data-for={s.id} hidden={i > 0}>
+            <p class="rd-cap">{s.documents.length} document{s.documents.length === 1 ? '' : 's'}{pages(s) ? ` · ${pages(s).toLocaleString('en-US')} pages` : ''}</p>
+            {s.about && <p class="rd-about">{s.about}</p>}
+            <ul>{s.documents.map((x) => <li data-doc={x.id}><span class="rd-doc-t">{x.title}</span><span class="rd-doc-p">{x.pages ? `${x.pages} pages` : ''}</span><span class="rd-doc-u" data-used></span></li>)}</ul>
+          </div>
+        ))}
+      </div>
+      <div class="rd-chat">
+        <agui-chat mode="inline" persist-thread="off" attach="off" quick-replies="off" voice="off" title="Researcher" subtitle="Recorded answers" placeholder="Pick a question above"></agui-chat>
+      </div>
+    </div>
+  </div>
+) : (
+  <div class="rd ui-tile ui-tile--lg not-content"><p class="rd-empty">Recorded answers are being prepared. This page will show real answers from the researcher's benchmark runs, each with its sources.</p></div>
+)}
+
+<script>
+  import '../../../packages/agui-chat/src/index'
+  import { formguide } from '../../../packages/agui-chat/src/formguide/index'
+  import type { AguiChatElement } from '../../../packages/agui-chat/src/element'
+  import type { AguiEvent, RunAgentInput } from '../../../packages/agui-chat/src/types'
+
+  interface Source { document: string; path?: string; page?: number; quote?: string }
+  interface Answer { text: string; sources?: Source[]; seconds?: number; cost_usd?: number; depth?: string }
+  interface Question { id: string; set: string; question: string; answers: Record<string, Answer> }
+  interface DocSet { id: string; name: string; documents: { id: string; title: string }[] }
+  const nid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`
+  const NOT_RECORDED = 'This page plays recorded answers. Pick one of the questions above; live answers come with the new researcher.'
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-rd]')) {
+    const data = JSON.parse(root.querySelector('[data-rd-data]')!.textContent!) as { models: Record<string, string>; sets: DocSet[]; questions: Question[] }
+    const chat = root.querySelector('agui-chat') as AguiChatElement
+    let set = data.sets[0].id
+    let model = Object.keys(data.models).find((m) => data.questions.some((q) => q.answers[m]))!
+    const docsOf = () => data.sets.find((s) => s.id === set)!.documents
+    const answerOf = (text: string) => data.questions.find((q) => q.set === set && q.question === text.trim())?.answers[model]
+
+    const clearUsed = () => root.querySelectorAll<HTMLElement>('[data-doc]').forEach((li) => { li.removeAttribute('data-hit'); li.querySelector('[data-used]')!.textContent = '' })
+    const markUsed = (sources: Source[]) => {
+      clearUsed()
+      const by = new Map<string, number[]>()
+      for (const s of sources) by.set(s.document, [...(by.get(s.document) ?? []), ...(s.page ? [s.page] : [])])
+      for (const [doc, ps] of by) {
+        const li = root.querySelector<HTMLElement>(`.rd-set:not([hidden]) [data-doc="${CSS.escape(doc)}"]`)
+        if (!li) continue
+        li.setAttribute('data-hit', '')
+        const uniq = [...new Set(ps)].sort((a, b) => a - b)
+        li.querySelector('[data-used]')!.textContent = uniq.length ? `used: p. ${uniq.join(', ')}` : 'used'
+      }
+    }
+    const recLine = (a?: Answer) => {
+      const bits = [`${root.dataset.recorded}`, data.models[model]]
+      if (a?.depth) bits.push(`depth: ${a.depth}`)
+      if (typeof a?.seconds === 'number') bits.push(`${a.seconds.toFixed(1)} s`)
+      if (typeof a?.cost_usd === 'number') bits.push(`$${a.cost_usd.toFixed(3)}`)
+      root.querySelector('[data-rec-line]')!.textContent = bits.join(' · ')
+    }
+
+    chat.agent = {
+      run(input: RunAgentInput) {
+        const last = [...(input.messages ?? [])].reverse().find((m) => m.role === 'user')
+        const a = answerOf(String(last?.content ?? ''))
+        const messageId = nid('m')
+        const title = (id: string) => docsOf().find((x) => x.id === id)?.title ?? id
+        const events: AguiEvent[] = [
+          { type: 'RUN_STARTED', threadId: input.threadId, runId: input.runId } as AguiEvent,
+          { type: 'TEXT_MESSAGE_START', messageId, role: 'assistant' } as AguiEvent,
+          { type: 'TEXT_MESSAGE_CONTENT', messageId, delta: a ? a.text : NOT_RECORDED } as AguiEvent,
+          { type: 'TEXT_MESSAGE_END', messageId } as AguiEvent,
+          ...(a?.sources?.length ? [{ type: 'CUSTOM', name: 'sources', value: { items: a.sources.map((s) => ({
+            title: title(s.document), section: [s.path?.replace(/\s*>\s*/g, ' › '), s.page ? `p. ${s.page}` : ''].filter(Boolean).join(' · ') || undefined, quote: s.quote })) } } as AguiEvent] : []),
+          { type: 'RUN_FINISHED', threadId: input.threadId, runId: input.runId } as AguiEvent,
+        ]
+        return {
+          subscribe: (o: { next(e: AguiEvent): void; error(e: unknown): void; complete(): void }) => {
+            let stopped = false
+            void (async () => {
+              for (const e of events) {
+                if (stopped) return
+                await new Promise((r) => setTimeout(r, 120))
+                o.next(e)
+              }
+              if (!stopped) { if (a) { markUsed(a.sources ?? []); recLine(a) } o.complete() }
+            })()
+            return { unsubscribe: () => { stopped = true } }
+          },
+        }
+      },
+    }
+    chat.use(formguide({
+      getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'recorded', form_id: set }),
+      applyChanges: async () => ({ props: {}, state: {} }),
+      highlight: false,
+    }))
+
+    chat.options = { intro: 'Pick a question above to read the recorded answer and its sources.' }
+    const show = () => {
+      root.querySelectorAll<HTMLElement>('[data-for]').forEach((el) => { el.hidden = el.dataset.for !== set })
+      // a question this model was not asked is not offered
+      root.querySelectorAll<HTMLElement>('[data-q]').forEach((b) => { b.hidden = !data.questions.find((q) => q.id === b.dataset.q)?.answers[model] })
+      chat.stop(); chat.reset(); clearUsed(); recLine()
+    }
+    root.querySelector('[data-set]')!.addEventListener('ui-change', (e) => { set = (e as CustomEvent<{ value: string }>).detail.value; show() })
+    root.querySelector('[data-model]')?.addEventListener('ui-change', (e) => { model = (e as CustomEvent<{ value: string }>).detail.value; show() })
+    root.querySelectorAll<HTMLElement>('[data-q]').forEach((b) => b.addEventListener('click', () => {
+      const q = data.questions.find((x) => x.id === b.dataset.q)
+      if (q) {
+        chat.stop(); void chat.send(q.question)
+        const box = chat.getBoundingClientRect()   // on a phone the chat is below the questions: bring it into view
+        if (box.top > innerHeight * 0.6 || box.bottom < 0) chat.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+      }
+    }))
+    const scheme = () => chat.setAttribute('scheme', document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
+    scheme()
+    new MutationObserver(scheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    show()
+  }
+</script>
+
+<style is:global>
+  /* layout only: the controls are primitives from ./ui, the outer box is a large Tile */
+  .rd { margin: 1.5rem 0 2rem; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .rd-controls { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; }
+  .rd-rec { margin: 0; display: flex; align-items: center; gap: 8px; font-size: var(--fg-fs-footnote); color: var(--fg-ink-2); font-variant-numeric: tabular-nums; }
+  .rd-grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 16px; }
+  .rd-cap { margin: 0 0 8px; font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); }
+  .rd-about { margin: 0 0 12px; font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
+  .rd-docs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .rd-docs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px; border-radius: var(--fg-r-ctl); background: var(--fg-surface);
+    border: 1px solid var(--fg-line); transition: border-color var(--fg-dur-instant) var(--fg-ease); }
+  .rd-docs li[data-hit] { border-color: var(--fg-accent); }
+  .rd-doc-t { font-weight: 600; color: var(--fg-ink); overflow-wrap: anywhere; }
+  .rd-doc-p { font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); font-variant-numeric: tabular-nums; }
+  .rd-doc-u { grid-column: 1 / -1; font-size: var(--fg-fs-footnote); color: var(--fg-accent); min-height: 1.3em; font-variant-numeric: tabular-nums; }
+  .rd-chat { height: 520px; min-width: 0; }
+  .rd-chat agui-chat { display: block; height: 100%; --agui-accent: var(--sl-color-accent); --agui-on-accent: #fff; --agui-link: var(--sl-color-accent); }
+  :root[data-theme='dark'] .rd-chat agui-chat { --agui-accent: var(--sl-color-accent-high); --agui-on-accent: var(--sl-color-black); --agui-link: var(--sl-color-accent-high); }
+  .rd-qlist { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .rd-qlist[hidden], .rd-set[hidden], .rd-qlist .ui-btn[hidden] { display: none; }
+  .rd-qlist .ui-btn { text-align: left; white-space: normal; height: auto; min-height: 44px; padding-block: 8px; }
+  .rd-empty { margin: 0; color: var(--fg-ink-2); }
+  @media (max-width: 50rem) {
+    .rd-grid { grid-template-columns: minmax(0, 1fr); }
+    .rd-chat { order: -1; scroll-margin-top: 120px; }   /* the answer first, what it read under it */
+    .rd-chat { height: 480px; }
+  }
+</style>

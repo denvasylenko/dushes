@@ -1,0 +1,30 @@
+---
+title: Researcher demo
+description: Pick a set of documents, ask a hard question, and read the answer with the document, section and page it came from.
+tableOfContents: false
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+import ResearchDemo from '../../../../components/ResearchDemo.astro';
+
+<Summary what={"The researcher answering hard questions from large documents, with its sources"} when={"You want to see what it finds, and what it says when the answer is not there"} write={"Nothing: pick a set and a question"} />
+
+The researcher reads your business documents for the agent and answers in a few lines, with sources. The answers below are **recorded**: they are the real output of the benchmark runs, wrong ones included, replayed in the real chat. Tap a source to read the quoted passage.
+
+<ResearchDemo />
+
+## What to look for
+
+- **An exact figure** ("the fee after 30 days"): the answer names it and the page it is on.
+- **A question across documents**: the sources come from more than one document.
+- **A question the documents do not answer**: the right answer is "that is not in the documents", not a guess.
+- **Two clauses that disagree**: the answer should say so and cite both.
+
+How often each of these goes right, on which model and at what cost: [Benchmarks](../../../get-started/benchmarks/).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Researcher" description="What it is and how the agents call it." href="../" />
+  <LinkCard title="Business documents" description="Add your own documents; how they are cut and found." href="../../shared/business-documents/" />
+</CardGrid>
