@@ -479,7 +479,7 @@ class Visit:
             self._refused = None
             self._resume({"answer": reply, **({"config": self.form.config, "ui": self.form.ui} if filled else {}),
                           **({"rejected": refused} if refused else {})}, depth)
-        elif "changes" in interrupt and self.form and self.answers_in_words and not interrupt.get("quiet"):
+        elif "changes" in interrupt and self.form and getattr(self, "answers_in_words", False) and not interrupt.get("quiet"):
             # the person does not tap: the card stays open and their next message ("yes") arrives while it waits
             self.log.append("   \U0001f0cf card left open (the person answers in words): "
                             + "; ".join(f"{c.get('label')} = {c.get('display')}" for c in interrupt["changes"]))
