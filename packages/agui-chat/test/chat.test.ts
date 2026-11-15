@@ -483,13 +483,17 @@ describe('formguide plugin', () => {
     expect(applyChanges).toHaveBeenCalledWith({ series: '4444' })
     expect(bodies[1].forwardedProps.command.resume).toMatchObject({ answer: { text: '4444' }, config: { state: { series: '4444' } } })
     expect(($(el, '.card .ok-line .btn') as HTMLButtonElement).textContent).toBe('Undo')
-    // the form flags it ("4 digits"): the old value comes back and the assistant gets a plain answer
+    // the form flags it ("4 digits"): the old value comes back, the card says it was not taken, the assistant gets the reason
     const refusing = vi.fn(async (ch: Record<string, unknown>) => ({ state: ch, props: { series: { error: ch.series ? 'Series: 4 digits' : null } } }))
     ;({ el } = await withPlugin(run(interrupt({ ...q, card_id: 'q2' })), { applyChanges: refusing }))
     type(el, '44')
     await tick(5)
     expect(refusing).toHaveBeenLastCalledWith({ series: null })
-    expect(bodies.at(-1).forwardedProps.command.resume).toEqual({ answer: { text: '44' } })
+    expect(bodies.at(-1).forwardedProps.command.resume).toEqual({ answer: { text: '44' }, rejected: { series: 'Series: 4 digits' } })
+    const refused = $(el, '.card .ok-line') as HTMLElement
+    expect(refused.classList.contains('off')).toBe(true)
+    expect(refused.textContent).toBe('\u2715"44" \u00b7 Series: 4 digits')
+    expect(refused.querySelector('.btn')).toBeNull()
     // a question back is not a value: it goes to the assistant, the field is untouched
     const untouched = vi.fn(async () => ({ state: {} }))
     ;({ el } = await withPlugin(run(interrupt({ ...q, card_id: 'q3' })), { applyChanges: untouched }))
@@ -497,6 +501,23 @@ describe('formguide plugin', () => {
     await tick(5)
     expect(untouched).not.toHaveBeenCalled()
     expect(bodies.at(-1).forwardedProps.command.resume).toEqual({ answer: { text: 'Where do I find it?' } })
+  })
+
+  it('card_result not_accepted: the card stops reading as answered (a cross, the reason, no Undo), once', async () => {
+    const q = { type: 'ask', card_id: 'q9', question: 'Which day?', field: 'day', label: 'Day', applies: true, previous: null, allow_text: false,
+      options: [{ id: 'mon', label: 'Monday', value: 'mon' }] }
+    const no = { type: 'CUSTOM', name: 'card_result', value: { card_id: 'q9', status: 'not_accepted', reason: 'Pick one of the listed days', field: 'day' } } as AguiEvent
+    mockRuns(run(interrupt(q)), run(no, no, ...text('m2', 'That day is taken.')))
+    const el = await mount()
+    el.use(formguide({ getState: () => ({ config: { state: {} }, jsx_hash: 'h', form_id: 'loan', ui: { focused: null } }), applyChanges: async (c: Record<string, unknown>) => ({ state: c }) }))
+    await el.send('go')
+    await tick()
+    ;($(el, '.card .chip') as HTMLButtonElement).click()
+    await tick(20)
+    const line = $(el, '.card .ok-line') as HTMLElement
+    expect(line.classList.contains('off')).toBe(true)
+    expect(line.textContent).toBe('\u2715Monday \u00b7 Pick one of the listed days')   // the second event adds nothing
+    expect(line.querySelector('.btn')).toBeNull()
   })
 
   it('fills a multiple-choice field with a list, and keeps the card when apply fails', async () => {

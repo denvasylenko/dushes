@@ -116,11 +116,18 @@ For a question card with `applies: true`, a field and no options, typed text tha
 - **THEN** the field is not touched and the agent gets the text as the answer
 
 ### Requirement: A typed value the form refuses is put back
-When the form's new config flags an error on the field a typed answer filled, the widget SHALL put the previous value back and resume with `{answer: {text}}` only, so the agent handles the answer.
+When the form's new config flags an error on the field a typed answer filled, the widget SHALL put the previous value back, resume with `{answer: {text}, rejected: {<field>: <the form's error text>}}` and no config, and shrink the card to a not-accepted line (a cross, the typed text and the form's words, no Undo), never the answered line.
 
 #### Scenario: The form refuses the value
 - **WHEN** the user types 44 and the form answers with "Series: 4 digits" on that field
-- **THEN** the previous value is put back and the agent gets the answer "44" to handle
+- **THEN** the previous value is put back, the card reads as not accepted with "Series: 4 digits", and the agent gets the answer "44" with that reason
+
+### Requirement: An answer the server did not take
+On `CUSTOM card_result` with `status: "not_accepted"` the card named by `card_id` (the last card when none is named) SHALL stop reading as answered: its result line turns into the not-accepted line, with `reason` after the answer and without Undo. A card that already reads as not accepted SHALL stay as it is.
+
+#### Scenario: A choice the question does not allow
+- **WHEN** a card shows its answered line and the run sends `card_result` `{card_id, status: "not_accepted", reason: "Pick one of the listed days"}`
+- **THEN** the line shows a cross and the reason, and no Undo
 
 ### Requirement: A date of birth opens on the years
 A date question whose `max` is today (or within the last days) and that has no value yet SHALL open the calendar on the year grid, around 30 years back, so a year, a month and a day are three taps. A `max` further in the past SHALL open on that month.

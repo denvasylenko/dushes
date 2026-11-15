@@ -321,8 +321,8 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
   const applies = !!(it.applies && it.field && ctx)   // tapping an option fills the field (no second card)
   const picked = new Set<string>()
   const err = h('div', { class: 'muted err-line', role: 'alert' })
-  const answered = (labels: string, ok = true) => {   // the card shrinks to the question and the answer, easing (no jump)
-    const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, labels))
+  const answered = (labels: string, ok = true, why = '') => {   // the card shrinks to the question and the answer, easing (no jump)
+    const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, labels + why))
     easeHeight(card, () => {
       acts.replaceWith(line)
       card.querySelectorAll('.chips, .opts, .cmp, .strip, .range, .fields, .search, .note, .num, .typed-slot').forEach((x) => x.remove())
@@ -338,12 +338,13 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
     try {
       const prev = (await ctx!.getState()).config?.state ?? {}
       const config = await ctx!.applyChanges(values)
-      // a typed text the form rejects ("4 digits"): put the old value back and let the assistant handle the answer
-      const rejected = strict && Object.keys(values).some((n) => (config as { props?: Record<string, { error?: unknown }> })?.props?.[n]?.error)
-      if (rejected) {
+      // a typed text the form refuses ("4 digits"): the old value goes back, the card says it was not taken and why,
+      // and the assistant gets the answer with the form's own words (`rejected`), so it never reads as filled
+      const rejected = strict && Object.fromEntries(Object.keys(values).map((n) => [n, (config as { props?: Record<string, { error?: unknown }> })?.props?.[n]?.error]).filter((e) => e[1]).map(([n, e]) => [n, String(e)]))
+      if (rejected && Object.keys(rejected).length) {
         await ctx!.applyChanges(Object.fromEntries(Object.keys(values).map((n) => [n, n === it.field ? it.previous ?? prev[n] ?? null : prev[n] ?? null])))
-        answered(labels)
-        c.resolve(answer)
+        answered(labels, false, ` \u00b7 ${Object.values(rejected)[0]}`)
+        c.resolve({ ...answer, rejected })
         return
       }
       const state = await ctx!.getState()

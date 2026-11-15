@@ -2066,6 +2066,16 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       void p   // a tool's own sub-steps are not shown: the line names the tool
     } else if (name === 'card_focus') {   // "show me that card": the one still in the thread, not a copy
       this._focusCard(String((value as { card_id?: unknown } | null)?.card_id ?? ''))
+    } else if (name === 'card_result') {   // an answer that was not taken: its card must not read as answered
+      const r = value as { card_id?: unknown; status?: unknown; reason?: unknown } | null
+      const cards = [...this.$.log.querySelectorAll<HTMLElement>('[data-card-id]')]
+      const line = (cards.find((x) => x.dataset.cardId === r?.card_id) ?? cards.at(-1))?.querySelector('.ok-line')
+      if (line && r?.status === 'not_accepted' && !line.classList.contains('off')) {
+        line.classList.add('off')
+        line.querySelector('.btn')?.remove()   // nothing was filled: nothing to undo
+        line.firstElementChild!.textContent = '\u2715'
+        if (r.reason) line.querySelector('span')?.append(` \u00b7 ${r.reason}`)
+      }
     } else if (name === 'language') {   // the language the user writes in: the conversation's words follow it
       this._setTalk((value as { lang?: unknown } | null)?.lang)
     } else if (name === 'suggestions') {
