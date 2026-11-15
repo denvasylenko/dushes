@@ -28,7 +28,17 @@ def _runs(r: dict) -> list[dict]:
     return r.get("runs") or [r]
 
 
-def cost(results: list[dict], prices: dict) -> tuple[dict, float]:
+PRICES_FILE = Path(__file__).resolve().parents[2] / "site" / "src" / "data" / "prices.json"
+
+
+def tester_prices(report: dict) -> dict | None:
+    """The price of the user's and the judge's model when it differs from the agent's (site/src/data/prices.json)."""
+    model = str(report.get("judge_model") or report.get("user_model") or "").split(":", 1)[-1]
+    table = json.loads(PRICES_FILE.read_text()).get("models", {}) if PRICES_FILE.exists() else {}
+    return table.get(model)
+
+
+def cost(results: list[dict], prices: dict, tester: dict | None = None) -> tuple[dict, float]:
     tok: dict[str, dict[str, int]] = {"assistant": Counter(), "user_and_judge": Counter()}
     for r in results:
         for x in _runs(r):
@@ -36,9 +46,10 @@ def cost(results: list[dict], prices: dict) -> tuple[dict, float]:
                 for k, v in (t or {}).items():
                     tok.setdefault(who, Counter())[k] += int(v or 0)
     usd = 0.0
-    for t in tok.values():
+    for who, t in tok.items():   # the user and the judge at their own model's price when it is known
+        pr = tester if tester and who == "user_and_judge" else prices
         fresh = max(0, t["input"] - t["cache_read"])
-        usd += (fresh * prices["input"] + t["cache_read"] * prices["cache_read"] + t["output"] * prices["output"]) / 1e6
+        usd += (fresh * pr["input"] + t["cache_read"] * pr.get("cache_read", pr["input"]) + t["output"] * pr["output"]) / 1e6
     return {k: dict(v) for k, v in tok.items()}, round(usd, 4)
 
 
@@ -97,8 +108,10 @@ def summary(report: dict, prev: dict | None, prices: dict, worst: int = 10) -> s
     out += ["", "## Failed checks that recur", ""] + [f"- {k}: {v}" for k, v in checks.most_common(12)]
     lost = sorted(((x["points"], r["name"], x["reason"]) for r in res for x in r.get("lost") or []), reverse=True)
     out += ["", "## The judge's biggest deductions", ""] + [f"- -{p} {n}: {why[:240]}" for p, n, why in lost[:25]]
-    tok, usd = cost(res, prices)
-    out += ["", "## Cost", "", f"Tokens: {json.dumps(tok)}", f"Estimated cost: **${usd}** at {json.dumps(prices)} per 1M tokens."]
+    tester = tester_prices(report)
+    tok, usd = cost(res, prices, tester)
+    out += ["", "## Cost", "", f"Tokens: {json.dumps(tok)}", f"Estimated cost: **${usd}**: the agent at {json.dumps(prices)} per 1M tokens"
+            + (f", the user and the judge ({report.get('judge_model')}) at {json.dumps({k: tester[k] for k in ('input', 'output')})}." if tester else ".")]
     return "\n".join(out) + "\n"
 
 
@@ -130,7 +143,7 @@ def site_evals(report: dict, path: Path, prices: dict, target: Path = SITE) -> d
         lost = max(r.get("lost") or [{"points": 0, "reason": ""}], key=lambda x: x["points"])["reason"]
         failed = [c["check"] for c in r["checks"] if not c["ok"]]
         worst.append({"name": r["name"], "score": r["score"], "reason": _line(lost or (f"failed: {failed[0]}" if failed else ""))})
-    _tok, usd = cost(res, prices)
+    _tok, usd = cost(res, prices, tester_prices(report))
     d0, d1 = str(report.get("started") or report["at"])[:10], report["at"][:10]
     data = {"source": "backend/scripts/evals.py" + (f" --agent-model {report['agent_model']}" if report.get("agent_model") else ""),
             **({"date": d1} if d0 == d1 else {"date_from": d0, "date_to": d1}),
