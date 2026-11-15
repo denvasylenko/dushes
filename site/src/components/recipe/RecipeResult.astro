@@ -1,25 +1,22 @@
 ---
 /**
- * "How well it works" for one recipe, from site/src/data/recipes.json (written by QA's backend/scripts/recipes.py).
- * Never typed by hand: a recipe without a report says "Not measured yet"; a report older than 14 days is flagged.
+ * "How well it works" for one recipe, from site/src/data/recipes.json (written by QA's backend/scripts/recipes.py),
+ * through lib/recipes.ts like the .md export. Never typed by hand: a recipe without a report says "Not measured yet";
+ * a report older than 14 days is flagged.
  */
 import { Aside } from '@astrojs/starlight/components'
 import { Metrics, Metric } from '../ui'
-import recipes from '../../data/recipes.json'
-import { ageDays, longDate } from '../../lib/bench'
+import { longDate } from '../../lib/bench'
+import { recipeResult, recipeAge, modelName, SCENARIOS_URL } from '../../lib/recipes'
 interface Props { name: string }
-const { name } = Astro.props
-const r = (recipes as Record<string, { runs: number; hits: number; scenarios: number; tool: string; model: string; date: string; report: string }>)[name]
-const MODELS: Record<string, string> = { 'claude-haiku-5-5': 'Claude Haiku 5.5', 'claude-sonnet-5-5': 'Claude Sonnet 5.5', 'claude-opus-5-5': 'Claude Opus 5.5' }
-const days = r ? ageDays(r.date) : 0
-// the scenarios that produced the number (the reports themselves are not committed)
-const scenarios = `https://github.com/denvasylenko/dushes/tree/main/backend/evals/recipes`
+const r = recipeResult(Astro.props.name)
+const days = r ? recipeAge(r) : 0
 ---
 {r ? (
   <>
     <Metrics label="How well it works">
       <Metric value={`${r.hits} of ${r.runs}`} label={`runs went as expected (${r.scenarios} scenario${r.scenarios === 1 ? '' : 's'})`}
-        detail={`${MODELS[r.model] ?? r.model}, ${longDate(r.date)}`} href={scenarios} source="Scenarios" />
+        detail={`${modelName(r.model)}, ${longDate(r.date)}`} href={SCENARIOS_URL} source="Scenarios" />
     </Metrics>
     {r.tool && <p>Expected in every run: <code>{r.tool}</code>.</p>}
     {days > 14 && <Aside type="caution">This measurement is {days} days old.</Aside>}

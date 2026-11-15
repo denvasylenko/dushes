@@ -1,0 +1,26 @@
+---
+title: Recipes
+description: One goal per page, each a folder that runs as it is and a number measured on it by QA's scenarios.
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"Small, complete setups for one goal each"} when={"You want a working starting point, not every option"} write={"Copy the recipe's folder, then change its tool to call your API"} />
+
+Each recipe is a folder under `backend/demo/recipes/` with its `formguide.yaml` and any tool code. QA's scenarios run that same folder, so the page shows the files that were measured, and how often the expected thing happened.
+
+```bash
+cp -r backend/demo/recipes/confirm-side-effect my-agent
+cd my-agent && PYTHONPATH=. ANTHROPIC_API_KEY=... formguide serve --config formguide.yaml   # PYTHONPATH: the tool module sits here
+```
+
+<CardGrid>
+  <LinkCard title="Confirm before a side effect" description="A tool that books, pays or sends runs only after the user taps Confirm." href="confirm-side-effect/" />
+</CardGrid>
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Skills and tools" description="Server tools, skills and every option." href="../ui-agent/skills/" />
+  <LinkCard title="Speed and tracing" description="How the scenarios and the judge work." href="../shared/observability/" />
+</CardGrid>

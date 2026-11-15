@@ -1,5 +1,6 @@
 /** A docs entry as plain Markdown for llms.txt, llms-full.txt and <page>.md (what AI tools read). */
 import { speedMarkdown } from './bench';
+import { recipeFilesMarkdown, recipeResultMarkdown } from './recipes';
 import type { CollectionEntry } from 'astro:content';
 
 const fragments = import.meta.glob('../fragments/*.html', { query: '?raw', eager: true, import: 'default' }) as Record<string, string>;
@@ -66,15 +67,30 @@ function proseToMd(part: string, raw: Record<string, string>): string {
     .replace(/<Summary\s+what=\{("(?:[^"\\]|\\.)*")\}\s+when=\{("(?:[^"\\]|\\.)*")\}\s+write=\{("(?:[^"\\]|\\.)*")\}[^>]*\/>/g,
       (_m, a, b, c) => `- **What:** ${JSON.parse(a)}\n- **When you need it:** ${JSON.parse(b)}\n- **You write:** ${JSON.parse(c)}`)
     .replace(/<BenchSpeed\s*\/>/g, () => speedMarkdown())   // data-driven sections: the same numbers as the page
+    // a recipe's own files, as on the page; stashed, so the component rules below never touch the code
+    .replace(/<RecipeFiles\s+name="([^"]+)"\s*\/>/g, (_m, n) => `\u0000${stash.push(recipeFilesMarkdown(n)) - 1}\u0000`)
+    .replace(/<RecipeResult\s+name="([^"]+)"\s*\/>/g, (_m, n) => recipeResultMarkdown(n))
+    .replace(/<Disclosure\s+summary="([^"]+)"[^>]*>/g, '\n**$1**\n')   // collapsed on the page, open in the export
     // an included example file: the file itself, as a code block
     .replace(/<Code\s+code=\{(\w+)\}(?:\s+lang="([^"]*)")?(?:\s+title="([^"]*)")?[^>]*\/>/g,
       (_m, name, lang, title) => raw[name] !== undefined ? `\`\`\`${lang ?? ''}${title ? ` title="${title}"` : ''}\n${raw[name].trimEnd()}\n\`\`\`` : '')
     .replace(/<LinkCard\s+title="([^"]+)"(?:\s+description="([^"]*)")?\s+href="([^"]+)"\s*\/>/g, (_m, t, d, h) => `- [${t}](${h})${d ? `: ${d}` : ''}`)
+    // tiles and figures: their words, as a list (attributes in quotes; a value from an expression is left out)
+    .replace(/<Entry\b[^>]*\/>/g, (tag) => {
+      const t = attr(tag, 'title'), x = attr(tag, 'text'), h = attr(tag, 'href')
+      return typeof t === 'string' ? `- ${typeof h === 'string' ? `[${t}](${h})` : t}${typeof x === 'string' ? `: ${x}` : ''}` : ''
+    })
+    .replace(/<Metric\b[^>]*\/>/g, (tag) => {
+      const v = attr(tag, 'value'), l = attr(tag, 'label'), d = attr(tag, 'detail')
+      return typeof v === 'string' && typeof l === 'string' ? `- **${v}** ${l}${typeof d === 'string' ? ` (${d})` : ''}` : ''
+    })
+    .replace(/<Badge\b[^>]*>([^<]*)<\/Badge>/g, '$1')
     .replace(/`[^`\n]+`/g, (code) => `\u0000${stash.push(code) - 1}\u0000`)   // inline code is text: keep `<AguiChat />` in it
     .replace(/<[A-Z][A-Za-z]*(\s[^>]*)?\/>/g, '')   // any other self-closing component (live widgets)
     .replace(/<Card\s+title="([^"]+)"[^>]*>/g, '**$1.** ')
     .replace(/<TabItem\s+label="([^"]+)"[^>]*>/g, '\n**$1**\n')
-    .replace(/<\/?(CardGrid|Card|Tabs|TabItem|Steps|Aside|LiveDemo|Stats|Fragment|details|summary)[^>]*>/g, '')
+    .replace(/<\/?(CardGrid|Card|Tabs|TabItem|Steps|Aside|LiveDemo|Stats|Fragment|Disclosure|details|summary)[^>]*>/g, '')
+    .replace(/<\/?[A-Z][A-Za-z]*(\s[^>]*)?>/g, '')   // any other wrapper (Entries, Metrics, Specimen): its content stays
     .replace(/\u0000(\d+)\u0000/g, (_m, i) => stash[Number(i)])
 }
 

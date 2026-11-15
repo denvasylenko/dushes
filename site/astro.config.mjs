@@ -162,6 +162,7 @@ export default defineConfig({
 						{ label: 'User documents', slug: 'agents/ui-agent/user-documents' },
 					] },
 					{ label: 'Recipes', items: [
+						{ label: 'Overview', slug: 'agents/recipes' },
 						{ label: 'Confirm before a side effect', slug: 'agents/recipes/confirm-side-effect' },
 					] },
 					{ label: 'Researcher', items: [
