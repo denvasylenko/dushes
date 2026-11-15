@@ -1,0 +1,262 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "The answer was cut off.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041e\u0442\u0432\u0435\u0442 \u043e\u0431\u043e\u0440\u0432\u0430\u043b\u0441\u044f."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La risposta si \u00e8 interrotta."
+          }
+        }
+      }
+    },
+    "Something went wrong.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0427\u0442\u043e-\u0442\u043e \u043f\u043e\u0448\u043b\u043e \u043d\u0435 \u0442\u0430\u043a."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qualcosa \u00e8 andato storto."
+          }
+        }
+      }
+    },
+    "Too many questions for now. Try again later.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0421\u043b\u0438\u0448\u043a\u043e\u043c \u043c\u043d\u043e\u0433\u043e \u0432\u043e\u043f\u0440\u043e\u0441\u043e\u0432. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troppe domande per ora. Riprova pi\u00f9 tardi."
+          }
+        }
+      }
+    },
+    "No connection. Try again.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041d\u0435\u0442 \u0441\u0432\u044f\u0437\u0438. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna connessione. Riprova."
+          }
+        }
+      }
+    },
+    "Ask AI": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0421\u043f\u0440\u043e\u0441\u0438\u0442\u044c AI"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiedi all'AI"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ferma"
+          }
+        }
+      }
+    },
+    "Dictate": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041d\u0430\u0434\u0438\u043a\u0442\u043e\u0432\u0430\u0442\u044c"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detta"
+          }
+        }
+      }
+    },
+    "Send": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia"
+          }
+        }
+      }
+    },
+    "Try Again": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riprova"
+          }
+        }
+      }
+    },
+    "Looking at the site": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0421\u043c\u043e\u0442\u0440\u044e \u0441\u0430\u0439\u0442"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardo il sito"
+          }
+        }
+      }
+    },
+    "Checking the visits": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0421\u043c\u043e\u0442\u0440\u044e \u043f\u043e\u0441\u0435\u0449\u0435\u043d\u0438\u044f"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controllo le visite"
+          }
+        }
+      }
+    },
+    "Reading the requests": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0427\u0438\u0442\u0430\u044e \u0437\u0430\u044f\u0432\u043a\u0438"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leggo le richieste"
+          }
+        }
+      }
+    },
+    "Working on it": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0420\u0430\u0431\u043e\u0442\u0430\u044e"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ci sto lavorando"
+          }
+        }
+      }
+    },
+    "Confirm": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conferma"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041e\u0442\u043c\u0435\u043d\u0438\u0442\u044c"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla"
+          }
+        }
+      }
+    },
+    "Thinking": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0414\u0443\u043c\u0430\u044e"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sto pensando"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

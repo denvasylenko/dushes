@@ -1,0 +1,40 @@
+: a turn of the cabinet assistant, recorded shape (CONTRACT.md); one JSON object per data line
+data: {"type":"RUN_STARTED","threadId":"t-1","runId":"r-1"}
+
+data: {"type":"CUSTOM","name":"model","value":{"choice":"fast","label":"Fast"}}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"m-lead","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"m-lead","delta":"Let me look"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"m-lead"}
+
+data: {"type":"TOOL_CALL_START","toolCallId":"c-1","toolCallName":"view_site"}
+
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"c-1","delta":"{}"}
+
+data: {"type":"TOOL_CALL_END","toolCallId":"c-1"}
+
+data: {"type":"TOOL_CALL_RESULT","toolCallId":"c-1","content":"{\"hours\":\"12-22\"}"}
+
+data: {"type":"CUSTOM","name":"text_retract","value":{"messageId":"m-lead"}}
+
+data: {"type":"TEXT_MESSAGE_START","messageId":"m-2","role":"assistant"}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"m-2","delta":"Sunday until "}
+
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"m-2","delta":"23:00?"}
+
+data: {"type":"TEXT_MESSAGE_END","messageId":"m-2"}
+
+data: {"type":"CUSTOM","name":"on_interrupt","value":"{\"type\":\"ask\",\"card_id\":\"k-1\",\"question\":\"Sunday hours\",\"options\":[{\"id\":\"23\",\"label\":\"Until 23:00\"},{\"id\":\"22\",\"label\":\"Until 22:00\"}]}"}
+
+data: {"type":"CUSTOM","name":"hf_card","value":{"kind":"hours"}}
+
+data: {"type":"CUSTOM","name":"never_heard_of","value":{"x":1}}
+
+data: {"type":"CUSTOM","name":"suggestions","value":{"items":[{"text":"Menu and prices"},"Open the site"]}}
+
+data: {"type":"CUSTOM","name":"run_stats","value":{"ms":900}}
+
+data: {"type":"RUN_FINISHED"}
