@@ -177,7 +177,11 @@ export function voice(chat: Chat): void {
   // never a live microphone without the orb on screen
   chat.addEventListener('agui:close', () => { if (on && !silent) { hang(true); silent = true; paint() } })
   chat.addEventListener('agui:thread', () => { if (on && !silent) fail(T('closed')) })   // a new chat: the voice knew the old one
-  globalThis.addEventListener?.('pagehide', () => { if (on) hang(true, true) })
+  // leaving the page ends the conversation, so it stops costing: a closed tab or a navigation everywhere, and on a
+  // phone also the page going to the background (there a closed tab often gives no other sign)
+  const gone = (): void => { if (on && !silent) { hang(true, true); silent = true; paint() } }
+  globalThis.addEventListener?.('pagehide', gone)
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && globalThis.matchMedia?.('(pointer: coarse)').matches) gone() })
   new MutationObserver(() => { if (on && !chat.isConnected) leave() }).observe(document, { childList: true, subtree: true })
 
   /** Everything said and heard goes into the conversation itself, never into a strip of its own. */
@@ -209,6 +213,22 @@ export function voice(chat: Chat): void {
   })
   /** The person's own voice: the orb breathes with it and the ring in the message box fills. */
   const hear = (stream: MediaStream): void => meter(stream, (level) => { foot.style.setProperty('--vo-l', String(Math.min(1, Math.round(level / 2.4) / 10))) })
+
+  /** A plain yes or no heard while a card waits (the server says which card): the card is answered exactly as its own
+   *  buttons answer it, and the word is shown as the person's message. A spoken yes is also the tick of a consent in
+   *  that card (the question was asked aloud). A question card takes the words as an ordinary message; so does a card
+   *  that is not on the screen or cannot be answered yet. */
+  function answer(a: { card_id?: string; type?: string; accepted?: boolean }, text: string): boolean {
+    if (!a.card_id || a.type === 'ask' || typeof a.accepted !== 'boolean') return false
+    const card = [...root!.querySelectorAll<HTMLElement>('.log [data-card-id]')].find((c) => c.dataset.cardId === a.card_id)
+    if (!card) return false
+    if (a.accepted) card.querySelectorAll<HTMLInputElement>('.row.consent input[type=checkbox]').forEach((c) => { if (!c.checked) c.click() })
+    const b = card.querySelector<HTMLButtonElement>(a.accepted ? '.acts > .btn.pri, .acts > .btn.danger' : '.acts > .btn.sec')
+    if (!b || b.disabled) return false
+    const me = el('div', 'msg me'); me.append(el('div', 'bubble', text)); card.after(me)
+    b.click()
+    return true
+  }
 
   /** Enter voice mode and connect. */
   async function start(): Promise<void> {
@@ -288,7 +308,7 @@ export function voice(chat: Chat): void {
         const block = buf.slice(0, cut); buf = buf.slice(cut).replace(/^\r?\n\r?\n/, '')
         const data = block.split(/\r?\n/).filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trim()).join('')
         if (!data) continue
-        let ev: { type?: string; text?: string; delta?: string; reason?: Ended }
+        let ev: { type?: string; text?: string; delta?: string; reason?: Ended; answers?: { card_id?: string; type?: string; accepted?: boolean } }
         try { ev = JSON.parse(data) } catch { continue }
         if (ev.type === 'hearing' && ev.delta) {   // the person's words as they speak: their message, growing in the conversation
           audio.muted = false
@@ -298,6 +318,7 @@ export function voice(chat: Chat): void {
           hearEl?.remove(); hearEl = null
           if (echo(ev.text)) continue   // the voice heard itself through the speakers: not the person's message
           audio.muted = false; saidEl = null; answered = false; voiced = ''
+          if (ev.answers && answer(ev.answers, ev.text)) continue   // a spoken yes or no to the waiting card: the card's own answer, not a new message
           void chat.send(ev.text)
         } else if (ev.type === 'result') { answered = true; saidEl = null   // the agent's answer was handed to the voice: what it says next is that answer, already written in the conversation
         } else if (ev.type === 'spoken' && ev.delta) {

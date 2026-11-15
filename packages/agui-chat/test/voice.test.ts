@@ -363,6 +363,54 @@ describe('the experimental voice mode', () => {
     expect($$(el, '[data-card-id="c3"] .btn.pri')).toHaveLength(1)
   })
 
+  it('a spoken yes or no answers the waiting card as its own buttons do, and is not sent as a new message; a consent takes the spoken yes', async () => {
+    const { formguide } = await import('../src/formguide/index')
+    const amount = { name: 'loan_amount', label: 'Amount', value: 1500000, display: '1 500 000', previous: null, previous_display: null, reveal: [] }
+    const consent = { name: 'agree', label: 'I agree to the data policy', value: true, display: 'Yes', previous: null, previous_display: null, reveal: [], consent: true }
+    const card = (id: string, changes: unknown[]) => ({ type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'set_fields', card_id: id, changes }) })
+    const s = server(); fakeAudio()
+    vi.stubGlobal('fetch', s.fetch)
+    sessionStorage.setItem('agui-voice-pass', 'pass-1')
+    const el = await mount()
+    const applied: unknown[] = [], resumed: unknown[] = [], said: string[] = []
+    el.use(formguide({ getState: () => ({ config: { state: {}, props: {} }, jsx_hash: 'h', form_id: 'loan', ui: { focused: null } }), applyChanges: async (c: Record<string, unknown>) => { applied.push(c); return { state: c } } }))
+    const turns = [[card('c1', [amount])], [card('c2', [amount])], [card('c3', [consent])], []]
+    el.agent = { run: (input: { messages?: { role: string; content: unknown }[]; forwardedProps?: { command?: { resume?: unknown } } }) => ({ subscribe: (o: Obs) => {
+      const resume = input.forwardedProps?.command?.resume
+      if (resume) resumed.push(resume); else said.push(String(input.messages?.at(-1)?.content ?? ''))
+      const evs = resume ? [] : turns.shift() ?? []
+      setTimeout(() => { o.next({ type: 'RUN_STARTED' }); for (const e of evs) o.next(e); o.next({ type: 'RUN_FINISHED' }); o.complete() }, 10)
+      return { unsubscribe() {} } } }) } as never
+    $(el, '.vo-go').click()
+    await tick(30)
+    s.push({ type: 'heard', text: 'One and a half million' })
+    await tick(120)
+    expect($$(el, '[data-card-id="c1"] .btn.pri')).toHaveLength(1)              // the card waits; the voice asks its question aloud
+    s.push({ type: 'heard', text: 'yes please', answers: { card_id: 'c1', type: 'set_fields', accepted: true } })
+    await tick(120)
+    expect(applied).toEqual([{ loan_amount: 1500000 }])                         // filled, as the Fill button fills
+    expect(resumed[0]).toMatchObject({ accepted: true })
+    expect(said).toEqual(['One and a half million'])                            // "yes please" was not sent as a message
+    expect($$(el, '.msg.me').map((m) => m.textContent)).toContain('yes please') // but it is shown as what the person said
+    s.push({ type: 'heard', text: 'again' })
+    await tick(120)
+    s.push({ type: 'heard', text: 'no', answers: { card_id: 'c2', type: 'set_fields', accepted: false } })
+    await tick(120)
+    expect(resumed[1]).toMatchObject({ accepted: false })                       // as the Reject button
+    expect(applied).toHaveLength(1)
+    s.push({ type: 'heard', text: 'the policy' })
+    await tick(120)
+    expect(($(el, '[data-card-id="c3"] .btn.pri') as HTMLButtonElement).disabled).toBe(true)   // a consent is never pre-ticked
+    s.push({ type: 'heard', text: 'yes', answers: { card_id: 'c3', type: 'set_fields', accepted: true } })
+    await tick(120)
+    expect(applied.at(-1)).toEqual({ agree: true })                             // the spoken yes to the direct question is the tick
+    expect(resumed).toHaveLength(3)
+    // a question card, or a card that is not there: the words go as an ordinary message
+    s.push({ type: 'heard', text: 'yes', answers: { card_id: 'q1', type: 'ask', accepted: true } })
+    await tick(120)
+    expect(said.at(-1)).toBe('yes')
+  })
+
   it('speaks the chat\'s language', async () => {
     vi.stubGlobal('fetch', server().fetch)
     const el = await mount({ lang: 'de' })

@@ -70,6 +70,24 @@ The microphone SHALL be asked for with echo cancelling, noise suppression and au
 - **WHEN** the voice says "Choose the date and time of the booking" and the stream then sends `heard` with the same words
 - **THEN** no message is sent and none of the person's is drawn
 
+### Requirement: A spoken yes or no answers the waiting card
+When a `heard` event carries `answers` with a card's id and `accepted`, the chat SHALL answer that card exactly as its own buttons do (accepted: the Fill or Confirm path; not accepted: the Reject or Cancel path) and SHALL NOT send the words as a new message; the words SHALL be shown as the person's message. A spoken yes SHALL also tick a consent in that card. For a question card (type `ask`), or a card that is not on the screen, the words SHALL go as an ordinary message.
+
+#### Scenario: Yes to a field-change card
+- **WHEN** a field-change card waits and the person says "yes please"
+- **THEN** the fields are filled and the turn resumes as after the Fill button, and no new message is sent
+
+#### Scenario: No to a card
+- **WHEN** a card waits and the person says "no"
+- **THEN** the card is rejected as by its Reject button
+
+### Requirement: Leaving the page ends the voice conversation
+The chat SHALL end the voice conversation on the host when the page is left (closed, navigated away or reloaded) and, on a touch device, when the page goes to the background.
+
+#### Scenario: The page is reloaded
+- **WHEN** the person reloads the page during a voice conversation
+- **THEN** the host receives the end of that conversation
+
 ### Requirement: The look of voice mode
 The orb SHALL be a sky of the voice colour (the host's accent) with a white cloud bank going round. It SHALL carry no mark at rest; the stop mark shows only under the pointer, the focus or a press. While voice mode is on, the header SHALL say "Voice" or "Silent", the message box SHALL show a ring that fills with the person's voice, its send and stop buttons SHALL show only while a message is typed, and a short conversation SHALL sit low, by the orb.
 
