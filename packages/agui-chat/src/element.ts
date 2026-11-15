@@ -632,7 +632,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     const bars = h('span', { class: 'bars', 'aria-hidden': 'true' }, ...Array.from({ length: 36 }, () => h('i')))
     const wave = h('div', { class: 'wave', part: 'recording' }, bars, h('span', { class: 'rec-time' }, '0:00'),
       h('span', { class: 'rec-busy', role: 'status' }, h('span', { class: 'dots' }, h('i'), h('i'), h('i')), h('span', { class: 'rec-busy-t' })))
-    const clip = h('button', { class: 'ib clip', type: 'button' }); this._icon(clip, 'clip')
+    const clip = h('button', { class: 'ib clip', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }); this._icon(clip, 'clip')   // a menu button from the start, before its code has loaded
     const picker = h('input', { type: 'file', multiple: true, hidden: true }) as HTMLInputElement
     const send = h('button', { class: 'send', type: 'button', part: 'send' }); this._icon(send, 'send')
     const files = h('div', { class: 'files', part: 'attachments' })

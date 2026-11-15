@@ -28,6 +28,7 @@ describe('the + menu', () => {
     const opened = vi.spyOn(picker, 'click').mockImplementation(() => {})
     const plus = $(el, '.clip') as HTMLButtonElement
     expect(plus.getAttribute('aria-label')).toBe('More')
+    expect([plus.getAttribute('aria-haspopup'), plus.getAttribute('aria-expanded')]).toEqual(['menu', 'false'])   // said before the menu's code has loaded
     plus.click()
     const m = await menu(el)
     expect(opened).not.toHaveBeenCalled()                                  // the picker waits for its row
