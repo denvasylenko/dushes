@@ -28,7 +28,20 @@ import sys
 import textwrap
 from pathlib import Path
 
-import yaml
+NEEDS = """check_examples.py needs the formguide package and PyYAML: it loads every configuration example with the real loader.
+Run it in the backend's environment:
+
+    cd backend && uv run python ../scripts/check_examples.py
+
+or install them first (as the docs CI does):  python3 -m pip install "./backend[server,otel,sqlite]" pyyaml"""
+
+try:
+    import yaml
+
+    import formguide  # noqa: F401 - checked here so a missing install is one clear message, not a traceback mid-run
+except ModuleNotFoundError as e:
+    print(f"{NEEDS}\n\n(missing: {e.name})", file=sys.stderr)
+    sys.exit(2)
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "site" / "src" / "content" / "docs"
