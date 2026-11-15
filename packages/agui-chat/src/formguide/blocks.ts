@@ -79,6 +79,7 @@ const ICON: Record<string, string> = {
   copy: 'M9 9h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1zM5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1',
   chat: 'M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z',
   check: 'M5 12.5l4.5 4.5L19 7',
+  next: 'M9 5l7 7-7 7',
 }
 const icon = (name: string): HTMLElement => {
   const s = h('span', { class: 'bk-ico', 'aria-hidden': 'true' })
@@ -375,6 +376,31 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       queueMicrotask(check)   // after the whole card is built: the choices above have registered what they need
       return h('div', { class: 'bk-submit' }, row, line)
     }
+    case 'picklist': {   // a choice as full-width rows, like a list in iOS Settings: a tap answers, no row is filled or preselected
+      const tile = (x: Item): HTMLElement => {
+        const src = safeUrl(x.image, true)
+        return src ? h('img', { class: 'bk-pick-i', src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' })
+          : h('span', { class: 'bk-pick-i', 'aria-hidden': 'true' }, ICON[str(x.icon)] ? icon(str(x.icon)) : str(x.title).trim().slice(0, 1).toUpperCase())
+      }
+      const go = async (x: Item, label: string, row?: HTMLElement): Promise<void> => {
+        const id = str(x.id) || label
+        if (onAction && await onAction(id, label, { ...values })) return   // the host handled it
+        if (!answer) return void c.chat.send(label)   // a display card: the row speaks for the user
+        if (row) row.dataset.picked = ''
+        answer(id, label, { ...values }, x)
+      }
+      const rows = list(b.items).map((x) => {
+        const title = str(x.title ?? x.label)
+        const row = h('button', { class: 'bk-pick-row', part: 'pick-row', type: 'button' }, tile({ ...x, title }),
+          h('span', { class: 'bk-pick-t' }, h('span', { class: 'bk-pick-n' }, title), x.subtitle ? h('span', { class: 'muted' }, str(x.subtitle)) : null), icon('next'))
+        row.addEventListener('click', () => void go(x, title, row))
+        return row
+      })
+      const none = typeof b.none === 'string' ? { label: b.none } : b.none && typeof b.none === 'object' ? b.none as Item : null
+      const out = none && str(none.label) ? h('button', { class: 'bk-pick-none', part: 'pick-none', type: 'button' }, str(none.label)) : null
+      out?.addEventListener('click', () => void go({ id: 'none', ...none }, str(none!.label)))
+      return h('div', { class: 'bk-pick', part }, h('div', { class: 'bk-pick-l', role: 'group' }, rows), out)
+    }
     case 'links': {   // a link without a value (no phone given) is left out; no links, no block
       const items = list(b.items).filter((x) => x.value != null && x.value !== '')
       return items.length ? h('div', { class: 'bk-links', part }, items.map((x) => linkEl(x, c))) : null
@@ -397,8 +423,17 @@ export function blocksRenderer(it: Interrupt, c: RendererContext, fill?: BlocksF
   const shell = into ?? h('div', null)
   const err = h('div', { class: 'muted err-line', role: 'alert' })
   const fold = (label: string): HTMLElement => {
+    const head = [...body.querySelectorAll('.bk-title, .bk-place')].slice(0, 1).map((x) => x.cloneNode(true))
+    // a row picked from a list stays as it was, same width, a tick in place of its chevron: the feed does not jump
+    const picked = body.querySelector<HTMLButtonElement>('.bk-pick-row[data-picked]')?.cloneNode(true) as HTMLButtonElement | undefined
+    if (picked) {
+      picked.disabled = true
+      picked.lastElementChild!.replaceWith(h('span', { class: 'ok-line' }, h('i', null, '\u2713')))
+      shell.replaceChildren(...head, h('div', { class: 'bk-pick', part: 'result' }, picked))
+      return picked
+    }
     const line = h('div', { class: 'ok-line', part: 'result' }, h('i', null, '\u2713'), h('span', null, label))
-    shell.replaceChildren(...[...body.querySelectorAll('.bk-title, .bk-place')].slice(0, 1).map((x) => x.cloneNode(true)), line)
+    shell.replaceChildren(...head, line)
     return line
   }
   const body = blocksCard(it, c, (action, label, values, button) => {

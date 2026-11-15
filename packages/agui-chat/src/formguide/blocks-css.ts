@@ -18,6 +18,24 @@ export const BLOCKS_CSS = `
 .bk-avatar { display: grid; place-items: center; font-size: 20px; font-weight: 700; color: var(--agui-ink-2); }
 .bk-place-t { flex: 1; min-width: 0; }
 .bk-rating { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* a choice as rows: a tile (photo, glyph or letter), the name, a second line, a chevron; hairlines between, inset to the text */
+.bk-pick-l { display: grid; }
+.bk-pick-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 0; border: 0; background: none; color: inherit;
+  font: inherit; text-align: left; cursor: pointer; position: relative; border-radius: var(--agui-radius-sm); -webkit-tap-highlight-color: transparent; }
+.bk-pick-row + .bk-pick-row::before { content: ''; position: absolute; top: 0; left: 56px; right: 0; height: 1px; background: var(--agui-line); }
+.bk-pick-row:not(:disabled):active { background: var(--agui-soft); }
+@media (hover: hover) { .bk-pick-row:not(:disabled):hover { background: var(--agui-soft); box-shadow: 0 0 0 6px var(--agui-soft); } }
+.bk-pick-row:disabled { cursor: default; }
+.bk-pick-i { width: 44px; height: 44px; flex: none; border-radius: 10px; object-fit: cover; background: var(--agui-soft); display: grid; place-items: center;
+  font-size: 17px; font-weight: 600; color: var(--agui-ink-2); }
+.bk-pick-t { flex: 1; min-width: 0; display: grid; gap: 1px; overflow-wrap: anywhere; }
+.bk-pick-n { font-size: 17px; font-weight: 500; line-height: 1.3; letter-spacing: -0.01em; }
+.bk-pick-t .muted { font-size: 14px; line-height: 1.35; }
+.bk-pick-row > .bk-ico { flex: none; color: var(--agui-ink-3); }
+.bk-pick-row > .ok-line { flex: none; margin: 0; }
+.bk-pick-none { display: block; margin: 6px 0 -4px; padding: 10px 0; min-height: 44px; border: 0; background: none; color: var(--agui-ink-2); font: inherit; font-size: 16px; cursor: pointer; text-align: left; }
+.bk-pick-none:hover { color: var(--agui-ink); }
+.bk-title + .bk-pick { margin-top: 4px; }
 /* an answered card: its title or place, then the result line, the same 12 px apart as a question card's */
 .bk-title + .ok-line, .bk-place + .ok-line { margin-top: 12px; }
 .bk-big { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }

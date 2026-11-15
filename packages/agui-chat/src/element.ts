@@ -591,10 +591,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       const last = pieces[pieces.length - 1], body = bodies[bodies.length - 1]
       if (!last || !body.isConnected) continue   // the log was cleared meanwhile (a new thread, a teardown): no row to add
       const text = bodies.map((b) => this._texts.get(b)).join('\n\n')
-      if (last.contains(body)) { this._actions(body, text); continue }
-      const holder = h('div', { class: 'msg ai turn-acts' })   // after a card: the row under it, still this answer's
-      last.after(holder)
-      this._actions(body, text, holder)
+      this._actions(body, text, last.contains(body))   // never under a card: after one the row stays put away, like an older answer's
     }
     this._scroll()   // the row made the log taller: its end stays in view, above the suggestions
   }
@@ -1334,7 +1331,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   /** On a touch screen, a swipe left on an answer replies to the whole of it (as in Telegram; the iOS back gesture
    *  goes the other way). */
   private _swipe(log: HTMLElement): void {
-    let msg: HTMLElement | null = null, x0 = 0, y0 = 0, dx = 0, dir: 'x' | 'y' | null = null
+    let msg: HTMLElement | null = null, x0 = 0, y0 = 0, dx = 0, dir: 'x' | 'y' | null = null, hold: ReturnType<typeof setTimeout> | undefined
     const ico = h('span', { class: 'swipe-ico', 'aria-hidden': 'true' }); ico.innerHTML = actSvg(ACT.reply)
     log.addEventListener('touchstart', (e) => {
       const t = e.touches[0], el = (e.target as HTMLElement).closest?.<HTMLElement>('.msg.ai')
@@ -1342,10 +1339,16 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       const edge = t.clientX < 24 || t.clientX > innerWidth - 24   // the system's back gesture lives there
       msg = e.touches.length === 1 && this._opts.reply && el && !selecting && !edge && !(e.target as HTMLElement).closest('.card, pre, table, img, .bk-chart, .steps, .msg-acts') ? el : null
       x0 = t.clientX; y0 = t.clientY; dx = 0; dir = null
+      // a long press on an older answer shows its actions (the latest answer always has them); a touch elsewhere puts them away
+      const old = (e.target as HTMLElement).closest?.('.msg-acts') ? null : el
+      log.querySelectorAll('.acts-open').forEach((m) => { if (m !== el) m.classList.remove('acts-open') })
+      clearTimeout(hold)
+      if (old && !old.matches('.last, .acts-open')) hold = setTimeout(() => { old.classList.add('acts-open'); navigator.vibrate?.(8) }, 500)
     }, { passive: true })
     log.addEventListener('touchmove', (e) => {
-      if (!msg) return
       const t = e.touches[0], mx = t.clientX - x0, my = t.clientY - y0
+      if (Math.hypot(mx, my) > 10) clearTimeout(hold)   // a scroll or a swipe, not a press
+      if (!msg) return
       if (!dir && Math.hypot(mx, my) > 10) dir = Math.abs(mx) > Math.abs(my) * 1.5 && mx < 0 ? 'x' : 'y'
       if (dir !== 'x') return
       e.preventDefault()
@@ -1358,6 +1361,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       ico.classList.toggle('go', dx >= 56)
     }, { passive: false })
     const end = (): void => {
+      clearTimeout(hold)
       if (!msg) return
       const m = msg
       msg = null
@@ -1371,7 +1375,8 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   }
 
   /** The actions under an answer: copy, try again, read aloud, a good or bad answer, and the host's own. */
-  private _actions(body: HTMLElement, text: string, holder: HTMLElement = body): void {
+  private _actions(body: HTMLElement, text: string, shown = true): void {
+    const holder = body
     const list = this._opts.messageActions ?? []
     if (!list.length || holder.querySelector(':scope > .msg-acts')) return
     const id = body.closest('[data-message-id]')?.getAttribute('data-message-id') ?? ''
@@ -1422,6 +1427,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this.$.log.querySelectorAll('.msg-acts .act-retry').forEach((x) => x.remove())
     this.$.log.querySelectorAll('.msg.ai.last').forEach((x) => x.classList.remove('last'))
     holder.append(bar)
+    if (!shown) return   // an older answer's row shows on hover, or after a long press on a phone
     holder.closest('.msg')?.classList.add('last')
     queueMicrotask(() => holder.closest('.msg')?.classList.add('last'))
   }

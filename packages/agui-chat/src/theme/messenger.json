@@ -7,7 +7,7 @@
     "panel-bg": "#ffffff", "header-bg": "#ffffff",
     "log-bg": "linear-gradient(135deg, #d4e6ad 0%, #a9d3b3 50%, #92c3d8 100%)",
     "bubble-user-bg": "#e7fdd5", "bubble-user-ink": "#000000",
-    "card-bg": "rgba(255, 255, 255, 0.94)", "card-border": "transparent", "chip-bg": "rgba(255, 255, 255, 0.85)",
+    "card-shadow": "none", "card-bg": "rgba(255, 255, 255, 0.94)", "card-border": "transparent", "chip-bg": "rgba(255, 255, 255, 0.85)",
     "shadow": "0 1px 2px rgba(16, 35, 47, 0.16)"
   },
   "dark": {
@@ -15,7 +15,7 @@
     "panel-bg": "#17212b", "header-bg": "#17212b", "header-border": "#0e1621",
     "log-bg": "linear-gradient(160deg, #0e1621 0%, #111c27 100%)",
     "bubble-user-bg": "#2b5278", "bubble-user-ink": "#ffffff",
-    "card-bg": "rgba(24, 37, 51, 0.96)", "card-border": "transparent", "chip-bg": "rgba(255, 255, 255, 0.06)",
+    "card-shadow": "none", "card-bg": "rgba(24, 37, 51, 0.96)", "card-border": "transparent", "chip-bg": "rgba(255, 255, 255, 0.06)",
     "composer-bg": "#17212b", "input-bg": "#242f3d",
     "shadow": "0 1px 2px rgba(0, 0, 0, 0.4)"
   },

@@ -63,6 +63,34 @@ describe('cards from blocks', () => {
     expect($(el, '.card .btn')).toBeNull()
   })
 
+  it('a pick list: rows with a tile, a name and a second line; a tap answers and the card keeps the chosen row with a tick', async () => {
+    const el = await mount()
+    const PICK = { type: 'blocks', name: 'place', blocks: [{ type: 'title', text: 'Which one is yours?' },
+      { type: 'picklist', items: [{ id: 'a', title: 'Caf\u00e9 Luna', subtitle: 'Via Roma 12' }, { id: 'b', title: 'Luna Bar', subtitle: 'Piazza Maggiore 3', icon: 'route' },
+        { id: 'c', title: 'Luna', image: 'javascript:alert(1)' }], none: 'None of these' }] }
+    const answer = el.showCard(structuredClone(PICK))
+    await tick()
+    const rows = $$(el, '.card .bk-pick-row')
+    expect(rows.map((r) => r.querySelector('.bk-pick-n')!.textContent)).toEqual(['Caf\u00e9 Luna', 'Luna Bar', 'Luna'])
+    expect(rows[0].querySelector('.bk-pick-i')!.textContent).toBe('C')              // no photo: the name's letter
+    expect(rows[1].querySelector('.bk-pick-i svg')).not.toBeNull()                   // or the glyph
+    expect($(el, '.card img')).toBeNull()                                           // an unsafe image is never drawn
+    expect($$(el, '.card .btn.pri')).toHaveLength(0)                                // no row is the recommended one
+    expect($(el, '.card .bk-pick-none').textContent).toBe('None of these')
+    rows[1].click()
+    expect(await answer).toMatchObject({ action: 'b', label: 'Luna Bar' })
+    const kept = $$(el, '.card .bk-pick-row')
+    expect(kept).toHaveLength(1)                                                    // the chosen row stays, the others go
+    expect((kept[0] as HTMLButtonElement).disabled).toBe(true)
+    expect(kept[0].querySelector('.ok-line i')!.textContent).toBe('\u2713')
+    expect($(el, '.card .bk-title').textContent).toContain('Which one is yours?')
+    const none = el.showCard(structuredClone(PICK))
+    await tick()
+    $$(el, '.card .bk-pick-none').pop()!.click()
+    expect(await none).toMatchObject({ action: 'none', label: 'None of these' })
+    expect($$(el, '.card').pop()!.querySelector('.ok-line span')!.textContent).toBe('None of these')
+  })
+
   it('a button with fills fills the form in one tap, with Undo, and answers with the new config', async () => {
     const applyChanges = vi.fn(async (ch: Record<string, unknown>) => ({ props: {}, state: ch }))
     const el = document.createElement('agui-chat') as AguiChatElement

@@ -120,11 +120,33 @@ Every tap on an action under an answer SHALL fire `agui:message-action` `{id, me
 - **THEN** `onMessageAction("fork", {messageId, text})` is called
 
 ### Requirement: When the actions show
-On a computer the actions under an answer SHALL show on hover or focus, except under the latest answer, where they stay; on a touch screen they SHALL always show, at a 44 px target.
+The actions SHALL stay visible only under the latest text answer, and never under a card: a turn that ends with a card shows none. An older answer SHALL show its actions on hover or focus on a computer, and after a long press on a touch screen (44 px targets) until the next touch elsewhere.
 
 #### Scenario: An older answer
 - **WHEN** the pointer rests on an earlier answer
 - **THEN** its actions fade in
+
+#### Scenario: A long press on a phone
+- **WHEN** the user holds a finger on an earlier answer for half a second without moving it
+- **THEN** that answer's actions show, and a touch elsewhere puts them away
+
+#### Scenario: An answer that ends with a card
+- **WHEN** a turn ends with a card after its text
+- **THEN** no actions are drawn under the card
+
+### Requirement: A card's look
+A card SHALL be set apart from the feed by one means only: in the light scheme the feed's own background with a soft shadow and no border, in the dark scheme a fill one step lighter than the feed with no shadow. The tokens `card-bg`, `card-border` and `card-shadow` SHALL override each part.
+
+#### Scenario: A card in the light scheme
+- **WHEN** a card shows in the default light theme
+- **THEN** it is white with a soft shadow and no visible border
+
+### Requirement: A long placeholder
+A placeholder longer than the composer's field SHALL end with an ellipsis on one line; it SHALL NOT be cut mid-letter or wrap.
+
+#### Scenario: A narrow phone
+- **WHEN** the placeholder is "Message Herefront AI about your site" on a 375 px screen
+- **THEN** the field shows its start and an ellipsis
 
 ### Requirement: A card brought back, not copied
 On `CUSTOM card_focus {card_id}` the chat SHALL scroll its log (not the page) to the card with that `data-card-id` and mark it `data-spot` for about 1.6 s, a fading ring with no layout change, leaving the focus where it is; no second card SHALL be drawn. A card that is no longer there SHALL fire `agui:card-missing {card_id}` and draw nothing. Every run SHALL list the capability `card.focus`.

@@ -34,7 +34,7 @@ export const TOKENS = [
   // component tokens: each falls back to the globals above
   'panel-bg', 'panel-ink', 'header-bg', 'header-ink', 'header-border', 'log-bg',
   'bubble-user-bg', 'bubble-user-ink', 'bubble-ai-ink', 'bubble-radius',
-  'card-bg', 'card-ink', 'card-border', 'card-radius', 'card-padding', 'card-blur',
+  'card-bg', 'card-ink', 'card-border', 'card-radius', 'card-padding', 'card-blur', 'card-shadow',
   'button-bg', 'button-ink', 'button-radius', 'button-secondary-bg', 'button-secondary-ink', 'button-secondary-border',
   'chip-bg', 'chip-ink', 'chip-border', 'chip-radius', 'chip-on-bg', 'chip-on-ink',
   'option-bg', 'option-ink', 'option-border', 'option-radius',

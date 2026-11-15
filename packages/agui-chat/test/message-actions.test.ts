@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import '../src/index'
 import type { AguiChatElement } from '../src/element'
+import { formguide } from '../src/formguide/index'
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 type Obs = { next: (e: unknown) => void; complete: () => void }
@@ -51,6 +52,35 @@ describe('a sent message', () => {
 })
 
 describe('actions under an answer', () => {
+  it('never sits under a card: a turn that ends with one keeps its row put away; a long press on a phone shows an older row', async () => {
+    const el = await mount()
+    el.use(formguide({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({}) }))
+    const card = { type: 'CUSTOM', name: 'card', value: { type: 'blocks', blocks: [{ type: 'title', text: 'Visits' }, { type: 'row', label: 'This week', value: '312' }] } }
+    const text = (id: string, t: string) => [{ type: 'TEXT_MESSAGE_START', messageId: id, role: 'assistant' }, { type: 'TEXT_MESSAGE_CONTENT', messageId: id, delta: t }, { type: 'TEXT_MESSAGE_END', messageId: id }]
+    const runs = [[...text('m1', 'Here are your visits.'), card], text('m2', 'Anything else?')]
+    el.agent = { run: () => ({ subscribe: (o: Obs) => { const evs = runs.shift() ?? []
+      setTimeout(() => { o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' }); evs.forEach((e) => o.next(e)); o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }); return { unsubscribe() {} } } }) } as never
+    await el.send('visits?'); await tick(30)
+    expect($$(el, '.turn-acts')).toHaveLength(0)                                    // no row under the card
+    expect($$(el, '.msg.ai.last')).toHaveLength(0)                                  // and the text's own row is not shown as the latest
+    expect($$(el, '.msg.ai .msg-acts')).toHaveLength(1)                             // it is there for a long press or a hover
+    await el.send('thanks'); await tick(30)
+    const [older, latest] = $$(el, '.msg.ai[data-message-id]')
+    expect(latest.classList.contains('last')).toBe(true)
+    vi.useFakeTimers()
+    const touch = (type: string, target: Element, x = 100, y = 100) => { const e = new Event(type, { bubbles: true, composed: true }); Object.assign(e, { touches: [{ clientX: x, clientY: y }] }); target.dispatchEvent(e) }
+    touch('touchstart', older.querySelector('.body')!)
+    vi.advanceTimersByTime(520)
+    expect(older.classList.contains('acts-open')).toBe(true)                        // held: its actions show
+    touch('touchend', older.querySelector('.body')!)
+    touch('touchstart', latest.querySelector('.body')!)                             // a touch elsewhere puts them away
+    expect(older.classList.contains('acts-open')).toBe(false)
+    touch('touchstart', older.querySelector('.body')!); touch('touchmove', older.querySelector('.body')!, 100, 140)   // a scroll is not a press
+    vi.advanceTimersByTime(520)
+    expect(older.classList.contains('acts-open')).toBe(false)
+    vi.useRealTimers()
+  })
+
   it('copy by default; your own list and your own action, with an event', async () => {
     const writeText = vi.fn(async () => {})
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })

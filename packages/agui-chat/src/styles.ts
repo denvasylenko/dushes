@@ -118,7 +118,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .msg.ai:not(.last) .msg-acts { opacity: 0; transition: opacity .15s var(--agui-ease); }
   .msg.ai:hover .msg-acts, .msg.ai .msg-acts:focus-within { opacity: 1; }
 }
-@media (hover: none) { .msg-acts .act { width: 44px; height: 44px; } .msg-acts { margin: -2px 0 0 -14px; } }   /* the icon on the text's edge, the target still 44 px */
+@media (hover: none) { .msg-acts .act { width: 44px; height: 44px; } .msg-acts { margin: -2px 0 0 -14px; }   /* the icon on the text's edge, the target still 44 px */
+  .msg.ai:not(.last):not(.acts-open) .msg-acts { display: none; } }   /* a phone: only the latest answer shows its actions; an older one after a long press */
 /* back to the latest message: a round button over the composer; "•••" while the assistant is still answering */
 .foot { position: relative; }
 .jump { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); z-index: 2; width: 36px; height: 36px; border-radius: 50%;
@@ -189,15 +190,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 /* cards inside the conversation */
 /* one turn, one group: inside an answer its text, cards and actions sit close (about 8 px); turns keep 20 px */
 .msg.ai + .card, .card + .card, .card + .msg.ai { margin-top: -12px; }
-.msg.ai.turn-acts { margin-top: -4px; } .card + .msg.ai.turn-acts { margin-top: -12px; }   /* 8 px under the last piece */
 /* a card brought back (card_focus): a soft ring that fades, no layout change */
 [data-spot] { outline: 3px solid transparent; outline-offset: 2px; animation: spot 1.6s var(--agui-ease) both; }
 @keyframes spot { 0%, 60% { outline-color: color-mix(in srgb, var(--agui-link) 45%, transparent); } }
-.card { margin: 4px 0 20px; border: 1px solid var(--agui-card-border, var(--agui-line)); border-radius: var(--agui-card-radius, var(--agui-radius));
-  background: var(--agui-card-bg, var(--agui-surface)); color: var(--agui-card-ink, inherit); padding: var(--agui-card-padding, 16px);
+.card { margin: 4px 0 20px; border: 1px solid var(--agui-card-border, transparent); border-radius: var(--agui-card-radius, var(--agui-radius));
+  background: var(--agui-card-bg, var(--agui-bg)); color: var(--agui-card-ink, inherit); padding: var(--agui-card-padding, 16px);
+  box-shadow: var(--agui-card-shadow, 0 1px 2px rgba(0,0,0,.06), 0 6px 20px -6px rgba(0,0,0,.14));   /* one separator: a shadow here, a lighter fill in dark */
   -webkit-backdrop-filter: var(--agui-card-blur, none); backdrop-filter: var(--agui-card-blur, none);   /* glass: a translucent card-bg + blur */
   animation: rise .24s var(--agui-ease) both; font-size: 15px; line-height: 1.45; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+:host(.dark) .card { background: var(--agui-card-bg, var(--agui-surface)); box-shadow: var(--agui-card-shadow, none); }
 .bk-wait { min-height: 88px; }
 .tone-accent { color: var(--agui-link); } .tone-ok { color: var(--agui-ok); } .tone-danger { color: var(--agui-danger); } .tone-muted { color: var(--agui-ink-2); }
 .chip:disabled { color: var(--agui-ink-3); border-color: transparent; background: transparent; cursor: default; }   /* a closed day, as in the iOS calendar: quiet, never struck through (a strike reads as an error) */
@@ -394,6 +396,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
   padding: 7px 0; max-height: 180px; min-height: 36px; }   /* one line = the buttons' 36 px, so its text sits on their centre */
 @media (pointer: coarse) { .box textarea { padding: 11px 0; min-height: 44px; } }   /* the 44 px buttons on touch */
 .box textarea:placeholder-shown { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.box textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* the ellipsis itself: on the textarea alone the text is cut hard */
 .send { width: 36px; height: 36px; border: 0; border-radius: var(--agui-radius-pill); background: var(--agui-accent); color: var(--agui-on-accent); cursor: pointer;
   display: grid; place-items: center; flex: none; transition: opacity .2s, transform .15s; }
 .send.idle { opacity: .3; cursor: default; }   /* not "empty": that is the empty chat's class */

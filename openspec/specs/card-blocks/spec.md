@@ -26,6 +26,17 @@ A button with an `id` SHALL resolve the card with `{action, label, values}`, whe
 - **WHEN** the user taps a swatch named `palette` and then "Use it"
 - **THEN** the card resolves with `{action: "use", label: "Use it", values: {palette: "<swatch id>"}}`
 
+### Requirement: A pick list
+A `picklist` block SHALL draw its `items` (`id`, `title`, `subtitle?`, `image?`, `icon?`) as full-width rows: a tile (the image, the glyph, or the title's first letter), the title, the second line and a chevron, with no row filled or preselected. A tap on a row SHALL resolve the card with that item's id and title and leave only that row, a tick in place of its chevron. `none` SHALL add a plain text choice under the rows that resolves with the id `none`.
+
+#### Scenario: Three places with the same name
+- **WHEN** the card lists three places and the user taps the second
+- **THEN** the card resolves with `{action: "<its id>", label: "<its title>"}` and keeps that row, ticked, at the same width
+
+#### Scenario: None of them
+- **WHEN** the user taps "None of these"
+- **THEN** the card resolves with `{action: "none"}` and folds into a result line with that label
+
 ### Requirement: Choices with captions, unavailable options, more and dependencies
 A `choice` SHALL take a `label` (a caption above its chips), options with `off` (shown, not choosable), `more: {label, options}` (a chip that shows the rest in place), `value` (chosen at the start) and `depends: {on, options: {<id>: [...]}}` (its options follow another choice and the pick is cleared when that changes).
 

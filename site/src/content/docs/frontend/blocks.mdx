@@ -41,6 +41,7 @@ Compose your own card from these in the [Playground](../playground/) (Your own c
 | `row` | `label`, `value`, `icon?`, `tone?` | a row of an iOS grouped list; rows next to each other form one list |
 | `image` | `src` (https or data:image), `alt?`, `ratio?` (`16:9`, `4:3`, `1:1`) | a photo with rounded corners |
 | `place` | `title`, `subtitle?`, `image?`, `rating?` | a person or a place: a photo or an initial, a name, a line, ★ 4.9 |
+| `picklist` | `items: [{id, title, subtitle?, image?, icon?}]`, `none?` (a label, or `{id, label}`) | a choice as full-width rows: a tile (photo, glyph or the first letter), the name, a second line, a chevron. A tap answers with `{action: id, label: title}` and the card keeps that row with a tick. No row is highlighted, so nothing reads as recommended; `none` adds a plain "None of these" under the rows |
 | `stat` | `value`, `label?`, `tone?`, `change?` ("+12%"; a leading minus turns it red), `spark?: [numbers]` | a big number or date, like a balance, with its change and a sparkline of how it got there |
 | `chart` | `kind` (`bar`, `line`, `area`, `barList`, `stacked`, `meter`), `title?`, `subtitle?`, `unit?`, `data: [{label, value}]` or `labels` + `series: [{name, data}]`, `highlight?`; a meter takes `value`, `max?`, `limit?`, `label?` | a simple chart in the theme's colours, see Charts below |
 | `diff` | `label?`, `from`, `to` | the old value struck through → the new one |
