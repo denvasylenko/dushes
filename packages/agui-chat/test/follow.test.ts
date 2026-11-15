@@ -6,6 +6,10 @@ import { blocksCard } from '../src/formguide/blocks'
 import type { AguiEvent, Plugin } from '../src/types'
 
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms))
+/** Wait for the text to be in an answer, not for a number of milliseconds: a busy machine is slow, not wrong (up to 10 s). */
+const answered = async (el: AguiChatElement, text: string): Promise<void> => {
+  for (let i = 0; i < 500 && ![...el.shadowRoot!.querySelectorAll('.msg.ai')].some((m) => (m.textContent ?? '').includes(text)); i++) await tick(20)
+}
 
 /** Herefront's follow after a reload: text that a cut takes back, tools, a card, the answer in pieces, more tools. */
 async function* follow(): AsyncIterable<AguiEvent> {
@@ -61,7 +65,7 @@ describe('no animation frames (a hidden pane, an occluded window)', () => {
       follow: async function* () { for (const e of dump()) yield e } }), onEvent: (ev) => ev.type === 'CUSTOM' && ev.name === 'card' }
     el.use(host)
     document.body.appendChild(el)
-    await tick(600)
+    await answered(el, 'The prices shown are only examples of this preview.')
     expect(el.shadowRoot!.querySelector('.msg.ai')!.textContent).toContain('The prices shown are only examples of this preview.')
   })
 })
@@ -101,7 +105,8 @@ describe('follow after a reload', () => {
         } }
       el.use(host)
       document.body.appendChild(el)
-      await tick(1500)
+      await answered(el, 'The prices shown are only examples of this preview.')
+      await tick(50)   // the cards after the text
       const ai = [...el.shadowRoot!.querySelectorAll('.msg.ai')].map((m) => m.textContent ?? '')
       expect(ai.join(' ')).toContain('The prices shown are only examples of this preview.')
       expect(el.shadowRoot!.querySelectorAll('.card').length).toBe(2)
@@ -127,7 +132,8 @@ describe('follow after a reload', () => {
           return true
         } }
       el.use(host)
-      await tick(400)
+      await answered(el, 'Found it: Bar Centrale on Corso Umberto, open until midnight.')
+      await tick(50)   // the cut and the card after the text
       const ai = [...el.shadowRoot!.querySelectorAll('.msg.ai')].map((m) => m.textContent)
       expect(ai.join(' ')).toContain('Found it: Bar Centrale on Corso Umberto, open until midnight.')
       expect(el.shadowRoot!.querySelectorAll('.msg.ai').length).toBe(1)
