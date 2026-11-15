@@ -1,0 +1,17 @@
+name: loan_plain_type_no_search
+tags: [owner_session, plain_value]
+persona: "A person filling in the loan section of a loan application by talking. They say values, they ask nothing."
+goal: "Say the values of the loan and have them put into the form."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Says: Consumer loan, five hundred thousand."
+turns: 1
+# From the owner's own voice session (2026-11-15): the same rule on a second line: a loan type and an amount are values, not questions.
+# A plain value is proposed directly; the business documents are not searched on that turn.
+scripted:
+  - "Consumer loan, five hundred thousand."
+expect:
+  answered_by: [form]
+  never_tools: [ask_documents]
+  fields: {loan_type: "consumer", loan_amount: 500000}
+min_score: 7

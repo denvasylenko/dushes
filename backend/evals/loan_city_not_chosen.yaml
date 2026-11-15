@@ -1,0 +1,21 @@
+name: loan_city_not_chosen
+tags: [owner_session, picks_nothing_itself]
+persona: "A person filling in the registered address of a loan application by talking. The city they gave is not in the form's lists."
+goal: "Give the registered address. When the assistant says the region is not in the list, take Saint Petersburg for the region and say nothing new about the city."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Registered address: region Ukraine, city Luhansk, Sovetskaya street, building 12"
+turns: 2
+# From the owner's own voice session (2026-11-15): after "pick Saint Petersburg for the region" the assistant set the
+# region and proposed the city Saint Petersburg by itself, though the person had said Luhansk and named no other city.
+scripted:
+  - "My registered address: region Ukraine, city Luhansk, Sovetskaya street, building 12."
+  - "Okay, pick Saint Petersburg for the region."
+# The guest answers no card by itself: the region is set only by the second line, never by a card of the first reply.
+answers: {reg_region: null}
+expect:
+  answered_by: [form]
+  fields: {reg_region: "spb", reg_city: null}
+  never_fills_on: {"pick Saint Petersburg": ["City"]}
+  asks_on: {"pick Saint Petersburg": ["city"]}
+min_score: 7

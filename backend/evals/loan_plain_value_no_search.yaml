@@ -1,0 +1,17 @@
+name: loan_plain_value_no_search
+tags: [owner_session, plain_value]
+persona: "A person filling in the loan section of a loan application by talking. They say values, they ask nothing."
+goal: "Say the values of the loan and have them put into the form."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Says: One and a half million for four years."
+turns: 1
+# From the owner's own voice session (2026-11-15): the assistant started 'Searching the documents' before filling a plain amount and term.
+# A plain value is proposed directly; the business documents are not searched on that turn.
+scripted:
+  - "One and a half million for four years."
+expect:
+  answered_by: [form]
+  never_tools: [ask_documents]
+  fields: {loan_amount: 1500000}
+min_score: 7

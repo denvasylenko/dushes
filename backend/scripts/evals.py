@@ -40,7 +40,7 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted", "answers"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results",
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -92,6 +92,8 @@ class Scenario:
     options_once: bool = False                              # a choice card's options are not also listed in the text before it
     card_results: list[str] = field(default_factory=list)   # statuses the run must send for a card (CUSTOM card_result), e.g. not_accepted
     stays_put_on: list[str] = field(default_factory=list)   # regexes of user messages: the reply answers and offers, and opens nothing
+    asks_on: dict[str, list[str]] = field(default_factory=dict)         # {regex of a user message: words}: the reply asks a question with one of them
+    never_fills_on: dict[str, list[str]] = field(default_factory=dict)  # {regex of a user message: field labels}: no change card of that reply has them
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
     file: str = ""
     tools: list[str] = field(default_factory=list)          # tools the assistant must call (a recipe's own tool)
@@ -142,6 +144,8 @@ def load_scenario(path: Path) -> Scenario:
                     documents=raw.get("documents") is True, tags=[str(x) for x in raw.get("tags") or []],
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
                     ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")), options_once=bool(exp.get("options_once")), stays_put_on=[str(x) for x in exp.get("stays_put_on") or []], card_results=[str(x) for x in exp.get("card_results") or []],
+                    asks_on={str(k): [str(w) for w in v] for k, v in (exp.get("asks_on") or {}).items()},
+                    never_fills_on={str(k): [str(w) for w in v] for k, v in (exp.get("never_fills_on") or {}).items()},
                     no_cards_on=[str(x) for x in exp.get("no_cards_on_turns") or []],
                     scripted=_scripted(raw.get("scripted")), answers=dict(raw.get("answers") or {}),
                     fields=dict(exp.get("fields") or {}), file=path.name, site=_site(start), tools=[str(x) for x in exp.get("tools") or []],
@@ -356,6 +360,31 @@ def moves_after(log: list[str], pattern: str) -> tuple[list[str], list[str], boo
             elif on and said and said[-1].startswith("\U0001f916") and t and not re.match(r"[\u2699\u2753\U0001f0cf\U0001f4cb\u2702\u26a0\u270f]", t):
                 said[-1] += " " + t   # a reply of several lines: its last line is often the offer
     return moves, said, seen
+
+
+def turn_after(log: list[str], pattern: str) -> tuple[list[str], list[str], list[str], bool]:
+    """In the reply to each user message matching `pattern`: the questions asked (a sentence of the text that ends in a
+    question mark with the two before it, and question cards), the change cards shown, and whether such a message was sent at all."""
+    import re
+    text, asked, cards, seen, on = [], [], [], False, False
+    for entry in log:
+        for line in str(entry).splitlines():
+            t = line.strip()
+            if t.startswith("\U0001f464"):
+                on = bool(re.search(pattern, t, re.I))
+                seen = seen or on
+            elif on and t.startswith("\u2753"):
+                asked.append(t)
+            elif on and t.startswith("\U0001f0cf"):
+                cards.append(t)
+            elif on and t.startswith("\U0001f916"):
+                text.append(t[1:].strip())
+            elif on and text and t and not re.match(r"[\u2699\u2753\U0001f0cf\U0001f4cb\u2702\u26a0\u270f\u23f1\U0001f4ad\U0001f526\U0001f9ed\u2715]", t):
+                text[-1] += " " + t
+    for r in text:   # a question is read with the two sentences before it: "Next is the City field. ... Which one?"
+        parts = re.findall(r"[^.!?\uff1f]*[.!?\uff1f]+", r)
+        asked += [" ".join(parts[max(0, i - 2):i + 1]).strip() for i, x in enumerate(parts) if x.rstrip().endswith(("?", "\uff1f"))]
+    return asked, cards, text, seen
 
 
 def options_twice(leads: list[dict]) -> list[str]:
@@ -626,6 +655,17 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         offers = any(ch in " ".join(words) for ch in "?\uff1f\u061f") or len(said) > len(words)   # a question, or a chip under the answer
         out.append({"check": f"answers and offers the next step on the turn asking /{pattern}/", "ok": bool(words) and offers,
                     "detail": "" if words and offers else "no offer (no question and no chip) in the reply" if words else "no reply", "cap": CAP_OTHER})
+    for pattern, words in sc.asks_on.items():   # a value the person gave cannot be used: the reply asks, it does not choose
+        asked, _cards, _text, seen = turn_after(visit.log, pattern)
+        hit = any(_says(q, w) for q in asked for w in words)
+        out.append({"check": f"asks about {' / '.join(words)} on the turn saying /{pattern}/", "ok": seen and hit,
+                    "detail": ("" if hit else "questions asked: " + (" | ".join(asked)[:260] or "none")) if seen else "the user never sent such a message", "cap": CAP_OTHER})
+    for pattern, labels in sc.never_fills_on.items():   # ... and no card of that reply proposes the field
+        _asked, cards, _text, seen = turn_after(visit.log, pattern)
+        import re
+        hit = [c for c in cards if any(re.search(r"(?:[:;] |^)" + re.escape(lb.lower()) + r" = ", c.lower()) for lb in labels)]
+        out.append({"check": f"no card changes {' / '.join(labels)} on the turn saying /{pattern}/", "ok": seen and not hit,
+                    "detail": "; ".join(hit)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
     if sc.options_once:   # the options are on the card: the text left on the page names fewer than two of them
         twice = options_twice(getattr(visit, "leads", []))
         cards = len(getattr(visit, "leads", []))

@@ -218,3 +218,27 @@ def test_an_answer_for_a_card_that_is_no_longer_open_is_refused(guide, model):
     assert pending() == [second["card_id"]], "the stale answer closed the card that is open now"
     assert not [m for call in model.calls[2:] for m in call if "Anna" in str(getattr(m, "content", ""))], \
         "the stale answer reached the model as the answer to the open card"
+
+
+def test_a_reply_that_chooses_the_city_itself_fails_and_one_that_asks_passes():
+    import evals
+    from types import SimpleNamespace as NS
+    sc = evals.load_scenario(evals.EVALS / "loan_city_not_chosen.yaml")
+    def run(*turn2):
+        log = ["\n\U0001f464 My registered address: region Ukraine, city Luhansk", "\U0001f916 The list has no such region. Which region?",
+               "\n\U0001f464 Okay, pick Saint Petersburg for the region.", *turn2]
+        class Empty(NS):
+            def __getattr__(self, name):   # everything else a visit keeps is empty here
+                return []
+        visit = Empty(log=log, forms={}, form=None)
+        return {c["check"]: c["ok"] for c in evals.checks(sc, visit) if "on the turn saying" in c["check"]}
+    chose = run("   \U0001f0cf card shown and accepted by the user (the form now has these values): Region = Saint Petersburg; City = Saint Petersburg",
+                "\U0001f916 For the city, I'll pick Saint Petersburg from the list.")
+    asked = run("   \U0001f0cf card shown and accepted by the user (the form now has these values): Region = Saint Petersburg",
+                "\U0001f916 Region set. Luhansk is not in this region's list.\n   Which city is it?")
+    card = run("   \U0001f0cf card shown and accepted by the user (the form now has these values): Region = Saint Petersburg",
+               "   ❓ question card: Which city? [Saint Petersburg, Kolpino]")
+    near = run("\U0001f916 Saint Petersburg is set as the region.\n   \n   Next is the City field. Your options are Saint Petersburg and Kolpino. Which one should I use?")
+    refused = run("\U0001f916 I won't put Saint Petersburg in. That would give the bank an address that isn't yours.")
+    assert list(near.values()) == [True, True] and list(refused.values()) == [False, True]
+    assert list(chose.values()) == [False, False] and list(asked.values()) == [True, True] and list(card.values()) == [True, True]
