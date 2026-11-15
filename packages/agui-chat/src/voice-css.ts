@@ -2,11 +2,24 @@
  *  cloud that goes round), its one step line, the row (the composer, the microphone, the close button) and the code
  *  sheet. The orb keeps one box (`--agui-voice-orb`, 76) and changes by transform only, so the conversation never
  *  moves with its state: x .9 and lifted while thinking, x .66 at rest and silent (the shared ratios). */
-export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--agui-link)); --agui-on-voice: #fff; --agui-voice-cloud: #fff; }
+export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--agui-link)); --agui-on-voice: #fff; --agui-voice-cloud: #fff; --agui-voice-warm: #f0873c; }
 :host(.dark) { --agui-on-voice: #1d1d1f; }
-.vo-dock { display: grid; justify-items: center; align-content: end; gap: 8px; box-sizing: border-box; height: calc(var(--agui-voice-orb, 76px) + 38px); padding: 4px 0 8px; overflow: hidden;
+.vo-dock { display: grid; justify-items: center; align-content: end; gap: 8px; box-sizing: border-box; height: calc(var(--agui-voice-orb, 76px) + 66px); padding: 4px 0 8px; overflow: hidden;
   animation: vo-in .2s var(--agui-ease) both; }
 @keyframes vo-in { from { height: 0; opacity: 0; } }
+/* what is being heard: a faint line above the orb, one line, its newest words in view; it becomes one message when said */
+.vo-live { width: 100%; height: 20px; overflow: hidden; white-space: nowrap; text-align: center; font: italic 15px/20px var(--agui-font); color: var(--agui-ink-2); }
+/* a soft light from the bottom edge says the state: the voice colour while listening (stronger with the person's
+   voice), warm while the voice speaks, faint while it works, none in silence */
+.foot.vo-on { isolation: isolate; }
+.foot.vo-on::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity .25s;
+  background: radial-gradient(60% 100% at 50% 100%, var(--agui-voice), transparent 100%); }
+.foot:has(.vo-listen)::before { opacity: calc(.14 + var(--vo-l, 0) * .3); }
+.foot:has(.vo-think)::before, .foot:has(.vo-wait)::before { opacity: .07; }
+.foot:has(.vo-speak)::before { opacity: .3; background: radial-gradient(60% 100% at 50% 100%, var(--agui-voice-warm), transparent 100%); }
+/* the answer being spoken: dim, with the words said so far bright */
+.msg.ai.vo-read > .body { color: color-mix(in srgb, var(--agui-ink) 46%, transparent); }
+::highlight(vo-said) { color: var(--agui-ink); }
 .vo-orb { position: relative; width: var(--agui-voice-orb, 76px); height: var(--agui-voice-orb, 76px); padding: 0; border: 0; border-radius: 50%; overflow: hidden; cursor: pointer;
   /* the sky: lighter where the light comes from, the voice colour below; never dark at the rim */
   background: radial-gradient(120% 90% at 30% 12%, color-mix(in srgb, var(--agui-voice) 55%, var(--agui-voice-cloud)) 0, color-mix(in srgb, var(--agui-voice) 92%, var(--agui-voice-cloud)) 46%, var(--agui-voice) 100%);
@@ -38,8 +51,8 @@ export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--a
 /* a short conversation sits low, by the orb, as in the reference; a long one scrolls as always */
 .panel:has(.foot.vo-on) .log { display: flex; flex-direction: column; }
 .panel:has(.foot.vo-on) .log > :first-child { margin-top: auto; }
-/* the turn's step is said under the orb: the conversation's own live line keeps its place, unseen, until it is done */
-.panel:has(.foot.vo-on) .log > .steps:not(.done), .panel:has(.foot.vo-on) .log > .msg.ai.wait { visibility: hidden; }   /* and the waiting dots: the orb is the one sign of work */
+/* the turn's step shows in the conversation, above the answer; the waiting dots do not: the orb is the sign of work */
+.panel:has(.foot.vo-on) .log > .msg.ai.wait { visibility: hidden; }   /* and the waiting dots: the orb is the one sign of work */
 /* the row: the composer, then the microphone and the close button; while a message is typed the close button steps
    aside, the microphone stays within reach */
 .foot.vo-on { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; align-items: end; }
@@ -62,7 +75,6 @@ export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--a
 .vo-go i::before { content: ''; position: absolute; inset: -18%; border-radius: 50%; filter: blur(2px); animation: vo-turn 9s linear infinite; background: radial-gradient(46% 34% at 34% 74%, var(--agui-voice-cloud) 0 46%, transparent 74%), radial-gradient(58% 30% at 50% 92%, var(--agui-voice-cloud) 0 55%, transparent 78%); }
 @media (pointer: coarse) { .vo-go { width: 44px; height: 44px; } }
 .foot.vo-on .vo-go { display: none; }
-.vo-hearing .bubble { color: var(--agui-ink-2); }   /* still being heard */
 /* the voice level in the message box: a ring that fills with the person's voice; empty when the microphone is off */
 .vo-lvl { flex: none; align-self: center; width: 22px; height: 22px; margin: 0 6px; border-radius: 50%; background: conic-gradient(var(--agui-voice) calc(var(--vo-l, 0) * 1turn), var(--agui-line-2) 0);
   -webkit-mask: radial-gradient(circle, transparent 7.5px, #000 8px); mask: radial-gradient(circle, transparent 7.5px, #000 8px); transition: opacity .2s; }

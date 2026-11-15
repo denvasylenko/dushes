@@ -113,10 +113,10 @@ export function voice(chat: Chat): void {
 
   // ------------------------------------------------------------------ the conversation
   let pc: RTCPeerConnection | null = null, mic: MediaStream | null = null, talk = '', reader: ReadableStreamDefaultReader<Uint8Array> | null = null
-  let on = false, silent = false, busy = false, spokeAt = 0, wait = false, gen = 0, stepText = ''
-  const dock = el('div', 'vo-dock'), orb = el('button', 'vo-orb'), step = el('div', 'vo-step'), audio = el('audio', '')
+  let on = false, silent = false, busy = false, spokeAt = 0, wait = false, gen = 0
+  const dock = el('div', 'vo-dock'), orb = el('button', 'vo-orb'), step = el('div', 'vo-step'), audio = el('audio', ''), live = el('div', 'vo-live')
   orb.type = 'button'; orb.innerHTML = `<i></i>${svg('M8 8h8v8H8z', 22)}`; step.setAttribute('role', 'status'); audio.autoplay = true
-  dock.append(orb, step, audio)
+  dock.append(live, orb, step, audio)
   const bMic = el('button', 'vo-b vo-mic'), bX = el('button', 'vo-b vo-x')
   bMic.type = 'button'; bX.type = 'button'; bX.innerHTML = svg('M6.5 6.5l11 11m0-11-11 11', 18)
   const tag = el('span', 'vo-tag'), lvl = el('span', 'vo-lvl'); lvl.setAttribute('aria-hidden', 'true')
@@ -129,7 +129,7 @@ export function voice(chat: Chat): void {
     orb.setAttribute('aria-label', T(state === 'think' || state === 'speak' ? 'stop' : silent ? 'micOn' : wait ? 'connecting' : 'micOff'))
     if (wait) step.textContent = T('connecting')
     else if (silent) step.textContent = ''
-    else if (state === 'think') { if (!caption && !stepText) step.textContent = T('thinking') }   // until the turn names its step
+    else if (state === 'think') { if (!caption) step.textContent = T('thinking') }   // the turn's own step shows in the conversation, above the answer
     else if (!caption || state === 'listen') step.textContent = T(state === 'speak' ? 'speaking' : 'listening')
     bMic.innerHTML = svg(silent ? `${MIC}M4 3l16 18` : MIC); bMic.classList.toggle('on', silent)
     bMic.setAttribute('aria-label', T(silent ? 'micOn' : 'micOff')); bMic.title = T(silent ? 'micOn' : 'micOff')
@@ -141,13 +141,12 @@ export function voice(chat: Chat): void {
   const typing = (): void => { foot.classList.toggle('vo-typing', on && (!!input.value || root.activeElement === input)) }
   input.addEventListener('input', typing); input.addEventListener('focus', typing); input.addEventListener('blur', () => setTimeout(typing, 0))
   // a turn runs while the element says `busy` (it ends that on a finished, a stopped and a failed turn alike)
-  new MutationObserver(() => { const was = busy; busy = chat.hasAttribute('busy'); caption = ''; stepText = ''; if (busy && !was) audio.muted = false;   // a new turn (spoken, typed or a card's answer) is heard again: a stop silences one answer, not the voice
+  new MutationObserver(() => { const was = busy; busy = chat.hasAttribute('busy'); caption = ''; if (busy && !was) audio.muted = false;   // a new turn (spoken, typed or a card's answer) is heard again: a stop silences one answer, not the voice
     if (!busy) step.textContent = ''; paint(); if (!busy) setTimeout(typing, 0) }).observe(chat, { attributes: true, attributeFilter: ['busy'] })
   // the turn's own step, under the orb while it works (the conversation's own live line is hidden meanwhile)
   chat.addEventListener('agui:event', (e) => {
     const ev = (e as CustomEvent).detail as { type?: string; name?: string; value?: unknown } | undefined
     if (!on || !ev) return
-    if (ev.type === 'TOOL_CALL_START') queueMicrotask(() => { const all = root.querySelectorAll('.log .steps-t'); caption = ''; stepText = all[all.length - 1]?.textContent ?? ''; if (stepText) step.textContent = stepText })
     // a field-change card the server marks `quiet` (every row is a value the person said, into an empty field): in
     // voice mode it is filled at once, with no card to tap; the conversation keeps its result line with Undo
     if (ev.type === 'CUSTOM' && ev.name === 'on_interrupt') {
@@ -189,7 +188,7 @@ export function voice(chat: Chat): void {
   let last: HTMLElement | null = null
   /** One line that says why voice ended; a new one takes the place of the last, they never pile up. */
   function note(text: string): void { last?.remove(); last = el('div', 'notice', text); add(last) }
-  let hearEl: HTMLElement | null = null, saidEl: HTMLElement | null = null, answered = false, caption = ''
+  let saidEl: HTMLElement | null = null, answered = false, caption = ''
   /** How loud the voice is, from the sound itself (frames arrive all the time, silence included): it is speaking while there is sound. */
   let ear: { ctx: AudioContext; timers: ReturnType<typeof setInterval>[] } | null = null
   /** Watch a stream's loudness (0 to about 40): `got` hears it eight times a second. */
@@ -310,6 +309,60 @@ export function voice(chat: Chat): void {
     return words(`${voiced} ${written}`).includes(h)
   }
 
+  /** What is being heard: a faint line above the orb, its newest words in view. It is not a message yet: the whole
+   *  phrase becomes one when it is said. Words that never become a phrase (a noise) go after a few seconds. */
+  let liveT = 0
+  function hearing(text: string): void {
+    live.textContent = text; live.scrollLeft = live.scrollWidth
+    clearTimeout(liveT)
+    if (text) liveT = setTimeout(() => { live.textContent = '' }, 6000) as unknown as number
+  }
+
+  /** The answer lights up as it is spoken: its text goes dim when the voice starts on it, and the words said so far are
+   *  bright. The voice's transcript runs ahead of its sound, so the light moves at a speaking pace (3.4 words a second
+   *  at most) and only while there is sound; when the voice is done the whole answer is bright again. Where the
+   *  browser cannot paint a range (no CSS highlights), nothing is dimmed. */
+  let reading: { msg: HTMLElement; body: HTMLElement; text: string; shown: number; timer: ReturnType<typeof setInterval>; quiet: number } | null = null
+  const hl = (): { reg: Map<string, unknown>; H: new (r: Range) => unknown } | null => {
+    const reg = (globalThis as unknown as { CSS?: { highlights?: Map<string, unknown> } }).CSS?.highlights
+    const H = (globalThis as unknown as { Highlight?: new (r: Range) => unknown }).Highlight
+    return reg && H ? { reg, H } : null
+  }
+  function unread(): void {
+    if (!reading) return
+    clearInterval(reading.timer); reading.msg.classList.remove('vo-read'); hl()?.reg.delete('vo-said'); reading = null
+  }
+  function read(): void {
+    unread()
+    const k = hl()
+    const body = [...root!.querySelectorAll<HTMLElement>('.log > .msg.ai:not(.wait):not(.tail) > .body')].pop()
+    if (!k || !body || !body.textContent?.trim()) return
+    const msg = body.parentElement as HTMLElement
+    msg.classList.add('vo-read')
+    const r: NonNullable<typeof reading> = { msg, body, text: '', shown: 0, quiet: 0, timer: setInterval(() => {
+      const target = r.text.trim() ? r.text.trim().split(/\s+/).length : 0
+      const sounding = Date.now() - spokeAt < 900 && !audio.muted
+      if (sounding && r.shown < target) { r.shown = Math.min(target, r.shown + .34); r.quiet = 0; light(r.body, Math.floor(r.shown)) }
+      else if (!sounding && ++r.quiet > 14) unread()   // the voice has stopped (or was stopped): the answer is plain text again
+    }, 100) }
+    reading = r
+    light(body, 0)
+  }
+  /** Paint the first `n` words of the answer bright. */
+  function light(body: HTMLElement, n: number): void {
+    const k = hl()
+    if (!k) return
+    const range = document.createRange(); range.setStart(body, 0); range.setEnd(body, 0)
+    const walk = document.createTreeWalker(body, 4 /* text */)
+    let left = n
+    for (let node = walk.nextNode(); node && left > 0; node = walk.nextNode()) {
+      const re = /\S+/g
+      let m: RegExpExecArray | null
+      while (left > 0 && (m = re.exec(node.nodeValue ?? ''))) { left--; range.setEnd(node, m.index + m[0].length) }
+    }
+    k.reg.set('vo-said', new k.H(range))
+  }
+
   async function follow(p: RTCPeerConnection): Promise<void> {
     let r: Response
     try { r = await fetch(`${base()}/events?talk=${encodeURIComponent(talk)}`, { headers: { 'X-Voice-Pass': pass } }) } catch { if (pc === p) fail(why('lost')); return }
@@ -329,25 +382,25 @@ export function voice(chat: Chat): void {
         try { ev = JSON.parse(data) } catch { continue }
         if (ev.type === 'hearing' && ev.delta) {   // the person's words as they speak: their message, growing in the conversation
           audio.muted = false
-          if (!hearEl) { hearEl = el('div', 'msg me vo-hearing'); hearEl.append(el('div', 'bubble')); add(hearEl); saidEl = null; answered = false }
-          hearEl.firstElementChild!.textContent += ev.delta
+          if (!live.textContent) { saidEl = null; answered = false; unread() }
+          hearing(live.textContent + ev.delta)
         } else if (ev.type === 'heard' && ev.text) {   // the whole request: the ordinary turn, as if typed; its text, steps and cards are the chat's own
-          hearEl?.remove(); hearEl = null
+          hearing('')   // the whole phrase goes into the conversation as one message
           if (echo(ev.text)) continue   // the voice heard itself through the speakers: not the person's message
-          audio.muted = false; saidEl = null; answered = false; voiced = ''
+          audio.muted = false; saidEl = null; answered = false; voiced = ''; unread()
           if (ev.answers && answer(ev.answers, ev.text)) continue   // a spoken yes or no to the waiting card: the card's own answer, not a new message
           void chat.send(ev.text)
-        } else if (ev.type === 'result') { answered = true; saidEl = null   // the agent's answer was handed to the voice: what it says next is that answer, already written in the conversation
+        } else if (ev.type === 'result') { answered = true; saidEl = null; read()   // the agent's answer was handed to the voice: what it says next is that answer, already written in the conversation
         } else if (ev.type === 'spoken' && ev.delta) {
           spokeAt = Date.now(); paint(); setTimeout(paint, 950)
           voiced = (voiced + ev.delta).slice(-1200)
-          if (answered) continue   // one message for one answer: the written one
+          if (answered) { reading && (reading.text += ev.delta); continue }   // one message for one answer: the written one, lit as it is spoken
           if (busy) { caption = (caption + ev.delta).slice(-80); step.textContent = caption; continue }   // "Checking now": a status, under the orb
           // the voice's own words with no agent answer behind them (a greeting, small talk): the agent's message, word by word
-          if (hearEl) { hearEl.classList.remove('vo-hearing'); hearEl = null }
+          if (live.textContent) { const me = el('div', 'msg me'); me.append(el('div', 'bubble', live.textContent)); add(me); hearing('') }   // small talk: what was heard is the person's message, whole
           if (!saidEl) { saidEl = el('div', 'msg ai'); saidEl.append(el('div', 'body')); add(saidEl) }
           saidEl.firstElementChild!.textContent += ev.delta
-        } else if (ev.type === 'echo') { hearEl?.remove(); hearEl = null   // the server heard the voice itself: the words that grew were not the person's
+        } else if (ev.type === 'echo') { hearing('')   // the server heard the voice itself: the words that grew were not the person's
         } else if (ev.type === 'ended') {
           const reason = ev.reason ?? 'closed'
           hang(false); silent = true; paint()
@@ -368,7 +421,7 @@ export function voice(chat: Chat): void {
     pc = null; mic = null; reader = null; talk = ''; wait = false; audio.srcObject = null; audio.muted = false
     if (ear) { ear.timers.forEach(clearInterval); void ear.ctx.close().catch(() => {}); ear = null }
     foot.style.removeProperty('--vo-l')
-    hearEl?.classList.remove('vo-hearing'); hearEl = null; saidEl = null; caption = ''; step.textContent = ''
+    saidEl = null; caption = ''; step.textContent = ''; hearing(''); unread()
   }
   /** Leave voice mode: the conversation above is untouched, the small orb is back in the message box. */
   function leave(focus = true): void {

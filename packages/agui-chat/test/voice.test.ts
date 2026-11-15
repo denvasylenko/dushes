@@ -141,10 +141,12 @@ describe('the experimental voice mode', () => {
     // the person speaks: their message grows, then it is the ordinary message
     s.push({ type: 'hearing', delta: 'One and a half ' }); s.push({ type: 'hearing', delta: 'million' })
     await tick(10)
-    expect($$(el, '.msg.me.vo-hearing').map((m) => m.textContent)).toEqual(['One and a half million'])
+    expect($(el, '.vo-dock .vo-live').textContent).toBe('One and a half million')   // a faint line above the orb
+    expect($$(el, '.msg.me')).toHaveLength(0)                                   // not a message yet
     s.push({ type: 'heard', text: 'One and a half million for four years', t_ms: 10 })
     await tick(10)
-    expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['One and a half million for four years'])   // one message, not two
+    expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['One and a half million for four years'])   // the whole phrase, as one message
+    expect($(el, '.vo-dock .vo-live').textContent).toBe('')
     expect(dock.classList.contains('vo-think')).toBe(true)                      // the turn runs
     expect($(el, '.vo-step').textContent).toBe('Thinking')                       // and the line says so, not "Listening"
     s.push({ type: 'spoken', delta: 'Checking now' })                          // the voice's own filler: a status under the orb, not a message
@@ -229,7 +231,7 @@ describe('the experimental voice mode', () => {
     s.push({ type: 'spoken', delta: 'Hi! ' }); s.push({ type: 'spoken', delta: 'How can I help?' })
     await tick(10)
     expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['Hello there'])
-    expect($$(el, '.msg.me.vo-hearing')).toHaveLength(0)                        // it is said, no longer growing
+    expect($(el, '.vo-dock .vo-live').textContent).toBe('')                        // it is said, no longer growing
     expect($$(el, '.msg.ai').map((m) => m.textContent)).toEqual(['Hi! How can I help?'])
   })
 
@@ -419,6 +421,29 @@ describe('the experimental voice mode', () => {
     expect(resumed).toHaveLength(4)
     expect(resumed[3]).toMatchObject({ accepted: true })
     expect(said).not.toContain('yes sure')
+  })
+
+  it('the answer lights up as it is spoken: dim when the voice starts on it, the words said so far bright, plain again when the voice is done', async () => {
+    const marks = new Map<string, { range: Range }>()
+    vi.stubGlobal('CSS', { ...(globalThis as { CSS?: object }).CSS, highlights: marks })
+    vi.stubGlobal('Highlight', class { range: Range; constructor(r: Range) { this.range = r } })
+    const s = server(); fakeAudio()
+    const a = agent()
+    const el = await talking(s, a)
+    s.push({ type: 'heard', text: 'How much is it?' })
+    await tick(120)
+    const answer = $$(el, '.msg.ai').at(-1)!
+    expect(answer.classList.contains('vo-read')).toBe(false)                    // written, not yet spoken
+    s.push({ type: 'result', text: 'Done.' })
+    await tick(20)
+    expect(answer.classList.contains('vo-read')).toBe(true)                     // the voice starts on it: dim
+    expect(marks.get('vo-said')!.range.toString()).toBe('')
+    s.push({ type: 'spoken', delta: 'Done' })
+    await tick(450)
+    expect(marks.get('vo-said')!.range.toString()).toBe('Done.')                 // the word said is bright
+    await tick(2600)                                                            // the voice is done
+    expect(answer.classList.contains('vo-read')).toBe(false)
+    expect(marks.has('vo-said')).toBe(false)
   })
 
   it('speaks the chat\'s language', async () => {

@@ -22,7 +22,7 @@ Starting voice SHALL ask for the microphone, connect to the host's `session` rou
 - **THEN** that text appears as the person's message and a turn runs as if it had been typed
 
 ### Requirement: The orb says what is happening
-The orb SHALL show one of: listening, thinking while a turn runs (smaller, lifted, faster, the turn's step under it), speaking (from the sound level or `spoken` events, never from audio arriving), and silent (smaller, grey, still). A press SHALL stop the turn that runs or quiet the voice that speaks; while listening it SHALL turn the microphone off, while silent on.
+The orb SHALL show one of: listening, thinking while a turn runs (smaller, lifted, faster), speaking (from the sound level or `spoken` events, never from audio arriving), and silent (smaller, grey, still). A press SHALL stop the turn that runs or quiet the voice that speaks; while listening it SHALL turn the microphone off, while silent on.
 
 #### Scenario: The voice talks
 - **WHEN** `spoken` events arrive
@@ -43,7 +43,7 @@ When the host ends or refuses a voice conversation (the limit of one conversatio
 - **THEN** the conversation gets the line "Voice ended: the limit for one conversation" and the orb is silent
 
 ### Requirement: Everything said goes into the conversation
-While the person speaks, `hearing` deltas SHALL grow their message in the conversation; `heard` SHALL replace it with the ordinary message. The voice's own words with no agent answer behind them SHALL be an assistant message, growing word by word. After `result`, what the voice says SHALL NOT be written again: an answer is one message, the written one. While a turn runs, the voice's words SHALL show under the orb as its status. There SHALL be no transcript strip outside the conversation.
+While the person speaks, `hearing` deltas SHALL show as one faint line above the orb, not as a message; `heard` SHALL put the whole phrase into the conversation as one message. The voice's own words with no agent answer behind them SHALL be an assistant message, growing word by word. After `result`, what the voice says SHALL NOT be written again: an answer is one message, the written one. While a turn runs, the voice's words SHALL show under the orb as its status.
 
 #### Scenario: Small talk
 - **WHEN** `hearing` gives "Hello there" and `spoken` gives "Hi! How can I help?" with no `heard` and no `result`
@@ -88,13 +88,27 @@ The chat SHALL end the voice conversation on the host when the page is left (clo
 - **WHEN** the person reloads the page during a voice conversation
 - **THEN** the host receives the end of that conversation
 
+### Requirement: The answer lights up as it is spoken
+While the voice speaks an answer, the written answer SHALL be dim with the words said so far bright, moving at a speaking pace and only while there is sound. When the voice is done or stopped, the answer SHALL be plain text again. Where the browser cannot paint a text range, nothing SHALL be dimmed.
+
+#### Scenario: The voice reads the answer
+- **WHEN** the voice has said the first words of the answer
+- **THEN** those words are bright in the written answer and the rest is dim
+
+### Requirement: A light at the bottom says the state
+In voice mode a soft light SHALL rise from the bottom edge of the chat: the voice colour while listening (stronger with the person's voice), a warm colour while the voice speaks, faint while a turn runs, none in silent mode.
+
+#### Scenario: The voice speaks
+- **WHEN** the voice speaks an answer
+- **THEN** the light at the bottom is warm
+
 ### Requirement: The look of voice mode
 The orb SHALL be a sky of the voice colour (the host's accent) with a white cloud bank going round. It SHALL carry no mark at rest; the stop mark shows only under the pointer, the focus or a press. While voice mode is on, the header SHALL say "Voice" or "Silent", the message box SHALL show a ring that fills with the person's voice, its send and stop buttons SHALL show only while a message is typed, and a short conversation SHALL sit low, by the orb.
 
 #### Scenario: The agent is working
 - **WHEN** a turn runs in voice mode and nothing is typed
-- **THEN** the orb turns faster with the step under it, with no square in it, and the message box shows no stop button of its own
+- **THEN** the orb turns faster, the turn's step shows in the conversation above the answer, the orb has no square in it, and the message box shows no stop button of its own
 
 #### Scenario: The line under the orb names the state
-- **WHEN** a turn starts and has not named a step yet, and later the voice speaks the answer
-- **THEN** the line says "Thinking", then the step, then "Speaking", and "Listening" only while the chat listens
+- **WHEN** a turn runs, and later the voice speaks the answer
+- **THEN** the line says "Thinking", then "Speaking", and "Listening" only while the chat listens
