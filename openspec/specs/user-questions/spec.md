@@ -166,3 +166,10 @@ A bullet list SHALL be removed whole when two or more of its items name an optio
 #### Scenario: A fact about one option
 - **WHEN** the text says "Kids haircuts are done only by Maria." and the card offers Haircut, Beard trim and Kids haircut
 - **THEN** that sentence stays, because it names one option
+
+### Requirement: A value that was not accepted is not an answered card
+When the answer to a question card cannot be taken (the form refuses the value with an error, or the answer is not one the question allows), the run SHALL send `CUSTOM card_result` with `{card_id, status: "not_accepted", reason, field?}`, the card's transcript entry SHALL get that status and reason, and the model SHALL be told that the field is not filled and why. A client SHALL NOT show such a card as answered.
+
+#### Scenario: A VIN of three digits
+- **WHEN** the person types "555" into the VIN question and the form answers "17 characters"
+- **THEN** the card is marked not accepted with "17 characters", and the agent asks for the VIN again

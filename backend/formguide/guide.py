@@ -786,6 +786,14 @@ class FormGuide:
                     yield {"type": "CUSTOM", "name": "sources", "value": {"items": chunk["items"]}}
                 elif k == "hand_back":   # Dushes answers this message instead
                     yield {"type": "CUSTOM", "name": "hand_back", "value": {"reason": chunk["reason"]}}
+                elif k == "card_result":   # the answer to the last question card was not accepted
+                    asked_card = next((e for e in reversed(self.transcripts.list(thread_id)) if e["kind"] == "question"), None)
+                    outcome = {k2: v2 for k2, v2 in chunk.items() if k2 != "kind"}
+                    if asked_card:
+                        self.transcripts.update(thread_id, asked_card["id"], status=outcome["status"],
+                                                reason=outcome.get("reason") or "")
+                        outcome["card_id"] = asked_card["id"]
+                    yield {"type": "CUSTOM", "name": "card_result", "value": outcome}
                 elif k == "receipt":
                     yield {"type": "CUSTOM", "name": "receipt", "value": chunk["receipt"]}
                 elif k == "card":   # a display card from blocks: shown, the turn goes on

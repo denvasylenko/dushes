@@ -649,14 +649,22 @@ def build_graph(guide: FormGuide):
                     ctx.deps.observe(diff, ctx.ov)
                     v = (state.get("version") or 0) + 1
                     upd.update(snapshot=ctx.ov.snapshot(), version=v)
+                    refused = {k: str(ctx.ov[k].error) for k in values if ctx.ov[k].error}   # the form said no
+                    kept = {k: val for k, val in values.items() if k not in refused}
                     text = ("The user filled: " + "; ".join(f"{ctx.ov[k].label or k} ({k}) = {val}"
-                                                            for k, val in values.items())
-                            + ". Do not propose these fields again.\n" + render_changes(ctx.ov, diff, v - 1, v))
+                                                            for k, val in kept.items())
+                            + ". Do not propose these fields again.\n" if kept else "") + render_changes(ctx.ov, diff, v - 1, v)
+                    problems = [*problems, *[f"{ctx.ov[k].label or k}: {why}" for k, why in refused.items()]]
                 if problems:
-                    text += "\nNot filled: " + "; ".join(problems) + "."
+                    text += ("\nNot accepted, so not filled: " + "; ".join(problems) + ". Tell the user which value "
+                             "was not accepted and why, and ask for it again.")
+                    get_stream_writer()({"kind": "card_result", "status": "not_accepted",
+                                         "reason": "; ".join(problems)[:300]})
             elif kind == "ask":
                 got, why = read_answer(payload, answer)
                 text = answer_text(got, why)
+                if not got and why:   # an answer was given and could not be taken: the card must not look answered
+                    get_stream_writer()({"kind": "card_result", "status": "not_accepted", "reason": why[:300]})
                 if got and (got.get("ids") or got.get("text")) and payload.get("applies") and answer.get("config"):
                     # the client filled the field with the chosen option: like an accepted card
                     new_cfg = answer["config"]
@@ -667,8 +675,16 @@ def build_graph(guide: FormGuide):
                     v = (state.get("version") or 0) + 1
                     upd.update(snapshot=ctx.ov.snapshot(), version=v)
                     label = ctx.ov[payload["field"]].label or payload["field"]
-                    text += (f". This filled the field {label} ({payload['field']}); do not propose it again.\n"
-                             + render_changes(ctx.ov, diff, v - 1, v))
+                    error = ctx.ov[payload["field"]].error
+                    if error:   # the form refused the value: the field is not filled, and the card says so
+                        text += (f". The form did not accept it for {label} ({payload['field']}): {error}. The field "
+                                 "is not filled: tell the user why, in their words, and ask again.\n"
+                                 + render_changes(ctx.ov, diff, v - 1, v))
+                        get_stream_writer()({"kind": "card_result", "status": "not_accepted", "reason": str(error)[:300],
+                                             "field": payload["field"]})
+                    else:
+                        text += (f". This filled the field {label} ({payload['field']}); do not propose it again.\n"
+                                 + render_changes(ctx.ov, diff, v - 1, v))
             elif kind == "review":
                 action, det = read_review(answer)
                 if action == "fixed":

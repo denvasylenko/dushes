@@ -93,7 +93,9 @@ def test_typed_string_and_skipped_answers(guide, model):
         collect(guide, thread, resume=resume)
         assert expected in tool_result(model, "q1"), thread
         q = next(e for e in guide.thread(thread)["transcript"] if e["kind"] == "question")
-        assert q["status"] == ("answered" if "wrote" in expected else "dismissed")
+        # an answer that could not be taken is "not accepted" with its reason; only a skipped card is dismissed
+        assert q["status"] == ("answered" if "wrote" in expected else "dismissed" if "skipped" in expected
+                               else "not_accepted")
 
 
 def test_multiple_choice(guide, model):
