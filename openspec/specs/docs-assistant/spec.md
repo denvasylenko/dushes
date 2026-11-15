@@ -119,3 +119,23 @@ On the public demo host, the routes beside the run that call a model, store a fi
 - **WHEN** one address calls `/agent/prefill` more times than its daily limit
 - **THEN** the further calls are refused with `code: "demo_limit"` and no model is called
 
+### Requirement: A public researcher demo
+The demo host SHALL serve the document researcher over a fixed set of invented document sets: `GET /research/sets` lists them with their documents, and `POST /research/run` answers one question as an AG-UI run for the set named in `state.set`. The run SHALL show the researcher's steps as tool calls, the answer as an assistant message, and `CUSTOM sources` whose items carry the document, heading path, page and excerpt. Documents cannot be uploaded there.
+
+#### Scenario: A question about a set
+- **WHEN** a visitor picks a set and asks what the late fee is
+- **THEN** the chat shows the search and read steps, the answer, and a source that opens on the sentence with the fee
+
+### Requirement: Quick and deep in the researcher demo
+The run SHALL accept `forwardedProps.depth` (auto, quick, deep) and SHALL say in `CUSTOM research` `{phase: "decide", depth, asked, why}` which way it answers. Quick SHALL be one search and one model call that answers from the found passages and cites them; deep SHALL be the document researcher. With `auto`, a question that compares, asks why or how, asks for a plan or a summary, or says "in detail" SHALL be answered deep, and any other quick.
+
+#### Scenario: A plain fact
+- **WHEN** a visitor asks "What is the late fee?" with depth auto
+- **THEN** the run says `depth: "quick"`, makes one model call, and the answer cites the passage with the fee
+
+### Requirement: The full answer on request, within the demo's bounds
+A quick answer SHALL be followed by a "Look deeper" suggestion; that message SHALL run the previous question at deep depth. A quick look that finds no passage SHALL say so without calling a model. The demo's visitor limits and budgets SHALL apply, with the model choice taken per question, and an unknown set, depth or model choice SHALL be refused before any model is called.
+
+#### Scenario: Look deeper
+- **WHEN** the visitor taps "Look deeper" under a quick answer
+- **THEN** the same question is answered by the document researcher, and the run says `depth: "deep"`

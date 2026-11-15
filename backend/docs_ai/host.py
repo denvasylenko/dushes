@@ -388,7 +388,7 @@ async def public_demo(request, call_next):
         return await call_next(request)
     if method == "GET" and path == "/agent/models":   # the demo's model choices, with today's budgets
         return JSONResponse({"choices": choices()})
-    if path in ("/agent/run", "/site/run", "/ai/ask/run") and method == "POST":   # the form, site and docs demos
+    if path in ("/agent/run", "/site/run", "/ai/ask/run", "/research/run") and method == "POST":   # every demo that answers
         try:
             body = json.loads(await request.body() or b"{}")
         except ValueError:
@@ -397,7 +397,8 @@ async def public_demo(request, call_next):
         thread = str(body.get("threadId") or "?")
         ask = path == "/ai/ask/run"              # the docs assistant counts its own messages, and may change model
         names = [c["name"] for c in guide.model_choices()]
-        fixed = None if ask or not names else guide.thread_choice(thread)   # a conversation keeps its model
+        # a form or site conversation keeps its model; a docs or researcher question may name another each time
+        fixed = None if ask or path == "/research/run" or not names else guide.thread_choice(thread)
         choice = (fixed or props.get("model") or names[0]) if names else None
         notice = None
         if choice in names and not left(choice) and today().cost < COST_DAY:
@@ -431,6 +432,9 @@ async def public_demo(request, call_next):
     return await call_next(request)
 
 
+from .research_demo import create_router as _research_router  # noqa: E402
+
+app.include_router(_research_router(guide), prefix="/research")   # the researcher demo over the invented corpora
 _sets = guide._choices
 app.mount("/ai", create_app(refresh=3600,
                             models={n: s.models.agent for n, s in _sets.items() if not s.error} or None,
