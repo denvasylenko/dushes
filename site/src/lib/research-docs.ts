@@ -17,7 +17,10 @@ export const SETS = (DEMO as unknown as { sets: DocSet[] }).sets
 const ROOT = join(process.cwd(), '..', 'backend', 'demo', 'research_corpora')   // the build runs in site/
 
 export const isPdf = (d: Doc) => (d.format ?? '').toLowerCase() === 'pdf' || d.id.toLowerCase().endsWith('.pdf')
-/** The document's address under /research-documents/<set>/: a page for Markdown, the file itself for a PDF. */
+/** The document's address under /research-documents/<set>/: a page for Markdown, the file itself for a PDF.
+ *  The docs host builds the same addresses for a source's "Open document" link (backend/docs_ai, RESEARCH_DOCS_URL):
+ *  /research-documents/<set id>/<file name without .md>/#:~:text=<heading> and <file>.pdf#page=<n>. So the path, this
+ *  slug and the headings' text (printed as in the file) are a contract: tell the Tech Lead before changing any. */
 export const slug = (d: Doc) => d.id.replace(/\.md$/i, '')
 export const href = (base: string, set: DocSet, d: Doc) => `${base}research-documents/${set.id}/${isPdf(d) ? d.id : `${slug(d)}/`}`
 export const read = (set: string, id: string) => readFileSync(join(ROOT, set, id))
