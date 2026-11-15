@@ -55,6 +55,8 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `composerShadow` (`composer-shadow`) | `'soft'` | the composer's shadow: `'soft'` (a little lift, more when focused, fainter in dark), `'raised'`, `'none'`; tokens `--agui-composer-shadow`, `--agui-composer-shadow-focus` |
 | `collapseLines` (`collapse-lines`) | `8` | a message taller than this many lines folds: its start fading out and Show more / Show less (`aria-expanded`; part `fold-toggle`); `0`: never |
 | `collapseAnswers` (`collapse-answers`) | `false` | fold the assistant's long answers too (off, so an answer is never hidden) |
+| `commands` | none | commands for the + menu's "Commands" row and for "/" in an empty composer: `[{id, label, hint?, icon?, send?}]`. A pick fires `agui:menu-action` and sends `send` as a message unless you cancel the event |
+| `menu` | none | your own rows in the + menu: `[{id, label, hint?, icon?}]` (`icon`: an SVG path on a 24 grid); a pick fires `agui:menu-action` |
 | `messageActions` | `['copy', 'reply']` | the actions under an answer, in order: `copy`, `reply` (quote the whole answer in the composer; hidden with `reply: false`), `retry` (the latest answer), `speak`, `like`, `dislike`, or your own `{id, label, icon?, hint?}` (icon: an SVG path on a 24 grid; label and hint are the tooltip). `[]` or `message-actions="off"`: none |
 | `onMessageAction` | — | `(id, {messageId, text, pressed?}) => true?`: a tap on an action; return `true` to skip the built-in behaviour |
 | `footnote` | none | a line under the composer ("The assistant can make mistakes"); a hint or an error takes its place while shown |
@@ -92,6 +94,7 @@ Unknown option names are ignored with a console warning.
 | `chat.t(key, vars?)`, `chat.tc(key, vars?)` | a text in the page's language, or in the conversation's (the language the server names with `CUSTOM language`; cards and the turn's lines use it) |
 | `chat.setSuggestions(items)` | replace the suggestions above the composer without a run (after the page did something itself); `[]` clears them; at most 5 |
 | `agui:open`, `agui:close` | the chat opened or closed (bubble, drawer, hero) |
+| `agui:menu-action` | a pick in the + menu that is not the file picker or the camera: `{id, label, command}`; cancelable (cancel it when you handle the pick yourself; a command's `send` text is sent otherwise) |
 | `agui:before-close` | the chat is about to close (its close button, Esc, the scrim or `chat.close()`); cancelable, heard on `document` too, with `detail.by` (`button`, `escape`, `scrim` or `api`) and `detail.proceed()`, which closes whenever it is called (a second call does nothing). Call `preventDefault()` and run `proceed()` inside your own transition, e.g. `document.startViewTransition(() => e.detail.proceed())`, so the chat collapses back into the field that opened it. `chat.close(true)` closes without the event |
 | `chat.removeMessage(id)` | take back an assistant message already shown (and from the history) |
 | `chat.updateCard(id, patch)` | redraw a shown card in place: `{blocks}` for a card from blocks |

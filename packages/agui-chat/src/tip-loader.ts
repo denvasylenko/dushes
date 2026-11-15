@@ -2,3 +2,11 @@
 import type { attachTip } from './tip'
 
 export const loadTip = (): Promise<typeof attachTip> => import('./tip').then((m) => m.attachTip)
+
+import type { openMenu } from './menu'
+/** The + menu: the same chunk as the tooltip. */
+export const loadMenu = (): Promise<typeof openMenu> => import('./tip').then((m) => m.openMenu)
+
+import type { spotCard } from './spot'
+/** Bringing a card back (card_focus): the same chunk. */
+export const loadSpot = (): Promise<typeof spotCard> => import('./tip').then((m) => m.spotCard)

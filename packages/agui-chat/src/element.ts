@@ -6,7 +6,7 @@ import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, recognitionBlocked, record, recordingSupported, speechReliable, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
-import { loadTip } from '#tip-loader'
+import { loadMenu, loadSpot, loadTip } from '#tip-loader'
 import type { TipRow } from './tip'
 import { hasTheme, themeCss, THEME_PACKS, loadTheme } from './themes'
 import { watchParts } from './parts'
@@ -45,7 +45,7 @@ export const DEFAULTS: ChatOptions = {
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, voice: 'auto', dictation: '', transcribeUrl: '', attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined, icons: {}, render: {},
-  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, modal: true, launcher: 'auto', launcherLabel: '', reply: true, composerShadow: 'soft', shortcutHints: true, collapseLines: 8, collapseAnswers: false,
+  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, commands: undefined, menu: undefined, modal: true, launcher: 'auto', launcherLabel: '', reply: true, composerShadow: 'soft', shortcutHints: true, collapseLines: 8, collapseAnswers: false,
 }
 
 /** attribute -> [option, parser] */
@@ -591,8 +591,8 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     for (const turn of all ? turns : turns.slice(-1)) {
       const bodies = turn.filter((k) => k.matches('.msg.ai[data-message-id]')).map((k) => k.querySelector<HTMLElement>(':scope > .body')).filter((b): b is HTMLElement => !!b && this._texts.has(b))
       if (!bodies.length) continue
-      turn.forEach((k) => { if (k.matches('.turn-acts')) k.remove(); else k.querySelector(':scope > .body > .msg-acts')?.remove() })   // a resumed turn: the row moves to its new end
-      const pieces = turn.filter((k) => k.isConnected && !k.matches('.turn-acts'))
+      turn.forEach((k) => k.querySelector(':scope > .body > .msg-acts')?.remove())   // a resumed turn: the row moves to its new end
+      const pieces = turn.filter((k) => k.isConnected)
       const last = pieces[pieces.length - 1], body = bodies[bodies.length - 1]
       if (!last || !body.isConnected) continue   // the log was cleared meanwhile (a new thread, a teardown): no row to add
       const text = bodies.map((b) => this._texts.get(b)).join('\n\n')
@@ -690,23 +690,24 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       if (!this._winOpen()) this._closePop()   // the capsule goes; an open window moves with its text
     }, { passive: true })
     files.addEventListener('scroll', () => this._fadeFiles(), { passive: true })
-    clip.addEventListener('click', () => picker.click())
+    clip.addEventListener('click', () => this._menu())
     picker.addEventListener('change', () => { void this._upload([...(picker.files ?? [])]); picker.value = '' })
 
     const grow = () => {
       if (box.classList.contains('rec')) return   // hidden behind the wave: measured once it shows again
       input.style.height = 'auto'; input.style.height = `${Math.min(180, input.scrollHeight)}px`
     }
-    input.addEventListener('input', () => { grow(); this._syncSend(); this._queueKeyHint(); this._quickAway() })
+    input.addEventListener('input', () => { grow(); this._syncSend(); this._queueKeyHint(); this._quickAway()
+      if ((input as HTMLTextAreaElement).value === '/' && this._opts.commands?.length) this._menu('commands') })
     // a screenshot or a file from the clipboard, or dropped on the composer, is attached like a file from the + button
     const takeFiles = (files: FileList | null | undefined, e: Event) => {
       const list = [...(files ?? [])]
-      if (!list.length || clip.hidden) return
+      if (!list.length || !this._canAttach) return
       e.preventDefault()
       void this._upload(list)
     }
     input.addEventListener('paste', (e) => takeFiles((e as ClipboardEvent).clipboardData?.files, e))
-    box.addEventListener('dragover', (e) => { if (!clip.hidden && (e as DragEvent).dataTransfer?.types.includes('Files')) { e.preventDefault(); box.classList.add('drop') } })
+    box.addEventListener('dragover', (e) => { if (this._canAttach && (e as DragEvent).dataTransfer?.types.includes('Files')) { e.preventDefault(); box.classList.add('drop') } })
     box.addEventListener('dragleave', () => box.classList.remove('drop'))
     box.addEventListener('drop', (e) => { box.classList.remove('drop'); takeFiles((e as DragEvent).dataTransfer?.files, e) })
     input.addEventListener('keydown', (e) => {
@@ -720,7 +721,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     const hints = (): boolean => this._opts.shortcutHints !== false
     this._tip(send, panel, () => (this._busy ? [{ label: this.t('stop') }] : [{ label: this.t('send'), keys: ['Enter'] }, { label: this.t('newLine'), keys: ['Shift', 'Enter'] }]), hints)
     this._tip(mic, panel, () => [{ label: this.t('mic') }], hints)
-    this._tip(clip, panel, () => [{ label: this.t('attach') }], hints)
+    this._tip(clip, panel, () => [{ label: this.t('more') }], hints)
     this._tip(popAdd, panel, () => [{ label: this.t('addToChat'), keys: ['Enter'] }], hints)
     this._tip(popMic, panel, () => [{ label: this.t('dictateReply') }], hints)
     // only keys a text field owns anyway (Enter, Shift+Enter, Esc): a web page must not take the browser's (Cmd+D bookmarks)
@@ -1003,9 +1004,10 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this.$.mic.hidden = !o.mic || !this._micMode()
     this.$.mic.setAttribute('aria-label', this.t('mic'))
     const attach = this._plugins.find((p) => p.attach)?.attach
-    this.$.clip.hidden = !o.attach || !(o.upload || attach)
-    this.$.clip.setAttribute('aria-label', this.t('attach'))
-    const accept = o.attachAccept || attach?.accept || ''
+    this._canAttach = !!o.attach && !!(o.upload || attach)
+    this.$.clip.hidden = !(this._canAttach || o.commands?.length || o.menu?.length)
+    this.$.clip.setAttribute('aria-label', this.t('more'))
+    const accept = this._accept = o.attachAccept || attach?.accept || ''
     if (accept) this.$.picker.setAttribute('accept', accept); else this.$.picker.removeAttribute('accept')
     ;(this.$.picker as HTMLInputElement).multiple = o.attachMultiple
     this.$.log.querySelectorAll('.steps').forEach((s) => ((s as HTMLElement).hidden = !o.toolSteps || s.classList.contains('quiet')))
@@ -1496,6 +1498,22 @@ export class AguiChatElement extends BaseElement implements ChatApi {
 
   private _tips: { button: HTMLElement; host: HTMLElement; rows: () => TipRow[]; on: () => boolean; wake?: (e: Event) => void }[] = []
 
+  private _canAttach = false
+  private _accept = ''
+
+  /** The + menu (its code loads the first time): a pick opens the file picker or the camera, runs a command, or goes
+   *  to the host (`agui:menu-action`, `onMenuAction`). `start` opens a submenu at once ("/" opens the commands). */
+  private _menu(start?: string): void {
+    const o = this._opts, picker = this.$.picker as HTMLInputElement
+    // the rows are made in the menu's own file: files (and the camera on a phone), the host's commands, its own rows
+    void loadMenu().then((open) => open(this.$.clip, this.$.panel, { files: this._canAttach && picker, accept: this._accept, touch: !finePointer(), commands: o.commands, more: o.menu, t: this.t.bind(this) }, (it) => {
+      const input = this.$.input as HTMLTextAreaElement, send = (it as { send?: string }).send, command = !!o.commands?.includes(it)
+      if (command && input.value === '/') { input.value = ''; this._syncSend() }
+      // the host can cancel it (it handled the pick itself); a command with `send` is sent as a message otherwise
+      if (this.dispatchEvent(new CustomEvent('agui:menu-action', { detail: { id: it.id, label: it.label, command }, cancelable: true, bubbles: true, composed: true })) && send) void this.send(send)
+    }, start)).catch(() => { if (this._canAttach) picker.click() })   // no menu file next to the script: the + still attaches
+  }
+
   private _keyed(key: string, tile: HTMLElement): HTMLElement { tile.dataset.key = key; return tile }
 
   /** A tile for an attachment: an image's thumbnail, or a document's name and type; × removes it from the message. */
@@ -1511,7 +1529,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   /** The image, large, over the chat (its code loads the first time, with the markup tools). While attachments are on,
    *  the pencil marks a picture up: the copy takes a composer image's place; a sent picture's copy joins the composer. */
   private _zoom(opener: HTMLElement): void {
-    const mark = this.$.clip.hidden ? undefined : (from: HTMLElement, image: Blob, name: string): void => {
+    const mark = !this._canAttach ? undefined : (from: HTMLElement, image: Blob, name: string): void => {
       const i = from.dataset.file
       if (i !== undefined && this._files[+i]) this._replaceFile(+i, image, name)
       else void this._upload([new File([image], `${(name || 'image').replace(/\.[a-z0-9]{1,5}$/i, '')}-markup.png`, { type: 'image/png' })])
@@ -2257,26 +2275,13 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     if (!el) { this.dispatchEvent(new CustomEvent('agui:card-missing', { detail: { card_id: id } })); return }
     this._stick = false   // reading up now: the text that follows ("Here it is, above") and the run's end stay put
     this.$.jump.hidden = false
-    const top = el.getBoundingClientRect().top - log.getBoundingClientRect().top + log.scrollTop
-    // our own scroll: its first events still read "near the end", so they must not re-pin it (as for the ↓ button)
-    // (no scrollend here: Chrome delivers a late one from the pin before this scroll; a timer ends it, and lands it)
+    // our own scroll: its first events still read "near the end", so they must not re-pin it (as for the ↓ button);
+    // the scroll and the glow are in the on-demand file
     this._jumping = true
-    const target = Math.max(0, top - (log.clientHeight - el.offsetHeight) / 2)
-    log.style.overflowAnchor = 'none'   // Chrome's scroll anchoring would cancel the smooth scroll as the text below types
-    log.scrollTo?.({ top: target, behavior: reducedMotion() ? 'auto' : 'smooth' })
-    setTimeout(() => {
-      this._jumping = false
-      log.style.overflowAnchor = ''
-      if (Math.abs(log.scrollTop - target) > 4) log.scrollTop = target   // a smooth scroll something cut short
-      this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
-      this.$.jump.hidden = this._stick
-    }, 600)
-    el.removeAttribute('data-spot'); void el.offsetWidth; el.setAttribute('data-spot', '')
-    clearTimeout(this._spotT)
-    this._spotT = setTimeout(() => el.removeAttribute('data-spot'), 1600)
+    const done = (): void => { this._jumping = false; this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120; this.$.jump.hidden = this._stick }
+    void loadSpot().then((spot) => spot(log, el, done)).catch(done)
   }
 
-  private _spotT: ReturnType<typeof setTimeout> | undefined
 
   /** Take back an assistant message already shown (e.g. a host's "cut" when an action follows the text). */
   removeMessage(id: string): boolean {
