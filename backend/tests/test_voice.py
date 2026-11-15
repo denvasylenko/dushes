@@ -480,3 +480,45 @@ def test_a_spoken_yes_or_no_answers_a_waiting_card():
         assert "answers" not in seen[-1]                     # a yes with no card waiting is an ordinary message
         await talks.end("live_1")
     asyncio.run(go())
+
+
+def test_a_host_names_the_person_and_keeps_the_money_itself():
+    """The cabinet's three hooks for hosting voice (2026-11-15): the host names the person of a request its own
+    way, the day's spend comes from the host's ledger and each conversation's cost is reported to it, and the
+    one-conversation rule is per person."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    ledger: dict[str, float] = {"c7": 5.0}
+    costs = []
+    cfg = voice.VoiceConfig(day_usd=50, person_day_usd=5, at_once=10, at_once_person=1)
+    lives = []
+
+    async def stream_opener(key, model, instructions):
+        lives.append(FakeLive())
+        return f"live_{len(lives)}", lives[-1]
+    talks = voice.Talks(cfg, key=lambda: "k",
+                        person_of=lambda headers: {"Bearer a": "c1", "Bearer b": "c2", "Bearer z": "c7"}.get(headers.get("authorization")),
+                        spent_today=lambda person: ledger.get(person, 0.0) if person else sum(ledger.values()),
+                        on_cost=lambda person, usd, seconds: costs.append((person, round(usd, 4), round(seconds))))
+    talks._stream_opener = stream_opener
+    app = FastAPI()
+    app.include_router(voice.create_voice_router(talks), prefix="/voice")
+    with TestClient(app) as c:
+        with c.websocket_connect("/voice/stream?thread_id=t0") as ws:                       # nobody the host knows
+            assert ws.receive_json() == {"type": "refused", "reason": "pass"}
+        with c.websocket_connect("/voice/stream?thread_id=t7", headers={"Authorization": "Bearer z"}) as ws:
+            assert ws.receive_json() == {"type": "refused", "reason": "person_day"}        # the host's ledger says so
+        with c.websocket_connect("/voice/stream?thread_id=t1", headers={"Authorization": "Bearer a"}) as one:
+            assert one.receive_json()["type"] == "started"
+            with c.websocket_connect("/voice/stream?thread_id=t1b", headers={"Authorization": "Bearer a"}) as again:
+                assert again.receive_json() == {"type": "refused", "reason": "busy"}       # one a person
+            with c.websocket_connect("/voice/stream?thread_id=t2", headers={"Authorization": "Bearer b"}) as two:
+                assert two.receive_json()["type"] == "started"                              # another person may talk
+                two.send_text(json.dumps({"type": "end"}))
+            one.send_text(json.dumps({"type": "end"}))
+    assert sorted(p for p, _, _ in costs) == ["c1", "c2"] and all(usd >= 0 for _, usd, _ in costs)
+
+    gate = voice.Gate(voice.VoiceConfig())                 # or the host issues the pass itself, with no code
+    assert gate.person(gate.issue("c42")) == "c42"
+    with pytest.raises(ValueError):
+        gate.issue("not a plain word")

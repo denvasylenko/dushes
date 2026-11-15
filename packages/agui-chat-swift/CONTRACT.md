@@ -153,3 +153,7 @@ A card without the mark waits as always. A consent is never quiet.
 
 An open conversation is billed by the second, silence included: end it when the person stops, when the app goes
 to the background, and when the screen closes.
+
+A host that already knows who the person is (its own session or token) needs no code and no pass: it gives the
+voice module a hook that names the person of each request, and the client simply sends its usual credentials
+with the socket. Such a host also keeps the money in its own ledger; the limits and the events are the same.

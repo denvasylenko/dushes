@@ -23,6 +23,7 @@ import secrets
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -47,7 +48,8 @@ class VoiceConfig:
     person_day_usd: float = 0.0     # a person's own daily budget inside it (0: none)
     max_seconds: int = 300          # one conversation ends here
     max_usd: float = 0.75           # or here, whichever comes first (the voice and the agent's turns together)
-    at_once: int = 1                # voice conversations at the same time
+    at_once: int = 1                # voice conversations at the same time, on this host
+    at_once_person: int = 1         # and for one person
     silence_seconds: int = 30       # this long without speech ends a conversation
     secret: str = ""                # signs the passes; empty: a new one at every start (passes die with the process)
 
@@ -100,6 +102,7 @@ class Gate:
         self.now = now
         self._secret = (config.secret or secrets.token_hex(32)).encode()
         self._tries: dict[tuple[str, str], int] = {}   # (day, address) -> wrong tries
+        self._hosted: set[str] = set()                 # people the host named itself (see issue)
 
     def _day(self) -> str:
         return time.strftime("%Y-%m-%d", time.gmtime(self.now()))
@@ -125,6 +128,15 @@ class Gate:
         body = f"{who}.{int(self.now() + PASS_HOURS * 3600)}"
         return who, f"{body}.{self._sign(body)}"
 
+    def issue(self, person: str) -> str:
+        """A pass for a person the host has already identified its own way (its session, its token): no code is
+        asked. The name is the host's (a client id); it must be a plain word."""
+        if not _NAME.match(person or ""):
+            raise ValueError("a person's name is letters, digits, - or _, at most 40")
+        self._hosted.add(person)
+        body = f"{person}.{int(self.now() + PASS_HOURS * 3600)}"
+        return f"{body}.{self._sign(body)}"
+
     def person(self, token: str | None) -> str | None:
         """Whose pass this is, or None: malformed, signed by another secret, expired, or its code was withdrawn."""
         parts = (token or "").split(".")
@@ -133,7 +145,9 @@ class Gate:
         name, expiry, signature = parts
         if not hmac.compare_digest(signature, self._sign(f"{name}.{expiry}")):
             return None
-        if not expiry.isdigit() or int(expiry) < self.now() or name not in self.config.codes:
+        if not expiry.isdigit() or int(expiry) < self.now():
+            return None
+        if name not in self.config.codes and name not in self._hosted:
             return None
         return name
 
@@ -153,7 +167,14 @@ class Meter:
     """The money and time of voice. The day's spend is the closed conversations plus the open ones; an open one is
     counted from the provider's latest report, or from the clock when the report is late (never less)."""
 
-    def __init__(self, config: VoiceConfig, now: Callable[[], float] = time.time):
+    def __init__(self, config: VoiceConfig, now: Callable[[], float] = time.time,
+                 spent_today: Callable[[str | None], float] | None = None,
+                 on_cost: Callable[[str, float, float], None] | None = None):
+        # a host with its own ledger keeps the day's spend there: `spent_today(person or None)` gives the dollars
+        # of closed conversations today (one person's, or everyone's), and `on_cost(person, usd, seconds)` is
+        # told what each conversation cost when it ends. Then the limits survive a restart and show in its reports.
+        self.spent_today = spent_today
+        self.on_cost = on_cost
         self.config = config
         self.now = now
         self._day = ""
@@ -172,12 +193,17 @@ class Meter:
     def spent(self, person: str | None = None) -> float:
         """Dollars today: everyone's, or one person's."""
         self._roll()
-        closed = self._spent.get(person, 0.0) if person else sum(self._spent.values())
+        if self.spent_today is not None:
+            closed = float(self.spent_today(person) or 0.0)
+        else:
+            closed = self._spent.get(person, 0.0) if person else sum(self._spent.values())
         return closed + sum(self.cost(t) for t in self.open.values() if not person or t.person == person)
 
     def refusal(self, person: str) -> str | None:
         """Why a new conversation may not start now: `busy`, `day` or `person_day`; None when it may."""
         if len(self.open) >= self.config.at_once:
+            return "busy"
+        if sum(t.person == person for t in self.open.values()) >= self.config.at_once_person:
             return "busy"
         if self.spent() >= self.config.day_usd:
             return "day"
@@ -230,6 +256,11 @@ class Meter:
             talk.seconds = max(talk.seconds, self.now() - talk.started)
         cost = talk.seconds / 60 * self.config.minute_usd + talk.agent_usd
         self._spent[talk.person] = self._spent.get(talk.person, 0.0) + cost
+        if self.on_cost is not None:
+            try:
+                self.on_cost(talk.person, cost, talk.seconds)
+            except Exception:  # noqa: BLE001 - the host's ledger failing must not break the end of a conversation
+                pass
         return cost
 
 
@@ -310,13 +341,19 @@ class Talks:
 
     def __init__(self, config: VoiceConfig, *, title: str = "this site", key: Callable[[], str] | None = None,
                  opener: Callable | None = None, now: Callable[[], float] = time.time,
-                 log_dir: str | os.PathLike | None = None):
+                 log_dir: str | os.PathLike | None = None,
+                 person_of: Callable[[Any], str | None] | None = None,
+                 spent_today: Callable[[str | None], float] | None = None,
+                 on_cost: Callable[[str, float, float], None] | None = None):
+        # person_of(headers): the host names the person of a request its own way (its session, a bearer token);
+        # then no code and no pass are asked on any route. Without it, the pass from /unlock (or gate.issue) is.
+        self.person_of = person_of
         # a conversation is recorded when log_dir is given: one JSON line an event (what was heard, what the voice
         # said, the answers handed to it, the clock, the end and its cost), in <log_dir>/<day>_<talk>.jsonl
         self.log_dir = log_dir
         self.config = config
         self.gate = Gate(config, now)
-        self.meter = Meter(config, now)
+        self.meter = Meter(config, now, spent_today, on_cost)
         self.title = title
         self._key = key or (lambda: os.environ.get("OPENAI_API_KEY", ""))
         self._opener = opener or open_live     # tests give a scripted one
@@ -324,6 +361,16 @@ class Talks:
         self.now = now
         self._live: dict[str, dict] = {}       # talk id -> its state
         self._by_thread: dict[str, str] = {}   # the chat thread -> the talk that speaks its answers
+
+    def who(self, headers: Any) -> str | None:
+        """The person of a request: named by the host's own hook, or by the pass in X-Voice-Pass."""
+        if self.person_of is not None:
+            try:
+                named = self.person_of(headers)
+            except Exception:  # noqa: BLE001 - a host hook that fails names nobody
+                named = None
+            return named if named and _NAME.match(named) else None
+        return self.gate.person(headers.get("x-voice-pass"))
 
     # -- starting and ending
     async def start(self, person: str, sdp: str, thread_id: str) -> dict:
@@ -819,7 +866,7 @@ def create_voice_router(talks: Talks):
     r = APIRouter()
 
     def who(request: Request) -> str:
-        person = talks.gate.person(request.headers.get("x-voice-pass"))
+        person = talks.who(request.headers)
         if not person:
             raise HTTPException(403, "A voice pass is needed.")
         return person
@@ -874,7 +921,7 @@ def create_voice_router(talks: Talks):
         busy, day, person_day, unavailable. On `heard` the client sends the ordinary run, as on the web."""
         import asyncio
         await socket.accept()
-        person = talks.gate.person(socket.headers.get("x-voice-pass"))
+        person = talks.who(socket.headers)
         if not person:
             await socket.send_text(_json({"type": "refused", "reason": "pass"}))
             return await socket.close(code=4403)
