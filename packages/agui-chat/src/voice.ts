@@ -115,10 +115,11 @@ export function voice(chat: Chat): void {
   let pc: RTCPeerConnection | null = null, mic: MediaStream | null = null, talk = '', reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   let on = false, silent = false, busy = false, spokeAt = 0, wait = false, gen = 0
   const dock = el('div', 'vo-dock'), orb = el('button', 'vo-orb'), step = el('div', 'vo-step'), audio = el('audio', '')
-  orb.type = 'button'; orb.innerHTML = svg('M8 8h8v8H8z', 22); step.setAttribute('role', 'status'); audio.autoplay = true
+  orb.type = 'button'; orb.innerHTML = `<i></i>${svg('M8 8h8v8H8z', 22)}`; step.setAttribute('role', 'status'); audio.autoplay = true
   dock.append(orb, step, audio)
   const bMic = el('button', 'vo-b vo-mic'), bX = el('button', 'vo-b vo-x')
   bMic.type = 'button'; bX.type = 'button'; bX.innerHTML = svg('M6.5 6.5l11 11m0-11-11 11', 18)
+  const tag = el('span', 'vo-tag'), lvl = el('span', 'vo-lvl'); lvl.setAttribute('aria-hidden', 'true')
 
   /** What the orb shows: silent, or waiting for the connection, or thinking (a turn runs), speaking, listening. */
   function paint(): void {
@@ -130,6 +131,9 @@ export function voice(chat: Chat): void {
     bMic.innerHTML = svg(silent ? `${MIC}M4 3l16 18` : MIC); bMic.classList.toggle('on', silent)
     bMic.setAttribute('aria-label', T(silent ? 'micOn' : 'micOff')); bMic.title = T(silent ? 'micOn' : 'micOff')
     bX.setAttribute('aria-label', T('end')); bX.title = T('end')
+    tag.textContent = T(silent ? 'tagSilent' : 'tagVoice')
+    if (silent) foot.style.removeProperty('--vo-l')
+    if (on) input.placeholder = T('field')   // short: the box is narrow beside the two buttons
   }
   const typing = (): void => { foot.classList.toggle('vo-typing', on && (!!input.value || root.activeElement === input)) }
   input.addEventListener('input', typing); input.addEventListener('focus', typing); input.addEventListener('blur', () => setTimeout(typing, 0))
@@ -179,27 +183,35 @@ export function voice(chat: Chat): void {
   function note(text: string): void { last?.remove(); last = el('div', 'notice', text); add(last) }
   let hearEl: HTMLElement | null = null, saidEl: HTMLElement | null = null, answered = false, caption = ''
   /** How loud the voice is, from the sound itself (frames arrive all the time, silence included): it is speaking while there is sound. */
-  let ear: { ctx: AudioContext; timer: ReturnType<typeof setInterval> } | null = null
-  function listenTo(stream: MediaStream): void {
+  let ear: { ctx: AudioContext; timers: ReturnType<typeof setInterval>[] } | null = null
+  /** Watch a stream's loudness (0 to about 40): `got` hears it eight times a second. */
+  function meter(stream: MediaStream, got: (level: number) => void): void {
     const AC = (globalThis as unknown as { AudioContext?: typeof AudioContext }).AudioContext
-    if (!AC || ear) return
+    if (!AC) return
     try {
-      const ctx = new AC(), an = ctx.createAnalyser(), data = new Uint8Array(256)
-      an.fftSize = 256; ctx.createMediaStreamSource(stream).connect(an)
-      ear = { ctx, timer: setInterval(() => {
+      ear ??= { ctx: new AC(), timers: [] }
+      const an = ear.ctx.createAnalyser(), data = new Uint8Array(256)
+      an.fftSize = 256; ear.ctx.createMediaStreamSource(stream).connect(an)
+      ear.timers.push(setInterval(() => {
         an.getByteTimeDomainData(data)
         let sum = 0
         for (const v of data) sum += (v - 128) * (v - 128)
-        if (Math.sqrt(sum / data.length) > 4) { const was = Date.now() - spokeAt < 900; spokeAt = Date.now(); if (!was) paint() } else if (dock.classList.contains('vo-speak') && Date.now() - spokeAt >= 900) paint()
-      }, 120) }
+        got(Math.sqrt(sum / data.length))
+      }, 120))
     } catch { /* no audio graph here: the transcript events show speaking instead */ }
   }
+  const listenTo = (stream: MediaStream): void => meter(stream, (level) => {
+    if (level > 4) { const was = Date.now() - spokeAt < 900; spokeAt = Date.now(); if (!was) paint() } else if (dock.classList.contains('vo-speak') && Date.now() - spokeAt >= 900) paint()
+  })
+  /** The person's own voice: the orb breathes with it and the ring in the message box fills. */
+  const hear = (stream: MediaStream): void => meter(stream, (level) => { foot.style.setProperty('--vo-l', String(Math.min(1, Math.round(level / 2.4) / 10))) })
 
   /** Enter voice mode and connect. */
   async function start(): Promise<void> {
     if (on) return
     on = true; silent = false
     foot.classList.add('vo-on'); box.before(dock); box.after(bMic, bX)
+    box.querySelector('.send')!.before(lvl); $('.head .title').parentElement!.after(tag)   // after the name, before the header's buttons
     typing()
     if (root!.activeElement !== input) bMic.focus({ preventScroll: true })
     await connect()
@@ -231,6 +243,7 @@ export function voice(chat: Chat): void {
       await p.setRemoteDescription({ type: 'answer', sdp: got.sdp })
       if (stale()) return drop()
       pc = p; mic = stream; talk = id; wait = false; last?.remove(); last = null; paint()
+      hear(stream)
       void follow(p)
     } catch (e) {
       drop()
@@ -308,7 +321,8 @@ export function voice(chat: Chat): void {
     if (talk && tell) { try { void fetch(`${base()}/end`, { method: 'POST', keepalive: leaving, headers: { 'Content-Type': 'application/json', 'X-Voice-Pass': pass }, body: JSON.stringify({ talk }) }).catch(() => {}) } catch { /* leaving anyway */ } }
     pc?.close(); mic?.getTracks().forEach((t) => t.stop())
     pc = null; mic = null; reader = null; talk = ''; wait = false; audio.srcObject = null; audio.muted = false
-    if (ear) { clearInterval(ear.timer); void ear.ctx.close().catch(() => {}); ear = null }
+    if (ear) { ear.timers.forEach(clearInterval); void ear.ctx.close().catch(() => {}); ear = null }
+    foot.style.removeProperty('--vo-l')
     hearEl?.classList.remove('vo-hearing'); hearEl = null; saidEl = null; caption = ''; step.textContent = ''
   }
   /** Leave voice mode: the conversation above is untouched, the small orb is back in the message box. */
@@ -316,7 +330,8 @@ export function voice(chat: Chat): void {
     if (!on) return
     hang(true)
     on = false; silent = false
-    dock.remove(); bMic.remove(); bX.remove(); foot.classList.remove('vo-on', 'vo-typing')
+    dock.remove(); bMic.remove(); bX.remove(); tag.remove(); lvl.remove(); foot.classList.remove('vo-on', 'vo-typing'); foot.style.removeProperty('--vo-l')
+    input.placeholder = String(chat.options.placeholder || (chat as unknown as { t(k: string): string }).t('placeholder'))
     if (focus && chat.isConnected) go.focus({ preventScroll: true })
   }
 }

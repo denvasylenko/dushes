@@ -29,6 +29,9 @@ export const VOICE_STRINGS: Record<string, Record<string, string>> = {
     lost: "Voice mode stopped: the connection was lost. Tap the microphone to go on.",
     closed: "Voice mode stopped.",
     unavailable: "The voice is unavailable right now. You can keep typing.",
+    tagVoice: "Voice",
+    tagSilent: "Silent",
+    field: "Message",
   },
   ru: {
     menu: "\u042d\u043a\u0441\u043f\u0435\u0440\u0438\u043c\u0435\u043d\u0442\u0430\u043b\u044c\u043d\u044b\u0439 \u0433\u043e\u043b\u043e\u0441\u043e\u0432\u043e\u0439 \u0440\u0435\u0436\u0438\u043c",
@@ -58,6 +61,9 @@ export const VOICE_STRINGS: Record<string, Record<string, string>> = {
     lost: "\u0413\u043e\u043b\u043e\u0441\u043e\u0432\u043e\u0439 \u0440\u0435\u0436\u0438\u043c \u0432\u044b\u043a\u043b\u044e\u0447\u0435\u043d: \u0441\u0432\u044f\u0437\u044c \u043f\u043e\u0442\u0435\u0440\u044f\u043d\u0430. \u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043d\u0430 \u043c\u0438\u043a\u0440\u043e\u0444\u043e\u043d, \u0447\u0442\u043e\u0431\u044b \u043f\u0440\u043e\u0434\u043e\u043b\u0436\u0438\u0442\u044c.",
     closed: "\u0413\u043e\u043b\u043e\u0441\u043e\u0432\u043e\u0439 \u0440\u0435\u0436\u0438\u043c \u0432\u044b\u043a\u043b\u044e\u0447\u0435\u043d.",
     unavailable: "\u0413\u043e\u043b\u043e\u0441 \u0441\u0435\u0439\u0447\u0430\u0441 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d. \u041c\u043e\u0436\u043d\u043e \u043f\u0438\u0441\u0430\u0442\u044c \u0434\u0430\u043b\u044c\u0448\u0435.",
+    tagVoice: "\u0413\u043e\u043b\u043e\u0441",
+    tagSilent: "\u0411\u0435\u0437 \u0437\u0432\u0443\u043a\u0430",
+    field: "\u0421\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435",
   },
   uk: {
     menu: "\u0415\u043a\u0441\u043f\u0435\u0440\u0438\u043c\u0435\u043d\u0442\u0430\u043b\u044c\u043d\u0438\u0439 \u0433\u043e\u043b\u043e\u0441\u043e\u0432\u0438\u0439 \u0440\u0435\u0436\u0438\u043c",
@@ -87,6 +93,9 @@ export const VOICE_STRINGS: Record<string, Record<string, string>> = {
     lost: "\u0413\u043e\u043b\u043e\u0441\u043e\u0432\u0438\u0439 \u0440\u0435\u0436\u0438\u043c \u0432\u0438\u043c\u043a\u043d\u0435\u043d\u043e: \u0437\u0432\u2019\u044f\u0437\u043e\u043a \u0432\u0442\u0440\u0430\u0447\u0435\u043d\u043e. \u041d\u0430\u0442\u0438\u0441\u043d\u0456\u0442\u044c \u043d\u0430 \u043c\u0456\u043a\u0440\u043e\u0444\u043e\u043d, \u0449\u043e\u0431 \u043f\u0440\u043e\u0434\u043e\u0432\u0436\u0438\u0442\u0438.",
     closed: "\u0413\u043e\u043b\u043e\u0441\u043e\u0432\u0438\u0439 \u0440\u0435\u0436\u0438\u043c \u0432\u0438\u043c\u043a\u043d\u0435\u043d\u043e.",
     unavailable: "\u0413\u043e\u043b\u043e\u0441 \u0437\u0430\u0440\u0430\u0437 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0438\u0439. \u041c\u043e\u0436\u043d\u0430 \u043f\u0438\u0441\u0430\u0442\u0438 \u0434\u0430\u043b\u0456.",
+    tagVoice: "\u0413\u043e\u043b\u043e\u0441",
+    tagSilent: "\u0411\u0435\u0437 \u0437\u0432\u0443\u043a\u0443",
+    field: "\u041f\u043e\u0432\u0456\u0434\u043e\u043c\u043b\u0435\u043d\u043d\u044f",
   },
   de: {
     menu: "Experimenteller Sprachmodus",
@@ -116,6 +125,9 @@ export const VOICE_STRINGS: Record<string, Record<string, string>> = {
     lost: "Sprachmodus beendet: Die Verbindung ging verloren. Tippen Sie auf das Mikrofon, um fortzufahren.",
     closed: "Sprachmodus beendet.",
     unavailable: "Die Stimme ist gerade nicht verf\u00fcgbar. Sie k\u00f6nnen weiter tippen.",
+    tagVoice: "Stimme",
+    tagSilent: "Stumm",
+    field: "Nachricht",
   },
   fr: {
     menu: "Mode vocal exp\u00e9rimental",
@@ -145,6 +157,9 @@ export const VOICE_STRINGS: Record<string, Record<string, string>> = {
     lost: "Mode vocal arr\u00eat\u00e9 : la connexion a \u00e9t\u00e9 perdue. Touchez le micro pour continuer.",
     closed: "Mode vocal arr\u00eat\u00e9.",
     unavailable: "La voix est indisponible pour le moment. Vous pouvez continuer \u00e0 \u00e9crire.",
+    tagVoice: "Voix",
+    tagSilent: "Silencieux",
+    field: "Message",
   },
   es: {
     menu: "Modo de voz experimental",
@@ -174,6 +189,9 @@ export const VOICE_STRINGS: Record<string, Record<string, string>> = {
     lost: "Modo de voz detenido: se perdi\u00f3 la conexi\u00f3n. Toque el micr\u00f3fono para continuar.",
     closed: "Modo de voz detenido.",
     unavailable: "La voz no est\u00e1 disponible ahora. Puede seguir escribiendo.",
+    tagVoice: "Voz",
+    tagSilent: "Silencio",
+    field: "Mensaje",
   },
   it: {
     menu: "Modalit\u00e0 vocale sperimentale",
@@ -203,5 +221,8 @@ export const VOICE_STRINGS: Record<string, Record<string, string>> = {
     lost: "Modalit\u00e0 vocale interrotta: connessione persa. Tocchi il microfono per continuare.",
     closed: "Modalit\u00e0 vocale interrotta.",
     unavailable: "La voce non \u00e8 disponibile ora. Pu\u00f2 continuare a scrivere.",
+    tagVoice: "Voce",
+    tagSilent: "Silenzioso",
+    field: "Messaggio",
   },
 }

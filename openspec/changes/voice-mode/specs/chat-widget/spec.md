@@ -69,3 +69,10 @@ The microphone SHALL be asked for with echo cancelling, noise suppression and au
 #### Scenario: The question comes back
 - **WHEN** the voice says "Choose the date and time of the booking" and the stream then sends `heard` with the same words
 - **THEN** no message is sent and none of the person's is drawn
+
+### Requirement: The look of voice mode
+The orb SHALL be a sky of the voice colour (the host's accent) with a white cloud bank going round. It SHALL carry no mark at rest; the stop mark shows only under the pointer, the focus or a press. While voice mode is on, the header SHALL say "Voice" or "Silent", the message box SHALL show a ring that fills with the person's voice, its send and stop buttons SHALL show only while a message is typed, and a short conversation SHALL sit low, by the orb.
+
+#### Scenario: The agent is working
+- **WHEN** a turn runs in voice mode and nothing is typed
+- **THEN** the orb turns faster with the step under it, with no square in it, and the message box shows no stop button of its own
