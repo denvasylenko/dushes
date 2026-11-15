@@ -59,7 +59,10 @@ def test_sources_parsed_and_sent_once(guide, model, monkeypatch):
     model.script = [say("", ("d1", "ask_documents", {"question": "fees?"})), say("It is free.")]
     ev = collect(guide, "e3", message="fees?", state=start(guide, LOAN))
     got = customs(ev, "sources")
-    assert got == [{"items": [{"title": "tariffs_2026.md", "section": "Early repayment"}]}]
+    assert len(got) == 1 and len(got[0]["items"]) == 1                         # sent once
+    item = got[0]["items"][0]
+    assert (item["title"], item["section"]) == ("tariffs_2026.md", "Early repayment")
+    assert item["excerpt"] == "Free." and item["path"].endswith("Early repayment")   # what a tap shows
     names = [e.get("name") or e["type"] for e in ev]
     assert names.index("sources") > max(i for i, n in enumerate(names) if n == "TEXT_MESSAGE_END")
 
@@ -92,3 +95,25 @@ def test_sources_are_resolved_against_the_documents(guide):
     assert got == [{"title": "tariffs_2026.md", "section": "Limits"}]            # a real document; the note is dropped
     assert parse_sources("x\nSources: tariffs_2026.md > Limits", kb, fid) == [{"title": "tariffs_2026.md", "section": "Limits"}]
     assert parse_sources("x\nSources: none", kb, fid) == []
+
+
+def test_a_source_carries_its_passage_and_the_place_in_it(guide):
+    from formguide.knowledge.research import with_passages
+    text = (b"# Tariffs\n\n## Limits\n\nA loan is up to 5 million. Early repayment is free.\n\n## Fees\n\n"
+            b"The late fee is 27,90 EUR after the reminder. The monthly fee is 12,50 EUR.\n")
+    meta = guide.add_document("loan_application", "tariffs_2026.md", text)
+    kb, fid = guide.knowledge, "loan_application"
+    answer = "A late payment costs 27,90 EUR once the reminder has gone out.\nSources: tariffs_2026.md > Fees"
+    (src,) = with_passages(parse_sources(answer, kb, fid), answer, kb, fid)
+    assert src["title"] == "tariffs_2026.md" and src["section"] == "Fees" and src["path"].endswith("Fees")
+    assert src["excerpt"].startswith("The late fee is 27,90 EUR") and src["id"].startswith(meta["doc_id"] + "#")
+    ((start, end),) = src["marks"]
+    assert src["excerpt"][start:end].strip() == "The late fee is 27,90 EUR after the reminder."   # the place itself
+    assert src["doc_id"] == meta["doc_id"] and "url" not in src
+    kb.document_url = "https://bank.example/docs/{filename}#page={page}"
+    assert with_passages(parse_sources(answer, kb, fid), answer, kb, fid)[0]["url"] == "https://bank.example/docs/tariffs_2026.md#page=1"
+    # the stored file's own name is never a source: it resolves to the document
+    bare = f"x\nSources: {meta['doc_id']}.md › Fees"
+    assert parse_sources(bare, kb, fid) == [{"title": "tariffs_2026.md", "section": "Fees"}]
+    # a source the documents do not have keeps what it had
+    assert with_passages([{"title": "nowhere.md"}], answer, kb, fid) == [{"title": "nowhere.md"}]

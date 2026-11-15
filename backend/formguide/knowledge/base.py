@@ -25,7 +25,10 @@ COMPARABLE = 0.5     # "comparable": at least this share of the top score
 class KnowledgeBase:
     def __init__(self, root: str | Path, index: SearchIndex | None = None,
                  scopes: dict[str, list[str]] | None = None, chunk_chars: int = CHUNK_CHARS,
-                 chunk_overlap: int = CHUNK_OVERLAP):
+                 chunk_overlap: int = CHUNK_OVERLAP, document_url: str = ""):
+        # the host's link to a document, for the sources a person taps: "https://host/docs/{filename}#page={page}"
+        # ({filename}, {doc_id}, {namespace}, {page}); empty: a source shows its passage and no link
+        self.document_url = document_url
         self.store = DocumentStore(root, chunk_chars, chunk_overlap)
         self.index: SearchIndex = index or BM25Index()
         # with a vector index the words are searched too: an exact figure or a clause number is lexical

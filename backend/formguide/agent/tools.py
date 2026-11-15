@@ -1311,7 +1311,8 @@ async def _ta_ask_documents(a: dict, ctx: ToolCtx) -> str:
             if current() and used:   # the researcher's own model calls, as one line of the run's numbers
                 current().model_call(t_res, None, sum_usage(used), kind="researcher",
                                      model=model_id(ctx.guide.models.research))
-        items = research.parse_sources(answer, ctx.guide.knowledge, ctx.pack.form_id)
+        items = research.with_passages(research.parse_sources(answer, ctx.guide.knowledge, ctx.pack.form_id),
+                                       answer, ctx.guide.knowledge, ctx.pack.form_id)
         if items:
             ctx.turn_sources = [*(ctx.turn_sources or []), *[i for i in items if i not in (ctx.turn_sources or [])]][:6]
             if ctx.emit and ctx.can("sources"):

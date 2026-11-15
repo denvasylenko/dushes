@@ -173,7 +173,7 @@ KEYS: dict[str, frozenset[str] | None] = {
     "models": frozenset({"agent", "research", "compile", "extract", "choices"}),
     "components": frozenset({"containers", "fields"}),
     "domain_packs": frozenset({"dir", "packs", "provider"}),
-    "knowledge": frozenset({"dir", "index", "scopes", "chunk_chars", "chunk_overlap"}),
+    "knowledge": frozenset({"dir", "index", "scopes", "chunk_chars", "chunk_overlap", "document_url"}),
     "skills": frozenset({"dir"}),
     "tools": None, "max_tool_rounds": None, "language": None, "languages": None, "translate_missing": None,
     "checkpointer": frozenset({"sqlite"}),
@@ -272,7 +272,8 @@ def load_config(path: str | Path) -> GuideConfig:
     k = raw.get("knowledge") or {}
     cfg.knowledge = KnowledgeBase(rel(k.get("dir")) or Path(cfg.data_dir) / "kb", index=_index(k.get("index")),
                                   scopes=k.get("scopes"),
-                                  **{key: int(k[key]) for key in ("chunk_chars", "chunk_overlap") if k.get(key) is not None})
+                                  **{key: int(k[key]) for key in ("chunk_chars", "chunk_overlap") if k.get(key) is not None},
+                                  document_url=str(k.get("document_url") or ""))
     if raw.get("skills"):
         cfg.skills = SkillRegistry.from_dir(rel(raw["skills"].get("dir", "skills")))
     cfg.tools = [import_object(t) for t in raw.get("tools") or []]

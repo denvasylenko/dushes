@@ -65,6 +65,7 @@ def build_researcher(kb: KnowledgeBase, form_id: str, title: str, model: BaseCha
 
 _SECTION_ID = re.compile(r"\b([0-9a-f]{6,}#\d+)\b")
 _DOC_PATH = re.compile(r"/docs/([\w.-]+)/([0-9a-f]{6,})\.md")
+_DOC_ID = re.compile(r"(?<![\w/#])([0-9a-f]{8})(?:\.md)?(?![\w#])")
 
 
 def parse_sources(answer: str, kb: KnowledgeBase | None = None, form_id: str | None = None) -> list[dict]:
@@ -110,7 +111,60 @@ def _resolve(part: str, kb: KnowledgeBase, form_id: str, docs: dict[str, str]) -
     for _ns, doc_id in _DOC_PATH.findall(part):   # a path to a document
         if doc_id in docs:
             return {"title": docs[doc_id]}
+    for doc_id in _DOC_ID.findall(part):   # the stored file's own name ("cbde2404.md"): never shown, always resolved
+        if doc_id in docs:
+            rest = re.search(r"(?:\u203a|>|\u2014)\s*([^()\[\];]+)", part)
+            section = rest.group(1).strip(" ,.") if rest else ""
+            return {"title": docs[doc_id], **({"section": section[:120]} if section else {})}
     return None
+
+
+PASSAGE_CHARS = 1500
+_SPAN = re.compile(r"[^\n.!?]+[.!?]*")
+
+
+def with_passages(items: list[dict], answer: str, kb: KnowledgeBase, form_id: str) -> list[dict]:
+    """Each source with the place it points at: `id` (the section's), `doc_id`, `path`, `page`, `excerpt` (the
+    section's text), `marks` ([[start, end]] in the excerpt: the sentence the answer most likely rests on, the one
+    that shares its figures and words; absent when none does), and `url` when the host gave a link for its
+    documents (`knowledge.document_url`). A source whose section cannot be found keeps its title only."""
+    from . import index as _index
+    from .index import stems
+    STOP = getattr(_index, "STOP", frozenset())   # the small words of a sentence do not mark its place
+
+    said = {t for t in stems(re.sub(r"(?im)^\W*sources?\W*:.*$", "", answer or "")) if t not in STOP}
+    names = {d["filename"]: d for d in kb.documents_for(form_id)}
+    out = []
+    for item in items:
+        doc = names.get(item.get("title") or "")
+        if not doc:
+            out.append(item)
+            continue
+        sections = [c for c in kb._sections(doc["namespace"]).values() if c.doc_id == doc["doc_id"]]
+        want = (item.get("section") or "").strip().lower()
+        named = [c for c in sections if want and (c.section.lower() == want or c.path.lower().endswith(want))]
+
+        def weight(text: str) -> float:
+            words = stems(text)
+            return sum(3.0 if any(ch.isdigit() for ch in t) else 1.0 for t in set(words) if t in said)
+
+        pool = named or sections
+        best = max(pool, key=lambda c: weight(c.text), default=None) if pool else None
+        if best is None or (not named and weight(best.text) == 0):
+            out.append(item)
+            continue
+        text = best.text[:PASSAGE_CHARS]
+        spans = [(m.start(), m.end(), weight(m.group(0))) for m in _SPAN.finditer(text) if m.group(0).strip()]
+        top = max(spans, key=lambda s: s[2], default=None)
+        more = {"id": best.id, "doc_id": best.doc_id, "path": best.path or best.section, "excerpt": text,
+                **({"marks": [[top[0], top[1]]]} if top and top[2] > 0 else {}),
+                **({"page": best.page} if best.page else {})}
+        link = getattr(kb, "document_url", "") or ""
+        if link:
+            more["url"] = (link.replace("{filename}", doc["filename"]).replace("{doc_id}", best.doc_id)
+                           .replace("{namespace}", best.namespace).replace("{page}", str(best.page or 1)))
+        out.append({**item, **({"section": best.section} if not item.get("section") else {}), **more})
+    return out
 
 
 def _text(content: Any) -> str:
