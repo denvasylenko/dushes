@@ -167,8 +167,13 @@ def build_graph(guide: FormGuide):
     def caps_of(state: AgentState) -> frozenset[str] | None:
         return parse_caps(state.get("capabilities"))
 
+    def hidden(state: AgentState) -> bool:
+        """The page shows only the chat: the person does not see this form (ui.form_visible is false)."""
+        return (state.get("ui") or {}).get("form_visible") is False
+
     def actions_of(state: AgentState) -> frozenset[str]:
-        return guide.actions_for(state.get("form_id") or "", caps_of(state))
+        on = guide.actions_for(state.get("form_id") or "", caps_of(state))
+        return on - {"focus_field"} if hidden(state) else on   # nothing on the page to point at
 
     def ctx_for(state: AgentState) -> ToolCtx:
         lay = guide.layout(state["jsx_hash"])
@@ -197,7 +202,7 @@ def build_graph(guide: FormGuide):
         changes = render_changes(ctx.ov, diff, v_prev, version) if v_prev else "CHANGES: this is the first message"
         # The frontend sends the user's local time; fall back to the server clock.
         now = (state.get("ui") or {}).get("now") or datetime.now().strftime("%Y-%m-%d %A %H:%M")
-        block = context_block(outline, focus, changes, now)
+        block = context_block(outline, focus, changes, now, hidden=hidden(state))
         cfg_chars = len(json.dumps(state["config"], ensure_ascii=False))
         w({"kind": "context", "text": block,
            "stats": {"context_tokens": _approx_tokens(block), "config_tokens": round(cfg_chars / 3.2)}})

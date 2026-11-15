@@ -127,6 +127,12 @@ def system_prompt(pack: DomainPack, skills: list[Skill] | None = None,
     return out
 
 
-def context_block(outline: str, focus: str, changes: str, now: str) -> str:
-    return (f"<form_context>\nNOW (user's local time): {now}\n{outline}\n\n{focus}\n\n{changes}\n</form_context>\n"
+HIDDEN_FORM = ("THE PERSON DOES NOT SEE THIS FORM: the page shows only this chat. Collect and confirm every value "
+               "here with cards, read values back in the chat, and never mention the form, a field's place, a tab, a "
+               "button or anything else on the page (\"where do I type it?\": here, in the chat).\n")
+
+
+def context_block(outline: str, focus: str, changes: str, now: str, hidden: bool = False) -> str:
+    return (f"<form_context>\nNOW (user's local time): {now}\n{HIDDEN_FORM if hidden else ''}"
+            f"{outline}\n\n{focus}\n\n{changes}\n</form_context>\n"
             "Reply in the language of the user's message below, not in the language of this context or of tool results.")
