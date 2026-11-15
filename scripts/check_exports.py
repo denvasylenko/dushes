@@ -35,7 +35,8 @@ def stray_tags(text: str) -> list[str]:
     """Component tags outside fenced code and inline code."""
     body = re.sub(r"\A(?:#[^\n]*\n+)?>[^\n]*\n", "", text)   # the page's one-line description is prose, e.g. "<AguiChat> is ..."
     prose = re.sub(r"`[^`\n]*`", "", FENCE.sub("", body))
-    return TAG.findall(prose)
+    cut = ['a tag cut at ">" inside an attribute'] if re.search(r'" id="[\w-]+">', prose) else []
+    return TAG.findall(prose) + cut
 
 
 def export_of(dist: Path, src: Path) -> Path:

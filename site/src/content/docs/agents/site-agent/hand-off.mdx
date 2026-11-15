@@ -58,13 +58,11 @@ In the page, three short steps open the form and start the UI agent: [Dushes in 
 
 ## What each part does
 
-| Part | What it is | Who does it |
-| --- | --- | --- |
-| `form: loan_application` | the form on that page, by its `form_id`: the same form the UI agent already fills | you, in the site map |
-| the note | what the user said that the form needs ("a mortgage, earns 6,000 a month"), kept with the conversation, so it survives a reload | the site agent |
-| "open the page" | a message to your page: go to `/apply`, it holds the form `loan_application` (the [directive](../../../frontend/dushes-in-the-page/#the-directive)) | the site agent sends it, your page follows it |
-| "start, with the note" | one run of the chat once the form is on screen, marked as a hand-off; the UI agent gets the note as its first message | your page |
-| the first card | the fields the note covers, proposed at once | the UI agent |
+- **`form: loan_application`** (you, in the site map): the form on that page, by its `form_id`: the same form the UI agent already fills.
+- **the note** (the site agent): what the user said that the form needs ("a mortgage, earns 6,000 a month"), kept with the conversation, so it survives a reload.
+- **"open the page"** (the site agent sends it, your page follows it): a message to your page: go to `/apply`, it holds the form `loan_application` (the [directive](../../../frontend/dushes-in-the-page/#the-directive)).
+- **"start, with the note"** (your page): one run of the chat once the form is on screen, marked as a hand-off; the UI agent gets the note as its first message.
+- **the first card** (the UI agent): the fields the note covers, proposed at once.
 
 The site agent decides by itself when to hand off: when the user wants something a form does (apply, book, register). On a question ("what are your rates?") it answers and stays.
 

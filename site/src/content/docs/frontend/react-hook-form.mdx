@@ -47,17 +47,15 @@ export function Page() {
 
 ## The example, line by line
 
-| In the example | What it is |
-| --- | --- |
-| [`FormSchema`](../../reference/form-hooks/#formschema) | Your form, described once: its `id`, sections and fields. Dushes has nothing else to read, because a react-hook-form form has no config of its own. |
-| [`sections`](../../reference/form-hooks/#sectionschema) | The tabs or steps of your form. Each has a `name`; that name is what `onReveal` gets. |
-| [`fields`](../../reference/form-hooks/#fieldschema) | One entry per input: its `name` (the same as in `register('full_name')`), a `label`, and a `type` when it is not text. |
-| `options`, `visible` as functions | Rules that depend on other values: the models depend on the make, and the model field is hidden until a make is chosen. |
-| [`useFormguide(form, schema, options)`](../../reference/form-hooks/#useformguide) | The hook: it tells the server about the form, sends the form with every message and puts accepted values into it with `setValue`. |
-| [`onReveal: setTab`](../../reference/form-hooks/#useformguide-onreveal) | "Open this tab." When the chat points at a field or fills one, it first calls `onReveal` with the field's section, here `'applicant'` or `'car'`, so the field is on screen. `setTab` is your own tab state's setter. |
-| [`plugins`](../../reference/form-hooks/#useformguide-plugins) | What the hook built for the chat. Pass it on as it is: `<AguiChat plugins={plugins} />`. |
-| [`ready`](../../reference/form-hooks/#useformguide-ready) | True once the server knows the form. The chat is rendered only then. |
-| `<MyForm form={form} tab={tab} />` | Your own form component, unchanged: it knows nothing about the chat. |
+- **[`FormSchema`](../../reference/form-hooks/#formschema)**: Your form, described once: its `id`, sections and fields. Dushes has nothing else to read, because a react-hook-form form has no config of its own.
+- **[`sections`](../../reference/form-hooks/#sectionschema)**: The tabs or steps of your form. Each has a `name`; that name is what `onReveal` gets.
+- **[`fields`](../../reference/form-hooks/#fieldschema)**: One entry per input: its `name` (the same as in `register('full_name')`), a `label`, and a `type` when it is not text.
+- **`options`, `visible` as functions**: Rules that depend on other values: the models depend on the make, and the model field is hidden until a make is chosen.
+- **[`useFormguide(form, schema, options)`](../../reference/form-hooks/#useformguide)**: The hook: it tells the server about the form, sends the form with every message and puts accepted values into it with `setValue`.
+- **[`onReveal: setTab`](../../reference/form-hooks/#useformguide-onreveal)**: "Open this tab." When the chat points at a field or fills one, it first calls `onReveal` with the field's section, here `'applicant'` or `'car'`, so the field is on screen. `setTab` is your own tab state's setter.
+- **[`plugins`](../../reference/form-hooks/#useformguide-plugins)**: What the hook built for the chat. Pass it on as it is: `<AguiChat plugins={plugins} />`.
+- **[`ready`](../../reference/form-hooks/#useformguide-ready)**: True once the server knows the form. The chat is rendered only then.
+- **`<MyForm form={form} tab={tab} />`**: Your own form component, unchanged: it knows nothing about the chat.
 
 ## What you see
 

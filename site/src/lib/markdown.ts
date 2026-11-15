@@ -36,14 +36,14 @@ const attr = (tag: string, name: string): string | true | undefined => {
 /** A Parameter list (ui/ParamList + Param) -> the signature, a title line and one list line per entry. */
 function paramsToMd(part: string): string {
   return part
-    .replace(/^[ \t]*<ParamList\b[^>]*>/gm, (tag) => {
+    .replace(/^[ \t]*<ParamList\b(?:[^>"]|"[^"]*")*>/gm, (tag) => {   // ">" may sit inside a quoted attribute
       const sig = attr(tag, 'signature'), kind = attr(tag, 'kind'), title = attr(tag, 'title')
       const head = typeof sig === 'string' ? `${typeof kind === 'string' ? `${kind}: ` : ''}\`${sig}\`\n\n` : ''
       return `${head}${title === '' ? '' : `**${typeof title === 'string' ? title : 'Parameters'}**\n`}`
     })
-    .replace(/^[ \t]*<Param\b[^>]*>/gm, (tag) => {
+    .replace(/^[ \t]*<Param\b(?:[^>"]|"[^"]*")*>/gm, (tag) => {
       const type = attr(tag, 'type'), def = attr(tag, 'default')
-      const bits = [typeof type === 'string' ? type : '', attr(tag, 'required') ? 'required' : '',
+      const bits = [typeof type === 'string' ? `\`${type}\`` : '', attr(tag, 'required') ? 'required' : '',   // in code font: a type like Partial<X> is not a tag
         typeof def === 'string' ? `default \`${def}\`` : '', attr(tag, 'deprecated') ? 'deprecated' : ''].filter(Boolean)
       return `- \`${attr(tag, 'name')}\`${bits.length ? ` (${bits.join(', ')})` : ''}: `
     })

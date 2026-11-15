@@ -1,0 +1,282 @@
+{
+ "about": "Docs benchmark runs. A reader with no context (a subagent that saw only the built site's pages) did each task; scored by scripts/docs_bench.py: the answer's keys AND the reader sure (4 or 5 of 5).",
+ "runs": [
+  {
+   "name": "before",
+   "date": "2026-11-15",
+   "commit": "9b93b4a",
+   "reader": "Claude Sonnet 5.5 subagent, no context",
+   "note": "the published docs, before the rewrites",
+   "passed": 7,
+   "of": 10,
+   "keys_alone": 10,
+   "tasks": [
+    {
+     "id": "rhf",
+     "passed": false,
+     "sure": 3,
+     "reread": [
+      "frontend/react-hook-form"
+     ],
+     "not_found": [
+      "what onReveal receives",
+      "what the form component must look like",
+      "whether fields in a closed tab must stay mounted",
+      "the full list of FormSchema and useFormguide options",
+      "the dev proxy for /agent",
+      "MODELS in the example is undefined"
+     ]
+    },
+    {
+     "id": "handoff",
+     "passed": false,
+     "sure": 3,
+     "reread": [
+      "agents/site-agent"
+     ],
+     "not_found": [
+      "the hand-off page is only a pointer with no code",
+      "helpers getState, applyChanges, currentForm, onFormRendered are used but not defined",
+      "how the form is registered with the UI agent",
+      "whether one chat must persist across the route change"
+     ]
+    },
+    {
+     "id": "theme",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "that all radius tokens at 0 make everything square",
+      "a dark-scheme accent"
+     ]
+    },
+    {
+     "id": "confirm-tool",
+     "passed": true,
+     "sure": 4,
+     "reread": [
+      "get-started/quickstart"
+     ],
+     "not_found": [
+      "where the tool module is resolved from",
+      "a tool that calls a real HTTP API and where its key lives",
+      "that the chat draws the confirm card with no extra setup",
+      "model: and models: are two forms of one setting"
+     ]
+    },
+    {
+     "id": "chat-only",
+     "passed": false,
+     "sure": 3,
+     "reread": [
+      "agents/recipes/chat-only-form",
+      "frontend/react-hook-form",
+      "frontend/connect-your-form/skeleton"
+     ],
+     "not_found": [
+      "page-side code for a hidden form",
+      "how the agent learns the four fields",
+      "whether the layout step is needed with no visible form",
+      "getState / applyChanges for this case"
+     ]
+    },
+    {
+     "id": "documents",
+     "passed": true,
+     "sure": 4,
+     "reread": [
+      "agents/how-it-works/knowledge"
+     ],
+     "not_found": [
+      "how to upload to a shared namespace",
+      "where the JSX for compile comes from",
+      "whether the shared set needs its own compile"
+     ]
+    },
+    {
+     "id": "languages",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "translate_missing in Python",
+      "whether i18n covers more than the label",
+      "how the chat's own words (Confirm, Undo) get German",
+      "where the form root key comes from"
+     ]
+    },
+    {
+     "id": "azure",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "the Azure endpoint's format",
+      "whether the research extra is needed"
+     ]
+    },
+    {
+     "id": "deploy",
+     "passed": true,
+     "sure": 4,
+     "reread": [
+      "agents/shared/install"
+     ],
+     "not_found": [
+      "the pip extra for sqlite",
+      "that CORS alone does not stop non-browser callers",
+      "how require_user should identify the site"
+     ]
+    },
+    {
+     "id": "conversations",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "the fields of an entry",
+      "whether a script can share the stores with the live server",
+      "whether FormGuide needs model keys to be constructed",
+      "the page title does not say conversations live there"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "after",
+   "date": "2026-11-15",
+   "commit": "d3398e5+",
+   "reader": "Claude Sonnet 5.5 subagent, no context",
+   "note": "react-hook-form and hand-off re-read on the rewritten pages; the other eight pages did not change, so their baseline answers stand",
+   "passed": 9,
+   "of": 10,
+   "keys_alone": 10,
+   "tasks": [
+    {
+     "id": "rhf",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "how to install the widget (not on npm yet, the repository's location is unclear)",
+      "a sample form component with tabs",
+      "whether the chat's url and the hook's url must match",
+      "whether a field in a tab that is not mounted is found right after setTab"
+     ]
+    },
+    {
+     "id": "handoff",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "how to register the form's skeleton (only linked)",
+      "whether the chat element must survive the route change",
+      "helper functions in the page snippet are not defined"
+     ]
+    },
+    {
+     "id": "theme",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "that all radius tokens at 0 make everything square",
+      "a dark-scheme accent"
+     ]
+    },
+    {
+     "id": "confirm-tool",
+     "passed": true,
+     "sure": 4,
+     "reread": [
+      "get-started/quickstart"
+     ],
+     "not_found": [
+      "where the tool module is resolved from",
+      "a tool that calls a real HTTP API and where its key lives",
+      "that the chat draws the confirm card with no extra setup",
+      "model: and models: are two forms of one setting"
+     ]
+    },
+    {
+     "id": "chat-only",
+     "passed": false,
+     "sure": 3,
+     "reread": [
+      "agents/recipes/chat-only-form",
+      "frontend/react-hook-form",
+      "frontend/connect-your-form/skeleton"
+     ],
+     "not_found": [
+      "page-side code for a hidden form",
+      "how the agent learns the four fields",
+      "whether the layout step is needed with no visible form",
+      "getState / applyChanges for this case"
+     ]
+    },
+    {
+     "id": "documents",
+     "passed": true,
+     "sure": 4,
+     "reread": [
+      "agents/how-it-works/knowledge"
+     ],
+     "not_found": [
+      "how to upload to a shared namespace",
+      "where the JSX for compile comes from",
+      "whether the shared set needs its own compile"
+     ]
+    },
+    {
+     "id": "languages",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "translate_missing in Python",
+      "whether i18n covers more than the label",
+      "how the chat's own words (Confirm, Undo) get German",
+      "where the form root key comes from"
+     ]
+    },
+    {
+     "id": "azure",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "the Azure endpoint's format",
+      "whether the research extra is needed"
+     ]
+    },
+    {
+     "id": "deploy",
+     "passed": true,
+     "sure": 4,
+     "reread": [
+      "agents/shared/install"
+     ],
+     "not_found": [
+      "the pip extra for sqlite",
+      "that CORS alone does not stop non-browser callers",
+      "how require_user should identify the site"
+     ]
+    },
+    {
+     "id": "conversations",
+     "passed": true,
+     "sure": 4,
+     "reread": [],
+     "not_found": [
+      "the fields of an entry",
+      "whether a script can share the stores with the live server",
+      "whether FormGuide needs model keys to be constructed",
+      "the page title does not say conversations live there"
+     ]
+    }
+   ]
+  }
+ ]
+}

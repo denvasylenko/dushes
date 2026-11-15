@@ -2,8 +2,8 @@
 - [x] 0.1 `useFormguide` reference, the react-hook-form example line by line; Hand-off in the guide shape; "Restore defaults" (d3398e5)
 
 ## 1. Measure
-- [ ] 1.1 Ten tasks with answer keys and a scoring script
-- [ ] 1.2 Baseline on the published site (before d3398e5); the number to the CPO
+- [x] 1.1 Ten tasks with answer keys and a scoring script (`site/bench/tasks.json`, `scripts/docs_bench.py`)
+- [x] 1.2 Baseline on the published site (9b93b4a): 7 of 10; after the first rewrites: 9 of 10 (`site/bench/results/2026-11-15.json`). Keys alone passed 10 of 10 while three readers were guessing, so a pass also needs the reader to be sure (4 or 5 of 5)
 
 ## 2. A complete reference
 - [x] 2.1 `scripts/check_ts_reference.py` in CI for the hook and the schema types
