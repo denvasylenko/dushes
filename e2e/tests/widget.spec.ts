@@ -645,3 +645,62 @@ test('a host theme cannot make a field smaller than 16 px on a touch screen, and
     expect(fields.filter((f) => f.px !== 18), `the token set to 18 px: ${where}`).toEqual([])   // the token raises; it never lowers under 16 on touch
   }
 })
+
+// ---------------------------------------------------------------------------------------------- sources: the passage and the document
+// v19: a source under an answer opens its passage (a sheet on a phone, a popover with a mouse); a source with only a
+// link opens the document itself in one tap.
+
+test('a source opens its passage with "1 of N" and a link to the document; a link-only source opens the document in one tap', async ({ page }) => {
+  const excerpt = 'Early repayment is possible at any time. It is free after 3 months. Before that the fee is 1%.'
+  const a = excerpt.indexOf('It is free'), b = excerpt.indexOf(' Before that')
+  const doc = '/research-documents/halden_policies/travel_and_expenses_policy/#3-hotels'
+  const items = [
+    { id: 's1', title: 'Tariffs 2026', section: 'Early repayment', path: ['4 Loans', '4.3 Early repayment'], page: 7, excerpt, marks: [[a, b]], url: doc },
+    { title: 'FAQ', section: 'Fees', quote: 'free after 3 months' },
+    { title: 'Guide', url: '/research-documents/halden_policies/benefits_guide_2026/#:~:text=meal%20voucher' },
+    { title: 'Handbook', url: 'javascript:alert(1)' },
+  ]
+  await agent(page, { events: run(...text('m1', 'Early repayment is free after three months.'), { type: 'CUSTOM', name: 'sources', value: { items } }) })
+  await page.route('**/agent/layouts', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"jsx_hash":"h"}' }))
+  await open(page)
+  await page.evaluate(() => {   // the sources under an answer are drawn by the form-guide plugin
+    const el = document.querySelector('agui-chat') as unknown as { use: (p: unknown) => void }
+    const fg = (window as unknown as { AguiChat: { formguide: (o: unknown) => unknown } }).AguiChat.formguide
+    el.use(fg({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({ props: {}, state: {} }) }))
+  })
+  await say(page, 'is early repayment free?')
+  const links = page.locator('agui-chat .srcs .src')
+  await expect(links).toHaveCount(4)
+  await expect(links.nth(0)).toHaveText('Tariffs 2026 › Early repayment')
+  // a link and no passage: an ordinary link to the document, in a new tab, with its place in the address kept
+  const guide = links.nth(2)
+  expect(await guide.evaluate((e) => e.tagName)).toBe('A')
+  await expect(guide).toHaveAttribute('href', '/research-documents/halden_policies/benefits_guide_2026/#:~:text=meal%20voucher')
+  await expect(guide).toHaveAttribute('target', '_blank')
+  expect(await links.nth(3).evaluate((e) => e.tagName)).toBe('SPAN')          // a script address is never a link
+  // a source with a passage: one tap opens it
+  await links.nth(0).click()
+  const view = page.locator('agui-chat .src-view')
+  await expect(view).toBeVisible()
+  await expect(view).toHaveAttribute('role', 'dialog')
+  await expect(view.locator('.src-head b')).toHaveText('Tariffs 2026')
+  await expect(view.locator('.src-head small')).toContainText('4.3 Early repayment')
+  await expect(view.locator('.src-head small')).toContainText('p. 7')
+  await expect(view.locator('mark')).toHaveText('It is free after 3 months.')   // the sentence the answer rests on
+  await expect(view.locator('.src-pager span')).toHaveText('1 of 2')            // only the sources with a passage are paged
+  await expect(view.locator('a')).toHaveAttribute('href', doc)                  // "Open document" goes to the cited section
+  const screen = page.viewportSize()!
+  // the sheet slides in from below: it must come to rest inside the screen
+  await expect.poll(async () => { const b = (await view.boundingBox())!; return Math.round(b.y + b.height) }, { timeout: 3000 }).toBeLessThanOrEqual(screen.height + 1)
+  const box = (await view.boundingBox())!
+  expect(box.x).toBeGreaterThanOrEqual(0)
+  expect(box.x + box.width).toBeLessThanOrEqual(screen.width + 1)               // inside the screen at 390 too
+  expect(box.y).toBeGreaterThanOrEqual(0)
+  await view.locator('.src-go:not(:disabled)').last().click()                   // the next source
+  await expect(view.locator('.src-head b')).toHaveText('FAQ')
+  await expect(view.locator('.src-pager span')).toHaveText('2 of 2')
+  await expect(view.locator('a')).toHaveCount(0)                                // it has no document to open
+  await page.keyboard.press('Escape')
+  await expect(view).toHaveCount(0)
+  await expect(links.nth(0)).toHaveAttribute('aria-expanded', 'false')
+})
