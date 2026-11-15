@@ -308,8 +308,15 @@ class User:
             got = {v.name: v.value.strip() for v in c.values if v.name in names and v.value.strip()}
             return {"answers": got} if got else None
         opts = q.get("options") or []
+        inp = q.get("input") or {}
+        # a picker takes only its own kind of value: a real person cannot type "2nd floor, no lift" into a number field
+        kind = {"number": "a number field: type digits only", "date": "a date picker: give one date as YYYY-MM-DD",
+                "time": "a time picker: give HH:MM", "year": "a year field: four digits"}.get(str(inp.get("type") or ""), "")
+        limits = ", ".join(f"{k} {inp[k]}" for k in ("min", "max", "step") if k in inp)
+        how = f"\nThe card's input is {kind}{' (' + limits + ')' if limits else ''}. Anything else you want to say goes in your next message, not here." if kind else ""
         c = self.choice_model.invoke([("system", _user_brief(self.sc)), ("human",
-                                      f"The chat asks: {q.get('question')}\nOptions: {[o.get('label') for o in opts]}\nPick one, or type an answer.")])
+                                      f"The chat asks: {q.get('question')}\nOptions: {[o.get('label') for o in opts]}\nPick one, or type an answer.{how}"
+                                      + (f"\nToday is {datetime.now():%Y-%m-%d %A}." if inp.get("type") == "date" else ""))])
         hit = next((o for o in opts if c.option and c.option.strip().lower() == str(o.get("label", "")).strip().lower()), None)
         if hit:
             return {"ids": [hit["id"]]}
