@@ -6,7 +6,8 @@
  * input, send, fab (e.g. agui-chat::part(card) { border-width: 2px }).
  */
 export const CSS = `
-:host { --agui-accent: #1d1d1f; --agui-on-accent: #fff; --agui-link: #0071e3; --agui-bg: #fff; --agui-surface: #fafafb;
+:host { --agui-accent: #1d1d1f; --agui-on-accent: #fff; --agui-link: #0071e3; --agui-bg: var(--hf-bg, #fff);   /* a Herefront page's own background, when it has one */
+  --agui-surface: #fafafb;
   --agui-soft: #f2f2f5; --agui-ink: #1d1d1f; --agui-ink-2: #6e6e73; --agui-ink-3: #86868b; --agui-line: #ececf0;
   --agui-line-2: #e3e3e8; --agui-ok: #34c759; --agui-on-ok: #fff; --agui-danger: #ff3b30; --agui-on-danger: #fff; --agui-danger-ink: #d70015;
   --agui-shadow: rgba(0,0,0,.3); --agui-scrim: rgba(0,0,0,.18); --agui-knob: #fff;
@@ -15,7 +16,7 @@ export const CSS = `
   --agui-ease: cubic-bezier(.28, .11, .32, 1); --agui-fade: 450ms;
   display: block; font-family: var(--agui-font); color: var(--agui-ink); letter-spacing: -0.01em; }
 :host([hidden]) { display: none; }
-:host(.dark) { --agui-danger: #ff453a; --agui-danger-ink: #ff6961; --agui-accent: #f5f5f7; --agui-on-accent: #1d1d1f; --agui-link: #4ea1ff; --agui-bg: #1c1c1e; --agui-surface: #242426;
+:host(.dark) { --agui-danger: #ff453a; --agui-danger-ink: #ff6961; --agui-accent: #f5f5f7; --agui-on-accent: #1d1d1f; --agui-link: #4ea1ff; --agui-bg: var(--hf-bg, #1c1c1e); --agui-surface: #242426;
   --agui-soft: #2c2c2e; --agui-ink: #f5f5f7; --agui-ink-2: #aeaeb2; --agui-ink-3: #8e8e93; --agui-line: #333336; --agui-line-2: #3a3a3c;
   --agui-shadow: rgba(0,0,0,.6); --agui-scrim: rgba(0,0,0,.4); }
 * { box-sizing: border-box; }

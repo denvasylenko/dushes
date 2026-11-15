@@ -101,6 +101,7 @@ Each component reads its own tokens first, falling back to the global ones, so y
 
 | Component | Tokens |
 | --- | --- |
+| the page's background | `bg` (`--agui-bg`): the chat's own background. On a page that defines `--hf-bg` (every Herefront surface does) the chat takes that colour by itself; set `--agui-bg` to override it |
 | panel, header, log | `panel-bg`, `panel-ink`, `header-bg`, `header-ink`, `header-border`, `log-bg` |
 | messages | `bubble-user-bg`, `bubble-user-ink`, `bubble-ai-ink`, `bubble-radius` |
 | cards | `card-bg`, `card-ink`, `card-border`, `card-shadow`, `card-radius`, `card-padding` (a card is set apart by one thing: a soft shadow in light, a lighter fill in dark; no border unless you set one) |

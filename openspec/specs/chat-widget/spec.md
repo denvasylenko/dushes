@@ -141,6 +141,13 @@ A card SHALL be set apart from the feed by one means only: in the light scheme t
 - **WHEN** a card shows in the default light theme
 - **THEN** it is white with a soft shadow and no visible border
 
+### Requirement: The chat takes a Herefront page's background
+When the host page defines `--hf-bg`, the chat's background SHALL be that colour, in either scheme; a host that sets `--agui-bg` (or a theme's `bg`) SHALL win over it, and without both the chat SHALL keep its own background.
+
+#### Scenario: The cabinet in the dark scheme
+- **WHEN** the page defines `--hf-bg: #000` and the chat is dark
+- **THEN** the chat's feed is black, and its cards and field stay one step lighter
+
 ### Requirement: A long placeholder
 A placeholder longer than the composer's field SHALL end with an ellipsis on one line; it SHALL NOT be cut mid-letter or wrap.
 
