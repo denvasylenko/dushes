@@ -57,3 +57,21 @@ def test_without_a_row_to_tick_the_agent_cannot_set_it(guide, model):
     ev = _propose(guide, model, "ct2", caps=["ask"])
     assert interrupt_value(ev) is None                             # no card at all
     assert "is a consent: only the person gives it" in tool_result(model, "p1")
+
+
+def test_a_question_about_a_consent_goes_with_its_field(guide, model):
+    state = start(guide, LOAN)
+    state["config"]["props"]["contact_messenger"]["label"] = "I agree to the cancellation policy"
+    model.script = [say("", ("q1", "ask_user", {"question": "Before I send, do you agree to the cancellation policy?",
+                                                "options": ["Yes", "No"]})),
+                    say("", ("q2", "ask_user", {"field": "contact_messenger",
+                                                "question": "Do you agree to the cancellation policy?"}))]
+    v = interrupt_value(collect(guide, "ct3", message="send it", state=state))
+    assert v["type"] == "ask" and v["field"] == "contact_messenger"       # the second, bound question is the card
+    assert [o["id"] for o in v["options"]] == ["yes", "no"]
+    first = tool_result(model, "q1")
+    assert "asks for a consent" in first and "contact_messenger" in first
+
+    model.script = [say("", ("q3", "ask_user", {"question": "Which day suits you?", "options": ["Mon", "Tue"]}))]
+    v = interrupt_value(collect(guide, "ct4", message="book", state=state))
+    assert v["type"] == "ask" and "field" not in v                         # an ordinary question is untouched
