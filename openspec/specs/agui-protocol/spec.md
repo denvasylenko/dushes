@@ -86,6 +86,27 @@ The transcript of a thread SHALL be exportable as AG-UI messages (user, assistan
 - **WHEN** a client fetches `GET /threads/{id}?format=agui`
 - **THEN** it receives AG-UI messages in order, including the assistant's replies
 
+### Requirement: One event, one line
+Every event sent as server-sent events SHALL be one `data:` line followed by an empty line. The Unicode line separators U+2028, U+2029 and U+0085 SHALL be sent as JSON escapes, never raw, so a reader that splits lines on them does not cut an event.
+
+#### Scenario: A model answer holds a line separator
+- **WHEN** a text delta contains U+2028
+- **THEN** the stream carries it as an escape inside the JSON string, and a client reads the same text back
+
+### Requirement: A failed step says so
+A `TOOL_CALL_RESULT` of a step that failed (the tool raised, refused its arguments, or does not exist) SHALL carry `error: true`; a step that worked SHALL carry no `error`. A move the site agent refuses because the person asked a question is not a failure.
+
+#### Scenario: A tool breaks
+- **WHEN** a tool raises while it runs
+- **THEN** its result has the failure text and `error: true`, and the run goes on
+
+### Requirement: Suggestions are strings
+`CUSTOM suggestions` SHALL carry `items` as a list of plain strings. Field changes a suggestion applies are in `applies`, a list of the same length and order, present only when at least one item fills fields.
+
+#### Scenario: A client reads the chips
+- **WHEN** a run sends three suggestions and the second one fills a field
+- **THEN** `items` holds three strings and `applies` holds three entries, the second one the changes
+
 ### Requirement: Progress and suggestion events
 Besides the existing custom events, a run SHALL send:
 - `CUSTOM tool_progress {parent_id, name, input}` for each step of a tool that works in steps, such as the document researcher, while that tool runs;

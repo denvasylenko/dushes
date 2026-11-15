@@ -772,7 +772,8 @@ class FormGuide:
                     yield {"type": "TOOL_CALL_END", "toolCallId": chunk["id"]}
                 elif k == "tool_result":
                     yield {"type": "TOOL_CALL_RESULT", "messageId": f"{chunk['id']}-result", "toolCallId": chunk["id"],
-                           "content": chunk["content"], "role": "tool"}
+                           "content": chunk["content"], "role": "tool",
+                           **({"error": True} if chunk.get("error") else {})}   # a failed step, said outright
                 elif k == "ui":
                     yield {"type": "CUSTOM", "name": "ui_directive", "value": chunk["directive"]}
                 elif k == "language":   # the agent named the conversation's language on a card

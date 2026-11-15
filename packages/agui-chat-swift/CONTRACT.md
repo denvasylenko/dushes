@@ -19,6 +19,9 @@ wrong.
 `forwardedProps`), answered as a stream of events (SSE, or the binary encoding by `Accept`). Three servers speak
 it: the UI agent (`/agent/run`), the site agent (`/site/run`) and the docs assistant (`/ai/ask/run`).
 
+As SSE every event is one `data:` line and an empty line. The server escapes U+2028, U+2029 and U+0085 inside
+JSON strings, so no event spans lines; a client should still split the byte stream on `\n` only.
+
 A run is one of: a new user message (the last `messages` item, role user); a card answer (`resume`, or
 `forwardedProps.command.resume`); results of client tools (trailing `tool` messages); a prefilled start
 (`forwardedProps.prefill`); a hand-off (`forwardedProps.handoff`, site agent to form).
@@ -32,12 +35,15 @@ and from the next release `model` (a name from the server's model choices, never
 - Text: `TEXT_MESSAGE_START` / `_CONTENT` (deltas) / `_END`, keyed by `messageId`. One run can hold several
   messages. `CUSTOM text_retract {messageId}` takes a message back: remove it (a lead written before tools, or a
   list of options the card now shows). A shorter message may follow at once.
-- Tools: `TOOL_CALL_START` / `_ARGS` / `_END` / `_RESULT`. A failure is a result with an error text, never a
-  `RUN_ERROR`. A step may carry a `parent_id` (the researcher's steps under `ask_documents`).
+- Tools: `TOOL_CALL_START` / `_ARGS` / `_END` / `_RESULT`. A failure is a result with an error text and
+  `error: true`, never a `RUN_ERROR`; a result without `error` worked. A step may carry a `parent_id` (the
+  researcher's steps under `ask_documents`).
 - Cards that wait: `CUSTOM on_interrupt` with a JSON string (legacy mode) and/or `RUN_FINISHED.outcome`
   (structured mode); the value has `type` (`ask`, `set_fields`, `confirm`, `upload`, `review`, `blocks`) and a
   `card_id`. The run ends there; the answer is the next run's `resume`.
 - Cards that do not wait: `CUSTOM card` (display cards from blocks), `receipt`, `sources`, `suggestions`.
+  `suggestions` is `{items: [string], applies?: [changes | null]}`: items are plain strings, never objects;
+  `applies` has the same length and order and is there only when a chip fills fields.
 - Around the turn: `CUSTOM language {lang}` (card words follow it), `ui_directive` (highlight a field),
   `site_directive` (see below), `hand_back`, `agent_note`, `agent_context`, `memory_compacted`, `tool_progress`,
   `run_stats` (right before the terminal event; under the site agent there can be two).

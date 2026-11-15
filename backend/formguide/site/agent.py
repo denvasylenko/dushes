@@ -327,6 +327,8 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                 delta = _text(chunk.content)
                 if delta:
                     if not started:
+                        if stats is not None:
+                            stats.first_token()   # the run's first word (kept once)
                         yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
                         started = True
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": delta}
@@ -346,6 +348,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                 yield {"type": "TOOL_CALL_START", "toolCallId": cid, "toolCallName": name}
                 yield {"type": "TOOL_CALL_ARGS", "toolCallId": cid, "delta": json.dumps(args, ensure_ascii=False)}
                 yield {"type": "TOOL_CALL_END", "toolCallId": cid}
+                bad = False   # the step failed (a tool that broke or does not exist); a refused move is not a failure
                 if name == "search_site":
                     more = [c for c in site.search(str(args.get("query") or ""), k=4) if c.id not in seen]
                     seen.update(c.id for c in more)
@@ -375,6 +378,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                                     stats.model_call(t_res, None, sum_usage(used), kind="researcher")
                     except Exception as e:  # noqa: BLE001 — a failed lookup must not break the turn
                         result = f"The document lookup failed ({type(e).__name__}); answer from the passages or say you do not know."
+                        bad = True
                 elif name == "open_form":
                     page = site.form_page(str(args.get("form_id") or ""))
                     if not page:
@@ -405,11 +409,12 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                     except Exception as e:  # noqa: BLE001 — one failing host tool must not end the answer
                         log.exception("site tool %s failed", name)
                         result = f"The tool failed ({type(e).__name__}); answer without it or say what you could not check."
+                        bad = True
                 else:
-                    result = f"Unknown tool {name}."
+                    result, bad = f"Unknown tool {name}.", True
                 msgs.append(ToolMessage(content=result, tool_call_id=cid))
                 yield {"type": "TOOL_CALL_RESULT", "toolCallId": cid, "messageId": f"tool_{uuid.uuid4().hex[:12]}",
-                       "content": result[:200], "role": "tool"}
+                       "content": result[:200], "role": "tool", **({"error": True} if bad else {})}
             if handed:   # the form agent answers next, in this run
                 break
             if said and all(tc.get("name") in ("suggest_next", "navigate") for tc in calls):
@@ -424,6 +429,8 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                 delta = _text(chunk.content)
                 if delta:
                     if not started:
+                        if stats is not None:
+                            stats.first_token()   # the run's first word (kept once)
                         yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
                         started = True
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": delta}

@@ -101,10 +101,20 @@ def encoder(accept: str | None = None) -> EventEncoder:
     return EventEncoder(accept=accept)
 
 
+# Line separators other than \n: JSON allows them raw inside a string, but many SSE readers (URLSession's
+# bytes.lines, some proxies) split a line on them and cut an event in two. They go out as JSON escapes.
+_SEPARATORS = {0x2028: "\\u2028", 0x2029: "\\u2029", 0x0085: "\\u0085"}
+
+
+def one_line(sse: Any) -> Any:
+    """An encoded SSE event with every Unicode line separator escaped (they can only be inside JSON strings)."""
+    return sse.translate(_SEPARATORS) if isinstance(sse, str) else sse
+
+
 def encode(ev: dict[str, Any], enc: EventEncoder | None = None) -> str:
     """One event as SSE, validated against the AG-UI event models."""
     try:
-        return (enc or EventEncoder()).encode(_EVENT.validate_python(ev))
+        return one_line((enc or EventEncoder()).encode(_EVENT.validate_python(ev)))
     except Exception as e:  # noqa: BLE001 — never break the stream over one event
         log.error("invalid AG-UI event %s: %s", ev.get("type"), e)
-        return f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
+        return one_line(f"data: {json.dumps(ev, ensure_ascii=False)}\n\n")
