@@ -79,6 +79,7 @@ interface ElementProps {
   error?: string                    // your backend's validation message
   i18n?: Record<string, { label?: string }>   // per language: cards show this label, no model call
   language?: string                 // on the form's root element: the language its cards are shown in (wins over the server's `language`)
+  submitted?: boolean | { reference?: string; at?: string }   // on the root: the form was sent (true / its reference), or not yet (false)
   [other: string]: unknown          // passed along, ignored
 }
 // an option may carry its name per language: { id: "car", name: "Car loan", names: { de: "Autokredit" } }
@@ -87,6 +88,7 @@ interface UiState {
   openAccordions?: string[]
   focused?: string                      // the field with the cursor
   now?: string                          // "2026-11-12 Thursday 14:05", so "next Tuesday" works
+  form_visible?: boolean                // false: the person sees only the chat (a form kept in memory); the agent never points at the page
 }
 ```
 

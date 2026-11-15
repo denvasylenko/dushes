@@ -7,7 +7,7 @@ import { Summary } from '../../../../components/ui';
 import RecipeFiles from '../../../../components/recipe/RecipeFiles.astro';
 import RecipeResult from '../../../../components/recipe/RecipeResult.astro';
 
-<Summary what={"A form the user never sees, filled with cards and sent to your server"} when={"A short request (a deputy, an address, a leave day) does not deserve a page of its own"} write={"A domain pack that says the form is hidden, a submit tool, and its name in `confirm_tools`"} />
+<Summary what={"A form the user never sees, filled with cards and sent to your server"} when={"A short request (a deputy, an address, a leave day) does not deserve a page of its own"} write={"`ui.form_visible: false` in the page's state, a submit tool, and its name in `confirm_tools`"} />
 
 Your server owns the form: its fields, rules and the API it is sent to. The page shows only the chat. The UI agent asks for the values with cards, and your own tool sends them, held until the user taps Confirm.
 
@@ -21,26 +21,19 @@ The recipe is the folder `backend/demo/recipes/chat-only-form/`. `deputy_tools.p
 
 ## Tell the agent the form is hidden
 
-Nothing in the library knows the form is invisible: the domain pack says so. This is the part you write. Without it, the agent may say "see the field on the right".
+The page says so in the state it sends with every message: `ui.form_visible: false`. The agent then never offers to show a field, never names a tab or a button, and collects and reads back every value in the chat. No hint in your domain pack is needed for it.
 
-```json title="domain_packs/deputy_change.json"
-{
-  "title": "Change my deputy",
-  "starters": ["Can I change my deputy?", "Who is my deputy now?"],
-  "flow_hints": [
-    "The person does not see this form: the page shows only this chat. Collect every value here with cards and never point at a field, a button or a form on the page.",
-    "When all four values are set, send the change with submit_deputy_change."
-  ]
-}
+```json title="state (part), every run"
+{ "form_id": "deputy_change", "ui": { "form_visible": false } }
 ```
 
-```yaml title="formguide.yaml"
-domain_packs: {dir: domain_packs}
-```
+Measured by QA on two forms with no hint in their packs, 5 runs each: no pointing at the page in 10 of 10 runs with the flag, 0 of 10 without it ([scenarios](https://github.com/denvasylenko/dushes/tree/main/backend/evals)). The recipe's own pack still carries a hint from before the flag existed; it does no harm.
+
+A hidden form needs a tool that sends it, as the recipe's `submit_deputy_change`. Without one, the agent can only say the details are recorded and that this chat cannot send them.
 
 ## The page
 
-The page still sends the form's state with every message, but keeps it in memory instead of on screen: describe the four fields once with `schemaForm(schema, access)`, and keep the values in a plain object. Fetch the schema from your server, so the server stays the one place the form is defined. See [React Hook Form and schemaForm](../../../frontend/react-hook-form/).
+The page still sends the form's state with every message, with `ui: {form_visible: false}`, but keeps it in memory instead of on screen: describe the four fields once with `schemaForm(schema, access)`, and keep the values in a plain object. Fetch the schema from your server, so the server stays the one place the form is defined. See [React Hook Form and schemaForm](../../../frontend/react-hook-form/).
 
 ## What happens
 
@@ -72,7 +65,7 @@ Two scenarios: the user confirms (the change must be sent), and the user closes 
 
 ## Pitfalls
 
-- Without the hint in the domain pack, nothing stops the agent from pointing at the page. Keep the hint, and say "never point at a field, a button or a form".
+- Without `ui.form_visible: false`, the agent assumes the person sees the form and may say "see the field on the right". Send the flag with every run, not only the first.
 - Hold the submit tool by name in `confirm_tools`; asking the model to "confirm first" in the prompt is not a hold.
 - The confirm card reads "Run submit_deputy_change?" with the tool's arguments: give it one readable `summary` argument.
 - The held tool's card is the only confirmation: the agent never asks "Send it?" by itself, in words or with a card of its own. Do not ask for a confirmation in your domain pack either.

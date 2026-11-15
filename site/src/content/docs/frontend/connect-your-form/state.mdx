@@ -82,6 +82,7 @@ Your components store values differently? That is normal: describe them once (1.
 | `openAccordions` | `["acc_personal"]` | names of the expanded accordions |
 | `focused` | `"loan_amount"` | the field the cursor is in, so "what goes here?" just works |
 | `now` | `"2026-11-11 Wednesday 14:05"` | the user's local time, so "next Tuesday" is understood |
+| `form_visible` | `false` | the person sees only the chat (the form is kept in memory): the agent never points at a field, a tab or a button and fills everything through cards ([A form only in the chat](../../../agents/recipes/chat-only-form/)) |
 
 All of it is optional, but with it the agent can say "the field just below" instead of a long path.
 
