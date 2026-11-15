@@ -18,3 +18,7 @@ export const loadSources = (): Promise<typeof fillSources> => import('./tip').th
 import type { adoptTipCss } from './tip-css'
 /** The styles of what opens on demand (the reply window): the same chunk. */
 export const loadTipCss = (): Promise<typeof adoptTipCss> => import('./tip').then((m) => m.adoptTipCss)
+
+import type { voice } from './voice'
+/** The experimental voice mode: its own chunk, fetched only when the host turned voice on. */
+export const loadVoice = (): Promise<typeof voice> => import('./voice').then((m) => m.voice)

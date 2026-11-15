@@ -247,6 +247,18 @@ await chat.run({
 
 With the form plugin and `persist-thread` on (the default), a reload shows the same conversation, including a card the user had not answered. The thread id lives in `localStorage`; nothing else is needed. `persist-thread="off"` starts fresh every time; `chat.reset()` starts a new conversation by hand.
 
+## Experimental voice mode
+
+Talking to the chat instead of typing: the person's words arrive as their message, the chat answers as it always does and a voice speaks the answer. It is off unless you turn it on, and it needs a host that serves the voice routes (the demo host does; see the [voice-mode change](https://github.com/denvasylenko/dushes/tree/main/openspec/changes/voice-mode)).
+
+```html
+<agui-chat url="/agent/run" voice-mode></agui-chat>
+```
+
+With `voice-mode` the chat fetches one more file, `agui-chat.voice.js`, next to its script, and its + menu gets "Experimental voice mode". The first time, the person enters their access code and voice starts; after that a small orb sits in the message box and one tap starts it. What the person says appears as their message while they speak, and the answer is the chat's own message. An orb above the composer shows what is happening: listening, thinking (with the turn's step under it), speaking, silent. The microphone button beside the composer is silent mode (the voice stops, the chat goes on in text); the close button leaves voice mode. When the host ends a conversation (a limit, a silence, a lost connection), one line in the chat says why.
+
+No key reaches the browser: the chat posts a WebRTC offer to your host and your host answers it. The routes are `unlock`, `session`, `events` and `end` under `voice-url` (by default `/voice` on the host of `url`).
+
 ## Features the server turns on
 
 Some things appear only when the backend enables them; the widget draws them when they arrive.
@@ -313,6 +325,8 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `composerShadow` | `composer-shadow` | `soft` | the composer's shadow: `soft`, `raised` or `none`; exact values with `--agui-composer-shadow` and `--agui-composer-shadow-focus` |
 | `collapseLines` | `collapse-lines` | `8` | a message taller than this many lines folds, with Show more; `0`: never |
 | `collapseAnswers` | `collapse-answers` | off | fold the assistant's long answers too |
+| `voice-mode` | - | off | turns the experimental voice mode on (see above); without it nothing of it is fetched or shown |
+| `voice-url` | `voiceUrl` | `/voice` on the host of `url` | where the voice routes are |
 | `transcribe-url` | `transcribeUrl` | next to `url` | where recordings go for server dictation; no answer in 30 s counts as failed ("Couldn't transcribe" with Try again, the recording kept), a 503 or 429 says "Busy, try again in a moment" |
 | `attach` | `attach` | on | the + button (files and photos), when something can upload |
 | `attach-accept` | `attachAccept` | what the plugin accepts | e.g. `.pdf,.jpg` |

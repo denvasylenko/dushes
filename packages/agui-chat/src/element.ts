@@ -6,7 +6,7 @@ import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, recognitionBlocked, record, recordingSupported, speechReliable, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
-import { loadMenu, loadSpot, loadTip, loadTipCss } from '#tip-loader'
+import { loadMenu, loadSpot, loadTip, loadTipCss, loadVoice } from '#tip-loader'
 import type { TipRow } from './tip'
 import { hasTheme, themeCss, THEME_PACKS, loadTheme } from './themes'
 import { watchParts } from './parts'
@@ -312,6 +312,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this._setThread(this._opts.threadId || this._savedThread() || uid(), false)
     this._apply()
     void this._restore()
+    if (this.hasAttribute('voice-mode')) void loadVoice().then((f) => f(this as never), () => {})   // the experimental voice mode, its own file
     if (this._opts.open) this.open()
   }
 

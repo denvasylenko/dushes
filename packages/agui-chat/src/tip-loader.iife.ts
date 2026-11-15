@@ -25,3 +25,7 @@ export const loadSources = (): Promise<typeof fillSources> => tip().then(() => (
 import type { adoptTipCss } from './tip-css'
 /** The styles of what opens on demand (the reply window): in agui-chat.tip.js too. */
 export const loadTipCss = (): Promise<typeof adoptTipCss> => tip().then(() => (globalThis as unknown as { AguiChat: { adoptTipCss: typeof adoptTipCss } }).AguiChat.adoptTipCss)
+
+import type { voice } from './voice'
+/** The experimental voice mode: agui-chat.voice.js next to this script, fetched only when the host turned voice on. */
+export const loadVoice = (): Promise<typeof voice> => loadFile('agui-chat.voice.js').then(() => (globalThis as unknown as { AguiChat: { voice: typeof voice } }).AguiChat.voice)
