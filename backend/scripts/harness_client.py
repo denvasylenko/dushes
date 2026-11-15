@@ -302,6 +302,7 @@ class Visit:
         self.suggestions: list[list[str]] = []   # each set of quick replies offered, in order
         self.stats: list[dict] = []        # per run: ttft_ms, total_ms, tools, tool_errors, output_tokens, model_ms
         self.replies: list[tuple[str, str]] = []   # (message id, text) of every assistant reply, as the widget keeps them
+        self.leads: list[dict] = []                # per question card with options: its labels and the text left on the page in that run
         self.said: list[tuple[str, str]] = []      # (message id, text) of every message the user sent
         self.ticks: set[str] = set()               # the consents this guest ticks themself (a scenario's answers: {name: true})
         self.go(path)
@@ -380,6 +381,11 @@ class Visit:
                         args = {"raw": raw}
                     self.tools.append((tool, args))
                     self.log.append(f"   ⚙ {tool}({_short(args, 110)})")
+                elif name == "text_retract":   # the widget removes this message: its text is replaced before a card shows
+                    gone = str((e.get("value") or {}).get("messageId") or "")
+                    texts.pop(gone, None)
+                    self.replies = [r for r in self.replies if r[0] != gone]
+                    self.log.append("   \u2702 the text above was taken back (replaced before the card)")
                 elif name == "site_directive":
                     directive = e["value"]
                 elif name == "suggestions":   # the quick replies the chat offers after an answer
@@ -412,6 +418,9 @@ class Visit:
                 self._run({"threadId": self.thread, "state": self.state(), "forwardedProps": {"handoff": True}}, depth + 1)
                 return
         if interrupt:
+            labels = [str(o.get("label") or "") for o in interrupt.get("options") or [] if o.get("label")]
+            if interrupt.get("type") == "ask" and len(labels) >= 2:
+                self.leads.append({"options": labels, "text": "\n".join(t for t in texts.values() if t.strip())})
             self._card(interrupt, depth)
 
     def _fill_from_answer(self, card: dict, reply: dict) -> bool:

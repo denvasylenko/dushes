@@ -114,3 +114,9 @@ def test_a_model_without_a_price_stops_a_paid_run():
     assert rd.call_usd({"model": "", "input": 10_000, "output": 1_000, "cache_read": 0, "cache_creation": 0}, "anthropic:claude-haiku-5-5") == pytest.approx(0.0015)
     with pytest.raises(SystemExit):
         rd.call_usd({"model": "some-unknown-model", "input": 1, "output": 1, "cache_read": 0, "cache_creation": 0})
+
+
+def test_the_retrieval_check_runs_without_a_model():
+    scs = [s for s in rd.load() if s.id in ("oc_q_dd1840_torque", "oc_t_made_where")]
+    r = rd.retrieval(scs, 8)
+    assert r["by"]["orrin_catalogue"] == [1, 1] and r["missed"] == []   # the DD-1840 entry is among the top 8; a not_found has no points

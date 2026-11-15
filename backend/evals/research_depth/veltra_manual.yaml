@@ -149,7 +149,7 @@ scenarios:
       - {say: "HX-50: 32.9 x 0.95 x 0.96 = about 30.0 kW, only just enough", keys: ["30.0", "30,0", "30.01", "31.3", "31,3", "31.26"], where: installation_manual.pdf, derived: true}
       - {say: "HX-35 is too small: about 21.2 kW", keys: ["21.2", "21,2", "21.1", "21,1", "21.16", "22.0", "22,0"], where: installation_manual.pdf, derived: true}
       - {say: "25% glycol raises the required flow by 6%", keys: ["6%", "6 %", "6 percent", "1.06"], where: installation_manual.pdf}
-    numbers_ok: ["30.0", "30.01", "30.005", "31.26", "31.3", "21.16", "21.2", "22.04", "22.0", "47.88", "47.9", "49.9", "49.88", "9.1", "9.12", "6.8", "6.78", "8.6", "6.4", "14.5", "52.5", "23.2", "50", "35", "80"]
+    numbers_ok: ["0.96", "1.06", "0.95", "30.0", "30.01", "30.005", "31.26", "31.3", "21.16", "21.2", "22.04", "22.0", "47.88", "47.9", "49.9", "49.88", "9.1", "9.12", "6.8", "6.78", "8.6", "6.4", "14.5", "52.5", "23.2", "50", "35", "80"]
     pair: sizing
   - id: vm_d_models_compare
     group: deep

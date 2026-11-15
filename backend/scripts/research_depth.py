@@ -459,6 +459,34 @@ async def run(scs: list[Scenario], model: Any, model_name: str, engine: str, rep
         return list(await asyncio.gather(*jobs))
 
 
+def retrieval(scs: list[Scenario], k: int = 8) -> dict:
+    """No model: for each required point, is a section of its document that holds its key among the top `k` hits of
+    one search with the person's question? It tells a retrieval miss from a model miss (one search is the quick
+    mode's whole retrieval; a deep answer searches per sub-question, so its number here is a floor)."""
+    out: dict[str, Any] = {"k": k, "by": {}, "missed": []}
+    with tempfile.TemporaryDirectory() as tmp:
+        for corpus in sorted({s.corpus for s in scs}):
+            kb = build_kb(corpus, Path(tmp))
+            t0 = time.perf_counter()
+            n = 0
+            for s in [x for x in scs if x.corpus == corpus]:
+                hits = [c for _score, c in kb.search(corpus, s.question, k=k)]
+                n += 1
+                for p in s.points:
+                    if p.derived or not p.where:
+                        continue
+                    name = p.where.split(">")[0].strip()
+                    ok = any(str(getattr(c, "title", "")) == name and any(has_key(c.text, key) for key in p.keys) for c in hits)
+                    for key in (f"{corpus}/{s.group}", f"all/{s.group}", corpus):
+                        d = out["by"].setdefault(key, [0, 0])
+                        d[0] += ok
+                        d[1] += 1
+                    if not ok:
+                        out["missed"].append(f"{s.id}: {p.say} ({name})")
+            out["by"][corpus + " ms per search"] = round(1000 * (time.perf_counter() - t0) / max(1, n), 1)
+    return out
+
+
 # ===================================================================== the report
 
 
@@ -612,6 +640,7 @@ def main() -> int:
     ap.add_argument("--key-var", default="ANTHROPIC_API_KEY", help="the environment variable --keychain fills")
     ap.add_argument("--label", default="")
     ap.add_argument("--set", default="research-v1", help="the scenario set's name, written to the report")
+    ap.add_argument("--retrieval", type=int, nargs="?", const=8, metavar="K", help="no model: the share of required points whose section is in the top K hits of one search (default 8)")
     ap.add_argument("--check", action="store_true", help="validate the scenarios against the corpora offline and exit")
     ap.add_argument("--report", type=Path, help="rebuild the Markdown report of an earlier run's JSON and exit")
     a = ap.parse_args()
@@ -629,6 +658,13 @@ def main() -> int:
               f"corpora {sorted({s.corpus for s in scs})}")
         print("\n".join(problems) if problems else "OK")
         return 1 if problems else 0
+    if a.retrieval:
+        r = retrieval([s for s in scs if (not a.corpus or s.corpus in a.corpus) and (not a.heldout or s.heldout) and (not a.tuning or not s.heldout)], a.retrieval)
+        for key, v in sorted(r["by"].items()):
+            print(f"{key:<34} " + (f"{v[0]:>3} of {v[1]:<3} points in the top {r['k']} ({v[0] / v[1]:.0%})" if isinstance(v, list) else f"{v}"))
+        RUNS.mkdir(exist_ok=True)
+        (RUNS / f"research-depth-retrieval-{datetime.now():%Y%m%d-%H%M%S}.json").write_text(json.dumps(r, ensure_ascii=False, indent=1))
+        return 0
     pick = [s for s in scs if (not a.ids or s.id in a.ids) and (not a.corpus or s.corpus in a.corpus) and (not a.group or s.group in a.group)
             and (not a.heldout or s.heldout) and (not a.tuning or not s.heldout)]
     if a.pilot:
