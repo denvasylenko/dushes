@@ -437,3 +437,94 @@ test('on a touch screen a tap in the middle of an attached picture opens it, nev
   await expect(tile).toHaveCount(1)                                                       // and is still attached
   await ctx.close()
 })
+
+// ---------------------------------------------------------------------------------------------- the + menu
+// The owner (2026-11-15): the plus is a menu, not an attach button, even while it holds one or two rows.
+
+async function openWithUpload(page: Page, options = '{}'): Promise<void> {
+  await agent(page, { events: run() })
+  await open(page)
+  await page.evaluate((extra) => {
+    (document.querySelector('agui-chat') as unknown as { options: object }).options =
+      { upload: async (f: File) => ({ id: 'a1', filename: f.name }), ...JSON.parse(extra) }
+  }, options)
+  await expect(page.locator('agui-chat .clip')).toBeVisible()
+}
+
+test('the plus opens a menu; the file picker opens only from its row', async ({ page }) => {
+  await openWithUpload(page)
+  const plus = page.locator('agui-chat .clip'), menu = page.locator('agui-chat .menu[role=menu]')
+  let pickers = 0
+  page.on('filechooser', () => { pickers += 1 })
+  await plus.click()
+  await expect(menu).toBeVisible()
+  await expect(plus).toHaveAttribute('aria-expanded', 'true')
+  await page.waitForTimeout(300)
+  expect(pickers).toBe(0)                                     // the plus alone never opens the picker
+  const files = menu.locator('button[role=menuitem][data-id=files]')
+  await expect(files.locator('.menu-l')).toHaveText(/files|photos/i)
+  const chooser = page.waitForEvent('filechooser')
+  await files.click()
+  await chooser
+  await expect(menu).toHaveCount(0)                           // a pick closes the menu
+})
+
+test('the plus says it opens a menu before it is ever opened (aria-haspopup, aria-expanded)', async ({ page }) => {
+  test.fail(true, 'be950b8 sets both only when the menu first opens (menu.ts); reported to Design 2026-11-15. Remove this line when it passes')
+  await openWithUpload(page)
+  const plus = page.locator('agui-chat .clip')
+  await expect(plus).toHaveAttribute('aria-haspopup', 'menu')   // a screen reader hears "menu" on the button itself
+  await expect(plus).toHaveAttribute('aria-expanded', 'false')
+})
+
+test('the plus menu closes on Escape, on a press outside and on the plus itself, and never covers the field', async ({ page }) => {
+  await openWithUpload(page)
+  const plus = page.locator('agui-chat .clip'), menu = page.locator('agui-chat .menu[role=menu]')
+  await plus.click()
+  await expect(menu).toBeVisible()
+  const m = (await menu.boundingBox())!, f = (await composer(page).boundingBox())!, view = page.viewportSize()!
+  expect(m.y + m.height).toBeLessThanOrEqual(f.y + 1)        // above the field, not over it
+  expect(m.x).toBeGreaterThanOrEqual(0)
+  expect(m.x + m.width).toBeLessThanOrEqual(view.width)       // inside the screen at 390 px too
+  await page.keyboard.press('Escape')
+  await expect(menu).toHaveCount(0)
+  await expect(plus).toBeFocused()                            // focus goes back where it came from
+  await expect(plus).toHaveAttribute('aria-expanded', 'false')
+  await plus.click()
+  await expect(menu).toBeVisible()
+  await page.mouse.click(view.width / 2, 20)                  // a press outside
+  await expect(menu).toHaveCount(0)
+  await plus.click()
+  await expect(menu).toBeVisible()
+  await plus.click()                                          // the plus is a toggle
+  await expect(menu).toHaveCount(0)
+})
+
+test('the plus menu works from the keyboard: arrows move, Enter chooses', async ({ page }, info) => {
+  test.skip(info.project.name.endsWith('-phone'), 'a hardware keyboard: the laptop size')
+  await openWithUpload(page, JSON.stringify({ commands: [{ id: 'help', label: 'Help', send: 'What can you do?' }] }))
+  const plus = page.locator('agui-chat .clip'), menu = page.locator('agui-chat .menu[role=menu]')
+  await plus.focus()
+  await page.keyboard.press('Enter')
+  await expect(menu).toBeVisible()
+  const rows = menu.locator('button[role=menuitem]')
+  expect(await rows.count()).toBeGreaterThanOrEqual(2)        // files and commands
+  const focused = () => page.evaluate(() => (document.querySelector('agui-chat')!.shadowRoot!.activeElement as HTMLElement | null)?.dataset.id ?? null)
+  await expect.poll(focused).toBe('files')                    // opened from the keyboard: the first row has the focus
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).not.toBe('files')                   // the arrow moved it
+  await page.keyboard.press('End')
+  const last = await focused()
+  await page.keyboard.press('Home')
+  expect(await focused()).toBe('files')
+  expect(last).not.toBe('files')
+  const chooser = page.waitForEvent('filechooser')
+  await page.keyboard.press('Enter')
+  await chooser
+})
+
+test('with attachments off and nothing else to offer there is no plus at all', async ({ page }) => {
+  await agent(page, { events: run() })
+  await open(page)                                            // no upload, no commands, no host rows
+  await expect(page.locator('agui-chat .clip')).toBeHidden()
+})
