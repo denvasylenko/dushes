@@ -40,6 +40,8 @@ Controls are the letter; this is the spirit. It applies to every surface we ship
 
 On the docs site this means: a page opens with its one-line promise and the example; tiles (`border-radius` 20-28 px, soft fill) for galleries and choices; tabs for variants instead of repeated blocks; navigation always one tap away (every page keeps the sidebar; no page is a dead end). Check against Apple's product and developer pages: if ours looks busier, remove until it does not.
 
+**What the owner expects** (the bar, which reference answers for what, the hard requirements, how to show work, spending discipline): `references/owner-brief.md`. Read it before any new screen, card or flow; where it and this file disagree, it is right.
+
 ## Before the first line of code: a mini-brief (required)
 
 Answer in writing, in the reply to the user or in the OpenSpec change's `design.md`, in 5 lines:
