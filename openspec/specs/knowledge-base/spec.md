@@ -60,3 +60,11 @@ The knowledge base SHALL give, without a model call, each document's outline (he
 #### Scenario: Planning a deep run
 - **WHEN** a deep run plans its sub-questions
 - **THEN** it reads the outlines of the documents in scope, not their text
+
+### Requirement: What a question's words count for
+The small words of a question (articles, question words, auxiliaries, in the languages the product ships) SHALL NOT rank a section; figures and codes in the question SHALL always count. Every piece of a table that is cut into several sections SHALL start with the table's header row. The document's name SHALL stand at the top of every section's heading path, whether or not the file has a title line of its own.
+
+#### Scenario: A row of a long table
+- **WHEN** a table of 80 sites is cut into several sections and the question asks what guarding site MR-061 has
+- **THEN** the section with that row is found, because it carries the header "Guarding"
+
