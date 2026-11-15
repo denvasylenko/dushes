@@ -492,7 +492,8 @@ def active(thread_id: str) -> bool:
 ALOUD = ("\n\n[The person is talking to you by voice and will HEAR your answer. Answer in one or two short spoken "
          "sentences: no lists, no markup, no headings, no \"still open\" inventory. Say what you did and, at most, the "
          "one next thing. Their words reached you through speech recognition: a filler word or an odd spelling is "
-         "not part of the value.]")
+         "not part of the value. Propose only what they said or clearly named; when a field would need a guess "
+         "(new or used, which of several options), do not propose it: ask for it in one short question.]")
 
 
 def heard_as(message: str | None, aloud: bool) -> str | None:
@@ -574,8 +575,13 @@ def _was_said(row: dict, said: str, numbers: list[str]) -> bool:
             # a number carries the value; the words beside it are its unit ("36 months" for a spoken "36")
             if digits in numbers or (len(digits) > 1 and digits in stream) or digits.lstrip("0") in numbers:
                 return True
-        elif words and all(w in words_said for w in words):
-            return True
+        elif words:
+            # the field's own words are not the choice: "for my car" names "Car loan" of the field "Loan type". Every
+            # other word of the value must have been said, so "New car" is not named by "for my car".
+            own = {w.rstrip("s") for w in re.findall(_LETTERS, str(row.get("label") or "").lower())}
+            names_it = [w for w in words if w.rstrip("s") not in own] or words
+            if all(w in words_said or w.rstrip("s") in words_said or w + "s" in words_said for w in names_it):
+                return True
     return False
 
 

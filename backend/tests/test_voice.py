@@ -308,6 +308,14 @@ def test_only_what_the_person_said_into_an_empty_field_is_quiet():
     # the owner's second session: "let's try 36" for a term whose label is "36 months" came as a card
     term = [row("loan_term", {"id": 36, "name": "36 months"}, "36 months")]
     assert voice.quiet({"changes": term}, "Like, okay, let's try 36") and not voice.quiet({"changes": term}, "let's try 48")
+    # the CPO's decision from that session: "for my car" clearly names the option "Car loan" of the field "Loan
+    # type" and is filled quietly; "New car" for the purpose is a guess (new or used was not said) and is not
+    said_car = "so what is left, this is for my car"
+    car = row("loan_type", {"id": "auto", "name": "Car loan"}, "Car loan", label="Loan type")
+    new = row("loan_purpose", {"id": "new_car", "name": "New car"}, "New car", label="Loan purpose")
+    assert voice.quiet({"changes": [car]}, said_car)
+    assert not voice.quiet({"changes": [new]}, said_car) and not voice.quiet({"changes": [car, new]}, said_car)
+    assert voice.quiet({"changes": [new]}, "it is for a new car") and not voice.quiet({"changes": [car]}, "a mortgage please")
     assert not voice.quiet({"changes": [row("first_name", "Denis")]}, "") and not voice.quiet({"changes": []}, "x")
     assert not voice.quiet({"type": "ask", "changes": [row("first_name", "Denis")]}, "Denis")
 
