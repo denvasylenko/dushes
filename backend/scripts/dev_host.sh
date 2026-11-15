@@ -29,6 +29,9 @@ if [ -z "${VOICE_CODES:-}" ]; then
   VOICE_CODES="$(security find-generic-password -a "$USER" -s dushes-voice-codes -w 2>/dev/null || true)"
 fi
 [ -n "${VOICE_CODES:-}" ] && export VOICE_CODES
+# a voice conversation may last ten minutes here (the CPO, 2026-11-15: five was short for filling a form);
+# the day's voice budget is unchanged
+export VOICE_MAX_SECONDS="${VOICE_MAX_SECONDS:-600}"
 export DEMO_PER_VISITOR_DAY="${DEMO_PER_VISITOR_DAY:-200}" DEMO_PER_IP_DAY="${DEMO_PER_IP_DAY:-400}" DEMO_PER_THREAD="${DEMO_PER_THREAD:-100}"
 
 say() { echo "[dev-host $(date +%H:%M:%S)] $*"; }
