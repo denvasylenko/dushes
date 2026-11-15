@@ -249,6 +249,15 @@ describe('the experimental voice mode', () => {
     s.push({ type: 'hearing', delta: 'And' })                                   // until the person speaks again
     await tick(10)
     expect($<HTMLAudioElement>(el, '.vo-dock audio').muted).toBe(false)
+    // a stop silences that one answer, not the voice: a typed message (or a card's answer) after it is heard again
+    s.push({ type: 'heard', text: 'Which ones exactly?' })
+    await tick(30)
+    $(el, '.vo-orb').click()
+    await tick(30)
+    expect($<HTMLAudioElement>(el, '.vo-dock audio').muted).toBe(true)
+    void el.send('typed after a stop')
+    await tick(30)
+    expect($<HTMLAudioElement>(el, '.vo-dock audio').muted).toBe(false)
   })
 
   it('never leaves a microphone on without the orb: a tap during the permission prompt, a closed chat, a new chat', async () => {

@@ -12,7 +12,8 @@ import { TraceLine, TracePanel, type RunStats, type Turn } from './Trace'
 import type { Config, JsxNode, RevealStep, UiDirective, UiState } from './types'
 
 // ?dictation=server tries Whisper on the server even where the browser can recognise speech (the demo's switch)
-// the experimental voice mode: only with ?voice in the address (it needs a host with the voice routes and a personal code)
+// the experimental voice mode: on wherever the host has the voice routes (asked once, below); ?voice forces the menu
+// row on a host without them
 const VOICE = new URLSearchParams(location.search).has('voice')
 const DICTATION = ((): 'auto' | 'server' | 'browser' => {
   const d = new URLSearchParams(location.search).get('dictation')
@@ -86,6 +87,14 @@ export default function App() {
   const asked = useRef('')   // what the running turn answers: the user's message, or a card's answer
   const [busy, setBusy] = useState(false)
   const [thread, setThread] = useState('')
+  // does this host have a voice? Its routes answer 403 to a call with no pass; a host without them has no such route.
+  // (Not the code check: that one counts tries.)
+  const [voice, setVoice] = useState(VOICE)
+  useEffect(() => {
+    if (VOICE) return
+    fetch('/voice/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"talk":""}' })
+      .then((r) => { if (r.status === 403) setVoice(true) }, () => {})
+  }, [])
   const [lang, setLang] = useState(() => store.get<string>('formguide:chat-lang') ?? '')
   const [view, setView] = useState<'form' | 'manager'>('form')
 
@@ -305,7 +314,7 @@ export default function App() {
           persistThread={false}
           lang={lang}
           dictation={DICTATION}   // auto: the browser's recognition where it works, else Whisper on the server
-          voiceMode={VOICE}
+          voiceMode={voice}
           title={form.title === form.formId ? "Form assistant" : form.title}
           subtitle="formguide · AI assistant, can make mistakes"
           plugins={plugins}

@@ -141,7 +141,8 @@ export function voice(chat: Chat): void {
   const typing = (): void => { foot.classList.toggle('vo-typing', on && (!!input.value || root.activeElement === input)) }
   input.addEventListener('input', typing); input.addEventListener('focus', typing); input.addEventListener('blur', () => setTimeout(typing, 0))
   // a turn runs while the element says `busy` (it ends that on a finished, a stopped and a failed turn alike)
-  new MutationObserver(() => { busy = chat.hasAttribute('busy'); caption = ''; if (!busy) step.textContent = ''; paint(); if (!busy) setTimeout(typing, 0) }).observe(chat, { attributes: true, attributeFilter: ['busy'] })
+  new MutationObserver(() => { const was = busy; busy = chat.hasAttribute('busy'); caption = ''; if (busy && !was) audio.muted = false;   // a new turn (spoken, typed or a card's answer) is heard again: a stop silences one answer, not the voice
+    if (!busy) step.textContent = ''; paint(); if (!busy) setTimeout(typing, 0) }).observe(chat, { attributes: true, attributeFilter: ['busy'] })
   // the turn's own step, under the orb while it works (the conversation's own live line is hidden meanwhile)
   chat.addEventListener('agui:event', (e) => {
     const ev = (e as CustomEvent).detail as { type?: string; name?: string; value?: unknown } | undefined
