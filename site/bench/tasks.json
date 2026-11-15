@@ -1,0 +1,25 @@
+{
+  "about": "The docs benchmark: ten things a developer comes to do. A reader with no context gets one task and only the built site's pages, and answers with the exact code and steps. `must` lists what a right answer has to contain (regular expressions, case-insensitive; every one must match). Scored by scripts/docs_bench.py; no judge model.",
+  "tasks": [
+    {"id": "rhf", "task": "I have a React form built with react-hook-form, with two tabs. Add the Dushes chat next to it so it can fill the fields, and make the chat able to show a field that sits in the other tab. Give me the code.",
+     "must": ["useFormguide", "@formguide/agui-chat/react-hook-form", "onReveal", "\\bready\\b", "plugins", "sections"]},
+    {"id": "handoff", "task": "My site has a Loans page and an /apply page with a loan form. When a visitor tells the site assistant on the Loans page that they want a mortgage, the form should open and the assistant should already know what they said. What do I set up on the server and in the page?",
+     "must": ["form:\\s*\\w+|\"form\":", "site_directive", "handoff[\"']?\\s*:\\s*true", "SiteMap|site\\.yaml"]},
+    {"id": "theme", "task": "Make the chat use my brand colour #7c3aed with square corners. Give me the code.",
+     "must": ["defineTheme", "accent", "#7c3aed", "radius", "theme=|theme:"]},
+    {"id": "confirm-tool", "task": "The assistant should be able to send a booking to my API, but only after the user taps a Confirm button. Show me the server setup and the tool.",
+     "must": ["confirm_tools", "tools:\\s*\\[|cfg\\.tools|tools=", "@tool"]},
+    {"id": "chat-only", "task": "I want users to fill a short form entirely in the chat: there is no form on the page. The assistant must not tell them to look at fields on the page, and the result must go to my server. How?",
+     "must": ["form_visible[\"']?\\s*:\\s*false", "schemaForm", "confirm_tools"]},
+    {"id": "documents", "task": "The assistant should answer questions from our PDF policies and price lists, and a form should also see a shared set of documents. How do I add the documents and set this up?",
+     "must": ["knowledge", "scopes", "documents|add_document|/documents"]},
+    {"id": "languages", "task": "Our users are German. The cards in the chat should show our own German labels and option names, without paying a model to translate them. What do I write?",
+     "must": ["language:\\s*de|language=\"de\"", "i18n", "names"]},
+    {"id": "azure", "task": "We are on Azure OpenAI. Use gpt-5 for the conversation and the cheaper gpt-5-mini for research. Give me the configuration.",
+     "must": ["AzureChatOpenAI", "azure_deployment", "research", "gpt-5-mini", "azure_endpoint"]},
+    {"id": "deploy", "task": "I am putting the assistant on the internet for my site https://my.app. What must I set so only my site can call it and conversations survive a restart?",
+     "must": ["cors", "https://my\\.app", "checkpointer", "sqlite|postgres|Postgres"]},
+    {"id": "conversations", "task": "Every morning I want to read yesterday's conversations in a script, and delete conversations older than 30 days. Give me the Python.",
+     "must": ["\\.conversations\\(", "\\.purge\\(", "30", "timedelta|since"]}
+  ]
+}
