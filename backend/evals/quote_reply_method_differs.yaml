@@ -23,7 +23,7 @@ turns: 4
 expect:
   answered_by: [form]
   tools: [calculate]                                   # every figure the form did not give comes from the calculator
-  says: [["interest only", "interest-only", "only the interest", "interest alone"], ["differs", "different", "another method", "not the annuity", "doesn't match", "does not match"]]
+  says: [["interest only", "interest-only", "only the interest", "interest alone"], ["differs", "different", "another method", "not the annuity", "doesn't match", "does not match", "doesn't apply", "does not apply", "not an annuity", "isn't the annuity", "is not the annuity"]]
 # CPO rule (2026-11-14): when the standard formula does not match the form's figure, the agent may say what it gives
 # ("an annuity would be about 1 403, the form shows 1 000, so the form uses another method") but must not present
 # it as the explanation; the judge decides that, so no phrase check on 1 403. The agent may name the method (interest
