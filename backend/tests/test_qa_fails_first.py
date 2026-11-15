@@ -12,6 +12,7 @@ The third, "the agent never agrees for the person", needs a model: evals/consent
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -178,3 +179,42 @@ def test_the_guest_tells_the_server_why_the_form_refused_a_typed_value():
     v.answer = lambda c: {"text": "555"}
     v._card({"type": "ask", "field": "vin", "applies": True, "label": "VIN", "question": "The VIN?", "input": {"type": "text"}}, 0)
     assert sent == [{"answer": {"text": "555"}, "rejected": {"vin": "17 characters"}}] and v.form.config["state"]["vin"] == ""
+
+
+@pytest.mark.xfail(strict=True, reason="the server ignores which card a resume names: an answer for a card that is no longer open lands on the open one")
+def test_an_answer_for_a_card_that_is_no_longer_open_is_refused(guide, model):
+    """The owner's case (the CPO, 2026-11-15): the connection drops while a card is open, the person writes again, a
+    new card opens, and the first card's late answer arrives. It names the old card (`interrupt_id`), so it must not
+    be taken as the answer to the card that is open now."""
+    from formguide import agui
+
+    info = guide.register_form(LOAN.jsx, LOAN.form_id, LOAN.domain)
+    state = {"config": LOAN.compute(None), "jsx_hash": info["jsx_hash"], "form_id": LOAN.form_id, "ui": {}}
+
+    def card(ev):
+        raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+        return json.loads(raw) if isinstance(raw, str) else raw
+
+    model.script = [say("", ("q1", "ask_user", {"question": "What is your first name?", "field": "first_name"}))]
+    first = card(collect(guide, "stale", message="I want a loan", state=state))
+    # the answer to the first card is lost with the connection; the person writes again and gets another card
+    model.script = [say("", ("q2", "ask_user", {"question": "Which loan do you need?", "options": ["Car loan", "Mortgage"]}))]
+    second = card(collect(guide, "stale", message="are you there? I need a loan", state=state))
+    assert first["card_id"] != second["card_id"]
+
+    def pending():
+        return [e["id"] for e in guide.thread("stale")["transcript"] if e.get("status") == "pending"]
+
+    assert pending() == [second["card_id"]]
+    # now the first card's answer arrives, naming the first card
+    body = {"threadId": "stale", "runId": "r3", "messages": [], "tools": [], "context": [], "state": state, "forwardedProps": {},
+            "resume": [{"interruptId": first["card_id"], "status": "resolved", "payload": {"answer": {"text": "Anna"}}}]}
+    model.script = [say("Thanks.")]
+    kwargs = agui.run_kwargs(body)
+    try:
+        collect(guide, **{("thread" if k == "thread_id" else k): v for k, v in kwargs.items()})
+    except Exception:   # a refusal may be an error the HTTP layer turns into 409: either way the open card stays open
+        pass
+    assert pending() == [second["card_id"]], "the stale answer closed the card that is open now"
+    assert not [m for call in model.calls[2:] for m in call if "Anna" in str(getattr(m, "content", ""))], \
+        "the stale answer reached the model as the answer to the open card"

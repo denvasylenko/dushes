@@ -581,3 +581,44 @@ test('card_result not_accepted turns an answered card into a refused one, once',
   await expect(line.locator('.btn')).toHaveCount(0)           // Undo is gone
   expect((await line.textContent())!.split('This VIN is not in the register').length - 1).toBe(1)   // sent twice, said once
 })
+
+// ---------------------------------------------------------------------------------------------- 16 px inputs on touch
+// The owner (2026-11-15): Safari on a phone zooms the page when a focused field's text is under 16 px.
+
+test('on a touch screen every field in the chat has text of at least 16 px (the composer, a question card, a several-fields card)', async ({ browser }, info) => {
+  test.skip(!info.project.name.endsWith('-phone') || info.project.name.startsWith('firefox'), 'a touch context: the phone size, engines that emulate touch')
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: info.project.name.startsWith('chromium') })
+  const page = await ctx.newPage()
+  const typed = { type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'ask', card_id: 'i1', question: 'What is the VIN?', field: 'vin',
+    applies: true, label: 'VIN', input: { type: 'text' } }) }
+  const several = { type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'ask', card_id: 'i2', question: 'A few details', fields: [
+    { name: 'first_name', label: 'First name', input: { type: 'text' } }, { name: 'age', label: 'Age', input: { type: 'number' } },
+    { name: 'start', label: 'Start date', input: { type: 'date' } }] }) }
+  await page.route('**/agent/layouts', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"jsx_hash":"h"}' }))
+  await agent(page, { events: run(...text('m1', 'One thing first.'), typed) }, { events: run(...text('m2', 'And these.'), several) }, { events: run(...text('m3', 'Thanks.')) })
+  await page.goto('http://127.0.0.1:4399/e2e/fixtures/chat.html')
+  await page.waitForFunction(() => !!customElements.get('agui-chat'))
+  await page.evaluate(() => {
+    const el = document.querySelector('agui-chat') as unknown as { use: (p: unknown) => void }
+    const fg = (window as unknown as { AguiChat: { formguide: (o: unknown) => unknown } }).AguiChat.formguide
+    el.use(fg({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({ props: {}, state: {} }) }))
+  })
+  const small = () => page.evaluate(() => {
+    const root = document.querySelector('agui-chat')!.shadowRoot!
+    return [...root.querySelectorAll<HTMLElement>('input:not([type=file]):not([type=checkbox]):not([type=radio]):not([hidden]), textarea, select')]
+      .filter((e) => e.offsetParent !== null)
+      .map((e) => ({ what: `${e.tagName.toLowerCase()}${e.getAttribute('type') ? `[${e.getAttribute('type')}]` : ''}.${e.className}`, px: parseFloat(getComputedStyle(e).fontSize) }))
+      .filter((x) => x.px < 16)
+  })
+  await expect(composer(page)).toBeVisible()
+  expect(await small(), 'the composer').toEqual([])
+  await say(page, 'my car')
+  const first = page.locator('agui-chat [data-card-id="i1"]').locator('input, textarea').first()
+  await expect(first).toBeVisible()
+  expect(await small(), 'a question card with a typed answer').toEqual([])
+  await first.fill('WVWZZZ1JZXW000001')
+  await first.press('Enter')
+  await expect(page.locator('agui-chat [data-card-id="i2"]').locator('input').first()).toBeVisible()
+  expect(await small(), 'a card with several fields').toEqual([])
+  await ctx.close()
+})

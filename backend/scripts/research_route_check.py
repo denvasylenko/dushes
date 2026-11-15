@@ -55,13 +55,25 @@ def ask(http: httpx.Client, q: dict, model: str | None) -> dict:
     t0 = time.perf_counter()
     rec: dict = {"set": q["set"], "question": q["question"], "expects": q["expects"], "answerable": q.get("answerable", True), "model": model, "text": "", "sources": [], "depth": "",
                  "first_word_s": None, "steps": 0, "error": None, "tokens": {}, "model_id": ""}
+    texts: dict[str, str] = {}
+    pieces: dict[str, int] = {}
+    firsts: dict[str, float] = {}
+    order: list[str] = []
+    rec.update(retracted=0, pieces=0, ttft_ms=None)
     try:
         for e in events(http, "/research/run", body):
             t, name, v = e.get("type"), e.get("name"), e.get("value") or {}
             if t == "TEXT_MESSAGE_CONTENT":
-                if rec["first_word_s"] is None:
-                    rec["first_word_s"] = round(time.perf_counter() - t0, 2)
-                rec["text"] += e.get("delta") or ""
+                mid = str(e.get("messageId"))
+                if mid not in texts:
+                    order.append(mid)
+                    firsts[mid] = round(time.perf_counter() - t0, 2)
+                texts[mid] = texts.get(mid, "") + (e.get("delta") or "")
+                pieces[mid] = pieces.get(mid, 0) + 1
+            elif name == "text_retract":   # a lead written before a step, taken back: it is not part of the answer
+                gone = str(v.get("messageId"))
+                texts.pop(gone, None)
+                rec["retracted"] += 1
             elif t == "TOOL_CALL_START":
                 rec["steps"] += 1
             elif t == "RUN_ERROR":
@@ -74,9 +86,14 @@ def ask(http: httpx.Client, q: dict, model: str | None) -> dict:
                 rec["model_id"] = str(v.get("model") or v.get("id") or "")
             elif name == "run_stats":
                 rec["tokens"] = dict(v.get("tokens") or {})
+                rec["ttft_ms"] = v.get("ttft_ms")
                 rec["model_id"] = rec["model_id"] or next((str(m.get("model")) for m in v.get("models") or [] if m.get("model")), "")
     except httpx.HTTPError as ex:
         rec["error"] = f"{type(ex).__name__}: {ex}"[:300]
+    kept = [m for m in order if m in texts and texts[m].strip()]
+    if kept:   # the answer is the last message that stayed on the page
+        rec["text"], rec["pieces"], rec["first_word_s"] = texts[kept[-1]], pieces[kept[-1]], firsts[kept[-1]]
+        rec["other_text"] = " ".join(texts[m] for m in kept[:-1])[:300]
     rec["seconds"] = round(time.perf_counter() - t0, 1)
     tok = rec["tokens"]
     try:
@@ -115,6 +132,12 @@ def checks(rec: dict, docs: set[str]) -> list[str]:
         why.append("no source carries an excerpt")
     if not rec["tokens"]:
         why.append("no token counts (run_stats)")
+    if re.search(r"(?im)^\W*sources?\W*:", rec["text"]):
+        why.append("the Sources line is in the text (the sources are chips)")
+    if rec.get("other_text"):
+        why.append(f"text left on the page besides the answer: {rec['other_text'][:80]}")
+    if rec["depth"] == "deep" and rec.get("pieces", 0) < 2 and len(rec["text"]) > 300:
+        why.append("a long answer arrived in one piece, not as it was written")
     return why
 
 
@@ -160,7 +183,7 @@ def main() -> int:
                 spent += rec.get("usd") or 0
                 results.append(rec)
                 print(f"{'✅' if not rec['why'] else '❌'} {model or 'default':<6} {q['set']:<16} {q['expects']:<5} -> {rec['depth'] or '?':<5} "
-                      f"{rec['seconds']:>5}s first {rec['first_word_s']}s  {len(rec['sources'])} sources  ${rec.get('usd')}  {'; '.join(rec['why'])[:140]}", flush=True)
+                      f"{rec['seconds']:>5}s first {rec['first_word_s']}s {rec.get('pieces')} pieces  {len(rec['sources'])} sources  ${rec.get('usd')}  {'; '.join(rec['why'])[:140]}", flush=True)
     done = [r for r in results if "skipped" not in r]
     ok = sum(1 for r in done if not r["why"])
     print(f"\n{ok} of {len(done)} answers pass every check; spent ${spent:.4f}" + (f"; {len(results) - len(done)} not asked (stop sum)" if len(results) > len(done) else ""))
