@@ -193,3 +193,17 @@ The site's search SHALL group results by section in the order of each section's 
 #### Scenario: A page's name
 - **WHEN** a reader searches for "card gallery"
 - **THEN** the first row is the Card gallery page itself
+
+### Requirement: A reference row for every public name in an example
+Every hook, function, option and returned value a guide's code example uses SHALL have a row in the Reference with its type, its default and one sentence on what it is for, and the guide SHALL link each such name to its row. The fields of the widget's public TypeScript types SHALL be checked against their reference rows on every build of the docs (`scripts/check_ts_reference.py`): a field without a row, or a row without a field, fails.
+
+#### Scenario: A hook option in an example
+- **WHEN** a developer reads `useFormguide(form, schema, { onReveal: setTab })` on the react-hook-form page
+- **THEN** the page says in one line what `onReveal` is, and links to its row in the React and schema API reference
+
+### Requirement: The theme playground restores its defaults
+The theme playground SHALL offer "Restore defaults" only while a control differs from its default, in a place kept for it so nothing moves when it appears; using it SHALL put every control and the preview back to the defaults.
+
+#### Scenario: An untouched playground
+- **WHEN** a reader opens the theme playground and has changed nothing
+- **THEN** there is no button that would do nothing

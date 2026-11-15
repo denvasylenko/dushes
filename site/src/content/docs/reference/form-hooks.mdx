@@ -1,0 +1,92 @@
+---
+title: React and schema API
+description: Every parameter, option and return value of useFormguide and schemaForm, and the schema they read.
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { ParamList, Param } from '../../../components/ui';
+
+For a form without a form backend (react-hook-form, Formik, `useState`, a plain DOM form): you describe the form once as a [`FormSchema`](#formschema), and the hook or the bridge turns it into what Dushes reads and applies. How to use them: [react-hook-form](../../frontend/react-hook-form/).
+
+## useFormguide
+
+<ParamList kind="function" signature="useFormguide(form, schema, options?)" id="useformguide">
+  <Param name="form" type="FormLike" required id="useformguide-form">Your react-hook-form form, the result of `useForm()`. Only `getValues`, `setValue` and `formState.errors` are used, so Formik or your own object with those three works too.</Param>
+  <Param name="schema" type="FormSchema" required id="useformguide-schema">The form's fields, sections and rules ([below](#formschema)). It is compared by content: the form is registered again only when the schema itself changes, not on every render.</Param>
+  <Param name="options" type="UseFormguideOptions" default="{}" id="useformguide-options">[The options](#useformguideoptions).</Param>
+  <Fragment slot="returns">`{ plugins, ready, error, bridge }` ([below](#what-it-returns)). Render the chat once `ready` is true: `{ready && <AguiChat plugins={plugins} />}`.</Fragment>
+</ParamList>
+
+Import: `import { useFormguide } from '@formguide/agui-chat/react-hook-form'`. The hook registers the form with the server once (`POST /agent/layouts`), sends the form's current state with every message, applies the values the user accepts with `setValue`, and opens and highlights a field when the chat points at it.
+
+### UseFormguideOptions
+
+<ParamList title="Fields" id="useformguideoptions">
+  <Param name="onReveal" type="(section: string) => void" id="useformguide-onreveal">Open the section (a tab, a step, an accordion) a field is in. The chat calls it before it points at a field or fills one, with the section's `name` from the schema. Without it a field in a closed tab cannot be shown. Typically your tab state's setter: `{ onReveal: setTab }`.</Param>
+  <Param name="url" type="string" default="'/agent/run'" id="useformguide-url">The agent's run URL. The other endpoints (layouts, attachments) are next to it.</Param>
+  <Param name="baseUrl" type="string" id="useformguide-baseurl">Where the server's router is mounted, when it is not `url` without `/run`.</Param>
+  <Param name="getUi" type="() => Record<string, unknown>" id="useformguide-getui">What the user sees right now (the open tab, the focused field), sent with every message as `ui` ([the form's state](../../frontend/connect-your-form/state/#14-ui--what-the-user-is-looking-at)). Default: the focused field, read from the page.</Param>
+  <Param name="plugin" type="Partial<FormguideOptions>" id="useformguide-plugin">Passed on to the form plugin: `undoSeconds`, `fieldCard`, `exclude` and the other [plugin options](../agui-chat/).</Param>
+</ParamList>
+
+### What it returns
+
+<ParamList title="Fields" id="what-it-returns">
+  <Param name="plugins" type="Plugin[]" id="useformguide-plugins">Give it to the chat: `<AguiChat plugins={plugins} />`. Empty until `ready`.</Param>
+  <Param name="ready" type="boolean" id="useformguide-ready">True once the server knows the form. Render the chat then; before it, the chat could not send the form.</Param>
+  <Param name="error" type="string | null" id="useformguide-error">Why the form could not be registered (the server is down, a bad schema), or `null`. Show it instead of the chat.</Param>
+  <Param name="bridge" type="SchemaBridge" id="useformguide-bridge">The [schema bridge](#schemaform) the hook built, for code of your own.</Param>
+</ParamList>
+
+## schemaForm
+
+<ParamList kind="function" signature="schemaForm(schema, access)" id="schemaform">
+  <Param name="schema" type="FormSchema" required>The form, as for the hook.</Param>
+  <Param name="access" type="FormAccess" required id="schemaform-access">How to reach your form: `getValues()` (all values), `setValue(name, value)` and, optionally, `getErrors()` (field name to message).</Param>
+  <Fragment slot="returns">A `SchemaBridge`: `jsx` (the skeleton to register once), `config()` (the form now, for every run), `apply(changes)` (put accepted values into the form, returns the new config), `sectionOf(field)` and `fields`.</Fragment>
+</ParamList>
+
+The bridge without React, for any framework or a plain DOM form. Import: `import { schemaForm } from '@formguide/agui-chat/formguide'`. The home page's live demo uses it.
+
+## FormSchema
+
+<ParamList title="Fields" id="formschema">
+  <Param name="id" type="string" required id="formschema-id">The form's id. It picks the form's [domain pack](../../agents/ui-agent/domain-packs/) and documents on the server.</Param>
+  <Param name="sections" type="SectionSchema[]" required id="formschema-sections">The form's sections, in order ([below](#sectionschema)).</Param>
+  <Param name="title" type="string" id="formschema-title">The form's name, shown to the agent.</Param>
+  <Param name="layout" type="'tabs' | 'sections'" default="'tabs'" id="formschema-layout">Sections as tabs (one open at a time) or one after another.</Param>
+  <Param name="domain" type="object" id="formschema-domain">A domain pack sent with the form. On a public site keep packs on the server instead: one sent from a browser changes the form for everyone.</Param>
+</ParamList>
+
+### SectionSchema
+
+<ParamList title="Fields" id="sectionschema">
+  <Param name="name" type="string" required id="sectionschema-name">The section's name; `onReveal` gets it.</Param>
+  <Param name="fields" type="FieldSchema[]" required id="sectionschema-fields">Its fields ([below](#fieldschema)).</Param>
+  <Param name="label" type="string" id="sectionschema-label">What people call it ("Applicant").</Param>
+  <Param name="visible" type="boolean | (values) => boolean" default="true" id="sectionschema-visible">Hidden sections and their fields are left out.</Param>
+</ParamList>
+
+### FieldSchema
+
+A rule (`options`, `visible`, `disabled`, `required`) is a value or a function of the form's current values: `visible: (v) => !!v.car_make`.
+
+<ParamList title="Fields" id="fieldschema">
+  <Param name="name" type="string" required id="fieldschema-name">The field's name in your form: the key `setValue` gets.</Param>
+  <Param name="label" type="string" id="fieldschema-label">What people call it; the cards show it.</Param>
+  <Param name="type" type="'text' | 'textarea' | 'number' | 'date' | 'select' | 'radio' | 'multiselect' | 'bool'" default="'text'" id="fieldschema-type">The kind of value. It picks the card: a choice gets options, a date a date picker.</Param>
+  <Param name="options" type="Option[] | (values) => Option[]" id="fieldschema-options">The choices: strings, or `{id, name}` (also `value` / `label`).</Param>
+  <Param name="valueAs" type="'id' | 'option' | 'name'" default="'id'" id="fieldschema-valueas">What your form stores for a choice: the option's id, the whole option, or its name.</Param>
+  <Param name="required" type="boolean | (values) => boolean" default="false" id="fieldschema-required">Must be filled before sending.</Param>
+  <Param name="visible" type="boolean | (values) => boolean" default="true" id="fieldschema-visible">A hidden field is never proposed.</Param>
+  <Param name="disabled" type="boolean | (values) => boolean" default="false" id="fieldschema-disabled">A locked field is never proposed.</Param>
+  <Param name="readonly" type="boolean" default="false" id="fieldschema-readonly">Computed by the form; the agent reads it and never proposes it.</Param>
+  <Param name="placeholder" type="string" id="fieldschema-placeholder">A format hint ("DD.MM.YYYY").</Param>
+  <Param name="help" type="string" id="fieldschema-help">A short note for the user and the agent: where to find the value, its format ("10 digits").</Param>
+</ParamList>
+
+## Next
+
+<CardGrid>
+  <LinkCard title="react-hook-form" description="The hook on a real form, line by line." href="../../frontend/react-hook-form/" />
+  <LinkCard title="<agui-chat> API" description="The chat's attributes, options and events." href="../agui-chat/" />
+</CardGrid>

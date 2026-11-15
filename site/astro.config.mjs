@@ -195,6 +195,7 @@ export default defineConfig({
 					{ label: 'Configuration keys', slug: 'reference/configuration' },
 					{ label: 'Python API', slug: 'reference/python-api' },
 					{ label: '<agui-chat> API', slug: 'reference/agui-chat' },
+					{ label: 'React and schema API', slug: 'reference/form-hooks' },
 					{ label: 'HTTP API', slug: 'reference/http-api' },
 					{ label: 'AG-UI events', slug: 'reference/agui-events' },
 					{ label: 'CLI', slug: 'reference/cli' },

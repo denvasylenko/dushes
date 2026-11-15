@@ -23,7 +23,7 @@ const FONTS = [
       <Range id="tp-bubble" label="Bubbles" min={4} max={26} value={18} unit=" px" data-token="bubble-radius" />
     </div>
     <ChipGroup label="Font" options={FONTS.map(([name, stack]) => ({ value: stack, label: name, style: `font-family:${stack}` }))} data-font />
-    <Button variant="plain" class="tp-reset" data-reset>Reset</Button>
+    <Button variant="plain" class="tp-reset" data-reset hidden>Restore defaults</Button>
   </div>
 
   <div class="tp-stage">
@@ -50,6 +50,7 @@ const FONTS = [
     }
     const DEFAULT = { accent: '#0a84ff', radius: 14, 'card-radius': 14, 'bubble-radius': 18, font: 'system-ui, -apple-system, "Segoe UI", sans-serif', scheme: 'dark' }
     const t = { ...DEFAULT }
+    const reset = root.querySelector<HTMLElement>('[data-reset]')!
 
     // readable text on the accent: black on light colours, white on dark ones
     const onAccent = (hex: string) => {
@@ -70,6 +71,8 @@ const FONTS = [
       setChoice(groups.accent, t.accent)
       setChoice(groups.font, t.font)
       setChoice(groups.scheme, t.scheme)
+      // "Restore defaults" is there only when there is something to restore
+      reset.hidden = (Object.keys(DEFAULT) as (keyof typeof DEFAULT)[]).every((k) => t[k] === DEFAULT[k])
       code.textContent = `import { defineTheme } from '@formguide/agui-chat'
 
 defineTheme('mine', {
@@ -92,7 +95,7 @@ defineTheme('mine', {
       (t as Record<string, unknown>)[r.dataset.token!] = Number(r.value)
       apply()
     }))
-    root.querySelector('[data-reset]')!.addEventListener('click', () => {
+    reset.addEventListener('click', () => {
       Object.assign(t, DEFAULT)
       root.querySelectorAll<HTMLInputElement>('[data-token]').forEach((r) => { r.value = String(t[r.dataset.token as 'radius']); syncRange(r) })
       apply()
@@ -113,6 +116,7 @@ defineTheme('mine', {
   .tp-controls { grid-area: controls; display: flex; flex-direction: column; gap: 24px; padding: 8px 6px; }
   .tp-ranges { display: flex; flex-direction: column; gap: 12px; }
   .tp-reset { align-self: flex-start; }
+  .tp-reset[hidden] { display: inline-flex; visibility: hidden; }   /* keeps its place: nothing moves when it appears */
   .tp-stage { grid-area: stage; height: 540px; border-radius: var(--fg-r-panel); overflow: hidden; }
   .tp-stage agui-chat { display: block; height: 100%; }
   .tp-code { grid-area: code; }
