@@ -305,6 +305,9 @@ def test_only_what_the_person_said_into_an_empty_field_is_quiet():
     assert not voice.quiet({"changes": [row("first_name", "Denis") | {"previous": "Den"}]}, "my name is Denis")   # replaces
     assert not voice.quiet({"changes": [row("agree", True, "Yes", consent=True)]}, "yes")                          # a consent
     assert not voice.quiet({"changes": [row("birth_date", "1992-07-01", "1 July 1992")]}, "first July ninety-two")  # worked out
+    # the owner's second session: "let's try 36" for a term whose label is "36 months" came as a card
+    term = [row("loan_term", {"id": 36, "name": "36 months"}, "36 months")]
+    assert voice.quiet({"changes": term}, "Like, okay, let's try 36") and not voice.quiet({"changes": term}, "let's try 48")
     assert not voice.quiet({"changes": [row("first_name", "Denis")]}, "") and not voice.quiet({"changes": []}, "x")
     assert not voice.quiet({"type": "ask", "changes": [row("first_name", "Denis")]}, "Denis")
 

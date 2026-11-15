@@ -570,10 +570,11 @@ def _was_said(row: dict, said: str, numbers: list[str]) -> bool:
     for candidate in (str(c) for c in names if c not in (None, "", [], {}) and not isinstance(c, (dict, list, bool))):
         digits = re.sub(r"\D", "", candidate)
         words = [w for w in re.findall(_LETTERS, candidate.lower()) if len(w) > 1]
-        if digits and not words:
+        if digits:
+            # a number carries the value; the words beside it are its unit ("36 months" for a spoken "36")
             if digits in numbers or (len(digits) > 1 and digits in stream) or digits.lstrip("0") in numbers:
                 return True
-        elif words and not digits and all(w in words_said for w in words):
+        elif words and all(w in words_said for w in words):
             return True
     return False
 
