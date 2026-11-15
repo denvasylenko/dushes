@@ -190,6 +190,21 @@ final class AGUIChatTests: XCTestCase {
         XCTAssertEqual(c.status, .closed)
     }
 
+    /// The voice mode: what the person said goes to the agent as an ordinary message in the same thread.
+    @MainActor
+    func testHeardWordsBecomeAMessage() async throws {
+        let store = ChatStore(transport: ReplayTransport(pause: .zero) { _ in [.runFinished(outcome: nil)] }, threadId: "t-v")
+        let voice = VoiceController(store: store) { ScriptedVoiceEngine(phrases: ["Sunday until eleven"]) }
+        voice.start()
+        for _ in 0..<80 where !store.items.contains(where: { if case .user(_, "Sunday until eleven") = $0 { true } else { false } }) {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertTrue(store.items.contains { if case .user(_, "Sunday until eleven") = $0 { true } else { false } })
+        XCTAssertTrue(voice.active)
+        await voice.stop()
+        XCTAssertFalse(voice.active)
+    }
+
     @MainActor
     func testAStreamWithoutTheEndIsAnError() async throws {
         let store = ChatStore(transport: ReplayTransport(pause: .zero) { _ in [.runStarted(threadId: nil, runId: nil)] })

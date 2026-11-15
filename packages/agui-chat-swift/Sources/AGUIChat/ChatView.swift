@@ -10,18 +10,23 @@ public struct ChatView<HostCard: View>: View {
     var placeholder: LocalizedStringKey
     var onMicrophone: (() -> Void)?
     var hostCard: (String, JSONValue) -> HostCard
+    var voice: VoiceController?
+    var voiceTint: Color = AGUITheme.link
 
     @State private var draft = ""
     @State private var sources: [JSONValue]?
     @FocusState private var focused: Bool
 
+    /// `voice`: the voice mode (the microphone starts it); without it the microphone calls `onMicrophone` (dictation).
     public init(store: ChatStore, placeholder: LocalizedStringKey = "Ask AI",
-                onMicrophone: (() -> Void)? = nil,
+                onMicrophone: (() -> Void)? = nil, voice: VoiceController? = nil, voiceTint: Color? = nil,
                 @ViewBuilder hostCard: @escaping (String, JSONValue) -> HostCard) {
         self.store = store
         self.placeholder = placeholder
         self.onMicrophone = onMicrophone
         self.hostCard = hostCard
+        self.voice = voice
+        if let voiceTint { self.voiceTint = voiceTint }
     }
 
     public var body: some View {
@@ -51,8 +56,13 @@ public struct ChatView<HostCard: View>: View {
                 Text(queued).font(.footnote).foregroundStyle(AGUITheme.ink2).lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, 16).padding(.bottom, 4)
             }
-            if !store.suggestions.isEmpty, !store.running {
+            if let voice, voice.active {
+                voiceArea(voice)
+            } else if !store.suggestions.isEmpty, !store.running {
                 chips
+            }
+            if let problem = voice?.problem, voice?.active == false {
+                Text(problem).font(.footnote).foregroundStyle(AGUITheme.ink2).padding(.bottom, 6)
             }
             composer
         }
@@ -148,6 +158,39 @@ public struct ChatView<HostCard: View>: View {
         .transition(.opacity)
     }
 
+    /// The voice mode above the input line: the orb and one line under it — «Listening», the agent's step, «Speaking».
+    private func voiceArea(_ voice: VoiceController) -> some View {
+        VStack(spacing: 10) {
+            VoiceOrb(state: voice.state, level: voice.level, tint: voiceTint)
+                .offset(y: voice.state == .thinking ? -18 : 0)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: voice.state)
+            Text(voiceLine(voice))
+                .font(.system(size: 15))
+                .foregroundStyle(AGUITheme.ink2)
+                .lineLimit(1)
+                .contentTransition(.opacity)
+                .animation(.easeOut(duration: 0.2), value: voiceLine(voice))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+    }
+
+    private func voiceLine(_ voice: VoiceController) -> String {
+        switch voice.state {
+        case .connecting: return String(localized: "Connecting…", bundle: .module)
+        case .listening: return String(localized: "Listening", bundle: .module)
+        case .muted: return String(localized: "Microphone off", bundle: .module)
+        case .speaking: return String(localized: "Speaking", bundle: .module)
+        case .thinking:
+            if case .step(_, let name, .running)? = store.items.last(where: { if case .step = $0 { true } else { false } }) {
+                return Self.stepTitle(name) + "…"
+            }
+            return String(localized: "Thinking…", bundle: .module)
+        case .off: return ""
+        }
+    }
+
     /// `.box`: radius 20, a line-2 border, 8/8/8/16 inside, a faint shadow; «+» left, microphone or send right.
     private var composer: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -171,8 +214,12 @@ public struct ChatView<HostCard: View>: View {
                 .onSubmit(send)
             if store.running, draft.trimmingCharacters(in: .whitespaces).isEmpty {
                 circle("stop.fill", label: "Stop", filled: true) { store.stop() }
-            } else if draft.trimmingCharacters(in: .whitespaces).isEmpty, let onMicrophone {
+            } else if draft.trimmingCharacters(in: .whitespaces).isEmpty, let voice, !voice.active {
+                circle("waveform", label: "Voice", action: { voice.start() })
+            } else if draft.trimmingCharacters(in: .whitespaces).isEmpty, voice == nil, let onMicrophone {
                 circle("mic", label: "Dictate", action: onMicrophone)
+            } else if draft.trimmingCharacters(in: .whitespaces).isEmpty, voice?.active == true {
+                EmptyView()
             } else {
                 circle("arrow.up", label: "Send", filled: true, action: send)
                     .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -184,6 +231,8 @@ public struct ChatView<HostCard: View>: View {
         .background(AGUITheme.bg, in: .rect(cornerRadius: AGUITheme.radiusLg))
         .overlay(RoundedRectangle(cornerRadius: AGUITheme.radiusLg).strokeBorder(focused ? AGUITheme.ink3 : AGUITheme.line2, lineWidth: 1))
         .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+        .overlay(alignment: .trailing) { EmptyView() }
+        .modifier(VoiceButtons(voice: voice))
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
     }
@@ -232,6 +281,40 @@ public struct ChatView<HostCard: View>: View {
 extension ChatView where HostCard == EmptyView {
     public init(store: ChatStore, placeholder: LocalizedStringKey = "Ask AI", onMicrophone: (() -> Void)? = nil) {
         self.init(store: store, placeholder: placeholder, onMicrophone: onMicrophone) { _, _ in EmptyView() }
+    }
+}
+
+/// While the voice mode is on: the microphone (off / on) and «✕» (end the talk) beside the input line, as on the web.
+struct VoiceButtons: ViewModifier {
+    let voice: VoiceController?
+    func body(content: Content) -> some View {
+        if let voice, voice.active {
+            HStack(spacing: 8) {
+                content
+                Button { voice.toggleMute() } label: {
+                    Image(systemName: voice.state == .muted ? "mic.slash" : "mic")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(AGUITheme.ink)
+                        .frame(width: 48, height: 48)
+                        .background(AGUITheme.soft, in: .circle)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(voice.state == .muted ? "Microphone on" : "Microphone off", bundle: .module))
+                Button { Task { await voice.stop() } } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(AGUITheme.ink)
+                        .frame(width: 48, height: 48)
+                        .background(AGUITheme.bg, in: .circle)
+                        .overlay(Circle().strokeBorder(AGUITheme.line2, lineWidth: 1))
+                        .shadow(color: .black.opacity(0.1), radius: 6, y: 2)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("End the voice talk", bundle: .module))
+            }
+        } else {
+            content
+        }
     }
 }
 
