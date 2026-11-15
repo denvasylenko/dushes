@@ -66,6 +66,7 @@ public final class ChatStore {
     /// store draws `set_fields` itself: the client never writes the config on its own authority (CONTRACT.md).
     public var applyFields: (@MainActor ([String: JSONValue]) async throws -> JSONValue)?
     private var handoffAfterRun = false
+    private var cardGone = false                    // card_result code card_gone in this run
     /// `state` and extra `forwardedProps` the host adds to each run (the page, the language, the voice flag).
     public var state: @MainActor () -> JSONValue = { .object([:]) }
     public var extraProps: @MainActor () -> [String: JSONValue] = { [:] }
@@ -242,6 +243,7 @@ public final class ChatStore {
         running = true
         finished = false
         busy = false
+        cardGone = false
         var forwarded = extraProps()
         forwarded["capabilities"] = .array(Self.capabilities)
         for (k, v) in props { forwarded[k] = v }
@@ -273,6 +275,10 @@ public final class ChatStore {
             // a card is answered only by a run that reached RUN_FINISHED and did not refuse it. After an error, a cut-off
             // stream or a stop it opens again only when the server still waits for THIS card (review 2, finding 2: a resume
             // has no card id, the server gives it to whatever card is pending)
+            if self.cardGone {
+                self.cardGone = false
+                Task { await self.restore() }
+            }
             if let cardId, let i = self.cardIndex(cardId), case .card(var c) = self.items[i], c.status == .sending {
                 if self.finished {
                     c.status = .answered
@@ -355,8 +361,15 @@ public final class ChatStore {
         case "card_result":
             if value["status"]?.string == "not_accepted", let id = value["card_id"]?.string, let i = cardIndex(id),
                case .card(var c) = items[i] {
-                c.status = .refused(value["reason"]?.string ?? "")
-                items[i] = .card(c)
+                if value["code"]?.string == "card_gone" {
+                    // the card is no longer the open one: close it and read the thread for the card that is (ef30d5d)
+                    c.status = .closed
+                    items[i] = .card(c)
+                    cardGone = true
+                } else {
+                    c.status = .refused(value["reason"]?.string ?? "")   // the form's own refusal: fix and answer again
+                    items[i] = .card(c)
+                }
             }
         case "sources":
             let list = value["items"]?.array ?? []

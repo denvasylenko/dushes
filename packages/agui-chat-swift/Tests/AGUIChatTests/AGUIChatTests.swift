@@ -180,6 +180,16 @@ final class AGUIChatTests: XCTestCase {
         XCTAssertEqual(store.items.map(\.id), ["u", "a"])
     }
 
+    /// ef30d5d: an answer to a card that is no longer open comes back as card_gone — the card closes, not «refused».
+    @MainActor
+    func testACardGoneClosesTheCard() {
+        let store = ChatStore(transport: ReplayTransport { _ in [] })
+        store.apply(.custom(name: "on_interrupt", value: .string(#"{"type":"confirm","card_id":"k-5","title":"Publish?"}"#)))
+        store.apply(.custom(name: "card_result", value: ["card_id": "k-5", "status": "not_accepted", "reason": "x", "code": "card_gone"]))
+        guard case .card(let c) = store.items.last else { return XCTFail("no card") }
+        XCTAssertEqual(c.status, .closed)
+    }
+
     @MainActor
     func testAStreamWithoutTheEndIsAnError() async throws {
         let store = ChatStore(transport: ReplayTransport(pause: .zero) { _ in [.runStarted(threadId: nil, runId: nil)] })
