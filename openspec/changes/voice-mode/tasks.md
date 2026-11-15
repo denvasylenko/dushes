@@ -3,12 +3,12 @@
 Nothing here starts before the owner agrees to the estimate in design.md.
 
 ## 1. Choose the voice
-- [ ] 1.1 Read GPT-Live's documentation in full; one connection test of each candidate (gpt-realtime-2.1, its mini, gpt-live-1)
-- [ ] 1.2 Decide the voice with the CPO from delay, languages and measured price
+- [x] 1.1 Read GPT-Live's documentation; a connection test of gpt-live-1 (passed, $0.09; design.md)
+- [x] 1.2 The voice is gpt-live-1 (the CPO's rule: use it if the check passes)
 
 ## 2. Host
-- [ ] 2.1 The codes, one per person (`VOICE_CODES`): `POST /voice/unlock`, the pass, the tries limit, usage per
-      person; routes absent when no code is set
+- [x] 2.1a The codes, one per person (`VOICE_CODES`), the signed pass, the tries limit (`formguide.voice.Gate`)
+- [ ] 2.1b `POST /voice/unlock` and the pass on every voice route; routes absent when no code is set
 - [ ] 2.2 `POST /voice/session`: the call created with the host's key, the SDP answer returned
 - [ ] 2.3 The control connection: instructions, the one tool, usage, end of call
 - [ ] 2.4 The bridge: `ask_dushes` starts a Dushes turn; its events reach the widget; a short result is spoken
@@ -16,7 +16,9 @@ Nothing here starts before the owner agrees to the estimate in design.md.
 - [ ] 2.5a An open card answered by spoken words; consent by tap only
 - [ ] 2.5b Silent mode: no spoken output, short text answers, kept for the conversation
 - [ ] 2.6 Interruption stops the turn in progress
-- [ ] 2.7 Limits: the day's voice budget, time and money per conversation, one conversation at once, silence
+- [x] 2.7a The limits as logic: the day's budget, a person's own, time and money per conversation, one at once,
+      silence (`formguide.voice.Meter`)
+- [ ] 2.7b The limits enforced on a live session (the provider's usage events, closing the session)
 - [ ] 2.8 Offline tests with a scripted realtime session
 
 ## 3. Widget (Design)
