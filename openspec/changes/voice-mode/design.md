@@ -85,7 +85,8 @@ browser (orb view)                    docs host (ours)                         O
   a consent tick (always a tap); an action that cannot be undone or reaches other people (submit, cancel a
   booking: today's confirmation card); a value the person did not say (read from a document, worked out,
   taken from the page); replacing a value the person had typed by hand; a value the form refused; a real choice
-  between options the agent cannot make itself. Everything else is filled and said.
+  between options the agent cannot make itself; and, from the designer's sketch, a value that is easy to mishear
+  (a number, a name spelled out, an e-mail address). Everything else is filled and said.
 - **How "quietly" is done without a second rule set.** The agent proposes changes exactly as in chat. The server
   marks a field-change card as `quiet` when every row in it passes the list above; the widget, in voice mode,
   applies a quiet card through the host's form at once and draws the line with Undo instead of the card. In chat

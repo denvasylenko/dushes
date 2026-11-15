@@ -54,8 +54,8 @@ A consent tick SHALL never be applied by voice: its card SHALL be shown and acce
 - **THEN** the consent is not ticked, and the card asks for a tap
 
 ### Requirement: Silent mode
-The voice mode SHALL have a silent switch (the crossed-out microphone): while it is on the agent SHALL NOT speak and SHALL answer in short text; the person MAY still speak or type. The switch SHALL hold for the conversation.
+The voice mode SHALL have a silent switch (the crossed-out microphone): while it is on the agent SHALL NOT speak and SHALL answer in short text. The switch SHALL hold for the conversation.
 
 #### Scenario: The person turns the sound off
-- **WHEN** the person taps the crossed-out microphone and asks a question aloud
+- **WHEN** the person taps the crossed-out microphone and asks a question
 - **THEN** the answer appears as short text under the orb and nothing is spoken
