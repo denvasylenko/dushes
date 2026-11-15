@@ -3,8 +3,9 @@ tags: [lab, hidden]
 persona: >-
   An employee on the staff portal who sees only a chat, no form anywhere on the page. They want Dana Whitfield
   (dana.whitfield@alderfinch.example) as their deputy from 1 March 2027 because of a vacation. Midway they ask
-  "where do I type the email?" because they see no field for it.
-goal: Change the deputy to Dana Whitfield from 1 March 2027 (vacation), entirely in the chat.
+  "where do I type the email?" because they see no field for it. They know the portal saves each confirmed value by
+  itself, so they never ask to send or submit anything: once the four values are confirmed they are done.
+goal: Get the four values recorded in the chat - Dana Whitfield, her email, 1 March 2027, vacation. Nothing has to be sent.
 start:
   page: /lab/alder-finch-portal
   form: deputy_change_plain
@@ -13,6 +14,7 @@ knows:
   - "The deputy is Dana Whitfield, dana.whitfield@alderfinch.example"
   - "Starts 1 March 2027; the reason is a vacation"
   - "There is no form on the screen, only this chat; asks once where to type the email"
+  - "The portal saves confirmed values by itself; there is nothing to send or submit"
 turns: 6
 # The person does not see the form: the agent never refers to a place on the page, never opens or focuses a
 # field there, and still collects every value through cards (Owner's contract, 2026-11-15).

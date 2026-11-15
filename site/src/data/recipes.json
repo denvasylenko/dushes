@@ -10,12 +10,12 @@
   },
   "chat-only-form": {
     "runs": 20,
-    "hits": 12,
+    "hits": 20,
     "scenarios": 2,
     "tool": "",
     "model": "claude-haiku-5-5",
     "date": "2026-11-15",
-    "report": "backend/scripts/runs/recipes-20261115-000003.json"
+    "report": "backend/scripts/runs/recipes-20261115-020053.json"
   },
   "confirm-side-effect": {
     "runs": 20,
@@ -23,8 +23,8 @@
     "scenarios": 2,
     "tool": "",
     "model": "claude-haiku-5-5",
-    "date": "2026-11-14",
-    "report": "backend/scripts/runs/recipes-20261114-184049.json"
+    "date": "2026-11-15",
+    "report": "backend/scripts/runs/recipes-20261115-020053.json"
   },
   "frontend-tool": {
     "runs": 10,
