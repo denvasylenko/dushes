@@ -49,6 +49,7 @@ from .suggestions import suggest
 
 stats_log = logging.getLogger("formguide.stats")
 from .reply import as_list
+from . import voice as _voice
 from .transcript import FileTranscriptStore, check_thread_id, new_entry, pending_card
 
 
@@ -383,7 +384,8 @@ class FormGuide:
         token = activate(stats)   # the graph's nodes record into it (see stats.py)
         try:
             from .reply import quoted, resolve
-            async for ev in self._events(thread_id, mode, stats, tx, message=quoted(message, resolve(reply_to, tx.list(thread_id))), state=state, resume=resume,
+            aloud = _voice.active(thread_id)   # a voice conversation speaks this thread's answers
+            async for ev in self._events(thread_id, mode, stats, tx, message=_voice.heard_as(quoted(message, resolve(reply_to, tx.list(thread_id))), aloud), state=state, resume=resume,
                                          run_id=run_id, client_tools=client_tools, tool_results=tool_results,
                                          prefill=prefill, capabilities=capabilities):
                 if stats.span is not None:
@@ -488,7 +490,8 @@ class FormGuide:
                     # kept with the turn, so a restored conversation shows the answer's sources again
                     tx.append(thread_id, new_entry("sources", items=merged[:6]))
                     yield {"type": "CUSTOM", "name": "sources", "value": {"items": merged[:6]}}
-            if t == "RUN_FINISHED" and not interrupts and said and self.suggestions_model is not None:
+            # no chips for an answer that is spoken: they are not seen, and the voice waits for the run's end
+            if t == "RUN_FINISHED" and not interrupts and said and self.suggestions_model is not None and not _voice.active(thread_id):
                 user_text = message or next((e.get("text", "") for e in reversed(tx.list(thread_id))
                                              if e["kind"] == "user"), "")
                 t_sug, sug = RunStats.now(), {}

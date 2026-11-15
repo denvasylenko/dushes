@@ -442,7 +442,7 @@ app.mount("/ai", create_app(refresh=3600,
 # the experimental voice mode: only when the host has voice codes (VOICE_CODES); without them none of this exists
 from formguide import voice as _voice  # noqa: E402
 
-VOICE = _voice.Talks(_voice.VoiceConfig.from_env(), title="the Dushes demo")
+VOICE = _voice.Talks(_voice.VoiceConfig.from_env(), title="the Dushes demo", log_dir=Path(guide.data_dir) / "voice")
 if VOICE.config.enabled:
     from fastapi import HTTPException, Request  # noqa: E402
     from fastapi.responses import HTMLResponse  # noqa: E402

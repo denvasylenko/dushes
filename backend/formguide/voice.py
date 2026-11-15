@@ -284,7 +284,11 @@ class Talks:
     """The voice conversations of one host: who may start one, what each hears and says, when each ends."""
 
     def __init__(self, config: VoiceConfig, *, title: str = "this site", key: Callable[[], str] | None = None,
-                 opener: Callable | None = None, now: Callable[[], float] = time.time):
+                 opener: Callable | None = None, now: Callable[[], float] = time.time,
+                 log_dir: str | os.PathLike | None = None):
+        # a conversation is recorded when log_dir is given: one JSON line an event (what was heard, what the voice
+        # said, the answers handed to it, the clock, the end and its cost), in <log_dir>/<day>_<talk>.jsonl
+        self.log_dir = log_dir
         self.config = config
         self.gate = Gate(config, now)
         self.meter = Meter(config, now)
@@ -304,10 +308,11 @@ class Talks:
         import asyncio
         sid, answer, ws = await self._opener(self._key(), self.config.model, sdp, INSTRUCTIONS.format(title=self.title))
         talk = self.meter.start(sid, person)
-        state = {"ws": ws, "thread": thread_id, "events": asyncio.Queue(), "heard": "", "pending": None,
+        state = {"id": sid, "person": person, "ws": ws, "thread": thread_id, "events": asyncio.Queue(), "heard": "", "pending": None,
                  "answer": [], "t0": time.monotonic(), "ended": None}
         self._live[sid] = state
         self._by_thread[thread_id] = sid
+        self._record(state, {"type": "started", "model": self.config.model, "t_ms": 0})
         state["reader"] = asyncio.create_task(self._read(sid))
         state["watch"] = asyncio.create_task(self._watch(sid))
         return {"talk": talk.id, "sdp": answer,
@@ -331,13 +336,32 @@ class Talks:
             task = state.get(name)
             if task and task is not asyncio.current_task():
                 task.cancel()
-        self._emit(state, {"type": "ended", "reason": reason, "cost_usd": round(cost, 4)})
+        self._emit(state, {"type": "ended", "reason": reason, "cost_usd": round(cost, 4),
+                           "seconds": round(seconds if seconds is not None else time.monotonic() - state["t0"], 1)})
         state["events"].put_nowait(None)
         return cost
 
     # -- the provider's events
     def _emit(self, state: dict, ev: dict) -> None:
-        state["events"].put_nowait({**ev, "t_ms": round((time.monotonic() - state["t0"]) * 1000)})
+        ev = {**ev, "t_ms": round((time.monotonic() - state["t0"]) * 1000)}
+        state["events"].put_nowait(ev)
+        self._record(state, ev)
+
+    def _record(self, state: dict, ev: dict) -> None:
+        """One line of the conversation's record. Writing it never breaks a conversation."""
+        if not self.log_dir:
+            return
+        try:
+            from pathlib import Path
+            folder = Path(self.log_dir)
+            folder.mkdir(parents=True, exist_ok=True)
+            day = time.strftime("%Y-%m-%d", time.gmtime(self.now()))
+            line = {"at": time.strftime("%H:%M:%S", time.gmtime(self.now())), "person": state.get("person"),
+                    "thread": state["thread"], **ev}
+            with open(folder / f"{day}_{state['id']}.jsonl", "a", encoding="utf-8") as f:
+                f.write(_json(line) + "\n")
+        except OSError:
+            pass
 
     async def _read(self, talk_id: str) -> None:
         import json
@@ -442,6 +466,23 @@ def watch(talks: Talks) -> Talks:
     if talks not in HOSTS:
         HOSTS.append(talks)
     return talks
+
+
+def active(thread_id: str) -> bool:
+    """Whether a voice conversation is speaking this thread's answers right now."""
+    return any(thread_id in talks._by_thread for talks in HOSTS)
+
+
+ALOUD = ("\n\n[The person is talking to you by voice and will HEAR your answer. Answer in one or two short spoken "
+         "sentences: no lists, no markup, no headings, no \"still open\" inventory. Say what you did and, at most, the "
+         "one next thing. Their words reached you through speech recognition: a filler word or an odd spelling is "
+         "not part of the value.]")
+
+
+def heard_as(message: str | None, aloud: bool) -> str | None:
+    """The message as the model reads it in a voice conversation: with the note that the answer is spoken. The
+    conversation's record keeps the person's words alone."""
+    return message + ALOUD if aloud and message else message
 
 
 def seen(thread_id: str, ev: dict) -> None:

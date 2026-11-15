@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import pytest
 
+from .conftest import say as say_
+
 from formguide.voice import TRIES_PER_DAY, Gate, Meter, VoiceConfig, parse_codes
 
 
@@ -248,3 +250,35 @@ def test_a_host_without_codes_has_no_voice_routes():
     with TestClient(host.app) as c:
         assert c.post("/voice/unlock", json={"code": "anything-at-all"}).status_code in (404, 405)
         assert c.get("/voice-lab/").status_code == 404
+
+
+def test_an_answer_that_will_be_spoken_is_short_and_has_no_chips(guide, model, tmp_path):
+    """From the owner's first voice session (2026-11-15): every answer waited for the suggestion chips nobody sees
+    in voice, and came as a paragraph with a list. In a voice conversation the model is told its answer is heard,
+    and no chips are made. The record keeps the person's words alone."""
+    from .test_agent import collect, start
+    from .test_questions import LOAN
+
+    async def go():
+        talks, live, _ = _talks()
+        talks.log_dir = tmp_path
+        voice.watch(talks)
+        await talks.start("anna", "o", "spoken-thread")
+        return talks, live
+    talks, _live = asyncio.run(go())
+    try:
+        assert voice.active("spoken-thread") and not voice.active("typed-thread")
+        model.script = [say_("The department code goes on the Applicant tab.")]
+        ev = collect(guide, "spoken-thread", message="where is the department code", state=start(guide, LOAN))
+        told = " ".join(str(getattr(m, "content", "")) for m in model.calls[-1])
+        assert "will HEAR your answer" in told and "where is the department code" in told
+        user = next(e for e in guide.thread("spoken-thread")["transcript"] if e["kind"] == "user")
+        assert user["text"] == "where is the department code"                        # the note is the model's alone
+        assert not [e for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "suggestions"]
+        model.script = [say_("It is on the Applicant tab.")]
+        collect(guide, "typed-thread", message="where is the department code", state=start(guide, LOAN))
+        assert "will HEAR your answer" not in " ".join(str(getattr(m, "content", "")) for m in model.calls[-1])
+        logged = [json.loads(line) for f in tmp_path.glob("*.jsonl") for line in f.read_text().splitlines()]
+        assert logged[0]["type"] == "started" and logged[0]["person"] == "anna" and logged[0]["thread"] == "spoken-thread"
+    finally:
+        voice.HOSTS.clear()

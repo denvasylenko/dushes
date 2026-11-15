@@ -564,11 +564,13 @@ class Dushes:
         has_docs = bool(self.forms.knowledge.documents_for(SCOPE))
         failed = False
         first_mid = None
-        async for ev in agent.answer(self.model or self.forms.models.agent, self.site, quoted(message, heard) or "", history, page,
+        from .. import voice
+        aloud = voice.active(thread_id)   # a voice conversation speaks this thread's answers: short, and no chips
+        async for ev in agent.answer(self.model or self.forms.models.agent, self.site, voice.heard_as(quoted(message, heard) or "", aloud) or "", history, page,
                                      thread_id, run_id, keep, doc_passages=self.doc_passages(message or "") if has_docs else "",
                                      ask_docs=self._ask_documents if has_docs else None, live=live,
                                      instructions=self.instructions, style=self.style, tools=self.tools, ctx=ctx,
-                                     suggestions=self.suggestions, finish=False,
+                                     suggestions=self.suggestions and not aloud, finish=False,
                                      stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats,
                                      asked=message, offered=self._offers.pop(thread_id, False)):
             if ev["type"] == "CUSTOM" and ev.get("name") == "site_offer":
