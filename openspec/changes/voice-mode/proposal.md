@@ -15,8 +15,8 @@ Today the widget has dictation only: speech becomes text in the message box and 
   speech out, with interruption ("barge-in"), Stop, and a way back to the chat with the conversation kept.
 - **By default the agent speaks and fills the form quietly** (the owner, 2026-11-15): what the person said goes
   into the fields without a card, with a short line and Undo; a card appears only when a confirmation is needed.
-- **Silent mode** (the crossed-out microphone): the agent stops speaking and answers in short text instead.
-  Whether the person still speaks in it, or types, is open (design.md).
+- **Silent mode** (the crossed-out microphone): the microphone is off, the person types, and the agent answers
+  in short text instead of speaking.
 - **Behind a code.** The code is a secret on the host. Without it nothing on any page changes and no voice route
   answers.
 - **OpenAI Realtime is the voice, Dushes stays the agent** (the recommended design, see design.md): the realtime

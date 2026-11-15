@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Voice mode is off without the code
-The demo host SHALL offer its voice routes only when a voice code is set on the host, and SHALL require a pass given for the right code on every voice route. Without the code set, or without a pass, the widget SHALL show no voice mode and the routes SHALL answer as if they did not exist.
+The demo host SHALL offer its voice routes only when at least one voice code is set on the host, SHALL keep one code per person, and SHALL require a pass given for a right code on every voice route. Usage SHALL be counted per code. Without the code set, or without a pass, the widget SHALL show no voice mode and the routes SHALL answer as if they did not exist.
 
 #### Scenario: A visitor without the code
 - **WHEN** a visitor opens a demo page and has not entered the code
@@ -54,8 +54,8 @@ A consent tick SHALL never be applied by voice: its card SHALL be shown and acce
 - **THEN** the consent is not ticked, and the card asks for a tap
 
 ### Requirement: Silent mode
-The voice mode SHALL have a silent switch (the crossed-out microphone): while it is on the agent SHALL NOT speak and SHALL answer in short text. The switch SHALL hold for the conversation.
+The voice mode SHALL have a silent switch (the crossed-out microphone): while it is on the microphone SHALL be off, the person types, and the agent SHALL NOT speak and SHALL answer in short text. No speech session SHALL run while it is on. The switch SHALL hold for the conversation.
 
 #### Scenario: The person turns the sound off
-- **WHEN** the person taps the crossed-out microphone and asks a question
+- **WHEN** the person taps the crossed-out microphone and types a question
 - **THEN** the answer appears as short text under the orb and nothing is spoken

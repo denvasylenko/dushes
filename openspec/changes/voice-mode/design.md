@@ -81,28 +81,26 @@ browser (orb view)                    docs host (ours)                         O
 - **The agent speaks back, and fills the form quietly.** A value the person said aloud in this conversation goes
   into its field without a card. Under the orb a short line says what was filled ("First name: Anna") with Undo,
   the same Undo the chat's result line has. Nothing is asked twice.
-- **A card shows only when a confirmation is needed.** Proposed list, to be agreed with the CPO:
-  a consent tick (always a tap); an action that cannot be undone or reaches other people (submit, cancel a
-  booking: today's confirmation card); a value the person did not say (read from a document, worked out,
-  taken from the page); replacing a value the person had typed by hand; a value the form refused; a real choice
-  between options the agent cannot make itself; and, from the designer's sketch, a value that is easy to mishear
-  (a number, a name spelled out, an e-mail address). Everything else is filled and said.
+- **A card shows only when a confirmation is needed** (the CPO's list, 2026-11-15): a consent tick (always a
+  tap); an action that cannot be undone or reaches other people (submit, cancel a booking: today's confirmation
+  card); a value the person did not say (read from a document, worked out, taken from the page); replacing a
+  value the person had typed by hand; a value the form refused; a real choice between options the agent cannot
+  make itself. Everything else is filled and said: the voice reads the value back and the line with Undo covers a
+  mishearing, so "easy to mishear" is not on the list.
 - **How "quietly" is done without a second rule set.** The agent proposes changes exactly as in chat. The server
   marks a field-change card as `quiet` when every row in it passes the list above; the widget, in voice mode,
   applies a quiet card through the host's form at once and draws the line with Undo instead of the card. In chat
   nothing changes. The form still has the last word: a value it refuses comes back as a card.
-- **Silent mode: the crossed-out microphone.** The agent stops speaking and answers in short text under the orb.
-  It is one switch, kept for the conversation. **Open, two readings of the owner's words:** (a) only the agent's
-  voice is off and the person may still speak; (b) the microphone is off too and the person types (the designer's
-  sketch, version 3). Under (b) no realtime session is needed while it is on, and silent mode costs what the chat
-  costs. The server supports both; the owner picks. It is also the cheap mode:
-  spoken output is the most expensive part of a conversation (see the table), and silent mode has none.
+- **Silent mode: the crossed-out microphone** (decided by the CPO from the owner's words, as the designer drew
+  it). The microphone is off and the person types; the agent answers in short text under the orb and does not
+  speak. It is one switch, kept for the conversation. No realtime session runs while it is on, so silent mode
+  costs what the chat costs. "Quiet but still listening" would be a separate speaker control, not built now.
 
 ## The code
 
 - Secrets on the host, given out by the CPO outside any chat. Compared in constant time; a few wrong tries per
   address a day, then refused.
-- **One code per person** (open, the owner's question): the host keeps a short list, a name with each code
+- **One code per person** (decided): the host keeps a short list, a name with each code
   (`VOICE_CODES`). Then usage and spend are counted per person, one code can be withdrawn without touching the
   others, and a personal daily limit is possible on top of the shared one. It costs nothing extra to build this
   way from the start; a single shared code is the same list with one entry.
@@ -179,7 +177,7 @@ QA's benchmark, paid for the agent only (the "speaker" is recorded clips made on
 5. **iPhone**: microphone and sound start only from a tap, which the Activate button gives; background tabs lose
    the connection.
 6. **A code is weak protection** if it is ever typed on a shared screen: the limits above are the real guard.
-7. **Decided by the owner**: values the person said are filled without a card. **Open**: the exact list of what
-   still needs a card (proposed above), and whether a spoken "yes" may answer such a card. Proposed: yes, except a
-   consent tick, which stays a tap.
-8. **Open**: the voice model, the budget, and one code per person (the CPO has these with the owner).
+7. **Decided**: values the person said are filled without a card; the card list above; silent mode is typing
+   only; one code per person. **Open**: whether a spoken "yes" may answer a card that is shown. Proposed: yes,
+   except a consent tick, which stays a tap.
+8. **Open, with the owner**: the voice model and the budget.
