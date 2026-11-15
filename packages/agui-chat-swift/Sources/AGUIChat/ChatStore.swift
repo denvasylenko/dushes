@@ -64,9 +64,15 @@ public final class ChatStore {
     public var extraProps: @MainActor () -> [String: JSONValue] = { [:] }
 
     private let transport: AGUITransport
-    /// The person's last message, for «Try again». The server keeps the thread by `threadId`: a run sends only the
-    /// new message (the last user message is the new turn), a card answer sends none.
+    /// The person's last message, for «Try again».
     private var lastUser: RunAgentInput.Message?
+    /// The last messages of the conversation. The UI and site agents keep the thread by `threadId` and read only the
+    /// last user message; the docs assistant reads the last few — so a run sends at most the last 8 (review, 1).
+    private var recent: [RunAgentInput.Message] = []
+    /// A message typed while a run is going: sent when it ends, as the widget does.
+    public private(set) var queued: String?
+    private var finished = false                    // this run reached RUN_FINISHED
+    private var busy = false                        // RUN_ERROR code "busy": the thread's previous turn still runs
     private var task: Task<Void, Never>?
     private var tools: [String: Int] = [:]          // toolCallId → index in items
 
@@ -79,12 +85,14 @@ public final class ChatStore {
 
     public func send(_ text: String) {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !running else { return }
+        guard !text.isEmpty else { return }
+        if running { queued = text; return }
         closeOpenCards()
         let message = RunAgentInput.Message(role: "user", content: text)
         lastUser = message
         items.append(.user(id: message.id, text: text))
-        start(messages: [message], props: [:])
+        remember(message)
+        start(messages: Array(recent.suffix(8)), props: [:])
     }
 
     /// The answer of a card goes as the next run's `resume` (legacy mode: `forwardedProps.command.resume`).
@@ -104,10 +112,29 @@ public final class ChatStore {
 
     public func tapSuggestion(_ text: String) { send(text) }
 
+    /// «Try again». The turn may have reached the server before the connection dropped (it runs on there): read the
+    /// thread first and send the message again only when the server does not have it (review, 3).
     public func retry() {
         guard !running, let lastUser else { return }
         error = nil
-        start(messages: [lastUser], props: [:])
+        running = true
+        Task {
+            let thread = try? await transport.restore(threadId: threadId)
+            running = false
+            if let thread, thread.messages.last(where: { $0.role == "user" })?.content == lastUser.content {
+                await restore(thread)
+                if thread.running == true { followLater() }
+            } else {
+                start(messages: Array(recent.suffix(8)), props: [:])
+            }
+        }
+    }
+
+    /// The hand-off run after a `site_directive` with `form_id` and without `handoff: "done"`: no new message, the
+    /// form's agent takes over in the same chat.
+    public func handoff() {
+        guard !running else { return }
+        start(messages: [], props: ["handoff": true])
     }
 
     /// Stops showing the answer and ends the turn on the server too.
@@ -124,7 +151,15 @@ public final class ChatStore {
     /// followed yet: the log shows what is done, and a new message starts the next turn.
     public func restore() async {
         guard let thread = try? await transport.restore(threadId: threadId) else { return }
+        await restore(thread)
+    }
+
+    private func restore(_ thread: RestoredThread) async {
         if let id = thread.thread_id, !id.isEmpty { threadId = id }
+        recent = thread.messages.suffix(8).compactMap { m in
+            guard let text = m.content, m.role == "user" || m.role == "assistant" else { return nil }
+            return .init(id: m.id ?? UUID().uuidString, role: m.role, content: text)
+        }
         items = thread.messages.compactMap { m in
             guard let text = m.content, !text.isEmpty else { return nil }
             let id = m.id ?? UUID().uuidString
@@ -143,6 +178,8 @@ public final class ChatStore {
         error = nil
         suggestions = []
         running = true
+        finished = false
+        busy = false
         var forwarded = extraProps()
         forwarded["capabilities"] = .array(Self.capabilities)
         for (k, v) in props { forwarded[k] = v }
@@ -159,16 +196,30 @@ public final class ChatStore {
                 }
                 if !sawTerminal { self?.fail(String(localized: "The answer was cut off.", bundle: .module)) }
             } catch is CancellationError {
+                guard let self else { return }
+                self.running = false
+                if let cardId, let i = self.cardIndex(cardId), case .card(var c) = self.items[i], c.status == .sending {
+                    c.status = .open
+                    self.items[i] = .card(c)
+                }
+                return
             } catch {
                 self?.fail(Self.human(error))
             }
             guard let self else { return }
             self.running = false
+            // a card is answered only by a run that reached RUN_FINISHED and did not refuse it; after an error, a cut-off
+            // stream or a stop it is open again (review, 2)
             if let cardId, let i = self.cardIndex(cardId), case .card(var c) = self.items[i], c.status == .sending {
-                c.status = .answered
+                c.status = self.finished ? .answered : .open
                 self.items[i] = .card(c)
             }
             self.finishSteps()
+            if self.busy { self.followLater() }
+            if let next = self.queued, !self.busy {
+                self.queued = nil
+                self.send(next)
+            }
         }
     }
 
@@ -188,13 +239,15 @@ public final class ChatStore {
         case .textEnd(let id):
             if let i = itemIndex(id), case .assistant(_, let text, _) = items[i] {
                 items[i] = .assistant(id: id, text: text, done: true)
+                remember(.init(id: id, role: "assistant", content: text))
             }
         case .toolStart(let id, let name, _):
             tools[id] = items.count
             items.append(.step(id: "tool-" + id, name: name, state: .running))
-        case .toolResult(let id, let content):
+        case .toolResult(let id, let content, let flagged):
             if let i = tools[id], i < items.count, case .step(let sid, let name, _) = items[i] {
-                let failed = content.lowercased().contains(" failed")
+                // `error: true` when the server sends it; until then a guess, so the step state is decoration (review, 5)
+                let failed = flagged || content.lowercased().contains(" failed")
                 items[i] = .step(id: sid, name: name, state: failed ? .failed : .done)
             }
         case .toolArgs, .toolEnd, .other:
@@ -202,10 +255,13 @@ public final class ChatStore {
         case .custom(let name, let value):
             custom(name, value)
         case .runFinished(let outcome):
+            finished = true
             for interrupt in outcome?["interrupts"]?.array ?? [] {
                 if let body = interrupt["value"] ?? interrupt["payload"] { addCard(body) }
             }
-        case .runError(let message, _):
+        case .runError(let message, let code):
+            // "busy": the thread's previous turn still runs — not a failure: wait and read the thread (review, 3)
+            if code == "busy" { busy = true; return }
             fail(message.isEmpty ? String(localized: "Something went wrong.", bundle: .module) : message)
         }
     }
@@ -215,6 +271,7 @@ public final class ChatStore {
         case "text_retract":
             if let id = value["messageId"]?.string, let i = itemIndex(id) {
                 items.remove(at: i)
+                recent.removeAll { $0.id == id }
                 tools = tools.mapValues { $0 > i ? $0 - 1 : $0 }
             }
         case "on_interrupt":
@@ -245,6 +302,22 @@ public final class ChatStore {
         let id = body["card_id"]?.string ?? UUID().uuidString
         let card = ChatCard(id: id, type: type, body: body)
         if let i = cardIndex(id) { items[i] = .card(card) } else { items.append(.card(card)) }
+    }
+
+    private func remember(_ m: RunAgentInput.Message) {
+        recent.append(m)
+        if recent.count > 8 { recent.removeFirst(recent.count - 8) }
+    }
+
+    /// The server is still on the previous turn: read the thread again in a moment.
+    private func followLater() {
+        running = true
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            running = false
+            await restore()
+            if let next = queued { queued = nil; send(next) }
+        }
     }
 
     private func fail(_ message: String) {

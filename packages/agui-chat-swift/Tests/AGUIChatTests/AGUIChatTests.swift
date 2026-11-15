@@ -95,7 +95,52 @@ final class AGUIChatTests: XCTestCase {
         for _ in 0..<50 where store.running { try await Task.sleep(for: .milliseconds(10)) }
         store.send("Two")
         for _ in 0..<50 where store.running { try await Task.sleep(for: .milliseconds(10)) }
-        XCTAssertEqual(seen.value?.messages.map(\.content), ["Two"])
+        XCTAssertEqual(seen.value?.messages.last?.content, "Two")
+        XCTAssertLessThanOrEqual(seen.value?.messages.count ?? 0, 8)
+    }
+
+    func testLineSeparatorsInsideTextDoNotCutTheEvent() throws {
+        // U+2028 written raw inside a JSON string (review, finding 1)
+        let raw = "data: {\"type\":\"TEXT_MESSAGE_CONTENT\",\"messageId\":\"m\",\"delta\":\"a\u{2028}b\u{85}c\"}\r\n\r\n"
+        let lines = LineSplitter.lines(Data(raw.utf8))
+        XCTAssertEqual(lines.count, 2)
+        var p = SSEParser()
+        let payload = try XCTUnwrap(lines.compactMap { p.feed(line: $0) }.first)
+        XCTAssertEqual(try AGUIEvent.decode(Data(payload.utf8)), .textContent(messageId: "m", delta: "a\u{2028}b\u{85}c"))
+    }
+
+    @MainActor
+    func testACardIsOpenAgainWhenItsRunFails() async throws {
+        let store = ChatStore(transport: ReplayTransport(pause: .zero) { _ in
+            [.runStarted(threadId: nil, runId: nil), .runError(message: "boom", code: nil)]
+        })
+        store.apply(.custom(name: "on_interrupt", value: .string(#"{"type":"confirm","card_id":"k-3","title":"Publish?"}"#)))
+        guard case .card(let card) = store.items.last else { return XCTFail("no card") }
+        store.confirm(card, true)
+        for _ in 0..<50 where store.running { try await Task.sleep(for: .milliseconds(10)) }
+        guard case .card(let after) = store.items.last else { return XCTFail("no card") }
+        XCTAssertEqual(after.status, .open)
+        XCTAssertNotNil(store.error)
+    }
+
+    @MainActor
+    func testRetryDoesNotSendWhatTheServerAlreadyHas() async throws {
+        let calls = Captured()
+        let thread = RestoredThread(thread_id: "t", messages: [.init(id: "u", role: "user", content: "Hello"),
+                                                              .init(id: "a", role: "assistant", content: "Hi")],
+                                    pending_card: nil, running: false)
+        let store = ChatStore(transport: ReplayTransport(pause: .zero, thread: thread) { input in
+            calls.set(input)
+            return [.runStarted(threadId: nil, runId: nil)]          // cut off: an error, then «Try again»
+        }, threadId: "t")
+        store.send("Hello")
+        for _ in 0..<50 where store.running { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertNotNil(store.error)
+        calls.set(RunAgentInput(threadId: "none", messages: []))
+        store.retry()
+        for _ in 0..<50 where store.running || store.items.count < 2 { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(calls.value?.threadId, "none")              // no second run
+        XCTAssertEqual(store.items.map(\.id), ["u", "a"])
     }
 
     @MainActor

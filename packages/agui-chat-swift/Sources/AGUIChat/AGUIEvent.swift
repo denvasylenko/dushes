@@ -12,7 +12,7 @@ public enum AGUIEvent: Equatable, Sendable {
     case toolStart(toolCallId: String, name: String, parentId: String?)
     case toolArgs(toolCallId: String, delta: String)
     case toolEnd(toolCallId: String)
-    case toolResult(toolCallId: String, content: String)
+    case toolResult(toolCallId: String, content: String, error: Bool)
     case custom(name: String, value: JSONValue)
     case other(type: String)
 
@@ -33,7 +33,9 @@ public enum AGUIEvent: Equatable, Sendable {
                               parentId: s("parentMessageId") ?? s("parent_id"))
         case "TOOL_CALL_ARGS": return .toolArgs(toolCallId: s("toolCallId") ?? "", delta: s("delta") ?? "")
         case "TOOL_CALL_END": return .toolEnd(toolCallId: s("toolCallId") ?? "")
-        case "TOOL_CALL_RESULT": return .toolResult(toolCallId: s("toolCallId") ?? "", content: s("content") ?? "")
+        case "TOOL_CALL_RESULT":
+            // `error: true` is coming to the contract (review of f3b7f0f, finding 5); until then the step state is a guess
+            return .toolResult(toolCallId: s("toolCallId") ?? "", content: s("content") ?? "", error: v["error"]?.bool ?? false)
         case "CUSTOM": return .custom(name: s("name") ?? "", value: v["value"] ?? .null)
         default: return .other(type: type)
         }

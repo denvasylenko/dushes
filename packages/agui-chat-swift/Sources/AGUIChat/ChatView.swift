@@ -45,6 +45,10 @@ public struct ChatView<HostCard: View>: View {
                     withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(store.items.last?.id, anchor: .bottom) }
                 }
             }
+            if let queued = store.queued {
+                Text(queued).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, 16).padding(.bottom, 4)
+            }
             if !store.suggestions.isEmpty, !store.running {
                 chips
             }
@@ -120,7 +124,7 @@ public struct ChatView<HostCard: View>: View {
                 .padding(.vertical, 10)
                 .submitLabel(.send)
                 .onSubmit(send)
-            if store.running {
+            if store.running, draft.trimmingCharacters(in: .whitespaces).isEmpty {
                 circle("stop.fill", label: "Stop") { store.stop() }
             } else if draft.trimmingCharacters(in: .whitespaces).isEmpty, let onMicrophone {
                 circle("mic.fill", label: "Dictate", action: onMicrophone)
@@ -194,6 +198,13 @@ struct CardView: View {
                 Text(reason).font(.footnote).foregroundStyle(.orange)
             }
             switch card.type {
+            case "ask" where !card.options.isEmpty:
+                ForEach(card.options, id: \.id) { option in
+                    Button { store.choose(card, option: option.id) } label: {
+                        Text(option.label).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.bordered)
+                }
             case "confirm":
                 HStack {
                     Button(card.body["action"]?.string ?? String(localized: "Confirm", bundle: .module)) {
@@ -204,12 +215,12 @@ struct CardView: View {
                         .buttonStyle(.bordered)
                 }
             default:
-                ForEach(card.options, id: \.id) { option in
-                    Button { store.choose(card, option: option.id) } label: {
-                        Text(option.label).frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                // a card this client cannot draw yet (set_fields comes whatever the capabilities say): say so and let
+                // the person decline it, so the chat never gets stuck behind it (review, smaller notes)
+                Text(String(localized: "This step opens on the web for now.", bundle: .module))
+                    .font(.subheadline).foregroundStyle(.secondary)
+                Button(String(localized: "Not now", bundle: .module)) { store.answer(card, with: ["accepted": false]) }
                     .buttonStyle(.bordered)
-                }
             }
         }
         .disabled(!open || store.running)

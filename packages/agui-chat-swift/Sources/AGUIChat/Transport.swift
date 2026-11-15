@@ -107,12 +107,15 @@ public struct HTTPTransport: AGUITransport {
                         throw AGUIError.http(status: http.statusCode)
                     }
                     var parser = SSEParser()
-                    for try await line in bytes.lines {
-                        // `lines` drops empty lines, so every data line is treated as a whole event (the servers
-                        // send one JSON object per event, on one line)
-                        if let payload = parser.feed(line: line) ?? parser.feed(line: "") {
+                    var splitter = LineSplitter()
+                    for try await byte in bytes {
+                        guard let line = splitter.feed(byte) else { continue }
+                        if let payload = parser.feed(line: line) {
                             continuation.yield(try AGUIEvent.decode(Data(payload.utf8)))
                         }
+                    }
+                    if let line = splitter.finish(), let payload = parser.feed(line: line) {
+                        continuation.yield(try AGUIEvent.decode(Data(payload.utf8)))
                     }
                     if let payload = parser.finish() { continuation.yield(try AGUIEvent.decode(Data(payload.utf8))) }
                     continuation.finish()
@@ -145,8 +148,7 @@ public struct ReplayTransport: AGUITransport {
     public static func events(fromRecording text: String) -> [AGUIEvent] {
         var parser = SSEParser()
         var out: [AGUIEvent] = []
-        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
-            let l = String(line)
+        for l in LineSplitter.lines(Data(text.utf8)) {
             if l.hasPrefix("data:") {
                 if let payload = parser.feed(line: l) ?? parser.feed(line: ""),
                    let e = try? AGUIEvent.decode(Data(payload.utf8)) { out.append(e) }
