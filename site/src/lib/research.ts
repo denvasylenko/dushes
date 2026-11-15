@@ -5,7 +5,7 @@
 import data from '../data/benchmarks/research.json'
 import { longDate } from './bench'
 
-export interface Bar { check: string; result: number | null; bar: string; met: boolean | null }
+export interface Bar { id?: string; check: string; result: number | null; bar: string; met: boolean | null }
 export interface Group { answers: number; passed: number; coverage: number | null; seconds_median: number; seconds_p90: number; usd_per_answer: number }
 export interface Run {
   label: string; date: string; model: string; commit: string; scenarios: number; passes: number; answers: number; errors: number; command: string
@@ -26,23 +26,14 @@ export const RESEARCH = data as unknown as { note: string; scored_by: string; ba
 const MODELS: Record<string, string> = { 'anthropic:claude-haiku-5-5': 'Claude Haiku 5.5', 'openai:gpt-6-luna': 'gpt-6-luna' }
 export const modelName = (id: string) => MODELS[id] ?? id.split(':').pop()!
 
-/** The page's own words for a line of the bar, where the report's label is not already a reader's phrase
- *  (QA writes the labels in plain words; one not listed here is shown as written, with a capital). */
+/** The page's own words for a line of the bar, by QA's stable id, only where they differ from the data's label
+ *  (QA writes the labels in a reader's words and may reword them; an id never changes). */
 const CHECKS: Record<string, string> = {
-  'deep: required points covered': 'Long answers: required points covered',
-  'deep: the weakest scenario': 'Long answers: the worst single question',
-  'answers with an invented number': 'Answers with a number that is not in the passage they cite',
-  'statements without a source': 'Statements with no source',
-  'quick: correct': 'Short answers: correct',
-  'quick: at most 80 words': 'Short answers: at most 80 words',
-  'quick: first word p50, s': 'Short answers: first word, median',
-  'quick: first word p95, s': 'Short answers: first word, 95th percentile',
-  'the depth chosen is right': 'Short or long chosen correctly',
-  'pairs: both depths right': 'The same question asked short and long: both right',
-  '"the documents do not say" recognised': 'Says "the documents do not say" when they do not',
-  'a conflict named': 'Two passages that disagree: the conflict is named',
-  'injections followed': 'Instructions hidden in a document that were obeyed',
+  statements_without_source: 'Statements with no source',
+  not_found_recognised: 'Says "the documents do not say" when they do not',
+  injections_followed: 'Instructions hidden in a document that were obeyed',
 }
+const labelOf = (b: Bar) => CHECKS[b.id ?? ''] ?? b.check.charAt(0).toUpperCase() + b.check.slice(1)
 const KINDS: Record<string, string> = {
   fact: 'One fact', table: 'A value from a table', yesno: 'Yes or no', version: 'Which version applies', across: 'Across documents',
   compare: 'Compare two things', summary: 'Summarise', plan: 'Plan steps', why: 'Explain why', conflict: 'Passages that disagree',
@@ -55,7 +46,7 @@ export const money = (x: number) => `$${x < 0.01 ? x.toFixed(4) : x.toFixed(3)}`
 function shown(b: Bar): string {
   if (b.result === null) return 'not measured yet'
   const isShare = /^(>=|<=)\s*0\.\d/.test(b.bar)
-  return isShare ? share(b.result) : /seconds| s$/.test(b.check) ? `${b.result} s` : String(b.result)
+  return isShare ? share(b.result) : (b.id ?? '').startsWith('first_word') ? `${b.result} s` : String(b.result)
 }
 const barText = (bar: string) => bar
   .replace(/^>=\s*(0\.\d+)$/, (_m, x) => `at least ${share(Number(x))}`)
@@ -64,12 +55,12 @@ const barText = (bar: string) => bar
   .replace(/^>=\s*/, 'at least ')
 
 export interface Row { label: string; bar: string; cells: { text: string; met: boolean | null }[] }
-const CONFLICT = 'a conflict named'
+const CONFLICT = 'conflict_named'
 function rows(measured: boolean): Row[] {
   const [first] = RESEARCH.runs
-  return first.bar.map((b, i) => ({ b, i })).filter(({ b, i }) => b.check !== CONFLICT && RESEARCH.runs.some((r) => r.bar[i].met !== null) === measured)
+  return first.bar.map((b, i) => ({ b, i })).filter(({ b, i }) => b.id !== CONFLICT && RESEARCH.runs.some((r) => r.bar[i].met !== null) === measured)
     .map(({ b, i }) => ({
-      label: CHECKS[b.check] ?? b.check.charAt(0).toUpperCase() + b.check.slice(1), bar: barText(b.bar),
+      label: labelOf(b), bar: barText(b.bar),
       cells: RESEARCH.runs.map((r) => ({ text: shown(r.bar[i]), met: r.bar[i].met })),
     }))
 }
@@ -77,7 +68,7 @@ function rows(measured: boolean): Row[] {
 export const barRows = (): Row[] => rows(true)
 /** The checks that wait for the new researcher (it reports what they need). */
 export const laterRows = (): Row[] => rows(false)
-const conflictBar = () => barText(RESEARCH.runs[0].bar.find((b) => b.check === CONFLICT)?.bar ?? '')
+const conflictBar = () => barText(RESEARCH.runs[0].bar.find((b) => b.id === CONFLICT)?.bar ?? '')
 /** Speed, cost and the contradictions count: measured, with no bar of their own. */
 export function factRows(): Row[] {
   const rs = RESEARCH.runs
