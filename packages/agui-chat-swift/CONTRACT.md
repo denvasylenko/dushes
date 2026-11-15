@@ -149,7 +149,7 @@ A native client: one WebSocket. `GET <host>/voice/stream?thread_id=<the chat's t
   dropped: remove what `hearing` had started to show), `error {code}`, `ended {reason, cost_usd, seconds}` with
   reason `closed`, `time`, `money`, `silence`, `day` or `lost`.
 
-The browser uses WebRTC instead (`POST /voice/session {sdp, thread_id}` gives `{talk, sdp, limits}`, then
+The browser uses WebRTC instead (`POST /voice/session {sdp, thread_id}` gives `{talk, sdp, contract, limits}`, then
 `GET /voice/events?talk=` and `POST /voice/end {talk}`); the events are the same.
 
 Filling without a card. In a thread a voice conversation speaks for, a `set_fields` card may carry

@@ -46,8 +46,10 @@ public final class WebSocketVoiceTransport: NSObject, VoiceTransport, @unchecked
         do {
             first = try await task.receive()
         } catch {
+            // the host's own frame closes before `started`: 4401 — the token is not accepted
+            let unauthorized = task.closeCode.rawValue == 4401
             task.cancel(with: .goingAway, reason: nil)
-            throw VoiceTransportError.unavailable
+            throw unauthorized ? VoiceTransportError.refused("pass") : VoiceTransportError.unavailable
         }
         guard case .string(let text) = first, let event = Self.json(text) else {
             task.cancel(with: .goingAway, reason: nil)
