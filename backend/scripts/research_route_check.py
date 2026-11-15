@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 import uuid
@@ -41,8 +42,10 @@ def questions() -> list[dict]:
     for s in PUBLIC_SETS:
         mine = [q for q in qs if q["set"] == s]
         deep = next((q for q in mine if q.get("kind") in DEEP_KINDS), None)
-        quick = next((q for q in mine if q.get("kind") not in DEEP_KINDS), None)
-        out += [{"set": s, "question": q["question"], "expects": d} for q, d in ((quick, "quick"), (deep, "deep")) if q]
+        quick = next((q for q in mine if q.get("kind") in ("version", "fact", "table", "yesno")), None)   # a short question that has an answer
+        none = next((q for q in mine if q.get("kind") == "not_found"), None)                            # one the documents do not answer
+        out += [{"set": s, "question": q["question"], "expects": d, "answerable": a}
+                for q, d, a in ((quick, "quick", True), (deep, "deep", True), (none, "quick", False)) if q]
     return out
 
 
@@ -50,7 +53,7 @@ def ask(http: httpx.Client, q: dict, model: str | None) -> dict:
     body = {"threadId": str(uuid.uuid4()), "runId": str(uuid.uuid4()), "messages": [{"id": "u1", "role": "user", "content": q["question"]}],
             "state": {"set": q["set"]}, "tools": [], "context": [], "forwardedProps": {"depth": "auto", **({"model": model} if model else {})}}
     t0 = time.perf_counter()
-    rec: dict = {"set": q["set"], "question": q["question"], "expects": q["expects"], "model": model, "text": "", "sources": [], "depth": "",
+    rec: dict = {"set": q["set"], "question": q["question"], "expects": q["expects"], "answerable": q.get("answerable", True), "model": model, "text": "", "sources": [], "depth": "",
                  "first_word_s": None, "steps": 0, "error": None, "tokens": {}, "model_id": ""}
     try:
         for e in events(http, "/research/run", body):
@@ -96,8 +99,15 @@ def checks(rec: dict, docs: set[str]) -> list[str]:
         why.append("the run did not say which depth it chose")
     elif rec["depth"] != rec["expects"]:
         why.append(f"chose {rec['depth']} for a question that needs a {rec['expects']} answer")
-    if rec["text"].strip() and not rec["sources"]:
-        why.append("no sources")
+    nothing = bool(re.search(r"found nothing|(could|can)(n't| ?not) find|do(es)?(n't| not) (say|mention|give|cover)|no (information|mention)|none of them mention", rec["text"], re.I))
+    if rec.get("answerable", True):
+        if rec["text"].strip() and not rec["sources"]:
+            why.append("no sources")
+    else:   # the documents have no answer: saying so, with no source, is the right answer
+        if not nothing:
+            why.append("does not say that the documents have no answer")
+        if rec["sources"]:
+            why.append("cites a source for an answer the documents do not have")
     named = {str(s.get("title") or s.get("document") or "") for s in rec["sources"]}
     if named and not named & docs and not any(n in d or d in n for n in named for d in docs):
         why.append(f"sources name no document of the set: {sorted(named)[:3]}")

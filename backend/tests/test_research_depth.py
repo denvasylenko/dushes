@@ -198,7 +198,11 @@ def test_the_route_check_asks_published_questions_and_reads_an_answer():
     import research_route_check as rc
     qs = rc.questions()
     held = {s.question for s in rd.load() if s.heldout}
-    assert len(qs) == 8 and {q["set"] for q in qs} == set(rd.PUBLIC_SETS) and not [q for q in qs if q["question"] in held]
+    assert len(qs) == 12 and {q["set"] for q in qs} == set(rd.PUBLIC_SETS) and not [q for q in qs if q["question"] in held]
+    assert sum(not q["answerable"] for q in qs) == 4
+    silent = {"error": None, "text": "A short look at the documents found nothing about that.", "depth": "quick", "expects": "quick", "answerable": False,
+              "tokens": {"input": 500}, "sources": []}
+    assert rc.checks(silent, set()) == []                       # no answer in the documents: saying so without a source is right
     assert {q["expects"] for q in qs} == {"quick", "deep"}
     good = {"error": None, "text": "The cap is 165 euro.", "depth": "quick", "expects": "quick", "tokens": {"input": 900},
             "sources": [{"title": "directive_2026_07.md", "excerpt": "The hotel cap rises to 165"}]}
