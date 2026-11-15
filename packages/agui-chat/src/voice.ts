@@ -220,15 +220,32 @@ export function voice(chat: Chat): void {
    *  that is not on the screen or cannot be answered yet. */
   function answer(a: { card_id?: string; type?: string; accepted?: boolean }, text: string): boolean {
     if (!a.card_id || a.type === 'ask' || typeof a.accepted !== 'boolean') return false
-    const card = [...root!.querySelectorAll<HTMLElement>('.log [data-card-id]')].find((c) => c.dataset.cardId === a.card_id)
-    if (!card) return false
-    if (a.accepted) card.querySelectorAll<HTMLInputElement>('.row.consent input[type=checkbox]').forEach((c) => { if (!c.checked) c.click() })
-    const b = card.querySelector<HTMLButtonElement>(a.accepted ? '.acts > .btn.pri, .acts > .btn.danger' : '.acts > .btn.sec')
-    if (!b || b.disabled) return false
-    const me = el('div', 'msg me'); me.append(el('div', 'bubble', text)); card.after(me)
-    b.click()
+    const id = a.card_id, yes = a.accepted
+    if (answering.has(id)) return true   // said twice: one answer
+    const press = (): boolean => {
+      const card = [...root!.querySelectorAll<HTMLElement>('.log [data-card-id]')].find((c) => c.dataset.cardId === id)
+      if (!card) return false
+      if (yes) card.querySelectorAll<HTMLInputElement>('.row.consent input[type=checkbox]').forEach((c) => { if (!c.checked) c.click() })
+      const b = card.querySelector<HTMLButtonElement>(yes ? '.acts > .btn.pri, .acts > .btn.danger' : '.acts > .btn.sec')
+      if (!b || b.disabled) return false
+      const me = el('div', 'msg me'); me.append(el('div', 'bubble', text)); card.after(me)
+      b.click()
+      return true
+    }
+    if (press()) return true
+    // the card may still be on its way to the screen (it is drawn after the text above it): wait for it a little, and
+    // only then let the words go as a message, which is what an older chat did
+    answering.add(id)
+    let tries = 0
+    const t = setInterval(() => {
+      const done = press()
+      if (!done && ++tries < 25 && on) return
+      clearInterval(t); answering.delete(id)
+      if (!done && on) void chat.send(text)
+    }, 160)
     return true
   }
+  const answering = new Set<string>()
 
   /** Enter voice mode and connect. */
   async function start(): Promise<void> {

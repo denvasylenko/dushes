@@ -405,10 +405,20 @@ describe('the experimental voice mode', () => {
     await tick(120)
     expect(applied.at(-1)).toEqual({ agree: true })                             // the spoken yes to the direct question is the tick
     expect(resumed).toHaveLength(3)
-    // a question card, or a card that is not there: the words go as an ordinary message
+    // a question card: the words go as an ordinary message
     s.push({ type: 'heard', text: 'yes', answers: { card_id: 'q1', type: 'ask', accepted: true } })
     await tick(120)
     expect(said.at(-1)).toBe('yes')
+    // the yes can come before its card is on the screen: it waits for the card, and is not sent as a message meanwhile
+    turns.push([card('c4', [amount])])
+    s.push({ type: 'heard', text: 'yes sure', answers: { card_id: 'c4', type: 'set_fields', accepted: true } })
+    await tick(200)
+    expect(said).not.toContain('yes sure')
+    s.push({ type: 'heard', text: 'the amount again' })
+    await tick(500)
+    expect(resumed).toHaveLength(4)
+    expect(resumed[3]).toMatchObject({ accepted: true })
+    expect(said).not.toContain('yes sure')
   })
 
   it('speaks the chat\'s language', async () => {
