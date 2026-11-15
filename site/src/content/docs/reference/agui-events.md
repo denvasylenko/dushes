@@ -8,7 +8,7 @@ A run starts with `RUN_STARTED` and ends with exactly one `RUN_FINISHED` or `RUN
 | Event | When | What a client does |
 | --- | --- | --- |
 | `TEXT_MESSAGE_START` / `CONTENT` / `END` | the answer, streamed | show it (the widget types it out) |
-| `TOOL_CALL_START` / `ARGS` / `END` / `RESULT` | a server tool ran. Every call gets a result: a tool that fails, for any reason, sends a `TOOL_CALL_RESULT` with an error text ("`<tool>` failed ...") and the turn goes on; a tool failure is never a `RUN_ERROR` | show a step ("Searching the form"); mark a failed one |
+| `TOOL_CALL_START` / `ARGS` / `END` / `RESULT` | a server tool ran. Every call gets a result: a tool that fails, for any reason, sends a `TOOL_CALL_RESULT` with an error text and the turn goes on (an unexpected failure in a built-in tool: "`<tool>` failed (`<ErrorType>`): check the arguments or do it another way"; a tool's own refusal, such as a value that fails validation: that refusal's sentence; a host or skill tool that raises: "`<tool>` failed: `<ErrorType>`: `<message>`"); a tool failure is never a `RUN_ERROR` | show a step ("Searching the form"); mark a failed one |
 | `TOOL_CALL_*` without a result | a frontend tool was called; the run ends | run the tool, send its result as a `tool` message |
 | `CUSTOM ui_directive` | "look here": `{type: "focus", target, reveal: [...], hint, also?: [names]}` | open the tabs and accordions in `reveal`, scroll to `target`, highlight it; ring each field in `also` too (several fields shown at once, all inside `reveal`) |
 | `CUSTOM on_interrupt` | a card (legacy mode): a JSON string `{type, card_id, ...}` | render the card, resume with the answer |
@@ -43,7 +43,7 @@ All of these are optional: a client that ignores them still works.
 | Card | Key | Meaning |
 | --- | --- | --- |
 | `set_fields` | `changes[].kind` | the field's role (`text`, `number`, `date`, `select`, `radio`, `multiselect`, `bool`, `file`): format values by it (no digit groups in a passport number) |
-| `set_fields` | `changes[].consent`, `required`, `doc?` | a consent from the domain pack: shown unticked, applied only when ticked |
+| `set_fields` | `changes[].consent`, `required`, `doc?` | a consent (the pack's `consents`, the props' `consent: true`, or a label that reads as an agreement): shown unticked, applied only when the answer's `names` lists it; without `set.consent` the agent asks with a question card instead |
 | `set_fields` | `changes[].issue` | `{severity: "warning", message}`: a valid value a rule or document flags |
 | `set_fields` | `source`, `changes[].confidence` | values from a document: `{kind: "document", title, attachment_id, found}`; `confidence` `high` / `medium` / `low` per row |
 | `ask` | `options[].description`, `options[].attrs`, `recommended` | a second line, comparable facts (only when 2+ options share the keys), the best fit |

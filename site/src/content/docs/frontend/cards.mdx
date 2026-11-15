@@ -184,6 +184,19 @@ The agent is told "The user edited before applying: loan_amount -> 1200000", so 
 
 **Why not just write the values straight into the inputs?** Because your form has rules: choosing *Car loan* may show *Car brand* and change the allowed amounts. Only your form backend knows those rules. If you skip it, the agent and the screen will disagree about the form.
 
+### A consent is the person's own tick
+
+A checkbox that means "I agree" is never filled for the user. It is a consent when the form's [domain pack](../../agents/ui-agent/domain-packs/) lists it in `consents`, when its props say `consent: true`, or when its label reads as an agreement, an acceptance of terms or a declaration; `consent: false` in its props says it is an ordinary checkbox.
+
+On a fill card a consent is its own row (`changes[].consent: true`), shown **unticked**. It is applied only when the answer names it:
+
+```ts
+resume: { accepted: true, names: ["full_name", "consent_pd"], config }   // the user ticked consent_pd
+resume: { accepted: true, config }                                       // no names: the consent stays unticked
+```
+
+Typing "yes, I agree" in the chat does not tick it either: the agent cannot give a consent. A client that does not announce the `set.consent` capability gets no consent row; the agent asks with a question card for that field instead, and the user's answer fills it.
+
 ## 2.4 The whole round trip
 
 ```
@@ -307,7 +320,7 @@ The model asks *what*; the widget decides *how* to draw it from the payload. Eve
 | question | `fields: [{name, label, input?, required?}]` | 2-3 short inputs in one card; resume `{answers, config}` | |
 | field change | `changes[].kind` | values formatted by role: dates in the language, numbers grouped, ids as typed | |
 | field change | one `reason` on every row | said once under the title | |
-| field change | `changes[].consent`, `doc`, `required` | unticked consent rows with Read; the button says how many are left | |
+| field change | `changes[].consent`, `doc`, `required` | unticked consent rows with Read; the button says how many are left; applied only when the answer's `names` lists them ([above](#a-consent-is-the-persons-own-tick)) | |
 | field change | `changes[].issue: {severity, message, why?}` | a warning inside the row, with Why | |
 | field change | card `source: {kind: "document", title, attachment_id, found}`, `changes[].confidence: "low"` | a document header with a thumbnail; "check" on unsure values | |
 | review | `mode: "status"`, `sections: [{name, label, left, reveal}]` | what is left by section; resume `{action: "continue", section}` | |

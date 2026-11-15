@@ -121,7 +121,7 @@ Every key of a pack:
 | `rules` | list of business rules; compiled documents are merged in | none |
 | `pii` | list of field names masked in the model's context | none |
 | `starters` | up to 6 opening messages for an empty chat | none |
-| `consents` | `{bool_field: {required?, doc?}}`: checkboxes shown as consents, never pre-ticked | none |
+| `consents` | `{bool_field: {required?, doc?}}`: checkboxes that are consents. Shown unticked on the card and applied only by the user's own tick; the agent cannot give one, not even on a typed "yes" ([Cards](../../../frontend/cards/#a-consent-is-the-persons-own-tick)). A checkbox is also a consent when the form's props say `consent: true` or its label reads as an agreement; `consent: false` in its props opts out | none |
 
 ## Next
 

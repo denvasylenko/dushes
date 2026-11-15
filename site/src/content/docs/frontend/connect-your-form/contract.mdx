@@ -74,6 +74,7 @@ interface ElementProps {
   visible?: boolean                 // default true; false hides everything inside
   disabled?: boolean                // default false; true locks everything inside
   readonly?: boolean                // computed by the form; never proposed
+  consent?: boolean                 // on a checkbox: true, it is a consent (only the user's own tick applies it); false, it is not
   required?: boolean
   options?: unknown[]               // the allowed choices right now ({id, name} by default)
   placeholder?: string              // a format hint
