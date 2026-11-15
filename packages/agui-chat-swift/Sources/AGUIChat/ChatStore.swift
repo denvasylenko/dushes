@@ -54,11 +54,15 @@ public final class ChatStore {
     public var threadId: String
 
     /// What this client draws (`forwardedProps.capabilities`): the server leaves out the rest.
-    public static let capabilities: [JSONValue] = ["ask", "confirm"]
+    public static let capabilities: [JSONValue] = ["ask", "confirm"]   // set_fields is not switched by capabilities
 
     /// A CUSTOM name the host draws itself (its cards), and what it does with a `site_directive`.
     public var hostEvents: Set<String> = []
     public var onDirective: (@MainActor (JSONValue) -> Void)?
+    /// Applies a field-change card through the host's form (`{name: value}` → the form's new `config`). With it the
+    /// store draws `set_fields` itself: the client never writes the config on its own authority (CONTRACT.md).
+    public var applyFields: (@MainActor ([String: JSONValue]) async throws -> JSONValue)?
+    private var handoffAfterRun = false
     /// `state` and extra `forwardedProps` the host adds to each run (the page, the language, the voice flag).
     public var state: @MainActor () -> JSONValue = { .object([:]) }
     public var extraProps: @MainActor () -> [String: JSONValue] = { [:] }
@@ -108,6 +112,29 @@ public final class ChatStore {
 
     public func confirm(_ card: ChatCard, _ accepted: Bool) {
         answer(card, with: ["accepted": .bool(accepted)])
+    }
+
+    /// `set_fields`: apply the ticked rows through the host's form, then answer with the names and the new config.
+    /// A refusal of the form (a bad value) keeps the card open with the reason.
+    public func acceptFields(_ card: ChatCard, names: [String]) {
+        guard !running, let applyFields, let i = cardIndex(card.id) else { return }
+        var changes: [String: JSONValue] = [:]
+        for row in card.body["changes"]?.array ?? [] {
+            if let name = row["name"]?.string, names.contains(name) { changes[name] = row["value"] ?? .null }
+        }
+        if case .card(var c) = items[i] { c.status = .sending; items[i] = .card(c) }
+        Task {
+            do {
+                let config = try await applyFields(changes)
+                if let j = cardIndex(card.id), case .card(var c) = items[j] { c.status = .open; items[j] = .card(c) }
+                answer(card, with: ["accepted": true, "names": .array(names.map { .string($0) }), "config": config])
+            } catch {
+                if let j = cardIndex(card.id), case .card(var c) = items[j] {
+                    c.status = .refused(String(localized: "This value did not fit. Try another one.", bundle: .module))
+                    items[j] = .card(c)
+                }
+            }
+        }
     }
 
     public func tapSuggestion(_ text: String) { send(text) }
@@ -215,6 +242,12 @@ public final class ChatStore {
                 self.items[i] = .card(c)
             }
             self.finishSteps()
+            if self.handoffAfterRun, self.error == nil {
+                self.handoffAfterRun = false
+                self.handoff()
+                return
+            }
+            self.handoffAfterRun = false
             if self.busy { self.followLater() }
             if let next = self.queued, !self.busy {
                 self.queued = nil
@@ -289,6 +322,8 @@ public final class ChatStore {
             language = value["lang"]?.string
         case "site_directive":
             onDirective?(value)
+            // with form_id and without handoff "done" the host starts the hand-off run when this run ends
+            if value["form_id"]?.string?.isEmpty == false, value["handoff"]?.string != "done" { handoffAfterRun = true }
         default:
             if hostEvents.contains(name) {
                 items.append(.host(id: "host-\(items.count)-\(name)", name: name, value: value))

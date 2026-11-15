@@ -205,6 +205,8 @@ struct CardView: View {
                     }
                     .buttonStyle(.bordered)
                 }
+            case "set_fields" where store.applyFields != nil:
+                FieldsCard(card: card, store: store)
             case "confirm":
                 HStack {
                     Button(card.body["action"]?.string ?? String(localized: "Confirm", bundle: .module)) {
@@ -233,6 +235,57 @@ struct CardView: View {
         switch card.status {
         case .open, .refused: true
         default: false
+        }
+    }
+}
+
+/// Field changes: each row «label: before → after» with a tick (consent rows start unticked), «Accept» applies the
+/// ticked ones through the host's form, «Cancel» declines.
+struct FieldsCard: View {
+    let card: ChatCard
+    let store: ChatStore
+    @State private var ticked: Set<String> = []
+
+    private var rows: [JSONValue] { card.body["changes"]?.array ?? [] }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                let name = row["name"]?.string ?? ""
+                Button {
+                    if ticked.contains(name) { ticked.remove(name) } else { ticked.insert(name) }
+                } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: ticked.contains(name) ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(ticked.contains(name) ? Color.accentColor : .secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row["label"]?.string ?? name).font(.subheadline.weight(.semibold))
+                            HStack(spacing: 4) {
+                                if let before = row["previous"]?.string ?? row["previous_display"]?.string, !before.isEmpty {
+                                    Text(before).strikethrough().foregroundStyle(.secondary)
+                                    Image(systemName: "arrow.right").font(.caption).foregroundStyle(.secondary)
+                                }
+                                Text(row["display"]?.string ?? row["value"]?.string ?? "")
+                            }
+                            .font(.subheadline)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+            }
+            HStack {
+                Button(String(localized: "Accept", bundle: .module)) { store.acceptFields(card, names: Array(ticked)) }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(ticked.isEmpty)
+                Button(String(localized: "Cancel", bundle: .module)) { store.confirm(card, false) }
+                    .buttonStyle(.bordered)
+            }
+            .padding(.top, 4)
+        }
+        .onAppear {
+            ticked = Set(rows.compactMap { r in r["consent"]?.bool == true ? nil : r["name"]?.string })
         }
     }
 }
