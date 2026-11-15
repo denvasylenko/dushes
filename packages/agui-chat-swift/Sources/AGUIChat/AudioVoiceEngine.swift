@@ -123,6 +123,8 @@ public final class AudioVoiceEngine: VoiceEngine {
         case .audio(let pcm): play(pcm)
         case .hearing(let text): continuation.yield(.hearing(text))
         case .echo: continuation.yield(.echo)
+        case .answer(let c, let t, let a, let x): continuation.yield(.answer(cardId: c, type: t, accepted: a, text: x))
+        case .interrupted: continuation.yield(.interrupted)
         case .heard(let text): continuation.yield(.heard(text))
         case .spoken(let text): continuation.yield(.spoken(text))
         case .error(let code): continuation.yield(.error(code))

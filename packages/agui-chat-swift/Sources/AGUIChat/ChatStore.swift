@@ -66,6 +66,8 @@ public final class ChatStore {
     /// store draws `set_fields` itself: the client never writes the config on its own authority (CONTRACT.md).
     public var applyFields: (@MainActor ([String: JSONValue]) async throws -> JSONValue)?
     private var handoffAfterRun = false
+    private var quietCard: String?                  // a set_fields card marked quiet in this run: applied when it ends
+    private var interruptedAt = Date.distantPast    // the voice's `interrupted`: the cut stream is not an error
     private var cardGone = false                    // card_result code card_gone in this run
     /// `state` and extra `forwardedProps` the host adds to each run (the page, the language, the voice flag).
     public var state: @MainActor () -> JSONValue = { .object([:]) }
@@ -258,7 +260,10 @@ public final class ChatStore {
                     self.apply(event)
                     if event.isTerminal { sawTerminal = true }
                 }
-                if !sawTerminal { self?.fail(String(localized: "The answer was cut off.", bundle: .module)) }
+                if !sawTerminal, let self {
+                    // a turn the person spoke over was stopped by the server: its cut stream is the stop, no error
+                    if Date().timeIntervalSince(self.interruptedAt) < 3 { self.running = false } else { self.fail(Self.cutOff) }
+                }
             } catch is CancellationError {
                 guard let self else { return }
                 self.running = false
@@ -290,6 +295,14 @@ public final class ChatStore {
                 }
             }
             self.finishSteps()
+            // a quiet card (voice: every value was said by the person) is applied at once, as an accepted card
+            if let id = self.quietCard {
+                self.quietCard = nil
+                if self.error == nil, let i = self.cardIndex(id), case .card(let c) = self.items[i], c.status == .open {
+                    self.acceptFields(c, names: Self.names(c))
+                    return
+                }
+            }
             if self.handoffAfterRun, self.error == nil {
                 self.handoffAfterRun = false
                 self.handoff()
@@ -396,6 +409,8 @@ public final class ChatStore {
         let id = body["card_id"]?.string ?? UUID().uuidString
         let card = ChatCard(id: id, type: type, body: body)
         if let i = cardIndex(id) { items[i] = .card(card) } else { items.append(.card(card)) }
+        // without the host's form it cannot be quiet: the card waits as always
+        if type == "set_fields", body["quiet"]?.bool == true, applyFields != nil { quietCard = id }
     }
 
     private func remember(_ m: RunAgentInput.Message) {
@@ -444,6 +459,46 @@ public final class ChatStore {
     public func isAnswerable(_ card: ChatCard) -> Bool {
         guard let last = items.last(where: { if case .card = $0 { true } else { false } }) else { return false }
         return last.id == "card-" + card.id
+    }
+
+    static let cutOff = String(localized: "The answer was cut off.", bundle: .module)
+
+    static func names(_ card: ChatCard) -> [String] {
+        (card.body["changes"]?.array ?? []).compactMap { $0["name"]?.string }
+    }
+
+    /// Voice: a plain yes or no while a card waits is the answer to that card (`heard.answers`). True when the card
+    /// was resolved; false — send the words as a message (an `ask`, an unknown card, a turn in progress).
+    @discardableResult
+    public func resolve(cardId: String, type: String, accepted: Bool) -> Bool {
+        guard !running, let i = cardIndex(cardId), case .card(let c) = items[i], c.status == .open else { return false }
+        switch type {
+        case "set_fields":
+            if accepted {
+                guard applyFields != nil else { return false }
+                acceptFields(c, names: Self.names(c))
+            } else {
+                confirm(c, false)
+            }
+            return true
+        case "confirm":
+            confirm(c, accepted)
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Voice: the person spoke over the turn in progress and the server has stopped it. The store's own stop without
+    /// the call to the server: no error, the half-written answer stays as it is.
+    public func interrupted() {
+        interruptedAt = Date()
+        if error == Self.cutOff { error = nil }
+        guard running else { return }
+        task?.cancel()
+        task = nil
+        running = false
+        finishSteps()
     }
 
     private func fail(_ message: String) {

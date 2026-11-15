@@ -205,6 +205,73 @@ final class AGUIChatTests: XCTestCase {
         XCTAssertFalse(voice.active)
     }
 
+    /// Voice review 1: a set_fields card marked quiet is applied with no tap, as an accepted card.
+    @MainActor
+    func testAQuietCardIsAppliedWithNoTap() async throws {
+        let card: JSONValue = ["type": "set_fields", "card_id": "q1", "quiet": true,
+                               "changes": [["name": "phone", "value": "333"]]]
+        var resumes: [JSONValue] = []
+        let store = ChatStore(transport: ReplayTransport(pause: .zero) { input in
+            if let r = input.forwardedProps["command"]?["resume"] { resumes.append(r); return [.runFinished(outcome: nil)] }
+            return [.runFinished(outcome: ["interrupts": [["value": card]]])]
+        })
+        var applied: [String: JSONValue] = [:]
+        store.applyFields = { changes in applied = changes; return ["ok": true] }
+        store.send("My phone is 333")
+        for _ in 0..<100 where resumes.isEmpty || store.running { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(applied["phone"], "333")
+        XCTAssertEqual(resumes.first?["accepted"], true)
+        XCTAssertEqual(resumes.first?["names"], ["phone"])
+        guard case .card(let c)? = store.items.first(where: { $0.id == "card-q1" }) else { return XCTFail("no card") }
+        XCTAssertEqual(c.status, .answered)
+    }
+
+    /// Voice review 2: a spoken yes with `answers` resolves the waiting card instead of becoming a message.
+    @MainActor
+    func testASpokenYesAnswersTheWaitingCard() async throws {
+        XCTAssertEqual(WebSocketVoiceTransport.heard(["text": "yes", "answers": ["card_id": "k1", "type": "confirm", "accepted": true]]),
+                       .answer(cardId: "k1", type: "confirm", accepted: true, text: "yes"))
+        XCTAssertEqual(WebSocketVoiceTransport.heard(["text": "Sunday until eleven"]), .heard("Sunday until eleven"))
+        let card: JSONValue = ["type": "confirm", "card_id": "k1", "message": "Publish?"]
+        var resumes: [JSONValue] = []
+        let store = ChatStore(transport: ReplayTransport(pause: .zero) { input in
+            if let r = input.forwardedProps["command"]?["resume"] { resumes.append(r); return [.runFinished(outcome: nil)] }
+            return [.runFinished(outcome: ["interrupts": [["value": card]]])]
+        })
+        store.send("Publish it")
+        for _ in 0..<100 where store.running { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertTrue(store.resolve(cardId: "k1", type: "confirm", accepted: true))
+        for _ in 0..<100 where resumes.isEmpty || store.running { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(resumes.first?["accepted"], true)
+        XCTAssertEqual(store.items.filter { if case .user = $0 { true } else { false } }.count, 1)   // «yes» is not a message
+        XCTAssertFalse(store.resolve(cardId: "nope", type: "confirm", accepted: true))                 // unknown: send the words
+    }
+
+    /// Voice review 3: `interrupted` ends the run quietly — no «The answer was cut off.», the half answer stays.
+    @MainActor
+    func testInterruptedLeavesNoError() async throws {
+        // the stream is cut first, the event comes after
+        let cut = ChatStore(transport: ReplayTransport(pause: .zero) { _ in
+            [.runStarted(threadId: nil, runId: nil), .textStart(messageId: "m", role: "assistant"), .textContent(messageId: "m", delta: "Half")]
+        })
+        cut.send("Hello")
+        for _ in 0..<50 where cut.running { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertNotNil(cut.error)
+        cut.interrupted()
+        XCTAssertNil(cut.error)
+        XCTAssertTrue(cut.items.contains { if case .assistant(_, "Half", _) = $0 { true } else { false } })
+        // the event comes first, the stream is cut after
+        let slow = ChatStore(transport: ReplayTransport(pause: .milliseconds(200)) { _ in
+            [.runStarted(threadId: nil, runId: nil), .textStart(messageId: "m", role: "assistant")]
+        })
+        slow.send("Hello")
+        try await Task.sleep(for: .milliseconds(50))
+        slow.interrupted()
+        try await Task.sleep(for: .milliseconds(500))
+        XCTAssertNil(slow.error)
+        XCTAssertFalse(slow.running)
+    }
+
     /// The mock wire «hears» a phrase after about two seconds of 16-bit mono audio has gone up.
     func testMockTransportHearsAfterTwoSecondsOfAudio() async throws {
         let t = MockVoiceTransport(phrases: ["Hello"])

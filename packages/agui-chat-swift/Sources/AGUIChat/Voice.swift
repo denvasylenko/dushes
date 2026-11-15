@@ -6,6 +6,8 @@ import Observation
 public enum VoiceEngineEvent: Equatable, Sendable {
     case hearing(String)          // a piece of the person's words as they speak
     case echo                     // drop what `hearing` showed: it was the voice's own words
+    case answer(cardId: String, type: String, accepted: Bool, text: String)   // a spoken yes or no to a waiting card
+    case interrupted              // the person spoke over the turn: the server has stopped it
     case heard(String)            // the person's words: sent as an ordinary user message in the same thread
     case spoken(String)           // a piece of what the voice says (its transcript)
     case level(Double)            // 0…1, the person's sound level (the session sends audio all the time, silence too)
@@ -108,6 +110,14 @@ public final class VoiceController {
             hearing += delta
         case .echo:
             hearing = ""
+        case .answer(let cardId, let type, let accepted, let text):
+            hearing = ""
+            if store.resolve(cardId: cardId, type: type, accepted: accepted) { state = .thinking } else {
+                let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !t.isEmpty { store.send(t); state = .thinking }
+            }
+        case .interrupted:
+            store.interrupted()
         case .heard(let text):
             hearing = ""
             let t = text.trimmingCharacters(in: .whitespacesAndNewlines)

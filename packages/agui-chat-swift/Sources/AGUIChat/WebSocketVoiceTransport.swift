@@ -43,6 +43,11 @@ public final class WebSocketVoiceTransport: NSObject, VoiceTransport, @unchecked
         lock.withLock { self.task = task }
         task.resume()
         let first: URLSessionWebSocketTask.Message
+        let patience = Task {          // a host that accepts the socket and never answers
+            try await Task.sleep(for: .seconds(10))
+            task.cancel(with: .goingAway, reason: nil)
+        }
+        defer { patience.cancel() }
         do {
             first = try await task.receive()
         } catch {
@@ -89,6 +94,9 @@ public final class WebSocketVoiceTransport: NSObject, VoiceTransport, @unchecked
             return task
         }) else { return }
         try? await task.send(.string(#"{"type":"end"}"#))
+        for _ in 0..<15 where !lock.withLock({ finished }) {     // the server's own `ended` (its cost) comes first
+            try? await Task.sleep(for: .milliseconds(100))
+        }
         task.cancel(with: .normalClosure, reason: nil)
         finish(.ended(reason: "closed"))
     }
@@ -108,7 +116,8 @@ public final class WebSocketVoiceTransport: NSObject, VoiceTransport, @unchecked
                 let s = { (key: String) in ev[key] as? String ?? "" }
                 switch ev["type"] as? String {
                 case "hearing": continuation.yield(.hearing(s("delta")))
-                case "heard": continuation.yield(.heard(s("text")))
+                case "heard": continuation.yield(Self.heard(ev))
+                case "interrupted": continuation.yield(.interrupted)
                 case "spoken": continuation.yield(.spoken(s("delta")))
                 case "echo": continuation.yield(.echo)
                 case "error": continuation.yield(.error(s("code")))
@@ -132,6 +141,15 @@ public final class WebSocketVoiceTransport: NSObject, VoiceTransport, @unchecked
         guard first else { return }
         continuation.yield(last)
         continuation.finish()
+    }
+
+    /// `heard` → the words, or the answer to a waiting card when it carries `answers: {card_id, type, accepted}`.
+    static func heard(_ ev: [String: Any]) -> VoiceTransportEvent {
+        let text = ev["text"] as? String ?? ""
+        if let a = ev["answers"] as? [String: Any], let id = a["card_id"] as? String, let accepted = a["accepted"] as? Bool {
+            return .answer(cardId: id, type: a["type"] as? String ?? "", accepted: accepted, text: text)
+        }
+        return .heard(text)
     }
 
     private static func json(_ text: String) -> [String: Any]? {
