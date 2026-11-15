@@ -118,3 +118,20 @@ def test_a_page_is_read_without_being_opened(site, model):
     model.script = [say("", ("r2", "read_page", {"path": "/nowhere"})), say("I could not find that page.")]
     run(site, "rp2", message="what is on the nowhere page?", state={"page": {"path": "/"}})
     assert "There is no page" in next(m.content for m in model.calls[-1] if getattr(m, "tool_call_id", None) == "r2")
+
+
+def test_a_request_to_change_something_starts_the_form(site, model):
+    """The cabinet's regression (2026-11-16, QA's cabinet_hours_change_sunday_ru, 0 of 3): "change the Sunday hours"
+    names no page and says neither "open" nor "I want", so open_form was turned into an offer and the form never
+    started. An order to change something is a direct request for what a form does; a question stays a question."""
+    from formguide.site.agent import wants_a_change
+    for q in ("Change the Sunday hours to 10-22", "\u041f\u043e\u043c\u0435\u043d\u044f\u0439 \u0447\u0430\u0441\u044b \u0432 \u0432\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c\u0435 \u043d\u0430 10:00\u201322:00", "Cambia gli orari del luned\u00ec", "\u041f\u043e\u0441\u0442\u0430\u0432\u044c \u0432 \u0432\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c\u0435 \u0434\u043e 22", "\u0414\u043e\u0431\u0430\u0432\u044c \u0442\u0438\u0440\u0430\u043c\u0438\u0441\u0443 6 \u0435\u0432\u0440\u043e", "can you remove the second item?", "\u00c4ndere die \u00d6ffnungszeiten am Sonntag"):
+        assert wants_a_change(q), q
+    for q in ("how do I change the hours?", "\u043a\u0430\u043a\u0438\u0435 \u0447\u0430\u0441\u044b \u0432 \u0432\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c\u0435?", "\u043a\u0430\u043a \u043f\u043e\u043c\u0435\u043d\u044f\u0442\u044c \u0447\u0430\u0441\u044b?", "car insurance", "tell me about the sale"):
+        assert not wants_a_change(q), q
+    model.script = [say("", ("c1", "open_form", {"form_id": "loan_application", "note": "amount 900 000"})), say("Opening it.")]
+    ev = run(site, "of-change", message="Set the loan amount to 900 000", state={"page": {"path": "/"}})
+    assert [d["form_id"] for d in _events(ev, "site_directive")] == ["loan_application"]
+    model.script = [say("", ("c2", "navigate", {"path": "/contacts"})), say("The contacts are on the Contacts page.")]
+    ev = run(site, "of-change2", message="Set the loan amount to 900 000", state={"page": {"path": "/"}})
+    assert _events(ev, "site_directive") == []                              # a page still opens only when asked

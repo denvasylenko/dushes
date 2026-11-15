@@ -75,6 +75,12 @@ _GO = re.compile(
     r"|\u0445\u043e\u0447\u0443|\u043c\u043d\u0435 \u043d\u0443\u0436\u043d|\u0432\u0456\u0434\u043a\u0440\u0438\u0439"
     r"|\u043c\u0435\u043d\u0456 \u043f\u043e\u0442\u0440\u0456\u0431\u043d)",
     re.IGNORECASE)
+# A message that asks to change something (set, add, remove ...): what a form does, so the form may start for it,
+# though it names no page and says neither "open" nor "I want". Imperatives of the seven languages.
+_EDIT = re.compile(
+    r"\b(change|set|update|add|remove|delete|replace|put|make|move|rename|cancel|edit|\u00e4ndere|\u00e4ndern sie|setze|stelle|f\u00fcge|entferne|l\u00f6sche|aktualisiere|modifie|modifiez|mets|mettez|ajoute|ajoutez|enl\u00e8ve|supprime|supprimez|cambia|modifica|pon|a\u00f1ade|agrega|quita|elimina|borra|actualiza|metti|imposta|aggiungi|togli|rimuovi|aggiorna)\b"
+    r"|(\u043f\u043e\u043c\u0435\u043d\u044f|\u0438\u0437\u043c\u0435\u043d\u0438|\u043f\u043e\u0441\u0442\u0430\u0432|\u0434\u043e\u0431\u0430\u0432|\u0443\u0431\u0435\u0440|\u0443\u0434\u0430\u043b|\u043e\u0431\u043d\u043e\u0432|\u0437\u0430\u043c\u0435\u043d|\u0441\u0434\u0435\u043b\u0430|\u0437\u043c\u0456\u043d\u0438|\u0434\u043e\u0434\u0430\u0439|\u043f\u0440\u0438\u0431\u0435\u0440|\u0432\u0438\u0434\u0430\u043b|\u043e\u043d\u043e\u0432|\u0437\u0430\u043c\u0456\u043d\u0438)",
+    re.IGNORECASE)
 # a question about something: it gets an answer first, however it mentions a page or a form
 _ASKS = re.compile(
     r"^\s*(how|what|when|where|why|which|who|whose|is|are|was|do|does|did|can i|could i|may i|should|must i"
@@ -106,6 +112,14 @@ def wants_to_go(message: str, offered: bool = False) -> bool:
     if not _GO.search(text):
         return False
     return bool(_POLITE.match(text)) or not _ASKS.search(text)
+
+
+def wants_a_change(message: str) -> bool:
+    """Whether the person told the assistant to change something ("change the Sunday hours to 10-22", "add tiramisu
+    for 6 euros"): a direct request for what a form does, so open_form may start the form. A question that
+    happens to use such a word ("how do I change the hours?") stays a question."""
+    text = (message or "").strip()
+    return bool(text) and bool(_EDIT.search(text)) and (bool(_POLITE.match(text)) or not _ASKS.search(text))
 
 
 NOT_ASKED = ("Not opened: the person asked a question and did not ask to go anywhere. Answer the question first, from "
@@ -404,7 +418,8 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                     page = site.form_page(str(args.get("form_id") or ""))
                     if not page:
                         result = f"There is no form {args.get('form_id')!r} on the site."
-                    elif not may_go:   # a question about what the form does: the answer first, the form as an offer
+                    elif not (may_go or wants_a_change(asked if asked is not None else question)):
+                        # a question about what the form does: the answer first, the form as an offer
                         offer = {"tool": "open_form", "args": args, "title": page.title}
                         result = NOT_ASKED.format(title=page.title) + reads(page)
                     else:

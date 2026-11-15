@@ -230,6 +230,13 @@ The site agent SHALL open a page or start a form only when the person's own mess
 - **WHEN** the person asks "how can I get car insurance?" and the model calls `open_form` for the insurance form
 - **THEN** no form opens, the answer explains how, and it ends by offering to open the insurance form
 
+### Requirement: An order to change something starts the form
+A message that tells the assistant to change something (change, set, add, remove and the like, in the languages the product ships) SHALL count as a direct request for what a form does: an `open_form` call for it starts the form. A question that uses such a word stays a question, and a page still opens only when asked.
+
+#### Scenario: New opening hours
+- **WHEN** the person writes "Change the Sunday hours to 10-22" and the model calls `open_form` for the form that holds the hours
+- **THEN** the form starts with that note, and no offer is made instead
+
 ### Requirement: A refused move still reads the page
 A refused `navigate` or `open_form` SHALL return what that page says: the tab or section the call named, or the whole page when it named none (cut to a fixed length). The site agent answers from it with the fact the person asked about, and the person stays where they are.
 
