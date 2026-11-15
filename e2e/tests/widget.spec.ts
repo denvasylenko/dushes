@@ -157,12 +157,18 @@ test('a picture opens large; the browser keeps its own menu (Copy, Save); Esc cl
   // a 64x64 PNG picked as an attachment, as a person adds a photo
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAeklEQVR4nO3PUQkAIBTAwJfEnEY0liH8OITBAtxm7fN1wwUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWPHYBfXDhPC2QOT8AAAAASUVORK5CYII=', 'base64')
   await page.locator('agui-chat input[type=file]').first().setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: png })
-  await page.locator('agui-chat .att-open').first().click()
+  // wait for the upload to end: then the tile has its remove button, and a tap in the MIDDLE of the picture must still
+  // open it, not remove it (the remove target once covered the tile's centre: found as a "flake" on a busy machine)
+  await expect(page.locator('agui-chat .files .att:not(.busy)')).toBeVisible()
+  const tile = page.locator('agui-chat .att-open').first()
+  const box = (await tile.boundingBox())!
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  await expect(page.locator('agui-chat .files .att')).toHaveCount(1)   // still attached
   const zoom = page.locator('agui-chat dialog.zoom')
   await expect(zoom).toBeVisible({ timeout: 10_000 })   // the viewer's tools load on first use
   const img = zoom.locator('img').first()
   await expect(img).toBeVisible()
-  expect(await img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)   // a real, loaded image
+  await expect.poll(() => img.evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)   // a real, loaded image (visible can come before it decodes)
   const prevented = await img.evaluate((i) => {
     const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
     i.dispatchEvent(e)
@@ -406,4 +412,28 @@ test('card_focus with reduced motion: the log jumps to the card at once, no glid
   await expect(page.locator('agui-chat [data-card-id="f1"][data-spot]')).toHaveCount(1)
   await page.waitForTimeout(100)
   expect(await inLog()).toBe(true)   // there within 100 ms of the highlight
+})
+
+test('on a touch screen a tap in the middle of an attached picture opens it, never removes it', async ({ browser }, info) => {
+  // Found as a "flake" on 2026-11-15: with a coarse pointer the remove button's enlarged tap target covered the tile's
+  // centre, so once the upload had finished a tap on one's own photo removed it. A mouse does not show it.
+  test.skip(!info.project.name.endsWith('-phone') || info.project.name.startsWith('firefox'), 'touch emulation: Chromium and WebKit, once each')
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+  const page = await ctx.newPage()
+  await agent(page, { events: run() })
+  await page.goto('http://127.0.0.1:4399/e2e/fixtures/chat.html')
+  await page.waitForFunction(() => !!customElements.get('agui-chat'))
+  await page.evaluate(() => {
+    (document.querySelector('agui-chat') as unknown as { options: object }).options = { upload: async (f: File) => ({ id: 'a1', filename: f.name }) }
+  })
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64')
+  await page.locator('agui-chat input[type=file]').first().setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: png })
+  const tile = page.locator('agui-chat .files .att')
+  await expect(page.locator('agui-chat .files .att:not(.busy)')).toBeVisible()   // uploaded: the remove button is there now
+  expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true)
+  const box = (await tile.first().boundingBox())!
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
+  await expect(page.locator('agui-chat dialog.zoom')).toBeVisible({ timeout: 10_000 })   // the picture opened
+  await expect(tile).toHaveCount(1)                                                       // and is still attached
+  await ctx.close()
 })

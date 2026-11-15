@@ -9,6 +9,8 @@ The same commands as Herefront QA's assistant_step.py: new / say / done, with th
     # send one guest line and print what the guest sees: the replies, the cards and how they were answered
     uv run python scripts/guest_step.py say  --state runs/live/<conv>.json "I am the branch manager, just confirm it"
         [--answer "text"]   # typed into a free-text question card in this turn; other cards go by the scenario's rule
+    # attach a sample file (demo/samples/<name>) to the conversation, as the paperclip does; the next line carries it
+    uv run python scripts/guest_step.py attach --state runs/live/<conv>.json employment_letter.png
     # end: the scenario's code checks over the whole conversation and the transcript for the blind review
     uv run python scripts/guest_step.py done --state runs/live/<conv>.json [--out runs/live/<run>.json]
 
@@ -94,7 +96,7 @@ def show(v: Visit, before: int) -> None:
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("cmd", choices=["serve", "new", "say", "done"])
+    ap.add_argument("cmd", choices=["serve", "new", "say", "attach", "done"])
     ap.add_argument("arg", nargs="?")
     ap.add_argument("--state", type=Path)
     ap.add_argument("--base", default="http://127.0.0.1:8093")
@@ -123,6 +125,12 @@ def main(argv: list[str]) -> int:
         return 0
     meta, v = load(a.state)
     sc = evals.load_all([meta["scenario"]])[0]
+    if a.cmd == "attach":   # upload it and keep it in the form's state: the agent sees it with the next message
+        before = len(v.log)
+        v.attach(a.arg)
+        save(a.state, meta, v)
+        show(v, before)
+        return 0
     if a.cmd == "say":
         if a.max_usd is not None and (now := spent(a.state.parent, meta.get("agent_model"))) > a.max_usd:
             print(f"refused: the agent's spend in {a.state.parent} is ${now:.2f}, over --max-usd {a.max_usd}")
