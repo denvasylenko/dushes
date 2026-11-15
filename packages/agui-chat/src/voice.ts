@@ -214,7 +214,7 @@ export function voice(chat: Chat): void {
     let stream: MediaStream | null = null, p: RTCPeerConnection | null = null, id = ''
     const drop = (): void => { stream?.getTracks().forEach((t) => t.stop()); p?.close(); if (id) void call('/end', { talk: id }, pass).catch(() => {}) }
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })   // the voice must not hear itself through the speakers
       if (stale()) return drop()
       p = new RTCPeerConnection()
       p.ontrack = (e) => { if (pc === p) { audio.srcObject = e.streams[0]; listenTo(e.streams[0]) } }
@@ -241,6 +241,19 @@ export function voice(chat: Chat): void {
   /** The voice could not start or was cut: say why in the conversation; the chat goes on in text (silent). */
   function fail(text: string): void { hang(false); silent = true; paint(); note(text) }
 
+  /** What the voice has been saying lately: with loudspeakers the microphone can pick it up, and the provider then
+   *  reports the voice's own sentence as heard. A request of four words or more that is, word for word, part of what
+   *  the voice said or the agent wrote in the last seconds is that echo, not the person. (A short answer that repeats
+   *  an option, "Car loan", is never dropped.) The browser's echo cancelling is asked for too; this is the net under it. */
+  let voiced = ''
+  const words = (s: string): string => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+  function echo(text: string): boolean {
+    const h = words(text)
+    if (h.split(' ').length < 4 || Date.now() - spokeAt > 15000) return false
+    const written = [...root!.querySelectorAll('.log .msg.ai')].slice(-2).map((m) => m.textContent ?? '').join(' ')
+    return words(`${voiced} ${written}`).includes(h)
+  }
+
   async function follow(p: RTCPeerConnection): Promise<void> {
     let r: Response
     try { r = await fetch(`${base()}/events?talk=${encodeURIComponent(talk)}`, { headers: { 'X-Voice-Pass': pass } }) } catch { if (pc === p) fail(why('lost')); return }
@@ -263,12 +276,14 @@ export function voice(chat: Chat): void {
           if (!hearEl) { hearEl = el('div', 'msg me vo-hearing'); hearEl.append(el('div', 'bubble')); add(hearEl); saidEl = null; answered = false }
           hearEl.firstElementChild!.textContent += ev.delta
         } else if (ev.type === 'heard' && ev.text) {   // the whole request: the ordinary turn, as if typed; its text, steps and cards are the chat's own
-          audio.muted = false
-          hearEl?.remove(); hearEl = null; saidEl = null; answered = false
+          hearEl?.remove(); hearEl = null
+          if (echo(ev.text)) continue   // the voice heard itself through the speakers: not the person's message
+          audio.muted = false; saidEl = null; answered = false; voiced = ''
           void chat.send(ev.text)
         } else if (ev.type === 'result') { answered = true; saidEl = null   // the agent's answer was handed to the voice: what it says next is that answer, already written in the conversation
         } else if (ev.type === 'spoken' && ev.delta) {
           spokeAt = Date.now(); paint(); setTimeout(paint, 950)
+          voiced = (voiced + ev.delta).slice(-1200)
           if (answered) continue   // one message for one answer: the written one
           if (busy) { caption = (caption + ev.delta).slice(-80); step.textContent = caption; continue }   // "Checking now": a status, under the orb
           // the voice's own words with no agent answer behind them (a greeting, small talk): the agent's message, word by word

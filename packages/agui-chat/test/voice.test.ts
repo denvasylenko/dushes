@@ -185,6 +185,36 @@ describe('the experimental voice mode', () => {
     expect(s.ends()).toEqual(['t1', 't2'])
   })
 
+  it('the voice hearing itself through the speakers is not the person: its own sentence is never sent as their message', async () => {
+    const s = server(); fakeAudio()
+    const a = agent()
+    const el = await talking(s, a)
+    s.push({ type: 'heard', text: 'I want to book a table' })
+    await tick(80)
+    s.push({ type: 'result', text: 'Done.' })
+    for (const d of ['Choose the date ', 'and time ', 'of the booking.']) s.push({ type: 'spoken', delta: d })   // the voice speaks its question
+    await tick(10)
+    // two seconds later the provider reports that very sentence as heard (the owner's case), and its growing text too
+    s.push({ type: 'hearing', delta: 'Choose the date and time' })
+    s.push({ type: 'heard', text: 'choose the date and time of the booking' })
+    await tick(60)
+    expect(a.said).toEqual(['I want to book a table'])                          // nothing was sent for the echo
+    expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['I want to book a table'])   // and no message of "his" stays
+    // what the person really says next goes through, also a short answer that repeats the voice's words
+    s.push({ type: 'heard', text: 'the fifth at seven in the evening' })
+    await tick(80)
+    s.push({ type: 'result', text: 'Done.' }); s.push({ type: 'spoken', delta: 'A car loan or a home loan?' })
+    await tick(10)
+    s.push({ type: 'heard', text: 'Car loan' })                                 // under four words: never taken for an echo
+    await tick(80)
+    expect(a.said).toEqual(['I want to book a table', 'the fifth at seven in the evening', 'Car loan'])
+    // the browser is asked to cancel the echo in the first place
+    const audio = vi.fn(async () => ({ getTracks: () => [{ stop() {} }] }))
+    vi.stubGlobal('navigator', { ...navigator, mediaDevices: { getUserMedia: audio } })
+    $(el, '.vo-mic').click(); await tick(10); $(el, '.vo-mic').click(); await tick(30)
+    expect(audio).toHaveBeenCalledWith({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+  })
+
   it('small talk the agent is not asked about stays in the conversation: the words heard, and the voice\'s words as a message', async () => {
     const s = server(); fakeAudio()
     const el = await talking(s, agent())

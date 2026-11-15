@@ -62,3 +62,10 @@ In voice mode a `set_fields` card whose payload has `quiet: true` SHALL be appli
 #### Scenario: A value the person said
 - **WHEN** voice mode is on and a `set_fields` card with `quiet: true` arrives for Amount
 - **THEN** the field is filled with no tap, the run is resumed as accepted, and the conversation shows the result line with Undo
+
+### Requirement: The voice's own echo is not the person
+The microphone SHALL be asked for with echo cancelling, noise suppression and automatic gain. A `heard` text of four words or more that is, word for word, part of what the voice said or the agent wrote in the last 15 seconds SHALL be taken as the voice heard through the speakers: it SHALL NOT be sent or shown as the person's message. A shorter text SHALL always be sent.
+
+#### Scenario: The question comes back
+- **WHEN** the voice says "Choose the date and time of the booking" and the stream then sends `heard` with the same words
+- **THEN** no message is sent and none of the person's is drawn
