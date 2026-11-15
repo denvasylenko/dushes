@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 SCENARIOS = HERE / "evals" / "voice"
 RUNS = Path(__file__).parent / "runs"
 CLIPS = RUNS / "voice-clips"
-OPEN_SECONDS = 15          # billed when a session opens (gpt-live-1's list terms, read 2026-11-15)
+OPEN_SECONDS = 15          # the least a session is billed (gpt-live-1: 15 s at opening, credited against its own duration; not a surcharge)
 SILENCE_AFTER = 0.8        # seconds of silence the runner sends after a clip, for the session's end-of-speech detection
 
 
@@ -258,7 +258,7 @@ def metrics(results: list[dict], usd_per_minute: float, agent_usd: float) -> dic
     turns = [t for r in results for t in r["turns"]]
     plain = [t for t in turns if not t["cut_in"]]
     cuts = [t for t in turns if t["cut_in"]]
-    seconds = sum(r["connected_s"] for r in results) + OPEN_SECONDS * len(results)
+    seconds = sum(max(r["connected_s"], OPEN_SECONDS) for r in results)   # a failed start is counted as the minimum too
     voice_usd = round(seconds / 60 * usd_per_minute, 4)
     by: dict[str, list[bool]] = {}
     for r in results:
@@ -272,6 +272,7 @@ def metrics(results: list[dict], usd_per_minute: float, agent_usd: float) -> dic
         "useful_p50": _q([t["useful_s"] for t in plain], 0.5), "useful_p90": _q([t["useful_s"] for t in plain], 0.9),
         "first_step_p50": _q([t["first_step_s"] for t in plain], 0.5),
         "hard": {k: sum(1 for r in results if r.get("hard") == k) for k in ("exact", "asked", "wrong")},
+        "failed_starts": sum(1 for r in results if not r["turns"] or all(t["error"] for t in r["turns"])),
         "cut_ins": len(cuts), "cut_ins_cancelled": sum(1 for t in cuts if t["cancelled"]), "silence_p50": _q([t["silence_s"] for t in cuts], 0.5),
         "connected_minutes": round(seconds / 60, 2), "voice_usd": voice_usd, "agent_usd": round(agent_usd, 4),
         "usd_per_task": round((voice_usd + agent_usd) / max(1, len(results)), 4),
@@ -296,7 +297,8 @@ def report_md(rep: dict) -> str:
              f"| ... to the first useful sentence, s | p50 {m['useful_p50']}, p90 {m['useful_p90']} |",
              f"| hard to hear: exact / asked to repeat, field empty / wrong value | {m['hard']['exact']} / {m['hard']['asked']} / {m['hard']['wrong']} |",
              f"| interruptions: the turn cancelled | {m['cut_ins_cancelled']} of {m['cut_ins']} (silence after p50 {m['silence_p50']} s) |",
-             f"| connected minutes (with {OPEN_SECONDS} s a session at opening) | {m['connected_minutes']} |",
+             f"| billed minutes (a session is at least {OPEN_SECONDS} s) | {m['connected_minutes']} |",
+             f"| sessions that did not start (counted as {OPEN_SECONDS} s each) | {m['failed_starts']} |",
              f"| dollars: voice / agent | {m['voice_usd']} / {m['agent_usd']} |",
              f"| dollars a task / a connected minute | {m['usd_per_task']} / {m['usd_per_minute']} |", "",
              "By group and language (tasks that pass): " + ", ".join(f"{k} {a}/{b}" for k, (a, b) in m["by"].items()), "", "## Failed", ""]

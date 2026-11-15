@@ -50,7 +50,9 @@ def test_a_mock_run_plays_a_scenario_end_to_end(tmp_path):
     assert r["turns"][0]["first_sound_s"] is not None and r["connected_s"] > 6 and r["checks"]
     m = vb.metrics([r], 0.05, 0.0)
     assert m["cut_ins"] == 1 and m["cut_ins_cancelled"] == 1 and m["wer_mean"] == 0
-    assert m["voice_usd"] == round((r["connected_s"] + vb.OPEN_SECONDS) / 60 * 0.05, 4)   # the opening seconds are billed too
+    assert m["voice_usd"] == round(max(r["connected_s"], vb.OPEN_SECONDS) / 60 * 0.05, 4)   # 15 s is the least a session costs, not a charge on top
+    short = vb.metrics([{**r, "connected_s": 4.0}], 0.05, 0.0)
+    assert short["voice_usd"] == round(15 / 60 * 0.05, 4) and short["failed_starts"] == 0
     garbled = vb.play(evals.load_scenario(vb.SCENARIOS / "voice_card_refused_vin.yaml"), vb.MockBridge(tmp_path / "g", garble=False), manifest)
     assert garbled["turns"][0]["wer"] == 0
 

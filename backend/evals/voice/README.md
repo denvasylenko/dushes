@@ -14,20 +14,24 @@ a second model: the API pays for the voice session and the agent, nothing else.
 cd backend
 uv run python scripts/voice_clips.py            # record the 64 clips with the Mac's voices (free; scripts/runs/voice-clips/)
 uv run python scripts/voice_bench.py --mock     # the scripted voice over an offline demo: the plumbing, free
-uv run python scripts/voice_bench.py --live --max-usd 3.00   # not yet: the bridge, and the owner's yes
+uv run python scripts/voice_bench.py --live --max-usd 1.40 --set evals/voice/voice-v1-en.txt   # not yet: the bridge, and the owner's yes
 ```
 
 **English first** (the owner, 2026-11-15): the live passes run on the 30 English scenarios, `voice-v1-en.txt`
 (42 spoken lines, 107 s of speech; 8 were added so that the small groups give a share: order 3, yes after an offer 4,
 correction 4, interruption 4). The Russian and Ukrainian scenarios and clips stay recorded and are not run now.
-Estimate for the English set: 42 lines of 20 to 25 s and 30 sessions opened, 21.5 to 25 connected minutes, $1.08 to
-$1.25 a pass at $0.05 a minute; Decided (CPO, 2026-11-15): one pass now as the "before" point, stop sum $1.40, once the bridge has a
+Estimate for the English set: 42 lines of 20 to 25 s, 14 to 17.5 billed minutes, $0.70 to $0.88 a pass at $0.05 a
+minute. The 15 seconds billed when a session opens are a minimum credited against the session's own duration, not a
+charge on top (the Owner's two live sessions: 65.6 s reported as 65 s, 40.5 s as 39 s). Whether a session that fails
+to start is charged them is not stated: the runner counts it as charged and reports the failed starts.
+Decided (CPO, 2026-11-15): one pass now as the "before" point, stop sum $1.40, once the bridge has a
 server-to-server audio path; the second pass comes after interruption and quiet filling are built and needs the
-owner's new yes with a price. An estimate from the price list, not a measurement.
+owner's new yes with a price. One session a scenario: a shared session would hear a scenario with the earlier ones
+still in mind, and costs the same. An estimate from the price list, not a measurement.
 
 A mock run's task results mean nothing (a one-line model answers); it proves the clips, the scenarios, the checks and
-the report. Its connected time with the opening charges, 17.6 minutes for the whole set and 11.3 for the English one, is the
-floor of a live pass: about $0.88 and $0.56 at $0.05 a minute, before the assistant's real speaking time.
+the report. Its billed time, 12.0 minutes for the whole set and 7.5 for the English one, is the
+floor of a live pass: about $0.60 and $0.38 at $0.05 a minute, before the assistant's real speaking time.
 
 ## The speaker: recorded clips
 
@@ -103,7 +107,7 @@ ticked by voice (must be none); interruptions that stopped the turn; dollars per
 
 ## Spend (estimate, not a measurement)
 
-At $0.05 a connected minute with 15 seconds billed when a session opens: the first 40 scenarios of about 25 seconds each is
-about 17 minutes plus 10 minutes of opening charges, about $1.35 for the voice, and about $0.10 for the agent.
-Two passes (a second voice and rate) about $3. With a real-time voice model billed by tokens instead, the same
+At $0.05 a connected minute, a session billed for at least 15 seconds: a line of 20 to 25 seconds, so the 64
+lines of the whole set are 21 to 27 minutes, $1.07 to $1.33 for the voice, and about $0.10 for the agent; the
+English set $0.70 to $0.88. With a real-time voice model billed by tokens instead, the same
 set is priced from its first ten scenarios before the rest runs. Every run has a stop sum and goes into QA's ledger.
