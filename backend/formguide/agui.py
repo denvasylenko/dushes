@@ -61,14 +61,18 @@ def run_kwargs(body: dict[str, Any]) -> dict[str, Any]:
     fwd = inp.forwarded_props if isinstance(inp.forwarded_props, dict) else {}
     msgs = [m.model_dump(by_alias=True) for m in inp.messages]
 
-    resume = None
+    resume, named = None, None
     if inp.resume:
         r = inp.resume[0]
         resume = _resume_value(r.payload) if r.status == "resolved" else {"accepted": False}
         if r.status == "resolved" and r.payload is None:
             resume = {"accepted": True}
+        named = getattr(r, "interrupt_id", None)
     elif (fwd.get("command") or {}).get("resume") is not None:
         resume = _resume_value(fwd["command"]["resume"])
+        named = fwd["command"].get("card_id")
+    if resume is not None and named and not resume.get("card_id"):
+        resume = {**resume, "card_id": str(named)}   # which card this answers: a late answer must not land on another
 
     message, tool_results = None, None
     if resume is None and msgs:

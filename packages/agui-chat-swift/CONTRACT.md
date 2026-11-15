@@ -72,6 +72,10 @@ how the server keeps a card the client cannot draw from ever arriving.
 - `confirm`: `{accepted: true | false}`. `upload`: `{attachment_ids: [...]}` after `POST /attachments`.
 - `review`: `{action: "continue" | "submit" | "fixed" | closed, ...}`. `blocks`: `{action, label?, values?}`.
 - A cancelled card is `{accepted: false}`. A new message while a card waits closes that card.
+- Name the card you answer: the interrupt id in a structured `resume`, or `forwardedProps.command = {resume,
+  card_id}`. An answer for a card that is no longer the open one changes nothing: the run sends `card_result
+  {card_id, status: "not_accepted", reason, code: "card_gone"}` and ends. Read the thread again and show the card
+  that is open.
 
 The client never writes the form's config on its own authority: it applies an accepted card through the host's
 form, takes the config the form computed, and sends that back.

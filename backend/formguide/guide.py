@@ -63,6 +63,9 @@ def _loads(s: str) -> Any:
 _choice: ContextVar[str | None] = ContextVar("formguide_model_choice", default=None)
 
 
+CARD_GONE = "This question is no longer open."
+
+
 class ModelChoiceError(ValueError):
     """A run named a model choice it cannot have. `status` is the HTTP status, `detail` the body."""
 
@@ -317,6 +320,16 @@ class FormGuide:
         _choice.set(choice)
         entries = tx.list(thread_id)
         card = pending_card(entries)
+        named = str(resume.get("card_id") or "") if isinstance(resume, dict) else ""
+        if named and (card is None or card["id"] != named) and any(e["id"] == named for e in entries):
+            # a late answer for a card of this conversation that is no longer the open one (the connection dropped,
+            # the person wrote again, another card opened): it is not an answer to the card that is open now
+            run_id = run_id or str(uuid.uuid4())
+            yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
+            yield {"type": "CUSTOM", "name": "card_result",
+                   "value": {"card_id": named, "status": "not_accepted", "reason": CARD_GONE, "code": "card_gone"}}
+            yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
+            return
         if resume is not None:
             if card and card["kind"] == "question":
                 got, _ = read_answer(card, resume)

@@ -176,6 +176,23 @@ def test_a_detailed_answer_is_written_as_it_comes(demo):
     assert isinstance(stats["ttft_ms"], int)
 
 
+def test_the_first_word_is_the_first_one_that_stays(demo, monkeypatch):
+    """QA: in a run with a lead that was taken back, ttft_ms was the lead's first word (2.8 s), not the answer's
+    (6.4 s). A retracted lead no longer counts."""
+    from formguide.stats import RunStats
+    marks = []
+    first = RunStats.first_token
+
+    def spy(self):
+        marks.append(self.ttft)          # None each time the clock is free to be set
+        first(self)
+    monkeypatch.setattr(RunStats, "first_token", spy)
+    demo["streams"] = True
+    with TestClient(host.app) as c:
+        c.post("/research/run", json=_body(depth="deep"))
+    assert marks == [None, None]         # set for the lead, cleared when it was taken back, set again for the answer
+
+
 def test_the_answer_text_never_shows_the_sources_line():
     from formguide.knowledge.research import AnswerText
     text = "A late payment costs 27,90 EUR.\nSo pay on time.\n\nSources: tariffs.md > Fees\n"

@@ -78,13 +78,16 @@ def test_legacy_interrupt_is_a_json_string_and_structured_outcome(guide, model):
 
 def test_resume_forms():
     base = {"threadId": "x", "runId": "r", "messages": [{"id": "1", "role": "user", "content": "hi"}]}
+    # the answer keeps the id of the card it answers (card_id), so a late one cannot land on another card
     assert agui.run_kwargs({**base, "resume": [{"interrupt_id": "c", "status": "cancelled"}]})["resume"] == {
-        "accepted": False}
+        "accepted": False, "card_id": "c"}
     kw = agui.run_kwargs({**base, "resume": [{"interrupt_id": "c", "status": "resolved",
                                               "payload": {"accepted": True, "config": {"a": 1}}}]})
-    assert kw["resume"] == {"accepted": True, "config": {"a": 1}} and kw["message"] is None
+    assert kw["resume"] == {"accepted": True, "config": {"a": 1}, "card_id": "c"} and kw["message"] is None
     kw = agui.run_kwargs({**base, "forwardedProps": {"command": {"resume": json.dumps({"accepted": False})}}})
-    assert kw["resume"] == {"accepted": False}
+    assert kw["resume"] == {"accepted": False}                                   # a client that names no card
+    kw = agui.run_kwargs({**base, "forwardedProps": {"command": {"resume": {"accepted": True}, "card_id": "k1"}}})
+    assert kw["resume"] == {"accepted": True, "card_id": "k1"}                   # legacy mode names it beside the answer
     kw = agui.run_kwargs({"threadId": "x", "messages": [{"role": "user", "content": [
         {"type": "text", "text": "hello"}]}]})
     assert kw["message"] == "hello" and kw["run_id"]

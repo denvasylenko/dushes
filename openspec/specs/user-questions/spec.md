@@ -181,3 +181,10 @@ A client that tried a typed answer on the form and was refused SHALL restore the
 #### Scenario: A VIN of three digits
 - **WHEN** the person types "555" into a question card for the VIN and the form says it needs 17 characters
 - **THEN** the resume carries `rejected`, the run sends `card_result` `not_accepted` with the form's words, and the reply asks for the VIN again
+
+### Requirement: An answer names its card
+An answer to a card MAY name the card it answers: the interrupt id of a structured `resume`, or `card_id` beside `resume` in `forwardedProps.command`. When it names a card of this conversation that is no longer the open one, the run SHALL change nothing and call no model: it sends `CUSTOM card_result {card_id, status: "not_accepted", reason, code: "card_gone"}` and finishes, and the open card stays open. An answer that names no card, or an id the conversation never had, SHALL be taken as before.
+
+#### Scenario: A late answer after the connection dropped
+- **WHEN** a card's answer is lost, the person writes again, another card opens, and the first card's answer then arrives naming the first card
+- **THEN** the second card is still open, the model never sees the late answer, and the client is told the first card is no longer open

@@ -275,6 +275,7 @@ def create_router(guide: Any) -> APIRouter:
                                 yield {"type": "TEXT_MESSAGE_END", "messageId": mid}
                                 yield {"type": "CUSTOM", "name": "text_retract", "value": {"messageId": mid}}
                                 mid = None
+                                stats.ttft = None   # the first word is the first one the person keeps (QA, 2026-11-15)
                             continue
                         if not mid:
                             stats.first_token()
