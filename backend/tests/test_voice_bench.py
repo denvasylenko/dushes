@@ -92,3 +92,14 @@ def test_the_english_set_is_the_english_scenarios_of_the_whole_set():
     assert {s.tags[1] for s in scs} == {"answer", "order", "offer_yes", "fill", "hard", "card", "fix", "interruption"}   # every group is still there
     from collections import Counter
     assert min(Counter(s.tags[1] for s in scs).values()) >= 3   # no group is an anecdote
+
+
+def test_a_hard_value_is_exact_or_asked_or_wrong():
+    from types import SimpleNamespace as NS
+    sc = NS(fields={"vin": "WVWZZZ1JZXW000001"})
+    def visit(value, said):
+        return NS(forms={"f": NS(config={"props": {"vin": {}}, "state": {"vin": value}})}, replies=[("m", said)])
+    assert vb.hard_outcome(sc, visit("WVWZZZ1JZXW000001", "Done.")) == "exact"
+    assert vb.hard_outcome(sc, visit("", "Could you say the VIN again?")) == "asked"       # acceptable, counted apart
+    assert vb.hard_outcome(sc, visit("WVWZZZ1JZXW000007", "Is that right?")) == "wrong"    # a wrong value in the field is a failure, asked or not
+    assert vb.hard_outcome(sc, visit("", "Done.")) == "wrong"                              # nothing filled and nothing asked

@@ -52,7 +52,7 @@ the same `expect` keys as `evals/*.yaml`. Groups:
 | open on a direct order | 5 | "open the car insurance application" | the form opens at once |
 | yes after an offer | 6 | a question, then "yes, open it" | the yes opens |
 | fill by voice | 8 | a name, an age, a date said in words, a phone number, an amount, a choice | the field holds the value, no card for a value the person said, a line with Undo |
-| hard to hear | 5 | an email spelled out, a VIN, a surname, a postcode, a mixed-language sentence | the value is right or the assistant asks; never a wrong value filled in silence |
+| hard to hear | 5 | an email spelled out, a VIN, a surname, a postcode, a mixed-language sentence | three outcomes, counted apart: the exact value filled (pass); asked to repeat and the field left empty (acceptable); a wrong value filled (fail) |
 | confirmation needs a card | 4 | "I accept the terms", "submit it", a value from a document, replacing a typed value | a card is shown; a consent is ticked only by a tap |
 | correction | 5 | "no, I said the fifteenth, not the fiftieth" | the field holds the corrected value |
 | interruption | 5 | a second clip starts while the assistant speaks | the sound stops, the turn in progress is cancelled, nothing of it is applied |

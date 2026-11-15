@@ -218,6 +218,18 @@ def clips_for(sc: Any, manifest: list[dict]) -> list[dict]:
     return mine
 
 
+def hard_outcome(sc: Any, visit: Any) -> str:
+    """A hard-to-hear value, three ways (the Owner's decided behaviour: fill, light the field, read the value back):
+    `exact` every expected field holds its value; `asked` no expected field holds anything and the assistant asked
+    (acceptable, counted apart); `wrong` a field holds another value, or nothing was filled and nothing was asked."""
+    import evals
+    got = {n: next((f.config["state"].get(n) for f in visit.forms.values() if n in f.config.get("props", {})), None) for n in sc.fields}
+    if all(evals._same(got[n], want) for n, want in sc.fields.items()):
+        return "exact"
+    asked = any("?" in text for _mid, text in visit.replies)
+    return "asked" if asked and not any(str(v or "").strip() for v in got.values()) else "wrong"
+
+
 def play(sc: Any, bridge: Any, manifest: list[dict]) -> dict:
     import evals
     s = bridge.open(sc)
@@ -231,7 +243,8 @@ def play(sc: Any, bridge: Any, manifest: list[dict]) -> dict:
         kept, of = entities_kept(t.said, t.heard)
         turns.append({**t.__dict__, "wer": wer(t.said, t.heard), "entities_kept": kept, "entities": of})
     tok = getattr(s.visit, "tokens", {}) or {}
-    return {"name": sc.name, "group": sc.tags[1] if len(sc.tags) > 1 else "", "lang": sc.tags[2] if len(sc.tags) > 2 else "en",
+    hard = hard_outcome(sc, s.visit) if "hard" in sc.tags else None
+    return {"hard": hard, "name": sc.name, "group": sc.tags[1] if len(sc.tags) > 1 else "", "lang": sc.tags[2] if len(sc.tags) > 2 else "en",
             "turns": turns, "checks": checks, "ok": all(c.get("ok") for c in checks) and not any(t.error for t in s.turns),
             "connected_s": round(s.connected_s, 1), "agent_tokens": dict(tok), "transcript": s.visit.transcript()}
 
@@ -258,6 +271,7 @@ def metrics(results: list[dict], usd_per_minute: float, agent_usd: float) -> dic
         "first_sound_p50": _q([t["first_sound_s"] for t in plain], 0.5), "first_sound_p90": _q([t["first_sound_s"] for t in plain], 0.9),
         "useful_p50": _q([t["useful_s"] for t in plain], 0.5), "useful_p90": _q([t["useful_s"] for t in plain], 0.9),
         "first_step_p50": _q([t["first_step_s"] for t in plain], 0.5),
+        "hard": {k: sum(1 for r in results if r.get("hard") == k) for k in ("exact", "asked", "wrong")},
         "cut_ins": len(cuts), "cut_ins_cancelled": sum(1 for t in cuts if t["cancelled"]), "silence_p50": _q([t["silence_s"] for t in cuts], 0.5),
         "connected_minutes": round(seconds / 60, 2), "voice_usd": voice_usd, "agent_usd": round(agent_usd, 4),
         "usd_per_task": round((voice_usd + agent_usd) / max(1, len(results)), 4),
@@ -280,6 +294,7 @@ def report_md(rep: dict) -> str:
              f"| end of speech to the first sound, s | p50 {m['first_sound_p50']}, p90 {m['first_sound_p90']} |",
              f"| ... to the first step on screen, s | p50 {m['first_step_p50']} |",
              f"| ... to the first useful sentence, s | p50 {m['useful_p50']}, p90 {m['useful_p90']} |",
+             f"| hard to hear: exact / asked to repeat, field empty / wrong value | {m['hard']['exact']} / {m['hard']['asked']} / {m['hard']['wrong']} |",
              f"| interruptions: the turn cancelled | {m['cut_ins_cancelled']} of {m['cut_ins']} (silence after p50 {m['silence_p50']} s) |",
              f"| connected minutes (with {OPEN_SECONDS} s a session at opening) | {m['connected_minutes']} |",
              f"| dollars: voice / agent | {m['voice_usd']} / {m['agent_usd']} |",
