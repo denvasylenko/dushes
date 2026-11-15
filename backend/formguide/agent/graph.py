@@ -157,6 +157,20 @@ def client_tool_schemas(client_tools: list[dict] | None, taken: set[str]) -> lis
     return out
 
 
+def _unanswered(messages: list[BaseMessage]) -> list[dict]:
+    """Error results for tool calls of the last assistant message that never got one (the turn was stopped or
+    crashed in the middle). A provider refuses a history with a call and no result."""
+    for i in range(len(messages) - 1, -1, -1):
+        calls = getattr(messages[i], "tool_calls", None)
+        if calls:
+            done = {getattr(m, "tool_call_id", None) for m in messages[i + 1:]}
+            return [{"id": c["id"], "content": "Not run: the previous turn ended before this step finished.",
+                     "error": True} for c in calls if c.get("id") and c["id"] not in done]
+        if getattr(messages[i], "type", "") == "human":
+            break
+    return []
+
+
 def build_graph(guide: FormGuide):
     def server_tool_names(form_id: str | None) -> set[str]:
         return set(BUILTIN) | {t.name for t in guide.tools_for(form_id or "")}
@@ -237,6 +251,7 @@ def build_graph(guide: FormGuide):
             new += _tool_messages(pending_client["server_results"] + [
                 {"id": i, "content": got[i]} if i in got else {"id": i, "content": NOT_EXECUTED, "error": True}
                 for i in pending_client["ids"]])
+        new += _tool_messages(_unanswered([*(state.get("messages") or []), *new]))   # a turn that broke off mid-call
         content: list[dict[str, Any]] = []
         # The system prompt is frozen per thread (append-only history). If the form's knowledge
         # changed since (documents recompiled, skills edited), deliver it as an update here.
@@ -266,12 +281,17 @@ def build_graph(guide: FormGuide):
     async def compact(state: AgentState) -> dict:
         """Long chats: summarize older turns into a conversation memory (see memory.py)."""
         pack = guide.packs.get(state.get("form_id"))
+        t_mem, meta = RunStats.now(), {}
         try:
             res = await compact_history(state["messages"], state.get("memory") or "", guide.models.memory,
-                                        guide.config.memory, pack.title)
+                                        guide.config.memory, pack.title, meta)
         except Exception as e:  # noqa: BLE001 — a failed compaction must not block the turn
             log.warning("compaction failed: %s", e)
             return {}
+        finally:
+            stats = current_stats()
+            if stats and "usage" in meta:   # the summary's model call is counted like any other
+                stats.model_call(t_mem, None, meta["usage"], kind="memory", model=model_id(guide.models.memory))
         if not res:
             return {}
         history, memory = res
@@ -468,6 +488,11 @@ def build_graph(guide: FormGuide):
             except ToolError as e:
                 r = {"id": call["id"], "content": str(e), "error": True}
                 failed = True
+            except Exception as e:  # noqa: BLE001 - a call never stays without a result: the model reads the failure
+                log.exception("tool %s failed", call["name"])
+                r = {"id": call["id"], "content": f"{call['name']} failed ({type(e).__name__}): check the arguments "
+                                                  "or do it another way", "error": True}
+                failed = True
             finally:
                 if stats:
                     stats.tool_call(call["name"], t_tool, failed)
@@ -617,6 +642,10 @@ def build_graph(guide: FormGuide):
                     text = "The user confirmed. " + (out or "ok")
                 except ToolError as e:
                     text = f"The user confirmed, but the tool failed: {e}"
+                    failed = True
+                except Exception as e:  # noqa: BLE001 - the held call gets its result too
+                    log.exception("held tool %s failed", payload["tool"])
+                    text = f"The user confirmed, but the tool failed ({type(e).__name__})."
                     failed = True
                 if stats:
                     stats.tool_call(payload["tool"], t_tool, failed)

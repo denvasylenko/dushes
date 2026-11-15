@@ -95,8 +95,9 @@ def transcript(messages: list[BaseMessage]) -> str:
 
 
 async def compact(messages: list[BaseMessage], memory: str, model: BaseChatModel, cfg: MemoryConfig,
-                  title: str) -> tuple[list[BaseMessage], str] | None:
-    """Returns (new history, new memory), or None if no compaction is needed."""
+                  title: str, meta: dict | None = None) -> tuple[list[BaseMessage], str] | None:
+    """Returns (new history, new memory), or None if no compaction is needed. `meta`, when given, gets the
+    call's `usage` for run_stats."""
     if not cfg.max_history_tokens or estimate_tokens(messages) <= cfg.max_history_tokens:
         return None
     starts = [i for i, m in enumerate(messages) if is_turn_start(m)]
@@ -107,6 +108,8 @@ async def compact(messages: list[BaseMessage], memory: str, model: BaseChatModel
     prompt = (f"<previous_memory>\n{memory or '(none)'}\n</previous_memory>\n"
               f"<conversation_to_add>\n{transcript(old)}\n</conversation_to_add>\nWrite the updated memory.")
     reply = await model.ainvoke([SystemMessage(content=SYSTEM.format(title=title)), HumanMessage(content=prompt)])
+    if meta is not None:
+        meta["usage"] = dict(getattr(reply, "usage_metadata", None) or {}) or None
     new_memory = _text(reply.content).strip() or memory
 
     from .graph import strip_reasoning   # local import: graph imports this module

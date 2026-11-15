@@ -175,3 +175,10 @@ A value the form shows in a disabled or read-only field SHALL be stated plainly 
 #### Scenario: A payment in a locked summary
 - **WHEN** the summary section is locked, its calculated monthly payment shows 1000.00 and the user asks for the estimated payment
 - **THEN** the agent answers 1 000 as the form's estimate and does not say it is unavailable
+
+### Requirement: Every tool call gets a result
+A tool call SHALL always be followed by a result in the history. A failure inside a tool, of any kind, SHALL become an error result that the model reads and the client receives, and the turn SHALL go on. When a turn broke off with calls unanswered, the next turn SHALL first answer them with an error result.
+
+#### Scenario: A tool crashes
+- **WHEN** a built-in tool raises an unexpected error for the arguments it got
+- **THEN** the call's result says the tool failed, the model answers the user, and the next message of the conversation is accepted by the provider

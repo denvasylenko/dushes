@@ -26,6 +26,7 @@ from typing import Any
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage, ToolMessage
 
+from ..stats import RunStats, model_id, sum_usage
 from .sitemap import SiteMap
 
 log = logging.getLogger("formguide.site")
@@ -189,7 +190,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                  ask_docs: Callable[[str], Awaitable[str]] | None = None, *, live: str = "", instructions: str = "",
                  style: str | None = None, tools: list[SiteTool] | None = None, ctx: SiteRunCtx | None = None,
                  suggestions: bool = False, finish: bool = True, stay_on_form: bool = False,
-                 to_form: Callable[[str], None] | None = None) -> AsyncIterator[dict]:
+                 to_form: Callable[[str], None] | None = None, stats: RunStats | None = None) -> AsyncIterator[dict]:
     """One site turn as AG-UI events.
 
     `on_handoff(form_id, note, language)` keeps the note; when it returns True the form agent answers right after
@@ -229,7 +230,9 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
     try:
         for _ in range(MAX_ROUNDS):
             full: AIMessageChunk | None = None
+            t_call, first = RunStats.now(), None
             async for chunk in bound.astream(msgs):
+                first = first or RunStats.now()
                 full = chunk if full is None else full + chunk
                 delta = _text(chunk.content)
                 if delta:
@@ -238,6 +241,9 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                         started = True
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": delta}
                     said = True
+            if stats is not None:   # Dushes' own model call, counted like the form agent's
+                stats.model_call(t_call, first, dict(getattr(full, "usage_metadata", None) or {}), kind="site",
+                                 model=model_id(model))
             calls = list(getattr(full, "tool_calls", None) or [])
             if not calls:
                 break
@@ -260,7 +266,15 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                         directives.append(d)
                 elif name == "ask_documents" and ask_docs:
                     try:
-                        result = await ask_docs(str(args.get("question") or question))
+                        if stats is None:
+                            result = await ask_docs(str(args.get("question") or question))
+                        else:
+                            t_res, used = RunStats.now(), []
+                            try:
+                                result = await ask_docs(str(args.get("question") or question), used)
+                            finally:
+                                if used:
+                                    stats.model_call(t_res, None, sum_usage(used), kind="researcher")
                     except Exception as e:  # noqa: BLE001 — a failed lookup must not break the turn
                         result = f"The document lookup failed ({type(e).__name__}); answer from the passages or say you do not know."
                 elif name == "open_form":
@@ -302,13 +316,19 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
         if not said and not handed:   # the rounds ran out, or the model gave no text: one last reply, its tool calls ignored
             msgs.append(HumanMessage("[system] Do not call tools now. Answer the user in one to three sentences "
                                      "with what you found, or say what you could not find."))
+            t_call, first, last = RunStats.now(), None, None
             async for chunk in bound.astream(msgs):
+                first = first or RunStats.now()
+                last = chunk if last is None else last + chunk
                 delta = _text(chunk.content)
                 if delta:
                     if not started:
                         yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
                         started = True
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": delta}
+            if stats is not None:
+                stats.model_call(t_call, first, dict(getattr(last, "usage_metadata", None) or {}), kind="site",
+                                 model=model_id(model))
     except Exception as e:  # noqa: BLE001 — a human error, never a stack trace
         log.exception("site answer failed")
         if started:

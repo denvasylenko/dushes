@@ -33,7 +33,6 @@ def collect(guide, thread, **kw) -> list[dict]:
     return asyncio.run(go())
 
 
-@pytest.mark.xfail(strict=True, reason="a tool that raises leaves its call without an output (Owner's list, 2026-11-15)")
 def test_a_tool_that_raises_still_answers_its_call_and_the_guest(guide, model):
     model.script = [say("", ("t1", "get_outline", {"container": "1.1.1"})),   # no such container
                     say("That part of the form is not there; here is what I can see instead."),
@@ -52,7 +51,6 @@ def test_a_tool_that_raises_still_answers_its_call_and_the_guest(guide, model):
         assert ids <= {m.tool_call_id for m in call if isinstance(m, ToolMessage)}
 
 
-@pytest.mark.xfail(strict=True, reason="Dushes reports no run_stats for its own turns (Owner's list, 2026-11-15)")
 def test_a_turn_answered_by_the_site_assistant_reports_its_tokens(tmp_path):
     import evals
     from harness_client import Visit

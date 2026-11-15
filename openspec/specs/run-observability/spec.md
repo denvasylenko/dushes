@@ -103,3 +103,17 @@ Each entry of `models` in `run_stats` SHALL name the model that ran it, the sugg
 #### Scenario: Pricing a turn
 - **WHEN** a turn makes an agent call and a suggestions call
 - **THEN** both `models` entries carry a model id, so each can be priced
+
+### Requirement: Every role's model calls are counted
+`run_stats.models` SHALL list every model call of the run with its `kind`: `agent`, `suggestions`, `translate`, `memory` (the conversation summary) and `researcher` (the document researcher's calls, summed into one line).
+
+#### Scenario: A long chat is summarized
+- **WHEN** a turn compacts the history
+- **THEN** `run_stats.models` has a line of kind `memory` with its tokens
+
+### Requirement: Dushes reports its own usage
+A run in which Dushes called a model (its answer, the router, its document researcher) SHALL send a `CUSTOM run_stats` event with `agent: "site"` right before the terminal event, with the kinds `site`, `router` and `researcher`, and SHALL write the same line to the `formguide.stats` log. A form agent's turn in the same run keeps its own `run_stats` event, without `agent`.
+
+#### Scenario: A site answer
+- **WHEN** Dushes answers a question with one model call
+- **THEN** the event before `RUN_FINISHED` is `run_stats` with `agent: "site"` and one model line of kind `site`

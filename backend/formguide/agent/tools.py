@@ -505,8 +505,7 @@ def _t_calculate(a: dict, ctx: ToolCtx) -> str:
 
 def _t_get_outline(a: dict, ctx: ToolCtx) -> str:
     ov, lay = ctx.ov, ctx.ov.layout
-    root = a.get("container") or lay.root
-    _need(ctx, root)
+    root = _need(ctx, a.get("container") or lay.root).name   # a name, an outline number or a label
     depth = int(a.get("depth") or 3)
     out: list[str] = []
 
@@ -1258,8 +1257,15 @@ async def _ta_ask_documents(a: dict, ctx: ToolCtx) -> str:
     try:
         from ..knowledge import research   # needs the `research` extra (deepagents)
 
-        answer = await research.ask_documents(ctx.guide.knowledge, ctx.pack.form_id, ctx.pack.title,
-                                              str(a["question"]), ctx.guide.models.research, step)
+        from ..stats import RunStats, current, model_id, sum_usage
+        t_res, used = RunStats.now(), []
+        try:
+            answer = await research.ask_documents(ctx.guide.knowledge, ctx.pack.form_id, ctx.pack.title,
+                                                  str(a["question"]), ctx.guide.models.research, step, used)
+        finally:
+            if current() and used:   # the researcher's own model calls, as one line of the run's numbers
+                current().model_call(t_res, None, sum_usage(used), kind="researcher",
+                                     model=model_id(ctx.guide.models.research))
         items = research.parse_sources(answer, ctx.guide.knowledge, ctx.pack.form_id)
         if items:
             ctx.turn_sources = [*(ctx.turn_sources or []), *[i for i in items if i not in (ctx.turn_sources or [])]][:6]

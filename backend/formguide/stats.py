@@ -32,6 +32,7 @@ class RunStats:
         self.ttft: float | None = None
         self.models: list[dict[str, Any]] = []
         self.tools: list[dict[str, Any]] = []
+        self.agent: str | None = None   # "site" for Dushes' own calls; the form agent leaves it out
         self.span: Any = None   # the run's OpenTelemetry turn span (otel.TurnSpan), when tracing is on
 
     @staticmethod
@@ -76,7 +77,7 @@ class RunStats:
 
         tin, tout, tcache = total("input_tokens"), total("output_tokens"), total("cache_read_tokens")
         return {
-            "run_id": self.run_id, "thread_id": self.thread_id,
+            "run_id": self.run_id, "thread_id": self.thread_id, **({"agent": self.agent} if self.agent else {}),
             "ttft_ms": round(self.ttft * 1000) if self.ttft is not None else None,
             "total_ms": self._ms(self.t0),
             "model_ms": sum(m["ms"] for m in self.models),
@@ -102,3 +103,16 @@ def deactivate(token) -> None:
         _current.reset(token)
     except ValueError:   # the stream was closed from another context: nothing to restore there
         pass
+
+
+def sum_usage(items: list[dict]) -> dict | None:
+    """Several calls' usage (LangChain usage_metadata) as one, for a sub-agent that calls its model many times."""
+    if not items:
+        return None
+    out = {"input_tokens": 0, "output_tokens": 0, "input_token_details": {"cache_read": 0, "cache_creation": 0}}
+    for u in items:
+        out["input_tokens"] += int(u.get("input_tokens") or 0)
+        out["output_tokens"] += int(u.get("output_tokens") or 0)
+        for k in ("cache_read", "cache_creation"):
+            out["input_token_details"][k] += int((u.get("input_token_details") or {}).get(k) or 0)
+    return out

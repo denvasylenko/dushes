@@ -28,6 +28,7 @@ and the note survive a reload or a restart. `GET /threads/{id}` returns it for t
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import uuid
@@ -35,6 +36,7 @@ from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
 from ..reply import as_list
+from ..stats import RunStats, model_id
 from ..transcript import check_thread_id, new_entry
 
 try:   # module level: the router's annotations are resolved here (postponed annotations)
@@ -212,6 +214,9 @@ class Said:
         mid = next(iter(self.parts), None)
         return {"message_id": mid} if mid else {}
 
+stats_log = logging.getLogger("formguide.stats")
+
+
 class Dushes:
     def __init__(self, form_guide: FormGuide, site: SiteMap, model: Any = None,
                  knowledge_namespaces: list[str] | None = None, router_model: Any = None, *,
@@ -241,10 +246,14 @@ class Dushes:
         return "\n\n".join(f"<document title=\"{c.title} / {c.section}\">\n{c.text}\n</document>" for _s, c in hits)
 
     async def ask_documents(self, question: str) -> str:
+        return await self._ask_documents(question)
+
+    async def _ask_documents(self, question: str, usage: list | None = None) -> str:
+        """`usage`, when given, collects the usage of the researcher's model calls (for run_stats)."""
         from ..knowledge import research   # needs the `research` extra (deepagents)
 
         return await research.ask_documents(self.forms.knowledge, SCOPE, self.site.title, question,
-                                            self.forms.models.research)
+                                            self.forms.models.research, usage=usage)
 
     # ------------------------------------------------------------ the hand-off note, kept in the transcript
     def _keep_note(self, thread_id: str, form_id: str, note: str, language: str = "", status: str = "pending") -> None:
@@ -324,7 +333,8 @@ class Dushes:
             return "unclear"   # a question about none of this form's fields ("how many new requests?")
         return "form"
 
-    async def classify(self, message: str, state: dict[str, Any], thread_id: str | None = None) -> str:
+    async def classify(self, message: str, state: dict[str, Any], thread_id: str | None = None,
+                       stats: RunStats | None = None) -> str:
         """One word from a cheap model for an unclear message on a form page; 'form' when it cannot tell."""
         import asyncio
 
@@ -342,11 +352,15 @@ class Dushes:
                   "assistant's question. A question about where the business is or when it is open is site even "
                   "right after the form assistant spoke.\n"
                   "Answer with one word: form or site.")
+        t_call = RunStats.now()
         try:
             out = await asyncio.wait_for(self.router_model.ainvoke([HumanMessage(prompt)]), timeout=4)
         except Exception as e:  # noqa: BLE001 — never block a turn on the router
             log.warning("site router failed (%s): the turn stays with the form", type(e).__name__)
             return "form"
+        if stats is not None:
+            stats.model_call(t_call, None, dict(getattr(out, "usage_metadata", None) or {}), kind="router",
+                             model=model_id(self.router_model))
         word = _text_of(out).strip().lower()
         log.info("site router: %r -> %s", message[:60], word[:20])
         return "site" if word.startswith("site") else "form"
@@ -393,12 +407,29 @@ class Dushes:
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None, handoff: bool = False,
                   host: Any = None, reply_to: list[dict[str, Any]] | None = None, **form_kwargs: Any) -> AsyncIterator[dict]:
+        """One run as AG-UI events. Dushes' own model calls (its answers, the router, its document researcher)
+        are reported in a CUSTOM `run_stats` event with `agent: "site"`, right before the terminal event; a form
+        agent's turn in the same run reports its own, as it does alone."""
+        run_id = run_id or str(uuid.uuid4())
+        stats = RunStats(run_id, thread_id)
+        stats.agent = "site"
+        async for ev in self._run(thread_id, stats, message=message, state=state, resume=resume, run_id=run_id,
+                                  handoff=handoff, host=host, reply_to=reply_to, **form_kwargs):
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and stats.models:
+                summary = stats.as_event()
+                stats.models = []   # once per run
+                stats_log.info(json.dumps(summary, ensure_ascii=False))
+                yield {"type": "CUSTOM", "name": "run_stats", "value": summary}
+            yield ev
+
+    async def _run(self, thread_id: str, stats: RunStats, *, message: str | None, state: dict[str, Any] | None,
+                   resume: dict[str, Any] | None, run_id: str, handoff: bool, host: Any,
+                   reply_to: list[dict[str, Any]] | None, **form_kwargs: Any) -> AsyncIterator[dict]:
         check_thread_id(thread_id)
         state = state or {}
-        run_id = run_id or str(uuid.uuid4())
         mode = self.route(message, state, resume, handoff, thread_id)
         if mode == "unclear":
-            mode = await self.classify(message or "", state, thread_id)
+            mode = await self.classify(message or "", state, thread_id, stats)
         if mode == "form":
             form = self._with_page(state["form"], state)
             fid = str(form.get("form_id") or "form")
@@ -442,16 +473,18 @@ class Dushes:
             if back is None or not typed:
                 return
             async for ev in self._site_turn(thread_id, typed, state, run_id, host, form_kwargs, recorded=True,
-                                            reply_to=reply_to):
+                                            reply_to=reply_to, stats=stats):
                 if ev["type"] != "RUN_STARTED":   # one run: the form's RUN_STARTED already went out
                     yield ev
             return
-        async for ev in self._site_turn(thread_id, message, state, run_id, host, form_kwargs, reply_to=reply_to):
+        async for ev in self._site_turn(thread_id, message, state, run_id, host, form_kwargs, reply_to=reply_to,
+                                        stats=stats):
             yield ev
 
     async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
                          host: Any, form_kwargs: dict[str, Any], recorded: bool = False,
-                         reply_to: list[dict[str, Any]] | None = None) -> AsyncIterator[dict]:
+                         reply_to: list[dict[str, Any]] | None = None,
+                         stats: RunStats | None = None) -> AsyncIterator[dict]:
         """Dushes' turn (and a same-run hand-off to a form). `recorded`: the user's message is already in
         the transcript (the form agent gave it back)."""
         tx = self.forms.transcripts
@@ -499,10 +532,10 @@ class Dushes:
         first_mid = None
         async for ev in agent.answer(self.model or self.forms.models.agent, self.site, quoted(message, heard) or "", history, page,
                                      thread_id, run_id, keep, doc_passages=self.doc_passages(message or "") if has_docs else "",
-                                     ask_docs=self.ask_documents if has_docs else None, live=live,
+                                     ask_docs=self._ask_documents if has_docs else None, live=live,
                                      instructions=self.instructions, style=self.style, tools=self.tools, ctx=ctx,
                                      suggestions=self.suggestions, finish=False,
-                                     stay_on_form=self._filling(thread_id, state), to_form=give):
+                                     stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats):
             if ev["type"] == "TEXT_MESSAGE_CONTENT":
                 said.append(ev["delta"])
                 first_mid = first_mid or ev.get("messageId")
@@ -535,7 +568,7 @@ class Dushes:
                 tx.append(thread_id, new_entry("display", card=card, form_id=fid))
             if again is not None:   # the form gave it back: Dushes answers itself (recorded: no to_form now)
                 async for ev in self._site_turn(thread_id, message, state, run_id, host, form_kwargs, recorded=True,
-                                                reply_to=reply_to):
+                                                reply_to=reply_to, stats=stats):
                     if ev["type"] != "RUN_STARTED":
                         yield ev
                 return

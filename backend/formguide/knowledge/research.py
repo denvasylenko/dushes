@@ -120,8 +120,9 @@ def _text(content: Any) -> str:
 
 
 async def ask_documents(kb: KnowledgeBase, form_id: str, title: str, question: str, model: BaseChatModel,
-                        on_step: Callable[[str, Any], None] | None = None) -> str:
-    """Run the researcher and return its final answer. `on_step(tool, args)` reports progress."""
+                        on_step: Callable[[str, Any], None] | None = None, usage: list | None = None) -> str:
+    """Run the researcher and return its final answer. `on_step(tool, args)` reports progress; `usage`, when
+    given, collects the usage of every model call it made."""
     if not kb.documents_for(form_id):
         return "This form has no business documents."
     agent = build_researcher(kb, form_id, title, model)
@@ -130,6 +131,8 @@ async def ask_documents(kb: KnowledgeBase, form_id: str, title: str, question: s
                                       {"recursion_limit": 40}, stream_mode="updates"):
         for node in update.values():
             for m in (node or {}).get("messages", []) if isinstance(node, dict) else []:
+                if usage is not None and getattr(m, "type", "") == "ai" and getattr(m, "usage_metadata", None):
+                    usage.append(dict(m.usage_metadata))
                 for call in getattr(m, "tool_calls", None) or []:
                     if on_step:
                         on_step(call["name"], call.get("args"))
