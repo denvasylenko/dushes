@@ -489,6 +489,13 @@ async def run(scs: list[Scenario], model: Any, model_name: str, engine: str, rep
         return list(await asyncio.gather(*jobs))
 
 
+def control_items() -> list[Scenario]:
+    """The retrieval control (evals/research_depth/control/): one-fact questions nobody tunes on, as scenarios."""
+    raw = yaml.safe_load((SCENARIOS / "control" / "retrieval_v2.yaml").read_text())
+    return [Scenario(i["id"], i["corpus"], "", "quick", "fact", "", "", i["q"], [Point(i["q"], [str(k) for k in i["keys"]], i["where"])], heldout=True)
+            for i in raw["items"]]
+
+
 def retrieval(scs: list[Scenario], k: int = 8) -> dict:
     """No model: for each required point, is a section of its document that holds its key among the top `k` hits of
     one search with the person's question? It tells a retrieval miss from a model miss (one search is the quick
@@ -511,7 +518,7 @@ def retrieval(scs: list[Scenario], k: int = 8) -> dict:
                         d = out["by"].setdefault(key, [0, 0])
                         d[0] += ok
                         d[1] += 1
-                    if not ok:
+                    if not ok and not s.heldout:   # a control miss is never named: only its total is reported
                         out["missed"].append(f"{s.id}: {p.say} ({name})")
             out["by"][corpus + " ms per search"] = round(1000 * (time.perf_counter() - t0) / max(1, n), 1)
     return out
@@ -738,6 +745,7 @@ def main() -> int:
     ap.add_argument("--blind", type=int, metavar="N", help="write N answers of --from reports, shuffled and unnamed, for a scorer who must not know the model")
     ap.add_argument("--from", dest="from_reports", type=Path, nargs="+", metavar="REPORT")
     ap.add_argument("--out", type=Path, metavar="DIR")
+    ap.add_argument("--retrieval-control", type=int, nargs="?", const=8, metavar="K", help="no model: the retrieval control questions (totals only; QA runs it)")
     ap.add_argument("--check", action="store_true", help="validate the scenarios against the corpora offline and exit")
     ap.add_argument("--report", type=Path, help="rebuild the Markdown report of an earlier run's JSON and exit")
     a = ap.parse_args()
@@ -761,6 +769,20 @@ def main() -> int:
               f"corpora {sorted({s.corpus for s in scs})}")
         print("\n".join(problems) if problems else "OK")
         return 1 if problems else 0
+    if a.retrieval_control:
+        items = control_items()
+        bad = check_set(items)
+        if [b for b in bad if not b.startswith(("quick:", "deep:", "trap:"))]:
+            print("\n".join(bad))
+            return 1
+        r = retrieval(items, a.retrieval_control)
+        print(f"retrieval control v2: {len(items)} questions, top {r['k']}")
+        for key, v in sorted(r["by"].items()):
+            if isinstance(v, list) and "/" not in key:
+                print(f"  {key:<20} {v[0]:>2} of {v[1]:<2} ({v[0] / v[1]:.0%})")
+        tot = [sum(v[0] for kk, v in r["by"].items() if isinstance(v, list) and "/" not in kk), len(items)]
+        print(f"  {'all':<20} {tot[0]:>2} of {tot[1]:<2} ({tot[0] / tot[1]:.0%})")
+        return 0
     if a.retrieval:
         r = retrieval([s for s in scs if (not a.corpus or s.corpus in a.corpus) and (not a.heldout or s.heldout) and (not a.tuning or not s.heldout)], a.retrieval)
         for key, v in sorted(r["by"].items()):

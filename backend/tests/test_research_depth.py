@@ -139,3 +139,11 @@ def test_numbers_are_compared_as_numbers_and_sums_are_allowed():
     assert rd.check_answer(sc, _rec(text.replace("20 more", "1234.5 more")))["invented"] == ["1234.5"]
     unread = rd.check_answer(_sc("hp_q_leave_days"), _rec("27 days.\n\nSources: cbde2404.md \u203a 3.1"))
     assert unread["invented"] == [] and "no source" in unread["why"]            # nothing to check against: it fails on the source
+
+
+def test_the_retrieval_control_is_sound_and_never_names_a_miss():
+    items = rd.control_items()
+    assert len(items) >= 50 and all(s.heldout for s in items)
+    assert [p for p in rd.check_set(items) if not p.startswith(("quick:", "deep:", "trap:"))] == []   # every key is in its document
+    r = rd.retrieval(items[:6], 8)
+    assert r["missed"] == []          # a control miss is counted, never listed

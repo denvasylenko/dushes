@@ -1,0 +1,59 @@
+# CONTROL for retrieval. Do not read this file, its questions or its misses while changing the knowledge base or the
+# researcher: it is the number that says whether a change to retrieval helps on questions nobody tuned for.
+# QA runs it (research_depth.py --retrieval-control) and reports totals only. Written 2026-11-15, after the control
+# scenarios of research-v1 were partly seen during retrieval tuning.
+# Each item: one fact, the words that show its section was found (any one), and the document it is in.
+items:
+  - {id: rc_hp_01, corpus: halden_policies, q: "What value of gifts may I accept from one business partner in a year?", keys: ["gift register"], where: staff_handbook_2026.md}
+  - {id: rc_hp_02, corpus: halden_policies, q: "On which day of the month is my salary paid?", keys: ["27th"], where: staff_handbook_2026.md}
+  - {id: rc_hp_03, corpus: halden_policies, q: "What are the core hours for office staff?", keys: ["09:30"], where: staff_handbook_2026.md}
+  - {id: rc_hp_04, corpus: halden_policies, q: "Does the company pay anything towards glasses for screen work?", keys: ["glasses"], where: benefits_guide_2026.md}
+  - {id: rc_hp_05, corpus: halden_policies, q: "Is there a childcare subsidy and how much is it?", keys: ["childcare"], where: benefits_guide_2026.md}
+  - {id: rc_hp_06, corpus: halden_policies, q: "What do I get after 25 years with the company?", keys: ["2500"], where: benefits_guide_2026.md}
+  - {id: rc_hp_07, corpus: halden_policies, q: "For how long is a company car leased?", keys: ["48 months"], where: company_car_policy.md}
+  - {id: rc_hp_08, corpus: halden_policies, q: "Production has stopped and I need a part today. Can the site director order without quotes?", keys: ["emergency"], where: procurement_policy.pdf}
+  - {id: rc_hp_09, corpus: halden_policies, q: "After how long does my screen lock by itself?", keys: ["5 minutes"], where: information_security_policy.md}
+  - {id: rc_hp_10, corpus: halden_policies, q: "How long are occupational health files kept?", keys: ["40 years"], where: records_retention_schedule.md}
+  - {id: rc_hp_11, corpus: halden_policies, q: "With how much notice can Halden Works audit one of its suppliers?", keys: ["10 working days"], where: supplier_code_of_conduct.md}
+  - {id: rc_hp_12, corpus: halden_policies, q: "What mobility allowance does a G8 get instead of a company car?", keys: ["900"], where: company_car_policy.md}
+  - {id: rc_hp_13, corpus: halden_policies, q: "How long may an employee be suspended during a disciplinary investigation?", keys: ["15 working days"], where: disciplinary_and_grievance_procedure.md}
+  - {id: rc_hp_14, corpus: halden_policies, q: "Wie viele Minuten Pause stehen mir bei einer Schicht von mehr als neun Stunden in Kelmar zu?", keys: ["45 minuten"], where: betriebsvereinbarung_kelmar_de.md}
+  - {id: rc_oc_01, corpus: orrin_catalogue, q: "For how many years can I still get spare parts after a tool is dropped from the range?", keys: ["8 years"], where: spare_parts_list_2026.md}
+  - {id: rc_oc_02, corpus: orrin_catalogue, q: "How long does the BP-3680 take to charge?", keys: ["110 min"], where: battery_and_charger_guide.md}
+  - {id: rc_oc_03, corpus: orrin_catalogue, q: "What discount does a Bronze dealer get?", keys: ["18%"], where: dealer_handbook.md}
+  - {id: rc_oc_04, corpus: orrin_catalogue, q: "Can a dealer buy demonstration tools cheaper?", keys: ["demonstration"], where: dealer_handbook.md}
+  - {id: rc_oc_05, corpus: orrin_catalogue, q: "How loud is the DX-2530?", keys: ["69 db"], where: catalogue_dust_extractors.md}
+  - {id: rc_oc_06, corpus: orrin_catalogue, q: "How deep does the SW-3690 cut at 90 degrees?", keys: ["68 mm"], where: catalogue_saws.md}
+  - {id: rc_oc_07, corpus: orrin_catalogue, q: "Can I send large battery packs by air freight?", keys: ["dangerous goods"], where: battery_and_charger_guide.md}
+  - {id: rc_oc_08, corpus: orrin_catalogue, q: "How long does a repair under warranty take?", keys: ["5 working days"], where: warranty_terms_2026.pdf}
+  - {id: rc_oc_09, corpus: orrin_catalogue, q: "What is the impact energy of the RH-3645?", keys: ["9.0 j"], where: catalogue_rotary_hammers.md}
+  - {id: rc_oc_10, corpus: orrin_catalogue, q: "Qué autonomía tiene el vareador de aceitunas?", keys: ["3 horas"], where: suplemento_region_sur_es.md}
+  - {id: rc_oc_11, corpus: orrin_catalogue, q: "Does Orrin pay part of my local advertising as a dealer?", keys: ["advertising"], where: dealer_handbook.md}
+  - {id: rc_oc_12, corpus: orrin_catalogue, q: "Is calibration of a measuring tool covered by the warranty?", keys: ["calibration not included"], where: warranty_terms_2026.pdf}
+  - {id: rc_oc_13, corpus: orrin_catalogue, q: "How long does the line laser MS-0330 run?", keys: ["18 h"], where: catalogue_measuring.md}
+  - {id: rc_tc_01, corpus: tessel_contract, q: "What interest do we owe if we pay an invoice late?", keys: ["percentage points"], where: framework_agreement.pdf}
+  - {id: rc_tc_02, corpus: tessel_contract, q: "How fast must the supplier react to an alarm when no guard is on site?", keys: ["within 30 minutes"], where: schedule_1_service_specification.md}
+  - {id: rc_tc_03, corpus: tessel_contract, q: "Up to what cost of parts is a repair included in the fixed fee?", keys: ["350"], where: schedule_1_service_specification.md}
+  - {id: rc_tc_04, corpus: tessel_contract, q: "By when must the monthly performance report be sent?", keys: ["8th working day"], where: schedule_2_service_levels_and_credits.md}
+  - {id: rc_tc_05, corpus: tessel_contract, q: "What did the transition cost and how was it invoiced?", keys: ["180000"], where: schedule_5_transition_plan.md}
+  - {id: rc_tc_06, corpus: tessel_contract, q: "How many of the transferred staff were cleaners?", keys: ["148 cleaners"], where: schedule_5_transition_plan.md}
+  - {id: rc_tc_07, corpus: tessel_contract, q: "Which sites were added after signature?", keys: ["MR-081"], where: amendment_no_1.md}
+  - {id: rc_tc_08, corpus: tessel_contract, q: "Is the supplier raising cleaners' pay because of the turnover?", keys: ["turnover"], where: governance_board_minutes_2026.md}
+  - {id: rc_tc_09, corpus: tessel_contract, q: "What does a cleaning supervisor cost per hour this year?", keys: ["26.60"], where: schedule_3_rate_card_2026.md}
+  - {id: rc_tc_10, corpus: tessel_contract, q: "How much professional indemnity cover must the supplier hold?", keys: ["professional indemnity"], where: schedule_5_transition_plan.md}
+  - {id: rc_tc_11, corpus: tessel_contract, q: "How long does the supplier have to price a change request?", keys: ["price and a plan"], where: framework_agreement.pdf}
+  - {id: rc_tc_12, corpus: tessel_contract, q: "Cuántos días de vacaciones tiene el personal de los centros del sur?", keys: ["23 días"], where: anexo_personal_region_sur_es.md}
+  - {id: rc_tc_13, corpus: tessel_contract, q: "Who are the approved subcontractors for lifts and refrigeration?", keys: ["approved subcontractors"], where: schedule_5_transition_plan.md}
+  - {id: rc_vm_01, corpus: veltra_manual, q: "What is the COP of the HX-20 at A7/W35?", keys: ["4.6"], where: installation_manual.pdf}
+  - {id: rc_vm_02, corpus: veltra_manual, q: "Which type of residual current device does the unit need?", keys: ["type b"], where: installation_manual.pdf}
+  - {id: rc_vm_03, corpus: veltra_manual, q: "How much condensate should the drain handle in frost?", keys: ["condensate"], where: installation_manual.pdf}
+  - {id: rc_vm_04, corpus: veltra_manual, q: "What does fault F301 mean and may I reset it?", keys: ["leak detector"], where: fault_code_reference.md}
+  - {id: rc_vm_05, corpus: veltra_manual, q: "Which file do I need on the USB stick for the firmware update?", keys: ["hx_3_0.bin"], where: firmware_release_notes.md}
+  - {id: rc_vm_06, corpus: veltra_manual, q: "When are the fan bearings due for replacement?", keys: ["30000"], where: maintenance_manual.md}
+  - {id: rc_vm_07, corpus: veltra_manual, q: "Which test kit is used for the compressor oil check?", keys: ["VP-40117"], where: field_service_notes.md}
+  - {id: rc_vm_08, corpus: veltra_manual, q: "Can an HX-80 be installed without a buffer tank?", keys: ["not allowed for hx-50 and hx-80"], where: hydraulic_schemes.md}
+  - {id: rc_vm_09, corpus: veltra_manual, q: "Wie groß muss der Schutzbereich um das Gerät sein?", keys: ["schutzbereich"], where: kurzanleitung_installateure_de.md}
+  - {id: rc_vm_10, corpus: veltra_manual, q: "What is the default minimum interval between two defrosts?", keys: ["P210"], where: controller_parameter_reference.md}
+  - {id: rc_vm_11, corpus: veltra_manual, q: "What should I do before taking the unit out of service for the winter?", keys: ["4 weeks in winter"], where: maintenance_manual.md}
+  - {id: rc_vm_12, corpus: veltra_manual, q: "What water hardness is allowed in the heating circuit?", keys: ["8.4"], where: installation_manual.pdf}
+  - {id: rc_vm_13, corpus: veltra_manual, q: "The hot water program runs at the wrong time. Where do I set it?", keys: ["P113"], where: controller_parameter_reference.md}
