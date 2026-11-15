@@ -581,6 +581,10 @@ class Dushes:
             elif ev["type"] == "RUN_ERROR":
                 failed = True
             yield ev
+        if not failed and "".join(said).rstrip().endswith("?"):   # an offer made in words alone ("Want me to open it?")
+            while len(self._offers) >= 5000:
+                self._offers.pop(next(iter(self._offers)))
+            self._offers[thread_id] = True   # a plain yes to the closing question may open what it names
         if said:
             tx.append(thread_id, new_entry("assistant", text="".join(said), **({"message_id": first_mid} if first_mid else {})))
         if failed:

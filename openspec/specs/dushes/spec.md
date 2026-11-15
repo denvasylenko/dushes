@@ -216,6 +216,20 @@ The site agent SHALL open a page or start a form only when the person's own mess
 - **WHEN** the person asks "how can I get car insurance?" and the model calls `open_form` for the insurance form
 - **THEN** no form opens, the answer explains how, and it ends by offering to open the insurance form
 
+### Requirement: A refused move still reads the page
+A refused `navigate` or `open_form` SHALL return what that page says: the tab or section the call named, or the whole page when it named none (cut to a fixed length). The site agent answers from it with the fact the person asked about, and the person stays where they are.
+
+#### Scenario: The price is on a tab of another page
+- **WHEN** the person asks what car insurance costs and the model calls `navigate` for the insurance page's price tab
+- **THEN** nothing opens, the tool result carries the tab's text, and the answer gives the price before the offer
+
+### Requirement: An offer made in words counts
+An answer that ends with a question SHALL count as an offer, whether or not a move was refused in that turn: the next message may be a plain yes to it. A one-word "open it" in the product's languages SHALL count as a direct request.
+
+#### Scenario: A yes in Spanish
+- **WHEN** the answer ends with a question offering the insurance form and the person replies with a yes and "open it" in Spanish
+- **THEN** the form opens
+
 ### Requirement: The offer is one tap away
 When opening was refused, the turn's suggestions SHALL start with a button that asks for it in the person's language ("Open Car insurance"), and a `CUSTOM site_offer` event SHALL name what was offered. The next message opens it when it is that button's text, another direct request, or a plain yes.
 

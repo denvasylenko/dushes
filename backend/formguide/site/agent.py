@@ -68,6 +68,7 @@ _GO = re.compile(
     r"|\b(\u00f6ffne|zeig(e)?( mir)?|bring mich|geh zu|ich (m\u00f6chte|will|brauche))\b"
     r"|\b(ouvre|ouvrez|montre(z)?[- ]moi|je (veux|voudrais)|j'ai besoin)\b"
     r"|\b(abre|abra|mu\u00e9strame|ll\u00e9vame|quiero|necesito)\b"
+    r"|\b(\u00e1bre(lo|la|me|melo)|\u00e1bra(lo|la)|ouvre[- ]l[ea]|ouvrez[- ]l[ea]|april[oa])\b"   # "open it", one word
     r"|\b(apri|mostrami|portami|voglio|vorrei)\b"
     r"|(\u043e\u0442\u043a\u0440\u043e\u0439|\u043f\u043e\u043a\u0430\u0436\u0438|\u043f\u0435\u0440\u0435\u0439\u0434\u0438"
     r"|\u0445\u043e\u0447\u0443|\u043c\u043d\u0435 \u043d\u0443\u0436\u043d|\u0432\u0456\u0434\u043a\u0440\u0438\u0439"
@@ -107,8 +108,23 @@ def wants_to_go(message: str, offered: bool = False) -> bool:
 
 
 NOT_ASKED = ("Not opened: the person asked a question and did not ask to go anywhere. Answer the question first, from "
-             "the passages. Then offer it in one closing sentence (\"Want me to open {title}?\") and stop: it opens "
+             "the passages and from what the page says (below, when it says anything): give the fact they asked "
+             "about, never \"I could not find it\" when it is there. Then offer it in one closing sentence (\"Want me to open {title}?\") and stop: it opens "
              "when they say yes or tap the button under your answer.")
+
+
+READ_CHARS = 2400   # how much of a page a refused move still lets the model read
+
+
+def reads(page: Any, args: dict[str, Any] | None = None) -> str:
+    """What a page says, for a move that was not made: the parts the call named, or the whole page. The model
+    answers from it while the person stays where they are."""
+    if not page:
+        return ""
+    named = [p for p in (page.part(str((args or {}).get(k) or "").strip()) for k in ("tab", "section")) if p]
+    parts = [p for p in (named or page.parts) if (p.text or "").strip()]
+    text = " | ".join(f"{p.title}: {p.text.strip()}" for p in parts) or (page.description or "").strip()
+    return f"\n{page.title} says: {text[:READ_CHARS]}" if text else ""
 
 
 async def maybe_await(v: Any) -> Any:
@@ -327,7 +343,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                     if d and not may_go:   # a question: the answer first, the page as an offer
                         target = site.page(d["path"])
                         offer = {"tool": "navigate", "args": args, "title": target.title if target else d["path"]}
-                        result = NOT_ASKED.format(title=offer["title"])
+                        result = NOT_ASKED.format(title=offer["title"]) + reads(target, args)
                     elif d:
                         directives.append(d)
                 elif name == "ask_documents" and ask_docs:
@@ -349,7 +365,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                         result = f"There is no form {args.get('form_id')!r} on the site."
                     elif not may_go:   # a question about what the form does: the answer first, the form as an offer
                         offer = {"tool": "open_form", "args": args, "title": page.title}
-                        result = NOT_ASKED.format(title=page.title)
+                        result = NOT_ASKED.format(title=page.title) + reads(page)
                     else:
                         now = await maybe_await(on_handoff(page.form or "", str(args.get("note") or "").strip()[:600],
                                                            str(args.get("language") or "").strip()[:40]))

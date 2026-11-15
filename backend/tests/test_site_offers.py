@@ -60,3 +60,44 @@ def test_a_where_question_gets_the_page_as_an_offer_and_the_tap_opens_it(site, m
     model.script = [say("", ("n2", "navigate", {"path": "/contacts", "section": "bank"})), say("Here is Contacts.")]
     ev = run(site, "of3", message=tap, state={"page": {"path": "/"}})        # the person tapped the offer
     assert _events(ev, "site_directive") == [{"type": "navigate", "path": "/contacts", "section": "bank"}]
+
+
+def test_a_refused_move_still_lets_the_agent_read_the_page(site, model):
+    """Found by QA on indirect-v1 (2026-11-15): with the move refused, the agent had no way to read a section and
+    answered "I could not find it, shall I open the page?". The refusal now carries what the page says."""
+    model.script = [say("", ("n1", "navigate", {"path": "/insurance", "tab": "levels"})),
+                    say("Third-party liability starts from 300 a year. Want me to open Car insurance?")]
+    ev = run(site, "rd1", message="what does car insurance cost?", state={"page": {"path": "/"}})
+    assert _events(ev, "site_directive") == []                               # the person stays where they are
+    result = next(m.content for m in model.calls[-1] if getattr(m, "tool_call_id", None) == "n1")
+    assert result.startswith("Not opened") and "from 300" in result          # the tab's text, to answer from
+    assert "Drivers under 21" not in result                                  # only the part the call named
+
+    model.script = [say("", ("n2", "navigate", {"path": "/insurance"})), say("Claims within 7 days.")]
+    run(site, "rd2", message="how do I report a claim?", state={"page": {"path": "/"}})
+    result = next(m.content for m in model.calls[-1] if getattr(m, "tool_call_id", None) == "n2")
+    assert "Report a claim within 7 days" in result and "from 300" in result  # no part named: the whole page
+
+    model.script = [say("", ("o1", "open_form", {"form_id": "car_insurance", "note": "x"})), say("You describe the car.")]
+    run(site, "rd3", message="how does the insurance form work?", state={"page": {"path": "/"}})
+    result = next(m.content for m in model.calls[-1] if getattr(m, "tool_call_id", None) == "o1")
+    assert "Describe your car" in result                                     # a form's page is read the same way
+
+
+def test_a_yes_to_an_offer_made_in_words_opens(site, model):
+    """QA, indirect_si_seguro_es: the answer ended "Want me to open the form?" without a refused tool call, so no
+    offer was recorded and the person's yes opened nothing."""
+    assert wants_to_go("Sí, ábrelo por favor", offered=True) and wants_to_go("ábrelo")
+    assert wants_to_go("ouvre-le") and wants_to_go("aprilo")
+    model.script = [say("You can apply online on the quote page. Want me to open the form?")]
+    ev = run(site, "yw1", message="how can I get car insurance?", state={"page": {"path": "/"}})
+    assert _events(ev, "site_directive") == []
+    model.script = [say("", ("o2", "open_form", {"form_id": "car_insurance", "note": "car insurance"})), say("Opening it.")]
+    ev = run(site, "yw1", message="Sí, ábrelo por favor", state={"page": {"path": "/"}})
+    assert [d["form_id"] for d in _events(ev, "site_directive")] == ["car_insurance"]
+
+    model.script = [say("Third-party cover starts from 300 a year.")]         # no closing question: no offer
+    run(site, "yw2", message="what does car insurance cost?", state={"page": {"path": "/"}})
+    model.script = [say("", ("o3", "open_form", {"form_id": "car_insurance", "note": "x"})), say("Shall I open it?")]
+    ev = run(site, "yw2", message="ok", state={"page": {"path": "/"}})
+    assert _events(ev, "site_directive") == []
