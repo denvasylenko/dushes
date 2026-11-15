@@ -8,10 +8,11 @@ public enum ChatItem: Identifiable, Equatable, Sendable {
     case step(id: String, name: String, state: StepState)
     case card(ChatCard)
     case host(id: String, name: String, value: JSONValue)      // a CUSTOM the host draws (its own cards)
+    case sources(id: String, items: [JSONValue])               // CUSTOM sources under an answer: {title, section?, excerpt?}
 
     public var id: String {
         switch self {
-        case .user(let id, _), .assistant(let id, _, _), .step(let id, _, _), .host(let id, _, _): id
+        case .user(let id, _), .assistant(let id, _, _), .step(let id, _, _), .host(let id, _, _), .sources(let id, _): id
         case .card(let c): "card-" + c.id
         }
     }
@@ -27,6 +28,8 @@ public struct ChatCard: Identifiable, Equatable, Sendable {
     public var type: String
     public var body: JSONValue
     public var status: Status = .open
+    /// The option the person chose (shown as chosen once answered).
+    public var chosen: String?
 
     public var question: String? { body["question"]?.string ?? body["title"]?.string ?? body["message"]?.string }
     public var options: [(id: String, label: String)] {
@@ -37,7 +40,7 @@ public struct ChatCard: Identifiable, Equatable, Sendable {
     }
 
     public static func == (a: ChatCard, b: ChatCard) -> Bool {
-        a.id == b.id && a.type == b.type && a.body == b.body && a.status == b.status
+        a.id == b.id && a.type == b.type && a.body == b.body && a.status == b.status && a.chosen == b.chosen
     }
 }
 
@@ -107,7 +110,27 @@ public final class ChatStore {
     }
 
     public func choose(_ card: ChatCard, option id: String) {
+        if let i = cardIndex(card.id), case .card(var c) = items[i] { c.chosen = id; items[i] = .card(c) }
         answer(card, with: ["answer": ["ids": [.string(id)]]])
+    }
+
+    /// A question card with fields (2–3 short ones) or one typed answer.
+    public func answerFields(_ card: ChatCard, _ values: [String: String]) {
+        if card.body["fields"]?.array?.isEmpty == false {
+            answer(card, with: ["answers": .object(values.mapValues { .string($0) })])
+        } else {
+            answer(card, with: ["answer": ["text": .string(values.values.first ?? "")]])
+        }
+    }
+
+    /// The «+» menu's «New conversation»: a new thread, the log empty.
+    public func newConversation() {
+        stop()
+        items = []
+        suggestions = []
+        recent = []
+        error = nil
+        threadId = UUID().uuidString
     }
 
     public func confirm(_ card: ChatCard, _ accepted: Bool) {
@@ -316,8 +339,12 @@ public final class ChatStore {
                 c.status = .refused(value["reason"]?.string ?? "")
                 items[i] = .card(c)
             }
+        case "sources":
+            let list = value["items"]?.array ?? []
+            if !list.isEmpty { items.append(.sources(id: "sources-\(items.count)", items: list)) }
         case "suggestions":
-            suggestions = (value["items"]?.array ?? []).compactMap { $0.string ?? $0["text"]?.string ?? $0["label"]?.string }
+            // items are plain strings (CONTRACT.md); `applies` (same length) is not drawn yet
+            suggestions = (value["items"]?.array ?? []).compactMap(\.string)
         case "language":
             language = value["lang"]?.string
         case "site_directive":

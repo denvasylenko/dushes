@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// The chat, laid out like the Claude app on iOS: the assistant's answer as plain text on the page (no bubble), the
-/// person's words in a bubble on the right, a quiet steps line while tools run, quick replies as chips above the input,
-/// one input line with the microphone and the send button. The host draws its own cards (`hostCard`) and records the
-/// voice (`onMicrophone`): voice goes through the host's own transcription.
+/// The chat, drawn with the widget's numbers (`--agui-*`, styles.ts) in native SwiftUI: the answer as text on the page
+/// (15 pt), the person's words in a soft bubble (radius 20, 10/16, at most 85%), the steps line (13 pt, ink-2), chips
+/// (a pill with a line-2 border), cards (radius 14, padding 12, the widget's shadow), options (radius 10, line-2 border,
+/// the chosen one ringed), one input line with «+», the microphone and send. The host draws its own cards (`hostCard`)
+/// and records the voice (`onMicrophone`).
 public struct ChatView<HostCard: View>: View {
     @Bindable var store: ChatStore
     var placeholder: LocalizedStringKey
@@ -11,6 +12,7 @@ public struct ChatView<HostCard: View>: View {
     var hostCard: (String, JSONValue) -> HostCard
 
     @State private var draft = ""
+    @State private var sources: [JSONValue]?
     @FocusState private var focused: Bool
 
     public init(store: ChatStore, placeholder: LocalizedStringKey = "Ask AI",
@@ -26,12 +28,12 @@ public struct ChatView<HostCard: View>: View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 14) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(store.items) { item in
                             row(item).id(item.id)
                         }
                         if store.running, !typing {
-                            ThinkingDots().id("thinking")
+                            ThinkingDots().padding(.bottom, 8).id("thinking")
                         }
                         if let error = store.error {
                             errorRow(error).id("error")
@@ -46,13 +48,19 @@ public struct ChatView<HostCard: View>: View {
                 }
             }
             if let queued = store.queued {
-                Text(queued).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                Text(queued).font(.footnote).foregroundStyle(AGUITheme.ink2).lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, 16).padding(.bottom, 4)
             }
             if !store.suggestions.isEmpty, !store.running {
                 chips
             }
             composer
+        }
+        .foregroundStyle(AGUITheme.ink)
+        .sheet(isPresented: Binding(get: { sources != nil }, set: { if !$0 { sources = nil } })) {
+            SourcesSheet(items: sources ?? [])
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -66,34 +74,56 @@ public struct ChatView<HostCard: View>: View {
         switch item {
         case .user(_, let text):
             HStack {
-                Spacer(minLength: 48)
+                Spacer(minLength: 0)
                 Text(text)
-                    .padding(.horizontal, 14)
+                    .font(.system(size: 15))
+                    .lineSpacing(4)
                     .padding(.vertical, 10)
-                    .background(.fill.tertiary, in: .rect(cornerRadius: 20))
+                    .padding(.horizontal, 16)
+                    .background(AGUITheme.soft, in: .rect(cornerRadius: AGUITheme.radiusLg))
                     .textSelection(.enabled)
+                    .containerRelativeFrame(.horizontal, alignment: .trailing) { w, _ in w * 0.85 }
             }
+            .padding(.bottom, 20)
             .transition(.opacity.combined(with: .move(edge: .bottom)))
         case .assistant(_, let text, _):
-            Text(LocalizedStringKey(text))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
+            AnswerText(text: text)
+                .padding(.bottom, 20)
                 .transition(.opacity)
         case .step(_, let name, let state):
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 switch state {
                 case .running: ProgressView().controlSize(.mini)
-                case .done: Image(systemName: "checkmark").foregroundStyle(.secondary)
-                case .failed: Image(systemName: "exclamationmark.circle").foregroundStyle(.orange)
+                case .done: Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold))
+                case .failed: Image(systemName: "exclamationmark.circle").foregroundStyle(AGUITheme.dangerInk)
                 }
-                Text(Self.stepTitle(name))
+                Text(Self.stepTitle(name)).lineLimit(1)
             }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
+            .font(.system(size: 13))
+            .foregroundStyle(AGUITheme.ink2)
+            .frame(minHeight: 26)
+            .padding(.bottom, 8)
         case .card(let card):
             CardView(card: card, store: store)
+                .padding(.top, 4)
+                .padding(.bottom, 20)
+        case .sources(_, let list):
+            Button { sources = list } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.text")
+                    Text(String(localized: "Sources", bundle: .module) + " · \(list.count)")
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AGUITheme.ink2)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 30)
+                .overlay(Capsule().strokeBorder(AGUITheme.line2, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, -12)
+            .padding(.bottom, 20)
         case .host(_, let name, let value):
-            hostCard(name, value)
+            hostCard(name, value).padding(.bottom, 20)
         }
     }
 
@@ -102,39 +132,58 @@ public struct ChatView<HostCard: View>: View {
             HStack(spacing: 8) {
                 ForEach(store.suggestions, id: \.self) { s in
                     Button(s) { store.tapSuggestion(s) }
-                        .font(.subheadline)
+                        .font(.system(size: 13))
+                        .foregroundStyle(AGUITheme.ink2)
                         .padding(.horizontal, 14)
-                        .frame(minHeight: 36)
-                        .background(.fill.tertiary, in: .capsule)
+                        .frame(minHeight: 44)
+                        .background(AGUITheme.bg, in: .capsule)
+                        .overlay(Capsule().strokeBorder(AGUITheme.line2, lineWidth: 1))
                         .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 1)
         }
         .padding(.bottom, 8)
         .transition(.opacity)
     }
 
+    /// `.box`: radius 20, a line-2 border, 8/8/8/16 inside, a faint shadow; «+» left, microphone or send right.
     private var composer: some View {
         HStack(alignment: .bottom, spacing: 8) {
+            Menu {
+                Button(String(localized: "New conversation", bundle: .module), systemImage: "square.and.pencil") {
+                    store.newConversation()
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(AGUITheme.ink2)
+                    .frame(width: 36, height: 36)
+            }
+            .accessibilityLabel(Text("More", bundle: .module))
             TextField(placeholder, text: $draft, axis: .vertical)
+                .font(.system(size: 15))
                 .lineLimit(1...6)
                 .focused($focused)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
                 .submitLabel(.send)
                 .onSubmit(send)
             if store.running, draft.trimmingCharacters(in: .whitespaces).isEmpty {
-                circle("stop.fill", label: "Stop") { store.stop() }
+                circle("stop.fill", label: "Stop", filled: true) { store.stop() }
             } else if draft.trimmingCharacters(in: .whitespaces).isEmpty, let onMicrophone {
-                circle("mic.fill", label: "Dictate", action: onMicrophone)
+                circle("mic", label: "Dictate", action: onMicrophone)
             } else {
                 circle("arrow.up", label: "Send", filled: true, action: send)
                     .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-        .padding(4)
-        .background(.fill.tertiary, in: .rect(cornerRadius: 24))
+        .padding(.vertical, 6)
+        .padding(.leading, 6)
+        .padding(.trailing, 6)
+        .background(AGUITheme.bg, in: .rect(cornerRadius: AGUITheme.radiusLg))
+        .overlay(RoundedRectangle(cornerRadius: AGUITheme.radiusLg).strokeBorder(focused ? AGUITheme.ink3 : AGUITheme.line2, lineWidth: 1))
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
     }
@@ -143,23 +192,24 @@ public struct ChatView<HostCard: View>: View {
                         action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(filled ? Color.white : Color.primary)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(filled ? AGUITheme.onAccent : AGUITheme.ink2)
                 .frame(width: 36, height: 36)
-                .background(filled ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.fill.secondary), in: .circle)
+                .background(filled ? AGUITheme.accent : .clear, in: .circle)
         }
         .buttonStyle(.plain)
-        .padding(2)
         .accessibilityLabel(Text(label, bundle: .module))
     }
 
     private func errorRow(_ text: String) -> some View {
         HStack(spacing: 10) {
-            Text(text).foregroundStyle(.secondary)
+            Text(text).foregroundStyle(AGUITheme.ink2)
             Button(String(localized: "Try Again", bundle: .module)) { store.retry() }
-                .font(.subheadline.weight(.semibold))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AGUITheme.link)
         }
-        .font(.subheadline)
+        .font(.system(size: 15))
+        .padding(.bottom, 20)
     }
 
     private func send() {
@@ -185,50 +235,185 @@ extension ChatView where HostCard == EmptyView {
     }
 }
 
-/// `ask` (options as buttons) and `confirm` (its action named on the button). The card looks answered only once the
-/// run that carried the answer has finished.
+/// An answer: Markdown text (15 pt, line height ≈1.58) and Markdown tables drawn as a table (`.tbl`: 13 pt semibold
+/// head in ink-2, 15 pt cells, a line between rows; a wide one scrolls sideways).
+struct AnswerText: View {
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(Self.blocks(text).enumerated()), id: \.offset) { _, block in
+                switch block {
+                case .text(let t):
+                    Text(LocalizedStringKey(t))
+                        .font(.system(size: 15))
+                        .lineSpacing(8)
+                        .tint(AGUITheme.link)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                case .table(let head, let rows):
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 0) {
+                            GridRow {
+                                ForEach(head.indices, id: \.self) { i in
+                                    Text(head[i]).font(.system(size: 13, weight: .semibold)).foregroundStyle(AGUITheme.ink2)
+                                        .padding(.vertical, 8)
+                                }
+                            }
+                            ForEach(rows.indices, id: \.self) { r in
+                                Divider().overlay(AGUITheme.line)
+                                GridRow {
+                                    ForEach(rows[r].indices, id: \.self) { i in
+                                        Text(LocalizedStringKey(rows[r][i])).font(.system(size: 15)).padding(.vertical, 8)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    enum Block { case text(String), table([String], [[String]]) }
+
+    static func cells(_ line: String) -> [String] {
+        var l = line.trimmingCharacters(in: .whitespaces)
+        if l.hasPrefix("|") { l.removeFirst() }
+        if l.hasSuffix("|") { l.removeLast() }
+        return l.split(separator: "|", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+
+    static func blocks(_ text: String) -> [Block] {
+        let lines = text.components(separatedBy: "\n")
+        var out: [Block] = []
+        var buffer: [String] = []
+        var i = 0
+        func flush() {
+            let t = buffer.joined(separator: "\n").trimmingCharacters(in: .newlines)
+            if !t.isEmpty { out.append(.text(t)) }
+            buffer = []
+        }
+        while i < lines.count {
+            let l = lines[i]
+            if l.contains("|"), i + 1 < lines.count,
+               lines[i + 1].trimmingCharacters(in: .whitespaces).range(of: #"^\|?\s*:?-{2,}"#, options: .regularExpression) != nil {
+                flush()
+                let head = cells(l)
+                var rows: [[String]] = []
+                i += 2
+                while i < lines.count, lines[i].contains("|") {
+                    var r = cells(lines[i])
+                    if r.count < head.count { r += Array(repeating: "", count: head.count - r.count) }
+                    rows.append(Array(r.prefix(head.count)))
+                    i += 1
+                }
+                out.append(.table(head, rows))
+                continue
+            }
+            buffer.append(l)
+            i += 1
+        }
+        flush()
+        return out
+    }
+}
+
+/// `ask` (options; or 2–3 fields; or one typed answer), `confirm`, `set_fields`; «not accepted» with its cross.
 struct CardView: View {
     let card: ChatCard
     let store: ChatStore
+    @State private var values: [String: String] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let q = card.question { Text(q).font(.body.weight(.semibold)) }
-            if case .refused(let reason) = card.status, !reason.isEmpty {
-                Text(reason).font(.footnote).foregroundStyle(.orange)
+            if let title = card.body["title"]?.string, card.body["question"] != nil {
+                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(AGUITheme.ink2)
+            }
+            if let q = card.question {
+                Text(q).font(.system(size: 17, weight: .semibold)).tracking(-0.3).lineSpacing(2)
+            }
+            if case .refused(let reason) = card.status {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(AGUITheme.danger)
+                    Text(reason.isEmpty ? String(localized: "Not accepted", bundle: .module) : reason)
+                        .foregroundStyle(AGUITheme.dangerInk)
+                }
+                .font(.system(size: 13, weight: .medium))
             }
             switch card.type {
             case "ask" where !card.options.isEmpty:
-                ForEach(card.options, id: \.id) { option in
-                    Button { store.choose(card, option: option.id) } label: {
-                        Text(option.label).frame(maxWidth: .infinity, alignment: .leading)
+                VStack(spacing: 6) {
+                    ForEach(card.options, id: \.id) { option in
+                        let on = card.chosen == option.id
+                        Button { store.choose(card, option: option.id) } label: {
+                            Text(option.label)
+                                .font(.system(size: 15, weight: on ? .semibold : .regular))
+                                .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 12)
+                                .background(AGUITheme.bg, in: .rect(cornerRadius: AGUITheme.radiusSm))
+                                .overlay(RoundedRectangle(cornerRadius: AGUITheme.radiusSm)
+                                    .strokeBorder(on ? AGUITheme.accent : AGUITheme.line2, lineWidth: on ? 2 : 1))
+                                .overlay(alignment: .trailing) {
+                                    if on { Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)).padding(.trailing, 12) }
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(AGUITheme.ink)
                     }
-                    .buttonStyle(.bordered)
                 }
+            case "ask":
+                fields
             case "set_fields" where store.applyFields != nil:
                 FieldsCard(card: card, store: store)
             case "confirm":
-                HStack {
+                HStack(spacing: 8) {
                     Button(card.body["action"]?.string ?? String(localized: "Confirm", bundle: .module)) {
                         store.confirm(card, true)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(AGUIButton(primary: true))
                     Button(String(localized: "Cancel", bundle: .module)) { store.confirm(card, false) }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(AGUIButton(primary: false))
                 }
             default:
-                // a card this client cannot draw yet (set_fields comes whatever the capabilities say): say so and let
-                // the person decline it, so the chat never gets stuck behind it (review, smaller notes)
+                // a card this client cannot draw yet: say so and let the person decline it
                 Text(String(localized: "This step opens on the web for now.", bundle: .module))
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.system(size: 15)).foregroundStyle(AGUITheme.ink2)
                 Button(String(localized: "Not now", bundle: .module)) { store.answer(card, with: ["accepted": false]) }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(AGUIButton(primary: false))
             }
         }
         .disabled(!open || store.running)
-        .opacity(open ? 1 : 0.55)
-        .padding(14)
-        .background(.fill.quaternary, in: .rect(cornerRadius: 18))
+        .opacity(open || card.chosen != nil ? 1 : 0.6)
+        .aguiCard()
+    }
+
+    /// 2–3 short fields (`fields: [{name, label, required}]`) or one typed answer; «Send».
+    @ViewBuilder private var fields: some View {
+        let list = card.body["fields"]?.array ?? []
+        let rows: [(name: String, label: String, required: Bool)] = list.isEmpty
+            ? [("text", card.body["placeholder"]?.string ?? "", true)]
+            : list.compactMap { f in
+                guard let n = f["name"]?.string else { return nil }
+                return (n, f["label"]?.string ?? n, f["required"]?.bool ?? false)
+            }
+        VStack(spacing: 8) {
+            ForEach(rows, id: \.name) { r in
+                TextField(r.label, text: Binding(get: { values[r.name] ?? "" }, set: { values[r.name] = $0 }))
+                    .font(.system(size: 15))
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 44)
+                    .background(AGUITheme.bg, in: .rect(cornerRadius: AGUITheme.radiusSm))
+                    .overlay(RoundedRectangle(cornerRadius: AGUITheme.radiusSm).strokeBorder(AGUITheme.line2, lineWidth: 1))
+            }
+            HStack {
+                Button(String(localized: "Send", bundle: .module)) { store.answerFields(card, values) }
+                    .buttonStyle(AGUIButton(primary: true))
+                    .disabled(rows.contains { $0.required && (values[$0.name] ?? "").trimmingCharacters(in: .whitespaces).isEmpty })
+                Spacer()
+            }
+        }
     }
 
     private var open: Bool {
@@ -249,44 +434,81 @@ struct FieldsCard: View {
     private var rows: [JSONValue] { card.body["changes"]?.array ?? [] }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
                 let name = row["name"]?.string ?? ""
+                if i > 0 { Divider().overlay(AGUITheme.line) }
                 Button {
                     if ticked.contains(name) { ticked.remove(name) } else { ticked.insert(name) }
                 } label: {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: ticked.contains(name) ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(ticked.contains(name) ? Color.accentColor : .secondary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(row["label"]?.string ?? name).font(.subheadline.weight(.semibold))
-                            HStack(spacing: 4) {
+                            .font(.system(size: 18))
+                            .foregroundStyle(ticked.contains(name) ? AGUITheme.accent : AGUITheme.ink3)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(row["label"]?.string ?? name).font(.system(size: 13, weight: .semibold)).foregroundStyle(AGUITheme.ink2)
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 if let before = row["previous"]?.string ?? row["previous_display"]?.string, !before.isEmpty {
-                                    Text(before).strikethrough().foregroundStyle(.secondary)
-                                    Image(systemName: "arrow.right").font(.caption).foregroundStyle(.secondary)
+                                    Text(before).strikethrough().foregroundStyle(AGUITheme.ink3)
+                                    Image(systemName: "arrow.right").font(.system(size: 11)).foregroundStyle(AGUITheme.ink3)
                                 }
-                                Text(row["display"]?.string ?? row["value"]?.string ?? "")
+                                Text(row["display"]?.string ?? row["value"]?.string ?? "").fontWeight(.medium)
                             }
-                            .font(.subheadline)
+                            .font(.system(size: 15))
                         }
                         Spacer(minLength: 0)
                     }
+                    .padding(.vertical, 10)
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
             }
-            HStack {
+            HStack(spacing: 8) {
                 Button(String(localized: "Accept", bundle: .module)) { store.acceptFields(card, names: Array(ticked)) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(AGUIButton(primary: true))
                     .disabled(ticked.isEmpty)
                 Button(String(localized: "Cancel", bundle: .module)) { store.confirm(card, false) }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(AGUIButton(primary: false))
             }
-            .padding(.top, 4)
+            .padding(.top, 8)
         }
         .onAppear {
             ticked = Set(rows.compactMap { r in r["consent"]?.bool == true ? nil : r["name"]?.string })
         }
+    }
+}
+
+/// Sources of an answer, variant A — a sheet: each with its title, section and the passage it came from.
+struct SourcesSheet: View {
+    let items: [JSONValue]
+
+    var body: some View {
+        NavigationStack {
+            List(Array(items.enumerated()), id: \.offset) { _, s in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(s["title"]?.string ?? "").font(.system(size: 15, weight: .semibold))
+                    if let section = s["section"]?.string, !section.isEmpty {
+                        Text(section).font(.system(size: 13)).foregroundStyle(AGUITheme.ink2)
+                    }
+                    if let excerpt = s["excerpt"]?.string ?? s["quote"]?.string ?? s["text"]?.string, !excerpt.isEmpty {
+                        Text("«\(excerpt)»").font(.system(size: 15)).foregroundStyle(AGUITheme.ink).padding(.top, 4)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .navigationTitle(Text("Sources", bundle: .module))
+            .navigationBarTitleDisplayModeInline()
+        }
+    }
+}
+
+extension View {
+    @ViewBuilder func navigationBarTitleDisplayModeInline() -> some View {
+        #if os(iOS)
+        navigationBarTitleDisplayMode(.inline)
+        #else
+        self
+        #endif
     }
 }
 
@@ -301,7 +523,8 @@ struct ThinkingDots: View {
                     .animation(.easeInOut(duration: 0.6).repeatForever().delay(Double(i) * 0.2), value: on)
             }
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(AGUITheme.ink3)
+        .frame(minHeight: 26)
         .onAppear { on = true }
         .accessibilityLabel(Text("Thinking", bundle: .module))
     }

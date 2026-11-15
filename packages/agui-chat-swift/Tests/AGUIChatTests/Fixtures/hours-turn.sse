@@ -33,7 +33,7 @@ data: {"type":"CUSTOM","name":"hf_card","value":{"kind":"hours"}}
 
 data: {"type":"CUSTOM","name":"never_heard_of","value":{"x":1}}
 
-data: {"type":"CUSTOM","name":"suggestions","value":{"items":[{"text":"Menu and prices"},"Open the site"]}}
+data: {"type":"CUSTOM","name":"suggestions","value":{"items":["Menu and prices","Open the site"]}}
 
 data: {"type":"CUSTOM","name":"run_stats","value":{"ms":900}}
 
