@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The only way to ship the public host dushes-ai (docs site, Ask AI, the live demo; deploy/docs-ai/).
 #   bash scripts/deploy.sh <hash>            check, build, test and deploy that commit
-#   bash scripts/deploy.sh <hash> --dry-run  everything except fly deploy
+#   bash scripts/deploy.sh <hash> --dry-run  everything, the image build included, except the release
 # The commit must be in origin/main (pushed). It is checked out into a fresh worktree in /tmp, so nobody's uncommitted
 # work and no file outside git can reach the image; the Docker build context is that worktree. The worktree is removed
 # at the end, whatever happens. Secrets (ANTHROPIC_API_KEY, DEMO_PRICES) stay on Fly and are not touched.
@@ -51,6 +51,10 @@ dirty="$(git status --porcelain)"
 [ -z "$dirty" ] || { echo "refuse: the worktree changed during build/tests:"; echo "$dirty"; exit 1; } >&2
 
 if [ "$mode" = "--dry-run" ]; then
+  # the image is built exactly as fly deploy builds it (remote builder, same Dockerfile and context), not deployed:
+  # catches what the checks above cannot, such as a file the site needs but the image does not copy
+  step "image build" fly deploy . --app "$APP" --config deploy/docs-ai/fly.toml --dockerfile deploy/docs-ai/Dockerfile \
+    --ignorefile deploy/docs-ai/.dockerignore --remote-only --build-only
   echo "== dry run: $short is ready, not deployed"
   echo "   deploy:   bash scripts/deploy.sh $short"
   exit 0
