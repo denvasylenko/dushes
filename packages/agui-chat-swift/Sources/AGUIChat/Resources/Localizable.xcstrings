@@ -1,566 +1,569 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "The answer was cut off.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041e\u0442\u0432\u0435\u0442 \u043e\u0431\u043e\u0440\u0432\u0430\u043b\u0441\u044f."
+  "sourceLanguage" : "en",
+  "strings" : {
+    "«%@»" : {
+
+    },
+    "Accept" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accetta"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La risposta si \u00e8 interrotta."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Принять"
           }
         }
       }
     },
-    "Something went wrong.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0427\u0442\u043e-\u0442\u043e \u043f\u043e\u0448\u043b\u043e \u043d\u0435 \u0442\u0430\u043a."
+    "Ask AI" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chiedi all'AI"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qualcosa \u00e8 andato storto."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спросить AI"
           }
         }
       }
     },
-    "Too many questions for now. Try again later.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0421\u043b\u0438\u0448\u043a\u043e\u043c \u043c\u043d\u043e\u0433\u043e \u0432\u043e\u043f\u0440\u043e\u0441\u043e\u0432. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435."
+    "Cancel" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annulla"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Troppe domande per ora. Riprova pi\u00f9 tardi."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
           }
         }
       }
     },
-    "No connection. Try again.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041d\u0435\u0442 \u0441\u0432\u044f\u0437\u0438. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437."
+    "Checking the visits" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controllo le visite"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nessuna connessione. Riprova."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смотрю посещения"
           }
         }
       }
     },
-    "Ask AI": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0421\u043f\u0440\u043e\u0441\u0438\u0442\u044c AI"
+    "Confirm" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conferma"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chiedi all'AI"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтвердить"
           }
         }
       }
     },
-    "Stop": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c"
+    "Connecting…" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mi collego…"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ferma"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключаюсь…"
           }
         }
       }
     },
-    "Dictate": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041d\u0430\u0434\u0438\u043a\u0442\u043e\u0432\u0430\u0442\u044c"
+    "Dictate" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detta"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detta"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Надиктовать"
           }
         }
       }
     },
-    "Send": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c"
+    "End the voice talk" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termina la conversazione"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Invia"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закончить разговор"
           }
         }
       }
     },
-    "Try Again": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c"
+    "Listening" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ascolto"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Riprova"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Слушаю"
           }
         }
       }
     },
-    "Looking at the site": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0421\u043c\u043e\u0442\u0440\u044e \u0441\u0430\u0439\u0442"
+    "Looking at the site" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardo il sito"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guardo il sito"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смотрю сайт"
           }
         }
       }
     },
-    "Checking the visits": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0421\u043c\u043e\u0442\u0440\u044e \u043f\u043e\u0441\u0435\u0449\u0435\u043d\u0438\u044f"
+    "Microphone off" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microfono spento"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Controllo le visite"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Микрофон выключен"
           }
         }
       }
     },
-    "Reading the requests": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0427\u0438\u0442\u0430\u044e \u0437\u0430\u044f\u0432\u043a\u0438"
+    "Microphone on" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accendi il microfono"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leggo le richieste"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включить микрофон"
           }
         }
       }
     },
-    "Working on it": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0420\u0430\u0431\u043e\u0442\u0430\u044e"
+    "More" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altro"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ci sto lavorando"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё"
           }
         }
       }
     },
-    "Confirm": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c"
+    "New conversation" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nuova conversazione"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Conferma"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый разговор"
           }
         }
       }
     },
-    "Cancel": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041e\u0442\u043c\u0435\u043d\u0438\u0442\u044c"
+    "No connection. Try again." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna connessione. Riprova."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Annulla"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет связи. Попробуйте ещё раз."
           }
         }
       }
     },
-    "Thinking": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0414\u0443\u043c\u0430\u044e"
+    "Not accepted" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non accettato"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sto pensando"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не принято"
           }
         }
       }
     },
-    "This step opens on the web for now.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u042d\u0442\u043e\u0442 \u0448\u0430\u0433 \u043f\u043e\u043a\u0430 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u043d\u0430 \u0441\u0430\u0439\u0442\u0435."
+    "Not now" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non ora"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Per ora questo passo si apre sul web."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не сейчас"
           }
         }
       }
     },
-    "Not now": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041d\u0435 \u0441\u0435\u0439\u0447\u0430\u0441"
+    "Reading the requests" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leggo le richieste"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Non ora"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Читаю заявки"
           }
         }
       }
     },
-    "Accept": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041f\u0440\u0438\u043d\u044f\u0442\u044c"
+    "Send" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invia"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accetta"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить"
           }
         }
       }
     },
-    "This value did not fit. Try another one.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u042d\u0442\u043e \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435 \u043d\u0435 \u043f\u043e\u0434\u043e\u0448\u043b\u043e. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0434\u0440\u0443\u0433\u043e\u0435."
+    "Something went wrong." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qualcosa è andato storto."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Questo valore non va bene. Provane un altro."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что-то пошло не так."
           }
         }
       }
     },
-    "Sources": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a\u0438"
+    "Sources" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fonti"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fonti"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Источники"
           }
         }
       }
     },
-    "New conversation": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041d\u043e\u0432\u044b\u0439 \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440"
+    "Speaking" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parlo"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nuova conversazione"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Говорю"
           }
         }
       }
     },
-    "More": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0415\u0449\u0451"
+    "Stop" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ferma"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Altro"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановить"
           }
         }
       }
     },
-    "Not accepted": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041d\u0435 \u043f\u0440\u0438\u043d\u044f\u0442\u043e"
+    "The answer was cut off." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La risposta si è interrotta."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Non accettato"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответ оборвался."
           }
         }
       }
     },
-    "Connecting\u2026": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0430\u044e\u0441\u044c\u2026"
+    "The talk ended after a silence." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La conversazione è finita dopo un silenzio."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mi collego\u2026"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разговор закончился после тишины."
           }
         }
       }
     },
-    "Listening": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0421\u043b\u0443\u0448\u0430\u044e"
+    "The talk ended." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La conversazione è finita."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ascolto"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разговор закончился."
           }
         }
       }
     },
-    "Microphone off": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u041c\u0438\u043a\u0440\u043e\u0444\u043e\u043d \u0432\u044b\u043a\u043b\u044e\u0447\u0435\u043d"
+    "The voice could not start. Try again." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La voce non è partita. Riprova."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Microfono spento"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Голос не запустился. Попробуйте ещё раз."
           }
         }
       }
     },
-    "Microphone on": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043c\u0438\u043a\u0440\u043e\u0444\u043e\u043d"
+    "Thinking" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sto pensando"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accendi il microfono"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Думаю"
           }
         }
       }
     },
-    "Speaking": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0413\u043e\u0432\u043e\u0440\u044e"
+    "Thinking…" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Penso…"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parlo"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Думаю…"
           }
         }
       }
     },
-    "Thinking\u2026": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0414\u0443\u043c\u0430\u044e\u2026"
+    "This step opens on the web for now." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per ora questo passo si apre sul web."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Penso\u2026"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот шаг пока открывается на сайте."
           }
         }
       }
     },
-    "Voice": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0413\u043e\u043b\u043e\u0441"
+    "This value did not fit. Try another one." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo valore non va bene. Provane un altro."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voce"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это значение не подошло. Попробуйте другое."
           }
         }
       }
     },
-    "End the voice talk": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0417\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u044c \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440"
+    "Too many questions for now. Try again later." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Troppe domande per ora. Riprova più tardi."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Termina la conversazione"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Слишком много вопросов. Попробуйте позже."
           }
         }
       }
     },
-    "The voice could not start. Try again.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0413\u043e\u043b\u043e\u0441 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u043b\u0441\u044f. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437."
+    "Try Again" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Riprova"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La voce non \u00e8 partita. Riprova."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
           }
         }
       }
     },
-    "The talk ended after a silence.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0420\u0430\u0437\u0433\u043e\u0432\u043e\u0440 \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u043b\u0441\u044f \u043f\u043e\u0441\u043b\u0435 \u0442\u0438\u0448\u0438\u043d\u044b."
+    "Voice" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voce"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La conversazione \u00e8 finita dopo un silenzio."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Голос"
           }
         }
       }
     },
-    "The talk ended.": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\u0420\u0430\u0437\u0433\u043e\u0432\u043e\u0440 \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u043b\u0441\u044f."
+    "Working on it" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ci sto lavorando"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La conversazione \u00e8 finita."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работаю"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

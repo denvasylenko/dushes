@@ -205,6 +205,17 @@ final class AGUIChatTests: XCTestCase {
         XCTAssertFalse(voice.active)
     }
 
+    /// The mock wire «hears» a phrase after about two seconds of 16-bit mono audio has gone up.
+    func testMockTransportHearsAfterTwoSecondsOfAudio() async throws {
+        let t = MockVoiceTransport(phrases: ["Hello"])
+        try await t.connect(threadId: "x")
+        t.send(audio: Data(count: Int(t.sampleRate) * 2 * 2))
+        var it = t.incoming.makeAsyncIterator()
+        let first = await it.next()
+        XCTAssertEqual(first, .heard("Hello"))
+        await t.close()
+    }
+
     @MainActor
     func testAStreamWithoutTheEndIsAnError() async throws {
         let store = ChatStore(transport: ReplayTransport(pause: .zero) { _ in [.runStarted(threadId: nil, runId: nil)] })
