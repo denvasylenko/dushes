@@ -19,7 +19,7 @@ A run starts with `RUN_STARTED` and ends with exactly one `RUN_FINISHED` or `RUN
 | `CUSTOM language` | `{lang}` (en, ru, uk, de, fr, es, it): the language the user writes in, once known and when it changes; also `language` on cards and in the restore | cards, the steps line and the queue speak it; the frame stays the page's |
 | `CUSTOM suggestions` | quick replies `{items, applies?}`; each may carry validated field changes | show chips; a chip with `applies` fills fields at once |
 | `CUSTOM run_stats` | right before the terminal event: timings, tokens, cache hits, each model call with its `kind`. Under the site agent a run may carry two: Dushes' own with `agent: "site"`, then the form agent's without `agent`; add them up | nothing, or a debug line ([Speed and tracing](../../agents/shared/observability/)) |
-| `CUSTOM text_retract` | `{messageId}`: a short lead written before tools, taken back because the answer came after them | remove that message (`<agui-chat>` fades it out) |
+| `CUSTOM text_retract` | `{messageId}`: text already shown is taken back. Two cases: a short lead written before tools, when the answer came after them; and text that listed the options of a question card that follows (a shorter message without the list comes next, then the card) | remove that message (`<agui-chat>` fades it out) |
 | `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
 | `RUN_FINISHED` | the end; in structured mode `outcome.interrupts[]` carries the card | |
 | `RUN_ERROR` | the end, with a message | show a human error and "Try again" |

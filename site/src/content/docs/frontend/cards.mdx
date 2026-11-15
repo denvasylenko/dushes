@@ -224,7 +224,7 @@ agent: "Done. The Loan tab is open now; next is the amount."
 
 ## 2.5 "Which one?": the question card
 
-When the user must choose between known options, or the request is ambiguous ("I want a loan": which kind?), the agent asks with a **question card** instead of listing the options in text. It is the same `on_interrupt` event with `type: "ask"`, and the turn waits for the answer:
+When the user must choose between known options, or the request is ambiguous ("I want a loan": which kind?), the agent asks with a **question card** instead of listing the options in text. The options are on the card only: if the model wrote them out before asking, that text is replaced by the same words without the list before the card appears (your client may see a `text_retract`, then a shorter message, then the card). It is the same `on_interrupt` event with `type: "ask"`, and the turn waits for the answer:
 
 ```json
 {

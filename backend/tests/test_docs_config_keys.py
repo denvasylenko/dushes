@@ -9,13 +9,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 from formguide import config
 
 PAGE = Path(__file__).resolve().parents[2] / "site" / "src" / "content" / "docs" / "reference" / "configuration.md"
 CELL = re.compile(r"`([a-z_][a-z0-9_.]*)`")
-KEYS = getattr(config, "KEYS", None)
+KEYS = config.KEYS
 
 
 def documented() -> dict[str, set[str]]:
@@ -33,7 +31,6 @@ def documented() -> dict[str, set[str]]:
     return keys
 
 
-@pytest.mark.xfail(KEYS is None, reason="formguide.config.KEYS is not there yet (Owner adds it)", strict=False)
 def test_every_top_level_key_is_documented():
     assert KEYS is not None
     docs = set(documented())
@@ -42,7 +39,6 @@ def test_every_top_level_key_is_documented():
     assert docs - code == set(), f"in reference/configuration.md but not accepted by the loader: {sorted(docs - code)}"
 
 
-@pytest.mark.xfail(KEYS is None, reason="formguide.config.KEYS is not there yet (Owner adds it)", strict=False)
 def test_documented_sub_keys_exist():
     assert KEYS is not None
     wrong = {f"{top}.{sub}" for top, subs in documented().items() for sub in subs
