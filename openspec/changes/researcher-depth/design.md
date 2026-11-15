@@ -67,6 +67,31 @@ Alternative considered: return the full text to the agent. Rejected: the agent's
 
 Expected size: 500 pages is about 1.2 M characters, about 1200 sections; the postings fit in a few MB; a query is under 50 ms on the hosting machine (a test asserts a budget on a generated corpus).
 
+## The contract for callers and the benchmark
+
+In process:
+
+```python
+from formguide.knowledge.research import research
+
+r = await research(kb, scope, title, question, message=persons_message, config=cfg.researcher,
+                   models=models, on_event=cb, usage=used)
+r.depth      # "quick" | "deep"
+r.why        # "plain fact" | "compares" | "why / how" | "plan or summary" | "in detail" | "spans documents" | "large document" | "set by config"
+r.passages   # quick: [{n, title, path, page, text, score}]; deep: every passage the answer cites
+r.text       # deep: the synthesis with [n] citations; quick: "" (the calling agent writes the answer)
+r.sources    # [{n, title, section, page}], n as cited
+r.partial, r.stopped, r.limits   # a limit was hit; the run was stopped; {seconds, usd, tokens} used
+```
+
+`on_event` gets `{"type": "decide", "depth", "why"}` first, then `{"type": "phase", "phase", "done", "total"}`, and in deep `{"type": "text", "delta"}` for every streamed piece of the synthesis (the first one is the first token). `ask_documents(...)` stays as a wrapper with today's signature and returns `r.text`, or for quick the passages as text.
+
+In a run (the form agent, Dushes, HTTP): the decision is a `CUSTOM research` event `{phase: "decide", depth, why}` before any other research event; `run_stats.models` lines of kind `researcher` carry `depth` and `phase`.
+
+First word: a quick answer's first word is the calling agent's (the researcher makes no model call), so it is measured on a run, from `RUN_STARTED` to the first `TEXT_MESSAGE_CONTENT`. A deep answer's first word is the first `text` event; the bar for deep is on the first progress event (the person sees "researching" at once) and on the total time.
+
+Citations: a deep answer cites per statement, `[n]` after the claim, and has no "Sources:" line; `r.sources` (and the run's `sources` event, each item with its `n`) maps the numbers. A quick answer is written by the calling agent and keeps today's "Sources:" line, read by `parse_sources`.
+
 ## Configuration
 
 ```yaml
