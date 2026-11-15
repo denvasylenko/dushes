@@ -88,7 +88,7 @@ Unknown option names are ignored with a console warning.
 |---|---|
 | `chat.send(text)` | send a message as the user |
 | `chat.request(kind, url, init)` | a request through the chat's connection (headers, credentials, fetch, request hook); for plugins and host code |
-| `chat.run({ forwardedProps, notice })` | run without a message (e.g. prefill: `{ prefill: { data } }`); such a turn shows no steps line, so nothing stands above the user's first message |
+| `chat.run({ forwardedProps, notice })` | run without a message (e.g. prefill: `{ prefill: { data } }`); such a turn shows no steps line, so nothing stands above the user's first message. While a turn runs it rejects with an error that says "busy" (use `send()` for anything a person tapped: it queues) |
 | `chat.open()`, `chat.close()`, `chat.toggle()` | the floating panel or the bubble |
 | `await chat.showCard(payload)` | shows any card without the agent and resolves with the user's answer; see [Calling components](../../frontend/cards/#calling-components-from-your-code) |
 | `chat.reset()` | a new conversation (new thread id) |

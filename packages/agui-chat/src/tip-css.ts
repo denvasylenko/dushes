@@ -27,6 +27,24 @@ export const TIP_CSS = `.tip { position: absolute; z-index: 9; max-width: 260px;
 .menu-back { color: var(--agui-ink-2); font-size: 13px; font-weight: 600; margin-bottom: 2px; }
 @media (hover: none) { .menu-i { min-height: 44px; font-size: 17px; } }
 @media (prefers-reduced-motion: reduce) { .tip, .menu { animation: none; } }
+/* the reply window over a selection (the second step, after the capsule) */
+.sel-pop { position: absolute; z-index: 6; width: min(360px, calc(100% - 16px)); display: grid; gap: 4px; padding: 12px 8px 4px 16px;
+  border-radius: var(--agui-radius); background: var(--agui-panel-bg, var(--agui-bg));
+  box-shadow: 0 10px 32px -8px var(--agui-shadow), 0 0 0 .5px var(--agui-line-2); animation: pill-in .15s var(--agui-ease) both; }
+.pop-q { padding: 0 8px 0 10px; border-left: 2px solid var(--agui-ink-3); color: var(--agui-ink-2); font-size: 13px; line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pop-row { display: flex; align-items: center; gap: 4px; }
+.pop-in { flex: 1; min-width: 0; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 15px/1.4 var(--agui-font);
+  padding: 8px 0; max-height: 120px; }
+.pop-in::placeholder { color: var(--agui-ink-3); }
+.sel-pop .ib { width: 36px; height: 36px; flex: none; } .sel-pop .ib svg { width: 18px; height: 18px; stroke-width: 1.8; }   /* one size and stroke for both */
+.sel-pop .ib[hidden] { display: none; }
+.pop-err { font-size: 13px; color: var(--agui-ink-2); padding: 0 8px 6px 0; }
+.pop-err:empty { display: none; }
+.pop-mic.on { background: var(--agui-danger); color: var(--agui-on-danger); animation: rec 1.4s ease-out infinite; }   /* recording, as the composer's mic */
+.pop-mic.busy { opacity: .5; pointer-events: none; animation: pulse 1s ease-in-out infinite; }   /* transcribing on the server; still dim without motion */
+@media (pointer: coarse) { .sel-pop .ib { width: 44px; height: 44px; } .pop-in { font-size: 16px; padding: 11px 0; } }
+:host(.dark) .sel-pop { background: var(--agui-soft); }
 /* source links under an answer: one row (it scrolls sideways and fades at its edge on a phone, wraps with a mouse);
    only a link that opens something is a filled pill with a document glyph */
 :host { --agui-mark: color-mix(in srgb, #ffd60a 55%, transparent); }

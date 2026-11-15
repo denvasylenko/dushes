@@ -21,3 +21,7 @@ export const loadSpot = (): Promise<typeof spotCard> => tip().then(() => (global
 import type { fillSources } from './sources'
 /** The source links and their sheet: in agui-chat.tip.js too. */
 export const loadSources = (): Promise<typeof fillSources> => tip().then(() => (globalThis as unknown as { AguiChat: { fillSources: typeof fillSources } }).AguiChat.fillSources)
+
+import type { adoptTipCss } from './tip-css'
+/** The styles of what opens on demand (the reply window): in agui-chat.tip.js too. */
+export const loadTipCss = (): Promise<typeof adoptTipCss> => tip().then(() => (globalThis as unknown as { AguiChat: { adoptTipCss: typeof adoptTipCss } }).AguiChat.adoptTipCss)

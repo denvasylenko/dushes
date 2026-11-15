@@ -184,6 +184,29 @@ describe('the message queue', () => {
     expect($$(el, '.msg.queued').map((m) => m.textContent).join(' ')).toContain('Thanks')
   })
 
+  it('a filling chip tapped while a turn runs fills at once and its message waits; a host\'s own run() then is refused aloud', async () => {
+    const el = await mount(), a = agent()
+    el.agent = a as never
+    const filled: unknown[] = []
+    el.use({ name: 'form', applySuggestion: async (changes) => { filled.push(changes); return null } })
+    // a turn ends with a chip that fills a field
+    void el.send('hi')
+    await tick(5)
+    const sub = (el as unknown as { _handle(e: unknown): void })
+    sub._handle({ type: 'CUSTOM', name: 'suggestions', value: { items: ['Term: 48 months'], applies: [[{ name: 'term', value: 48 }]] } })
+    await a.release()
+    await tick(30)
+    const chip = $$(el, '.quick .chip.act')[0]
+    expect(chip).toBeDefined()
+    void el.run()                                                        // the host starts a turn of its own: the chat is busy again
+    await tick(5)
+    chip.click()                                                         // the tap lands while it runs (the chip was still under the finger)
+    await tick(20)
+    expect(filled).toEqual([[{ name: 'term', value: 48 }]])             // the field is filled at once
+    expect($$(el, '.msg.queued').map((m) => m.textContent).join(' ')).toContain('Term: 48 months')   // and the message waits its turn, on screen
+    await expect(el.run()).rejects.toThrow(/busy/)                       // a second run() from the host: a clear error, never a silent nothing
+  })
+
   it('a double tap queues once; Esc stops the answer and brings the suggestions back', async () => {
     const el = await mount(), a = agent()
     el.agent = a as never

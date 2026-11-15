@@ -101,7 +101,7 @@ export function attachTip(button: HTMLElement, host: HTMLElement, rows: () => Ti
   }
 }
 
-export { TIP_CSS }
+export { TIP_CSS, adoptTipCss }
 export { openMenu } from './menu'
 export { spotCard } from './spot'
 export { fillSources } from './sources'
@@ -111,4 +111,4 @@ import './sources'
 
 // the one-script build: agui-chat.tip.js registers it on window.AguiChat
 const g = globalThis as unknown as { AguiChat?: Record<string, unknown> }
-if (g.AguiChat) g.AguiChat.attachTip = attachTip
+if (g.AguiChat) { g.AguiChat.attachTip = attachTip; g.AguiChat.adoptTipCss = adoptTipCss }

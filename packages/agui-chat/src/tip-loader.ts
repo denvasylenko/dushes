@@ -14,3 +14,7 @@ export const loadSpot = (): Promise<typeof spotCard> => import('./tip').then((m)
 import type { fillSources } from './sources'
 /** The source links under an answer and the sheet a tap opens: the same chunk. */
 export const loadSources = (): Promise<typeof fillSources> => import('./tip').then((m) => m.fillSources)
+
+import type { adoptTipCss } from './tip-css'
+/** The styles of what opens on demand (the reply window): the same chunk. */
+export const loadTipCss = (): Promise<typeof adoptTipCss> => import('./tip').then((m) => m.adoptTipCss)

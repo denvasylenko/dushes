@@ -735,6 +735,20 @@ Send now SHALL stop the running answer and send that message next; Edit SHALL pu
 - **WHEN** three messages wait and the user taps Send now on the second
 - **THEN** the running answer stops, the second message is sent, and the other two keep waiting in order
 
+### Requirement: Nothing a person taps is dropped in silence
+A filling suggestion tapped while a turn runs SHALL fill its fields at once and put its message in the queue, as any message. A host's own `run()` called while a turn runs SHALL return a rejected promise whose error says the chat is busy, never a silent nothing.
+
+#### Scenario: A host calls run() twice
+- **WHEN** a host calls `run()` while a turn is running
+- **THEN** the promise rejects with an error that names "busy", and the running turn goes on
+
+### Requirement: A connection that goes quiet is lost
+With the built-in transport, a run whose stream sends no bytes for 30 s after a keep-alive comment line was seen in it (any byte counts, comment lines included), or for 150 s on a server that sends none, SHALL end as a network failure: the network sentence with "Try again", and the queue paused under it.
+
+#### Scenario: The server stops sending
+- **WHEN** a stream has sent ": keep-alive" lines and then nothing for 30 s
+- **THEN** the run ends with the network error and "Try again"
+
 ### Requirement: A paused queue
 Stop SHALL pause the queue (its messages say "Paused"), and a failed answer SHALL pause it under its error ("Sends after Try again"). A message sent while the queue is paused SHALL go in behind the waiting ones, and the queue SHALL then go on in order.
 

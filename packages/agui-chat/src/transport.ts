@@ -6,16 +6,22 @@ export async function* sseEvents(body: ReadableStream<Uint8Array>, signal?: Abor
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buf = ''
+  let alive = false   // a keep-alive line was seen: this server sends one after every 10 s without an event
   try {
     while (true) {
       if (signal?.aborted) return
-      const { value, done } = await reader.read()
+      // no bytes for too long: the connection is gone (30 s with keep-alives; 150 s for a server without them, which may
+      // be silent for two minutes while it works). Any byte counts, a comment line included.
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const { value, done } = await Promise.race([reader.read(), new Promise<never>((_, no) => { timer = setTimeout(() => no(new Error('network: the connection was lost')), SILENCE_MS[alive ? 0 : 1]) })])
+        .finally(() => clearTimeout(timer))
       if (done) break
       buf += decoder.decode(value, { stream: true })
       let cut: number
       while ((cut = buf.search(/\r?\n\r?\n/)) >= 0) {
         const block = buf.slice(0, cut)
         buf = buf.slice(cut).replace(/^\r?\n\r?\n/, '')
+        alive ||= block.startsWith(':')
         const ev = parseBlock(block)
         if (ev) yield ev
       }
@@ -23,9 +29,12 @@ export async function* sseEvents(body: ReadableStream<Uint8Array>, signal?: Abor
     const last = parseBlock(buf)
     if (last) yield last
   } finally {
-    reader.releaseLock()
+    void reader.cancel().catch(() => {})   // a lost connection leaves a read pending: let it go
   }
 }
+
+/** How long a stream may send nothing before it counts as lost: with keep-alive lines, and without. Tests shorten them. */
+export const SILENCE_MS = [30_000, 150_000]
 
 export function parseBlock(block: string): AguiEvent | null {
   const data = block.split(/\r?\n/).filter((l) => l.startsWith('data:')).map((l) => l.slice(5).replace(/^ /, '')).join('\n')

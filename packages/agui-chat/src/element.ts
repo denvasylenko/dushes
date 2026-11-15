@@ -6,7 +6,7 @@ import { LANGUAGES, PACKS, loadLanguage } from './langs'
 import { shrinkImage } from './image'
 import { dictate, recognitionBlocked, record, recordingSupported, speechReliable, speechSupported, type Dictation } from './speech'
 import { CSS } from './styles'
-import { loadMenu, loadSpot, loadTip } from '#tip-loader'
+import { loadMenu, loadSpot, loadTip, loadTipCss } from '#tip-loader'
 import type { TipRow } from './tip'
 import { hasTheme, themeCss, THEME_PACKS, loadTheme } from './themes'
 import { watchParts } from './parts'
@@ -513,7 +513,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   }
 
   async run(opts: { forwardedProps?: Record<string, unknown>; notice?: string } = {}): Promise<void> {
-    if (this._busy) return
+    if (this._busy) throw new Error('agui-chat: busy (a turn is running; send() queues instead)')
     this._dropDictation()
     this._clearQuick()
     this._closePendingCards()
@@ -1135,6 +1135,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this._picked = { message_id: s.msg.dataset.messageId ?? '', quote: s.text, ...(s.msg.matches('.msg.me') ? { role: 'user' as const } : {}) }
     this._anchor = { msg: s.msg, rect: s.range.getBoundingClientRect() }
     this._place(cap)
+    void loadTipCss().then((f) => f(cap), () => {})   // the reply window's look, here before the tap that opens it
   }
 
   private _anchor: { msg: HTMLElement; rect: DOMRect } | null = null
@@ -1636,8 +1637,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       const changes = applier ? this._applies[i] : null
       if (!changes?.length) return h('button', { class: 'chip', part: 'chip', type: 'button', onclick: () => void this.send(s) }, s)
       const b = h('button', { class: 'chip act', part: 'chip', type: 'button', title: this.t('fills') }, h('i', { 'aria-hidden': 'true' }, '\u2713'), s)
-      b.addEventListener('click', async () => {   // fill at once, then tell the agent (one tap, no card)
-        if (this._busy) return
+      b.addEventListener('click', async () => {   // fill at once, then tell the agent (one tap, no card; while a turn runs the message waits in the queue)
         this._quick?.querySelectorAll('button').forEach((x) => x.setAttribute('disabled', ''))
         err.textContent = ''
         try {
@@ -2062,9 +2062,6 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       if (!el || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { this.removeMessage(id); return }
       el.classList.add('gone')   // fades, then goes; the answer takes its place
       setTimeout(() => this.removeMessage(id), 180)
-    } else if (name === 'tool_progress') {
-      const p = value as { parent_id?: string; name?: string; input?: unknown }
-      void p   // a tool's own sub-steps are not shown: the line names the tool
     } else if (name === 'card_focus') {   // "show me that card": the one still in the thread, not a copy
       this._focusCard(String((value as { card_id?: unknown } | null)?.card_id ?? ''))
     } else if (name === 'card_result') {   // an answer that was not taken: its card must not read as answered

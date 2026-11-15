@@ -397,30 +397,13 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
   background: var(--agui-panel-bg, var(--agui-bg)); box-shadow: 0 6px 20px -6px var(--agui-shadow), 0 0 0 .5px var(--agui-line-2);
   animation: pill-in .15s var(--agui-ease) both; }
 .sel-cap[hidden] { display: none; }
-:host(.dark) .sel-cap, :host(.dark) .sel-pop { background: var(--agui-soft); }
+:host(.dark) .sel-cap { background: var(--agui-soft); }
 .cap-b { height: 32px; padding: 0 14px; border: 0; border-radius: var(--agui-radius-pill); background: transparent; color: var(--agui-ink);
   font: 15px/1 var(--agui-font); cursor: pointer; transition: background .15s var(--agui-ease); }
 .cap-b:hover, .cap-b:active { background: var(--agui-soft); }
 @media (pointer: coarse) { .cap-b { height: 44px; padding: 0 18px; } }
-.sel-pop { position: absolute; z-index: 6; width: min(360px, calc(100% - 16px)); display: grid; gap: 4px; padding: 12px 8px 4px 16px;
-  border-radius: var(--agui-radius); background: var(--agui-panel-bg, var(--agui-bg));
-  box-shadow: 0 10px 32px -8px var(--agui-shadow), 0 0 0 .5px var(--agui-line-2); animation: pill-in .15s var(--agui-ease) both; }
-.sel-pop[hidden] { display: none; }
 @keyframes pill-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
-.pop-q { padding: 0 8px 0 10px; border-left: 2px solid var(--agui-ink-3); color: var(--agui-ink-2); font-size: 13px; line-height: 1.4;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pop-row { display: flex; align-items: center; gap: 4px; }
-.pop-in { flex: 1; min-width: 0; border: 0; outline: none; resize: none; background: transparent; color: var(--agui-ink); font: 15px/1.4 var(--agui-font);
-  padding: 8px 0; max-height: 120px; }
-.pop-in::placeholder { color: var(--agui-ink-3); }
-.sel-pop .ib { width: 36px; height: 36px; flex: none; } .sel-pop .ib svg { width: 18px; height: 18px; stroke-width: 1.8; }   /* one size and stroke for both */
-.sel-pop .ib[hidden] { display: none; }
-.pop-err { font-size: 13px; color: var(--agui-ink-2); padding: 0 8px 6px 0; }
-.pop-err:empty { display: none; }
-.pop-mic.on { background: var(--agui-danger); color: var(--agui-on-danger); animation: rec 1.4s ease-out infinite; }   /* recording, as the composer's mic */
-.pop-mic.busy { opacity: .5; pointer-events: none; animation: pulse 1s ease-in-out infinite; }   /* transcribing on the server; still dim without motion */
 .ib.on:focus-visible { outline: 2px solid var(--agui-link); outline-offset: 2px; }   /* the recording halo animates the shadow: the ring is an outline */
-@media (pointer: coarse) { .sel-pop .ib { width: 44px; height: 44px; } .pop-in { font-size: 16px; padding: 11px 0; } }
 .box > .reply-list { order: -2; flex: 1 0 100%; display: grid; gap: 8px; min-width: 0; margin: 2px 0 6px -4px; animation: att-in .15s var(--agui-ease) both; }
 .box > .reply-list[hidden] { display: none; }
 .reply-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; padding: 6px 6px 6px 12px; border-radius: var(--agui-radius);

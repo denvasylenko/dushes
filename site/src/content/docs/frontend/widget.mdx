@@ -58,7 +58,7 @@ Build it from this repository: `cd packages/agui-chat && npm install && npm run 
 | "Done in 4 s ›" in the same place; the chevron opens the steps, a repeat merged ("Searching the documents (2)") | the run ended |
 | a card | `CUSTOM on_interrupt` (JSON value with `type`) or `RUN_FINISHED.outcome.interrupts` |
 | chips in one row right above the input, over the log's bottom edge (scrolling sideways; the log keeps scroll room so the last answer and its actions always scroll above them, nothing moves when they come or go, and they step aside while you type or read further up); a chip marked ✓ fills fields in one tap (with Undo), then sends its text | `CUSTOM suggestions {items, applies?}` |
-| "Something went wrong" + Try again | `RUN_ERROR` or a network error |
+| "Something went wrong" + Try again | `RUN_ERROR` or a network error; also a stream that sends nothing for 30 s (the server sends a keep-alive line every 10 s; 150 s for a server that sends none): the connection is taken as lost |
 
 
 ## The form plugin
