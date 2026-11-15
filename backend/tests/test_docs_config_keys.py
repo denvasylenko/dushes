@@ -50,6 +50,24 @@ def test_documented_sub_keys_exist():
     assert wrong == set(), f"documented sub-keys the loader does not accept: {sorted(wrong)}"
 
 
+def test_every_sub_key_is_documented():
+    """The other direction: a sub-key the loader accepts has a row (`knowledge.chunk_chars`) or is named in its
+    section's row. A new sub-key fails here until the reference has it."""
+    assert KEYS is not None
+    page = PAGE.read_text(encoding="utf-8").split("\n## Every key", 1)[1].split("\n## ", 1)[0]
+    docs = documented()
+    missing = []
+    for top, subs in KEYS.items():
+        if not isinstance(subs, (set, frozenset)):
+            continue
+        row = next((r for r in page.splitlines() if r.startswith("| `") and re.search(rf"`{top}(?:\.\w+)?`", r.split("|")[1])), "")
+        rows = "\n".join(r for r in page.splitlines() if r.startswith("| `") and re.search(rf"`{top}\b", r.split("|")[1]))
+        for sub in sorted(subs):
+            if sub not in docs.get(top, set()) and not re.search(rf"(?<![\w.]){re.escape(sub)}(?![\w])", rows or row):
+                missing.append(f"{top}.{sub}")
+    assert missing == [], f"accepted by the loader but not in reference/configuration.md: {missing}"
+
+
 def test_the_table_is_found():
     """The parser still reads the page (guards the two tests above against a renamed heading)."""
     keys = documented()

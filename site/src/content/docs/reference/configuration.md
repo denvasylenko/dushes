@@ -90,7 +90,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 
 | Key | Default | Meaning |
 |---|---|---|
-| `model` / `models` | see above | the models |
+| `model` / `models` | see above | one model for everything (`model`), or one per role under `models`: `agent` (required whenever `models` is written out), `research`, `compile`, `extract` |
 | `data_dir` | `data` | where Dushes keeps its own files: learned field dependencies (`deps/`), registered layouts (`layouts/`), documents (`kb/`), attachments (`attachments/`), transcripts (`transcripts/`) unless set elsewhere |
 | `components.containers` | `Tabs: tabs, Tab: tab, Accordion: accordion, Section: section, Form: form` | your component library's container tags → role. **Replaces** the default map when given |
 | `components.fields` | `Input: text, NumberInput: number, TextArea: text, DatePicker: date, Dropdown: select, RadioGroup: radio, MultiSelect: multiselect, Checkbox: bool, FileUpload: file` | field tags → role (`text`, `number`, `date`, `select`, `radio`, `multiselect`, `bool`, `file`) or a **field spec** (below). **Replaces** the default map when given |
@@ -99,6 +99,8 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `domain_packs.provider` | none | `"module:function"`; `function(form_id) -> dict or None`, e.g. reading from your database |
 | `knowledge.dir` | `<data_dir>/kb` | where uploaded business documents are stored |
 | `knowledge.index` | `bm25` | `bm25`, or `{factory: "module:make_store", filter: "module:ns_filter", fetch_factor: 5}`: `make_store()` returns any LangChain `VectorStore`; `ns_filter(namespaces)` returns the store's metadata filter (optional) |
+| `knowledge.chunk_chars` | `1200` | about how many characters a section of a document holds; documents are cut on their headings, then on paragraphs, to this size |
+| `knowledge.chunk_overlap` | `150` | characters shared by neighbouring sections under one heading, so a sentence on a boundary is found from both |
 | `knowledge.scopes` | each form sees its own namespace | `{form_id: [namespaces]}`, e.g. a form that also sees shared documents |
 | `skills.dir` | none | a folder of skills: `<skill>/SKILL.md` with `name`, `description`, `forms`, `tools` |
 | `tools` | none | `["module:tool"]`: LangChain `BaseTool` objects offered for every form |

@@ -92,6 +92,35 @@ These endpoints change what the agent tells users: protect them with your manage
 
 </details>
 
+## How a document is cut and found
+
+A 300-page handbook is not searched as one text. When you add it, it is cut into **sections**, and the search reads those.
+
+```mermaid
+flowchart LR
+  D["A document<br/><small>PDF, DOCX, text</small>"] --> H["Cut on its headings,<br/>then on paragraphs"]
+  H --> S["Sections of about 1,200 characters<br/><small>each keeps its heading path and page</small>"]
+  S --> I["An index, built once<br/><small>and again when the server starts</small>"]
+  Q["A question"] --> I --> R["The best sections,<br/>spread over the documents"]
+```
+
+- **A section knows where it is.** "4.2 Late payment" under "4 Fees" on page 118 of a PDF is kept as the path `4 Fees > 4.2 Late payment` and page 118, so an answer can say where it comes from.
+- **Tables and lists stay whole** while they fit twice the section size; a price table is not split in the middle of a row.
+- **Exact figures and clause numbers are found as written**: "27.90", "4.2".
+- **One document does not crowd out the others.** When two documents answer equally well, the results hold sections from both.
+- **With a vector store**, the word match and the vector match are combined.
+- **An index from an older version is rebuilt** from the stored text when the server starts. Nothing is uploaded again.
+
+Tested on sets of 100 to 500 pages: a search takes about 5 ms.
+
+Two settings change the cut. Leave them alone unless answers miss context (make sections larger) or bring too much unrelated text (make them smaller):
+
+```yaml title="formguide.yaml"
+knowledge:
+  chunk_chars: 1200      # about this many characters in a section
+  chunk_overlap: 150     # shared by neighbouring sections under one heading
+```
+
 ## Every option
 
 ```yaml title="formguide.yaml"
@@ -101,6 +130,8 @@ knowledge:
   # index: {factory: "my_app.vectors:make_store", filter: "my_app.vectors:ns_filter", fetch_factor: 5}
   scopes:                                  # default: each form sees only its own documents
     loan_application: [loan_application, bank_common]
+  chunk_chars: 1200                        # default: about this many characters in a section
+  chunk_overlap: 150                       # default: shared by neighbouring sections under one heading
 models:
   agent: "anthropic:claude-haiku-5-5"       # required whenever `models:` is written out
   compile: "anthropic:claude-haiku-5-5"     # compiles documents into rules; default: agent
@@ -113,11 +144,18 @@ KnowledgeBase(
     "data/kb",
     index=BM25Index(),                                   # or VectorStoreIndex(store, filter_builder=ns_filter, fetch_factor=5)
     scopes={"loan_application": ["loan_application", "bank_common"]},
+    chunk_chars=1200, chunk_overlap=150,                 # the defaults
 )
 ```
 
 
 `make_store()` returns any LangChain `VectorStore`; `ns_filter(namespaces)` returns that store's metadata filter, so a form searches only its scopes.
+
+From your own code, without a model call:
+
+- `kb.search(form_id, query, k=6, per_document=None)`: the best sections with their scores; `per_document` caps how many come from one document.
+- `kb.outline(form_id)`: each document's outline, its heading paths with pages and sizes.
+- `kb.neighbours(form_id, chunk_id, before=1, after=1)`: the sections next to one section, to read around a hit.
 
 ## Next
 
