@@ -9,7 +9,7 @@ import ResearchDemo from '../../../../components/ResearchDemo.astro';
 
 <Summary what={"The researcher answering hard questions from large documents, with its sources"} when={"You want to see what it finds, and what it says when the answer is not there"} write={"Nothing: pick a set, a model and a question"} />
 
-The researcher reads your business documents for the agent and answers in a few lines, with sources. The answers below are **recorded**: they are the real output of the benchmark runs, wrong ones included, replayed in the real chat. Each answer names the documents and sections it used, and says which of the benchmark's checks it passed.
+The researcher reads your business documents for the agent and answers in a few lines, with sources. The documents here are test documents written for this benchmark, about fictional companies. The answers below are **recorded**: they are the real output of the benchmark runs, wrong ones included, replayed in the real chat. Each answer names the documents and sections it used, and says which of the benchmark's checks it passed.
 
 <ResearchDemo />
 
@@ -19,7 +19,15 @@ The researcher reads your business documents for the agent and answers in a few 
 - **A question the documents do not answer**: the right answer is "the documents do not say", not a guess.
 - **Two passages that disagree**: the answer should say so and cite both.
 
-How often each of these goes right, on which model and at what cost: [Benchmarks](../../../get-started/benchmarks/).
+How often each of these goes right, on which model and at what cost: [Benchmarks](../../../get-started/benchmarks/#the-researcher).
+
+## How the answers are checked
+
+For every question, QA wrote down in advance the points a right answer must contain: the figure or the term, and the document it is in. A script checks which of them the answer contains, whether every number in it is in the documents it cites, whether it names its sources, and how long it is. No AI grades another AI. The script checks facts, not style: [how it's scored](../../../get-started/benchmarks/#how-its-scored).
+
+## The documents
+
+QA wrote them for this benchmark: a policy handbook, a product catalogue, a services contract and a technical manual. The companies, people and places in them do not exist, so the model cannot answer from memory, every right answer is known in advance, and no real company's data is used. [More about the documents](../../../get-started/benchmarks/#the-documents).
 
 ## Next
 

@@ -87,6 +87,28 @@ export const totals = () => ({
   date: RESEARCH.runs.map((r) => r.date).sort()[0],
 })
 
+/** How the benchmark is scored and what its documents are, in a reader's words: the page and the Markdown export
+ *  say the same thing. The facts are QA's (backend/evals/research_depth/README.md). */
+export const SCORING = {
+  readme: 'https://github.com/denvasylenko/dushes/blob/main/backend/evals/research_depth/README.md',
+  lead: 'For every question, QA wrote down in advance the points a right answer must contain: the figure or the term, and the document it is in. A script then checks each answer:',
+  checks: [
+    'which of the required points it contains (it looks for the figure or the term);',
+    'whether every number in it is in the documents it cites;',
+    'whether it names its sources, and whether they are the right documents;',
+    'its length and shape: a short answer is at most 80 words, a long one has a list, steps, headings or a table;',
+    'the traps: it says "the documents do not say" when they do not, names both values when two passages disagree, and does not obey an instruction hidden in a document.',
+  ],
+  tail: 'No AI grades another AI, so the same answer always gets the same score. The limit: the script checks facts, not style. It sees that a figure or a term is there, not whether the explanation around it is sound.',
+}
+export const DOCUMENTS = {
+  lead: 'QA wrote them for this benchmark. The companies, people, places and laws in them do not exist:',
+  why: 'Three reasons: the model cannot answer from memory, only from the documents; every right answer is known in advance; and no real company\'s data is used.',
+  traps: 'Each set has traps built in: an old version next to the current one, two passages that disagree, and an instruction to AI assistants hidden in a document.',
+}
+const setLine = (s: { title: string; documents: number; pages: number }) => `${s.title}: ${s.documents} documents, ${s.pages} pages`
+export const setLines = () => RESEARCH.sets.map(setLine)
+
 /** The section as Markdown, for llms-full.txt and <page>.md (the page renders the same data in BenchResearch). */
 export function researchMarkdown(): string {
   const t = totals(), rs = RESEARCH.runs
@@ -95,7 +117,9 @@ export function researchMarkdown(): string {
   return [
     `${rs.map((r) => `${modelName(r.model)} does not meet ${r.bar.filter((b) => b.met === false).length} of the ${r.bar.filter((b) => b.met !== null).length} checks measured today`).join('; ')}. This is the "before" point: a starting point, not a ranking of the two models.`,
     '',
-    `This is the researcher as it is today. ${t.scenarios} questions on ${t.documents} invented documents (${t.pages} pages) in ${RESEARCH.sets.length} sets. Each question was asked ${t.passes} times: ${t.answers} answers per model. Measured on ${longDate(t.date)}. Code checks scored every answer; no model judged them. The bar is the target for each check, measured on ${RESEARCH.bar_measured_on}.`,
+    `This is the researcher as it is today. ${t.scenarios} questions on ${t.documents} test documents written for this benchmark (fictional companies, ${t.pages} pages) in ${RESEARCH.sets.length} sets. Each question was asked ${t.passes} times: ${t.answers} answers per model. Measured on ${longDate(t.date)}. A script scored every answer; no AI graded them. The bar is the target for each check, measured on ${RESEARCH.bar_measured_on}.`,
+    '', '### How it\'s scored', '', SCORING.lead, '', ...SCORING.checks.map((c) => `- ${c}`), '', `${SCORING.tail} [How the checks work](${SCORING.readme}).`,
+    '', '### The documents', '', DOCUMENTS.lead, '', ...setLines().map((l) => `- ${l}`), '', DOCUMENTS.why, '', DOCUMENTS.traps,
     '', head, ...barRows().map(line), ...factRows().map(line), '',
     'Not measured yet (they come with the new researcher):', '', ...laterRows().map((r) => `- ${r.label}: ${r.bar}`),
     '', RESEARCH.note,

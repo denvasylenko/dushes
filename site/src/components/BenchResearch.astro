@@ -6,7 +6,7 @@
  */
 import { Badge, Disclosure } from './ui'
 import BenchFreshness from './BenchFreshness.astro'
-import { RESEARCH, barRows, factRows, kindName, laterRows, modelName, share, totals } from '../lib/research'
+import { DOCUMENTS, RESEARCH, SCORING, barRows, factRows, kindName, laterRows, modelName, setLines, share, totals } from '../lib/research'
 import { longDate } from '../lib/bench'
 const t = totals()
 const runs = RESEARCH.runs
@@ -18,7 +18,7 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
 ---
 <p class="br-verdict"><strong>{names.map((n, i) => `${n} does not meet ${missed[i]} of the ${measured[i]} checks measured today`).join('; ')}.</strong> This is the "before" point: a starting point, not a ranking of the two models.</p>
 
-<p>This is the researcher as it is today. {t.scenarios} questions on {t.documents} invented documents ({t.pages.toLocaleString('en-US')} pages) in {RESEARCH.sets.length} sets. Each question was asked {t.passes} times: {t.answers} answers per model. Code checks scored every answer; no model judged them. The bar is the target for each check, measured on {RESEARCH.bar_measured_on}.</p>
+<p>This is the researcher as it is today. {t.scenarios} questions on {t.documents} test documents written for this benchmark (fictional companies, {t.pages.toLocaleString('en-US')} pages) in {RESEARCH.sets.length} sets. Each question was asked {t.passes} times: {t.answers} answers per model. A script scored every answer; no AI graded them (<a href="#how-its-scored">how it's scored</a>). The bar is the target for each check, measured on {RESEARCH.bar_measured_on}.</p>
 
 <BenchFreshness date={t.date} model={names.join(' and ')} what="The researcher's benchmark" />
 
@@ -51,6 +51,17 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
 </Disclosure>
 
 <p>{RESEARCH.note}</p>
+
+<h3 id="how-its-scored">How it's scored</h3>
+<p>{SCORING.lead}</p>
+<ul>{SCORING.checks.map((c) => <li>{c}</li>)}</ul>
+<p>{SCORING.tail} <a href={SCORING.readme}>How the checks work</a>.</p>
+
+<h3 id="the-documents">The documents</h3>
+<p>{DOCUMENTS.lead}</p>
+<ul>{setLines().map((l) => <li>{l}</li>)}</ul>
+<p>{DOCUMENTS.why}</p>
+<p>{DOCUMENTS.traps} The <a href="../../agents/researcher/demo/">researcher demo</a> lists every document and shows the answers.</p>
 
 <Disclosure summary="By kind of question: required facts covered" panel>
   <div class="br br-kinds not-content" role="table" aria-label="Coverage by kind of question">

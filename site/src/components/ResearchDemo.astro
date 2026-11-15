@@ -56,7 +56,7 @@ const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).fil
       <p class="rd-cap">The benchmark's checks on this answer</p>
       <p class="rd-v" data-v></p>
       <ul data-v-why></ul>
-      <p class="rd-vnote">The checks look at required points, sources, numbers, length and shape. Passing them is not the same as being correct, and an answer that misses one can still be useful.</p>
+      <p class="rd-vnote">A script runs these checks; no AI grades the answers. They look at required points, sources, numbers, length and shape. Passing them is not the same as being correct, and an answer that misses one can still be useful.</p>
     </div>
     <div class="rd-docs" aria-live="polite">
       {sets.map((s, i) => (
