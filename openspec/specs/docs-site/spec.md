@@ -108,7 +108,7 @@ The docs site, Ask AI and a live demo SHALL be servable from one app (`docs_ai.h
 
 #### Scenario: One address for everything
 - **WHEN** a reader opens the public host
-- **THEN** the docs are at `/`, Ask AI answers at `/ai/ask/run`, and "Live demo" offers Dushes and the form assistant
+- **THEN** the docs are at `/`, Ask AI answers at `/ai/ask/run`, and "Live demo" offers Dushes and the UI agent
 
 ### Requirement: Public demo limits
 The public demo SHALL use an inexpensive model and limit messages per conversation (default 15), per address per day and per site per day, on `/agent/run` and `/site/run` alike, and SHALL refuse document uploads. Answering a card or the hand-off run SHALL not count as a message.
