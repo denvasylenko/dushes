@@ -184,7 +184,11 @@ def test_the_demo_file_holds_recorded_answers_of_published_questions_only(tmp_pa
     assert "Sources:" not in a["text"] and a["text"].startswith("- Leave")          # the words as given; the sources are chips
     assert a["sources"] == [{"document": "staff_handbook_2026.md", "path": "3.1 Annual leave"}]   # a source that names no real document is dropped
     assert a["seconds"] == 9.5 and a["cost_usd"] == 0.0021 and "depth" not in a
-    assert a["passed"] is False and a["failed_checks"] == ["covers 2 of 7 points"]
+    assert a["passed"] is False and a["missed"] == ["covers 2 of 7 points"]
+    assert rd.reader_words("covers 4 of 7 points: missing the cap is 165; review in 2027") == "leaves out: the cap is 165; review in 2027"
+    assert rd.reader_words("95 words for a quick answer (at most 80)") == "too long for a short question (95 words)"
+    assert rd.reader_words("no structure for a deep answer (a list, steps, headings or a table); 170 words").startswith("a long answer written as one block")
+    assert "scenario" not in " ".join(rd.BAR_WORDS.values()) and "deep" not in " ".join(rd.BAR_WORDS.values())
     assert held.question not in json.dumps(d) and held.id not in json.dumps(d)
     docs = {x["id"] for s in d["sets"] for x in s["documents"]}
     assert "staff_handbook_2026.md" in docs and all(x["pages"] >= 1 for s in d["sets"] for x in s["documents"])

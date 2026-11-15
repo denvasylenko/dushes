@@ -703,6 +703,39 @@ SET_ABOUT = {
 MODEL_NAMES = {"claude-haiku-5-5": "Claude Haiku 5.5", "gpt-6-luna": "gpt-6-luna"}
 
 
+def reader_words(why: str) -> str:
+    """A failed check in a reader's words (the page says questions, short and long answers, not scenarios or depth)."""
+    left = why.split("missing", 1)[1].lstrip(": ").strip() if "missing" in why else ""
+    if why.startswith("error"):
+        return "no answer was recorded"
+    if why.startswith("numbers not in the cited text"):
+        return "states figures that are not in the documents it cites (" + why.split(":", 1)[1].strip() + ")"
+    if why.startswith("says what it must not"):
+        return "says something the documents do not support"
+    if "words for a quick answer" in why:
+        return f"too long for a short question ({why.split()[0]} words)"
+    if why.startswith("no structure"):
+        return "a long answer written as one block, without a list, steps or a table"
+    if why == "no source":
+        return "names no source"
+    if why.startswith("does not give both values"):
+        return "does not show that the documents disagree"
+    if why.startswith("does not name both documents"):
+        return "does not name both documents that disagree"
+    if why.startswith("does not correct the premise"):
+        return "does not correct the wrong assumption in the question"
+    if left:
+        return "leaves out: " + left
+    return why
+
+
+BAR_WORDS = {"deep: required points covered": "long answers: required facts covered", "deep: the weakest scenario": "long answers: the weakest question",
+             "answers with an invented number": "answers with a figure that is not in the text they cite",
+             "quick: correct": "short answers: correct", "quick: at most 80 words": "short answers: at most 80 words",
+             "quick: first word p50, s": "short answers: seconds to the first word, median", "quick: first word p95, s": "short answers: seconds to the first word, 95th percentile",
+             "the depth chosen is right": "short or long chosen rightly", "pairs: both depths right": "one topic asked short and asked long: both chosen rightly"}
+
+
 def public_questions(scs: list[Scenario]) -> list[Scenario]:
     """The hard questions that may be shown on a page: tuning scenarios only (never a control one), deep first."""
     out: list[Scenario] = []
@@ -739,7 +772,7 @@ def demo_data(reports: list[Path]) -> dict:
             answers[rep["model"].split(":", 1)[-1]] = {
                 "text": body(r["text"]).strip(), "sources": srcs, "seconds": r["seconds"], "cost_usd": round(r["tokens"]["usd"], 5),
                 # whether this answer passed the benchmark's code checks, and in plain words what it failed on
-                "passed": bool(r["check"].get("ok")), "failed_checks": list(r["check"].get("why") or []),
+                "passed": bool(r["check"].get("ok")), "missed": [reader_words(w) for w in r["check"].get("why") or []],
                 **({"depth": r["depth"]} if r.get("depth") else {})}
         if answers:
             questions.append({"id": f"q{n:02d}", "set": sc.corpus, "question": sc.question, "kind": sc.kind, "answers": answers})
@@ -794,13 +827,13 @@ def site_data(reports: list[tuple[str, Path]], note: str) -> dict:
             "seconds": {"all": secs(done), **{g: secs([r for r in done if r["group"] == g]) for g in GROUPS}},
             "usd": {"total": m["usd"], "per_answer": round(m["usd"] / max(1, m["answers"]), 5), **{g: m[f"usd_{g}"] for g in GROUPS}},
             "by_group": split("group"), "by_kind": split("kind"), "by_set": split("corpus"),
-            "bar": [{"check": what, "result": v, "bar": bar, "met": ok} for what, v, bar, ok in verdict(ctrl)],
+            "bar": [{"check": BAR_WORDS.get(what, what), "result": v, "bar": bar, "met": ok} for what, v, bar, ok in verdict(ctrl)],
             "prices": {"checked": json.loads(PRICES_FILE.read_text()).get("checked"), "source": json.loads(PRICES_FILE.read_text()).get("source"), "model_id": model_id},
         })
     questions = [{"set": s.corpus, "kind": s.kind, "depth": s.expects, "who": s.role, "question": s.question} for s in public_questions(scs)]
     return {"source": "backend/scripts/research_depth.py --site", "generated": datetime.now().isoformat(timespec="seconds"),
             "note": note, "scored_by": "code checks only (no model judges the answers); see backend/evals/research_depth/README.md",
-            "bar_measured_on": "the control scenarios (43% of the set), three passes",
+            "bar_measured_on": "the questions kept aside from tuning (43% of them), each asked three times",
             "sets": sets, "runs": runs, "questions": questions}
 
 

@@ -1,9 +1,9 @@
 {
  "source": "backend/scripts/research_depth.py --site",
- "generated": "2026-11-15T17:13:17",
- "note": "The \"before\" point: today's researcher has one mode (a research loop for every question, an answer of about 120 words). It reports neither its first word nor a chosen depth, so those two lines of the bar are empty here. \"After\" is the same 121 scenarios on the researcher with adaptive depth (quick by default, deep when the question needs it), with the first word measured on a run and each number checked against the passage it cites.",
+ "generated": "2026-11-15T17:43:56",
+ "note": "The \"before\" point: today's researcher has one mode and answers every question at about 120 words. It does not report the time to its first word or whether it chose a short or a long answer, so those checks are empty here. \"After\" is the same 121 questions on the new researcher, which answers short by default and long when the question needs it.",
  "scored_by": "code checks only (no model judges the answers); see backend/evals/research_depth/README.md",
- "bar_measured_on": "the control scenarios (43% of the set), three passes",
+ "bar_measured_on": "the questions kept aside from tuning (43% of them), each asked three times",
  "sets": [
   {
    "id": "halden_policies",
@@ -279,19 +279,19 @@
    },
    "bar": [
     {
-     "check": "deep: required points covered",
+     "check": "long answers: required facts covered",
      "result": 0.856,
      "bar": ">= 0.90",
      "met": false
     },
     {
-     "check": "deep: the weakest scenario",
+     "check": "long answers: the weakest question",
      "result": 0.333,
      "bar": ">= 0.60",
      "met": false
     },
     {
-     "check": "answers with an invented number",
+     "check": "answers with a figure that is not in the text they cite",
      "result": 9,
      "bar": "0",
      "met": false
@@ -303,37 +303,37 @@
      "met": true
     },
     {
-     "check": "quick: correct",
+     "check": "short answers: correct",
      "result": 0.889,
      "bar": ">= 0.90",
      "met": false
     },
     {
-     "check": "quick: at most 80 words",
+     "check": "short answers: at most 80 words",
      "result": 0.778,
      "bar": ">= 0.95",
      "met": false
     },
     {
-     "check": "quick: first word p50, s",
+     "check": "short answers: seconds to the first word, median",
      "result": null,
      "bar": "<= 2",
      "met": null
     },
     {
-     "check": "quick: first word p95, s",
+     "check": "short answers: seconds to the first word, 95th percentile",
      "result": null,
      "bar": "<= 5",
      "met": null
     },
     {
-     "check": "the depth chosen is right",
+     "check": "short or long chosen rightly",
      "result": null,
      "bar": ">= 0.90",
      "met": null
     },
     {
-     "check": "pairs: both depths right",
+     "check": "one topic asked short and asked long: both chosen rightly",
      "result": null,
      "bar": ">= 0.90",
      "met": null
@@ -591,19 +591,19 @@
    },
    "bar": [
     {
-     "check": "deep: required points covered",
+     "check": "long answers: required facts covered",
      "result": 0.817,
      "bar": ">= 0.90",
      "met": false
     },
     {
-     "check": "deep: the weakest scenario",
+     "check": "long answers: the weakest question",
      "result": 0.222,
      "bar": ">= 0.60",
      "met": false
     },
     {
-     "check": "answers with an invented number",
+     "check": "answers with a figure that is not in the text they cite",
      "result": 1,
      "bar": "0",
      "met": false
@@ -615,37 +615,37 @@
      "met": false
     },
     {
-     "check": "quick: correct",
+     "check": "short answers: correct",
      "result": 0.931,
      "bar": ">= 0.90",
      "met": true
     },
     {
-     "check": "quick: at most 80 words",
+     "check": "short answers: at most 80 words",
      "result": 1.0,
      "bar": ">= 0.95",
      "met": true
     },
     {
-     "check": "quick: first word p50, s",
+     "check": "short answers: seconds to the first word, median",
      "result": null,
      "bar": "<= 2",
      "met": null
     },
     {
-     "check": "quick: first word p95, s",
+     "check": "short answers: seconds to the first word, 95th percentile",
      "result": null,
      "bar": "<= 5",
      "met": null
     },
     {
-     "check": "the depth chosen is right",
+     "check": "short or long chosen rightly",
      "result": null,
      "bar": ">= 0.90",
      "met": null
     },
     {
-     "check": "pairs: both depths right",
+     "check": "one topic asked short and asked long: both chosen rightly",
      "result": null,
      "bar": ">= 0.90",
      "met": null
