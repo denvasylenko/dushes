@@ -5,7 +5,7 @@ how long do they wait for a sound and for a useful sentence, what does a task co
 the assistant. The agent behind the voice is the same Dushes agent as in chat (design B of
 `openspec/changes/voice-mode/design.md`), so every existing rule keeps its meaning and its check.
 
-Status: ready to run live, not run yet. The set (`voice-v1.txt`, 52 scenarios), the clip recorder and the runner
+Status: ready to run live, not run yet. The set (`voice-v1.txt`, 53 scenarios), the clip recorder and the runner
 exist; a mock run passes end to end, and the live path (the host's `/voice/stream` socket, the one a native app uses)
 passes a test with a scripted provider behind the real socket. Every paid voice run needs the owner's yes with a
 price, relayed by the CPO. The speaker is a set of recorded clips, never a second model: the API pays for the voice
@@ -13,14 +13,14 @@ session and the agent, nothing else.
 
 ```bash
 cd backend
-uv run python scripts/voice_clips.py            # record the 68 clips with the Mac's voices (free; scripts/runs/voice-clips/)
+uv run python scripts/voice_clips.py            # record the 70 clips with the Mac's voices (free; scripts/runs/voice-clips/)
 uv run python scripts/voice_bench.py --mock     # the scripted voice over an offline demo: the plumbing, free
 VOICE_BENCH_CODE=... uv run python scripts/voice_bench.py --live --base http://127.0.0.1:8097 --max-usd 1.40 --set evals/voice/voice-v1-en.txt
 # --base: a stand of your own with voice on (VOICE_CODES, VOICE_DAY_USD as a second stop); the code is one of its test codes, in the environment only
 ```
 
-**English first** (the owner, 2026-11-15): the live passes run on the 34 English scenarios, `voice-v1-en.txt`
-(46 spoken lines, 118 s of speech; 8 were added so that the small groups give a share: order 3, yes after an offer 4,
+**English first** (the owner, 2026-11-15): the live passes run on the 35 English scenarios, `voice-v1-en.txt`
+(48 spoken lines, 121 s of speech; 8 were added so that the small groups give a share: order 3, yes after an offer 4,
 correction 4, interruption 4). The Russian and Ukrainian scenarios and clips stay recorded and are not run now.
 Estimate for the English set: 46 lines of 20 to 25 s, 15.3 to 19.2 billed minutes, $0.77 to $0.96 a pass at $0.05 a
 minute. The 15 seconds billed when a session opens are a minimum credited against the session's own duration, not a
@@ -57,7 +57,7 @@ language, voice, rate and length.
 - A synthetic voice is cleaner than a person in a room. Results with it are an upper bound; the report says so. A
   small set of clips with added street noise is a later pass, not the first.
 
-## Scenarios (voice-v1, 52)
+## Scenarios (voice-v1, 53)
 
 Each scenario is a chat scenario's twin: a start (site, page, form), the clips in order, what to do with a card, and
 the same `expect` keys as `evals/*.yaml`. Groups:
@@ -71,7 +71,7 @@ the same `expect` keys as `evals/*.yaml`. Groups:
 | hard to hear | 5 | an email spelled out, a VIN, a surname, a postcode, a mixed-language sentence | three outcomes, counted apart: the exact value filled (pass); asked to repeat and the field left empty (acceptable); a wrong value filled (fail) |
 | confirmation needs a card | 4 | "I accept the terms", "submit it", a value from a document, replacing a typed value | a card is shown; a consent is ticked only by a tap |
 | correction | 5 | "no, I said the fifteenth, not the fiftieth" | the field holds the corrected value |
-| interruption | 5 | a second clip starts while the assistant speaks | the sound stops, the turn in progress is cancelled, nothing of it is applied |
+| interruption | 6 | a second clip starts while the assistant speaks | the sound stops, the turn in progress is cancelled, nothing of it is applied |
 
 Languages: every group has English; the first four groups also Russian and Ukrainian (about a third of the set).
 

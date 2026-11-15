@@ -1,0 +1,20 @@
+name: voice_yes_all_good
+tags: [voice, card, en, answers_in_words]
+persona: "A person filling in a loan application who confirms a card of several values with a sentence instead of a tap."
+goal: "Give the registered address in one message and confirm what the assistant proposes by saying it is all right."
+start: {page: /apply, form: loan_application, values: {reg_street: "Lesnaya", reg_house: "3"}}
+knows:
+  - "New registered address: Sadovaya street, building 41, apartment 7"
+turns: 3
+# The CPO's rule (2026-11-15): "yes, all good" or "yes, put it in" after the assistant asks to check its card applies
+# every value that waits; the same card is not shown again.
+# The voice twin of evals/card_yes_all_good_applies.yaml: in a voice thread the yes is taken (c399b98): the same values come
+# back on a card with the quiet mark, which is applied with no tap; the value is in the field and nothing is asked a third time.
+scripted:
+  - "My registered address has changed: Sadovaya street, building 41, apartment 7."
+  - "Yes, all good, put it in."
+  - "Yes, that is right."
+expect:
+  never_same_card_twice: true
+  fields: {reg_street: "Sadovaya", reg_house: "41", reg_flat: "7"}
+min_score: 7

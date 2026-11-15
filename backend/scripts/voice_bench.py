@@ -315,7 +315,7 @@ class LiveBridge:
                 time.sleep(0.1)
         seen = len(L.events)
         start, end = L.speak(pcm_of(Path(clip["file"]) if Path(clip["file"]).is_absolute() else CLIPS / clip["file"]), f"turn{len(s.turns)}")
-        heard_at = answered = None
+        heard_at = answered = first_answer = None
         while L.alive:
             for at, ev in L.events[seen:]:
                 seen += 1
@@ -328,9 +328,10 @@ class LiveBridge:
                             s.visit.say(ev["text"])
                         except Exception as e:  # noqa: BLE001
                             t.error = f"{type(e).__name__}: {e}"[:200]
-                elif kind == "result":
+                elif kind == "result":   # the answer reaches the voice sentence by sentence: the first is the useful one
                     answered = at
-                    t.spoken = str(ev.get("text") or "")
+                    first_answer = first_answer if first_answer is not None else at
+                    t.spoken = (t.spoken + " " + str(ev.get("text") or "")).strip()
                 elif kind == "interrupted" and cut_in:
                     t.cancelled = True
                 elif kind in ("error", "ended"):
@@ -349,7 +350,7 @@ class LiveBridge:
         sounds = sound_times(L.frames, end)
         t.first_sound_s = sounds["first"]
         t.first_step_s = round(heard_at - end, 2) if heard_at is not None else None      # the words arrive: the run starts
-        t.useful_s = round(answered - end, 2) if answered is not None else None           # the answer is handed to the voice
+        t.useful_s = round(first_answer - end, 2) if first_answer is not None else None   # the answer's first sentence is handed to the voice
         if cut_in:                       # from the cut-in's first piece to the voice falling silent
             loud = [at for at, pcm in L.frames if at >= start and is_sound(pcm)]
             gap = next((a for a, b in zip(loud, loud[1:] + [L.now() + 9]) if b - a > 0.5), None)

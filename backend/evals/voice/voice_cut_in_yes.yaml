@@ -1,0 +1,19 @@
+name: voice_cut_in_yes
+tags: [voice, interruption, en]
+persona: "A person speaking to the assistant in voice mode. They answer the question before the voice has finished asking it."
+goal: "A short yes said over the voice's question stops the voice, applies the card it was asking about, and the question is not asked again."
+start: {page: /apply, form: loan_application, values: {loan_type: {id: "consumer", name: "Consumer loan"}, loan_amount: 30000}}
+knows:
+  - "Says: change the loan amount to fifty thousand"
+  - "Says: yes"
+turns: 2
+# From the owner (2026-11-16): he says yes while the voice is still asking, because he already knows the question,
+# and the voice keeps talking. The first line replaces a value, so the card is not quiet and the voice asks it aloud;
+# the second clip starts while that question is still being spoken.
+scripted:
+  - "change the loan amount to fifty thousand"
+  - "yes"
+expect:
+  fields: {loan_amount: 50000}
+  never_same_card_twice: true
+min_score: 7

@@ -660,9 +660,11 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         out.append({"check": f"answers and offers the next step on the turn asking /{pattern}/", "ok": bool(words) and offers,
                     "detail": "" if words and offers else "no offer (no question and no chip) in the reply" if words else "no reply", "cap": CAP_OTHER})
     if sc.never_same_card_twice:   # the person said yes: the card is applied or explained, not shown again
+        shown = [c for c in visit.cards if c.get("type") == "set_fields"]
         rows = [sorted((str(x.get("name")), json.dumps(x.get("value"), sort_keys=True, ensure_ascii=False)) for x in c.get("changes") or [])
-                for c in visit.cards if c.get("type") == "set_fields"]
-        again = sum(1 for a, b in zip(rows, rows[1:]) if a and a == b)
+                for c in shown]
+        # the same values again with the quiet mark is the yes being taken (applied with no tap), not the card asked twice
+        again = sum(1 for n, (a, b) in enumerate(zip(rows, rows[1:])) if a and a == b and not shown[n + 1].get("quiet"))
         out.append({"check": "no field card is shown twice in a row", "ok": not again,
                     "detail": f"{again} repeat(s) in {len(rows)} field cards" if again else "", "cap": CAP_OTHER})
     if sc.quiet_cards:   # a value the person said, into an empty field, no consent: the card asks for no tap

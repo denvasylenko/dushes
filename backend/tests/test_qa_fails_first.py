@@ -259,4 +259,6 @@ def test_a_field_card_shown_again_after_a_yes_fails_the_check():
         return got["no field card is shown twice in a row"]
     assert run(card, card) is False and run(card, card, card) is False
     assert run(card) is True and run(card, other) is True and run(card, {"type": "ask"}, other) is True
+    assert run(card, {**card, "quiet": True}) is True          # the yes was taken: the same values, applied with no tap
+    assert run(card, {**card, "quiet": True}, card) is False   # ... and asked once more after that is the loop again
 
