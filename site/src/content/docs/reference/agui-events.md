@@ -8,7 +8,7 @@ A run starts with `RUN_STARTED` and ends with exactly one `RUN_FINISHED` or `RUN
 | Event | When | What a client does |
 | --- | --- | --- |
 | `TEXT_MESSAGE_START` / `CONTENT` / `END` | the answer, streamed | show it (the widget types it out) |
-| `TOOL_CALL_START` / `ARGS` / `END` / `RESULT` | a server tool ran | show a step ("Searching the form") |
+| `TOOL_CALL_START` / `ARGS` / `END` / `RESULT` | a server tool ran. Every call gets a result: a tool that fails, for any reason, sends a `TOOL_CALL_RESULT` with an error text ("`<tool>` failed ...") and the turn goes on; a tool failure is never a `RUN_ERROR` | show a step ("Searching the form"); mark a failed one |
 | `TOOL_CALL_*` without a result | a frontend tool was called; the run ends | run the tool, send its result as a `tool` message |
 | `CUSTOM ui_directive` | "look here": `{type: "focus", target, reveal: [...], hint, also?: [names]}` | open the tabs and accordions in `reveal`, scroll to `target`, highlight it; ring each field in `also` too (several fields shown at once, all inside `reveal`) |
 | `CUSTOM on_interrupt` | a card (legacy mode): a JSON string `{type, card_id, ...}` | render the card, resume with the answer |
@@ -18,7 +18,7 @@ A run starts with `RUN_STARTED` and ends with exactly one `RUN_FINISHED` or `RUN
 | `CUSTOM card_focus` | `{card_id}`: the card the user asks for is still in the thread (sent only to clients listing `card.focus`) | scroll the log to `[data-card-id]` and mark it `data-spot` for about 1.6 s; no copy; `agui:card-missing` when it's gone |
 | `CUSTOM language` | `{lang}` (en, ru, uk, de, fr, es, it): the language the user writes in, once known and when it changes; also `language` on cards and in the restore | cards, the steps line and the queue speak it; the frame stays the page's |
 | `CUSTOM suggestions` | quick replies `{items, applies?}`; each may carry validated field changes | show chips; a chip with `applies` fills fields at once |
-| `CUSTOM run_stats` | right before the terminal event: timings, tokens, cache hits | nothing, or a debug line ([Speed and tracing](../../agents/shared/observability/)) |
+| `CUSTOM run_stats` | right before the terminal event: timings, tokens, cache hits, each model call with its `kind`. Under the site agent a run may carry two: Dushes' own with `agent: "site"`, then the form agent's without `agent`; add them up | nothing, or a debug line ([Speed and tracing](../../agents/shared/observability/)) |
 | `CUSTOM text_retract` | `{messageId}`: a short lead written before tools, taken back because the answer came after them | remove that message (`<agui-chat>` fades it out) |
 | `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
 | `RUN_FINISHED` | the end; in structured mode `outcome.interrupts[]` carries the card | |

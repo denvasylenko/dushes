@@ -22,7 +22,7 @@ Source: [`stats.py`](https://github.com/denvasylenko/dushes/blob/main/backend/fo
 
 ## The numbers of every turn: `run_stats`
 
-The last event of every run, right before `RUN_FINISHED` (or `RUN_ERROR`):
+Sent right before `RUN_FINISHED` (or `RUN_ERROR`), once per agent that called a model in the run:
 
 ```json
 { "type": "CUSTOM", "name": "run_stats", "value": {
@@ -43,8 +43,26 @@ The last event of every run, right before `RUN_FINISHED` (or `RUN_ERROR`):
 | `ttft_ms` | how long the user waits before text starts | the model thinks long before writing, or the first step is a tool call; a cold prompt cache |
 | `total_ms` | the whole run | many tool rounds (see `tools`) |
 | `model_ms` vs `tool_ms` | model time vs our tools (search, documents, extraction) | `tool_ms` high: the researcher or reading an attachment |
+| `tools[].error` | the tool failed; the model read the failure and the turn went on | a tool of yours raises: its log line is `tool <name> failed` |
 | `models[].ttft_ms` | a model's own latency to the first chunk | provider load, a big prompt, high reasoning effort |
 | `cache_hit_rate` | share of input tokens read from the prompt cache (cheaper and faster) | low on the first turn and after the cache expires (about 5 minutes without activity for Anthropic) |
+
+Each line of `models` has a `kind`, so you can see what the tokens were spent on:
+
+| `kind` | The call |
+|---|---|
+| `agent` | the form agent's answer and tool rounds |
+| `suggestions` | the quick replies after an answer |
+| `translate` | card text the form does not translate ([Languages](../languages/)) |
+| `memory` | the summary of a long conversation, when a turn compacts it |
+| `researcher` | the document researcher's calls, summed into one line |
+| `site`, `router` | the site agent's answer, and the router that chose between it and the form agent |
+
+**Under the site agent a run can carry two `run_stats` events.** Dushes sends its own, with `"agent": "site"` and the kinds `site`, `router` and `researcher`, right before the terminal event, whenever it called a model. If the form agent also took a turn in that run, its event comes too, without `agent`. Add the two up for the run's cost.
+
+```json
+{ "type": "CUSTOM", "name": "run_stats", "value": { "agent": "site", "models": [ { "kind": "router", ... }, { "kind": "site", ... } ], ... } }
+```
 
 Every run also writes the same numbers as one JSON line on the `formguide.stats` logger (INFO), ready for any log collector. The development endpoint `GET /agent/debug/{thread_id}` keeps the last 20 runs of each thread. Only numbers, tool names and ids are recorded, never message text or field values.
 

@@ -46,7 +46,7 @@ The agent streams AG-UI events. Here is **everything the frontend can receive**,
 | `CUSTOM suggestions` | after an answer (when enabled on the server) | 2-3 chips; clicking one sends it as a message; an entry in `applies` (validated field changes) makes it an action chip that fills the fields first, with Undo |
 | `TOOL_CALL_*` + `TOOL_CALL_RESULT` | the agent used one of its own tools | optional: a step "Searching the documents" with a spinner, then a tick |
 | `TOOL_CALL_*` without a result | the agent called **your** frontend tool | anything you like: it is your own component ([Frontend tools](../frontend-tools/)) |
-| `CUSTOM run_stats` | last event of every run: timings, tokens, cache hits ([Speed and tracing](../../agents/shared/observability/)) | nothing, or a debug line |
+| `CUSTOM run_stats` | right before the end of a run: timings, tokens, cache hits (two under the site agent) ([Speed and tracing](../../agents/shared/observability/)) | nothing, or a debug line |
 | `CUSTOM agent_note`, `agent_context`, `memory_compacted` | internal | nothing, or a debug panel |
 | `RUN_FINISHED` / `RUN_ERROR` | the turn ended | stop the spinner, show the error |
 

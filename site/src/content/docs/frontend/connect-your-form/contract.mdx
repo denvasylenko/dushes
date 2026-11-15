@@ -124,7 +124,7 @@ The response is a stream of AG-UI events (`text/event-stream`). Besides text and
 | `sources` | `{ items: { title: string; section?: string; quote?: string }[] }` | an answer used your documents |
 | `receipt` | `{ card_id: string; title?: string; number?: string; eta?: string }` | a confirmed action returned a receipt |
 | `site_directive` | `{ type: 'navigate'; path: string; tab?: string; section?: string; form_id?: string }` | [Dushes](../../../agents/site-agent/) moves the user to another page (`/site/run` only) |
-| `run_stats` | timings and tokens | last event of every run ([Speed and tracing](../../../agents/shared/observability/)) |
+| `run_stats` | timings and tokens; `agent: "site"` on the site agent's own | right before the end of a run; a run under the site agent may have two ([Speed and tracing](../../../agents/shared/observability/)) |
 
 ```ts
 interface UiDirective {

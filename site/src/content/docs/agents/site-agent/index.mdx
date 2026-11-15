@@ -126,7 +126,7 @@ app.include_router(create_dushes_router(site, host=lambda request: {"site": curr
 | `instructions` | your brief, added to the site map's `instructions:` |
 | `style` | replaces the default "one to three short sentences" |
 | `history` | how many past turns Dushes sees (default 6) |
-| `tools` | your `SiteTool`s next to its own; a tool that raises tells the model, the turn goes on |
+| `tools` | your `SiteTool`s next to its own; a tool that raises tells the model, the turn goes on (the client gets a `TOOL_CALL_RESULT` with the error, never a `RUN_ERROR`) |
 | `suggestions` | a `suggest_next` tool: its options arrive as CUSTOM `suggestions {items}`, the chat's quick replies |
 | `form_for(form_id, ctx)` | the form's state on the server: after `open_form` the UI agent answers in the same run, and the directive says `handoff: "done"` so the page does not run again |
 | `stay_on_forms` | `True`: on a page with a form, Dushes answers in place instead of opening another page, unless the user asks to go or your instructions name the page for that question. `False`: no such rule (a studio or an admin cabinet, where the form page is not a form to finish) |
@@ -138,6 +138,10 @@ Every callback gets `ctx`, a `SiteRunCtx(thread_id, page, state, message, host)`
 ## Knowledge
 
 Dushes reads the site map and the business documents of its own knowledge scope: by default the `site` namespace (site-wide documents such as partners, a glossary, policies) plus every form on the map. Facts about the business come only from those; general concepts (what a co-borrower is) may come from general knowledge, said to be general. The UI agent keeps its own form's documents.
+
+## What a run cost
+
+When Dushes calls a model (its answer, the router, the document researcher), the run ends with a `run_stats` event marked `agent: "site"`: timings and tokens per call. A form agent's turn in the same run sends its own. How to read them: [Speed and tracing](../shared/observability/#the-numbers-of-every-turn-run_stats).
 
 ## One conversation, after a reload too
 
