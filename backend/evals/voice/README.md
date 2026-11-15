@@ -21,7 +21,9 @@ uv run python scripts/voice_bench.py --live --max-usd 3.00   # not yet: the brid
 (42 spoken lines, 107 s of speech; 8 were added so that the small groups give a share: order 3, yes after an offer 4,
 correction 4, interruption 4). The Russian and Ukrainian scenarios and clips stay recorded and are not run now.
 Estimate for the English set: 42 lines of 20 to 25 s and 30 sessions opened, 21.5 to 25 connected minutes, $1.08 to
-$1.25 a pass at $0.05 a minute; two passes $2.15 to $2.50, stop sum $2.50. An estimate from the price list, not a measurement.
+$1.25 a pass at $0.05 a minute; Decided (CPO, 2026-11-15): one pass now as the "before" point, stop sum $1.40, once the bridge has a
+server-to-server audio path; the second pass comes after interruption and quiet filling are built and needs the
+owner's new yes with a price. An estimate from the price list, not a measurement.
 
 A mock run's task results mean nothing (a one-line model answers); it proves the clips, the scenarios, the checks and
 the report. Its connected time with the opening charges, 17.6 minutes for the whole set and 11.3 for the English one, is the
