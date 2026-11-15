@@ -305,7 +305,7 @@ describe('card kit: field card, review, confirm', () => {
     expect(view.querySelector('mark')!.textContent).toBe('It is free after 3 months.')
     expect(view.querySelector('.src-text')!.textContent).toBe(excerpt)
     expect(fifth.tagName).toBe('SPAN')                                            // another site without a scheme: not a link either
-    expect(view.querySelector('.src-pager span')!.textContent).toBe('1 of 3')
+    expect(view.querySelector('.src-pager span')!.textContent).toBe('1 of 2')    // only the sources with a passage are paged
     expect((view.querySelector('a') as HTMLAnchorElement).href).toBe('https://bank.example/tariffs.pdf#page=7')
     expect(first.getAttribute('aria-expanded')).toBe('true')
     ;(view.querySelectorAll('.src-go')[1] as HTMLButtonElement).click()           // the next source: its short quote, no link
@@ -320,11 +320,15 @@ describe('card kit: field card, review, confirm', () => {
     await tick(200)                                                               // it leaves the way it came, then it is gone
     expect($$(el, '.src-view')).toHaveLength(0)
     expect(first.getAttribute('aria-expanded')).toBe('false')
-    fourth.click()                                                               // a path on the same site, as sent: its text fragment is kept
-    expect($(el, '.src-view a').getAttribute('href')).toBe('/research-documents/bank/guide/#:~:text=Early%20repayment')
-    expect(($(el, '.src-view a') as HTMLAnchorElement).target).toBe('_blank')
+    // a link and no passage: the document itself in one tap (a path on the same site, as sent: its text fragment is kept)
+    expect(fourth.tagName).toBe('A')
+    expect(fourth.getAttribute('href')).toBe('/research-documents/bank/guide/#:~:text=Early%20repayment')
+    expect((fourth as HTMLAnchorElement).target).toBe('_blank')
+    fourth.addEventListener('click', (e) => e.preventDefault())
     fourth.click()
-    first.click(); first.click()                                                  // the link toggles
+    expect($$(el, '.src-view')).toHaveLength(0)
+    expect(opened.at(-1)).toBe('Guide')
+    first.click(); first.click()                                                 // the link toggles
     await tick(200)
     expect($$(el, '.src-view')).toHaveLength(0)
   })

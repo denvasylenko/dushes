@@ -30,7 +30,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: s
   return e
 }
 const icon = (d: string, size = 16): string => `<svg viewBox="0 0 20 20" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
-const DOC = 'M5.5 2.5h6l3.5 3.5v11.5h-9.5zM11.5 2.5V6H15', X = 'M5.5 5.5l9 9m0-9-9 9', PREV = 'M12.5 4.5 7 10l5.5 5.5', NEXT = 'M7.5 4.5 13 10l-5.5 5.5'
+const DOC = 'M5.5 2.5h6l3.5 3.5v11.5h-9.5zM11.5 2.5V6H15', X = 'M5.5 5.5l9 9m0-9-9 9', PREV = 'M12.5 4.5 7 10l5.5 5.5', NEXT = 'M7.5 4.5 13 10l-5.5 5.5', OUT = 'M6.5 13.5l7-7M8 6.5h5.5V12'
 
 const where = (s: Source, t: T): string => [Array.isArray(s.path) ? s.path.join(' › ') : s.path || s.section, s.page ? t('pageN', { n: s.page }) : '']
   .filter(Boolean).join(' · ')
@@ -38,6 +38,8 @@ const where = (s: Source, t: T): string => [Array.isArray(s.path) ? s.path.join(
 const link = (s: Source): string => (s.url && /^(https?:\/\/|\/(?!\/))/i.test(s.url) ? s.url : '')
 /** What a tap can show: a passage (or the short quote) or the host's link. A source with neither stays a plain label. */
 const opens = (s: Source): boolean => !!(s.excerpt || s.quote || link(s))
+/** A passage to read: the sheet or the popover. A source with a link and no passage opens the document at once. */
+const shows = (s: Source): boolean => !!(s.excerpt || s.quote)
 const still = (): boolean => !globalThis.matchMedia || globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** The passage as text nodes, the marked ranges in <mark>. Ranges out of order or out of the text are skipped. */
@@ -62,12 +64,18 @@ let closeOpen: (() => void) | null = null
 export function fillSources(box: HTMLElement, items: Source[], t: T): void {
   const host = box.closest<HTMLElement>('.panel') ?? box.parentElement!
   adoptTipCss(host)
-  const can = items.filter(opens)
+  const can = items.filter(shows)
   const chips = new Map<Source, HTMLElement>()
   box.replaceChildren(...items.map((s) => {
     const label = `${s.title}${s.section ? ` › ${s.section}` : ''}`
-    const chip = el(opens(s) ? 'button' : 'span', 'src')
+    const chip = el(shows(s) ? 'button' : opens(s) ? 'a' : 'span', 'src')
     chip.setAttribute('part', 'source')
+    if (chip instanceof HTMLAnchorElement) {   // a link and nothing else to show: the document itself, in one tap
+      chip.innerHTML = icon(DOC, 14)
+      chip.setAttribute('href', link(s)); chip.target = '_blank'; chip.rel = 'noopener noreferrer'
+      chip.addEventListener('click', () => box.dispatchEvent(new CustomEvent('agui:source-open', { bubbles: true, composed: true, detail: { source: s } })))
+      attachTip(chip, host, () => [{ label: t('openDoc') }])
+    }
     if (chip instanceof HTMLButtonElement) {   // only a link that opens something looks like one: the fill and the glyph
       chip.innerHTML = icon(DOC, 14)
       chip.type = 'button'
@@ -77,6 +85,7 @@ export function fillSources(box: HTMLElement, items: Source[], t: T): void {
       attachTip(chip, host, () => (chip.getAttribute('aria-expanded') === 'true' ? [] : [{ label: t('showSource') }]))
     }
     chip.append(el('b', '', label))
+    if (chip instanceof HTMLAnchorElement) chip.insertAdjacentHTML('beforeend', icon(OUT, 12))   // it leaves the chat
     chips.set(s, chip)
     return chip
   }))

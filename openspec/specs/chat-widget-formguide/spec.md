@@ -123,11 +123,15 @@ Sources under an answer SHALL be one row of links (a document glyph, the title a
 - **THEN** a sheet rises with the title, the section, the passage with that sentence marked and "Open document", and the conversation does not move
 
 ### Requirement: A source's sheet closes easily and names itself
-The sheet SHALL close on its close button, a swipe down, a tap on the veil or Esc; the popover on Esc, a click outside or its link again; the focus SHALL return to the link. A source with no excerpt, quote or valid url SHALL be a plain label. With a mouse the link SHALL show a hand cursor, a hover fill and the tooltip "Show source". Each source shown SHALL fire `agui:source-open` with `{source}`.
+The sheet SHALL close on its close button, a swipe down, a tap on the veil or Esc; the popover on Esc, a click outside or its link again; the focus SHALL return to the link. A source with a valid url and no excerpt or quote SHALL be a link that opens the document at once; one with none of the three SHALL be a plain label. With a mouse the link SHALL show a hand cursor, a hover fill and the tooltip "Show source". Each source shown SHALL fire `agui:source-open` with `{source}`.
 
 #### Scenario: A source with nothing to show
 - **WHEN** a source has only a title
 - **THEN** it is drawn as a label, not a button
+
+#### Scenario: A source with only a link
+- **WHEN** a source has a url and no excerpt or quote
+- **THEN** one tap opens the document in a new tab, with no sheet in between
 
 ### Requirement: A typed value the form refuses is put back
 When the form's new config flags an error on the field a typed answer filled, the widget SHALL put the previous value back, resume with `{answer: {text}, rejected: {<field>: <the form's error text>}}` and no config, and shrink the card to a not-accepted line (a cross, the typed text and the form's words, no Undo), never the answered line.

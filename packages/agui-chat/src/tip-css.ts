@@ -36,9 +36,9 @@ export const TIP_CSS = `.tip { position: absolute; z-index: 9; max-width: 260px;
   background: none; color: var(--agui-ink-2); font: 13px var(--agui-font); }
 .src svg { flex: none; }
 .src b { font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-button.src { padding: 0 12px 0 10px; border-radius: var(--agui-radius-pill); background: var(--agui-source-bg, var(--agui-soft)); cursor: pointer; transition: background .15s; }
-button.src b { font-weight: 500; color: var(--agui-ink); }
-button.src:hover { background: var(--agui-line-2); }
+:is(button, a).src { padding: 0 12px 0 10px; text-decoration: none; border-radius: var(--agui-radius-pill); background: var(--agui-source-bg, var(--agui-soft)); cursor: pointer; transition: background .15s; }
+:is(button, a).src b { font-weight: 500; color: var(--agui-ink); }
+:is(button, a).src:hover { background: var(--agui-line-2); }
 .src.on { color: var(--agui-link); }
 .src.on, .src.on:hover { background: color-mix(in srgb, var(--agui-link) 14%, var(--agui-soft)); }
 /* what a tap opens: a sheet from the bottom of the chat on a phone, a popover over the link with a mouse */
@@ -89,7 +89,7 @@ button.src:hover { background: var(--agui-line-2); }
   .srcs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
   .srcs::-webkit-scrollbar { display: none; }
   .src:last-child { margin-right: 28px; }
-  button.src::after { content: ''; position: absolute; inset: -6px 0; }
+  :is(button, a).src::after { content: ''; position: absolute; inset: -6px 0; }
   .src-go { width: 44px; height: 44px; } .src-pager { margin-left: -20px; }
 }
 @media (prefers-reduced-motion: reduce) { .src-veil, .src-view { animation: none; transition: none; } }`
