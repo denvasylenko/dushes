@@ -1,0 +1,18 @@
+name: voice_fill_car_no_guess
+tags: [voice, fill, en]
+persona: "A person speaking to the assistant in voice mode. An option the words name, and a guess beside it."
+goal: "The loan type the person named is filled; the purpose they did not name is asked, not guessed."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Says: So what is left, this is for my car."
+turns: 1
+# From the owner's second voice session (2026-11-15). There the assistant proposed both "Car loan" and "New car" on
+# one card; the person had said neither new nor used.
+scripted:
+  - "So what is left, this is for my car."
+expect:
+  quiet_cards: true
+  fields: {loan_type: "auto", loan_purpose: null}
+  never_fills_on: {"for my car": ["Loan purpose"]}
+  asks_on: {"for my car": ["new", "used"]}
+min_score: 7

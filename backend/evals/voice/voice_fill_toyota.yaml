@@ -11,6 +11,6 @@ turns: 1
 scripted:
   - "it's a twenty nineteen Toyota Corolla for personal use"
 expect:
-  never_cards: ["set_fields"]
+  quiet_cards: true
   fields: {make: "toyota", usage: "personal"}
 min_score: 7

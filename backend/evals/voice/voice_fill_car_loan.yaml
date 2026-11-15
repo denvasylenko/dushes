@@ -11,6 +11,6 @@ turns: 1
 scripted:
   - "I need a car loan, my first name is Anna"
 expect:
-  never_cards: ["set_fields"]
+  quiet_cards: true
   fields: {loan_type: "auto", first_name: "Anna"}
 min_score: 7

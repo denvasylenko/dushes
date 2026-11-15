@@ -5,22 +5,22 @@ how long do they wait for a sound and for a useful sentence, what does a task co
 the assistant. The agent behind the voice is the same Dushes agent as in chat (design B of
 `openspec/changes/voice-mode/design.md`), so every existing rule keeps its meaning and its check.
 
-Status: prepared, not run live. The set (`voice-v1.txt`, 48 scenarios), the clip recorder and the runner exist and a
+Status: prepared, not run live. The set (`voice-v1.txt`, 50 scenarios), the clip recorder and the runner exist and a
 mock run passes end to end; the live run waits for `formguide.voice`'s server-to-server transport and for the owner's
 yes with a price (every paid voice test needs it; the CPO relays it). The speaker is a set of recorded clips, never
 a second model: the API pays for the voice session and the agent, nothing else.
 
 ```bash
 cd backend
-uv run python scripts/voice_clips.py            # record the 64 clips with the Mac's voices (free; scripts/runs/voice-clips/)
+uv run python scripts/voice_clips.py            # record the 66 clips with the Mac's voices (free; scripts/runs/voice-clips/)
 uv run python scripts/voice_bench.py --mock     # the scripted voice over an offline demo: the plumbing, free
 uv run python scripts/voice_bench.py --live --max-usd 1.40 --set evals/voice/voice-v1-en.txt   # not yet: the bridge, and the owner's yes
 ```
 
-**English first** (the owner, 2026-11-15): the live passes run on the 30 English scenarios, `voice-v1-en.txt`
-(42 spoken lines, 107 s of speech; 8 were added so that the small groups give a share: order 3, yes after an offer 4,
+**English first** (the owner, 2026-11-15): the live passes run on the 32 English scenarios, `voice-v1-en.txt`
+(44 spoken lines, 112 s of speech; 8 were added so that the small groups give a share: order 3, yes after an offer 4,
 correction 4, interruption 4). The Russian and Ukrainian scenarios and clips stay recorded and are not run now.
-Estimate for the English set: 42 lines of 20 to 25 s, 14 to 17.5 billed minutes, $0.70 to $0.88 a pass at $0.05 a
+Estimate for the English set: 44 lines of 20 to 25 s, 14.7 to 18.3 billed minutes, $0.73 to $0.92 a pass at $0.05 a
 minute. The 15 seconds billed when a session opens are a minimum credited against the session's own duration, not a
 charge on top (the Owner's two live sessions: 65.6 s reported as 65 s, 40.5 s as 39 s). Whether a session that fails
 to start is charged them is not stated: the runner counts it as charged and reports the failed starts.
@@ -30,8 +30,8 @@ owner's new yes with a price. One session a scenario: a shared session would hea
 still in mind, and costs the same. An estimate from the price list, not a measurement.
 
 A mock run's task results mean nothing (a one-line model answers); it proves the clips, the scenarios, the checks and
-the report. Its billed time, 12.0 minutes for the whole set and 7.5 for the English one, is the
-floor of a live pass: about $0.60 and $0.38 at $0.05 a minute, before the assistant's real speaking time.
+the report. Its billed time, 12.5 minutes for the whole set and 8.0 for the English one, is the
+floor of a live pass: about $0.63 and $0.40 at $0.05 a minute, before the assistant's real speaking time.
 
 ## The speaker: recorded clips
 
@@ -47,7 +47,7 @@ language, voice, rate and length.
 - A synthetic voice is cleaner than a person in a room. Results with it are an upper bound; the report says so. A
   small set of clips with added street noise is a later pass, not the first.
 
-## Scenarios (voice-v1, 48)
+## Scenarios (voice-v1, 50)
 
 Each scenario is a chat scenario's twin: a start (site, page, form), the clips in order, what to do with a card, and
 the same `expect` keys as `evals/*.yaml`. Groups:
@@ -57,7 +57,7 @@ the same `expect` keys as `evals/*.yaml`. Groups:
 | answer, do not open | 10 | a question (how, how much, can I, what do I need), from indirect-v1 | spoken answer with the fact, no page change, an offer |
 | open on a direct order | 5 | "open the car insurance application" | the form opens at once |
 | yes after an offer | 6 | a question, then "yes, open it" | the yes opens |
-| fill by voice | 8 | a name, an age, a date said in words, a phone number, an amount, a choice | the field holds the value, no card for a value the person said, a line with Undo |
+| fill by voice | 10 | a name, an age, a date said in words, a phone number, an amount, a choice, a bare number for an option with a unit ("36" for "36 months"), a choice with a detail nobody said | the field holds the value; every field-change card carries `quiet: true` (`quiet_cards`: applied with no tap); a detail the person did not say is asked, not guessed |
 | hard to hear | 5 | an email spelled out, a VIN, a surname, a postcode, a mixed-language sentence | three outcomes, counted apart: the exact value filled (pass); asked to repeat and the field left empty (acceptable); a wrong value filled (fail) |
 | confirmation needs a card | 4 | "I accept the terms", "submit it", a value from a document, replacing a typed value | a card is shown; a consent is ticked only by a tap |
 | correction | 5 | "no, I said the fifteenth, not the fiftieth" | the field holds the corrected value |
@@ -107,7 +107,7 @@ ticked by voice (must be none); interruptions that stopped the turn; dollars per
 
 ## Spend (estimate, not a measurement)
 
-At $0.05 a connected minute, a session billed for at least 15 seconds: a line of 20 to 25 seconds, so the 64
+At $0.05 a connected minute, a session billed for at least 15 seconds: a line of 20 to 25 seconds, so the 66
 lines of the whole set are 21 to 27 minutes, $1.07 to $1.33 for the voice, and about $0.10 for the agent; the
-English set $0.70 to $0.88. With a real-time voice model billed by tokens instead, the same
+English set $0.73 to $0.92. With a real-time voice model billed by tokens instead, the same
 set is priced from its first ten scenarios before the rest runs. Every run has a stop sum and goes into QA's ledger.

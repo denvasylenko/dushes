@@ -14,9 +14,9 @@ SET = vb.SCENARIOS / "voice-v1.txt"
 
 def test_the_set_loads_and_covers_the_groups_and_three_languages():
     scs = [evals.load_scenario(vb.SCENARIOS / f"{n}.yaml") for n in SET.read_text().split()]
-    assert len(scs) == 48 and all(s.tags[0] == "voice" and s.scripted for s in scs)
+    assert len(scs) == 50 and all(s.tags[0] == "voice" and s.scripted for s in scs)
     groups = {g: sum(s.tags[1] == g for s in scs) for g in ("answer", "order", "offer_yes", "fill", "hard", "card", "fix", "interruption")}
-    assert groups == {"answer": 10, "order": 5, "offer_yes": 6, "fill": 8, "hard": 5, "card": 4, "fix": 5, "interruption": 5}
+    assert groups == {"answer": 10, "order": 5, "offer_yes": 6, "fill": 10, "hard": 5, "card": 4, "fix": 5, "interruption": 5}
     langs = {lang: sum(s.tags[2] == lang for s in scs) for lang in vc.LANGS}
     assert langs["en"] >= 20 and langs["ru"] >= 8 and langs["uk"] >= 6
     assert all(len(s.scripted) == 2 for s in scs if s.tags[1] == "interruption")     # the second clip is the cut-in
@@ -90,7 +90,7 @@ def test_a_clip_goes_in_as_a_microphone_would_send_it(tmp_path):
 def test_the_english_set_is_the_english_scenarios_of_the_whole_set():
     en = (vb.SCENARIOS / "voice-v1-en.txt").read_text().split()
     scs = [evals.load_scenario(vb.SCENARIOS / f"{n}.yaml") for n in en]
-    assert len(en) == 30 and all(s.tags[2] == "en" for s in scs) and set(en) <= set(SET.read_text().split())
+    assert len(en) == 32 and all(s.tags[2] == "en" for s in scs) and set(en) <= set(SET.read_text().split())
     assert {s.tags[1] for s in scs} == {"answer", "order", "offer_yes", "fill", "hard", "card", "fix", "interruption"}   # every group is still there
     from collections import Counter
     assert min(Counter(s.tags[1] for s in scs).values()) >= 3   # no group is an anecdote
@@ -105,3 +105,18 @@ def test_a_hard_value_is_exact_or_asked_or_wrong():
     assert vb.hard_outcome(sc, visit("", "Could you say the VIN again?")) == "asked"       # acceptable, counted apart
     assert vb.hard_outcome(sc, visit("WVWZZZ1JZXW000007", "Is that right?")) == "wrong"    # a wrong value in the field is a failure, asked or not
     assert vb.hard_outcome(sc, visit("", "Done.")) == "wrong"                              # nothing filled and nothing asked
+
+
+def test_a_card_that_asks_for_a_tap_fails_a_voice_fill_and_a_quiet_one_passes():
+    from types import SimpleNamespace as NS
+    sc = evals.load_scenario(vb.SCENARIOS / "voice_fill_term_bare_number.yaml")
+
+    class Empty(NS):
+        def __getattr__(self, name):
+            return []
+
+    def run(card):
+        got = {c["check"]: c["ok"] for c in evals.checks(sc, Empty(log=[], forms={}, form=None, cards=[card]))}
+        return got["no field-change card without quiet"]
+    row = {"type": "set_fields", "changes": [{"label": "Loan term", "display": "36 months"}]}
+    assert run(row) is False and run({**row, "quiet": True}) is True

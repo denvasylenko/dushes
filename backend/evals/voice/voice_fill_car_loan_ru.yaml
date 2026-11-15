@@ -11,6 +11,6 @@ turns: 1
 scripted:
   - "\u043c\u043d\u0435 \u043d\u0443\u0436\u0435\u043d \u043a\u0440\u0435\u0434\u0438\u0442 \u043d\u0430 \u043c\u0430\u0448\u0438\u043d\u0443"
 expect:
-  never_cards: ["set_fields"]
+  quiet_cards: true
   fields: {loan_type: "auto"}
 min_score: 7

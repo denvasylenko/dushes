@@ -28,3 +28,5 @@ voice_cut_in_fill
 voice_cut_in_stop
 voice_fix_loan_type
 voice_fix_name
+voice_fill_term_bare_number
+voice_fill_car_no_guess

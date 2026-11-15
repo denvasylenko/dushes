@@ -11,6 +11,6 @@ turns: 1
 scripted:
   - "a haircut with Maria please"
 expect:
-  never_cards: ["set_fields"]
+  quiet_cards: true
   fields: {service: "haircut", barber: "maria"}
 min_score: 7

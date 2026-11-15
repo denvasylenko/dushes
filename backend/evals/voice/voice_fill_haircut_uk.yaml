@@ -11,6 +11,6 @@ turns: 1
 scripted:
   - "\u0445\u043e\u0447\u0443 \u0441\u0442\u0440\u0438\u0436\u043a\u0443 \u0443 \u041c\u0430\u0440\u0456\u0457"
 expect:
-  never_cards: ["set_fields"]
+  quiet_cards: true
   fields: {service: "haircut", barber: "maria"}
 min_score: 7

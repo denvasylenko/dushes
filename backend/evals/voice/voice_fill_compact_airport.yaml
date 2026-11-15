@@ -11,6 +11,6 @@ turns: 1
 scripted:
   - "a compact car, picked up at the airport"
 expect:
-  never_cards: ["set_fields"]
+  quiet_cards: true
   fields: {car_class: "compact", pickup_location: "airport"}
 min_score: 7
