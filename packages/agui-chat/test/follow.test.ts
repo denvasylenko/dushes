@@ -86,6 +86,32 @@ describe('cards after a reload', () => {
     expect(seen).toEqual([expect.objectContaining({ type: 'CUSTOM', name: 'card', value: route })])
     expect((el as unknown as { _messages: { role: string }[] })._messages.map((m) => m.role)).toEqual(['user', 'assistant'])
   })
+
+  it('an answer keeps its source links after a reload: after its text, before the next message, and they open', async () => {
+    const el = document.createElement('agui-chat') as AguiChatElement
+    el.options = { mode: 'inline', typing: 'plain', lang: 'en', persistThread: false }
+    const items = [{ id: 's1', title: 'Tariffs 2026', section: 'Early repayment', excerpt: 'It is free after 3 months.', marks: [[0, 26]], url: '/docs/tariffs/#:~:text=Early' },
+      { title: 'FAQ', url: 'https://bank.example/faq' }]
+    // the thread as the server returns it (format=agui): the sources right after the answer they belong to
+    const host: Plugin = { name: 'h', restore: async () => ({ messages: [
+      { id: 'u1', role: 'user', content: 'Can I repay early?' }, { id: 'a1', role: 'assistant', content: 'Yes, free after 3 months.' },
+      { id: 's-a1', role: 'activity', activityType: 'sources', activity: { items } },
+      { id: 'u2', role: 'user', content: 'Thanks' }, { id: 'a2', role: 'assistant', content: 'You are welcome.' }] }) }
+    el.use(host)                                                                   // its restore is the one used
+    el.use(formguide({ getState: () => ({ config: { state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({ state: {} }) }))
+    document.body.appendChild(el)
+    const root = el.shadowRoot!
+    for (let i = 0; i < 200 && !root.querySelector('.srcs .src'); i++) await tick(10)   // the links come with the on-demand file
+    const order = [...root.querySelector('.log')!.children].map((c) => (c.classList.contains('srcs') ? 'sources' : c.classList.contains('me') ? 'user' : 'assistant'))
+    expect(order).toEqual(['user', 'assistant', 'sources', 'user', 'assistant'])
+    const [first, second] = [...root.querySelectorAll<HTMLElement>('.srcs .src')]
+    expect(first.textContent).toBe('Tariffs 2026 › Early repayment')
+    expect(second.tagName).toBe('A')                                               // a link and no passage: the document in one tap
+    first.click()
+    expect(root.querySelector('.src-view mark')!.textContent).toBe('It is free after 3 months.')
+    expect(root.querySelector('.src-view a')!.getAttribute('href')).toBe('/docs/tariffs/#:~:text=Early')
+    expect((el as unknown as { _messages: { role: string }[] })._messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant'])   // never sent back
+  })
 })
 
 describe('follow after a reload', () => {
