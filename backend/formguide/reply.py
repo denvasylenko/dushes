@@ -20,7 +20,8 @@ def _one(raw: Any) -> dict[str, Any] | None:
         return None
     mid = str(raw.get("message_id") or "").strip()[:100]
     note = re.sub(r"\s+", " ", str(raw.get("note") or "")).strip()[:NOTE_MAX]
-    extra = {**({"message_id": mid} if mid else {}), **({"note": note} if note else {})}
+    extra = {**({"message_id": mid} if mid else {}), **({"note": note} if note else {}),
+             **({"role": "user"} if raw.get("role") == "user" else {})}   # a quote of the user's own message
     if raw.get("whole") is True:   # a reply to the whole answer: the server finds its text by message_id
         return {"whole": True, **extra}
     quote = re.sub(r"\s+", " ", str(raw.get("quote") or "")).strip()
@@ -55,8 +56,11 @@ def resolve(reply_to: list[dict[str, Any]] | None, entries: list[dict[str, Any]]
     for r in reply_to:
         if r.get("whole"):
             mid = r.get("message_id")
-            e = next((x for x in reversed(entries)
-                      if x["kind"] == "assistant" and mid and x.get("message_id") == mid), None)
+            if r.get("role") == "user":   # the user's own message: by the transcript's entry id
+                e = next((x for x in reversed(entries) if x["kind"] == "user" and mid and x.get("id") == mid), None)
+            else:
+                e = next((x for x in reversed(entries)
+                          if x["kind"] == "assistant" and mid and x.get("message_id") == mid), None)
             text = re.sub(r"\s+", " ", str((e or {}).get("text") or "")).strip()
             r = {**r, **({"text": text[:600]} if text else {})}
         out.append(r)
@@ -70,9 +74,14 @@ def quoted(message: str | None, reply_to: list[dict[str, Any]] | None) -> str | 
         return message
     lines = []
     for r in reply_to:
+        own = r.get("role") == "user"
         if r.get("whole"):
-            said = f": \u00ab{r['text']}\u00bb" if r.get("text") else " (your previous answer)"
-            line = f"[The user replies to your whole earlier answer{said}]"
+            said = f": \u00ab{r['text']}\u00bb" if r.get("text") else (
+                " (an earlier message of theirs)" if own else " (your previous answer)")
+            line = (f"[The user refers to their own earlier message{said}]" if own
+                    else f"[The user replies to your whole earlier answer{said}]")
+        elif own:
+            line = f"[The user refers to this part of their own earlier message: \u00ab{r['quote']}\u00bb]"
         else:
             line = f"[The user replies to this part of your earlier answer: \u00ab{r['quote']}\u00bb]"
         if r.get("note"):

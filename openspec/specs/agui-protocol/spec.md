@@ -133,3 +133,10 @@ The user's transcript entry SHALL keep the plain message text and the `reply_to`
 #### Scenario: A reload
 - **WHEN** the page reloads after a reply to two quotes
 - **THEN** the restored user message is `{role: user, content, reply_to: [{message_id, quote, note?}, {message_id, quote}]}`
+
+### Requirement: A quote of the user's own message
+A `reply_to` item MAY carry `role: "user"`: the quote comes from the user's own earlier message. The agent SHALL then read "[The user refers to this part of their own earlier message: «…»]" (for `whole`, the message's text found among the user's entries), never that it was part of its own answer; any other `role` value SHALL be dropped.
+
+#### Scenario: Was my guess right
+- **WHEN** the user quotes "around 5%" from their own message and asks "Was this right?"
+- **THEN** the agent treats it as the user's guess and answers with the form's rate, without owning the 5%

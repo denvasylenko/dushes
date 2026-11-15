@@ -89,3 +89,15 @@ def test_restore_keeps_the_live_message_id(guide, model):
     ev = asyncio.run(go())
     live = next(e["messageId"] for e in ev if e["type"] == "TEXT_MESSAGE_START")
     assert site.thread("rq3")["messages"][-1]["id"] == live                   # a quote from before a reload still points at it
+
+
+def test_a_quote_of_the_users_own_message():
+    rt = clean([{"message_id": "u1", "quote": "a 500 000 loan", "role": "user"}, {"quote": "21.9%", "role": "x"}])
+    assert rt == [{"quote": "a 500 000 loan", "message_id": "u1", "role": "user"}, {"quote": "21.9%"}]
+    lines = quoted("make it 300 000", rt).split("\n")
+    assert lines[0] == "[The user refers to this part of their own earlier message: \u00aba 500 000 loan\u00bb]"
+    assert lines[1].startswith("[The user replies to this part of your earlier answer")
+    entries = [{"kind": "user", "id": "u1", "text": "I want a 500 000 loan"}]
+    whole = quoted("change it", resolve([{"whole": True, "message_id": "u1", "role": "user"}], entries))
+    assert whole.startswith("[The user refers to their own earlier message: \u00abI want a 500 000 loan\u00bb]")
+    assert "(an earlier message of theirs)" in quoted("x", resolve([{"whole": True, "message_id": "gone", "role": "user"}], entries))
