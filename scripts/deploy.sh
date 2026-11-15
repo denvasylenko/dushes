@@ -47,6 +47,7 @@ step "site build" bash -c "cd site && npm run -s build"
 step "site links" python3 scripts/check_links.py site/dist
 step "site exports" python3 scripts/check_exports.py site/dist
 step "site contrast" python3 scripts/check_contrast.py
+step "widget reference" python3 scripts/check_ts_reference.py   # every public widget type field has a reference row, as in CI
 
 dirty="$(git status --porcelain)"
 [ -z "$dirty" ] || { echo "refuse: the worktree changed during build/tests:"; echo "$dirty"; exit 1; } >&2
