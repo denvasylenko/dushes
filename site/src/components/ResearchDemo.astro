@@ -23,8 +23,6 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
 const FIRST = 4   // questions shown at once; the rest are one tap away
 const of = (id: string) => d.questions.filter((q) => q.set === id)
 // the chat does not draw Markdown tables yet: an answer with one is not offered (counted on the page, never edited)
-const hasTable = (t: string) => /^\s*\|?\s*:?-{3,}/m.test(t)
-const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).filter((a) => hasTable(a.text)).length, 0)
 ---
 {ready ? (
   <div class="rd ui-tile ui-tile--lg not-content" data-rd data-recorded={longDate(d.recorded!.slice(0, 10))}>
@@ -72,7 +70,6 @@ const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).fil
         </div>
       ))}
     </div>
-    {withTables > 0 && <p class="rd-note">{withTables} recorded answer{withTables === 1 ? ' has' : 's have'} a table, which the chat does not draw yet; {withTables === 1 ? 'it is' : 'they are'} not offered here.</p>}
   </div>
 ) : (
   <div class="rd ui-tile ui-tile--lg not-content">
@@ -99,7 +96,6 @@ const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).fil
   interface DocSet { id: string; name: string; documents: { id: string; title: string }[] }
   const nid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`
   const NOT_RECORDED = 'This question has no recorded answer. Pick one from the list.'
-  const hasTable = (t: string) => /^\s*\|?\s*:?-{3,}/m.test(t)
 
   for (const root of document.querySelectorAll<HTMLElement>('[data-rd]')) {
     const data = JSON.parse(root.querySelector('[data-rd-data]')!.textContent!) as { models: Record<string, string>; sets: DocSet[]; questions: Question[] }
@@ -107,7 +103,7 @@ const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).fil
     let set = data.sets[0].id
     let model = Object.keys(data.models).find((m) => data.questions.some((q) => q.answers[m]))!
     const docsOf = () => data.sets.find((s) => s.id === set)!.documents
-    const playable = (q: Question | undefined, m = model) => { const a = q?.answers[m]; return a && !hasTable(a.text) ? a : undefined }
+    const playable = (q: Question | undefined, m = model) => { const a = q?.answers[m]; return a }
     const answerOf = (text: string) => playable(data.questions.find((q) => q.set === set && q.question === text.trim()))
     let lastQ: string | null = null   // the question on screen: replayed when the model changes, so two models can be compared
 
@@ -221,8 +217,7 @@ const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).fil
   .rd-rec { margin: 0; display: flex; align-items: flex-start; gap: 8px; font-size: var(--fg-fs-footnote); line-height: 1.5; color: var(--fg-ink-2); font-variant-numeric: tabular-nums; }
   .rd-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
   .rd-cap { margin: 0 0 8px; font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); }
-  .rd-about, .rd-all, .rd-none, .rd-note { margin: 0 0 8px; font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
-  .rd-note { margin: 0; }
+  .rd-about, .rd-all, .rd-none { margin: 0 0 8px; font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
   .rd-verdict[hidden] { display: none; }
   .rd-v { margin: 0 0 4px; font: 600 var(--fg-fs-callout)/1.4 var(--sl-font); color: var(--fg-ink); }
   .rd-verdict[data-passed='true'] .rd-v { color: var(--fg-ok); }
