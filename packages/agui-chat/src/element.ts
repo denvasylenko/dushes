@@ -500,6 +500,18 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     const mid = uid()
     this._userBubble(text, this._sending.map((f) => f.filename), this._sending.map((f) => this._previews.get(f.id)), replies, mid)
     this.$.log.querySelector(':scope > .msg.me:last-of-type')?.classList.add('new')   // just sent: it arrives with a movement (a restored one is simply there)
+    // and the conversation glides up to make room in the time the message takes to arrive (.32 s, easing out): it does
+    // not jump. The end is read on every frame, so whatever arrives meanwhile is followed too.
+    const l = this.$.log, from = l.scrollTop, t0 = performance.now()
+    if (l.scrollHeight - from > l.clientHeight + 1 && !reducedMotion()) {
+      this._jumping = true
+      const step = (t: number): void => {
+        const k = Math.min(1, (t - t0) / 320)
+        l.scrollTop = from + (l.scrollHeight - l.clientHeight - from) * (1 - (1 - k) ** 3)
+        if (k < 1) requestAnimationFrame(step); else this._jumping = false
+      }
+      requestAnimationFrame(step)
+    }
     // the replies are on the quotes: the message still carries a short text so the turn has one
     this._messages.push({ id: mid, role: 'user', content: text || this.t('quotedReply') })
     const sent = replies.map((r) => ({ message_id: r.message_id, ...(r.whole ? { whole: true } : { quote: r.quote }), ...(r.note ? { note: r.note } : {}), ...(r.role ? { role: r.role } : {}) }))
@@ -684,7 +696,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       if (img instanceof HTMLImageElement && !img.closest('a, button') && img.src) this._zoom(img)
     })
     // shown again after its container was hidden or taken off the page (the browser resets the scroll): where it was
-    if (typeof ResizeObserver === 'function') new ResizeObserver(() => { log.scrollTop = this._stick ? log.scrollHeight : this._top }).observe(log)
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (!this._jumping) log.scrollTop = this._stick ? log.scrollHeight : this._top }).observe(log)
     log.addEventListener('scroll', () => {
       if (!log.clientHeight) return   // hidden: that reset is not the reader's scroll
       this._top = log.scrollTop
@@ -1061,7 +1073,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     const log = this.$.log
     if (force) this._stick = true
     if (!this._stick) return
-    requestAnimationFrame(() => { if (this._stick) log.scrollTop = log.scrollHeight })   // unless someone went up since
+    requestAnimationFrame(() => { if (this._stick && !this._jumping) log.scrollTop = log.scrollHeight })   // unless someone went up since (or the view is gliding there)
   }
 
   /** True while the log is at (or near) its end: new messages scroll it; false once the user scrolled up. */

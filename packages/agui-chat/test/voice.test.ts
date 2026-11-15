@@ -126,7 +126,7 @@ describe('the experimental voice mode', () => {
   })
 
   it('a conversation: what is heard is sent as a message, the orb thinks, speaks and listens; silent mode; leaving', async () => {
-    const s = server(), audio = fakeAudio(), a = agent()
+    const s = server(), audio = fakeAudio(), a = agent(250)   // long enough for the checks made while the turn runs
     const el = await talking(s, a)
     const session = s.calls.find((c) => c.path === '/voice/session')!
     expect(session.body).toEqual({ sdp: 'offer-sdp', thread_id: 'voice-1' })    // the chat's own thread
@@ -152,7 +152,7 @@ describe('the experimental voice mode', () => {
     s.push({ type: 'spoken', delta: 'Checking now' })                          // the voice's own filler: a status under the orb, not a message
     await tick(10)
     expect($(el, '.vo-step').textContent).toBe('Checking now')
-    await tick(80)
+    await tick(400)
     expect(a.said).toEqual(['One and a half million for four years'])
     s.push({ type: 'result', text: 'Done.' }); s.push({ type: 'spoken', delta: 'Done' })
     await tick(10)

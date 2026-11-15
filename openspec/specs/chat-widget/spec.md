@@ -650,6 +650,13 @@ A message the person has just sent SHALL arrive in the conversation with one mov
 - **WHEN** the chat draws an earlier conversation
 - **THEN** its messages are shown without that movement
 
+### Requirement: The conversation makes room without a jump
+When the person sends a message in a conversation longer than its window, the conversation SHALL glide up to its new end in about 0.3 s, easing out, in step with the message arriving, and SHALL NOT move there in one step. With reduced motion it SHALL be at its end at once. In voice mode, where a short conversation sits low, the lines above a new one SHALL glide to their new place the same way.
+
+#### Scenario: A message is sent in a long conversation
+- **WHEN** the person sends a message and the conversation has to move up by 96 px
+- **THEN** the messages above move there over about 0.3 s, never in a single frame
+
 ### Requirement: Greeting and unread mark
 With `greeting`, a small speech bubble SHALL appear next to the closed launcher after `greetingDelay` seconds (default 4), open the chat when tapped, and not come back once closed. An answer arriving while the bubble is closed SHALL put a dot on the launcher until it is opened.
 

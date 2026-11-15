@@ -143,6 +143,19 @@ export function voice(chat: Chat): void {
   // a turn runs while the element says `busy` (it ends that on a finished, a stopped and a failed turn alike)
   new MutationObserver(() => { const was = busy; busy = chat.hasAttribute('busy'); caption = ''; if (busy && !was) audio.muted = false;   // a new turn (spoken, typed or a card's answer) is heard again: a stop silences one answer, not the voice
     if (!busy) step.textContent = ''; paint(); if (!busy) setTimeout(typing, 0) }).observe(chat, { attributes: true, attributeFilter: ['busy'] })
+  // a short conversation sits low by the orb, so whatever arrives pushes the lines above it up: they glide to their new
+  // place in the time the new one takes to arrive (a long conversation scrolls instead, and the chat glides that itself)
+  new MutationObserver((recs) => {
+    const log = $('.log')
+    if (!on || log.scrollHeight > log.clientHeight + 1 || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    for (const r of recs) for (const n of r.addedNodes) {
+      const e = n as HTMLElement
+      if (e.nodeType !== 1 || !e.animate || e.nextElementSibling) continue
+      const by = e.offsetHeight + (parseFloat(getComputedStyle(e).marginBottom) || 0)
+      if (!by) continue
+      for (let p = e.previousElementSibling as HTMLElement | null; p; p = p.previousElementSibling as HTMLElement | null) p.animate?.([{ transform: `translateY(${by}px)` }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.3,.7,.25,1)' })
+    }
+  }).observe($('.log'), { childList: true })
   // the orb always does something: it stops the answer being thought or spoken; otherwise it is the microphone
   orb.addEventListener('click', () => {
     if (busy) { chat.stop(); audio.muted = true; paint(); return }
