@@ -512,8 +512,7 @@ button.bubble-q { cursor: pointer; }
 .att-ext { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--agui-ink-2); }
 .att-x { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border: 0; border-radius: 50%; padding: 0; display: grid; place-items: center;
   background: color-mix(in srgb, var(--agui-ink) 72%, transparent); color: var(--agui-bg); font-size: 14px; line-height: 1; cursor: pointer; }
-.att-x::before { content: ''; position: absolute; inset: -10px; }   /* a finger-sized target */
-@media (pointer: coarse) { .att-x::before { inset: -12px; } }   /* 44 px on touch */
+.att-x::before { content: ''; position: absolute; inset: -4px -4px -6px -6px; }   /* the tile's top right corner (30 px); the middle and the rest of the picture open it */
 /* with a mouse the x shows on hover or keyboard focus, as in the Claude app; a phone has no hover, so there it stays */
 @media (hover: hover) and (pointer: fine) {
   .att-x { opacity: 0; transform: scale(.8); transition: opacity .15s var(--agui-ease), transform .15s var(--agui-ease); }
