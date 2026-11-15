@@ -96,9 +96,12 @@ defineTheme('mine', {
       apply()
     }))
     reset.addEventListener('click', () => {
+      const focused = reset.contains(document.activeElement)   // before apply() hides the button
       Object.assign(t, DEFAULT)
       root.querySelectorAll<HTMLInputElement>('[data-token]').forEach((r) => { r.value = String(t[r.dataset.token as 'radius']); syncRange(r) })
       apply()
+      // the button hides itself now: focus goes to the first control, not to the page
+      if (focused) root.querySelector<HTMLElement>('[data-token]')?.focus()
     })
     apply()
 
