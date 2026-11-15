@@ -1,0 +1,23 @@
+name: loan_city_heard_as_said
+tags: [owner_session, picks_nothing_itself]
+persona: "A person filling in the registered address of a loan application by voice. What they say arrives as the voice model heard it, with fillers."
+goal: "Give the registered address, then take Saint Petersburg for the region and fix the postal code. Say nothing new about the city."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Registered address: region Ukraine, city Luhansk, Sadovaya street, building 41, apartment 7, postal code 92417"
+turns: 2
+# The owner's own voice session (2026-11-15), with the turns before the fault and his second line word for word as it
+# was heard; the address values are invented. There the assistant set the region and the postal code on one card and
+# then, after get_options, proposed the city Saint Petersburg on a second card in the same turn ("For the city, I'll
+# pick Saint Petersburg from the list"). He had said Luhansk and named no other city.
+scripted:
+  - "Uh Yeah, sure. But let's switch to the address. So, Uh, region Ukraine, city Luhansk, street Uh Sadovaya, building forty-one, apartment seven, and post code is nine two four one seven. Uh, registered since Um- n- Uh- since I'm born"
+  - "Okay, pick some Piterburg Uh- and region of some Piterburg. [inhale ]And for my postal code, Uh, add to the end three"
+# The guest answers no card by itself: the region is set only by the second line.
+answers: {reg_region: null}
+expect:
+  answered_by: [form]
+  fields: {reg_region: "spb", reg_zip: "924173", reg_city: null}
+  never_fills_on: {"pick some Piterburg": ["City"]}
+  asks_on: {"pick some Piterburg": ["city"]}
+min_score: 7

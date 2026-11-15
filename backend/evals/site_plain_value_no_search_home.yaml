@@ -1,0 +1,16 @@
+name: site_plain_value_no_search_home
+tags: [owner_session, plain_value]
+persona: "A person on the bank's site who says the values of the loan they want. They ask nothing."
+goal: "Say an amount and a term; the site assistant does not search the documents for them."
+start: {page: /}
+knows:
+  - "Says: One and a half million for four years."
+turns: 1
+# From the owner's own voice session (2026-11-15): on this line the screen showed "Searching the documents". The loan
+# form has no documents on that host, so the search was the site assistant's. An amount and a term are values,
+# not a term, a partner, a condition or a policy to look up.
+scripted:
+  - "One and a half million for four years."
+expect:
+  never_tools: [ask_documents]
+min_score: 7
