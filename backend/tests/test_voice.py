@@ -282,3 +282,63 @@ def test_an_answer_that_will_be_spoken_is_short_and_has_no_chips(guide, model, t
         assert logged[0]["type"] == "started" and logged[0]["person"] == "anna" and logged[0]["thread"] == "spoken-thread"
     finally:
         voice.HOSTS.clear()
+
+
+def test_numbers_as_people_say_them():
+    n = voice.said_numbers
+    assert n("ninety-two eighty five") == ["92", "85"] and n("four four three four") == ["4", "4", "3", "4"]
+    assert n("five hundred thousand rubles") == ["500000"] and n("one hundred and twenty five") == ["125"]
+    assert n("building ninety-three, apartment sixty three") == ["93", "63"]
+    assert n("issued on 2015-06-10") == ["2015", "06", "10"] and n("no numbers here") == []
+
+
+def test_only_what_the_person_said_into_an_empty_field_is_quiet():
+    row = lambda name, value, display=None, **more: {"name": name, "value": value, "display": display or str(value),  # noqa: E731
+                                                     "previous": None, **more}
+    said = "So, it's like, four four three four. And I born in Lugansk, Ukraine"
+    assert voice.quiet({"changes": [row("passport_series", "4434"), row("birth_place", "Lugansk, Ukraine")]}, said)
+    loan = [row("loan_amount", 500000, "500 000"), row("loan_type", {"id": "consumer", "name": "Consumer loan"}, "Consumer loan")]
+    assert voice.quiet({"changes": loan}, "yes so I see consumer loan five hundred thousand rubles")
+    # the owner's session: he said Luhansk and "some Piterburg" for the region; the agent chose the city itself
+    city = [row("reg_city", {"id": "spb", "name": "Saint Petersburg"}, "Saint Petersburg")]
+    assert not voice.quiet({"changes": city}, "okay pick some Piterburg")
+    assert not voice.quiet({"changes": [row("first_name", "Denis") | {"previous": "Den"}]}, "my name is Denis")   # replaces
+    assert not voice.quiet({"changes": [row("agree", True, "Yes", consent=True)]}, "yes")                          # a consent
+    assert not voice.quiet({"changes": [row("birth_date", "1992-07-01", "1 July 1992")]}, "first July ninety-two")  # worked out
+    assert not voice.quiet({"changes": [row("first_name", "Denis")]}, "") and not voice.quiet({"changes": []}, "x")
+    assert not voice.quiet({"type": "ask", "changes": [row("first_name", "Denis")]}, "Denis")
+
+
+def test_a_quiet_card_is_marked_and_not_announced(guide, model):
+    from .test_agent import collect, start
+    from .test_questions import LOAN
+
+    async def open_talk():
+        talks, live, _ = _talks()
+        voice.watch(talks)
+        await talks.start("anna", "o", "quiet-thread")
+        return talks, live
+    talks, live = asyncio.run(open_talk())
+    try:
+        model.script = [say_("", ("p1", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
+        ev = collect(guide, "quiet-thread", message="my first name is Anna", state=start(guide, LOAN))
+        raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+        card = json.loads(raw) if isinstance(raw, str) else raw
+        assert card.get("quiet") is True and card["changes"][0]["name"] == "first_name"
+
+        async def bridge():
+            for e in ev:
+                talks.seen("quiet-thread", e)
+            got = await asyncio.wait_for(talks.events("live_1").__anext__(), 1)
+            await asyncio.sleep(0.01)
+            return got
+        got = asyncio.run(bridge())
+        assert got["type"] == "quiet" and got["card_id"] == card["card_id"]
+        assert not [m for m in live.sent if m["type"] == "session.commentary.append"]   # nothing said about a card
+
+        model.script = [say_("", ("p2", "propose_changes", {"changes": [{"name": "last_name", "value": "Smith"}]}))]
+        ev = collect(guide, "typed-thread-2", message="my last name is Smith", state=start(guide, LOAN))
+        raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+        assert "quiet" not in (json.loads(raw) if isinstance(raw, str) else raw)        # chat is untouched
+    finally:
+        voice.HOSTS.clear()

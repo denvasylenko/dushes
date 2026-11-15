@@ -110,6 +110,16 @@ $('talk').onclick = async () => {
 }
 $('stop').onclick = () => end()
 
+// A value the person said is filled without a tap: the server marks such a card quiet, and this lab page presses
+// the card's own Fill button for them (the widget's voice view will apply it itself, with no card drawn at all).
+function applyQuietly(widget, cardId, tries = 0) {
+  const cards = [...(widget.shadowRoot?.querySelectorAll('[data-card-id]') || [])]
+  const card = cards.find((c) => c.dataset.cardId === cardId) || (cardId ? null : cards.at(-1))
+  const button = card?.querySelector('button.btn.pri:not([disabled])')
+  if (button) { button.click(); line_('Filled', card.querySelector('.card-t, .card-q')?.textContent?.trim() || 'what you said') }
+  else if (tries < 30) setTimeout(() => applyQuietly(widget, cardId, tries + 1), 100)
+}
+
 async function follow(widget) {
   const r = await fetch(`/voice/events?talk=${encodeURIComponent(talk)}`, { headers: { 'X-Voice-Pass': pass } })
   reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ''
@@ -127,6 +137,7 @@ async function follow(widget) {
       if (ev.type === 'heard') { line = null; line_('You', ev.text); widget.send(ev.text) }   // the ordinary run, as if typed
       else if (ev.type === 'spoken') { line = line || line_('Voice', ''); line.textContent += ev.delta }
       else if (ev.type === 'result') { line = null }
+      else if (ev.type === 'quiet') { applyQuietly(widget, ev.card_id) }
       else if (ev.type === 'ended') { return end(WHY[ev.reason] || `Ended. This conversation cost $${ev.cost_usd}.`) }
     }
   }

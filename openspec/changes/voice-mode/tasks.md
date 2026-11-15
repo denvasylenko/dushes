@@ -12,7 +12,9 @@ Nothing here starts before the owner agrees to the estimate in design.md.
 - [x] 2.2 `POST /voice/session`: the call created with the host's key, the SDP answer returned
 - [x] 2.3 The control connection: instructions, the one tool, usage, end of call
 - [x] 2.4 The bridge: `ask_dushes` starts a Dushes turn; its events reach the widget; a short result is spoken
-- [ ] 2.5 Quiet filling: the server marks a field-change card `quiet` by the agreed list; a consent is never quiet
+- [x] 2.5 Quiet filling: the server marks a field-change card `quiet` when every row is a value the person said,
+      goes into an empty field and is not a consent (`formguide.voice.quiet`); the lab page applies it without a tap
+- [x] 2.5c A spoken answer is short and makes no suggestion chips; every conversation is recorded (`log_dir`)
 - [ ] 2.5a An open card answered by spoken words; consent by tap only
 - [ ] 2.5b Silent mode: no spoken output, short text answers, kept for the conversation
 - [ ] 2.6 Interruption stops the turn in progress

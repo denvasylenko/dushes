@@ -474,6 +474,10 @@ class FormGuide:
                 entry = tx.append(thread_id, new_entry("card", changes=ev["value"].get("changes", []), status="pending",
                                                        **src))
                 value = {**ev["value"], "card_id": entry["id"]}
+                if _voice.active(thread_id):   # in a voice conversation, what the person said is filled without a card
+                    said = next((e.get("text", "") for e in reversed(tx.list(thread_id)) if e["kind"] == "user"), "")
+                    if _voice.quiet(value, said):
+                        value["quiet"] = True
                 interrupts.append(value)
                 if mode not in ("legacy", "both"):
                     continue
@@ -916,4 +920,4 @@ def _outcome(v: dict[str, Any]) -> dict[str, Any]:
     if v.get("type") == "confirm":
         return {"id": v["card_id"], "reason": "confirm_action", "message": v["title"], "metadata": meta}
     return {"id": v["card_id"], "reason": "confirm_field_changes", "message": "Confirm the proposed field values",
-            "metadata": {"changes": v["changes"]}}
+            "metadata": {"changes": v["changes"], **({"quiet": True} if v.get("quiet") else {})}}

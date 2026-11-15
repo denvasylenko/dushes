@@ -421,6 +421,14 @@ class Talks:
             self.meter.report(talk_id, agent_usd=float((ev.get("value") or {}).get("cost_usd") or 0))
         elif t in ("RUN_FINISHED", "RUN_ERROR"):
             text = spoken("".join(d for _, d in state["answer"]))
+            for card in ((ev.get("outcome") or {}).get("interrupts") or []):   # structured mode: the card comes here
+                if (card.get("metadata") or {}).get("quiet"):
+                    state["card"] = {"quiet": True, "card_id": card.get("id")}
+            if t == "RUN_FINISHED" and isinstance(state.get("card"), dict) and not text:
+                # a quiet card: the client applies it at once and the agent's next run says what was filled
+                self._emit(state, {"type": "quiet", "card_id": state["card"].get("card_id")})
+                state["answer"], state["card"] = [], False
+                return
             waits = bool(((ev.get("outcome") or {}).get("interrupts"))) or state.get("card")
             if t == "RUN_ERROR":
                 text = "Tell the person that something went wrong and to try again."
@@ -431,7 +439,15 @@ class Talks:
             import asyncio
             asyncio.ensure_future(self._say(talk_id, text))
         elif t == "CUSTOM" and ev.get("name") == "on_interrupt":
-            state["card"] = True
+            value = ev.get("value")
+            if isinstance(value, str):
+                try:
+                    import json
+                    value = json.loads(value)
+                except ValueError:
+                    value = {}
+            quiet_card = isinstance(value, dict) and value.get("quiet")
+            state["card"] = {"quiet": True, "card_id": value.get("card_id")} if quiet_card else True
 
     async def _say(self, talk_id: str, text: str) -> None:
         state = self._live.get(talk_id)
@@ -483,6 +499,101 @@ def heard_as(message: str | None, aloud: bool) -> str | None:
     """The message as the model reads it in a voice conversation: with the note that the answer is spoken. The
     conversation's record keeps the person's words alone."""
     return message + ALOUD if aloud and message else message
+
+
+# ---------------------------------------------------------------- filling quietly: what the person said needs no card
+
+_UNITS = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve thirteen "
+                                     "fourteen fifteen sixteen seventeen eighteen nineteen".split())}
+_UNITS["oh"] = 0
+_TENS = {w: (i + 2) * 10 for i, w in enumerate("twenty thirty forty fifty sixty seventy eighty ninety".split())}
+_SCALES = {"hundred": 100, "thousand": 1000, "million": 1_000_000}
+
+
+def said_numbers(text: str) -> list[str]:
+    """The numbers in what was said, in order, as digit strings: digits as written ("93", "2015-06-10" gives
+    2015, 06, 10) and English number words ("ninety-three" 93, "four four three four" 4, 4, 3, 4, "five hundred
+    thousand" 500000). A word that cannot continue the number before it starts a new one."""
+    out: list[str] = []
+    total = current = 0
+    open_ = False        # a number is being read
+    last = ""            # what the last word was: unit, teen, tens, hundred, scale
+
+    def flush() -> None:
+        nonlocal total, current, open_, last
+        if open_:
+            out.append(str(total + current))
+        total = current = 0
+        open_, last = False, ""
+
+    for word in re.findall(r"[a-z]+|\d+", (text or "").lower()):
+        if word.isdigit():
+            flush()
+            out.append(word)
+        elif word in _UNITS:
+            n = _UNITS[word]
+            fits = open_ and n < 10 and last == "tens"          # "ninety" then "two"
+            fits = fits or (open_ and last in ("hundred", "scale"))   # "five hundred" then "three"
+            if not fits:
+                flush()
+            current += n
+            open_, last = True, "unit" if n < 10 else "teen"
+        elif word in _TENS:
+            if not (open_ and last in ("hundred", "scale")):
+                flush()
+            current += _TENS[word]
+            open_, last = True, "tens"
+        elif word in _SCALES and open_:
+            if word == "hundred":
+                current, last = (current or 1) * 100, "hundred"
+            else:
+                total, current, last = total + (current or 1) * _SCALES[word], 0, "scale"
+        elif word == "and" and open_ and last in ("hundred", "scale"):
+            continue
+        else:
+            flush()
+    flush()
+    return out
+
+
+# words in Latin (with accents) and Cyrillic letters; the ranges are built from code points, the file stays ASCII
+_LETTERS = "[a-z" + chr(0xC0) + "-" + chr(0x24F) + chr(0x400) + "-" + chr(0x4FF) + "]+"
+
+
+def _was_said(row: dict, said: str, numbers: list[str]) -> bool:
+    """Whether the value of this row is in the person's own words: every word of it was said, or its digits are
+    among the numbers they said (alone, or as a run of them: "four four three four" for 4434)."""
+    value = row.get("value")
+    names = [row.get("display"), value.get("name") if isinstance(value, dict) else value]
+    words_said = set(re.findall(_LETTERS, (said or "").lower()))
+    stream = "".join(numbers)
+    for candidate in (str(c) for c in names if c not in (None, "", [], {}) and not isinstance(c, (dict, list, bool))):
+        digits = re.sub(r"\D", "", candidate)
+        words = [w for w in re.findall(_LETTERS, candidate.lower()) if len(w) > 1]
+        if digits and not words:
+            if digits in numbers or (len(digits) > 1 and digits in stream) or digits.lstrip("0") in numbers:
+                return True
+        elif words and not digits and all(w in words_said for w in words):
+            return True
+    return False
+
+
+def quiet(card: dict, said: str | None) -> bool:
+    """Whether a field-change card may be applied without being shown, in a voice conversation: every row is a
+    value the person said, goes into a field that was empty, and is not a consent. Anything else is confirmed on
+    a card: a consent, a value the person did not say, a value that replaces another."""
+    rows = card.get("changes") if isinstance(card, dict) else None
+    if not rows or card.get("type") not in (None, "set_fields") or not (said or "").strip():
+        return False
+    numbers = said_numbers(said or "")
+    for row in rows:
+        if not isinstance(row, dict) or row.get("consent") or row.get("issue"):
+            return False
+        if row.get("previous") not in (None, "", [], {}):
+            return False
+        if not _was_said(row, said or "", numbers):
+            return False
+    return True
 
 
 def seen(thread_id: str, ev: dict) -> None:
