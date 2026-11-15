@@ -1,0 +1,17 @@
+name: indirect_oui_visa_fr
+tags: [indirect, navigation, fr]
+persona: "Une voyageuse qui se d\u00e9cide. After the answer and the offer they say yes."
+goal: "Get the answer first; then, having agreed, get the form opened."
+start: {site: lab, page: /}
+knows:
+  - "First asks: Qu'est-ce qu'il faut pour un visa de court s\u00e9jour pour le Norland ?"
+  - "Then agrees: Oui, ouvrez le formulaire s'il vous pla\u00eet"
+turns: 2
+# The question opens nothing; the person's yes to the offer does.
+scripted:
+  - "Qu'est-ce qu'il faut pour un visa de court s\u00e9jour pour le Norland ?"
+  - "Oui, ouvrez le formulaire s'il vous pla\u00eet"
+expect:
+  stays_put_on: ["Qu'est\\-ce\\ qu'il\\ faut\\ pou"]
+  reaches: /lab/norland-visa
+min_score: 7

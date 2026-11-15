@@ -1,0 +1,17 @@
+name: indirect_yes_insurance
+tags: [indirect, navigation, en]
+persona: "A driver who asks first and then agrees. After the answer and the offer they say yes."
+goal: "Get the answer first; then, having agreed, get the form opened."
+start: {page: /}
+knows:
+  - "First asks: how can I get car insurance?"
+  - "Then agrees: yes please, open it"
+turns: 2
+# The question opens nothing; the person's yes to the offer does.
+scripted:
+  - "how can I get car insurance?"
+  - "yes please, open it"
+expect:
+  stays_put_on: ["how\\ can\\ I\\ get\\ car\\ insura"]
+  reaches: /insure
+min_score: 7

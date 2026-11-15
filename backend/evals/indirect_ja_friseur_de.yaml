@@ -1,0 +1,17 @@
+name: indirect_ja_friseur_de
+tags: [indirect, navigation, de]
+persona: "Ein Kunde, der erst fragt. After the answer and the offer they say yes."
+goal: "Get the answer first; then, having agreed, get the form opened."
+start: {page: /}
+knows:
+  - "First asks: Was kostet ein Haarschnitt bei euch?"
+  - "Then agrees: Ja, bitte \u00f6ffne die Buchung"
+turns: 2
+# The question opens nothing; the person's yes to the offer does.
+scripted:
+  - "Was kostet ein Haarschnitt bei euch?"
+  - "Ja, bitte \u00f6ffne die Buchung"
+expect:
+  stays_put_on: ["Was\\ kostet\\ ein\\ Haarschni"]
+  reaches: /book
+min_score: 7

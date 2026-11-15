@@ -1,0 +1,17 @@
+name: indirect_strakhuvannia_uk
+tags: [indirect, navigation, uk]
+persona: "A Ukrainian-speaking driver who only wants to know the price first. They ask a question; they have not asked for anything to be opened or filled in."
+goal: "Get the answer to the question. They may or may not want the form afterwards: nobody has asked for it yet."
+start: {page: /}
+knows:
+  - "Only asks: \u042f\u043a \u043c\u0435\u043d\u0456 \u043e\u0444\u043e\u0440\u043c\u0438\u0442\u0438 \u0430\u0432\u0442\u043e\u0441\u0442\u0440\u0430\u0445\u0443\u0432\u0430\u043d\u043d\u044f \u0456 \u0441\u043a\u0456\u043b\u044c\u043a\u0438 \u0446\u0435 \u043a\u043e\u0448\u0442\u0443\u0454?"
+turns: 1
+# The owner (2026-11-15): on "how can I get car insurance?" the site assistant opened the form at once and asked for
+# the make of the car. A question about a service is not an order: answer it, offer the next step, open nothing.
+scripted:
+  - "\u042f\u043a \u043c\u0435\u043d\u0456 \u043e\u0444\u043e\u0440\u043c\u0438\u0442\u0438 \u0430\u0432\u0442\u043e\u0441\u0442\u0440\u0430\u0445\u0443\u0432\u0430\u043d\u043d\u044f \u0456 \u0441\u043a\u0456\u043b\u044c\u043a\u0438 \u0446\u0435 \u043a\u043e\u0448\u0442\u0443\u0454?"
+expect:
+  answered_by: [dushes]
+  stays_put_on: ["."]
+  never_tools: [open_form]
+min_score: 7

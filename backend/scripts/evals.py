@@ -40,7 +40,7 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted", "answers"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once",
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -90,6 +90,7 @@ class Scenario:
     no_cards_on: list[str] = field(default_factory=list)    # regexes of user messages: the reply to such a message shows no card
     never_points: bool = False                              # no ui_directive event (nothing on the page is opened or focused)
     options_once: bool = False                              # a choice card's options are not also listed in the text before it
+    stays_put_on: list[str] = field(default_factory=list)   # regexes of user messages: the reply answers and offers, and opens nothing
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
     file: str = ""
     tools: list[str] = field(default_factory=list)          # tools the assistant must call (a recipe's own tool)
@@ -139,7 +140,7 @@ def load_scenario(path: Path) -> Scenario:
                     min_score=float(raw.get("min_score", 6)), attach=[str(x) for x in raw.get("attach") or []],
                     documents=raw.get("documents") is True, tags=[str(x) for x in raw.get("tags") or []],
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
-                    ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")), options_once=bool(exp.get("options_once")),
+                    ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")), options_once=bool(exp.get("options_once")), stays_put_on=[str(x) for x in exp.get("stays_put_on") or []],
                     no_cards_on=[str(x) for x in exp.get("no_cards_on_turns") or []],
                     scripted=_scripted(raw.get("scripted")), answers=dict(raw.get("answers") or {}),
                     fields=dict(exp.get("fields") or {}), file=path.name, site=_site(start), tools=[str(x) for x in exp.get("tools") or []],
@@ -334,6 +335,24 @@ class User:
         if hit:
             return {"ids": [hit["id"]]}
         return {"text": c.text or c.option} if (c.text or c.option) else None
+
+
+def moves_after(log: list[str], pattern: str) -> tuple[list[str], list[str], bool]:
+    """In the assistant's reply to each user message matching `pattern`: the moves it made (open_form, navigate, a new
+    page), its words, and whether such a message was sent at all. A question about a service is not an order to open it."""
+    import re
+    moves, said, seen, on = [], [], False, False
+    for entry in log:
+        for line in str(entry).splitlines():
+            t = line.strip()
+            if t.startswith("\U0001f464"):
+                on = bool(re.search(pattern, t, re.I))
+                seen = seen or on
+            elif on and (re.match(r"\u2699\ufe0f? ?(open_form|navigate)\(", t) or t.startswith("\U0001f9ed")):
+                moves.append(t[:90])
+            elif on and (t.startswith("\U0001f916") or re.match(r"\u2699\ufe0f? ?suggest_next\(", t)):
+                said.append(t)   # the reply's words, and the chips it offers under them
+    return moves, said, seen
 
 
 def options_twice(leads: list[dict]) -> list[str]:
@@ -584,6 +603,17 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         led, seen = card_steps_after(visit.log, pattern)
         out.append({"check": f"no card on the turn asking /{pattern}/", "ok": seen and not led,
                     "detail": "; ".join(led)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
+    for pattern in sc.stays_put_on:   # "how do I get insurance?" is a question: the answer and an offer, no form opened
+        moves, said, seen = moves_after(visit.log, pattern)
+        forms = [m for m in moves if "open_form(" in m or "(form " in m]
+        out.append({"check": f"opens no form on the turn asking /{pattern}/", "ok": seen and not forms,
+                    "detail": "; ".join(forms)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
+        out.append({"check": f"stays on the page on the turn asking /{pattern}/", "ok": seen and not moves,
+                    "detail": "; ".join(moves)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
+        words = [x for x in said if x.startswith("\U0001f916")]
+        offers = any(ch in " ".join(words) for ch in "?\uff1f\u061f") or len(said) > len(words)   # a question, or a chip under the answer
+        out.append({"check": f"answers and offers the next step on the turn asking /{pattern}/", "ok": bool(words) and offers,
+                    "detail": "" if words and offers else "no offer (no question and no chip) in the reply" if words else "no reply", "cap": CAP_OTHER})
     if sc.options_once:   # the options are on the card: the text left on the page names fewer than two of them
         twice = options_twice(getattr(visit, "leads", []))
         cards = len(getattr(visit, "leads", []))

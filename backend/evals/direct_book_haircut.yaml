@@ -1,0 +1,15 @@
+name: direct_book_haircut
+tags: [direct, navigation, en]
+persona: "A regular client. They say plainly what they want done."
+goal: "Have the form opened straight away, without being asked whether they are sure."
+start: {page: /}
+knows:
+  - "Says: book me a haircut for tomorrow morning please"
+turns: 1
+# The control for the indirect-request set: a plain order opens at once. A fix that never opens a form would pass the
+# indirect scenarios and fail this one.
+scripted:
+  - "book me a haircut for tomorrow morning please"
+expect:
+  reaches: /book
+min_score: 7

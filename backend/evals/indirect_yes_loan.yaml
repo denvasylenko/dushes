@@ -1,0 +1,17 @@
+name: indirect_yes_loan
+tags: [indirect, navigation, en]
+persona: "A buyer who asks first. After the answer and the offer they say yes."
+goal: "Get the answer first; then, having agreed, get the form opened."
+start: {page: /}
+knows:
+  - "First asks: what do I need to apply for a car loan?"
+  - "Then agrees: ok, let's start the application"
+turns: 2
+# The question opens nothing; the person's yes to the offer does.
+scripted:
+  - "what do I need to apply for a car loan?"
+  - "ok, let's start the application"
+expect:
+  stays_put_on: ["what\\ do\\ I\\ need\\ to\\ apply\\ "]
+  reaches: /apply
+min_score: 7

@@ -124,3 +124,21 @@ def test_options_listed_in_the_text_and_on_the_card_are_caught():
     assert evals.options_twice([{"options": services, "text": "I would suggest the Haircut. Which service?"}]) == []   # one option named
     assert evals.options_twice([]) == []
     assert evals.options_twice([{"options": services, "text": "A kids haircut takes 25 minutes. Which service?"}]) == []   # one label inside another
+
+
+def test_a_question_that_opened_a_form_is_caught():
+    """The owner's case: "how can I get car insurance?" opened the form at once. The check reads the reply to the
+    question: an open_form or navigate call, or a new page, is a move; the yes that follows may open."""
+    import evals
+    jumped = ["\U0001f9ed on /", "\n\U0001f464 how can I get car insurance?", "   ⚙ open_form({\"form_id\": \"car_insurance\"})",
+              "\U0001f9ed on /insure (form car_insurance)", "\U0001f916 What is the make of your car?"]
+    moves, said, seen = evals.moves_after(jumped, ".")
+    assert seen and len(moves) == 2 and said
+    polite = ["\U0001f9ed on /", "\n\U0001f464 how can I get car insurance?", "\U0001f916 Cover starts at 300 a year. Shall I open the application?",
+              "\n\U0001f464 yes please, open it", "   ⚙ open_form({\"form_id\": \"car_insurance\"})", "\U0001f9ed on /insure (form car_insurance)"]
+    moves, said, seen = evals.moves_after(polite, "how can I get")
+    assert seen and moves == [] and "?" in said[0]
+    assert evals.moves_after(polite, "yes please")[0]                  # the yes did open it
+    assert evals.moves_after(polite, "never said")[2] is False
+    chips = ["\U0001f9ed on /", "\n\U0001f464 how much is a haircut?", "\U0001f916 A haircut is $40.", "   \u2699 suggest_next({\"options\": [\"Book a haircut\"]})"]
+    assert len(evals.moves_after(chips, ".")[1]) == 2                    # the words and the chip: an offer without a question mark

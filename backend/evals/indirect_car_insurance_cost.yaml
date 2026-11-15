@@ -1,0 +1,17 @@
+name: indirect_car_insurance_cost
+tags: [indirect, navigation, en]
+persona: "A student comparing prices before deciding anything. They ask a question; they have not asked for anything to be opened or filled in."
+goal: "Get the answer to the question. They may or may not want the form afterwards: nobody has asked for it yet."
+start: {page: /insurance}
+knows:
+  - "Only asks: how much would full cover cost for a ten year old car?"
+turns: 1
+# The owner (2026-11-15): on "how can I get car insurance?" the site assistant opened the form at once and asked for
+# the make of the car. A question about a service is not an order: answer it, offer the next step, open nothing.
+scripted:
+  - "how much would full cover cost for a ten year old car?"
+expect:
+  answered_by: [dushes]
+  stays_put_on: ["."]
+  never_tools: [open_form]
+min_score: 7

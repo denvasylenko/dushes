@@ -1,0 +1,17 @@
+name: indirect_yes_clinic
+tags: [indirect, navigation, en]
+persona: "A newcomer who asks, then decides. After the answer and the offer they say yes."
+goal: "Get the answer first; then, having agreed, get the form opened."
+start: {site: lab, page: /}
+knows:
+  - "First asks: how do I register with the Riverside clinic?"
+  - "Then agrees: yes, open the registration form"
+turns: 2
+# The question opens nothing; the person's yes to the offer does.
+scripted:
+  - "how do I register with the Riverside clinic?"
+  - "yes, open the registration form"
+expect:
+  stays_put_on: ["how\\ do\\ I\\ register\\ with\\ t"]
+  reaches: /lab/clinic
+min_score: 7

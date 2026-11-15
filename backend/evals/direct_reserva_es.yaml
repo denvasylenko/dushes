@@ -1,0 +1,15 @@
+name: direct_reserva_es
+tags: [direct, navigation, es]
+persona: "Una clienta decidida. They say plainly what they want done."
+goal: "Have the form opened straight away, without being asked whether they are sure."
+start: {site: lab, page: /}
+knows:
+  - "Says: Quiero reservar una mesa en Casa do Mar Azul para cuatro, abre la reserva"
+turns: 1
+# The control for the indirect-request set: a plain order opens at once. A fix that never opens a form would pass the
+# indirect scenarios and fail this one.
+scripted:
+  - "Quiero reservar una mesa en Casa do Mar Azul para cuatro, abre la reserva"
+expect:
+  reaches: /lab/lisbon-seafood
+min_score: 7

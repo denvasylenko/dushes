@@ -1,0 +1,17 @@
+name: indirect_si_seguro_es
+tags: [indirect, navigation, es]
+persona: "Una conductora que primero pregunta. After the answer and the offer they say yes."
+goal: "Get the answer first; then, having agreed, get the form opened."
+start: {page: /}
+knows:
+  - "First asks: \u00bfC\u00f3mo puedo contratar un seguro de coche?"
+  - "Then agrees: S\u00ed, \u00e1brelo por favor"
+turns: 2
+# The question opens nothing; the person's yes to the offer does.
+scripted:
+  - "\u00bfC\u00f3mo puedo contratar un seguro de coche?"
+  - "S\u00ed, \u00e1brelo por favor"
+expect:
+  stays_put_on: ["\u00bfC\u00f3mo\\ puedo\\ contratar\\ un"]
+  reaches: /insure
+min_score: 7

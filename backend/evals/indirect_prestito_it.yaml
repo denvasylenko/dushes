@@ -1,0 +1,17 @@
+name: indirect_prestito_it
+tags: [indirect, navigation, it]
+persona: "Una studentessa lavoratrice. They ask a question; they have not asked for anything to be opened or filled in."
+goal: "Get the answer to the question. They may or may not want the form afterwards: nobody has asked for it yet."
+start: {page: /}
+knows:
+  - "Only asks: Si pu\u00f2 chiedere un prestito anche con un contratto part-time?"
+turns: 1
+# The owner (2026-11-15): on "how can I get car insurance?" the site assistant opened the form at once and asked for
+# the make of the car. A question about a service is not an order: answer it, offer the next step, open nothing.
+scripted:
+  - "Si pu\u00f2 chiedere un prestito anche con un contratto part-time?"
+expect:
+  answered_by: [dushes]
+  stays_put_on: ["."]
+  never_tools: [open_form]
+min_score: 7

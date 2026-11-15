@@ -1,0 +1,15 @@
+name: direct_register_clinic
+tags: [direct, navigation, en]
+persona: "A new patient who wants to get it done. They say plainly what they want done."
+goal: "Have the form opened straight away, without being asked whether they are sure."
+start: {site: lab, page: /}
+knows:
+  - "Says: register me at the Riverside Family Clinic, open the form"
+turns: 1
+# The control for the indirect-request set: a plain order opens at once. A fix that never opens a form would pass the
+# indirect scenarios and fail this one.
+scripted:
+  - "register me at the Riverside Family Clinic, open the form"
+expect:
+  reaches: /lab/clinic
+min_score: 7
