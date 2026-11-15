@@ -643,6 +643,7 @@ def _play(sc: Scenario, http: httpx.Client, user: User | None, judge_model: Any,
     if sc.corpus and sc.form:   # a researcher corpus, uploaded as a manager would (no compile: the researcher reads it)
         upload_corpus(http, sc.form, sc.corpus)
     visit = Visit(http, sc.page, answer=(user.choose if user else None), site=sc.site)
+    visit.ticks = {k for k, v in sc.answers.items() if v is True}   # the consents this guest gives with their own tick
     if sc.ui and visit.form:       # e.g. form_visible: false, as a page that shows only the chat sends it
         visit.form.ui.update(sc.ui)
     if sc.values and visit.form:   # the user typed these into the form before writing

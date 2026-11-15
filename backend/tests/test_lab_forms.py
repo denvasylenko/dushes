@@ -384,3 +384,24 @@ def test_a_scenario_set_is_run_five_times_at_most(tmp_path):
     row = evals.record_run(path, "x", "main", rep, evals.RUNS / "evals-x.json")
     assert row == {"n": 1, "date": "2026-11-15", "commit": "abc", "agent_model": "m", "kind": "main", "repeat": 3, "passed": 2, "total": 3,
                    "usd": 0.31, "report": "backend/scripts/runs/evals-x.json"}
+
+
+def test_accepting_a_card_leaves_a_consent_row_unticked_unless_the_guest_gives_it():
+    """The card contract since 5827796: a change with consent: true is applied only when the answer names it."""
+    from harness_client import Visit
+
+    class Form:
+        def __init__(self):
+            self.config, self.ui, self.applied = {}, {}, None
+
+        def apply(self, changes):
+            self.applied = changes
+    card = {"type": "set_fields", "changes": [{"name": "email", "label": "Email", "value": "a@b.c", "display": "a@b.c"},
+                                             {"name": "accept_terms", "label": "I accept the rental terms", "value": True, "display": "x", "consent": True}]}
+    for ticks, want in ((set(), ["email"]), ({"accept_terms"}, ["email", "accept_terms"])):
+        v = Visit.__new__(Visit)
+        v.form, v.log, v.cards, v.ticks, sent = Form(), [], [], ticks, []
+        v._resume = lambda reply, depth: sent.append(reply)
+        v._card(card, 0)
+        assert sent[0]["names"] == want and list(v.form.applied) == want
+        assert ("left unticked" in v.log[-1]) == (not ticks)

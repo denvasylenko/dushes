@@ -303,6 +303,7 @@ class Visit:
         self.stats: list[dict] = []        # per run: ttft_ms, total_ms, tools, tool_errors, output_tokens, model_ms
         self.replies: list[tuple[str, str]] = []   # (message id, text) of every assistant reply, as the widget keeps them
         self.said: list[tuple[str, str]] = []      # (message id, text) of every message the user sent
+        self.ticks: set[str] = set()               # the consents this guest ticks themself (a scenario's answers: {name: true})
         self.go(path)
 
     # ------------------------------------------------------------ the page
@@ -390,7 +391,8 @@ class Visit:
                     for k, n in (v.get("tokens") or {}).items():
                         if k in self.tokens and isinstance(n, (int, float)):
                             self.tokens[k] += n
-                    self.stats.append({"ttft_ms": v.get("ttft_ms"), "total_ms": v.get("total_ms"),
+                    # a run can carry two run_stats: the site assistant's (agent: "site") and the form agent's; both are summed
+                    self.stats.append({"agent": v.get("agent") or "form", "ttft_ms": v.get("ttft_ms"), "total_ms": v.get("total_ms"),
                                        "tools": len(v.get("tools") or []),
                                        "tool_errors": sum(1 for t in v.get("tools") or [] if t.get("error")),
                                        "output_tokens": (v.get("tokens") or {}).get("output"), "model_ms": v.get("model_ms"),
@@ -409,8 +411,11 @@ class Visit:
                 # the page opened the form: the form agent's first run, with the note Dushes kept
                 self._run({"threadId": self.thread, "state": self.state(), "forwardedProps": {"handoff": True}}, depth + 1)
                 return
-        if not interrupt:
-            return
+        if interrupt:
+            self._card(interrupt, depth)
+
+    def _card(self, interrupt: dict, depth: int) -> None:
+        """What this guest does with a card: a question is answered, a field card accepted, a confirmation confirmed."""
         kind = interrupt.get("type") or ("set_fields" if "changes" in interrupt else "card")
         self.cards.append({**interrupt, "type": kind})
         if kind == "ask":
@@ -423,11 +428,14 @@ class Visit:
             # a several-fields card is answered with {answers: {name: value}}, a question with {answer: {ids | text}}
             self._resume({"answers": reply["answers"]} if reply and "answers" in reply else {"answer": reply} if reply else {"accepted": False}, depth)
         elif "changes" in interrupt and self.form:
-            ch = interrupt["changes"]
+            # a consent row is only the person's own tick: accepting the card leaves it out unless this guest gives it
+            ch = [c for c in interrupt["changes"] if not c.get("consent") or c["name"] in getattr(self, "ticks", ())]
+            left = [c for c in interrupt["changes"] if c not in ch]
             self.log.append("   🃏 card shown and accepted by the user (the form now has these values): "
-                            + "; ".join(f"{c.get('label')} = {c.get('display')}" for c in ch))
+                            + "; ".join(f"{c.get('label')} = {c.get('display')}" for c in ch)
+                            + ("".join(f"; consent row left unticked: {c.get('label')}" for c in left)))
             self.form.apply({c["name"]: c["value"] for c in ch})
-            self._resume({"accepted": True, "config": self.form.config, "ui": self.form.ui}, depth)
+            self._resume({"accepted": True, "names": [c["name"] for c in ch], "config": self.form.config, "ui": self.form.ui}, depth)
         else:   # a confirmation and a review are confirmed (the user means to submit); an upload request or another card is closed
             accepted = kind in ("confirm", "review")
             self.log.append(f"   📋 {kind} card → the user {'confirmed it' if accepted else 'closed it'}")

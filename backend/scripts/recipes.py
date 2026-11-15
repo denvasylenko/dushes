@@ -328,8 +328,8 @@ class FormChat:
         elif "changes" in it:
             ok = self.card in ("accept", "confirm_no")
             self.log.append("   🃏 " + "; ".join(f"{c.get('label')} = {c.get('display')}" for c in it["changes"]) + f" → {'accepted' if ok else 'rejected'}")
-            if ok:
-                self.config = self.form.compute({**self.config["state"], **{c["name"]: c["value"] for c in it["changes"]}})
+            if ok:   # accepting a card never gives a consent: that row is the person's own tick
+                self.config = self.form.compute({**self.config["state"], **{c["name"]: c["value"] for c in it["changes"] if not c.get("consent")}})
             self._resume({"accepted": ok, "config": self.config, "ui": self.ui}, depth)
         else:
             ok = kind == "confirm" and self.card == "accept"

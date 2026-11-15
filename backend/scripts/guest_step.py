@@ -48,7 +48,7 @@ def load(path: Path) -> tuple[dict, Visit]:
     meta = data["meta"]
     http = httpx.Client(base_url=meta["base"], timeout=300)
     v = Visit.__new__(Visit)
-    v.http, v.answer, v.forms = http, (lambda q: None), {}
+    v.http, v.answer, v.forms, v.ticks = http, (lambda q: None), {}, set()
     for k, x in data["visit"].items():
         setattr(v, k, [tuple(t) for t in x] if k in ("tools", "replies", "said") else x)
     for fid, fx in data["forms"].items():
@@ -139,6 +139,7 @@ def main(argv: list[str]) -> int:
                 got, typed = {"text": typed}, None
             return got
         v.answer = answer
+        v.ticks = {k for k, x in sc.answers.items() if x is True}   # the consents this guest ticks themself
         before = len(v.log)
         v.say(a.arg or "")
         save(a.state, meta, v)
