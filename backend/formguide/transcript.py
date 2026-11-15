@@ -44,11 +44,25 @@ def new_entry(kind: str, **fields: Any) -> dict[str, Any]:
             "kind": kind, **fields}
 
 
+def entry_time(entry: dict[str, Any]) -> datetime:
+    """An entry's `ts` as an aware UTC time (the earliest time when it has none)."""
+    try:
+        t = datetime.fromisoformat(str(entry.get("ts")))
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+
+
+def last_ts(entries: list[dict[str, Any]]) -> datetime:
+    return max((entry_time(e) for e in entries), default=datetime.min.replace(tzinfo=timezone.utc))
+
+
 class TranscriptStore(Protocol):
     def append(self, thread_id: str, entry: dict[str, Any]) -> dict[str, Any]: ...
     def update(self, thread_id: str, entry_id: str, **patch: Any) -> None: ...
     def list(self, thread_id: str) -> list[dict[str, Any]]: ...
     def delete(self, thread_id: str) -> None: ...
+    def threads(self, since: datetime | None = None) -> list[str]: ...   # ids, those touched since then when given
 
 
 class MemoryTranscriptStore:
@@ -69,6 +83,9 @@ class MemoryTranscriptStore:
 
     def delete(self, thread_id: str) -> None:
         self._threads.pop(check_thread_id(thread_id), None)
+
+    def threads(self, since: datetime | None = None) -> list[str]:
+        return sorted(t for t, es in self._threads.items() if since is None or (es and last_ts(es) >= since))
 
 
 class FileTranscriptStore:
@@ -103,6 +120,13 @@ class FileTranscriptStore:
 
     def delete(self, thread_id: str) -> None:
         self._path(thread_id).unlink(missing_ok=True)
+
+    def threads(self, since: datetime | None = None) -> list[str]:
+        """Thread ids; with `since`, only files written since then (cheap: by the file's time, not its content)."""
+        if not self.root.is_dir():
+            return []
+        cut = since.timestamp() if since else None
+        return sorted(p.stem for p in self.root.glob("*.jsonl") if cut is None or p.stat().st_mtime >= cut)
 
 
 def pending_card(entries: list[dict[str, Any]]) -> dict[str, Any] | None:

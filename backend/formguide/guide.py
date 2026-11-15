@@ -16,6 +16,7 @@ import asyncio
 import json
 import logging
 import uuid
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -511,10 +512,69 @@ class FormGuide:
                                 new_entry("feedback", value=value, **({"card_id": card_id} if card_id else {})))
 
     async def delete_thread(self, thread_id: str) -> None:
-        """Forget a conversation: its transcript and the model's history."""
+        """Forget a conversation: its transcript, the model's history and its attachments."""
         self.transcripts.delete(check_thread_id(thread_id))
         if hasattr(self.checkpointer, "adelete_thread"):
             await self.checkpointer.adelete_thread(thread_id)
+        root = getattr(self.attachments, "root", None)
+        if root is not None and (Path(root) / thread_id).is_dir():
+            import shutil
+            shutil.rmtree(Path(root) / thread_id, ignore_errors=True)
+
+    def conversations(self, since: datetime, until: datetime | None = None, *, merge: bool = True):
+        """The conversations with something said in [since, until): {thread_id, entries}, entries in time order
+        and only those in the window. With `merge` (the default) a form's own thread under Dushes
+        ("<thread>-<form_id>") is folded into its site thread, every entry marked `agent`: "site" or "form", so a
+        reader sees one conversation. Needs a transcript store with `threads()` (the built-in ones have it)."""
+        from .transcript import entry_time
+        since = since if since.tzinfo else since.replace(tzinfo=timezone.utc)
+        if until is not None and until.tzinfo is None:
+            until = until.replace(tzinfo=timezone.utc)
+        def window(entries: list[dict]) -> list[dict]:
+            return [e for e in entries if entry_time(e) >= since and (until is None or entry_time(e) < until)]
+
+        touched = self.transcripts.threads(since)
+        if not merge:
+            for tid in touched:
+                got = window(self.transcripts.list(tid))
+                if got:
+                    yield {"thread_id": tid, "entries": got}
+            return
+        every = set(self.transcripts.threads())
+
+        def parent_of(tid: str) -> str | None:
+            """The site thread a form thread belongs to: "<parent>-<form_id>", and the parent names that form."""
+            for p in every:
+                if p != tid and tid.startswith(p + "-"):
+                    fid = tid[len(p) + 1:]
+                    if any(str(e.get("form_id")) == fid for e in self.transcripts.list(p)):
+                        return p
+            return None
+
+        for tid in sorted({parent_of(t) or t for t in touched}):
+            entries = self.transcripts.list(tid)
+            forms = sorted({str(e["form_id"]) for e in entries if e.get("form_id")})
+            subs = [x for x in (f"{tid}-{f}"[:100] for f in forms) if x in every and x != tid]
+            if subs:   # a site thread with form threads: the form's own entries replace the site's copies of them
+                merged = [{**e, "agent": "site"} for e in entries if not e.get("form_id")]
+                for x in subs:
+                    merged += [{**e, "agent": "form"} for e in self.transcripts.list(x)]
+                entries = sorted(merged, key=entry_time)
+            got = window(entries)
+            if got:
+                yield {"thread_id": tid, "entries": got}
+
+    async def purge(self, older_than_days: float, *, dry_run: bool = False) -> int:
+        """Delete every conversation whose last entry is older than the given days: its transcript, the model's
+        history (checkpoint) and its attachments. Returns how many; with `dry_run` it only counts. Works without
+        the package's server: call it from your own nightly job."""
+        from .transcript import last_ts
+        cut = datetime.now(timezone.utc) - timedelta(days=older_than_days)
+        old = [t for t in self.transcripts.threads() if last_ts(self.transcripts.list(t)) < cut]
+        if not dry_run:
+            for t in old:
+                await self.delete_thread(t)
+        return len(old)
 
     async def _run(self, thread_id: str, *, message: str | None, state: dict[str, Any] | None,
                    resume: dict[str, Any] | None, run_id: str | None, client_tools: list[dict] | None = None,
