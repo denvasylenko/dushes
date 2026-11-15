@@ -19,7 +19,8 @@ The demo is public, so it is limited (environment, defaults in brackets):
     DEMO_KEEP_HOURS       the public demo's transcripts and checkpoints are deleted after this many hours (24;
                           the hourly clean-up runs on Fly or when this is set, never on a local run)
     DEMO_LINK             where a refused visitor is sent (the quickstart)
-A refused run gets HTTP 429 {"detail", "code": "demo_limit", "reason": visitor|ip|thread|site|runs|cost, "link"}
+The routes beside the run that cost something (prefill, attachments, transcription, registering a form) are
+under the same daily limits. A refused run gets HTTP 429 {"detail", "code": "demo_limit", "reason": visitor|ip|thread|site|runs|cost, "link"}
 before any stream starts. The day's numbers (runs, messages, tokens, cost; never message text) are kept in
 <data_dir>/demo/<date>.json.
 Uploading business documents (/agent/kb) is off; a user may still attach a file to a message.
@@ -266,6 +267,9 @@ def refused(reason: str) -> JSONResponse:
 
 
 _VISITOR = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+# every other route that costs something on a public host: a model call (prefill, transcription), a stored file
+# (attachments) or a registered form (layouts). Each counts per visitor, per address and for the whole site.
+METERED = frozenset({"/agent/prefill", "/agent/attachments", "/agent/transcribe", "/site/transcribe", "/agent/layouts"})
 
 
 @app.middleware("http")
@@ -276,6 +280,15 @@ async def public_demo(request, call_next):
     if method == "GET" and path.startswith("/agent/layouts/") and path.rsplit("/", 1)[1] in LANDING:
         fid = path.rsplit("/", 1)[1]   # a landing form by its id: read-only
         return JSONResponse({"jsx_hash": LANDING[fid], "form_id": fid})
+    if method == "POST" and path in METERED:   # they call a model or store a file: the same daily limits as a message
+        ip = request.headers.get("fly-client-ip") or (request.client.host if request.client else "?")
+        visitor = request.headers.get("x-demo-visitor") or ""
+        why = demo_limit(f"{path}|{ip}|{today().date}", ip, visitor if _VISITOR.match(visitor) else None,
+                         message=path != "/agent/layouts")   # registering a form counts as a run, not a message
+        _save_day(today())
+        if why:
+            return refused(why)
+        return await call_next(request)
     if path in ("/agent/run", "/site/run") and method == "POST":   # the form demo and the site demo
         try:
             body = json.loads(await request.body() or b"{}")

@@ -131,3 +131,22 @@ def test_the_chat_only_form_has_a_send_tool_that_sends_nothing():
     assert out["receipt"] == {"title": "Demo: nothing was sent"}
     pack = host.guide.packs.get("deputy_change")
     assert "does not see this form" in pack.flow_hints[0] and "landing_loan" != pack.form_id
+
+
+def test_every_route_that_costs_is_under_the_limits(monkeypatch):
+    # found by Docs Lead, 2026-11-15: prefill, uploads and transcription were reachable with no daily limit
+    _fresh(monkeypatch, PER_IP_DAY=2)
+    with TestClient(host.app) as c:
+        first = [c.post("/agent/prefill", json={"state": {}, "text": "x"}).status_code for _ in range(2)]
+        assert 429 not in first                                   # they reach the route (and fail there on the state)
+        for path, kw in (("/agent/prefill", {"json": {"state": {}, "text": "x"}}),
+                         ("/agent/attachments", {"data": {"thread_id": "t"}, "files": {"file": ("a.txt", b"x")}}),
+                         ("/agent/transcribe", {"files": {"file": ("a.wav", b"x")}}),
+                         ("/site/transcribe", {"files": {"file": ("a.wav", b"x")}})):
+            r = c.post(path, **kw)
+            assert r.status_code == 429 and r.json()["code"] == "demo_limit" and r.json()["reason"] == "ip", path
+    _fresh(monkeypatch, RUNS_DAY=1)
+    with TestClient(host.app) as c:
+        assert c.post("/agent/layouts", json={"jsx": "<Form name=\"f\"/>", "form_id": "f"}).status_code != 429
+        assert c.post("/agent/layouts", json={"jsx": "<Form name=\"g\"/>", "form_id": "g"}).json()["reason"] == "runs"
+

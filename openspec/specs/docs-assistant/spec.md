@@ -111,3 +111,11 @@ Every card the docs assistant shows SHALL carry an `id`. When an answer would sh
 #### Scenario: Show me that again
 - **WHEN** the reader asks "show me the config for that" right after an answer that showed the config card
 - **THEN** no second copy is drawn: the existing card is scrolled to and highlighted, with one short line
+
+### Requirement: Every costly route of the demo is limited
+On the public demo host, the routes beside the run that call a model, store a file or register a form (`/agent/prefill`, `/agent/attachments`, `/agent/transcribe`, `/site/transcribe`, `/agent/layouts`) SHALL be under the same daily limits per visitor, per address and for the whole site, and a refused call SHALL get the same HTTP 429 `demo_limit` answer as a refused run.
+
+#### Scenario: Prefill called in a loop
+- **WHEN** one address calls `/agent/prefill` more times than its daily limit
+- **THEN** the further calls are refused with `code: "demo_limit"` and no model is called
+
