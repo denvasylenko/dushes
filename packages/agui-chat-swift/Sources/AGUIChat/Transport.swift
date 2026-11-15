@@ -28,34 +28,80 @@ public struct RunAgentInput: Encodable, Sendable {
     }
 }
 
+/// A thread as the server restores it (`GET <agent>/threads/{id}?format=agui`).
+public struct RestoredThread: Decodable, Sendable {
+    public struct Message: Decodable, Sendable {
+        public var id: String?
+        public var role: String
+        public var content: String?
+    }
+    public var thread_id: String?
+    public var messages: [Message]
+    public var pending_card: JSONValue?
+    public var running: Bool?
+}
+
 /// Where runs go. The host gives the URL and its own headers (the app's token): the package keeps no secrets.
 public protocol AGUITransport: Sendable {
     func run(_ input: RunAgentInput) -> AsyncThrowingStream<AGUIEvent, Error>
+    /// The thread after a relaunch; nil when there is none. The client restores from it, not from its own cache.
+    func restore(threadId: String) async throws -> RestoredThread?
+    /// Ends the thread's running turn on the server: a turn outlives its connection.
+    func stop(threadId: String) async
 }
 
-/// POST `<agent>/run`, answered as SSE.
+extension AGUITransport {
+    public func restore(threadId: String) async throws -> RestoredThread? { nil }
+    public func stop(threadId: String) async {}
+}
+
+/// `<agent>/run` (SSE), `<agent>/threads/{id}?format=agui`, `<agent>/stop`.
 public struct HTTPTransport: AGUITransport {
-    public var url: URL
+    public var agent: URL
     public var headers: @Sendable () async -> [String: String]
     public var session: URLSession
 
-    public init(url: URL, session: URLSession = .shared,
+    /// `agent` is the base, e.g. `https://host/app/api/v1/sites/12/assistant`.
+    public init(agent: URL, session: URLSession = .shared,
                 headers: @escaping @Sendable () async -> [String: String] = { [:] }) {
-        self.url = url
+        self.agent = agent
         self.session = session
         self.headers = headers
+    }
+
+    private func request(_ path: String, method: String, body: Data? = nil) async -> URLRequest {
+        var r = URLRequest(url: agent.appending(path: path))
+        r.httpMethod = method
+        if let body {
+            r.httpBody = body
+            r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        for (k, v) in await headers() { r.setValue(v, forHTTPHeaderField: k) }
+        return r
+    }
+
+    public func restore(threadId: String) async throws -> RestoredThread? {
+        var r = await request("threads/\(threadId)", method: "GET")
+        r.url = r.url.flatMap { URL(string: $0.absoluteString + "?format=agui") }
+        let (data, response) = try await session.data(for: r)
+        if let http = response as? HTTPURLResponse {
+            if http.statusCode == 404 { return nil }
+            if !(200..<300).contains(http.statusCode) { throw AGUIError.http(status: http.statusCode) }
+        }
+        return try JSONDecoder().decode(RestoredThread.self, from: data)
+    }
+
+    public func stop(threadId: String) async {
+        let body = try? JSONEncoder().encode(["thread_id": threadId])
+        _ = try? await session.data(for: await request("stop", method: "POST", body: body))
     }
 
     public func run(_ input: RunAgentInput) -> AsyncThrowingStream<AGUIEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    var request = URLRequest(url: url)
-                    request.httpMethod = "POST"
-                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    var request = await request("run", method: "POST", body: try JSONEncoder().encode(input))
                     request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
-                    for (k, v) in await headers() { request.setValue(v, forHTTPHeaderField: k) }
-                    request.httpBody = try JSONEncoder().encode(input)
                     let (bytes, response) = try await session.bytes(for: request)
                     if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
                         throw AGUIError.http(status: http.statusCode)
@@ -84,11 +130,16 @@ public struct HTTPTransport: AGUITransport {
 public struct ReplayTransport: AGUITransport {
     public var script: @Sendable (RunAgentInput) -> [AGUIEvent]
     public var pause: Duration
+    public var thread: RestoredThread?
 
-    public init(pause: Duration = .milliseconds(40), script: @escaping @Sendable (RunAgentInput) -> [AGUIEvent]) {
+    public init(pause: Duration = .milliseconds(40), thread: RestoredThread? = nil,
+                script: @escaping @Sendable (RunAgentInput) -> [AGUIEvent]) {
         self.pause = pause
+        self.thread = thread
         self.script = script
     }
+
+    public func restore(threadId: String) async throws -> RestoredThread? { thread }
 
     /// Events from a recording: JSON lines or SSE `data:` lines.
     public static func events(fromRecording text: String) -> [AGUIEvent] {

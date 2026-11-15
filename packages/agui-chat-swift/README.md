@@ -18,4 +18,8 @@ English-only): edit the file as JSON, not in Xcode, which writes the characters 
 
 Tests: `swift test` (macOS). The recorded turn is `Tests/AGUIChatTests/Fixtures/hours-turn.sse`.
 
-Not yet: restore from `GET …/threads/{id}`, `stop`, the other cards (`set_fields`, `upload`, `review`), quoting.
+- `restore()` builds the log from `GET <agent>/threads/{id}?format=agui` (messages and the pending card); `stop()`
+  ends the turn on the server (`POST <agent>/stop`). A run sends only the new message: the server keeps the thread.
+
+Not yet: following a turn that is still running after a relaunch, the other cards (`set_fields`, `upload`,
+`review`), quoting.

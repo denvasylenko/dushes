@@ -76,6 +76,29 @@ final class AGUIChatTests: XCTestCase {
     }
 
     @MainActor
+    func testRestoreBuildsTheLogAndThePendingCard() async throws {
+        let json = #"{"thread_id":"t-5","running":false,"messages":[{"id":"u1","role":"user","content":"Hours?"},{"id":"a1","role":"assistant","content":"12-22"},{"role":"tool","content":"x"}],"pending_card":{"type":"confirm","card_id":"k-2","title":"Publish?"}}"#
+        let thread = try JSONDecoder().decode(RestoredThread.self, from: Data(json.utf8))
+        let store = ChatStore(transport: ReplayTransport(thread: thread) { _ in [] }, threadId: "t-5")
+        await store.restore()
+        XCTAssertEqual(store.items.map(\.id), ["u1", "a1", "card-k-2"])
+    }
+
+    @MainActor
+    func testARunSendsOnlyTheNewMessage() async throws {
+        let seen = Captured()
+        let store = ChatStore(transport: ReplayTransport(pause: .zero) { input in
+            seen.set(input)
+            return [.runFinished(outcome: nil)]
+        })
+        store.send("One")
+        for _ in 0..<50 where store.running { try await Task.sleep(for: .milliseconds(10)) }
+        store.send("Two")
+        for _ in 0..<50 where store.running { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(seen.value?.messages.map(\.content), ["Two"])
+    }
+
+    @MainActor
     func testAStreamWithoutTheEndIsAnError() async throws {
         let store = ChatStore(transport: ReplayTransport(pause: .zero) { _ in [.runStarted(threadId: nil, runId: nil)] })
         store.send("Hello")

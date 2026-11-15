@@ -64,7 +64,9 @@ public final class ChatStore {
     public var extraProps: @MainActor () -> [String: JSONValue] = { [:] }
 
     private let transport: AGUITransport
-    private var history: [RunAgentInput.Message] = []
+    /// The person's last message, for «Try again». The server keeps the thread by `threadId`: a run sends only the
+    /// new message (the last user message is the new turn), a card answer sends none.
+    private var lastUser: RunAgentInput.Message?
     private var task: Task<Void, Never>?
     private var tools: [String: Int] = [:]          // toolCallId → index in items
 
@@ -80,16 +82,16 @@ public final class ChatStore {
         guard !text.isEmpty, !running else { return }
         closeOpenCards()
         let message = RunAgentInput.Message(role: "user", content: text)
-        history.append(message)
+        lastUser = message
         items.append(.user(id: message.id, text: text))
-        start(props: [:])
+        start(messages: [message], props: [:])
     }
 
     /// The answer of a card goes as the next run's `resume` (legacy mode: `forwardedProps.command.resume`).
     public func answer(_ card: ChatCard, with resume: JSONValue) {
         guard !running, let i = cardIndex(card.id) else { return }
         if case .card(var c) = items[i] { c.status = .sending; items[i] = .card(c) }
-        start(props: ["command": ["resume": resume]], answering: card.id)
+        start(messages: [], props: ["command": ["resume": resume]], answering: card.id)
     }
 
     public func choose(_ card: ChatCard, option id: String) {
@@ -103,27 +105,48 @@ public final class ChatStore {
     public func tapSuggestion(_ text: String) { send(text) }
 
     public func retry() {
-        guard !running, history.last?.role == "user" else { return }
+        guard !running, let lastUser else { return }
         error = nil
-        start(props: [:])
+        start(messages: [lastUser], props: [:])
     }
 
+    /// Stops showing the answer and ends the turn on the server too.
     public func stop() {
         task?.cancel()
         task = nil
         running = false
+        finishSteps()
+        let transport = transport, thread = threadId
+        Task { await transport.stop(threadId: thread) }
+    }
+
+    /// The conversation as the person saw it, from the server (on launch). A turn still running there is not
+    /// followed yet: the log shows what is done, and a new message starts the next turn.
+    public func restore() async {
+        guard let thread = try? await transport.restore(threadId: threadId) else { return }
+        if let id = thread.thread_id, !id.isEmpty { threadId = id }
+        items = thread.messages.compactMap { m in
+            guard let text = m.content, !text.isEmpty else { return nil }
+            let id = m.id ?? UUID().uuidString
+            switch m.role {
+            case "user": return .user(id: id, text: text)
+            case "assistant": return .assistant(id: id, text: text, done: true)
+            default: return nil
+            }
+        }
+        if let card = thread.pending_card, case .object = card { addCard(card) }
     }
 
     // MARK: The run
 
-    private func start(props: [String: JSONValue], answering cardId: String? = nil) {
+    private func start(messages: [RunAgentInput.Message], props: [String: JSONValue], answering cardId: String? = nil) {
         error = nil
         suggestions = []
         running = true
         var forwarded = extraProps()
         forwarded["capabilities"] = .array(Self.capabilities)
         for (k, v) in props { forwarded[k] = v }
-        let input = RunAgentInput(threadId: threadId, messages: history, state: state(),
+        let input = RunAgentInput(threadId: threadId, messages: messages, state: state(),
                                   forwardedProps: .object(forwarded))
         let stream = transport.run(input)
         task = Task { [weak self] in
@@ -165,7 +188,6 @@ public final class ChatStore {
         case .textEnd(let id):
             if let i = itemIndex(id), case .assistant(_, let text, _) = items[i] {
                 items[i] = .assistant(id: id, text: text, done: true)
-                history.append(.init(id: id, role: "assistant", content: text))
             }
         case .toolStart(let id, let name, _):
             tools[id] = items.count
@@ -193,7 +215,6 @@ public final class ChatStore {
         case "text_retract":
             if let id = value["messageId"]?.string, let i = itemIndex(id) {
                 items.remove(at: i)
-                history.removeAll { $0.id == id }
                 tools = tools.mapValues { $0 > i ? $0 - 1 : $0 }
             }
         case "on_interrupt":
