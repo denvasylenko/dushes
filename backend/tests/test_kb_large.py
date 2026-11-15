@@ -207,3 +207,33 @@ def test_a_search_on_500_pages_is_fast(tmp_path):
         times.append(time.perf_counter() - t)
     times.sort()
     assert times[len(times) // 2] < 0.05, times[len(times) // 2]           # the median, in seconds
+
+
+def test_the_small_words_of_a_question_do_not_rank(tmp_path):
+    # QA's corpora, 2026-11-15: "How long do we keep CCTV recordings?" ranked a heading with "long" in it first
+    doc = ("# Policies\n\n## Long-term absence\n\nHow we review a long absence, and what we keep on file.\n\n"
+           "## Retention\n\nCCTV recordings are deleted after 30 days.\n")
+    kb = KnowledgeBase(tmp_path)
+    kb.add_document("ns", "policies.md", doc.encode())
+    assert kb.search("ns", "How long do we keep CCTV recordings?")[0][1].section == "Retention"
+    assert kb.search("ns", "what is it")                                # only small words: searched as written
+
+
+def test_every_piece_of_a_long_table_has_its_header():
+    rows = "\n".join(f"| MR-{i:03d} | Town {i} | {'nights only' if i == 61 else 'none'} |" for i in range(1, 90))
+    chunks = chunk_text("ns", "d9", f"# Sites\n\n| Site | Town | Guarding |\n|---|---|---|\n{rows}\n")
+    assert len(chunks) > 2 and all(c.text.startswith("| Site | Town | Guarding |\n|---|---|---|") for c in chunks)
+    assert sum("| MR-061 |" in c.text for c in chunks) == 1             # a row is in one piece only
+    idx = BM25Index()
+    idx.add(chunks)
+    assert "nights only" in idx.search(["ns"], "What guarding does site MR-061 have?", 1)[0][1].text
+
+
+def test_a_question_that_names_a_document_finds_its_sections(tmp_path):
+    # a PDF has no title line of its own: its file name stands at the top of its sections' paths all the same
+    kb = KnowledgeBase(tmp_path)
+    kb.add_document("ns", "dealer_handbook.md", b"# Dealer Handbook\n\n## 2 Cover\n\nTools are covered for 2 years.\n")
+    pdf_like = "## Page 1\n1 Cover\nTools are covered for 3 years when registered.\n"
+    kb.add_document("ns", "warranty_terms_2026.txt", pdf_like.encode())
+    assert kb.search("ns", "what do the warranty terms say about cover?")[0][1].title == "warranty_terms_2026.txt"
+    assert kb.search("ns", "what does the dealer handbook say about cover?")[0][1].title == "dealer_handbook.md"

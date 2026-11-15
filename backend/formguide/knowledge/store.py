@@ -114,6 +114,8 @@ def chunk_text(namespace: str, doc_id: str, text: str, chunk_chars: int = CHUNK_
         for kind, block in _blocks(body):
             whole = kind in ("table", "list") and len(block) <= 2 * chunk_chars
             parts = [block] if whole or len(block) <= chunk_chars else block.split("\n")
+            # a long table is cut between rows: every piece starts with the table's header, so a row keeps its columns
+            head = "\n".join(parts[:2]) if kind == "table" and len(parts) > 2 and set(parts[1]) <= set("|-: ") else ""
             for part in parts:
                 while len(part) > 2 * chunk_chars:   # one endless line: cut it at a space
                     cut = part.rfind(" ", 0, chunk_chars)
@@ -125,6 +127,8 @@ def chunk_text(namespace: str, doc_id: str, text: str, chunk_chars: int = CHUNK_
                     part = part[cut:].lstrip()
                 if buf.strip() and buf.strip() != carried and len(buf) + len(part) > chunk_chars:
                     emit()
+                if head and part not in parts[:2] and (not buf.strip() or buf.strip() == carried):
+                    buf = head + "\n"          # a new piece of the table: its header, not the rows before it
                 buf += part + "\n"
             if kind != "text" or len(parts) == 1:
                 buf += "\n" if not buf.endswith("\n\n") else ""
