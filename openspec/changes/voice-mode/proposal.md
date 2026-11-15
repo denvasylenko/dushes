@@ -25,13 +25,16 @@ Today the widget has dictation only: speech becomes text in the message box and 
   rule moves into the voice model.
 - **Its own limits**: a daily budget separate from the chat demos, a time limit per conversation, a limit on
   conversations at once, all enforced on the server from measured usage.
-- **Dushes only.** Herefront stays as it is.
+- **In the package, for every consumer** (the owner's go, 2026-11-15): the web widget and the Swift client both
+  get the mode, so Herefront and the cabinet use it through the package. Each product keeps its own agent model
+  and its own daily voice budget ($5 each: the Dushes stand, Herefront iOS, Herefront web).
 
 ## Impact
 
-- New on the docs host (`backend/docs_ai`): routes to unlock the mode, start a voice conversation and end it; a
-  bridge between the realtime session and a Dushes run; the voice limits. Nothing in `backend/formguide` changes
-  in the first step, apart from one way to answer an open card with spoken words.
+- New in the package (`backend/formguide/voice`): the routes to unlock the mode, start a voice conversation and
+  end it; the bridge between the voice session and a run; the limits and the codes. The docs host mounts it; so
+  can any host. In the agent: a `quiet` mark on field-change cards and a way to answer an open card with words.
+- The Swift client (`packages/agui-chat-swift`, the iOS Tech Lead): the same mode against the same routes.
 - The widget (`packages/agui-chat`, the designer's): the orb view, the WebRTC connection, compact cards and lines.
   It does not fit the main file's size budget, so it loads on demand when the mode is switched on.
 - Docs (Docs Lead): one page, marked experimental. QA: a voice benchmark (time to first sound, task success, cost

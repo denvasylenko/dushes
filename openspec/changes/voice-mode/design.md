@@ -1,9 +1,61 @@
 # Design: experimental voice mode
 
-Status: a note for the owner's decision. No code is written and nothing has been spent.
+Status: the owner said go on 2026-11-15 (through the CPO); see "The owner's go" below. The first step is the
+check of gpt-live-1. Spend so far: nothing.
 Prices and mechanics were read from OpenAI's documentation on 2026-11-15 (pricing page, the gpt-realtime-2.1 model
 page, the WebRTC, server-side controls and realtime cost guides). Everything marked "estimate" is my arithmetic on
 those prices, not a measurement.
+
+## The owner's go (2026-11-15)
+
+- **Build the hybrid, in the package, with two consumers**: `<agui-chat>` on the web and `agui-chat-swift` on iOS
+  (with the iOS Tech Lead). Herefront and the cabinet get voice through the package; there is no second
+  implementation. The agent behind the voice is each product's own: Haiku in Herefront, the configured model on
+  the Dushes demos.
+- **Daily voice budgets**, each counted from the usage OpenAI reports: $5 on the Dushes stand, $5 on Herefront
+  iOS, $5 on Herefront web. Per conversation as proposed: 5 minutes or $0.75, one at a time, 30 seconds of
+  silence ends it.
+- **The voice**: check gpt-live-1 first; if it passes, use it, otherwise gpt-realtime-2.1-mini.
+- **Preparation budget** up to $10 in total; every run priced in the reports.
+- Already decided: cards only to confirm, silent mode is the microphone off, one code per person.
+
+So the server part is not a route of the docs host alone: it is a module of the package (`formguide.voice`: the
+session, the bridge to a run, the limits, the codes) that the docs host mounts, and that Herefront and the
+cabinet mount with their own keys and budgets.
+
+## What gpt-live-1's documentation says (read 2026-11-15, before any connection)
+
+It fits the hybrid as designed, with less to build:
+
+- It is a voice model that "delegates reasoning and tool use to a backend agent". In **client delegation** mode
+  the backend is ours. Our server attaches to the session
+  (`wss://api.openai.com/v1/live/sessions/{id}/attach`, our key), reads the transcript of what the person said
+  (`session.input_transcript.delta`), is told when the voice wants help (`session.delegation.created`), runs the
+  Dushes turn, and returns the result with `session.commentary.append` (text it says aloud, paraphrased; up to
+  500 tokens) or `session.thinking.append` (facts it may use without saying them).
+- The browser connects through our host: `POST /v1/live/sessions` with the browser's offer and our key; no key in
+  the browser. A WebSocket transport exists for server-to-server use, which is how the first test runs without a
+  browser.
+- Price: $0.05 a minute of **connected** time, by the second; silence is billed; creating a session bills 15
+  seconds up front. Five minutes is $0.25, the limit of $0.75 a conversation is never reached by the voice alone,
+  and the cost has no range: the "conversation sent again" problem of the Realtime models does not exist here.
+- Usage arrives as `session.usage.updated {usage: {seconds}}`, which is what the budget counts.
+
+What the documentation does not say, and the connection test must answer:
+
+1. **Russian and Ukrainian.** The voice table lists English, Portuguese, German, French, Hindi, Japanese and
+   Korean voices. Neither language is named. The owner speaks Russian: if gpt-live-1 does not understand and
+   speak it well, it fails the check and the voice is gpt-realtime-2.1-mini.
+2. **Access.** The quickstart asks for "a project API key with access to GPT-Live"; whether the owner's key has
+   it is unknown until the first call.
+3. **Stopping speech from the server.** A sideband "does not control playback": on an interruption the client
+   mutes or drops audio. Interrupting also "doesn't stop backend work", so our server stops the Dushes turn itself.
+4. Maximum session length, idle timeout, a text-only session: not stated. Our own 5-minute and silence limits
+   make the first two moot; silent mode needs no session.
+
+The test (WebSocket, recorded clips made with the Mac's own voice, English and Russian, one request each that
+needs the backend): does it connect, does the transcript arrive, does delegation fire, is the returned text
+spoken, how long from the end of speech to the first sound. About two minutes of session: **about $0.15**.
 
 ## The two designs
 
