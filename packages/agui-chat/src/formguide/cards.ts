@@ -300,6 +300,21 @@ const qText = (s: unknown): HTMLElement => { const el = h('div', { class: 'card-
 /** Typed text that reads like a field's value, not a question or a story. */
 const valueLike = (t: string): boolean => t.length <= 120 && !t.includes('\n') && !/[?\u061f\uff1f]\s*$/.test(t)   // ? in Latin, Arabic, CJK
 
+/** What exactly is agreed to, under a question about one consent: the consent's own text from the form and its
+ *  document (Read opens the text in place, or the link), however loosely the question was worded. It stays after the answer. */
+function consentText(it: Interrupt, c: RendererContext): HTMLElement | null {
+  if (!it.consent || !it.label) return null
+  const doc = it.doc as { title?: string; text?: string; url?: string } | undefined
+  const full = doc?.text ? h('div', { class: 'muted doc', hidden: true }, doc.text) : null
+  const read = full
+    ? h('button', { class: 'btn link', type: 'button', 'data-keep': true, onclick: (e: Event) => {
+        full.hidden = !full.hidden
+        ;(e.target as HTMLElement).textContent = full.hidden ? c.t('read') : c.t('hide')
+      } }, c.t('read'))
+    : doc?.url && /^https?:\/\//i.test(doc.url) ? h('a', { class: 'btn link', href: doc.url, target: '_blank', rel: 'noopener noreferrer', 'data-keep': true }, c.t('read')) : null
+  return h('div', { class: 'c-text', part: 'consent-text' }, h('div', null, String(it.label)), read, full)
+}
+
 export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLElement {
   const options: Opt[] = it.options ?? []
   const multiple = !!it.multiple
@@ -318,7 +333,7 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
   }
   /** Values that fill fields directly (a day, a slot, a range, several fields): applied with Undo, then resumed. */
   const applyValues = async (values: Record<string, unknown>, labels: string, answer: Record<string, unknown>, strict = false) => {
-    card.querySelectorAll<HTMLButtonElement>('.chip, .btn, .opt').forEach((b) => { b.disabled = true })
+    card.querySelectorAll<HTMLButtonElement>('.chip, .btn:not([data-keep]), .opt').forEach((b) => { b.disabled = true })
     err.textContent = ''
     try {
       const prev = (await ctx!.getState()).config?.state ?? {}
@@ -339,7 +354,7 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
       c.resolve({ ...answer, config, ui: state.ui })
       ctx!.onDirective?.({ type: 'focus', target: names[names.length - 1], reveal: it.reveal ?? [], hint: '' })
     } catch (e) {
-      card.querySelectorAll<HTMLButtonElement>('.chip, .btn, .opt').forEach((b) => { b.disabled = false })
+      card.querySelectorAll<HTMLButtonElement>('.chip, .btn:not([data-keep]), .opt').forEach((b) => { b.disabled = false })
       err.textContent = c.t('applyFailed')
       err.title = e instanceof Error ? e.message : String(e)
     }
@@ -418,7 +433,7 @@ export function askCard(it: Interrupt, c: RendererContext, ctx?: Ctx): HTMLEleme
   const acts = h('div', { class: 'acts' }, (multiple || (text && !several)) ? sendBtn : null,
     h('button', { class: 'btn link', type: 'button', onclick: () => { answered(c.t('skipped'), false); c.resolve({ accepted: false }) } }, c.t('skip')))
   const card = h('div', { tabindex: 0, 'aria-label': String(it.question ?? '').replace(/[*`]/g, '') },
-    qText(it.question),
+    qText(it.question), consentText(it, c),
     view.el, typed, several || !text ? null : text.type === 'number' ? numberBox(text) : text, several, err, acts)
   card.addEventListener('keydown', (e) => {   // 1..9 picks an option
     if (e.target instanceof HTMLInputElement) return

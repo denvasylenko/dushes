@@ -723,6 +723,15 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
         raise ToolError("question must not be empty")
     if len(question) > 300:
         raise ToolError("the question is too long (300 characters at most); ask one short question")
+    if not a.get("field") and not a.get("fields") and _CONSENT_Q.search(question):
+        # a yes to "do you agree to …?" must count: the question goes with the consent's field, so the answer fills it
+        mine = [n.name for n in ctx.ov.layout.fields()
+                if ctx.ov[n.name].visible and not ctx.ov[n.name].disabled and ctx.ov[n.name].value is not True
+                and is_consent(ctx, n, ctx.ov[n.name])]
+        if mine:
+            raise ToolError("this question asks for a consent. Ask it with field: <the consent's field> so the "
+                            f"person's own answer fills it (consents not given yet: {', '.join(mine)}). If it is "
+                            "about something else, reword it without agree / accept / consent")
     raw = a.get("options") or []
     if not isinstance(raw, list):
         raise ToolError("options must be a list")
@@ -843,7 +852,11 @@ def _applying(ctx: ToolCtx, name: str, opts: list[dict]) -> dict:
             for o in opts:
                 o.pop("value", None)
             return {}
-        return {"applies": True, "label": e.label or name, **previous_of(ctx, name)}
+        extra: dict[str, Any] = {}
+        if is_consent(ctx, e.node, e):   # the card is about this one consent: its own text, and its document
+            doc = ((ctx.pack.consents.get(name) or {}).get("doc") if ctx.pack else None) or e.props.get("consent_doc")
+            extra = {"consent": True, **({"doc": doc} if isinstance(doc, dict) else {})}
+        return {"applies": True, "label": e.label or name, **extra, **previous_of(ctx, name)}
     try:
         for o in opts:
             found = vals.find_option(e.options, o["id"])
@@ -1225,6 +1238,12 @@ _CONSENT = re.compile(
     r"|akzeptiere|stimme .{0,40}zu\b|einverstanden|j'accepte|accetto|acconsento|acepto|autorizo"
     r"|\u0441\u043e\u0433\u043b\u0430\u0441|\u043f\u0440\u0438\u043d\u0438\u043c\u0430\u044e|\u043f\u043e\u0433\u043e\u0434\u0436\u0443",
     re.IGNORECASE)
+
+
+# a question that asks the person to agree to something
+_CONSENT_Q = re.compile(r"\b(agree|accept|consent)\b|einverstanden|akzeptier|stimmen sie|accett|acconsent|acept|"
+                        r"accepte|\u0441\u043e\u0433\u043b\u0430\u0441|\u043f\u0440\u0438\u043d\u0438\u043c\u0430|"
+                        r"\u043f\u043e\u0433\u043e\u0434\u0436", re.IGNORECASE)
 
 
 def is_consent(ctx: ToolCtx, n: Any, e: Any) -> bool:

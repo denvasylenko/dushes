@@ -168,3 +168,12 @@ def test_a_recipe_can_forbid_words_in_the_replies():
     assert [c["ok"] for c in recipes.verdict(sc, [], {}, ["confirm"], []) if c["check"] == "at most 1 confirm card"] == [True]
     held = lambda c: [x["ok"] for x in recipes.verdict(sc, [], {}, [], [], c) if x["check"].startswith("every confirm card")]
     assert held(["submit_deputy_change"]) == [True] and held([None, "submit_deputy_change"]) == [False] and held([]) == [False]
+
+
+def test_the_scripted_user_gives_a_date_picker_a_date():
+    from datetime import date
+    sunday = date(2026, 11, 15)
+    assert recipes.typed("next Tuesday", {"type": "date"}, sunday) == "2026-11-17"
+    assert recipes.typed("next Sunday", {"type": "date"}, sunday) == "2026-11-22"      # never today
+    assert recipes.typed("next Tuesday", {"type": "text"}, sunday) == "next Tuesday"
+    assert recipes.typed("2027-03-01", {"type": "date"}, sunday) == "2027-03-01" and recipes.typed("", {"type": "date"}) == ""

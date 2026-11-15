@@ -690,6 +690,9 @@ button.bubble-q { cursor: pointer; }
 .fld { display: grid; gap: 4px; }
 .fld .muted { font-size: 12px; }
 .row.consent { cursor: pointer; }
+/* a question about one consent: the consent's own words, set apart like a quote, with Read for its document */
+.c-text { margin: 0 0 12px; padding: 10px 12px; border-radius: var(--agui-radius-sm); background: var(--agui-soft); font-size: 15px; line-height: 1.4; }
+.c-text .btn.link { padding: 0; min-height: 0; margin-top: 6px; }
 .issue-line { font-size: 13px; margin-top: 2px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
 .issue-line.warning { color: color-mix(in srgb, var(--agui-danger) 70%, var(--agui-ink)); }
 .issue-line.error, .row.issue.error .sev { color: var(--agui-danger); }

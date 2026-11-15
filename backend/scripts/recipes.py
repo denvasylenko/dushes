@@ -322,8 +322,9 @@ class FormChat:
         self.cards.append("set_fields" if "changes" in it else kind)
         if kind == "ask":
             opts = it.get("options") or []
-            self.log.append(f"   ❓ {it.get('question')} → {opts[0]['label'] if opts else self.answer or 'closed'}")
-            self._resume({"answer": {"ids": [opts[0]["id"]]}} if opts else {"answer": {"text": self.answer}} if self.answer
+            text = typed(self.answer, it.get("input"))
+            self.log.append(f"   ❓ {it.get('question')} → {opts[0]['label'] if opts else text or 'closed'}")
+            self._resume({"answer": {"ids": [opts[0]["id"]]}} if opts else {"answer": {"text": text}} if text
                          else {"accepted": False}, depth)
         elif "changes" in it:
             ok = self.card in ("accept", "confirm_no")
@@ -340,6 +341,20 @@ class FormChat:
 
 
 # ===================================================================== one run, the checks
+
+
+def typed(answer: str, inp: dict | None, today: Any = None) -> str:
+    """What the scripted user types into a card: a date picker gets a date, never words. "next Tuesday" becomes the
+    coming Tuesday as YYYY-MM-DD (a real picker cannot take the words, and the agent rightly asks again)."""
+    from datetime import date, timedelta
+    if (inp or {}).get("type") != "date" or not answer:
+        return answer
+    days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    hit = next((i for i, d in enumerate(days) if d in answer.lower()), None)
+    if hit is None:
+        return answer
+    t = today or date.today()
+    return (t + timedelta(days=(hit - t.weekday() - 1) % 7 + 1)).isoformat()
 
 
 def _arg_match(args: dict, want: dict) -> bool:
