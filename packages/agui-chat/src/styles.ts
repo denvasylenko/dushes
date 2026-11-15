@@ -40,7 +40,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .mode-page .log { padding-inline: max(20px, calc(50% - 360px)); scrollbar-gutter: stable both-edges; }   /* the feed is as wide as the window (its scrollbar at the window's edge), its column centred, 760 px */
 .mode-inline .log { padding-left: max(20px, calc((100% - 720px) / 2)); padding-right: max(20px, calc((100% - 720px) / 2)); }
 .mode-floating .panel { position: fixed; z-index: 2147483001; top: 0; right: 0; bottom: 0; width: min(var(--agui-panel-width), 100%);
-  box-shadow: -20px 0 60px -20px var(--agui-shadow); transform: translateX(104%); transition: transform .42s var(--agui-ease); visibility: hidden; }
+  box-shadow: var(--agui-panel-shadow, -20px 0 60px -20px var(--agui-shadow)); transform: translateX(104%); transition: transform .42s var(--agui-ease); visibility: hidden; }
 .mode-floating.open .panel { transform: none; visibility: visible; }
 .scrim { position: fixed; inset: 0; z-index: 2147483000; background: var(--agui-scrim); opacity: 0; pointer-events: none; transition: opacity .3s; }
 .mode-floating.open .scrim { opacity: 1; pointer-events: auto; }
@@ -188,7 +188,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .mode-hero:not(.open) .box { min-height: 60px; padding: 12px 12px 12px 16px; align-items: flex-end; box-shadow: 0 10px 30px -14px var(--agui-shadow); }
 .mode-hero:not(.open) textarea { font-size: 17px; line-height: 24px; padding-top: 6px; padding-bottom: 6px; }
 @media (pointer: coarse) { .mode-hero:not(.open) textarea { padding-top: 10px; padding-bottom: 10px; } .mode-hero:not(.open) .box { padding: 8px 8px 8px 16px; } }
-.mode-hero.open .panel { background: var(--agui-panel-bg, var(--agui-bg)); border: 1px solid var(--agui-line); border-radius: var(--agui-radius-lg);
+.mode-hero.open .panel { background: var(--agui-panel-bg, var(--agui-bg)); border: var(--agui-panel-border, 1px solid var(--agui-line)); border-radius: var(--agui-radius-lg);
   overflow: hidden; animation: hero-grow .32s var(--agui-ease) both; }
 .mode-hero.open .log { max-height: 70vh; min-height: 160px; }
 .mode-hero.open .head { display: none; }
@@ -297,7 +297,6 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .field > .num, .field > .sel { flex: 1; min-width: 0; }
 /* our calendar (calendar.ts): a month grid, round days, the accent for the chosen one, a ring for today */
 .cal-slot { display: contents; }   /* the month grid arrives with the blocks script */
-.cal { margin-top: 10px; border: 1px solid var(--agui-line); border-radius: var(--agui-radius); padding: 10px; background: var(--agui-bg); max-width: 340px; }
 .date-face { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
 .date-face .ph { color: var(--agui-ink-3); }
 .date-face .ico { color: var(--agui-ink-2); flex: none; }
@@ -311,16 +310,6 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .card input[type=checkbox]:checked { background: var(--agui-accent); border-color: var(--agui-accent); }
 .card input[type=checkbox]:checked::after { transform: translateY(-1px) rotate(45deg) scale(1); }
 /* the slider, Apple-style: a thin soft track, the filled part in the accent, a white round thumb */
-.range input[type=range] { appearance: none; -webkit-appearance: none; height: 28px; background: transparent; }
-.range input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: var(--agui-radius-pill);
-  background: linear-gradient(to right, var(--agui-accent) var(--p, 50%), var(--agui-line-2) var(--p, 50%)); }
-.range input[type=range]::-moz-range-track { height: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-line-2); }
-.range input[type=range]::-moz-range-progress { height: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-accent); }
-.range input[type=range][data-empty]::-moz-range-progress { background: transparent; }   /* no value yet: the track stays empty */
-.range input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -11px; border-radius: 50%;
-  background: var(--agui-knob); border: 0.5px solid color-mix(in srgb, var(--agui-shadow) 40%, transparent); box-shadow: 0 2px 6px color-mix(in srgb, var(--agui-shadow) 60%, transparent); cursor: grab; }
-.range input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--agui-knob); border: 0.5px solid color-mix(in srgb, var(--agui-shadow) 40%, transparent);
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--agui-shadow) 60%, transparent); cursor: grab; }
 /* selects: the native arrow hidden, a chevron of our own */
 .sel { position: relative; display: block; }
 .sel select { appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer; }
@@ -589,8 +578,8 @@ button.bubble-q { cursor: pointer; }
 .mode-bubble .panel { position: fixed; z-index: 2147483001; right: max(var(--agui-bubble-offset, 20px), env(safe-area-inset-right, 0px));
   bottom: calc(max(var(--agui-bubble-offset, 20px), env(safe-area-inset-bottom, 0px)) + var(--agui-launcher-size, 60px) + 14px);
   width: min(var(--agui-bubble-width, 400px), calc(100vw - 32px)); height: min(var(--agui-bubble-height, 680px), calc(100vh - 120px));
-  border-radius: var(--agui-bubble-window-radius, 24px); overflow: hidden; border: 1px solid var(--agui-line);
-  box-shadow: 0 24px 60px -16px var(--agui-shadow), 0 4px 14px -6px color-mix(in srgb, var(--agui-shadow) 50%, transparent);
+  border-radius: var(--agui-bubble-window-radius, 24px); overflow: hidden; border: var(--agui-panel-border, 1px solid var(--agui-line));
+  box-shadow: var(--agui-panel-shadow, 0 24px 60px -16px var(--agui-shadow), 0 4px 14px -6px color-mix(in srgb, var(--agui-shadow) 50%, transparent));
   transform-origin: bottom right; visibility: hidden; opacity: 0; transform: translateY(16px) scale(.18); }
 .mode-bubble.side-left .panel { right: auto; left: max(var(--agui-bubble-offset, 20px), env(safe-area-inset-left, 0px)); transform-origin: bottom left; }
 .mode-bubble.open .panel { visibility: visible; opacity: 1; transform: none; animation: agui-grow .52s cubic-bezier(.34, 1.4, .5, 1) both; }   /* static end state for reduced motion */
@@ -609,9 +598,12 @@ button.bubble-q { cursor: pointer; }
 .mode-bubble .close { display: none; }   /* the launcher closes it */
 /* motion options */
 .motion-gentle.mode-bubble.open .panel { animation-duration: .32s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
-.motion-none.mode-bubble.open .panel, .motion-none.mode-bubble.closing .panel { animation: agui-fade .2s ease both; transform: none; }
-.motion-none.mode-bubble.closing .panel { animation-direction: reverse; }
-.motion-none.mode-bubble.open .head, .motion-none.mode-bubble.open .log, .motion-none.mode-bubble.open .foot { animation: none; }
+/* motion="none": the panel and the scrim appear and go at once, in every mode and at every width; a host that runs
+   its own transition around open() and close() gets a widget that stands still */
+.wrap.motion-none .panel, .wrap.motion-none .scrim, .wrap.motion-none .head, .wrap.motion-none .log, .wrap.motion-none .foot { animation: none !important; transition: none !important; }
+.wrap.motion-none:not(.open) .panel { transform: none; visibility: hidden; }   /* gone at once, the bubble's closing moment included */
+/* scrim="off": the veil is the host's; the focus trap and Esc stay (modal) */
+.wrap.noscrim .scrim { display: none; }
 @keyframes agui-fade { from { opacity: 0; } to { opacity: 1; } }
 /* the greeting: a small speech bubble next to the closed launcher */
 .greet { position: fixed; z-index: 2147483000; right: calc(max(var(--agui-bubble-offset, 20px), env(safe-area-inset-right, 0px)) + var(--agui-launcher-size, 60px) + 12px);
@@ -662,12 +654,6 @@ button.bubble-q { cursor: pointer; }
 .tag.warn { background: color-mix(in srgb, var(--agui-danger) 12%, transparent); color: var(--agui-danger); }
 .note { margin-top: 6px; font-size: 12px; }
 .search { margin: 0 0 8px; }
-.strip .btn.link { margin-top: 6px; }
-.slots { margin-top: 8px; }
-.range input[type=range] { width: 100%; margin: 4px 0; }
-.stepper { display: inline-flex; align-items: center; gap: 4px; }
-.stepper .btn { width: 36px; height: 36px; min-height: 36px; padding: 0; display: grid; place-items: center; font-size: 17px; line-height: 1;
-  border-radius: var(--agui-radius-pill); }
 .fields { display: grid; gap: 8px; }
 .fields .text-in { margin-top: 0; }
 .fld { display: grid; gap: 4px; }
@@ -705,7 +691,6 @@ button.bubble-q { cursor: pointer; }
   .row input[type=checkbox] { width: 22px; height: 22px; }
   .row { min-height: 44px; }
   .opt { min-height: 44px; }
-  .stepper .btn { width: 44px; height: 44px; }
   .num-step { width: 44px; }
   .num > input { padding-right: 58px; }
 }

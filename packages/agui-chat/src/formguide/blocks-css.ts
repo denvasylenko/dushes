@@ -162,4 +162,23 @@ export const BLOCKS_CSS = `
 .rev-s .okmark { width: 14px; color: var(--agui-ok); font-style: normal; font-weight: 700; flex: none; }
 .row.issue .sev { width: 14px; font-style: normal; font-weight: 700; flex: none; color: var(--agui-ink-2); }
 .row.issue.fixed .sev { color: var(--agui-ok); }
+/* the calendar box, time slots, the slider and the stepper: drawn by the on-demand file only */
+.cal { margin-top: 10px; border: 1px solid var(--agui-line); border-radius: var(--agui-radius); padding: 10px; background: var(--agui-bg); max-width: 340px; }
+.range input[type=range] { appearance: none; -webkit-appearance: none; height: 28px; background: transparent; }
+.range input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: var(--agui-radius-pill);
+  background: linear-gradient(to right, var(--agui-accent) var(--p, 50%), var(--agui-line-2) var(--p, 50%)); }
+.range input[type=range]::-moz-range-track { height: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-line-2); }
+.range input[type=range]::-moz-range-progress { height: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-accent); }
+.range input[type=range][data-empty]::-moz-range-progress { background: transparent; }   /* no value yet: the track stays empty */
+.range input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -11px; border-radius: 50%;
+  background: var(--agui-knob); border: 0.5px solid color-mix(in srgb, var(--agui-shadow) 40%, transparent); box-shadow: 0 2px 6px color-mix(in srgb, var(--agui-shadow) 60%, transparent); cursor: grab; }
+.range input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: var(--agui-knob); border: 0.5px solid color-mix(in srgb, var(--agui-shadow) 40%, transparent);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--agui-shadow) 60%, transparent); cursor: grab; }
+.strip .btn.link { margin-top: 6px; }
+.slots { margin-top: 8px; }
+.range input[type=range] { width: 100%; margin: 4px 0; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper .btn { width: 36px; height: 36px; min-height: 36px; padding: 0; display: grid; place-items: center; font-size: 17px; line-height: 1;
+  border-radius: var(--agui-radius-pill); }
+  .stepper .btn { width: 44px; height: 44px; }
 `

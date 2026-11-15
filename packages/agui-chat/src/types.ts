@@ -279,6 +279,9 @@ export interface ChatOptions {
   attach: boolean
   /** File types the + button offers, e.g. ".pdf,.jpg"; empty = what the plugin accepts. */
   attachAccept: string
+  /** false (`scrim="off"`): no veil of the chat's own behind the open panel, at any width; the host draws one.
+   *  The focus trap and Esc stay (see `modal`). */
+  scrim?: boolean
   /** Show the close button in inline and page mode too. There the chat does not hide itself: it fires
    *  `agui:before-close` and `agui:close`, and the host, which owns the container, takes it away. */
   closable?: boolean

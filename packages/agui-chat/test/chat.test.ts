@@ -795,5 +795,20 @@ describe('closing, taken over by the page', () => {
     ;(el.shadowRoot!.querySelector('.icon.close') as HTMLButtonElement).click()   // the host brought it back: it closes again
     expect(seen).toEqual(['before:button', 'close', 'before:button', 'close'])
   })
+
+  it('scrim="off" and motion="none" mark the chat for a host that runs its own transition; the panel tokens are themeable', async () => {
+    const el = document.createElement('agui-chat') as AguiChatElement
+    for (const [k, v] of Object.entries({ mode: 'floating', lang: 'en', 'persist-thread': 'off', scrim: 'off', motion: 'none' })) el.setAttribute(k, v)
+    document.body.appendChild(el)
+    await new Promise((r) => setTimeout(r, 0))
+    const wrap = el.shadowRoot!.querySelector('.wrap')!
+    expect(wrap.classList.contains('noscrim')).toBe(true)
+    expect(wrap.classList.contains('motion-none')).toBe(true)
+    expect(wrap.classList.contains('nonmodal')).toBe(false)          // the focus trap and Esc stay: scrim is not modal
+    el.options = { scrim: true }
+    expect(wrap.classList.contains('noscrim')).toBe(false)
+    const { TOKENS } = await import('../src/themes')
+    expect(TOKENS).toEqual(expect.arrayContaining(['panel-border', 'panel-shadow']))
+  })
 })
 

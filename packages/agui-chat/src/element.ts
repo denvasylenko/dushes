@@ -45,7 +45,7 @@ export const DEFAULTS: ChatOptions = {
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, voice: 'auto', dictation: '', transcribeUrl: '', attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined, icons: {}, render: {},
-  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, commands: undefined, menu: undefined, closable: false, modal: true, launcher: 'auto', launcherLabel: '', reply: true, composerShadow: 'soft', shortcutHints: true, collapseLines: 8, collapseAnswers: false,
+  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, commands: undefined, menu: undefined, closable: false, scrim: true, modal: true, launcher: 'auto', launcherLabel: '', reply: true, composerShadow: 'soft', shortcutHints: true, collapseLines: 8, collapseAnswers: false,
 }
 
 /** attribute -> [option, parser] */
@@ -59,7 +59,7 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   'mic-auto-send': ['micAutoSend', bool], voice: ['voice', String], dictation: ['dictation', String], 'transcribe-url': ['transcribeUrl', String], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
   'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
   'bubble-side': ['bubbleSide', String], greeting: ['greeting', String], 'greeting-delay': ['greetingDelay', Number], motion: ['motion', String],
-  reply: ['reply', bool], closable: ['closable', bool], 'composer-shadow': ['composerShadow', String], 'shortcut-hints': ['shortcutHints', bool], 'collapse-lines': ['collapseLines', Number], 'collapse-answers': ['collapseAnswers', bool], modal: ['modal', bool], launcher: ['launcher', String], 'launcher-label': ['launcherLabel', String],
+  reply: ['reply', bool], closable: ['closable', bool], scrim: ['scrim', bool], 'composer-shadow': ['composerShadow', String], 'shortcut-hints': ['shortcutHints', bool], 'collapse-lines': ['collapseLines', Number], 'collapse-answers': ['collapseAnswers', bool], modal: ['modal', bool], launcher: ['launcher', String], 'launcher-label': ['launcherLabel', String],
   'message-actions': ['messageActions', (v) => (!v || /^(off|none|false)$/.test(v) ? [] : v.split(',').map((x) => x.trim()).filter(Boolean))],
 }
 
@@ -1000,6 +1000,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     // a phone still gets the sheet over the page
     this.$.wrap.classList.toggle('nonmodal', o.modal === false)
     this.$.wrap.classList.toggle('closable', !!o.closable)
+    this.$.wrap.classList.toggle('noscrim', o.scrim === false)
     if (o.mode === 'floating' && o.modal !== false) this.$.panel.setAttribute('aria-modal', 'true'); else this.$.panel.removeAttribute('aria-modal')
     const input = this.$.input as HTMLTextAreaElement
     input.placeholder = o.placeholder || this.t('placeholder')

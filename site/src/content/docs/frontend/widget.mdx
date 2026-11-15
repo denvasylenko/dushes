@@ -283,7 +283,8 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `bubbleSide` | `bubble-side` | `right` | bubble mode: the launcher's corner, `right` or `left` |
 | `greeting` | `greeting` | — | bubble mode: a short speech bubble next to the closed launcher, shown once per visitor until closed |
 | `greetingDelay` | `greeting-delay` | `4` | seconds before the greeting appears |
-| `motion` | `motion` | `spring` | the bubble's opening: `spring` (a small overshoot), `gentle`, `none` (fades only; reduced motion always fades) |
+| `motion` | `motion` | `spring` | how the chat opens and closes: `spring` (the bubble's small overshoot), `gentle`, `none` (the panel and the scrim appear and go at once, in every mode: for a page that runs its own transition around `open()` and `close()`, e.g. `document.startViewTransition(() => chat.open())` with `agui-chat::part(panel) { view-transition-name: assistant }`) |
+| `scrim` | `scrim` | `true` | `off`: no veil of the chat's own behind the open panel, at any width (your page draws its own); the focus trap and Esc stay |
 | `open` | `open` | off | open the floating panel on load |
 | `title`, `subtitle` | `title`, `subtitle` | empty | the header (the `title` attribute is read, then removed from the element, so no browser tooltip covers the chat) |
 | `intro` | `intro` | a short greeting | the line in an empty chat |
@@ -354,6 +355,7 @@ chat.use(formguide({
 ## Next
 
 <CardGrid>
+  <LinkCard title="Playground" description="Try every setting of the chat live and copy the code." href="../playground/" />
   <LinkCard title="Themes and styling" href="../themes/" />
   <LinkCard title="<agui-chat> API" href="../../reference/agui-chat/" />
 </CardGrid>

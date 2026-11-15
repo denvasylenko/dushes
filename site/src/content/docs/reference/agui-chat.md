@@ -25,7 +25,7 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `threadId` (`thread-id`) | a new id, kept per page | the conversation; the same id brings the chat back after a reload |
 | `persistThread` (`persist-thread`) | `true` | keep the thread id in localStorage |
 | `mode` | `floating` | `bubble`: a round launcher that grows into a chat window (a bottom sheet on phones); `floating`: a button and a side panel; `inline`: fills its box; `page`: the whole window; `hero`: only the field until the first message, then the chat grows in place (a full-screen sheet on a phone) |
-| `bubbleSide`, `greeting`, `greetingDelay`, `motion` | `right`, —, `4`, `spring` | bubble mode: the launcher's corner, a greeting speech bubble and its delay, the opening motion (`spring`, `gentle`, `none`) |
+| `bubbleSide`, `greeting`, `greetingDelay`, `motion` | `right`, —, `4`, `spring` | bubble mode: the launcher's corner, a greeting speech bubble and its delay, the opening motion (`spring`, `gentle`; `none`: no movement or fade of the chat's own in any mode, for a host that runs its own transition) |
 | `open` | `false` | open the floating panel on load |
 | `typing` | `words` | `words`: typewriter with words fading in; `plain`: text as it arrives; `off`: the whole message at the end |
 | `typingSpeed` | `55` | characters per second at least (it speeds up when text is waiting) |
@@ -55,6 +55,7 @@ chat.options = { mode: 'inline', typing: 'plain', toolSteps: false }       // or
 | `composerShadow` (`composer-shadow`) | `'soft'` | the composer's shadow: `'soft'` (a little lift, more when focused, fainter in dark), `'raised'`, `'none'`; tokens `--agui-composer-shadow`, `--agui-composer-shadow-focus` |
 | `collapseLines` (`collapse-lines`) | `8` | a message taller than this many lines folds: its start fading out and Show more / Show less (`aria-expanded`; part `fold-toggle`); `0`: never |
 | `collapseAnswers` (`collapse-answers`) | `false` | fold the assistant's long answers too (off, so an answer is never hidden) |
+| `scrim` (`scrim`) | `true` | `false` (`scrim="off"`): no veil of the chat's own behind the open panel, at any width; your page draws its own. The focus trap and Esc stay (that is `modal`) |
 | `closable` (`closable`) | `false` | show the close button in `inline` and `page` mode too. There the chat does not hide itself: it fires `agui:before-close` and `agui:close`, and your page, which owns the container, takes it away. The conversation, the draft and the scroll position are kept while the container is hidden or off the page |
 | `commands` | none | commands for the + menu's "Commands" row and for "/" in an empty composer: `[{id, label, hint?, icon?, send?}]`. A pick fires `agui:menu-action` and sends `send` as a message unless you cancel the event |
 | `menu` | none | your own rows in the + menu: `[{id, label, hint?, icon?}]` (`icon`: an SVG path on a 24 grid); a pick fires `agui:menu-action` |

@@ -173,6 +173,13 @@ Before the chat closes (its close button, Esc, the scrim or `close()`), it SHALL
 - **WHEN** the page cancels `agui:before-close` and calls `proceed()` inside its own view transition
 - **THEN** the chat closes inside that transition, and `agui:close` fires once
 
+### Requirement: A host that runs its own transition
+With `motion="none"` the panel and the scrim SHALL appear and go at once, with no movement or fade of their own, in every mode and at every width. With `scrim="off"` the chat SHALL draw no veil behind the open panel at any width, while the focus trap and Esc stay as `modal` says. The tokens `panel-border` and `panel-shadow` SHALL set or clear the open panel's border and shadow.
+
+#### Scenario: The panel grows out of a field
+- **WHEN** a host gives the panel part a view transition name and calls `open()` inside its own view transition, with `motion="none"` and `scrim="off"`
+- **THEN** the panel is in its final place in the first frame, no scrim is drawn, and the host's transition is the only movement
+
 ### Requirement: A host that owns the container
 With `closable`, the close button SHALL show in inline and page mode too; there a close SHALL fire `agui:before-close` and `agui:close` and change nothing else, so the host takes its container away. When the chat's container is hidden or taken off the page and shown again, the conversation, the draft in the composer and the reading position SHALL be as they were, and the history SHALL NOT be fetched again.
 
