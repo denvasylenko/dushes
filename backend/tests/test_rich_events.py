@@ -65,6 +65,14 @@ def test_sources_parsed_and_sent_once(guide, model, monkeypatch):
     assert item["excerpt"] == "Free." and item["path"].endswith("Early repayment")   # what a tap shows
     names = [e.get("name") or e["type"] for e in ev]
     assert names.index("sources") > max(i for i, n in enumerate(names) if n == "TEXT_MESSAGE_END")
+    # a restored conversation shows them again (the designer, 2026-11-15: after a reload the answer lost its links):
+    # the same items, as an activity message right after the answer's text
+    msgs = guide.thread_messages("e3")
+    i = next(n for n, m in enumerate(msgs) if m.get("activityType") == "sources")
+    assert msgs[i]["role"] == "activity" and msgs[i]["activity"] == {"items": got[0]["items"]}
+    assert msgs[i - 1]["role"] == "assistant" and msgs[i - 1]["content"] == "It is free."
+    kept = [e for e in guide.thread("e3")["transcript"] if e["kind"] == "sources"]
+    assert len(kept) == 1 and kept[0]["items"] == got[0]["items"]
 
 
 def test_feedback_endpoint(guide):

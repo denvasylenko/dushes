@@ -485,6 +485,8 @@ class FormGuide:
                     merged += [i for i in h["value"]["items"] if i not in merged]
                 held_sources.clear()
                 if t == "RUN_FINISHED":
+                    # kept with the turn, so a restored conversation shows the answer's sources again
+                    tx.append(thread_id, new_entry("sources", items=merged[:6]))
                     yield {"type": "CUSTOM", "name": "sources", "value": {"items": merged[:6]}}
             if t == "RUN_FINISHED" and not interrupts and said and self.suggestions_model is not None:
                 user_text = message or next((e.get("text", "") for e in reversed(tx.list(thread_id))
@@ -635,6 +637,8 @@ class FormGuide:
                             **({"reply_to": as_list(e["reply_to"])} if e.get("reply_to") else {})})
             elif e["kind"] == "assistant" and not e.get("retracted"):
                 out.append({"id": e.get("message_id") or e["id"], "role": "assistant", "content": e.get("text", "")})
+            elif e["kind"] == "sources" and e.get("items"):   # the answer's sources, right after its text
+                out.append({"id": e["id"], "role": "activity", "activityType": "sources", "activity": {"items": e["items"]}})
             elif e["kind"] == "display":   # AG-UI 1.0 activity message: the chat draws the card again
                 out.append({"id": e["id"], "role": "activity", "activityType": "card", "activity": e.get("card") or {}})
             elif e["kind"] == "tool" and e.get("call_id"):

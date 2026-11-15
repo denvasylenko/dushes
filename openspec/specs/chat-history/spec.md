@@ -93,3 +93,10 @@ The rubric a judge scores conversations with SHALL be `formguide.judge.RUBRIC`, 
 #### Scenario: A changed rubric
 - **WHEN** the rubric's text is edited without a new version
 - **THEN** the package's tests fail
+
+### Requirement: A restored answer keeps its sources
+The sources sent with an answer SHALL be kept in the conversation's transcript, and the AG-UI export SHALL send them right after that answer's text as an activity message `{role: "activity", activityType: "sources", activity: {items}}`, with the same items as the live event.
+
+#### Scenario: A reload after a cited answer
+- **WHEN** an answer came with two sources and the page is reloaded
+- **THEN** the restored conversation has the answer followed by the same two sources, links included
