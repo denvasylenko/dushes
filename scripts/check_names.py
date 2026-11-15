@@ -22,10 +22,7 @@ RETIRED = [
     (re.compile(r"\bform (?:assistant|agent)\b", re.I), "UI agent"),
 ]
 # files that may still hold a retired name, with who changes them
-WAITING = {
-    "site/src/content/docs/reference/design-system.mdx": "the docs design session (specimen texts)",
-    "site/src/components/ui/Entry.astro": "the docs design session (a comment)",
-}
+WAITING: dict[str, str] = {}
 
 
 def main() -> int:
