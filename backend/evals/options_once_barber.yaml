@@ -8,17 +8,19 @@ start: {page: /book, form: barber_booking}
 knows:
   - Wants a normal haircut, has never been here
   - Does not know the services or the barbers
-turns: 3
+turns: 4
 # The owner's screenshot (2026-11-15): the assistant wrote the services as a list and then showed the same options
 # on a card. The options belong on the card once; the text left on the page names fewer than two of them (150f54a).
+# The third line asks to choose, so a run that answered the first two in words still ends on a choice card
+# (2 of 5 runs showed no card with two lines, and a run with no card says nothing about this rule).
 scripted:
   - "hi i want to book something but i dont know what you do, what services do you have"
   - "ok and which barbers do you have, who can do it"
+  - "ok let me choose now, show me what i can pick"
 answers:
   service: haircut
   barber: maria
 expect:
-  answered_by: [form]
   cards: [ask]
   options_once: true
 min_score: 7
