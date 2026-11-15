@@ -112,7 +112,7 @@ Each entry of `models` in `run_stats` SHALL name the model that ran it, the sugg
 - **THEN** `run_stats.models` has a line of kind `memory` with its tokens
 
 ### Requirement: Dushes reports its own usage
-A run in which Dushes called a model (its answer, the router, its document researcher) SHALL send a `CUSTOM run_stats` event with `agent: "site"` right before the terminal event, with the kinds `site`, `router` and `researcher`, and SHALL write the same line to the `formguide.stats` log. A form agent's turn in the same run keeps its own `run_stats` event, without `agent`.
+A run in which Dushes called a model (its answer, the router, its document researcher) SHALL send a `CUSTOM run_stats` event with `agent: "site"` right before the terminal event, with the kinds `site`, `router` and `researcher`, and SHALL write the same line to the `formguide.stats` log. A UI agent's turn in the same run keeps its own `run_stats` event, without `agent`.
 
 #### Scenario: A site answer
 - **WHEN** Dushes answers a question with one model call

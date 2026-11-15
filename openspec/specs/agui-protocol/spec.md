@@ -114,7 +114,7 @@ A run MAY carry `forwardedProps.reply_to`, a list in the order the user collecte
 - **THEN** the turn is the same as before
 
 ### Requirement: The agent reads every quote with its note
-Both the form agent and Dushes SHALL read, before the message text, one line per quote in order: "[The user replies to this part of your earlier answer: «…»]", followed by " Their comment: «…»" when the quote has a note.
+Both the UI agent and Dushes SHALL read, before the message text, one line per quote in order: "[The user replies to this part of your earlier answer: «…»]", followed by " Their comment: «…»" when the quote has a note.
 
 #### Scenario: Two quotes, each with a comment
 - **WHEN** the user quotes "18.9% a year" with the note "too high" and "60 months" with no note, and sends "can we do better?"

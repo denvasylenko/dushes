@@ -23,11 +23,7 @@ RETIRED = [
     (re.compile(r"\bform (?:assistant|agent)\b", re.I), "UI agent"),
 ]
 # files that may still hold a retired name, with who changes them
-WAITING: dict[str, str] = {
-    # the Tech Lead's behaviour specs say "form agent" throughout; they change with the code rename
-    **{f"openspec/specs/{c}/spec.md": "Tech Lead" for c in (
-        "dushes", "agent-turn", "agent-context", "chat-history", "agui-protocol", "run-observability")},
-}
+WAITING: dict[str, str] = {}
 
 
 def main() -> int:

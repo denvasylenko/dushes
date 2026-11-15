@@ -78,7 +78,7 @@ The system SHALL allow deleting a thread's transcript and model history.
 
 #### Scenario: A day's conversations for a review
 - **WHEN** a host asks for the conversations of the last 24 hours
-- **THEN** it gets each conversation once, the form agent's tools and cards inside the site conversation they belong to
+- **THEN** it gets each conversation once, the UI agent's tools and cards inside the site conversation they belong to
 
 ### Requirement: Deleting old conversations
 `FormGuide.purge(older_than_days, dry_run=False)` SHALL delete every conversation whose last entry is older than the given days, with its transcript, the model's history and its attachments, and return how many; with `dry_run` it SHALL only count. It SHALL work without the package's server.

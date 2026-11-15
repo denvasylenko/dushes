@@ -131,7 +131,7 @@ When a form error or rule blocks sending (an age or date limit), the agent SHALL
 - **THEN** the agent explains the age rule blocks sending and fills the other fields
 
 ### Requirement: Checking the user's arithmetic
-The form agent SHALL NOT bring figures the form, a card or a tool did not return, but MAY check arithmetic the user did on such figures, saying what it leaves out; it SHALL NOT send the user to sources the business never names.
+The UI agent SHALL NOT bring figures the form, a card or a tool did not return, but MAY check arithmetic the user did on such figures, saying what it leaves out; it SHALL NOT send the user to sources the business never names.
 
 #### Scenario: The total paid
 - **WHEN** the form shows a payment of 19 069 over 36 months and the user asks "so about 686 000 in total?"
@@ -152,7 +152,7 @@ When a run's state carries `ui.form_visible: false`, the agent SHALL be told the
 - **THEN** the agent fills it through cards and never tells the person to look at the form
 
 ### Requirement: Exact arithmetic
-The form agent SHALL have a `calculate` tool (numbers, + - * / ** and parentheses only) and SHALL use it for every figure it states that the form or a tool did not return.
+The UI agent SHALL have a `calculate` tool (numbers, + - * / ** and parentheses only) and SHALL use it for every figure it states that the form or a tool did not return.
 
 #### Scenario: Checking the user's sum
 - **WHEN** the user multiplies the form's payment of 19 069 by 36 and asks whether that is right
