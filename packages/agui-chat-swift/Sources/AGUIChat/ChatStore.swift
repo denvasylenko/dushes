@@ -73,6 +73,9 @@ public final class ChatStore {
     private let transport: AGUITransport
     /// The person's last message, for «Try again».
     private var lastUser: RunAgentInput.Message?
+    /// User messages of this conversation the server should have: the server keeps its own ids, so «is my message
+    /// there» is answered by count, not by text or id (Dushes TL, 15.11).
+    private var userCount = 0
     /// The last messages of the conversation. The UI and site agents keep the thread by `threadId` and read only the
     /// last user message; the docs assistant reads the last few — so a run sends at most the last 8 (review, 1).
     private var recent: [RunAgentInput.Message] = []
@@ -97,6 +100,7 @@ public final class ChatStore {
         closeOpenCards()
         let message = RunAgentInput.Message(role: "user", content: text)
         lastUser = message
+        userCount += 1
         items.append(.user(id: message.id, text: text))
         remember(message)
         start(messages: Array(recent.suffix(8)), props: [:])
@@ -106,7 +110,8 @@ public final class ChatStore {
     public func answer(_ card: ChatCard, with resume: JSONValue) {
         guard !running, let i = cardIndex(card.id) else { return }
         if case .card(var c) = items[i] { c.status = .sending; items[i] = .card(c) }
-        start(messages: [], props: ["command": ["resume": resume]], answering: card.id)
+        // the card's id travels with the answer (ignored by today's server; it will refuse an answer to a card that is not the open one)
+        start(messages: [], props: ["command": ["resume": resume, "card_id": .string(card.id)]], answering: card.id)
     }
 
     public func choose(_ card: ChatCard, option id: String) {
@@ -171,7 +176,7 @@ public final class ChatStore {
         Task {
             let thread = try? await transport.restore(threadId: threadId)
             running = false
-            if let thread, thread.messages.last(where: { $0.role == "user" })?.content == lastUser.content {
+            if let thread, Self.users(thread) >= userCount {
                 await restore(thread)
                 if thread.running == true { followLater() }
             } else {
@@ -204,7 +209,10 @@ public final class ChatStore {
         await restore(thread)
     }
 
+    private static func users(_ t: RestoredThread) -> Int { t.messages.filter { $0.role == "user" }.count }
+
     private func restore(_ thread: RestoredThread) async {
+        userCount = max(userCount, Self.users(thread))
         if let id = thread.thread_id, !id.isEmpty { threadId = id }
         recent = thread.messages.suffix(8).compactMap { m in
             guard let text = m.content, m.role == "user" || m.role == "assistant" else { return nil }
@@ -396,7 +404,8 @@ public final class ChatStore {
             }
             running = false
             if let thread { await restore(thread) }
-            if let message {
+            // the running turn may have been this very message sent earlier: resend only when the server lacks it
+            if let message, (thread.map(Self.users) ?? 0) < userCount {
                 items.append(.user(id: message.id, text: message.content))
                 remember(message)
                 start(messages: Array(recent.suffix(8)), props: [:])
