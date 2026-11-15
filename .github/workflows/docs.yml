@@ -50,7 +50,7 @@ jobs:
         run: python3 scripts/check_ts_reference.py
       - name: Every code example in the docs matches the real code (names, arguments, keys, flags)
         run: |
-          python3 -m pip install --quiet "./backend[server]" pyyaml
+          python3 -m pip install --quiet "./backend[server,otel,sqlite]" pyyaml
           python3 scripts/check_examples.py
       - name: Install the widget's dependencies (the site builds the widget from its sources, e.g. chart.js)
         working-directory: packages/agui-chat

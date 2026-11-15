@@ -14,6 +14,7 @@ attachments:
   enabled: true                                 # false: no uploads and no reading attached files
   privacy_note: "Your file stays on our server; only the values reach the chat."   # shown on file requests
 models:
+  agent: "anthropic:claude-haiku-5-5"                                              # required whenever `models:` is written out
   extract: {provider: anthropic, model: claude-opus-5-5, max_tokens: 8000}         # needs vision or PDF input
 ```
 

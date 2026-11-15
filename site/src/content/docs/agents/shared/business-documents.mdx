@@ -102,6 +102,7 @@ knowledge:
   scopes:                                  # default: each form sees only its own documents
     loan_application: [loan_application, bank_common]
 models:
+  agent: "anthropic:claude-haiku-5-5"       # required whenever `models:` is written out
   compile: "anthropic:claude-haiku-5-5"     # compiles documents into rules; default: agent
   research: "anthropic:claude-haiku-5-5"  # answers from documents; default: agent
 ```

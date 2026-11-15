@@ -6,7 +6,8 @@ An example in a docs page is text: nothing runs it, so it can name an option tha
 fenced block of site/src/content/docs (specifications aside) and checks what can be checked without running a server:
 
   python   it compiles (top-level await allowed), and every name imported from `formguide...` exists
-  yaml     it parses; a formguide.yaml example uses only keys the loader reads
+  yaml     it parses; a formguide.yaml example uses only keys the loader reads, and the real loader loads it
+           (in a temporary folder, the developer's own imports stubbed, no model called)
   js/ts    every name imported from `@formguide/agui-chat[/entry]` is exported by that entry
   html/js  every attribute on an <agui-chat> tag is one the element observes; every option given to
            `formguide({...})` and every prop of `<AguiChat>` exists
@@ -131,6 +132,9 @@ def check_python(code: str) -> list[str]:
     return bad
 
 
+LOADED = {"run": 0, "skipped": []}   # how many configuration examples the real loader loaded
+
+
 def check_yaml(code: str, info: str, keys: set[str]) -> list[str]:
     try:
         data = yaml.safe_load(textwrap.dedent(code))
@@ -144,7 +148,79 @@ def check_yaml(code: str, info: str, keys: set[str]) -> list[str]:
         unknown = sorted(top - keys)
         if unknown:
             return [f"formguide.yaml has no key {', '.join(unknown)}"]
+        bad, skipped = run_config(code)
+        if skipped:
+            LOADED["skipped"].append(skipped)
+        else:
+            LOADED["run"] += 1
+        return bad
     return []
+
+
+class _Stub:
+    """Stands in for a developer's own tool, factory or store that an example names (`my_app.tools:check`)."""
+    name = "stub"
+    description = "a stand-in for the developer's own object"
+
+    def __call__(self, *a, **k):
+        return _Stub()
+
+    def __getattr__(self, item):
+        if item.startswith("__"):
+            raise AttributeError(item)
+        return _Stub()
+
+
+def run_config(code: str) -> tuple[list[str], str]:
+    """Load a formguide.yaml example with the real loader, in a temporary folder. The developer's own imports are
+    stubbed and the folders the example names are created; model settings are only read, never called.
+    Returns (what is wrong, why it was skipped or "")."""
+    import os
+    import tempfile
+
+    from formguide import config as fgconfig
+
+    text = textwrap.dedent(code)
+    data = yaml.safe_load(text)
+    real = fgconfig.import_object
+
+    def fake(spec: str):
+        return real(spec) if str(spec).split(":")[0].split(".")[0] == "formguide" else _Stub()
+
+    def folders(node, out):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                k = str(k)   # YAML reads a bare `on` or `yes` key as a boolean
+                if isinstance(v, str) and (k == "dir" or k.endswith("_dir")):
+                    out.append(v)
+                elif isinstance(v, str) and k == "sqlite":
+                    out.append(str(Path(v).parent))
+                folders(v, out)
+        elif isinstance(node, list):
+            for v in node:
+                folders(v, out)
+        return out
+
+    with tempfile.TemporaryDirectory() as tmp:
+        for d in [*folders(data, []), "skills", "data"]:
+            if "$" not in d and not Path(d).is_absolute():
+                (Path(tmp) / d).mkdir(parents=True, exist_ok=True)
+        (Path(tmp) / "formguide.yaml").write_text(text, encoding="utf-8")
+        fgconfig.import_object = fake
+        cwd = os.getcwd()
+        try:
+            os.chdir(tmp)
+            fgconfig.load_config(Path(tmp) / "formguide.yaml")
+        except ImportError as e:   # an optional extra this environment lacks (sqlite, otel): not the example's fault
+            return [], f"needs an extra: {e}"
+        except Exception as e:  # noqa: BLE001 - whatever the loader says is what a developer would see
+            if "pip install" in str(e) and "formguide[" in str(e):   # the loader's own "install this extra" message
+                return [], f"needs an extra: {str(e)[:80]}"
+            return [f"the loader refuses it: {type(e).__name__}: {str(e)[:160]}"], ""
+        finally:
+            os.chdir(cwd)
+            fgconfig.import_object = real
+    return [], ""
 
 
 IMPORT = re.compile(r"import\s+(?:type\s+)?(?:(\w+)\s*,\s*)?{([^}]*)}\s+from\s+'@formguide/agui-chat([\w/-]*)'")
@@ -314,6 +390,7 @@ def main() -> int:
         print(w)
     total, bad_n = sum(c[0] for c in counts.values()), sum(c[1] for c in counts.values())
     print("; ".join(f"{k}: {c[0]} checked, {c[1]} wrong" for k, c in sorted(counts.items())))
+    print(f"configuration examples loaded by the real loader: {LOADED['run']}" + (f"; skipped {len(LOADED['skipped'])} ({LOADED['skipped'][0]})" if LOADED["skipped"] else ""))
     print(f"{total} examples checked, {bad_n} wrong")
     return 1 if bad_n else 0
 
