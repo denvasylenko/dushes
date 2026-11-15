@@ -775,5 +775,25 @@ describe('closing, taken over by the page', () => {
     expect(closed).toBe(4)
     document.removeEventListener('agui:before-close', hold)
   })
+
+  it('closable: inline shows the close button; it only tells the host, every time; without the option inline has no button and no event', async () => {
+    const make = async (closable: boolean) => { const el = document.createElement('agui-chat') as AguiChatElement
+      for (const [k, v] of Object.entries({ mode: 'inline', lang: 'en', 'persist-thread': 'off', ...(closable ? { closable: '' } : {}) })) el.setAttribute(k, v)
+      document.body.appendChild(el); await new Promise((r) => setTimeout(r, 0)); return el }
+    const plain = await make(false)
+    let n = 0
+    plain.addEventListener('agui:before-close', () => { n++ })
+    plain.close()
+    expect(n).toBe(0)
+    expect(plain.shadowRoot!.querySelector('.wrap')!.classList.contains('closable')).toBe(false)
+    const el = await make(true)
+    expect(el.shadowRoot!.querySelector('.wrap')!.classList.contains('closable')).toBe(true)
+    const seen: string[] = []
+    el.addEventListener('agui:before-close', (e) => seen.push('before:' + (e as CustomEvent).detail.by))
+    el.addEventListener('agui:close', () => seen.push('close'))
+    ;(el.shadowRoot!.querySelector('.icon.close') as HTMLButtonElement).click()
+    ;(el.shadowRoot!.querySelector('.icon.close') as HTMLButtonElement).click()   // the host brought it back: it closes again
+    expect(seen).toEqual(['before:button', 'close', 'before:button', 'close'])
+  })
 })
 

@@ -84,6 +84,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .icon:hover { background: var(--agui-soft); color: var(--agui-ink); }
 .icon svg { width: 19px; height: 19px; }
 .mode-inline .close, .mode-page .close { display: none; }
+.closable .close { display: grid; }   /* the host owns the container and asked for the button */
 
 /* messages */
 .log { position: relative; flex: 1; overflow-y: auto; padding: 24px 20px 12px; background: var(--agui-log-bg, transparent); overscroll-behavior: contain; min-height: 0; }

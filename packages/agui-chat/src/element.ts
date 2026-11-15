@@ -45,7 +45,7 @@ export const DEFAULTS: ChatOptions = {
   forwardedProps: {}, state: undefined, typingSpeed: 55, fadeMs: 450, toolLabels: {}, i18n: {},
   cards: {}, open: false, micLang: '', micAutoSend: false, voice: 'auto', dictation: '', transcribeUrl: '', attach: true, attachAccept: '', attachMultiple: true,
   attachMaxMb: 20, imageMaxPx: 2000, upload: undefined, icons: {}, render: {},
-  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, commands: undefined, menu: undefined, modal: true, launcher: 'auto', launcherLabel: '', reply: true, composerShadow: 'soft', shortcutHints: true, collapseLines: 8, collapseAnswers: false,
+  bubbleSide: 'right', greeting: '', greetingDelay: 4, motion: 'spring', messageActions: ['copy', 'reply'], onMessageAction: undefined, commands: undefined, menu: undefined, closable: false, modal: true, launcher: 'auto', launcherLabel: '', reply: true, composerShadow: 'soft', shortcutHints: true, collapseLines: 8, collapseAnswers: false,
 }
 
 /** attribute -> [option, parser] */
@@ -59,7 +59,7 @@ const ATTRS: Record<string, [keyof ChatOptions, (v: string | null) => unknown]> 
   'mic-auto-send': ['micAutoSend', bool], voice: ['voice', String], dictation: ['dictation', String], 'transcribe-url': ['transcribeUrl', String], 'attach-accept': ['attachAccept', String], 'attach-multiple': ['attachMultiple', bool],
   'attach-max-mb': ['attachMaxMb', Number], 'image-max-px': ['imageMaxPx', Number],
   'bubble-side': ['bubbleSide', String], greeting: ['greeting', String], 'greeting-delay': ['greetingDelay', Number], motion: ['motion', String],
-  reply: ['reply', bool], 'composer-shadow': ['composerShadow', String], 'shortcut-hints': ['shortcutHints', bool], 'collapse-lines': ['collapseLines', Number], 'collapse-answers': ['collapseAnswers', bool], modal: ['modal', bool], launcher: ['launcher', String], 'launcher-label': ['launcherLabel', String],
+  reply: ['reply', bool], closable: ['closable', bool], 'composer-shadow': ['composerShadow', String], 'shortcut-hints': ['shortcutHints', bool], 'collapse-lines': ['collapseLines', Number], 'collapse-answers': ['collapseAnswers', bool], modal: ['modal', bool], launcher: ['launcher', String], 'launcher-label': ['launcherLabel', String],
   'message-actions': ['messageActions', (v) => (!v || /^(off|none|false)$/.test(v) ? [] : v.split(',').map((x) => x.trim()).filter(Boolean))],
 }
 
@@ -302,7 +302,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   // ------------------------------------------------------------------ lifecycle
   connectedCallback(): void {
     this._listen(true)
-    if (this._built) return
+    if (this._built) { const log = this.$.log; log.scrollTop = this._stick ? log.scrollHeight : this._top; return }   // moved to another place on the page: the scroll comes with it
     this._built = true
     this.root = this.attachShadow({ mode: 'open' })
     this._setThemeCss = styles(this.root)
@@ -408,9 +408,9 @@ export class AguiChatElement extends BaseElement implements ChatApi {
    *  `agui:before-close` is cancelable, reaches `document`, says what asked (`by`) and carries `proceed()`, which
    *  closes for real, whenever it is called; a second call does nothing. */
   close(force = false, by: 'button' | 'escape' | 'scrim' | 'api' = 'api'): void {
-    const wasOpen = this.$.wrap.classList.contains('open')
+    const wasOpen = this.$.wrap.classList.contains('open') || this._opts.closable
     if (wasOpen && !force && !this.dispatchEvent(new CustomEvent('agui:before-close', { cancelable: true, bubbles: true, composed: true,
-      detail: { by, proceed: () => { if (this.$.wrap.classList.contains('open')) this.close(true) } } }))) return
+      detail: { by, proceed: () => { if (this.$.wrap.classList.contains('open') || this._opts.closable) this.close(true) } } }))) return
     this.$.wrap.classList.remove('open')
     if (wasOpen && this._opts.mode === 'bubble') {   // a quick shrink back into the launcher
       this.$.wrap.classList.add('closing')
@@ -677,8 +677,11 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       const img = (e.target as HTMLElement).closest?.('.msg.ai .body img, .card img.bk-img')   // a picture from an answer or its card
       if (img instanceof HTMLImageElement && !img.closest('a, button') && img.src) this._zoom(img)
     })
-    if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (this._stick) log.scrollTop = log.scrollHeight }).observe(log)
+    // shown again after its container was hidden or taken off the page (the browser resets the scroll): where it was
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => { log.scrollTop = this._stick ? log.scrollHeight : this._top }).observe(log)
     log.addEventListener('scroll', () => {
+      if (!log.clientHeight) return   // hidden: that reset is not the reader's scroll
+      this._top = log.scrollTop
       if (this._jumping) { this._quickAway(); return }   // our own scroll to the end: the button stays gone on the way
       this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
       jump.hidden = this._stick
@@ -996,6 +999,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     // modal: false keeps the page beside the panel usable (a site next to its assistant): no scrim, no focus trap;
     // a phone still gets the sheet over the page
     this.$.wrap.classList.toggle('nonmodal', o.modal === false)
+    this.$.wrap.classList.toggle('closable', !!o.closable)
     if (o.mode === 'floating' && o.modal !== false) this.$.panel.setAttribute('aria-modal', 'true'); else this.$.panel.removeAttribute('aria-modal')
     const input = this.$.input as HTMLTextAreaElement
     input.placeholder = o.placeholder || this.t('placeholder')
@@ -1499,6 +1503,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   private _tips: { button: HTMLElement; host: HTMLElement; rows: () => TipRow[]; on: () => boolean; wake?: (e: Event) => void }[] = []
 
   private _canAttach = false
+  private _top = 0
   private _accept = ''
 
   /** The + menu (its code loads the first time): a pick opens the file picker or the camera, runs a command, or goes

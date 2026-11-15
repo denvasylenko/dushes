@@ -279,6 +279,9 @@ export interface ChatOptions {
   attach: boolean
   /** File types the + button offers, e.g. ".pdf,.jpg"; empty = what the plugin accepts. */
   attachAccept: string
+  /** Show the close button in inline and page mode too. There the chat does not hide itself: it fires
+   *  `agui:before-close` and `agui:close`, and the host, which owns the container, takes it away. */
+  closable?: boolean
   /** Commands for the + menu's "Commands" row and for "/" in an empty composer: a pick fires `agui:menu-action`
    *  (`command: true`) and, unless the host cancels it, sends `send` as a message. */
   commands?: { id: string; label: string; hint?: string; icon?: string; send?: string }[]

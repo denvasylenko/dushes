@@ -173,6 +173,13 @@ Before the chat closes (its close button, Esc, the scrim or `close()`), it SHALL
 - **WHEN** the page cancels `agui:before-close` and calls `proceed()` inside its own view transition
 - **THEN** the chat closes inside that transition, and `agui:close` fires once
 
+### Requirement: A host that owns the container
+With `closable`, the close button SHALL show in inline and page mode too; there a close SHALL fire `agui:before-close` and `agui:close` and change nothing else, so the host takes its container away. When the chat's container is hidden or taken off the page and shown again, the conversation, the draft in the composer and the reading position SHALL be as they were, and the history SHALL NOT be fetched again.
+
+#### Scenario: The cabinet folds the assistant away
+- **WHEN** the user taps the close button of an inline chat with `closable`, the host hides its container, and later shows it again
+- **THEN** both events fired once, and the chat shows the same messages at the same scroll position with the same draft
+
 ### Requirement: A long placeholder
 A placeholder longer than the composer's field SHALL end with an ellipsis on one line; it SHALL NOT be cut mid-letter or wrap.
 
