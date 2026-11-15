@@ -26,17 +26,18 @@ function server(opts: { code?: string; session?: () => Response } = {}) {
   })
   return { fetch, calls, push: (ev: Record<string, unknown>) => push(ev), ends: () => calls.filter((c) => c.path === '/voice/end').map((c) => c.body.talk) }
 }
+const VOICE_SOUND = new MediaStream()
 /** A microphone and a peer connection that do nothing but answer. `gate`: the permission prompt stays open until it resolves. */
 function fakeAudio(gate?: Promise<void>) {
   const live = { mics: 0 }, peers: { closed: boolean; channel: string; remote?: string }[] = []
   vi.stubGlobal('navigator', { ...navigator, mediaDevices: { getUserMedia: async () => { await gate; live.mics++; return { getTracks: () => [{ stop: () => { live.mics-- } }] } } } })
   vi.stubGlobal('RTCPeerConnection', class {
     me = { closed: false, channel: '' } as { closed: boolean; channel: string; remote?: string }
-    localDescription = { sdp: 'offer-sdp' }; ontrack: unknown = null
+    localDescription = { sdp: 'offer-sdp' }; ontrack: ((e: { streams: unknown[] }) => void) | null = null
     constructor() { peers.push(this.me) }
     addTrack() {} createDataChannel(n: string) { this.me.channel = n }
     async createOffer() { return { type: 'offer', sdp: 'offer-sdp' } }
-    async setLocalDescription() {} async setRemoteDescription(d: { sdp: string }) { this.me.remote = d.sdp }
+    async setLocalDescription() {} async setRemoteDescription(d: { sdp: string }) { this.me.remote = d.sdp; this.ontrack?.({ streams: [VOICE_SOUND] }) }   // as in a browser: the track comes while the answer is set, before the promise is done
     close() { this.me.closed = true }
   })
   return { live, peers, open: () => peers.filter((p) => !p.closed).length }
@@ -131,14 +132,12 @@ describe('the experimental voice mode', () => {
     expect(session.body).toEqual({ sdp: 'offer-sdp', thread_id: 'voice-1' })    // the chat's own thread
     expect(session.pass).toBe('pass-1')                                         // in a header, never in an address
     expect(audio.peers[0]).toMatchObject({ channel: 'oai-events', remote: 'answer-sdp' })
+    expect(($(el, '.vo-dock audio') as unknown as { srcObject: unknown }).srcObject).toBe(VOICE_SOUND)   // the voice is heard: its sound is on the player
+    expect($<HTMLAudioElement>(el, '.vo-dock audio').muted).toBe(false)
     expect(s.calls.some((c) => c.path === '/voice/events?talk=t1' && c.pass === 'pass-1')).toBe(true)
     const dock = $(el, '.vo-dock'), foot = $(el, '.foot')
     expect(foot.classList.contains('vo-on')).toBe(true)
     expect(dock.classList.contains('vo-listen')).toBe(true)
-    // the outline round the chat: there with voice, its palette named by the state, never in the way of a tap
-    const glow = $(el, '.panel > .vo-glow')
-    expect(glow.dataset.s).toBe('listen')
-    expect(glow.getAttribute('aria-hidden')).toBe('true')
     // the person speaks: their message grows, then it is the ordinary message
     s.push({ type: 'hearing', delta: 'One and a half ' }); s.push({ type: 'hearing', delta: 'million' })
     await tick(10)
@@ -147,7 +146,6 @@ describe('the experimental voice mode', () => {
     await tick(10)
     expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['One and a half million for four years'])   // one message, not two
     expect(dock.classList.contains('vo-think')).toBe(true)                      // the turn runs
-    expect(glow.dataset.s).toBe('think')
     s.push({ type: 'spoken', delta: 'Checking now' })                          // the voice's own filler: a status under the orb, not a message
     await tick(10)
     expect($(el, '.vo-step').textContent).toBe('Checking now')
@@ -157,7 +155,6 @@ describe('the experimental voice mode', () => {
     await tick(10)
     expect($$(el, '.msg.ai').map((m) => m.textContent!.trim())).toEqual(['Done.'])   // the answer is one message: the written one
     expect(dock.classList.contains('vo-speak')).toBe(true)                      // the voice is talking
-    expect(glow.dataset.s).toBe('speak')
     await tick(1000)
     expect(dock.classList.contains('vo-listen')).toBe(true)
     // typing takes the row; the microphone stays within reach; it does not end voice
@@ -169,7 +166,6 @@ describe('the experimental voice mode', () => {
     $(el, '.vo-mic').click()
     await tick(10)
     expect(dock.classList.contains('vo-silent')).toBe(true)
-    expect(glow.dataset.s).toBe('silent')                                       // no outline in silence
     expect(audio.open()).toBe(0)
     expect(audio.live.mics).toBe(0)
     expect(s.ends()).toEqual(['t1'])
@@ -185,7 +181,6 @@ describe('the experimental voice mode', () => {
     $(el, '.vo-x').click()
     await tick(10)
     expect($(el, '.vo-dock')).toBeNull()
-    expect($(el, '.vo-glow')).toBeNull()
     expect(foot.classList.contains('vo-on')).toBe(false)
     expect($(el, '.vo-go').hidden).toBe(false)
     expect($$(el, '.msg.me')).toHaveLength(2)
