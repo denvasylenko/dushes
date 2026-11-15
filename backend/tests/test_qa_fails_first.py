@@ -181,7 +181,6 @@ def test_the_guest_tells_the_server_why_the_form_refused_a_typed_value():
     assert sent == [{"answer": {"text": "555"}, "rejected": {"vin": "17 characters"}}] and v.form.config["state"]["vin"] == ""
 
 
-@pytest.mark.xfail(strict=True, reason="the server ignores which card a resume names: an answer for a card that is no longer open lands on the open one")
 def test_an_answer_for_a_card_that_is_no_longer_open_is_refused(guide, model):
     """The owner's case (the CPO, 2026-11-15): the connection drops while a card is open, the person writes again, a
     new card opens, and the first card's late answer arrives. It names the old card (`interrupt_id`), so it must not
@@ -211,10 +210,11 @@ def test_an_answer_for_a_card_that_is_no_longer_open_is_refused(guide, model):
             "resume": [{"interruptId": first["card_id"], "status": "resolved", "payload": {"answer": {"text": "Anna"}}}]}
     model.script = [say("Thanks.")]
     kwargs = agui.run_kwargs(body)
-    try:
-        collect(guide, **{("thread" if k == "thread_id" else k): v for k, v in kwargs.items()})
-    except Exception:   # a refusal may be an error the HTTP layer turns into 409: either way the open card stays open
-        pass
+    calls = len(model.calls)
+    ev = collect(guide, **{("thread" if k == "thread_id" else k): v for k, v in kwargs.items()})
+    gone = [e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "card_result"]
+    assert [(g.get("card_id"), g.get("status"), g.get("code")) for g in gone] == [(first["card_id"], "not_accepted", "card_gone")]
+    assert gone[0].get("reason") and len(model.calls) == calls, "a refused answer costs no model call"
     assert pending() == [second["card_id"]], "the stale answer closed the card that is open now"
     assert not [m for call in model.calls[2:] for m in call if "Anna" in str(getattr(m, "content", ""))], \
         "the stale answer reached the model as the answer to the open card"
