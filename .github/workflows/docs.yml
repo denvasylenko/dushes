@@ -8,7 +8,7 @@ name: Docs
 on:
   push:
     branches: [main]
-    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/check_english.py", "scripts/check_links.py", "scripts/check_exports.py", "scripts/check_contrast.py", "scripts/check_ts_reference.py", "scripts/check_examples.py", "backend/formguide/**", ".github/workflows/docs.yml"]
+    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/check_english.py", "scripts/check_links.py", "scripts/check_exports.py", "scripts/check_contrast.py", "scripts/check_ts_reference.py", "scripts/check_examples.py", "scripts/check_names.py", "README.md", "backend/formguide/**", ".github/workflows/docs.yml"]
   pull_request:
     paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/**"]
   workflow_dispatch:
@@ -41,6 +41,8 @@ jobs:
         run: npx --yes @fission-ai/openspec@1.17.0 validate --all --strict --no-interactive
       - name: English only
         run: python3 scripts/check_english.py
+      - name: One name per thing (no retired names in the docs)
+        run: python3 scripts/check_names.py
       - name: Install
         working-directory: site
         run: npm ci

@@ -11,7 +11,9 @@
 - [ ] 2.3 Names in code examples link to their rows
 
 ## 3. Names and words
-- [ ] 3.1 One name per thing; a glossary; a check for the retired names
+- [x] 3.1a "UI agent" in the prose (the owner, 15.11): "form assistant" and "form agent" are gone from my pages; `scripts/check_names.py` in CI fails on a retired name
+- [ ] 3.1b The code names (`FormGuide`, `formguide`, `@formguide/agui-chat`, `formguide.yaml`: about 580 places on 48 pages, the site's components, README, examples) switch in the release that renames the code (Owner's change rename-to-dushes)
+- [ ] 3.1c A glossary
 - [ ] 3.2 Plain first sentences and descriptions on every page
 
 ## 4. The new map

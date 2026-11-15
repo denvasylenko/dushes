@@ -10,19 +10,19 @@ import { Summary } from '../../../components/ui';
 
 Dushes is an AI assistant for your product's interface. It answers from your pages and documents, takes people to the right page, tab or field, and fills forms with them, always after they confirm. The core knows nothing about your domain or model provider; everything specific is configured.
 
-## Dushes and its form assistant
+## Dushes and the UI agent
 
-Dushes is the assistant for your whole site or app. On a page with a form it hands the conversation to its **form assistant**, a specialist for that form; for a single form you can run the form assistant on its own.
+Dushes is the assistant for your whole site or app. On a page with a form it hands the conversation to the **UI agent**, a specialist for that form; for a single form you can run the UI agent on its own.
 
-| | Dushes | Form assistant |
+| | Dushes | UI agent |
 | --- | --- | --- |
 | **For** | a whole site or app | one large form (a loan application with 200 fields, a claim, a booking wizard) |
 | **It** | answers about any page, opens the right page, tab or section, hands over to a form | shows where to click, explains fields, reads the user's documents, fills fields on a card |
 | **Knows** | your site map: pages, sections, which page holds which form | the form itself, sent with every message, and the form's documents |
-| **Server** | `Dushes` over the form assistant, at `/site/run` | `FormGuide`, at `/agent/run` |
+| **Server** | `Dushes` over the UI agent, at `/site/run` | `FormGuide`, at `/agent/run` |
 | **Start with** | [Site agent](../agents/site-agent/) | [How the form and the agent talk](../frontend/connect-your-form/) |
 
-Use the form assistant alone for one form; add Dushes on top when the forms are part of a bigger site. One chat then follows the user from page to page.
+Use the UI agent alone for one form; add Dushes on top when the forms are part of a bigger site. One chat then follows the user from page to page.
 
 ```mermaid
 flowchart LR
@@ -31,7 +31,7 @@ flowchart LR
     F[Your pages and forms]
   end
   subgraph Server["Your server: Dushes (Python package formguide)"]
-    S["Dushes<br/>pages, navigation"] --> A["Form assistant<br/>the form, cards"]
+    S["Dushes<br/>pages, navigation"] --> A["UI agent<br/>the form, cards"]
     A --> M[(Any LangChain model)]
     A --> K[(Your documents)]
   end

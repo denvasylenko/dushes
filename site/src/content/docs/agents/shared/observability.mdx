@@ -51,14 +51,14 @@ Each line of `models` has a `kind`, so you can see what the tokens were spent on
 
 | `kind` | The call |
 |---|---|
-| `agent` | the form agent's answer and tool rounds |
+| `agent` | the UI agent's answer and tool rounds |
 | `suggestions` | the quick replies after an answer |
 | `translate` | card text the form does not translate ([Languages](../languages/)) |
 | `memory` | the summary of a long conversation, when a turn compacts it |
 | `researcher` | the document researcher's calls, summed into one line |
-| `site`, `router` | the site agent's answer, and the router that chose between it and the form agent |
+| `site`, `router` | the site agent's answer, and the router that chose between it and the UI agent |
 
-**Under the site agent a run can carry two `run_stats` events.** Dushes sends its own, with `"agent": "site"` and the kinds `site`, `router` and `researcher`, right before the terminal event, whenever it called a model. If the form agent also took a turn in that run, its event comes too, without `agent`. Add the two up for the run's cost.
+**Under the site agent a run can carry two `run_stats` events.** Dushes sends its own, with `"agent": "site"` and the kinds `site`, `router` and `researcher`, right before the terminal event, whenever it called a model. If the UI agent also took a turn in that run, its event comes too, without `agent`. Add the two up for the run's cost.
 
 ```json
 { "type": "CUSTOM", "name": "run_stats", "value": { "agent": "site", "models": [ { "kind": "router", ... }, { "kind": "site", ... } ], ... } }

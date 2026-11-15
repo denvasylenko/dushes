@@ -92,7 +92,6 @@ Unknown option names are ignored with a console warning.
 | `chat.t(key, vars?)`, `chat.tc(key, vars?)` | a text in the page's language, or in the conversation's (the language the server names with `CUSTOM language`; cards and the turn's lines use it) |
 | `chat.setSuggestions(items)` | replace the suggestions above the composer without a run (after the page did something itself); `[]` clears them; at most 5 |
 | `agui:open`, `agui:close` | the chat opened or closed (bubble, drawer, hero) |
-| `agui:before-close` | the chat is about to close (its close button, Esc, the scrim or `chat.close()`); cancelable, with `detail.proceed()`. Call `preventDefault()` and run `proceed()` inside your own transition, e.g. `document.startViewTransition(() => e.detail.proceed())`, so the chat collapses back into the field that opened it. `chat.close(true)` closes without the event |
 | `chat.removeMessage(id)` | take back an assistant message already shown (and from the history) |
 | `chat.updateCard(id, patch)` | redraw a shown card in place: `{blocks}` for a card from blocks |
 | `agui:message-action` | an action under an answer was tapped: `{id, messageId, text, pressed?}` (`pressed` for like, dislike, speak) |
