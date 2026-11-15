@@ -44,14 +44,7 @@ EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields"
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
-RUBRIC = """Score the assistant from 0 to 10 (10: a person would be fully satisfied). Take points off for:
-- truth: a fact about the business (prices, rates, rules, hours, partners) that the site or its documents do not
-  give, or a wrong one (up to 5 points);
-- the right agent: a question answered by the wrong assistant, or a user sent back and forth (up to 2);
-- cards: changes to the form written out as prose instead of shown as a card, or values filled without one (up to 2);
-- the goal: the user did not get what they came for, or had to repeat themselves (up to 3);
-- brevity and tone: long, repetitive, or in another language than the user's (up to 1).
-Name every point you take off with the sentence or step that caused it."""
+from formguide.judge import RUBRIC, RUBRIC_VERSION  # noqa: E402  (the package's rubric: the same text judges the nightly conversation review)
 
 
 RED_TEAM = """
@@ -266,6 +259,15 @@ class Choice(BaseModel):
     text: str | None = Field(default=None, description="what you type instead, when no option fits")
 
 
+class FieldValue(BaseModel):
+    name: str = Field(description="the field's name, exactly as listed")
+    value: str = Field(description="what you type into it; empty to leave it blank")
+
+
+class FieldValues(BaseModel):
+    values: list[FieldValue]
+
+
 class Lost(BaseModel):
     points: float
     reason: str
@@ -290,12 +292,21 @@ class User:
         self.sc = sc
         self.turn_model = structured(model, UserTurn)
         self.choice_model = structured(model, Choice)
+        self.fields_model = structured(model, FieldValues)
 
     def next(self, transcript: str, first: bool) -> UserTurn:
         ask = "Write your first message." if first else "The conversation so far:\n" + transcript[-6000:] + "\n\nYour next message?"
         return self.turn_model.invoke([("system", _user_brief(self.sc)), ("human", ask)])
 
     def choose(self, q: dict) -> dict | None:
+        if q.get("fields"):   # a card with several fields: one value per field, sent as {answers: {name: value}}
+            listed = [{"name": f.get("name"), "label": f.get("label"), "required": bool(f.get("required"))} for f in q["fields"]]
+            c = self.fields_model.invoke([("system", _user_brief(self.sc)), ("human",
+                                          f"The chat shows a card: {q.get('question')}\nIts fields: {json.dumps(listed, ensure_ascii=False)}\n"
+                                          "Type what you know into each field; leave a field empty when you do not know it.")])
+            names = {f.get("name") for f in q["fields"]}
+            got = {v.name: v.value.strip() for v in c.values if v.name in names and v.value.strip()}
+            return {"answers": got} if got else None
         opts = q.get("options") or []
         c = self.choice_model.invoke([("system", _user_brief(self.sc)), ("human",
                                       f"The chat asks: {q.get('question')}\nOptions: {[o.get('label') for o in opts]}\nPick one, or type an answer.")])
@@ -799,6 +810,8 @@ def run(names: list[str] | None = None, *, model: str | None = None, offline: bo
         research_model: str | None = None, judge: str | None = None) -> tuple[dict, bool]:
     scenarios = load_all(names, folder, tag)   # a bad file stops the run before any model call
     started = datetime.now().isoformat(timespec="seconds")
+    from bench import git_commit
+    commit = git_commit(BASE if not agent_model else "127.0.0.1")   # read at the start: other sessions commit during a long round
     if offline:
         tmp = tempfile.mkdtemp(prefix="formguide-evals-")
         http, user_model, judge_model = offline_client(Path(tmp)), None, None
@@ -826,13 +839,12 @@ def run(names: list[str] | None = None, *, model: str | None = None, offline: bo
         results.append(combine(runs))
     baseline = json.loads(baseline_file.read_text()) if baseline_file.exists() else None
     text, failed, avg = summarize(results, baseline, margin)
-    from bench import git_commit
     report = {"at": datetime.now().isoformat(timespec="seconds"), "started": started, "offline": offline, "model": model,
               "agent_model": agent_model, "user_model": _name(user_model), "judge_model": _name(judge_model),
-              "commit": git_commit(BASE if not agent_model else "127.0.0.1"), "repeat": repeat,
+              "commit": commit, "repeat": repeat, "rubric_version": RUBRIC_VERSION,
               "average": avg, "failed": failed, "scenarios": results}
     RUNS.mkdir(exist_ok=True)
-    out = RUNS / f"evals-{datetime.now():%Y%m%d-%H%M%S}.json"
+    out = RUNS / f"evals-{datetime.now():%Y%m%d-%H%M%S}{'-offline' if offline else ''}.json"   # an offline report never looks live
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2))
     print("\n" + text + f"\n\nreport: {out}")
     broken = [r["name"] for r in results for x in r.get("runs", [r]) if any(c["check"] == "the scenario ran" for c in x["checks"])]

@@ -417,7 +417,8 @@ class Visit:
             shown = f" (input {json.dumps({k: inp[k] for k in ('type', 'min', 'max', 'value') if k in inp}, ensure_ascii=False)})" if inp else ""
             self.log.append(f"   ❓ question card: {interrupt.get('question')} [{opts}]{shown} → the user answered "
                             f"{json.dumps(reply, ensure_ascii=False) if reply else 'nothing (closed it)'}")
-            self._resume({"answer": reply} if reply else {"accepted": False}, depth)
+            # a several-fields card is answered with {answers: {name: value}}, a question with {answer: {ids | text}}
+            self._resume({"answers": reply["answers"]} if reply and "answers" in reply else {"answer": reply} if reply else {"accepted": False}, depth)
         elif "changes" in interrupt and self.form:
             ch = interrupt["changes"]
             self.log.append("   🃏 card shown and accepted by the user (the form now has these values): "

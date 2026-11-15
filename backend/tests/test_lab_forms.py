@@ -263,3 +263,31 @@ def test_ask_ai_highlight_not_a_duplicate_is_checked_in_code():
     assert ok(aa.highlight_checks(new, [first, {"cards": [{**card, "id": "card_bbbbbbbb"}], "highlights": []}])) == [True, True]
     assert ok(aa.highlight_checks(new, [first, {"cards": [], "highlights": [{"card_id": "card_aaaaaaaa"}]}])) == [False, False]
     assert {q["name"] for q in aa.load()} >= {"show_again_highlights", "show_again_far_up_new_card"}
+
+
+def test_a_card_with_several_fields_is_answered_field_by_field():
+    """The pre-release round lost points to a harness fault: a fields card got {answer: {text}} and read as skipped."""
+    import evals
+    from formguide.agent.interaction import read_field_answers
+    q = {"question": "Attendee 1?", "fields": [{"name": "a_name", "label": "Name", "required": True}, {"name": "a_email", "label": "Email"}]}
+
+    class Fake:
+        def invoke(self, _msgs):
+            return evals.FieldValues(values=[evals.FieldValue(name="a_name", value="Hugo Pereira"), evals.FieldValue(name="other", value="x"),
+                                             evals.FieldValue(name="a_email", value=" ")])
+    cls = next(v for v in vars(evals).values() if isinstance(v, type) and hasattr(v, "choose"))
+    user = cls.__new__(cls)
+    user.fields_model, user.sc = Fake(), evals.load_all(["quote_own_message_claim"])[0]
+    reply = user.choose(q)
+    assert reply == {"answers": {"a_name": "Hugo Pereira"}}
+    assert read_field_answers(q, reply) == ({"a_name": "Hugo Pereira"}, [])
+
+
+def test_the_evals_judge_uses_the_packages_rubric_and_reports_its_version(tmp_path, monkeypatch):
+    import evals
+    from formguide import judge
+    assert evals.RUBRIC is judge.RUBRIC and evals.RUBRIC_VERSION == judge.RUBRIC_VERSION
+    monkeypatch.setattr(evals, "RUNS", tmp_path)
+    report, _failed = evals.run(["opening_hours"], offline=True)
+    assert report["rubric_version"] == judge.RUBRIC_VERSION
+    assert [p.name.endswith("-offline.json") for p in tmp_path.glob("evals-*.json")] == [True]   # an offline report never looks live
