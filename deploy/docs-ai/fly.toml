@@ -28,6 +28,12 @@ primary_region = "fra"
     path = "/ai/health"
     timeout = "5s"
 
+# the demo's day counters (the cost caps), conversations and transcripts survive a stop and a deploy: the machine's
+# own disk returns to the image on every start. Volume dushes_data, 1 GB in fra, created 2026-11-15.
+[[mounts]]
+  source = "dushes_data"
+  destination = "/app/backend/data"
+
 [[vm]]
   memory = "1gb"
   cpu_kind = "shared"
