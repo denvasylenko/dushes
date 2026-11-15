@@ -324,8 +324,16 @@ class FormChat:
             opts = it.get("options") or []
             text = typed(self.answer, it.get("input"))
             self.log.append(f"   ❓ {it.get('question')} → {opts[0]['label'] if opts else text or 'closed'}")
-            self._resume({"answer": {"ids": [opts[0]["id"]]}} if opts else {"answer": {"text": text}} if text
-                         else {"accepted": False}, depth)
+            reply = {"answer": {"ids": [opts[0]["id"]]}} if opts else {"answer": {"text": text}} if text else {"accepted": False}
+            value = opts[0].get("value") if opts else text or None
+            if it.get("applies") and it.get("field") and value is not None and "answer" in reply:
+                # a question bound to a field fills it when answered, as the widget does (a consent question: yes ticks it)
+                config = self.form.compute({**self.config["state"], it["field"]: [value] if opts and it.get("multiple") else value})
+                if opts or not ((config.get("props") or {}).get(it["field"]) or {}).get("error"):
+                    self.config = config
+                    reply.update(config=self.config, ui=self.ui)
+                    self.log.append(f"      the answer filled {it['field']} = {value!r}")
+            self._resume(reply, depth)
         elif "changes" in it:
             ok = self.card in ("accept", "confirm_no")
             self.log.append("   🃏 " + "; ".join(f"{c.get('label')} = {c.get('display')}" for c in it["changes"]) + f" → {'accepted' if ok else 'rejected'}")

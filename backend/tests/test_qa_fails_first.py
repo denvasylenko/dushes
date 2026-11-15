@@ -60,3 +60,54 @@ def test_a_turn_answered_by_the_site_assistant_reports_its_tokens(tmp_path):
     assert any(str(x).startswith("\U0001f916") for x in v.log), "the site assistant did not answer"
     assert v.stats, "no run_stats event for a turn the site assistant answered: its tokens are invisible"
     assert {"input", "output"} <= set(v.tokens), "run_stats carries no token counts"
+
+
+def test_an_answer_to_a_question_about_a_field_fills_it_on_the_page():
+    """The widget fills the field when a question bound to it ("applies") is answered and sends the config;
+    a guest that only sends the answer leaves the form without it (a consent that was accepted stays unticked)."""
+    from harness_client import Visit
+
+    class Page:
+        def __init__(self):
+            self.config, self.ui = {"state": {"accept_terms": False}, "props": {}}, {}
+
+        def apply(self, changes):
+            self.config = {"state": {**self.config["state"], **changes}, "props": {}}
+
+    def visit():
+        v = Visit.__new__(Visit)
+        v.form, v.log, v.sent = Page(), [], []
+        v._resume = lambda reply, depth: v.sent.append(reply)
+        v.cards = []
+        return v
+
+    card = {"type": "ask", "field": "accept_terms", "applies": True, "consent": True, "label": "Rental terms",
+            "question": "Do you accept the rental terms?",
+            "options": [{"id": "yes", "label": "Yes", "value": True}, {"id": "no", "label": "No", "value": False}]}
+    v = visit()
+    v.answer = lambda c: {"ids": ["yes"]}
+    v._card(card, 0)
+    assert v.form.config["state"]["accept_terms"] is True
+    assert v.sent == [{"answer": {"ids": ["yes"]}, "config": v.form.config, "ui": {}}]
+    v = visit()
+    v.answer = lambda c: {"ids": ["yes"]}
+    v._card({**card, "applies": False}, 0)          # a question that only asks: nothing is filled, no config
+    assert v.form.config["state"]["accept_terms"] is False and v.sent == [{"answer": {"ids": ["yes"]}}]
+
+
+def test_the_scripted_guest_answers_a_date_question_with_a_date():
+    """"Which Friday?" asked with a date picker or two options: the guest that only closes the card never reaches
+    the rest of the conversation (the consent question came after it)."""
+    from datetime import date
+
+    import evals
+    sunday = date(2026, 11, 15)
+    assert evals.spoken_date("next friday", sunday) == "2026-11-20" and evals.spoken_date("next friday +3", sunday) == "2026-11-23"
+    assert evals.spoken_date("Clara Nunes", sunday) == "Clara Nunes" and evals.spoken_date("2026-12-01", sunday) == "2026-12-01"
+    g = evals.RuleGuest.__new__(evals.RuleGuest)
+    g.known = {"pickup_date": "next friday"}
+    iso = evals.spoken_date("next friday")
+    d = date.fromisoformat(iso)
+    assert g.choose({"field": "pickup_date", "input": {"type": "date"}}) == {"text": iso}
+    opts = [{"id": "a", "label": f"Friday {d.day} {d.strftime('%B')} {d.year}"}, {"id": "b", "label": "Friday 1 January 2099"}]
+    assert g.choose({"field": "pickup_date", "options": opts}) == {"ids": ["a"]}

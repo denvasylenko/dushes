@@ -177,3 +177,20 @@ def test_the_scripted_user_gives_a_date_picker_a_date():
     assert recipes.typed("next Sunday", {"type": "date"}, sunday) == "2026-11-22"      # never today
     assert recipes.typed("next Tuesday", {"type": "text"}, sunday) == "next Tuesday"
     assert recipes.typed("2027-03-01", {"type": "date"}, sunday) == "2027-03-01" and recipes.typed("", {"type": "date"}) == ""
+
+
+def test_the_scripted_user_s_answer_fills_the_field_the_question_is_about():
+    class Lab:
+        def compute(self, state):
+            return {"state": dict(state or {}), "props": {}}
+
+    chat = recipes.FormChat.__new__(recipes.FormChat)
+    chat.form, chat.config, chat.ui, chat.answer = Lab(), {"state": {"consent": False}}, {}, ""
+    chat.cards, chat.log, sent = [], [], []
+    chat._resume = lambda reply, depth: sent.append(reply)
+    card = {"type": "ask", "question": "Do you agree?", "field": "consent", "applies": True,
+            "options": [{"id": "yes", "label": "Yes", "value": True}, {"id": "no", "label": "No", "value": False}]}
+    chat._answer(card, 0)
+    assert chat.config["state"]["consent"] is True and sent[0]["config"] == chat.config and sent[0]["answer"] == {"ids": ["yes"]}
+    chat._answer({**card, "applies": False, "field": None}, 0)
+    assert "config" not in sent[1]

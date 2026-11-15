@@ -414,6 +414,28 @@ class Visit:
         if interrupt:
             self._card(interrupt, depth)
 
+    def _fill_from_answer(self, card: dict, reply: dict) -> bool:
+        """A question bound to a field ("applies") fills that field when answered, as the widget does: the chosen
+        option's value (a consent question: yes ticks it), or the typed text; a value the form rejects is put back."""
+        name = card.get("field")
+        if not (card.get("applies") and name and self.form):
+            return False
+        by_id = {o.get("id"): o for o in card.get("options") or []}
+        chosen = [by_id[i] for i in reply.get("ids") or [] if i in by_id and "value" in by_id[i]]
+        if chosen:
+            value = [o["value"] for o in chosen] if card.get("multiple") else chosen[0]["value"]
+        elif reply.get("text") and not by_id:
+            value = reply["text"]
+        else:
+            return False
+        before = self.form.config["state"].get(name)
+        self.form.apply({name: value})
+        if not chosen and ((self.form.config.get("props") or {}).get(name) or {}).get("error"):
+            self.form.apply({name: card.get("previous", before)})
+            return False
+        self.log.append(f"   \u270f\ufe0f the answer filled the field on the page: {card.get('label') or name} = {json.dumps(value, ensure_ascii=False)}")
+        return True
+
     def _card(self, interrupt: dict, depth: int) -> None:
         """What this guest does with a card: a question is answered, a field card accepted, a confirmation confirmed."""
         kind = interrupt.get("type") or ("set_fields" if "changes" in interrupt else "card")
@@ -426,7 +448,12 @@ class Visit:
             self.log.append(f"   ❓ question card: {interrupt.get('question')} [{opts}]{shown} → the user answered "
                             f"{json.dumps(reply, ensure_ascii=False) if reply else 'nothing (closed it)'}")
             # a several-fields card is answered with {answers: {name: value}}, a question with {answer: {ids | text}}
-            self._resume({"answers": reply["answers"]} if reply and "answers" in reply else {"answer": reply} if reply else {"accepted": False}, depth)
+            if reply and "answers" in reply:
+                return self._resume({"answers": reply["answers"]}, depth)
+            if not reply:
+                return self._resume({"accepted": False}, depth)
+            filled = self._fill_from_answer(interrupt, reply)
+            self._resume({"answer": reply, **({"config": self.form.config, "ui": self.form.ui} if filled else {})}, depth)
         elif "changes" in interrupt and self.form:
             # a consent row is only the person's own tick: accepting the card leaves it out unless this guest gives it
             ch = [c for c in interrupt["changes"] if not c.get("consent") or c["name"] in getattr(self, "ticks", ())]

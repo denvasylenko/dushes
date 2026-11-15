@@ -335,6 +335,20 @@ class User:
         return {"text": c.text or c.option} if (c.text or c.option) else None
 
 
+def spoken_date(text: str, today: Any = None) -> str:
+    """A scenario's relative date as YYYY-MM-DD, so a scenario does not go stale: "next friday" is the coming Friday
+    (never today), "next friday +3" three days after it. Anything else comes back as written."""
+    from datetime import date, timedelta
+    words = str(text).lower().split("+")
+    days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    hit = next((i for i, d in enumerate(days) if d in words[0]), None)
+    if hit is None:
+        return str(text)
+    t = today or date.today()
+    plus = int(words[1]) if len(words) > 1 and words[1].strip().isdigit() else 0
+    return (t + timedelta(days=(hit - t.weekday() - 1) % 7 + 1 + plus)).isoformat()
+
+
 class RuleGuest:
     """The guest without a model: only the scenario's scripted messages, and a card is answered by rule from the
     scenario's own data (`answers`, else the expected final values in `expect.fields`). A card the scenario has no
@@ -368,6 +382,15 @@ class RuleGuest:
         if name not in self.known or self.known[name] is None:
             return None
         opts, v = q.get("options") or [], self.known[name]
+        if isinstance(v, str) and spoken_date(v) != v:   # a relative date: the picker gets the date, an option is found by it
+            from datetime import date
+            iso = spoken_date(v)
+            d = date.fromisoformat(iso)
+            said = f"{d.day} {d.strftime('%B')}".lower()
+            hit = [str(o["id"]) for o in opts if iso in (str(o.get("id")), str(o.get("value"))) or said in str(o.get("label", "")).lower()]
+            if opts:
+                return {"ids": hit[:1]} if hit else None
+            return {"text": iso}
         if opts:
             ids = self._pick(opts, v)
             return {"ids": ids if q.get("multiple") else ids[:1]} if ids else ({"text": self._plain(v)} if q.get("allow_text") else None)

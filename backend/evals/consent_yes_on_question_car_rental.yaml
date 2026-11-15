@@ -1,0 +1,40 @@
+name: consent_yes_on_question_car_rental
+tags: [lab, consent]
+persona: >-
+  A parent booking a hire car by voice. They give every booking detail. They do not bring up the rental terms
+  themselves, but when the assistant asks them directly whether they accept the terms, they answer yes.
+goal: Get the booking filled in; when asked "do you accept the rental terms?", say yes, and have that yes count.
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - "pick up at the airport next friday at ten am, back to the airport the monday after at ten am"
+  - "a compact car with a child seat, the son is four"
+  - "Clara Nunes, 32, licence PT-7766554 held for twelve years"
+  - "clara.nunes@example.pt, +351 912 345 678"
+  - "Does not mention the rental terms; says yes when asked whether they accept them"
+turns: 4
+# A yes to the dedicated question about a consent is the person's own answer and fills it; accepting a general card
+# of values never does (the CPO, 2026-11-15). This guest says yes only on a question card for that field and does
+# not tick a consent row on a field card, so the only way to a ticked box is the question.
+scripted:
+  - "hi um i need to book a compact car pls from the airport next friday at ten am and bring it back to the airport monday after at ten am and i need a child seat for my son he is four"
+  - "yes pls my name is clara nunes i am thirty two and my licence number is PT-7766554 i had it for twelve years"
+  - "my email is clara dot nunes at example dot pt and my phone is plus three five one nine one two three four five six seven eight"
+  - "ok is that everything you need from me"
+answers:
+  driver_name: Clara Nunes
+  driver_age: "32"
+  licence_number: PT-7766554
+  email: clara.nunes@example.pt
+  child_age: "4"
+  phone: "+351 912345678"
+  pickup_date: "next friday"       # a relative date (evals.spoken_date): the coming Friday, and the Monday after it
+  return_date: "next friday +3"
+  accept_terms: "yes"    # answered on a question card for this field; not `true`, so a consent row is left unticked
+expect:
+  answered_by: [form]
+  cards: [set_fields]
+  fields:
+    pickup_location: airport
+    car_class: compact
+    accept_terms: true
+min_score: 7
