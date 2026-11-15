@@ -106,11 +106,11 @@ Every answer SHALL end with its actions from `messageActions` (default `copy`): 
 - **THEN** it is pressed, the thumbs-up is not, and `agui:message-action` carries `{id: "dislike", pressed: true}`
 
 ### Requirement: One turn, one group
-An answer's turn (every text part and card of a run, until the next user message) SHALL read as one group: no actions while it streams, then one actions row after its last piece, text or card; `copy` SHALL copy every text part of the turn. Inside a turn pieces SHALL sit about 8 px apart; turns keep their wider gap. A restored conversation SHALL be grouped the same way.
+An answer's turn (every text part and card of a run, until the next user message) SHALL read as one group: no actions while it streams, then one actions row after its last text when the turn ends with text (none when it ends with a card); `copy` SHALL copy every text part of the turn. Inside a turn a card and the text above or below it SHALL sit 16 px apart; turns keep their wider gap. A restored conversation SHALL be grouped the same way.
 
 #### Scenario: Text, then a booking card
 - **WHEN** the assistant writes a sentence and then shows a question card in the same run
-- **THEN** the card sits close under the sentence and one row of Copy and Reply follows the card once the run ends
+- **THEN** the card sits 16 px under the sentence, and no row of actions follows the card
 
 ### Requirement: The host hears every action
 Every tap on an action under an answer SHALL fire `agui:message-action` `{id, messageId, text, pressed?}` and call `onMessageAction`, which skips the built-in behaviour by returning true.
@@ -226,15 +226,22 @@ The large view SHALL page through the images of the same message, or of the comp
 - **THEN** the second image shows with "2 of 2", and the next arrow is dimmed
 
 ### Requirement: Marking up an image
-An image still in the composer SHALL offer a pencil in its large view; a sent image or a picture in an answer SHALL only be viewed. The pencil SHALL load markup on demand: on top close, undo, redo and one check mark; at the bottom one tool button with the pen, frame, text and colours. The check mark SHALL put the marked-up copy in place of the image, uploaded like any file.
+While attachments are on, the large view SHALL offer a pencil for a picture it can read back; opened, a picture is only shown until the pencil is tapped. For an image still in the composer the pencil SHALL open a tool panel under the picture (pen, frame, text, a colour, a line width, undo, redo, clear, Save, close), and Save SHALL put the marked-up copy in the image's place.
 
-#### Scenario: Circling a button
-- **WHEN** the user opens a pasted screenshot, taps the pencil, circles a button and taps the check mark
+#### Scenario: Circling a button before sending
+- **WHEN** the user opens a pasted screenshot, taps the pencil, circles a button and taps Save
 - **THEN** the view closes and the composer holds the marked-up copy in place of the screenshot
 
+#### Scenario: Close goes back
+- **WHEN** the user taps the panel's close button or presses Esc
+- **THEN** the panel goes and the picture stays open
+
+### Requirement: Marking up a sent image
+For a picture already sent, or shown in an answer, the pencil SHALL open the phone-style markup: on top close, undo, redo and one check mark; at the bottom one tool button with the pen, frame, text and colours. The check mark SHALL add the marked-up copy to the composer as a new attachment; the sent picture SHALL stay as it was.
+
 #### Scenario: A sent screenshot
-- **WHEN** the user opens a screenshot already sent
-- **THEN** it opens large without the pencil
+- **WHEN** the user opens a screenshot already sent, taps the pencil, circles a button and taps the check mark
+- **THEN** the composer holds a marked-up copy ready to send, and the sent screenshot is unchanged
 
 #### Scenario: Back to the picture
 - **WHEN** the user draws, then taps x or presses Esc

@@ -191,8 +191,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 }
 
 /* cards inside the conversation */
-/* one turn, one group: inside an answer its text, cards and actions sit close (about 8 px); turns keep 20 px */
-.msg.ai + .card, .card + .card, .card + .msg.ai { margin-top: -12px; }
+/* one turn, one group: inside an answer a card and the text around it sit 16 px apart; turns keep 20 px and a user bubble */
+.msg.ai + .card, .card + .card, .card + .msg.ai { margin-top: -4px; }
 /* a card brought back (card_focus): a soft ring that fades, no layout change */
 [data-spot] { outline: 3px solid transparent; outline-offset: 2px; animation: spot 1.6s var(--agui-ease) both; }
 @keyframes spot { 0%, 60% { outline-color: color-mix(in srgb, var(--agui-link) 45%, transparent); } }
