@@ -799,8 +799,6 @@ def run(names: list[str] | None = None, *, model: str | None = None, offline: bo
         research_model: str | None = None, judge: str | None = None) -> tuple[dict, bool]:
     scenarios = load_all(names, folder, tag)   # a bad file stops the run before any model call
     started = datetime.now().isoformat(timespec="seconds")
-    from bench import git_commit
-    commit = git_commit(BASE if not agent_model else "127.0.0.1")   # read at the start: other sessions commit during a long round
     if offline:
         tmp = tempfile.mkdtemp(prefix="formguide-evals-")
         http, user_model, judge_model = offline_client(Path(tmp)), None, None
@@ -828,9 +826,10 @@ def run(names: list[str] | None = None, *, model: str | None = None, offline: bo
         results.append(combine(runs))
     baseline = json.loads(baseline_file.read_text()) if baseline_file.exists() else None
     text, failed, avg = summarize(results, baseline, margin)
+    from bench import git_commit
     report = {"at": datetime.now().isoformat(timespec="seconds"), "started": started, "offline": offline, "model": model,
               "agent_model": agent_model, "user_model": _name(user_model), "judge_model": _name(judge_model),
-              "commit": commit, "repeat": repeat,
+              "commit": git_commit(BASE if not agent_model else "127.0.0.1"), "repeat": repeat,
               "average": avg, "failed": failed, "scenarios": results}
     RUNS.mkdir(exist_ok=True)
     out = RUNS / f"evals-{datetime.now():%Y%m%d-%H%M%S}.json"

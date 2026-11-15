@@ -228,7 +228,7 @@ How a score is made:
 | Step | What it does |
 |---|---|
 | checks without a model | `says`, `never_says`, `answered_by`, `cards`, `reaches` and run errors, from the server's own conversation (`GET /site/threads/{id}` names the agent of every reply) |
-| the judge | scores against a fixed rubric: truth (up to 5 points), the right agent (2), cards instead of prose (2), reaching the goal (3), brevity and language (1) |
+| the judge | scores against a fixed rubric: truth (up to 5 points), the right agent (2), cards instead of prose (2), reaching the goal (3), brevity and language (1); the rubric is public as `formguide.judge.RUBRIC`, versioned by `RUBRIC_VERSION` |
 | caps | a failed `never_says` caps the score at 3, any other failed check at 5, so a lenient judge cannot hide a hard failure |
 
 The report goes to `scripts/runs/evals-<time>.json` with every score, check and reason; each conversation is in `scripts/runs/eval-<name>.txt`. The run exits 1 when a scenario is below its `min_score` or the average is more than `--margin` (0.5) below `evals/baseline.json`, and 2 when a scenario file is wrong (an unknown key is named before any model call).

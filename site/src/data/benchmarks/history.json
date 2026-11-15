@@ -305,108 +305,6 @@
    "report": "backend/scripts/bench-20261114-184309.json",
    "comparable": "speed",
    "note": "median first word question 3.0s, fill 1.1s, choice 2.1s, documents 1.7s, booking 0.9s"
-  },
-  {
-   "date": "2026-11-14",
-   "time": "22:46",
-   "kind": "load",
-   "models": {
-    "agent": "claude-haiku-5-5",
-    "user": "scripted",
-    "judge": "none"
-   },
-   "scenarios": 5,
-   "repeat": 3,
-   "average": null,
-   "heldout": null,
-   "report": "backend/scripts/runs/load-20261114-224654.json",
-   "comparable": "load",
-   "note": "p95 first word 1 visitors 2.96s, 5 visitors 3.52s, 10 visitors 4.43s, 20 visitors 5.56s, 40 visitors 6.31s"
-  },
-  {
-   "date": "2026-11-14",
-   "time": "23:41",
-   "kind": "recipes",
-   "models": {
-    "agent": "claude-haiku-5-5",
-    "user": "scripted",
-    "judge": "none"
-   },
-   "scenarios": 2,
-   "repeat": 10,
-   "average": 5.0,
-   "heldout": null,
-   "report": "backend/scripts/runs/recipes-20261114-234809.json",
-   "comparable": "tool calls",
-   "note": "10 of 20 runs called the expected tool (average = hits per 10 runs)"
-  },
-  {
-   "date": "2026-11-14",
-   "time": "23:49",
-   "kind": "recipes",
-   "models": {
-    "agent": "claude-haiku-5-5",
-    "user": "scripted",
-    "judge": "none"
-   },
-   "scenarios": 2,
-   "repeat": 10,
-   "average": 10.0,
-   "heldout": null,
-   "report": "backend/scripts/runs/recipes-20261114-235408.json",
-   "comparable": "tool calls",
-   "note": "20 of 20 runs called the expected tool (average = hits per 10 runs)"
-  },
-  {
-   "date": "2026-11-14",
-   "time": "23:55",
-   "kind": "recipes",
-   "models": {
-    "agent": "claude-haiku-5-5",
-    "user": "scripted",
-    "judge": "none"
-   },
-   "scenarios": 2,
-   "repeat": 10,
-   "average": 6.0,
-   "heldout": null,
-   "report": "backend/scripts/runs/recipes-20261115-000003.json",
-   "comparable": "tool calls",
-   "note": "12 of 20 runs called the expected tool (average = hits per 10 runs)"
-  },
-  {
-   "date": "2026-11-15",
-   "time": "00:41",
-   "kind": "scenario set",
-   "models": {
-    "agent": "claude-haiku-5-5",
-    "user": "claude-sonnet-5-5",
-    "judge": "claude-sonnet-5-5"
-   },
-   "scenarios": 3,
-   "repeat": 5,
-   "average": 5.2,
-   "heldout": 3.4,
-   "report": "backend/scripts/runs/evals-20261115-004141.json",
-   "comparable": "judge claude-sonnet-5-5",
-   "note": ""
-  },
-  {
-   "date": "2026-11-15",
-   "time": "01:43",
-   "kind": "full round",
-   "models": {
-    "agent": "claude-haiku-5-5",
-    "user": "claude-sonnet-5-5",
-    "judge": "claude-sonnet-5-5"
-   },
-   "scenarios": 215,
-   "repeat": 1,
-   "average": 7.56,
-   "heldout": 7.49,
-   "report": "backend/scripts/runs/evals-20261115-014345.json",
-   "comparable": "judge claude-sonnet-5-5",
-   "note": ""
   }
  ],
  "left_out": [
@@ -415,7 +313,6 @@
   "evals-20261114-010923.json: 8 of 8 scenarios did not run (the server was down)",
   "evals-20261114-165949.json: 5 of 5 scenarios did not run (the server was down)",
   "evals-20261114-203120.json: another host's pilot (Herefront's cabinet) on a harness that did not yet know its form routes",
-  "evals-20261114-234218.json: 3 of 3 scenarios did not run (the server was down)",
   "recipes-20261114-163438.json: the prefill and confirm fixtures were wrong (a locked step, a Sunday); rerun later",
   "recipes-20261114-171027.json: the confirm runner missed a held tool's result (fixed in the runner)",
   "recipes-20261114-171816.json: the confirm runner missed a held tool's result (fixed in the runner)"

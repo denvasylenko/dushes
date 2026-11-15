@@ -101,13 +101,43 @@ from formguide.site import Dushes, SiteMap, create_dushes_router
   <Fragment slot="returns">Validated values for the form, without a chat.</Fragment>
 </ParamList>
 
+### conversations
+
+<ParamList kind="method" signature="FormGuide.conversations(since, until=None, *, merge=True)" id="conversations">
+  <Param name="since" type="datetime" required id="conversations-since">The window's start, included. An aware datetime; a naive one is read as UTC.</Param>
+  <Param name="until" type="datetime | None" default="None" id="conversations-until">The window's end, excluded; `None` is now.</Param>
+  <Param name="merge" type="bool" default="True" id="conversations-merge">Fold a form's own thread under Dushes (`"<thread>-<form_id>"`) into its site thread; every entry of a merged conversation then carries `agent`: `"site"` or `"form"`. A thread on its own has no `agent` on its entries.</Param>
+  <Fragment slot="returns">A generator of `{thread_id, entries}`: each conversation where something was said in `[since, until)`, with only that window's entries, in time order. It needs a transcript store with `threads()` ([Persistence](../../agents/shared/persistence/#your-own-store)).</Fragment>
+</ParamList>
+
+```python
+from datetime import datetime, timedelta, timezone
+
+since = datetime.now(timezone.utc) - timedelta(days=1)
+for c in guide.conversations(since):
+    print(c["thread_id"], len(c["entries"]))
+```
+
+### purge
+
+<ParamList kind="async method" signature="FormGuide.purge(older_than_days, *, dry_run=False)" id="purge">
+  <Param name="older_than_days" type="float" required id="purge-older-than-days">Delete every conversation whose last entry is older than this many days (its `ts`, not the file's time).</Param>
+  <Param name="dry_run" type="bool" default="False" id="purge-dry-run">Only count, delete nothing.</Param>
+  <Fragment slot="returns">`int`: how many conversations were deleted (or would be). Each goes whole: the transcript, the model's history (checkpoint) and the attachments. It works without the package's server, e.g. from a nightly job.</Fragment>
+</ParamList>
+
+```python
+n = await guide.purge(30, dry_run=True)   # how many are older than 30 days
+await guide.purge(30)
+```
+
 ### Conversations, documents and attachments
 
 | Method | Does |
 | --- | --- |
 | `thread(thread_id, form_id=None)` | the display transcript, the pending card and whether a turn is still running |
 | `thread_messages(thread_id)` | the transcript as AG-UI messages |
-| `async delete_thread(thread_id)` | forget a conversation |
+| `async delete_thread(thread_id)` | forget a conversation: its transcript, the model's history and its attachments |
 | `add_document(namespace, filename, data)` / `delete_document(namespace, doc_id)` | manage business documents |
 | `async compile_knowledge(form_id, jsx, config)` | compile the documents in the form's scope into its domain pack |
 | `save_attachment(thread_id, filename, data)` | store a user document for the next run |

@@ -44,6 +44,7 @@ transcripts: {dir: data/transcripts}              # or: memory
         def update(self, thread_id, entry_id, **patch): ...
         def list(self, thread_id): ...
         def delete(self, thread_id): ...
+        def threads(self, since=None): ...  # thread ids with an entry since then; for conversations() and purge()
 
     cfg.transcripts = DbTranscripts()
     ```
@@ -60,6 +61,23 @@ curl -X DELETE http://localhost:8000/agent/threads/t1                           
 ```
 
 `format=agui` returns AG-UI messages; without it you get the raw transcript entries. A card the user had not answered comes back as `pending_card`.
+
+## Your own store
+
+A store of your own (the "Your transcript store" tab above) needs `threads(since=None) -> list[str]` as well: the ids of the threads with an entry since `since` (all of them when `None`). [`conversations`](../../../reference/python-api/#conversations) and [`purge`](../../../reference/python-api/#purge) read it. The built-in stores have it: the file store goes by each file's modification time, the memory store by the last entry's time. (`purge` itself always goes by the last entry's `ts`.)
+
+## Review and clean up conversations
+
+```python
+from datetime import datetime, timedelta, timezone
+
+for c in guide.conversations(datetime.now(timezone.utc) - timedelta(days=1)):   # yesterday's conversations
+    review(c["thread_id"], c["entries"])                                          # your own review
+
+await guide.purge(30)   # delete conversations quiet for 30 days: transcript, model history, attachments
+```
+
+A site conversation and the form threads Dushes opened from it come back as one conversation, each entry marked `agent: "site"` or `"form"`. `purge` runs without the package's server, so a nightly job can call it.
 
 ## A reload does not lose the answer
 
