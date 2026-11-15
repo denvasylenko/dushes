@@ -18,6 +18,8 @@ public protocol VoiceTransport: AnyObject, Sendable {
 
 public enum VoiceTransportEvent: Equatable, Sendable {
     case audio(Data)              // the voice speaking: 16-bit mono PCM at the transport's rate
+    case hearing(String)          // a piece of the person's words as they speak
+    case echo                     // the voice's own words came back through the microphone: drop what `hearing` showed
     case heard(String)            // what the person said: the app sends it to the agent as a message
     case spoken(String)           // a piece of what the voice says (its transcript)
     case error(String)

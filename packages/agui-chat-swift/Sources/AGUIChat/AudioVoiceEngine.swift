@@ -121,6 +121,8 @@ public final class AudioVoiceEngine: VoiceEngine {
     private func received(_ event: VoiceTransportEvent) {
         switch event {
         case .audio(let pcm): play(pcm)
+        case .hearing(let text): continuation.yield(.hearing(text))
+        case .echo: continuation.yield(.echo)
         case .heard(let text): continuation.yield(.heard(text))
         case .spoken(let text): continuation.yield(.spoken(text))
         case .error(let code): continuation.yield(.error(code))

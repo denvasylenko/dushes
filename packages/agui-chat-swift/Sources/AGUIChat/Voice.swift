@@ -4,6 +4,8 @@ import Observation
 /// What a voice engine reports (the server's GET /voice/events, see the voice contract): what the person said, what
 /// the voice says, the sound level, the end.
 public enum VoiceEngineEvent: Equatable, Sendable {
+    case hearing(String)          // a piece of the person's words as they speak
+    case echo                     // drop what `hearing` showed: it was the voice's own words
     case heard(String)            // the person's words: sent as an ordinary user message in the same thread
     case spoken(String)           // a piece of what the voice says (its transcript)
     case level(Double)            // 0…1, the person's sound level (the session sends audio all the time, silence too)
@@ -32,6 +34,8 @@ public final class VoiceController {
     public private(set) var state: State = .off
     public private(set) var level: Double = 0
     public private(set) var problem: String?
+    /// The person's words so far, as they speak (cleared when the phrase is handed over).
+    public private(set) var hearing = ""
 
     private let store: ChatStore
     private let makeEngine: @MainActor () -> VoiceEngine
@@ -77,6 +81,12 @@ public final class VoiceController {
         }
     }
 
+    /// Muted or not (typing in the field: it stops listening; the talk stays open).
+    public func setMuted(_ on: Bool) {
+        guard on != muted else { return }
+        toggleMute()
+    }
+
     public func toggleMute() {
         muted.toggle()
         engine?.setMuted(muted)
@@ -94,7 +104,12 @@ public final class VoiceController {
 
     private func handle(_ event: VoiceEngineEvent) {
         switch event {
+        case .hearing(let delta):
+            hearing += delta
+        case .echo:
+            hearing = ""
         case .heard(let text):
+            hearing = ""
             let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !t.isEmpty else { return }
             store.send(t)
