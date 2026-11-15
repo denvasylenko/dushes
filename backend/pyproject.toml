@@ -32,7 +32,7 @@ formguide = "formguide.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/denvasylenko/dushes"
-Documentation = "https://denvasylenko.github.io/dushes/"
+Documentation = "https://dushes-ai.fly.dev/"
 
 [build-system]
 requires = ["hatchling>=1.27"]

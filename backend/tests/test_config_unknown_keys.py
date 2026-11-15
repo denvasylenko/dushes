@@ -32,3 +32,11 @@ def test_every_known_key_loads(tmp_path):
     assert cfg.confirm_tools == ["send_form"] and cfg.memory.keep_turns == 3
     assert cfg.knowledge.store.chunk_chars == 900 and cfg.knowledge.store.chunk_overlap == 100
     assert {"confirm_tools", "knowledge", "models"} <= set(KEYS)
+
+
+def test_models_without_agent_falls_back_to_model(tmp_path):
+    cfg = _load(tmp_path, 'model: "anthropic:claude-haiku-5-5"\nmodels:\n  research: "anthropic:claude-sonnet-5-5"\n')
+    assert cfg.models.agent is not None and cfg.models.research is not None
+    with pytest.raises(ValueError) as e:
+        _load(tmp_path, 'models:\n  research: "anthropic:claude-sonnet-5-5"\n')
+    assert "models.agent is required" in str(e.value)

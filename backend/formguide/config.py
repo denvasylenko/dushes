@@ -225,7 +225,12 @@ def load_config(path: str | Path) -> GuideConfig:
         cfg.models = Models(agent=raw["models"])
     elif raw.get("models"):
         m = raw["models"]
-        cfg.models = Models(agent=_model(m["agent"]), research=_model(m.get("research")),
+        if not isinstance(m, dict):
+            raise ValueError("models must be a model string or a mapping of roles (agent, research, compile, extract)")
+        agent = m.get("agent") or raw.get("model")   # a role left out falls back; the agent's falls back to `model`
+        if not agent:
+            raise ValueError("models.agent is required (or set the top-level `model`)")
+        cfg.models = Models(agent=_model(agent), research=_model(m.get("research")),
                             compile=_model(m.get("compile")), extract=_model(m.get("extract")))
     if raw.get("components"):
         c = raw["components"]

@@ -54,3 +54,10 @@ With `prompt_cache: auto` (the default) the agent SHALL mark cache breakpoints w
 - **WHEN** the server starts with `transcription: {provider: faster_whisper}`
 - **THEN** the model is loading in the background while the server already answers
 
+### Requirement: The agent's model when roles are written out
+When `models` is a mapping without `agent`, the agent's model SHALL be the top-level `model`; when neither is set, `load_config` SHALL fail with "models.agent is required".
+
+#### Scenario: Only the research role is named
+- **WHEN** a file has `model: "anthropic:claude-haiku-5-5"` and `models: {research: "anthropic:claude-sonnet-5-5"}`
+- **THEN** the agent runs on the top-level model and the researcher on the named one
+
