@@ -10,8 +10,11 @@ turns: 1
 # the make of the car. A question about a service is not an order: answer it, offer the next step, open nothing.
 scripted:
   - "can I book a table for fourteen people at Casa do Mar Azul?"
+# Online bookings are for up to 12 guests; for 13 or more the restaurant asks to be called. The right answer says so
+# and gives the number (the CPO, 2026-11-15: with a way to call), and opens no booking form.
 expect:
   answered_by: [dushes]
   stays_put_on: ["."]
   never_tools: [open_form]
+  says: [["12"], ["4455"], ["call", "phone", "ring"]]
 min_score: 7
