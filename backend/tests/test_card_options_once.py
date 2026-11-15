@@ -13,12 +13,32 @@ SERVICES = ["Haircut", "Beard trim", "Haircut + beard", "Kids haircut"]
 def test_the_list_goes_and_the_rest_stays():
     text = ("A haircut takes 30 minutes on average.\n\nWhich service would you like?\n- Haircut\n- Beard trim\n"
             "- Haircut + beard\n- Kids haircut")
-    assert without_options(text, SERVICES, "Pick one") == "Which service would you like?"   # the first line names one
+    assert without_options(text, SERVICES, "Pick one") == ("A haircut takes 30 minutes on average.\n\n"
+                                                           "Which service would you like?")   # a fact about one stays
     assert without_options("We are open until 8 pm. Here are the services:\n- Haircut\n- Beard trim",
                            SERVICES) == "We are open until 8 pm."
     assert without_options("Options are 10:00, 11:00 and 12:30. Which time suits you?",
                            ["10:00", "11:00", "12:30"]) == "Which time suits you?"
     assert without_options("Which time suits you?\n1. 10:00\n2. 11:00", ["10:00", "11:00"], "Which time suits you?") == ""
+
+
+def test_a_label_inside_another_is_one_option():
+    # QA, 2026-11-15: "Kids haircut" also matched "Haircut", so a true sentence about one option was deleted
+    text = ("Maria is our senior barber, and her prices are 20% higher. Kids haircuts are done only by Maria. "
+            "The barber list appears once you pick a service, so which one would you like?")
+    assert without_options(text, SERVICES) == text
+    listed = text + "\n- Haircut\n- Beard trim\n- Kids haircut"
+    assert without_options(listed, SERVICES) == text                    # the list goes, the fact stays
+
+
+def test_a_list_of_options_goes_whole():
+    # QA, 2026-11-15: the bullet whose words differ from its label stayed alone
+    text = ("Haircut is set: 30 min, $40.\n\n- **Alex**\n- **Ivan**\n- **Maria** (senior, prices 20% higher)\n\n"
+            "Which one would you like?")
+    assert without_options(text, ["Alex", "Ivan", "Maria (senior)"]) == ("Haircut is set: 30 min, $40.\n\n"
+                                                                         "Which one would you like?")
+    notes = "Two things to know:\n- bring your ID\n- Alex is away on Monday\n\nAlex or Ivan?"
+    assert without_options(notes, ["Alex", "Ivan"]) == "Two things to know:\n- bring your ID\n- Alex is away on Monday"
 
 
 def test_text_that_names_fewer_than_two_options_is_untouched():

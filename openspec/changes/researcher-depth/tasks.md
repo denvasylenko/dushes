@@ -17,6 +17,7 @@ Each phase ships on its own, with the owner's yes through the CPO where it chang
 - [ ] 2.3 quick: passages as the tool result for the form agent and for Dushes; no deepagents import on this path
 - [ ] 2.3a quick finds little: the honest line and the "Look deeper?" chip; its tap runs deep
 - [ ] 2.4 offline tests; QA: quick questions (first word, sources, "the documents do not say")
+- [ ] 2.5 a source always carries the document's own name: a bare internal id ("cbde2404.md", "cbde2404") in a Sources line resolves to the file name, and passages handed to the calling agent are labelled with the file name only, never the id or the /docs/ path (QA's pilot, the CPO 2026-11-15)
 
 ## 3. The deep pipeline
 - [ ] 3.1 plan, retrieve, read (parallel), one gap round, write (streamed), check and repair

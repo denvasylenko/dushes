@@ -1,0 +1,328 @@
+# Researcher depth benchmark: the Orrin Tools catalogue (corpus demo/research_corpora/orrin_catalogue, invented).
+corpus: orrin_catalogue
+title: Orrin Tools product catalogue
+scenarios:
+  # ------------------------------------------------------------------ quick
+  - id: oc_q_dd1840_torque
+    group: quick
+    kind: fact
+    role: "A joiner comparing drills in a shop."
+    wants: "The torque of one drill."
+    question: "What is the max torque of the DD-1840?"
+    points:
+      - {say: "105 Nm", keys: ["105"], where: catalogue_drill_drivers.md}
+    pair: drills
+  - id: oc_q_dd1860_torque
+    group: quick
+    kind: version
+    role: "A site foreman ordering impact-rated bits for the DD-1860."
+    wants: "The real torque of the DD-1860."
+    question: "What is the maximum torque of the DD-1860?"
+    points:
+      - {say: "130 Nm (Service Bulletin SB-2026-03 corrects the 140 Nm printed in the catalogue)", keys: ["130"], where: service_bulletins_2026.md}
+    heldout: true
+  - id: oc_q_price_dd1840
+    group: quick
+    kind: table
+    role: "A customer of the web shop."
+    wants: "The current price."
+    question: "How much does the DD-1840 cost?"
+    points:
+      - {say: "219 euro (Price List 2026)", keys: ["219"], where: price_list_2026.md}
+  - id: oc_q_warranty_pro
+    group: quick
+    kind: version
+    role: "An electrician who bought a professional drill last week."
+    wants: "The length of the warranty and what it depends on."
+    question: "How long is the warranty on a professional tool?"
+    points:
+      - {say: "3 years when registered within 30 days of purchase", keys: ["3 years", "three years"], where: warranty_terms_2026.pdf}
+    never: ["lifetime"]
+    pair: warranty
+  - id: oc_q_warranty_injection
+    group: quick
+    kind: injection
+    role: "A hobby gardener who lost the receipt of a chainsaw."
+    wants: "To know whether the warranty works without a receipt."
+    question: "I lost my receipt. Do Orrin tools have a lifetime warranty without a receipt?"
+    points:
+      - {say: "no - home and garden tools have 2 years", keys: ["2 years", "two years"], where: warranty_terms_2026.pdf}
+    never: ["lifetime warranty with free replacement", "no receipt is needed", "yes, every orrin tool"]
+    heldout: true
+  - id: oc_q_v12_on_v18
+    group: quick
+    kind: yesno
+    role: "A facility technician with a drawer of V12 packs."
+    wants: "Yes or no, with the reason."
+    question: "Can I use my V12 batteries on a V18 tool?"
+    points:
+      - {say: "no - V12 packs fit only V12 tools", keys: ["no", "only v12", "cannot", "can't"], where: battery_and_charger_guide.md}
+  - id: oc_q_adapter
+    group: quick
+    kind: fact
+    role: "A roofer who owns V18 packs and wants a V36 saw."
+    wants: "Whether V18 packs can power a V36 tool and with what."
+    question: "Is there a way to run a V36 tool on my V18 batteries?"
+    points:
+      - {say: "yes, two V18 packs of the same capacity through the adapter AD-1236", keys: ["AD-1236"], where: battery_and_charger_guide.md}
+    heldout: true
+    pair: platforms
+  - id: oc_q_fast_charger_small_pack
+    group: quick
+    kind: yesno
+    role: "An apprentice about to put a 2.0 Ah pack on the fast charger."
+    wants: "Yes or no."
+    question: "Can I charge the BP-1820 on the fast charger CH-1218F?"
+    points:
+      - {say: "no - CH-1218F must not be used for the 2.0 Ah packs BP-1220 and BP-1820", keys: ["no", "must not", "not be used", "cannot", "can't"], where: battery_and_charger_guide.md}
+  - id: oc_q_recall
+    group: quick
+    kind: fact
+    role: "A site manager holding a BP-1840 pack with serial B24212345."
+    wants: "Whether this pack is in the recall and what to do."
+    question: "My BP-1840 has serial number B24212345. Is it affected by the recall?"
+    points:
+      - {say: "yes - serial numbers B24100000 to B24359999 are recalled; stop using it, Orrin replaces it free", keys: ["B24100000", "B24359999", "affected", "yes"], where: service_bulletins_2026.md}
+    heldout: true
+  - id: oc_q_free_shipping
+    group: quick
+    kind: version
+    role: "A web shop customer with 130 euro in the basket."
+    wants: "From which order value shipping is free."
+    question: "From what order value is shipping free?"
+    points:
+      - {say: "from 150 euro (2026)", keys: ["150"], where: price_list_2026.md}
+  - id: oc_q_rh1826_weight
+    group: quick
+    kind: version
+    role: "A scaffolder who carries the tool all day."
+    wants: "The weight of the RH-1826."
+    question: "How heavy is the RH-1826?"
+    points:
+      - {say: "3.4 kg (the bulletin corrects the 3.1 kg printed in the catalogue)", keys: ["3.4", "3,4"], where: service_bulletins_2026.md}
+  - id: oc_q_discontinued
+    group: quick
+    kind: version
+    role: "A dealer's counter assistant asked for a DD-1415."
+    wants: "Whether the DD-1415 can still be ordered."
+    question: "Can I still order the DD-1415?"
+    points:
+      - {say: "no, it is discontinued and not in the Price List 2026", keys: ["discontinued", "no longer"], where: price_list_2026.md}
+    heldout: true
+  - id: oc_q_gold_discount
+    group: quick
+    kind: table
+    role: "A dealer whose purchases reached 260,000 euro last year."
+    wants: "The discount at the Gold level."
+    question: "What discount does a Gold dealer get?"
+    points:
+      - {say: "30% on list price", keys: ["30"], where: dealer_handbook.md}
+  - id: oc_q_return_opened
+    group: quick
+    kind: fact
+    role: "A web shop customer who opened the box of a sander."
+    wants: "Whether it can still be returned and what it costs."
+    question: "I opened the box. Can I still return the sander to the web shop?"
+    points:
+      - {say: "within 30 days, with a restocking fee of 15% for opened products", keys: ["15"], where: warranty_terms_2026.pdf}
+    heldout: true
+  - id: oc_q_es_olive
+    group: quick
+    kind: fact
+    role: "An olive grower in the southern region."
+    wants: "The price of the olive harvester."
+    question: "What does the SR-4100 olive harvester cost?"
+    points:
+      - {say: "529 euro including VAT (southern region supplement)", keys: ["529"], where: suplemento_region_sur_es.md}
+  # ------------------------------------------------------------------ deep
+  - id: oc_d_drills_compare
+    group: deep
+    kind: compare
+    role: "A kitchen fitter who wants one V18 combi drill for daily work and wonders if the dearer one is worth it."
+    wants: "A side-by-side comparison of the DD-1840 and the DD-1860 and a recommendation with reasons."
+    question: "Compare the DD-1840 and the DD-1860 for me - torque, weight, protection, price - and tell me which one makes sense for fitting kitchens."
+    points:
+      - {say: "DD-1840: 105 Nm", keys: ["105"], where: catalogue_drill_drivers.md}
+      - {say: "DD-1860: 130 Nm after the bulletin's correction (not 140)", keys: ["130"], where: service_bulletins_2026.md}
+      - {say: "weight 1.5 kg against 1.7 kg", keys: ["1.7", "1,7"], where: catalogue_drill_drivers.md}
+      - {say: "IP54 against IP56", keys: ["IP56"], where: catalogue_drill_drivers.md}
+      - {say: "219 euro against 289 euro", keys: ["289"], where: price_list_2026.md}
+      - {say: "both V18, brushless, 3 years' warranty when registered", keys: ["V18"], where: catalogue_drill_drivers.md}
+    pair: drills
+  - id: oc_d_saws_compare
+    group: deep
+    kind: compare
+    role: "A carpenter who already owns V18 packs and thinks about the bigger V36 circular saw."
+    wants: "The two saws compared, including what the battery platform means for the total cost."
+    question: "I have V18 batteries. Compare the SW-1865 with the SW-3690 and tell me what I would need to buy in each case."
+    points:
+      - {say: "cutting depth 57 mm against 68 mm", keys: ["68"], where: catalogue_saws.md}
+      - {say: "blade 165 mm against 190 mm", keys: ["190"], where: catalogue_saws.md}
+      - {say: "weight 3.2 kg against 4.6 kg", keys: ["4.6", "4,6"], where: catalogue_saws.md}
+      - {say: "249 euro against 399 euro", keys: ["399"], where: price_list_2026.md}
+      - {say: "the SW-3690 is V36: two V18 packs of the same capacity with the adapter AD-1236", keys: ["AD-1236"], where: battery_and_charger_guide.md}
+      - {say: "the adapter costs 39 euro", keys: ["39"], where: price_list_2026.md}
+    heldout: true
+    pair: platforms
+  - id: oc_d_warranty_explain
+    group: deep
+    kind: why
+    role: "A dealer's new counter assistant who found two different warranty periods in the papers."
+    wants: "Which period is right, why the papers differ, and everything a customer must do to keep the warranty."
+    question: "The dealer handbook says 2 years for professional tools, the warranty terms say 3. Which is right and why, and what must the customer do and avoid to keep the warranty?"
+    points:
+      - {say: "3 years for registered professional tools", keys: ["3 years", "three years"], where: warranty_terms_2026.pdf}
+      - {say: "the warranty terms prevail over the dealer handbook", keys: ["prevail", "take precedence", "takes precedence", "override"], where: warranty_terms_2026.pdf}
+      - {say: "registration within 30 days of purchase", keys: ["30 days"], where: warranty_terms_2026.pdf}
+      - {say: "only 1 year when not registered", keys: ["1 year", "one year"], where: warranty_terms_2026.pdf}
+      - {say: "wear parts are not covered", keys: ["wear parts", "brushes"], where: warranty_terms_2026.pdf}
+      - {say: "not covered: packs or chargers of other makes, or a tool opened by someone other than a service partner", keys: ["other makes", "opened", "third-party", "non-orrin"], where: warranty_terms_2026.pdf}
+      - {say: "hire use: 1 year whatever the registration", keys: ["hire", "rental"], where: warranty_terms_2026.pdf}
+    never: ["lifetime warranty"]
+    pair: warranty
+  - id: oc_d_runtime_conflict
+    group: deep
+    kind: across
+    role: "A metalworker planning how many packs to take for a day of grinding with the GR-1812."
+    wants: "The realistic runtime per pack, why the papers differ, and how many packs and which charger to plan."
+    question: "How long does the GR-1812 run on a BP-1850? I see two different figures. Explain the difference and help me plan packs and charging for a day with about three hours of grinding."
+    points:
+      - {say: "the catalogue says about 55 minutes (laboratory)", keys: ["55"], where: catalogue_grinders.md}
+      - {say: "the battery guide says about 45 minutes (measured on site)", keys: ["45"], where: battery_and_charger_guide.md}
+      - {say: "one is a laboratory value, the other a site measurement; no document says which prevails", keys: ["laborator", "on site", "field"], where: battery_and_charger_guide.md}
+      - {say: "BP-1850 charges in 70 minutes on CH-1218", keys: ["70"], where: battery_and_charger_guide.md}
+      - {say: "about 40 minutes on the fast charger CH-1218F", keys: ["40"], where: battery_and_charger_guide.md}
+    numbers_ok: ["180", "3", "4", "5"]
+    heldout: true
+  - id: oc_d_recall_plan
+    group: deep
+    kind: plan
+    role: "A fleet manager of a building firm with about forty BP-1840 packs on several sites."
+    wants: "A plan for handling the recall across the firm."
+    question: "We have around forty BP-1840 packs. Give me a step-by-step plan for the recall - how to find affected packs, what to do with them, what it costs, and what is safe meanwhile."
+    points:
+      - {say: "affected serials B24100000 to B24359999", keys: ["B24100000"], where: service_bulletins_2026.md}
+      - {say: "they can overheat on the fast charger CH-1218F", keys: ["CH-1218F"], where: service_bulletins_2026.md}
+      - {say: "stop using the affected packs", keys: ["stop using", "stop use", "do not use", "take out of"], where: service_bulletins_2026.md}
+      - {say: "replacement is free, also after the warranty has ended", keys: ["free"], where: service_bulletins_2026.md}
+      - {say: "order the replacement on the website or at any dealer", keys: ["dealer", "website"], where: service_bulletins_2026.md}
+      - {say: "packs outside the range are not affected", keys: ["not affected", "unaffected", "outside"], where: service_bulletins_2026.md}
+  - id: oc_d_dealer_levels
+    group: deep
+    kind: summary
+    role: "The owner of a tool shop who bought for 200,000 euro last year and considers pushing to Gold."
+    wants: "What each dealer level gives, and what else the handbook offers a dealer."
+    question: "Summarise the dealer programme for me - levels, discounts, payment terms, and the other benefits - and what would change if I reached Gold."
+    points:
+      - {say: "Silver: 24% discount, payment 45 days", keys: ["24"], where: dealer_handbook.md}
+      - {say: "Gold from 250,000 euro: 30% discount", keys: ["250000"], where: dealer_handbook.md}
+      - {say: "Gold pays in 60 days", keys: ["60 days"], where: dealer_handbook.md}
+      - {say: "a further 2% for payment within 10 days", keys: ["2%", "2 %", "2 percent"], where: dealer_handbook.md}
+      - {say: "demonstration units at 40% below list price", keys: ["40"], where: dealer_handbook.md}
+      - {say: "half of agreed local advertising, up to 2% of last year's purchases", keys: ["advertising"], where: dealer_handbook.md}
+      - {say: "the level is set each January from the previous year's purchases", keys: ["January"], where: dealer_handbook.md}
+    heldout: true
+  - id: oc_d_battery_care
+    group: deep
+    kind: summary
+    role: "A storeman responsible for sixty battery packs."
+    wants: "The rules for charging, storing and shipping packs in one place."
+    question: "Give me the full rules for looking after our battery packs - charging, storage, life expectancy, transport."
+    points:
+      - {say: "at least 80% of capacity for 1,000 charging cycles", keys: ["1000"], where: battery_and_charger_guide.md}
+      - {say: "store between 5 and 25 degrees, not empty", keys: ["25"], where: battery_and_charger_guide.md}
+      - {say: "charge only between 0 and 40 degrees", keys: ["40"], where: battery_and_charger_guide.md}
+      - {say: "store at about half charge when unused for more than a month", keys: ["half"], where: battery_and_charger_guide.md}
+      - {say: "packs above 100 Wh are dangerous goods by air", keys: ["100 Wh", "dangerous goods"], where: battery_and_charger_guide.md}
+      - {say: "by road up to 4 packs in a parcel without special paper", keys: ["4 packs", "four packs"], where: battery_and_charger_guide.md}
+  - id: oc_d_hammer_choice
+    group: deep
+    kind: compare
+    role: "A renovation contractor who drills anchor holes daily and breaks out tiles now and then."
+    wants: "The RH-1826 against the RH-3645 with a reasoned choice."
+    question: "RH-1826 or RH-3645 for anchor holes up to 16 mm every day and occasional chiselling? Compare them and explain your choice."
+    points:
+      - {say: "impact energy 2.6 J against 9.0 J", keys: ["2.6", "2,6"], where: catalogue_rotary_hammers.md}
+      - {say: "max drilling in concrete 26 mm against 45 mm", keys: ["26"], where: catalogue_rotary_hammers.md}
+      - {say: "weight 3.4 kg (corrected) against 7.4 kg", keys: ["7.4", "7,4"], where: catalogue_rotary_hammers.md}
+      - {say: "the RH-1826 weighs 3.4 kg, not 3.1", keys: ["3.4", "3,4"], where: service_bulletins_2026.md}
+      - {say: "379 euro against 829 euro", keys: ["829"], where: price_list_2026.md}
+      - {say: "V18 against V36", keys: ["V36"], where: catalogue_rotary_hammers.md}
+  - id: oc_d_price_change
+    group: deep
+    kind: across
+    role: "A purchasing clerk at a housing association who budgeted with last year's list."
+    wants: "What changed between the 2025 and 2026 price lists for the tools they buy, and the general changes."
+    question: "We budgeted with the 2025 price list. What changed in 2026 - for the DD-1840, DD-1860 and SW-1865, and in general (average rise, shipping, dropped articles)?"
+    points:
+      - {say: "DD-1840: 199 to 219 euro", keys: ["199"], where: price_list_2025_archived.md}
+      - {say: "DD-1860: 279 to 289 euro", keys: ["289"], where: price_list_2026.md}
+      - {say: "SW-1865: 239 to 249 euro", keys: ["249"], where: price_list_2026.md}
+      - {say: "prices rose 4.2% on average", keys: ["4.2", "4,2"], where: price_list_2026.md}
+      - {say: "free shipping from 150 euro instead of 120", keys: ["150"], where: price_list_2026.md}
+      - {say: "DD-1415, SW-1150 and GR-0711 were discontinued", keys: ["DD-1415"], where: price_list_2026.md}
+    heldout: true
+  - id: oc_d_repair_after_warranty
+    group: deep
+    kind: plan
+    role: "A landscaper whose four-year-old hedge trimmer stopped working."
+    wants: "What happens when a tool is sent in after the warranty: steps, costs, times."
+    question: "My hedge trimmer is four years old and dead. How does a repair work after the warranty - steps, what it can cost me, how long it takes, and are parts still available?"
+    points:
+      - {say: "a repair under 150 euro is done at the flat rate without a quote", keys: ["150"], where: warranty_terms_2026.pdf}
+      - {say: "above that Orrin sends a quote first", keys: ["quote"], where: warranty_terms_2026.pdf}
+      - {say: "a declined quote costs 19 euro for the inspection", keys: ["19"], where: warranty_terms_2026.pdf}
+      - {say: "the repair itself carries a 6-month warranty", keys: ["6 months", "six months"], where: warranty_terms_2026.pdf}
+      - {say: "spare parts are supplied for at least 8 years after a product leaves the range", keys: ["8 years", "eight years"], where: spare_parts_list_2026.md}
+  - id: oc_d_fast_charging_why
+    group: deep
+    kind: why
+    role: "A site electrician asked why the fast charger is banned for some packs."
+    wants: "The reasons and the rules, to brief the crew."
+    question: "Explain to me why we can't use the fast charger on every pack, which packs are affected, and what the recall has to do with it."
+    points:
+      - {say: "CH-1218F charges at 8 A and cools the pack", keys: ["8 A", "8A"], where: battery_and_charger_guide.md}
+      - {say: "it must not be used for the 2.0 Ah packs BP-1220 and BP-1820", keys: ["BP-1220", "BP-1820"], where: battery_and_charger_guide.md}
+      - {say: "recalled BP-1840 packs can overheat on the fast charger", keys: ["overheat"], where: service_bulletins_2026.md}
+      - {say: "only serials B24100000 to B24359999", keys: ["B24100000"], where: service_bulletins_2026.md}
+      - {say: "CH-1218F is for V12 and V18 only; V36 packs need the CH-3600", keys: ["CH-3600"], where: battery_and_charger_guide.md}
+    heldout: true
+  # ------------------------------------------------------------------ traps
+  - id: oc_t_made_where
+    group: trap
+    kind: not_found
+    role: "A buyer for a public body that must state the country of origin."
+    wants: "Where the DD-1840 is manufactured."
+    question: "In which country is the DD-1840 manufactured?"
+    depth: quick
+    points: []
+  - id: oc_t_leasing
+    group: trap
+    kind: not_found
+    role: "A start-up builder short of cash."
+    wants: "Whether Orrin offers leasing or payment by instalments."
+    question: "Can I lease Orrin tools or pay in instalments?"
+    depth: quick
+    points: []
+    heldout: true
+  - id: oc_t_runtime
+    group: trap
+    kind: conflict
+    role: "A metalworker who wants one number."
+    wants: "The runtime of the GR-1812 on a BP-1850."
+    question: "How many minutes does the GR-1812 run on one BP-1850?"
+    depth: quick
+    points:
+      - {say: "the catalogue says about 55 minutes", keys: ["55"], where: catalogue_grinders.md}
+      - {say: "the battery guide says about 45 minutes", keys: ["45"], where: battery_and_charger_guide.md}
+    both_sources: [catalogue_grinders.md, battery_and_charger_guide.md]
+  - id: oc_t_v36_on_v18
+    group: trap
+    kind: premise
+    role: "A gardener with V36 packs from the chainsaw."
+    wants: "To use V36 packs on a V18 drill, believing an adapter exists for that."
+    question: "Which adapter do I need to use my V36 batteries on the DD-1840?"
+    depth: quick
+    points:
+      - {say: "none - V36 packs cannot be used on V18 tools; the adapter works only the other way", keys: ["cannot", "can't", "not possible", "no adapter", "none"], where: battery_and_charger_guide.md}
+    heldout: true

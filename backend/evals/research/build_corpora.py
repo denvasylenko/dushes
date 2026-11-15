@@ -14,11 +14,12 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from gen import brightline, northwind, quanta  # noqa: E402
+from gen import brightline, halden, northwind, orrin, quanta, tessel, veltra  # noqa: E402
 from gen.common import render_pdf  # noqa: E402
 
 OUT = HERE.parents[1] / "demo" / "research_corpora"
-CORPORA = {"northwind_insurance": northwind, "brightline_freight": brightline, "quanta_cloud": quanta}
+CORPORA = {"northwind_insurance": northwind, "brightline_freight": brightline, "quanta_cloud": quanta,
+           "halden_policies": halden, "orrin_catalogue": orrin, "tessel_contract": tessel, "veltra_manual": veltra}
 PAGE_CHARS = 3000
 
 

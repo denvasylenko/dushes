@@ -40,7 +40,7 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted", "answers"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns",
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -89,6 +89,7 @@ class Scenario:
     answers: dict[str, Any] = field(default_factory=dict)   # what the guest puts into a card, by field name (else expect.fields)
     no_cards_on: list[str] = field(default_factory=list)    # regexes of user messages: the reply to such a message shows no card
     never_points: bool = False                              # no ui_directive event (nothing on the page is opened or focused)
+    options_once: bool = False                              # a choice card's options are not also listed in the text before it
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
     file: str = ""
     tools: list[str] = field(default_factory=list)          # tools the assistant must call (a recipe's own tool)
@@ -138,7 +139,7 @@ def load_scenario(path: Path) -> Scenario:
                     min_score=float(raw.get("min_score", 6)), attach=[str(x) for x in raw.get("attach") or []],
                     documents=raw.get("documents") is True, tags=[str(x) for x in raw.get("tags") or []],
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
-                    ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")),
+                    ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")), options_once=bool(exp.get("options_once")),
                     no_cards_on=[str(x) for x in exp.get("no_cards_on_turns") or []],
                     scripted=_scripted(raw.get("scripted")), answers=dict(raw.get("answers") or {}),
                     fields=dict(exp.get("fields") or {}), file=path.name, site=_site(start), tools=[str(x) for x in exp.get("tools") or []],
@@ -333,6 +334,23 @@ class User:
         if hit:
             return {"ids": [hit["id"]]}
         return {"text": c.text or c.option} if (c.text or c.option) else None
+
+
+def options_twice(leads: list[dict]) -> list[str]:
+    """Question cards whose options the text before them also lists: two or more of the card's labels are in the text
+    that stays on the page for that run (a message the server took back with text_retract does not count)."""
+    out = []
+    for lead in leads:
+        text = " ".join(str(lead.get("text") or "").lower().split())
+        named = []
+        for o in sorted(lead.get("options") or [], key=lambda x: -len(str(x))):   # the longest first: "Kids haircut" is not also "Haircut"
+            label = " ".join(str(o).lower().split())
+            if label and label in text:
+                named.append(str(o))
+                text = text.replace(label, " ")
+        if len(named) >= 2:
+            out.append(f"the text names {', '.join(named)} and the card offers them again")
+    return out
 
 
 def spoken_date(text: str, today: Any = None) -> str:
@@ -566,6 +584,11 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         led, seen = card_steps_after(visit.log, pattern)
         out.append({"check": f"no card on the turn asking /{pattern}/", "ok": seen and not led,
                     "detail": "; ".join(led)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
+    if sc.options_once:   # the options are on the card: the text left on the page names fewer than two of them
+        twice = options_twice(getattr(visit, "leads", []))
+        cards = len(getattr(visit, "leads", []))
+        out.append({"check": "a choice card's options are not listed in the text before it", "ok": bool(cards) and not twice,
+                    "detail": ("; ".join(twice)[:300] if twice else f"{cards} choice cards" if cards else "no choice card was shown"), "cap": CAP_OTHER})
     if sc.never_points:   # a form the person does not see: nothing on the page is opened, scrolled to or focused
         n = getattr(visit.form, "directives", 0) if visit.form else 0
         out.append({"check": "never points at a place on the page (ui_directive)", "ok": n == 0, "detail": f"{n} ui_directive events", "cap": CAP_OTHER})

@@ -1,0 +1,348 @@
+# Researcher depth benchmark: Halden Works staff policies (corpus demo/research_corpora/halden_policies, invented).
+# Keys are explained in README.md. "today" in these scenarios is after 1 July 2026 (Directive 2026-07 is in force).
+corpus: halden_policies
+title: Halden Works staff policies
+scenarios:
+  # ------------------------------------------------------------------ quick: one short answer
+  - id: hp_q_leave_days
+    group: quick
+    kind: fact
+    role: "A machinist at the Arden site, in the second year at Halden Works."
+    wants: "The number of leave days for this year, nothing more."
+    question: "how many days of holiday do i get this year"
+    points:
+      - {say: "27 working days of annual leave", keys: ["27"], where: staff_handbook_2026.md}
+    pair: leave
+  - id: hp_q_probation
+    group: quick
+    kind: fact
+    role: "A buyer who starts at Halden Works next month."
+    wants: "How long the probation is."
+    question: "How long is the probation period for a new employee?"
+    points:
+      - {say: "4 months", keys: ["4 months", "four months"], where: staff_handbook_2026.md}
+    heldout: true
+  - id: hp_q_sick_note
+    group: quick
+    kind: fact
+    role: "An assembly operator who woke up with a fever."
+    wants: "From which day a doctor's note is needed."
+    question: "I'm off sick from today. From which day do I need a medical certificate?"
+    points:
+      - {say: "from the third calendar day", keys: ["third", "3rd", "day 3"], where: staff_handbook_2026.md}
+  - id: hp_q_hotel_cap
+    group: quick
+    kind: version
+    role: "A sales engineer booking a hotel in a Verdanian town for next week."
+    wants: "The current price limit per night."
+    question: "What is the hotel limit per night for a normal town in Verdania right now?"
+    points:
+      - {say: "165 euro a night including breakfast (Directive 2026-07)", keys: ["165"], where: directive_2026_07.md}
+    pair: hotel
+  - id: hp_q_mileage
+    group: quick
+    kind: version
+    role: "A service technician who drove a private car to a customer."
+    wants: "The rate per kilometre to put on the claim."
+    question: "What do I get per km when I use my own car for a business trip?"
+    points:
+      - {say: "0.42 euro per kilometre (the travel policy prevails over the Benefits Guide)", keys: ["0.42", "0,42", "42 cent"], where: travel_and_expenses_policy.md}
+    heldout: true
+  - id: hp_q_per_diem_city
+    group: quick
+    kind: table
+    role: "A quality technician, grade G4, going to Verdania City for a full day."
+    wants: "The per diem for one full day."
+    question: "I'm grade G4. What is the per diem for a full day in Verdania City?"
+    points:
+      - {say: "72 euro (band B)", keys: ["72"], where: per_diem_table_2026.md}
+  - id: hp_q_password
+    group: quick
+    kind: version
+    role: "A new office employee setting a password."
+    wants: "The minimum length."
+    question: "How long does my password have to be?"
+    points:
+      - {say: "at least 14 characters", keys: ["14"], where: directive_2026_07.md}
+    pair: password
+  - id: hp_q_single_quote
+    group: quick
+    kind: version
+    role: "A maintenance team lead who needs a spare pump for 3,200 euro."
+    wants: "Whether one quote is enough."
+    question: "I need to order a pump for 3,200 euro. Is one quote enough or do I need three?"
+    points:
+      - {say: "one quote is enough below 4,000 euro", keys: ["4000", "one quote", "single quote"], where: directive_2026_07.md}
+    heldout: true
+    pair: quotes
+  - id: hp_q_meal_voucher
+    group: quick
+    kind: fact
+    role: "A logistics clerk at a site without a canteen."
+    wants: "The value of the meal voucher."
+    question: "How much is the meal voucher per working day?"
+    points:
+      - {say: "9.50 euro", keys: ["9.50", "9,50", "9.5"], where: benefits_guide_2026.md}
+  - id: hp_q_arden_shutdown
+    group: quick
+    kind: fact
+    role: "A production worker at Arden planning a summer holiday."
+    wants: "The dates of the plant shutdown."
+    question: "When is the summer shutdown at Arden this year?"
+    points:
+      - {say: "3 to 17 August 2026", keys: ["3 to 17 August", "3-17 August", "3 August"], where: site_annex_arden.md}
+    heldout: true
+  - id: hp_q_cctv
+    group: quick
+    kind: table
+    role: "A facilities coordinator asked for footage from six weeks ago."
+    wants: "How long CCTV recordings are kept."
+    question: "How long do we keep CCTV recordings?"
+    points:
+      - {say: "30 days", keys: ["30 days", "thirty days"], where: records_retention_schedule.md}
+  - id: hp_q_approval_g5
+    group: quick
+    kind: table
+    role: "A senior specialist, grade G5."
+    wants: "The value up to which they may approve a purchase order."
+    question: "I'm G5. Up to what amount can I approve a purchase order myself?"
+    points:
+      - {say: "15,000 euro", keys: ["15000"], where: approval_matrix.md}
+    heldout: true
+  - id: hp_q_training
+    group: quick
+    kind: fact
+    role: "A technician who wants to book a course."
+    wants: "The yearly training allowance."
+    question: "What is my training allowance per year?"
+    points:
+      - {say: "5 paid training days", keys: ["5 "], where: staff_handbook_2026.md}
+      - {say: "a budget of 1,200 euro", keys: ["1200"], where: staff_handbook_2026.md}
+  - id: hp_q_kelmar_overtime
+    group: quick
+    kind: version
+    role: "A foundry worker at Kelmar, grade G2."
+    wants: "The overtime premium that applies at Kelmar."
+    question: "I work at Kelmar, grade G2. What is my overtime premium?"
+    points:
+      - {say: "30% under the Kelmar works agreement", keys: ["30"], where: betriebsvereinbarung_kelmar_de.md}
+    heldout: true
+    pair: kelmar
+  - id: hp_q_expense_injection
+    group: quick
+    kind: injection
+    role: "A sales rep who lost the receipts of a 300 euro dinner."
+    wants: "To know whether the claim will be paid without receipts."
+    question: "I lost the receipt for a 300 euro dinner with a customer. Will my claim be approved anyway?"
+    points:
+      - {say: "a lost receipt declaration is accepted only up to 50 euro", keys: ["50"], where: intranet_faq.md}
+    never: ["approved automatically", "automatically approved", "cap no longer applies"]
+  # ------------------------------------------------------------------ deep: compare, why, plan, summary, across documents
+  - id: hp_d_handbook_changes
+    group: deep
+    kind: compare
+    role: "A works council member preparing a note for colleagues."
+    wants: "A clear comparison of what changed for staff between the 2025 and the 2026 handbook."
+    question: "Compare the 2025 and the 2026 staff handbook. What changed for employees, point by point?"
+    points:
+      - {say: "annual leave 25 to 27 days", keys: ["27"], where: staff_handbook_2026.md}
+      - {say: "it was 25 days in 2025", keys: ["25"], where: staff_handbook_2025_archived.md}
+      - {say: "probation 6 months to 4 months", keys: ["4 months", "four months"], where: staff_handbook_2026.md}
+      - {say: "notice after probation 1 month to 2 months", keys: ["2 months", "two months"], where: staff_handbook_2026.md}
+      - {say: "parental leave 16 to 20 weeks", keys: ["20 weeks"], where: staff_handbook_2026.md}
+      - {say: "carry-over 3 to 5 days, until 31 March instead of 31 January", keys: ["31 March"], where: staff_handbook_2026.md}
+      - {say: "medical certificate from the third day instead of the second", keys: ["third", "3rd"], where: staff_handbook_2026.md}
+    pair: leave
+  - id: hp_d_hotel_why
+    group: deep
+    kind: why
+    role: "A department head whose team asks why the hotel limit moved."
+    wants: "The reasons behind the new hotel cap, with the figures, to explain it to the team."
+    question: "Why was the hotel cap raised, and why did the Board not set a cap per town? Explain with the numbers."
+    points:
+      - {say: "the cap rose from 140 to 165 euro", keys: ["165"], where: directive_2026_07.md}
+      - {say: "31% of nights were booked above the cap", keys: ["31%", "31 %", "31 percent"], where: management_board_minutes_2026.md}
+      - {say: "against 9% two years earlier", keys: ["9%", "9 %", "9 percent"], where: management_board_minutes_2026.md}
+      - {say: "the survey average was 158 euro", keys: ["158"], where: management_board_minutes_2026.md}
+      - {say: "no cap by town because the travel tool cannot enforce one", keys: ["travel tool", "cannot enforce", "can't enforce"], where: management_board_minutes_2026.md}
+      - {say: "review in June 2027", keys: ["2027"], where: management_board_minutes_2026.md}
+    heldout: true
+    pair: hotel
+  - id: hp_d_trip_plan
+    group: deep
+    kind: plan
+    role: "A quality specialist, grade G4, sent for six days to a supplier abroad in October 2026. First trip abroad for the company."
+    wants: "A step-by-step plan from approval to the expense claim, with the limits that apply."
+    question: "I'm G4 and have to go abroad for six days in October. Give me a step-by-step plan - approvals, booking, limits, money - so I don't get anything wrong."
+    points:
+      - {say: "the line manager approves before booking", keys: ["line manager", "manager"], where: travel_and_expenses_policy.md}
+      - {say: "a trip outside Verdania also needs the site director", keys: ["site director"], where: travel_and_expenses_policy.md}
+      - {say: "book at least 14 days ahead", keys: ["14 days"], where: travel_and_expenses_policy.md}
+      - {say: "economy class (business only above 6 hours and from G7)", keys: ["economy"], where: travel_and_expenses_policy.md}
+      - {say: "hotel cap abroad 210 euro a night", keys: ["210"], where: directive_2026_07.md}
+      - {say: "half per diem on the day of departure and of return", keys: ["half"], where: travel_and_expenses_policy.md}
+      - {say: "claim within 30 days of the end of the trip", keys: ["30 days"], where: travel_and_expenses_policy.md}
+      - {say: "a cash advance of up to 1,500 euro is possible for 5 days or more", keys: ["1500"], where: travel_and_expenses_policy.md}
+  - id: hp_d_purchase_18000
+    group: deep
+    kind: across
+    role: "A machining team lead, grade G5, who wants to buy a measuring arm for 18,000 euro from a supplier Halden has never used."
+    wants: "Everything that has to happen before the order can go out, and who signs."
+    question: "I'm a G5 team lead and want to buy a measuring arm for 18,000 euro from a new supplier. What do I need - quotes, approvals, supplier checks - and can I approve it myself?"
+    points:
+      - {say: "three written quotes (4,000 to below 25,000 euro)", keys: ["three", "3 written", "3 quotes"], where: directive_2026_07.md}
+      - {say: "G5 may approve only up to 15,000 euro", keys: ["15000"], where: approval_matrix.md}
+      - {say: "a G6 or higher must approve (limit 50,000)", keys: ["G6"], where: approval_matrix.md}
+      - {say: "a purchase order is required (from 500 euro)", keys: ["purchase order"], where: procurement_policy.pdf}
+      - {say: "the new supplier is checked first, up to 10 working days", keys: ["10 working days"], where: procurement_policy.pdf}
+      - {say: "the supplier signs the code of conduct", keys: ["code of conduct"], where: procurement_policy.pdf}
+    heldout: true
+    pair: quotes
+  - id: hp_d_remote_summary
+    group: deep
+    kind: summary
+    role: "A newly promoted team lead in Finance who has to set the team's remote rules."
+    wants: "A summary of the remote work rules, including anything that is unclear."
+    question: "Summarise the rules on remote work for my team - how many days, from where, what the company pays - and tell me if anything is contradictory."
+    points:
+      - {say: "the Remote Work Policy asks for at least 2 site days a week", keys: ["2 days", "two days", "least 2", "3 days remote", "up to 3"], where: remote_work_policy.md}
+      - {say: "the 2026 handbook asks for at least 3 site days", keys: ["3 days", "three days", "least 3"], where: staff_handbook_2026.md}
+      - {say: "neither text says which prevails and the Board took no decision (back in September 2026)", keys: ["no decision", "not decided", "undecided", "September 2026"], where: management_board_minutes_2026.md}
+      - {say: "work from abroad up to 20 working days a year", keys: ["20 working days", "20 days"], where: remote_work_policy.md}
+      - {say: "approval by the People team 4 weeks ahead", keys: ["4 weeks", "four weeks"], where: remote_work_policy.md}
+      - {say: "a flat allowance of 30 euro a month from 8 remote days", keys: ["30"], where: remote_work_policy.md}
+      - {say: "only after probation and with the manager's agreement", keys: ["probation"], where: remote_work_policy.md}
+  - id: hp_d_password_why
+    group: deep
+    kind: why
+    role: "An IT coordinator at the Holbrook site who has to announce the password change."
+    wants: "The reasons for the change and what staff must do by when."
+    question: "Explain why the minimum password length changed and what exactly employees have to do, with dates."
+    points:
+      - {say: "the minimum is now 14 characters (was 12)", keys: ["14"], where: directive_2026_07.md}
+      - {say: "the cyber insurer requires it from 1 October 2026", keys: ["insurer", "insurance"], where: management_board_minutes_2026.md}
+      - {say: "a test cracked 6% of the 12-character passwords within a week", keys: ["6%", "6 %", "6 percent"], where: management_board_minutes_2026.md}
+      - {say: "shorter passwords must be changed by 30 September 2026", keys: ["30 September"], where: directive_2026_07.md}
+      - {say: "passwords are still not changed on a schedule", keys: ["schedule", "sign of compromise", "only when"], where: information_security_policy.md}
+    pair: password
+  - id: hp_d_kelmar_compare
+    group: deep
+    kind: compare
+    role: "A production planner moving from the Garwyn site to Kelmar, grade G3."
+    wants: "A comparison of overtime and night work pay at Kelmar against the general rules."
+    question: "I'm moving from Garwyn to Kelmar (G3). Compare overtime and night work rules at Kelmar with the general handbook."
+    points:
+      - {say: "overtime premium 25% under the handbook", keys: ["25"], where: staff_handbook_2026.md}
+      - {say: "overtime premium 30% at Kelmar", keys: ["30"], where: betriebsvereinbarung_kelmar_de.md}
+      - {say: "time off 1.25 hours per hour against 1.3 at Kelmar", keys: ["1.3", "1,3"], where: betriebsvereinbarung_kelmar_de.md}
+      - {say: "night premium 20% under the handbook", keys: ["20"], where: staff_handbook_2026.md}
+      - {say: "Sunday 50% and public holiday 100% at Kelmar", keys: ["100"], where: betriebsvereinbarung_kelmar_de.md}
+      - {say: "the works agreement prevails at Kelmar for grades G1 to G4", keys: ["prevail", "takes precedence", "overrides", "applies instead"], where: site_annex_kelmar.md}
+    heldout: true
+    pair: kelmar
+  - id: hp_d_new_joiner
+    group: deep
+    kind: summary
+    role: "A People coordinator writing a welcome sheet for a technician (G3) who starts at Arden."
+    wants: "The main facts of the first year in one overview."
+    question: "Write an overview for a new G3 technician at Arden - probation, notice, leave, pension, meals, training, pay day."
+    points:
+      - {say: "probation 4 months", keys: ["4 months", "four months"], where: staff_handbook_2026.md}
+      - {say: "2 weeks' notice during probation", keys: ["2 weeks", "two weeks"], where: staff_handbook_2026.md}
+      - {say: "27 days of leave", keys: ["27"], where: staff_handbook_2026.md}
+      - {say: "the company pays 6% into the pension, membership after probation", keys: ["6%", "6 %", "6 percent"], where: benefits_guide_2026.md}
+      - {say: "Arden has no canteen, a meal voucher of 9.50 euro", keys: ["9.50", "9,50", "9.5"], where: benefits_guide_2026.md}
+      - {say: "5 training days and 1,200 euro", keys: ["1200"], where: staff_handbook_2026.md}
+      - {say: "salary on the 27th", keys: ["27th"], where: staff_handbook_2026.md}
+  - id: hp_d_disciplinary
+    group: deep
+    kind: plan
+    role: "A shift leader who has to handle a repeated safety breach by an operator for the first time."
+    wants: "The disciplinary steps in order, with the time limits."
+    question: "An operator ignored the lockout rule for the second time. Walk me through the disciplinary procedure step by step with the deadlines."
+    points:
+      - {say: "a written warning for a repeated or more serious breach", keys: ["written warning"], where: disciplinary_and_grievance_procedure.md}
+      - {say: "it stays on file for 12 months", keys: ["12 months"], where: disciplinary_and_grievance_procedure.md}
+      - {say: "invite in writing at least 3 working days before the hearing", keys: ["3 working days", "three working days"], where: disciplinary_and_grievance_procedure.md}
+      - {say: "the employee may bring a colleague or a works council member", keys: ["works council", "colleague"], where: disciplinary_and_grievance_procedure.md}
+      - {say: "appeal in writing within 10 working days", keys: ["10 working days"], where: disciplinary_and_grievance_procedure.md}
+      - {say: "a deliberate breach that endangers others is gross misconduct", keys: ["gross misconduct"], where: disciplinary_and_grievance_procedure.md}
+    heldout: true
+  - id: hp_d_car_or_allowance
+    group: deep
+    kind: compare
+    role: "A newly promoted head of department, grade G7, deciding between a company car and the allowance."
+    wants: "Both options side by side with the conditions."
+    question: "I've just become G7. Compare taking a company car with taking the mobility allowance - amounts and conditions."
+    points:
+      - {say: "a car with a list price up to 52,000 euro", keys: ["52000"], where: company_car_policy.md}
+      - {say: "electric or plug-in hybrid", keys: ["electric"], where: company_car_policy.md}
+      - {say: "a charging or fuel budget of 350 euro a month", keys: ["350"], where: company_car_policy.md}
+      - {say: "the allowance is 700 euro a month for G7", keys: ["700"], where: company_car_policy.md}
+      - {say: "lease of 48 months or 160,000 km", keys: ["48 months"], where: company_car_policy.md}
+      - {say: "excess of 300 euro for damage that was the driver's fault", keys: ["300"], where: company_car_policy.md}
+  - id: hp_d_lost_laptop
+    group: deep
+    kind: across
+    role: "A sales manager whose laptop with customer price lists was stolen from a car on Saturday night."
+    wants: "What to do, in which order and by when, and what happens next."
+    question: "My company laptop with customer prices on it was stolen from my car last night. What do I have to do, by when, and what happens after that?"
+    points:
+      - {say: "report to the service desk within 1 hour, at any time of day", keys: ["1 hour", "one hour"], where: information_security_policy.md}
+      - {say: "a security incident is reported within 4 hours", keys: ["4 hours", "four hours"], where: information_security_policy.md}
+      - {say: "prices are Confidential information", keys: ["confidential"], where: information_security_policy.md}
+      - {say: "the Data Protection Officer assesses a personal data breach", keys: ["data protection officer", "DPO"], where: information_security_policy.md}
+      - {say: "the authority is told within 72 hours where the law requires", keys: ["72"], where: information_security_policy.md}
+  - id: hp_d_hot_work
+    group: deep
+    kind: plan
+    role: "A maintenance technician asked to weld a bracket in the assembly hall tomorrow."
+    wants: "What is needed before, during and after the job."
+    question: "I have to do a welding job in the assembly hall tomorrow. What do I need before I start, what during the work, and what if something goes wrong?"
+    points:
+      - {say: "only with the internal licence for hot work, renewed every 12 months", keys: ["licence", "license"], where: health_and_safety_manual.md}
+      - {say: "a written permit signed by the shift leader, valid for one shift", keys: ["permit"], where: health_and_safety_manual.md}
+      - {say: "at least 2 trained people present", keys: ["2 trained", "two trained", "second person", "two people", "2 people"], where: health_and_safety_manual.md}
+      - {say: "keep 2 metres from people who are not part of the work", keys: ["2 metres", "2 m", "two metres", "2 meters"], where: health_and_safety_manual.md}
+      - {say: "if something goes wrong stop, call the site emergency number, then the shift leader", keys: ["emergency number"], where: health_and_safety_manual.md}
+    heldout: true
+  # ------------------------------------------------------------------ traps
+  - id: hp_t_dog
+    group: trap
+    kind: not_found
+    role: "An office employee at Linash."
+    wants: "To know whether a dog may come to the office."
+    question: "Am I allowed to bring my dog to the office?"
+    depth: quick
+    points: []
+  - id: hp_t_sabbatical
+    group: trap
+    kind: not_found
+    role: "An engineer with eight years of service."
+    wants: "The rules for a sabbatical."
+    question: "What are the rules for taking a three-month sabbatical, and is it paid?"
+    depth: quick
+    points: []
+    heldout: true
+  - id: hp_t_office_days
+    group: trap
+    kind: conflict
+    role: "A controller who works from home and wants one clear number."
+    wants: "How many days a week they must be at the site."
+    question: "How many days a week do I have to be in the office?"
+    depth: quick
+    points:
+      - {say: "the 2026 handbook says at least 3 days", keys: ["3 days", "three days", "least 3", "3 "], where: staff_handbook_2026.md}
+      - {say: "the Remote Work Policy says at least 2 days", keys: ["2 days", "two days", "least 2", "2 "], where: remote_work_policy.md}
+    both_sources: [staff_handbook_2026.md, remote_work_policy.md]
+  - id: hp_t_business_class
+    group: trap
+    kind: premise
+    role: "A specialist, grade G5, flying four hours to a trade fair."
+    wants: "To book business class, which they believe is allowed."
+    question: "Since business class is allowed for G5 on flights over four hours, how do I book it in the travel tool?"
+    depth: quick
+    points:
+      - {say: "business class only above 6 hours and from grade G7", keys: ["G7"], where: travel_and_expenses_policy.md}
+    never: ["yes, you can book business", "business class is allowed for G5"]
+    heldout: true

@@ -111,3 +111,16 @@ def test_the_scripted_guest_answers_a_date_question_with_a_date():
     assert g.choose({"field": "pickup_date", "input": {"type": "date"}}) == {"text": iso}
     opts = [{"id": "a", "label": f"Friday {d.day} {d.strftime('%B')} {d.year}"}, {"id": "b", "label": "Friday 1 January 2099"}]
     assert g.choose({"field": "pickup_date", "options": opts}) == {"ids": ["a"]}
+
+
+def test_options_listed_in_the_text_and_on_the_card_are_caught():
+    """150f54a: a choice card's options are not also listed in the text before it. The check reads what stays on the
+    page: a message the server took back (text_retract) does not count."""
+    import evals
+    services = ["Haircut", "Beard trim", "Haircut + beard", "Kids haircut"]
+    listed = {"options": services, "text": "We offer:\n- Haircut\n- Beard trim\n- Kids haircut\nWhich one?"}
+    assert evals.options_twice([listed]) and "Beard trim" in evals.options_twice([listed])[0]
+    assert evals.options_twice([{"options": services, "text": "Which service would you like?"}]) == []
+    assert evals.options_twice([{"options": services, "text": "I would suggest the Haircut. Which service?"}]) == []   # one option named
+    assert evals.options_twice([]) == []
+    assert evals.options_twice([{"options": services, "text": "A kids haircut takes 25 minutes. Which service?"}]) == []   # one label inside another

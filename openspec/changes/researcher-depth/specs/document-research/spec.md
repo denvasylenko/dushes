@@ -57,6 +57,13 @@ A deep run SHALL report its progress to the client as `CUSTOM research` events w
 - **WHEN** the person stops the run while passages are being read
 - **THEN** no further model call is made for it, and the transcript keeps the partial text marked as stopped
 
+### Requirement: A source carries the document's own name
+A source shown under an answer, and the label of a passage handed to the calling agent, SHALL name the document by its file name or title. An internal document id or a storage path SHALL never be shown; an id the model wrote in its sources SHALL be resolved to the document's name.
+
+#### Scenario: The model cites an id
+- **WHEN** the researcher's sources line says "cbde2404.md > Fees" and cbde2404 is the stored id of tariffs_2026.md
+- **THEN** the source under the answer reads "tariffs_2026.md > Fees"
+
 ## MODIFIED Requirements
 
 ### Requirement: Delegated researcher with its own context
