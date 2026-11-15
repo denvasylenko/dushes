@@ -205,6 +205,18 @@ final class AGUIChatTests: XCTestCase {
         XCTAssertFalse(voice.active)
     }
 
+    /// A host's inner thread name in RUN_STARTED is not taken when the client keeps its own.
+    @MainActor
+    func testTheClientKeepsItsOwnThreadWhenToldTo() async throws {
+        let store = ChatStore(transport: ReplayTransport(pause: .zero) { _ in
+            [.runStarted(threadId: "s1-inner", runId: nil), .runFinished(outcome: nil)]
+        }, threadId: "app-1")
+        store.adoptsServerThread = false
+        store.send("Hello")
+        for _ in 0..<50 where store.running { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(store.threadId, "app-1")
+    }
+
     /// Voice review 1: a set_fields card marked quiet is applied with no tap, as an accepted card.
     @MainActor
     func testAQuietCardIsAppliedWithNoTap() async throws {

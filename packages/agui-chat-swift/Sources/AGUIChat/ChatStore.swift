@@ -64,6 +64,9 @@ public final class ChatStore {
     public var onDirective: (@MainActor (JSONValue) -> Void)?
     /// Applies a field-change card through the host's form (`{name: value}` → the form's new `config`). With it the
     /// store draws `set_fields` itself: the client never writes the config on its own authority (CONTRACT.md).
+    /// False for a host that names the thread its own way inside (the cabinet's «s<site>-<id>» in RUN_STARTED): the
+    /// client keeps its own id, or its next run — and the voice that speaks for the thread — would be another thread.
+    public var adoptsServerThread = true
     public var applyFields: (@MainActor ([String: JSONValue]) async throws -> JSONValue)?
     private var handoffAfterRun = false
     private var quietCard: String?                  // a set_fields card marked quiet in this run: applied when it ends
@@ -321,7 +324,7 @@ public final class ChatStore {
     public func apply(_ event: AGUIEvent) {
         switch event {
         case .runStarted(let thread, _):
-            if let thread, !thread.isEmpty { threadId = thread }
+            if adoptsServerThread, let thread, !thread.isEmpty { threadId = thread }
         case .textStart(let id, _):
             if itemIndex(id) == nil { items.append(.assistant(id: id, text: "", done: false)) }
         case .textContent(let id, let delta):
