@@ -231,6 +231,7 @@ class Dushes:
         self.tools = list(tools or [])    # the host's SiteTools
         self.suggestions = suggestions    # suggest_next -> CUSTOM suggestions
         self.form_for = form_for          # (form_id, ctx) -> form state | None: the same-run hand-off
+        self._offers: dict[str, bool] = {}   # conversations whose last answer offered to open a page or a form
         self.stay_on_forms = stay_on_forms   # on a form page, answer in place while the user fills the form in
         self.site = site
         self.model = model   # Dushes' model; default: the form guide's agent model
@@ -568,7 +569,12 @@ class Dushes:
                                      ask_docs=self._ask_documents if has_docs else None, live=live,
                                      instructions=self.instructions, style=self.style, tools=self.tools, ctx=ctx,
                                      suggestions=self.suggestions, finish=False,
-                                     stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats):
+                                     stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats,
+                                     asked=message, offered=self._offers.pop(thread_id, False)):
+            if ev["type"] == "CUSTOM" and ev.get("name") == "site_offer":
+                while len(self._offers) >= 5000:
+                    self._offers.pop(next(iter(self._offers)))
+                self._offers[thread_id] = True   # the next message may be a plain yes to it
             if ev["type"] == "TEXT_MESSAGE_CONTENT":
                 said.append(ev["delta"])
                 first_mid = first_mid or ev.get("messageId")

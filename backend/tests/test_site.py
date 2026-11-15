@@ -59,7 +59,7 @@ def test_navigation_is_checked_against_the_map():
 def test_the_site_agent_answers_and_navigates(site, model):
     model.script = [say("", ("n1", "navigate", {"path": "/contacts", "section": "bank"})),
                     say("The branch is open on Saturday 10:00 to 16:00 (Contacts).")]
-    ev = run(site, "s1", message="when is the bank open on Saturday?", state={"page": {"path": "/"}})
+    ev = run(site, "s1", message="show me when the bank is open on Saturday", state={"page": {"path": "/"}})
     d = [e["value"] for e in ev if e.get("name") == "site_directive"]
     assert d == [{"type": "navigate", "path": "/contacts", "section": "bank"}]
     assert "Contacts" in "".join(e.get("delta", "") for e in ev)
@@ -307,7 +307,7 @@ def site_messages(s, thread):
 def test_the_page_hand_off_carries_the_language(site, guide, model, monkeypatch):
     model.script = [say("", ("o1", "open_form", {"form_id": "loan_application", "note": "A car loan.", "language": "Russian"})),
                     say("Opening it.")]
-    run(site, "h5", message="car loan", state={"page": {"path": "/"}})
+    run(site, "h5", message="I want a car loan", state={"page": {"path": "/"}})
     seen = {}
 
     async def fake_run(thread_id, **kw):

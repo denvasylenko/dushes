@@ -16,6 +16,7 @@ CUSTOM `site_directive {type: "navigate", path, tab?, section?, form_id?}` for t
 from __future__ import annotations
 
 import json
+import re
 import logging
 import uuid
 import inspect
@@ -58,6 +59,58 @@ class SiteTool:
         return {"name": self.name, "description": self.description, "parameters": self.parameters}
 
 
+# A message that asks to be taken somewhere or to start something, as opposed to a question about it. Words of the
+# seven languages the product ships (non-ASCII letters as escapes: the repository is English-only).
+_GO = re.compile(
+    r"\b(open|show( me)?|take me|bring me|go to|navigate|start|begin|proceed|let'?s (go|start|do|begin|apply|book)"
+    r"|i (want|wish|need|would like|'d like)\b"   # a statement of what they came for, not a question about it
+    r"|apply (for|now)|book (me|it|now|a|an)\b|sign me up|register me|fill (in|out)|get started)\b"
+    r"|\b(\u00f6ffne|zeig(e)?( mir)?|bring mich|geh zu|ich (m\u00f6chte|will|brauche))\b"
+    r"|\b(ouvre|ouvrez|montre(z)?[- ]moi|je (veux|voudrais)|j'ai besoin)\b"
+    r"|\b(abre|abra|mu\u00e9strame|ll\u00e9vame|quiero|necesito)\b"
+    r"|\b(apri|mostrami|portami|voglio|vorrei)\b"
+    r"|(\u043e\u0442\u043a\u0440\u043e\u0439|\u043f\u043e\u043a\u0430\u0436\u0438|\u043f\u0435\u0440\u0435\u0439\u0434\u0438"
+    r"|\u0445\u043e\u0447\u0443|\u043c\u043d\u0435 \u043d\u0443\u0436\u043d|\u0432\u0456\u0434\u043a\u0440\u0438\u0439"
+    r"|\u043c\u0435\u043d\u0456 \u043f\u043e\u0442\u0440\u0456\u0431\u043d)",
+    re.IGNORECASE)
+# a question about something: it gets an answer first, however it mentions a page or a form
+_ASKS = re.compile(
+    r"^\s*(how|what|when|where|why|which|who|whose|is|are|was|do|does|did|can i|could i|may i|should|must i"
+    r"|wie|was|wann|wo|warum|welche|kann ich|darf ich|comment|combien|quand|o\u00f9|pourquoi|puis-je|est-ce"
+    r"|c\u00f3mo|qu\u00e9|cu\u00e1ndo|d\u00f3nde|cu\u00e1nto|puedo|come|cosa|quando|dove|quanto|posso"
+    r"|\u043a\u0430\u043a|\u0447\u0442\u043e|\u043a\u043e\u0433\u0434\u0430|\u0433\u0434\u0435|\u0441\u043a\u043e\u043b\u044c\u043a\u043e"
+    r"|\u043c\u043e\u0436\u043d\u043e|\u044f\u043a|\u0449\u043e|\u043a\u043e\u043b\u0438|\u0434\u0435|\u0441\u043a\u0456\u043b\u044c\u043a\u0438"
+    r"|\u043c\u043e\u0436\u043d\u0430)\b|\?\s*$", re.IGNORECASE)
+# "can you open…", "could you show me…", "please take me…": a command in a question's clothes
+_POLITE = re.compile(r"^\s*(please\b|(can|could|would|will) you\b|k\u00f6nnen sie|kannst du|pouvez-vous|peux-tu|puedes|podr\u00eda"
+                     r"|puoi|potresti|\u043c\u043e\u0436\u0435\u0448\u044c|\u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430)",
+                     re.IGNORECASE)
+_YES = re.compile(r"^\W*(yes|yeah|yep|sure|ok(ay)?|please( do)?|go ahead|do it|open it|let'?s|ja|gerne|oui|d'accord|s\u00ed|si|claro"
+                  r"|s\u00ec|va bene|\u0434\u0430|\u0434\u0430\u0432\u0430\u0439|\u043e\u043a|\u0445\u043e\u0440\u043e\u0448\u043e"
+                  r"|\u0442\u0430\u043a|\u0434\u043e\u0431\u0440\u0435)\b", re.IGNORECASE)
+_OPEN = {"en": "Open", "de": "\u00d6ffne", "fr": "Ouvre", "es": "Abre", "it": "Apri",
+         "ru": "\u041e\u0442\u043a\u0440\u043e\u0439", "uk": "\u0412\u0456\u0434\u043a\u0440\u0438\u0439"}
+
+
+def wants_to_go(message: str, offered: bool = False) -> bool:
+    """Whether the person asked to be taken somewhere or to start something (a page opens, a form starts), as
+    opposed to asking about it. `offered`: the assistant's last answer offered to open something, so a plain
+    yes counts."""
+    text = (message or "").strip()
+    if not text:
+        return False
+    if offered and _YES.match(text) and len(text) <= 60:
+        return True
+    if not _GO.search(text):
+        return False
+    return bool(_POLITE.match(text)) or not _ASKS.search(text)
+
+
+NOT_ASKED = ("Not opened: the person asked a question and did not ask to go anywhere. Answer the question first, from "
+             "the passages. Then offer it in one closing sentence (\"Want me to open {title}?\") and stop: it opens "
+             "when they say yes or tap the button under your answer.")
+
+
 async def maybe_await(v: Any) -> Any:
     return await v if inspect.isawaitable(v) else v
 
@@ -83,13 +136,17 @@ Each turn
    passage says stands even when ask_documents finds nothing about it.
 3. A general concept that is not about this business (what a co-borrower is, what an appraisal is): explain it
    briefly from general knowledge and say it is general, as this business's terms may differ.
-4. Somewhere to go, or an answer that sits on a page they would be helped to see: call navigate (a page path
-   from the site contents, plus the tab, accordion or section id where the answer is).{stay}
-5. Something a form does (apply, book): call open_form with that form and a note of everything the user
-   already said that the form needs (amounts, dates, names, choices), in their words, and the language the
-   user writes in. Do not ask for the rest yourself: the form takes over on that page, in this same chat.
-   If two forms could fit, ask which one.
-6. {style} After a tool, say what you did in one
+4. A question about something ("how do I…", "what does … cost", "can I…", "where is…") gets its answer first. Open
+   nothing for it: name the page or the form that helps and offer it in one closing sentence ("Want me to open
+   the insurance form?"). Opening a page or starting a form is for a direct request ("open…", "show me…", "take
+   me…", "I want to apply", "fill in…") or a yes to your offer.
+5. A direct request to go somewhere: call navigate (a page path from the site contents, plus the tab, accordion
+   or section id where the answer is).{stay}
+6. A direct request for something a form does (apply, book): call open_form with that form and a note of
+   everything the user already said that the form needs (amounts, dates, names, choices), in their words, and
+   the language the user writes in. Do not ask for the rest yourself: the form takes over on that page, in this
+   same chat. If two forms could fit, ask which one.
+7. {style} After a tool, say what you did in one
    sentence ("Here is the Contacts page: on Saturday the office is open 9:00 to 13:00."). Say each thing
    once: never repeat in the same reply what you already wrote before a tool, and do not restate facts you
    gave in earlier turns (hours, an address, a price) unless the user asks for them again.
@@ -190,7 +247,8 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                  ask_docs: Callable[[str], Awaitable[str]] | None = None, *, live: str = "", instructions: str = "",
                  style: str | None = None, tools: list[SiteTool] | None = None, ctx: SiteRunCtx | None = None,
                  suggestions: bool = False, finish: bool = True, stay_on_form: bool = False,
-                 to_form: Callable[[str], None] | None = None, stats: RunStats | None = None) -> AsyncIterator[dict]:
+                 to_form: Callable[[str], None] | None = None, stats: RunStats | None = None,
+                 asked: str | None = None, offered: bool = False) -> AsyncIterator[dict]:
     """One site turn as AG-UI events.
 
     `on_handoff(form_id, note, language)` keeps the note; when it returns True the form agent answers right after
@@ -216,6 +274,10 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
         if text.strip():
             msgs.append(HumanMessage(text) if role == "user" else AIMessage(text))
     msgs.append(HumanMessage(question or "(the user opened the assistant)"))
+    # a page opens and a form starts only on a direct request, or a yes to the last answer's offer (the person's own
+    # words decide, `asked`; never the model)
+    may_go = wants_to_go(asked if asked is not None else question, offered)
+    offer: dict[str, Any] | None = None
     host_tools = {t.name: t for t in tools or []}
     schemas = [t for t in TOOLS if ask_docs or t["name"] != "ask_documents"]
     schemas += [t.schema() for t in host_tools.values()] + ([SUGGEST] if suggestions else []) + ([TO_FORM] if to_form else [])
@@ -262,7 +324,11 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                     result = passages(site, more) if more else "Nothing more found."
                 elif name == "navigate":
                     result, d = directive(site, args)
-                    if d:
+                    if d and not may_go:   # a question: the answer first, the page as an offer
+                        target = site.page(d["path"])
+                        offer = {"tool": "navigate", "args": args, "title": target.title if target else d["path"]}
+                        result = NOT_ASKED.format(title=offer["title"])
+                    elif d:
                         directives.append(d)
                 elif name == "ask_documents" and ask_docs:
                     try:
@@ -281,6 +347,9 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                     page = site.form_page(str(args.get("form_id") or ""))
                     if not page:
                         result = f"There is no form {args.get('form_id')!r} on the site."
+                    elif not may_go:   # a question about what the form does: the answer first, the form as an offer
+                        offer = {"tool": "open_form", "args": args, "title": page.title}
+                        result = NOT_ASKED.format(title=page.title)
                     else:
                         now = await maybe_await(on_handoff(page.form or "", str(args.get("note") or "").strip()[:600],
                                                            str(args.get("language") or "").strip()[:40]))
@@ -339,6 +408,11 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
         yield {"type": "TEXT_MESSAGE_END", "messageId": mid}
     if directives:   # the last move wins: one page at a time
         yield {"type": "CUSTOM", "name": "site_directive", "value": directives[-1]}
+    if offer and not handed and not directives:
+        from ..language import detect
+        tap = f"{_OPEN.get(detect(asked or question) or 'en', 'Open')} {offer['title']}"[:60]
+        suggested = [tap, *[x for x in suggested if x != tap]][:3]   # the offer is one tap away
+        yield {"type": "CUSTOM", "name": "site_offer", "value": {"tool": offer["tool"], "title": offer["title"]}}
     if suggested and not handed:
         yield {"type": "CUSTOM", "name": "suggestions", "value": {"items": suggested}}
     if finish:

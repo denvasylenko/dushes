@@ -208,3 +208,17 @@ Every form-agent turn in one conversation (a typed message, a message given by t
 #### Scenario: Thinking blocks stay valid
 - **WHEN** a conversation mixes typed form turns, to_form turns and a hand-off
 - **THEN** the form agent's tool list is the same in every turn and the provider accepts its earlier reasoning
+
+### Requirement: A question is answered before anything opens
+The site agent SHALL open a page or start a form only when the person's own message asks for it (a request such as "open…", "show me…", "take me…", "I want…", "book me…", or the same as a polite question, "can you open…") or says yes to an offer made in the previous answer. This SHALL be decided in code from the person's words: a `navigate` or `open_form` call for any other message is refused, and the model is told to answer first and offer.
+
+#### Scenario: How do I get it
+- **WHEN** the person asks "how can I get car insurance?" and the model calls `open_form` for the insurance form
+- **THEN** no form opens, the answer explains how, and it ends by offering to open the insurance form
+
+### Requirement: The offer is one tap away
+When opening was refused, the turn's suggestions SHALL start with a button that asks for it in the person's language ("Open Car insurance"), and a `CUSTOM site_offer` event SHALL name what was offered. The next message opens it when it is that button's text, another direct request, or a plain yes.
+
+#### Scenario: The person taps the offer
+- **WHEN** the previous answer offered the Contacts page and the person taps "Open Contacts"
+- **THEN** the page opens
