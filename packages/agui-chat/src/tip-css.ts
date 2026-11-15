@@ -110,7 +110,22 @@ export const TIP_CSS = `.tip { position: absolute; z-index: 9; max-width: 260px;
   :is(button, a).src::after { content: ''; position: absolute; inset: -6px 0; }
   .src-go { width: 44px; height: 44px; } .src-pager { margin-left: -20px; }
 }
-@media (prefers-reduced-motion: reduce) { .src-veil, .src-view { animation: none; transition: none; } }`
+@media (prefers-reduced-motion: reduce) { .src-veil, .src-view { animation: none; transition: none; } }
+/* the greeting: a small speech bubble next to the closed launcher */
+.greet { position: fixed; z-index: 2147483000; right: calc(max(var(--agui-bubble-offset, 20px), env(safe-area-inset-right, 0px)) + var(--agui-launcher-size, 60px) + 12px);
+  bottom: calc(max(var(--agui-bubble-offset, 20px), env(safe-area-inset-bottom, 0px)) + 8px); display: flex; align-items: flex-start; gap: 4px;
+  max-width: min(280px, calc(100vw - 120px)); background: var(--agui-bg); color: var(--agui-ink); border: 1px solid var(--agui-line);
+  border-radius: 18px 18px 4px 18px; padding: 10px 8px 10px 14px; box-shadow: 0 12px 32px -12px var(--agui-shadow);
+  opacity: 0; transform: translateY(8px) scale(.9); transform-origin: bottom right; transition: opacity .3s, transform .4s cubic-bezier(.34, 1.4, .5, 1); }
+.side-left .greet { right: auto; left: calc(max(var(--agui-bubble-offset, 20px), env(safe-area-inset-left, 0px)) + var(--agui-launcher-size, 60px) + 12px);
+  border-radius: 18px 18px 18px 4px; transform-origin: bottom left; }
+.greet.show { opacity: 1; transform: none; }
+.greet-body { border: 0; background: none; color: inherit; font: 15px/1.35 var(--agui-font); text-align: left; padding: 0; cursor: pointer; }
+.greet-x { border: 0; background: none; color: var(--agui-ink-3); font-size: 17px; line-height: 1; width: 24px; height: 24px; border-radius: var(--agui-radius-pill); cursor: pointer; flex: none; }
+.greet-x:hover { background: var(--agui-soft); color: var(--agui-ink); }
+.mode-bubble.open .greet, :not(.mode-bubble) > .greet { display: none; }
+@media (max-width: 520px) { .greet { max-width: calc(100vw - 110px); } }
+`
 
 
 const styled = new WeakSet<Node>()

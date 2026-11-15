@@ -639,6 +639,17 @@ The `render` option SHALL let the host replace pieces with its own elements: `ma
 - **WHEN** the user taps the launcher, then taps it again
 - **THEN** the window opens next to the launcher, then shrinks back into it, and focus returns to the launcher
 
+### Requirement: A sent message arrives with a movement
+A message the person has just sent SHALL arrive in the conversation with one movement of about 0.3 s: it rises a few pixels from the composer, fades in and grows slightly from its own bottom corner. A message drawn from a restored conversation SHALL simply be there. With reduced motion a sent message SHALL appear at once. A message sent by voice SHALL arrive the same way.
+
+#### Scenario: A message is sent
+- **WHEN** the person sends a message
+- **THEN** its bubble rises, fades in and grows into place in about 0.3 s
+
+#### Scenario: A restored conversation
+- **WHEN** the chat draws an earlier conversation
+- **THEN** its messages are shown without that movement
+
 ### Requirement: Greeting and unread mark
 With `greeting`, a small speech bubble SHALL appear next to the closed launcher after `greetingDelay` seconds (default 4), open the chat when tapped, and not come back once closed. An answer arriving while the bubble is closed SHALL put a dot on the launcher until it is opened.
 

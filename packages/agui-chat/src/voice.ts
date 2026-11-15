@@ -227,7 +227,7 @@ export function voice(chat: Chat): void {
       if (yes) card.querySelectorAll<HTMLInputElement>('.row.consent input[type=checkbox]').forEach((c) => { if (!c.checked) c.click() })
       const b = card.querySelector<HTMLButtonElement>(yes ? '.acts > .btn.pri, .acts > .btn.danger' : '.acts > .btn.sec')
       if (!b || b.disabled) return false
-      const me = el('div', 'msg me'); me.append(el('div', 'bubble', text)); card.after(me)
+      const me = el('div', 'msg me new'); me.append(el('div', 'bubble', text)); card.after(me)
       b.click()
       return true
     }
@@ -397,7 +397,7 @@ export function voice(chat: Chat): void {
           if (answered) { reading && (reading.text += ev.delta); continue }   // one message for one answer: the written one, lit as it is spoken
           if (busy) { caption = (caption + ev.delta).slice(-80); step.textContent = caption; continue }   // "Checking now": a status, under the orb
           // the voice's own words with no agent answer behind them (a greeting, small talk): the agent's message, word by word
-          if (live.textContent) { const me = el('div', 'msg me'); me.append(el('div', 'bubble', live.textContent)); add(me); hearing('') }   // small talk: what was heard is the person's message, whole
+          if (live.textContent) { const me = el('div', 'msg me new'); me.append(el('div', 'bubble', live.textContent)); add(me); hearing('') }   // small talk: what was heard is the person's message, whole
           if (!saidEl) { saidEl = el('div', 'msg ai'); saidEl.append(el('div', 'body')); add(saidEl) }
           saidEl.firstElementChild!.textContent += ev.delta
         } else if (ev.type === 'echo') { hearing('')   // the server heard the voice itself: the words that grew were not the person's

@@ -435,9 +435,13 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     if (o.mode !== 'bubble' || !o.greeting || store<boolean>(this._greetKey()).get()) { this._hideGreeting(); return }
     this._greetTimer = window.setTimeout(() => {
       if (this.$.wrap.classList.contains('open')) return
-      this.$.greetText.textContent = o.greeting
-      this.$.greet.hidden = false
-      requestAnimationFrame(() => this.$.greet.classList.add('show'))
+      // the greeting's look comes with the on-demand styles (it is only ever shown seconds after the page)
+      void loadTipCss().then((f) => {
+        f(this.$.greet)
+        this.$.greetText.textContent = o.greeting
+        this.$.greet.hidden = false
+        requestAnimationFrame(() => this.$.greet.classList.add('show'))
+      }, () => {})
     }, Math.max(0, o.greetingDelay) * 1000)
   }
   private _hideGreeting(forever = false): void {
@@ -495,6 +499,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this._setReplies([])
     const mid = uid()
     this._userBubble(text, this._sending.map((f) => f.filename), this._sending.map((f) => this._previews.get(f.id)), replies, mid)
+    this.$.log.querySelector(':scope > .msg.me:last-of-type')?.classList.add('new')   // just sent: it arrives with a movement (a restored one is simply there)
     // the replies are on the quotes: the message still carries a short text so the turn has one
     this._messages.push({ id: mid, role: 'user', content: text || this.t('quotedReply') })
     const sent = replies.map((r) => ({ message_id: r.message_id, ...(r.whole ? { whole: true } : { quote: r.quote }), ...(r.note ? { note: r.note } : {}), ...(r.role ? { role: r.role } : {}) }))

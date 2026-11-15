@@ -96,6 +96,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .msg.me > div:not(.att-row):not(.q-line) { background: var(--agui-bubble-user-bg, var(--agui-soft)); color: var(--agui-bubble-user-ink, inherit); border-radius: var(--agui-bubble-radius, var(--agui-radius-lg)); padding: 10px 16px; max-width: 85%; white-space: pre-wrap; }
 .msg.ai { color: var(--agui-bubble-ai-ink, inherit); }
 .msg.gone { opacity: 0; transition: opacity .18s var(--agui-ease); }
+/* a message just sent rises from the composer, fades in and grows from its corner (as in Messages); the first frame is already visible */
+.msg.me.new { transform-origin: 100% 100%; animation: agui-sent .32s cubic-bezier(.3, .7, .25, 1) backwards; }
+@keyframes agui-sent { from { opacity: .2; transform: translateY(14px) scale(.92); } }
 .msg.ai p { margin: 0 0 12px; } .msg.ai p:last-child { margin-bottom: 0; }
 .msg.ai ul { margin: 4px 0 10px; padding-left: 20px; } .msg.ai li { margin: 3px 0; }
 .msg.ai a { color: var(--agui-link); }
@@ -591,19 +594,6 @@ button.bubble-q { cursor: pointer; }
 /* scrim="off": the veil is the host's; the focus trap and Esc stay (modal) */
 .wrap.noscrim .scrim { display: none; }
 @keyframes agui-fade { from { opacity: 0; } to { opacity: 1; } }
-/* the greeting: a small speech bubble next to the closed launcher */
-.greet { position: fixed; z-index: 2147483000; right: calc(max(var(--agui-bubble-offset, 20px), env(safe-area-inset-right, 0px)) + var(--agui-launcher-size, 60px) + 12px);
-  bottom: calc(max(var(--agui-bubble-offset, 20px), env(safe-area-inset-bottom, 0px)) + 8px); display: flex; align-items: flex-start; gap: 4px;
-  max-width: min(280px, calc(100vw - 120px)); background: var(--agui-bg); color: var(--agui-ink); border: 1px solid var(--agui-line);
-  border-radius: 18px 18px 4px 18px; padding: 10px 8px 10px 14px; box-shadow: 0 12px 32px -12px var(--agui-shadow);
-  opacity: 0; transform: translateY(8px) scale(.9); transform-origin: bottom right; transition: opacity .3s, transform .4s cubic-bezier(.34, 1.4, .5, 1); }
-.side-left .greet { right: auto; left: calc(max(var(--agui-bubble-offset, 20px), env(safe-area-inset-left, 0px)) + var(--agui-launcher-size, 60px) + 12px);
-  border-radius: 18px 18px 18px 4px; transform-origin: bottom left; }
-.greet.show { opacity: 1; transform: none; }
-.greet-body { border: 0; background: none; color: inherit; font: 15px/1.35 var(--agui-font); text-align: left; padding: 0; cursor: pointer; }
-.greet-x { border: 0; background: none; color: var(--agui-ink-3); font-size: 17px; line-height: 1; width: 24px; height: 24px; border-radius: var(--agui-radius-pill); cursor: pointer; flex: none; }
-.greet-x:hover { background: var(--agui-soft); color: var(--agui-ink); }
-.mode-bubble.open .greet, :not(.mode-bubble) > .greet { display: none; }
 /* phones: the window is a sheet from the bottom with a grabber; the page is dimmed */
 @media (max-width: 520px) {
   .mode-bubble .scrim { display: block; }
@@ -615,7 +605,6 @@ button.bubble-q { cursor: pointer; }
   .mode-bubble .panel::before { content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: var(--agui-line-2); }
   .mode-bubble .close { display: grid; }
   .mode-bubble.open .fab { opacity: 0; pointer-events: none; }
-  .greet { max-width: calc(100vw - 110px); }
 }
 @keyframes agui-sheet { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes agui-sheet-out { from { transform: none; } to { transform: translateY(100%); } }

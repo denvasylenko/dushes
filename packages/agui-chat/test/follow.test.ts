@@ -67,6 +67,7 @@ describe('no animation frames (a hidden pane, an occluded window)', () => {
     document.body.appendChild(el)
     await answered(el, 'The prices shown are only examples of this preview.')
     expect(el.shadowRoot!.querySelector('.msg.ai')!.textContent).toContain('The prices shown are only examples of this preview.')
+    expect(el.shadowRoot!.querySelector('.msg.me')!.classList.contains('new')).toBe(false)   // a restored message is simply there: only one just sent arrives with a movement
   })
 })
 

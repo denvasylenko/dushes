@@ -108,7 +108,7 @@ describe('the message queue', () => {
     await tick(5)
     await el.send('second')
     fail(); await tick(30)
-    expect([...el.shadowRoot!.querySelector('.log')!.children].map((c) => c.className)).toEqual(['msg me', 'error', 'msg me queued'])
+    expect([...el.shadowRoot!.querySelector('.log')!.children].map((c) => c.className)).toEqual(['msg me new', 'error', 'msg me queued'])   // `new`: the sent message arrived with its movement
     expect(runs).toEqual(['first'])                                      // nothing more fails in a row
     ;(el.shadowRoot!.querySelector('.error .btn') as HTMLButtonElement).click()   // Try again
     await tick(10); finish(); await tick(30)
