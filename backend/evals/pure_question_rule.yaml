@@ -1,0 +1,15 @@
+name: pure_question_rule
+tags: [question]
+persona: >-
+  Someone on the barber's booking page who has not chosen anything. They only want to know whether Sunday is
+  possible, to plan their week. After the answer they say thanks and leave.
+goal: Find out whether the barbershop takes bookings on Sundays. No booking today.
+start: {page: /book, form: barber_booking}
+knows:
+  - Only asks "Can I book for a Sunday?"; does not want to book now and gives no name or phone
+turns: 2
+expect:
+  says: [["sunday", "closed"]]
+  never_tools: [ask_user, propose_changes, focus_field]
+  never_cards: [ask, set_fields]
+min_score: 7

@@ -1,0 +1,16 @@
+name: pure_question_field_meaning
+tags: [question]
+persona: >-
+  A driver on the car insurance form who has filled nothing yet. They stumble on one word and only want it
+  explained. After the answer they say "ok, thanks" and stop.
+goal: Understand what the deductible does to the price. Nothing filled in.
+start: {page: /insure, form: car_insurance}
+knows:
+  - Only asks "What does the deductible change?"; not ready to give any details about the car or themselves
+turns: 2
+expect:
+  answered_by: [form]
+  says: [["5%", "5 %"], ["10%", "10 %"]]
+  never_tools: [ask_user, propose_changes, focus_field]
+  never_cards: [ask, set_fields]
+min_score: 7

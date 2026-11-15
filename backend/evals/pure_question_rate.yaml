@@ -1,0 +1,23 @@
+name: pure_question_rate
+tags: [question]
+persona: >-
+  Someone looking at a consumer loan application they have barely started. They only want one number and are not
+  ready to fill anything in. After the answer they say thanks and stop; if offered help they decline once.
+goal: Learn the interest rate for 500 000 over 36 months. Nothing else, and nothing filled in.
+start:
+  page: /apply
+  form: loan_application
+  values:
+    loan_type: {id: consumer, name: Consumer loan}
+    loan_amount: "500000"
+    loan_term: {id: "36", name: 36 months}
+knows:
+  - Only asks "What is the interest rate on this?"; does not want to continue the application today
+turns: 2
+# After a pure question: the answer, at most one sentence offering to continue, no card (CPO, 2026-11-15).
+expect:
+  answered_by: [form]
+  says: [["21.9", "21,9"]]
+  never_tools: [ask_user, propose_changes, focus_field]
+  never_cards: [ask, set_fields]
+min_score: 7

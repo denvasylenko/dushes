@@ -1,0 +1,15 @@
+name: heldout_pure_question_lab
+tags: [question, lab, heldout]
+persona: >-
+  A visitor on the dental practice's appointment page with an empty form. They only want to know when the practice
+  is closed. After the answer they say thanks; they do not want an appointment yet.
+goal: Learn on which days or half-days the dental practice is closed. Nothing filled in.
+start: {site: lab, page: /lab/dental, form: dental_appointment}
+knows:
+  - Only asks "When are you closed?"; gives no personal details
+turns: 2
+expect:
+  says: [["sunday"], ["wednesday"]]
+  never_tools: [ask_user, propose_changes, focus_field]
+  never_cards: [ask, set_fields]
+min_score: 7
