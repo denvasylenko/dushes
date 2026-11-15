@@ -4,9 +4,9 @@
  * same checks by kind of question. All from research.json (lib/research.ts); nothing is typed here. Rows are a grid,
  * not a table: on a phone a row's label takes the full width and its values sit under it, so nothing is clipped.
  */
-import { Disclosure } from './ui'
+import { Disclosure, Icon } from './ui'
 import BenchFreshness from './BenchFreshness.astro'
-import { RESEARCH, barRows, factRows, kindName, modelName, share, totals } from '../lib/research'
+import { RESEARCH, barRows, factRows, kindName, laterRows, modelName, share, totals } from '../lib/research'
 import { longDate } from '../lib/bench'
 const t = totals()
 const runs = RESEARCH.runs
@@ -16,7 +16,9 @@ const measured = runs.map((r) => r.bar.filter((b) => b.met !== null).length)
 const kinds = Object.keys(runs[0].by_kind)
 const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'not met' : '')
 ---
-<p>The researcher as it is today, called "before": {t.scenarios} questions over {t.documents} invented documents ({t.pages.toLocaleString('en-US')} pages) in {RESEARCH.sets.length} sets, {t.passes} passes each, {t.answers} answers a model. Scored by code checks only: no model judged the answers. The bar is measured on {RESEARCH.bar_measured_on}.</p>
+<p class="br-verdict"><strong>{names.map((n, i) => `${n} does not meet ${missed[i]} of the ${measured[i]} checks measured today`).join('; ')}.</strong> This is the "before" point: a starting point, not a ranking of the two models.</p>
+
+<p>This is the researcher as it is today. {t.scenarios} questions on {t.documents} invented documents ({t.pages.toLocaleString('en-US')} pages) in {RESEARCH.sets.length} sets. Each question was asked {t.passes} times: {t.answers} answers per model. Code checks scored every answer; no model judged them. The bar is the target for each check, measured on {RESEARCH.bar_measured_on}.</p>
 
 <BenchFreshness date={t.date} model={names.join(' and ')} what="The researcher's benchmark" />
 
@@ -25,7 +27,7 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
   {barRows().map((r) => (
     <div class="br-row" role="row">
       <span class="br-label" role="rowheader">{r.label}</span>
-      {r.cells.map((c, i) => <span class="br-cell" role="cell" data-met={c.met === null ? undefined : String(c.met)}><small>{names[i]}</small><b>{c.text}</b>{mark(c.met) && <em>{mark(c.met)}</em>}</span>)}
+      {r.cells.map((c, i) => <span class="br-cell" role="cell" data-met={c.met === null ? undefined : String(c.met)}><small>{names[i]}</small><b>{c.text}</b>{mark(c.met) && <em><Icon name={c.met ? 'check' : 'close'} />{mark(c.met)}</em>}</span>)}
       <span class="br-bar" role="cell"><small>The bar</small>{r.bar}</span>
     </div>
   ))}
@@ -33,18 +35,20 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
     <div class="br-row" role="row">
       <span class="br-label" role="rowheader">{r.label}</span>
       {r.cells.map((c, i) => <span class="br-cell" role="cell"><small>{names[i]}</small><b>{c.text}</b></span>)}
-      <span class="br-bar" role="cell"><small>The bar</small>none</span>
+      <span class="br-bar" role="cell"><small>The bar</small>{r.bar || 'none'}</span>
     </div>
   ))}
 </div>
 
-<p>{names.map((n, i) => `${n} misses ${missed[i]} of the ${measured[i]} checks measured today`).join('; ')}. That is what "before" records: a starting point, not a ranking of the two models.</p>
-
 <ul>
   <li><strong>"A number that is not in the passage they cite"</strong> is a strict check. On today's researcher it is mostly a figure taken from a document it read but did not cite, not a made-up figure.</li>
-  <li><strong>Passages that disagree</strong> rests on {runs[0].contradictions.found + runs[0].contradictions.missed} answers a model. That is small.</li>
-  <li><strong>"Not measured yet"</strong>: today's researcher reports neither its first word nor a chosen depth.</li>
+  <li><strong>Two passages that disagree</strong> is based on {runs[0].contradictions.found + runs[0].contradictions.missed} answers per model: too few to compare.</li>
 </ul>
+
+<Disclosure summary={`${laterRows().length} checks not measured yet`} panel>
+  <p>Today's researcher does not report the time to its first word, or whether it chose a short or a long answer. These checks come with the new researcher:</p>
+  <ul>{laterRows().map((r) => <li>{r.label}: {r.bar}</li>)}</ul>
+</Disclosure>
 
 <p>{RESEARCH.note}</p>
 
@@ -72,8 +76,10 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
   .br-label { color: var(--fg-ink); }
   .br-cell { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
   .br-cell b { font-weight: 600; color: var(--fg-ink); }
-  .br-cell em { font-style: normal; font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); }
-  .br-cell[data-met='true'] em { color: var(--fg-ok); }
+  .br-cell em { display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-size: var(--fg-fs-footnote); font-weight: 600; color: var(--fg-ink); }
+  .br-cell em svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .br-cell[data-met='true'] em { color: var(--fg-ok); font-weight: 400; }
+  .br-verdict { font-size: var(--fg-fs-headline); line-height: 1.4; }
   .br-bar { color: var(--fg-ink-2); font-variant-numeric: tabular-nums; }
   .br small { display: none; font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); }
   @media (max-width: 50rem) {

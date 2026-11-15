@@ -20,12 +20,17 @@ const sets = d.sets.filter((s) => d.questions.some((q) => q.set === s.id))
 const models = Object.entries(d.models).filter(([id]) => d.questions.some((q) => q.answers[id]))
 const ready = sets.length > 0 && models.length > 0 && !!d.recorded
 const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
+const FIRST = 4   // questions shown at once; the rest are one tap away
+const of = (id: string) => d.questions.filter((q) => q.set === id)
+// the chat does not draw Markdown tables yet: an answer with one is not offered (counted on the page, never edited)
+const hasTable = (t: string) => /^\s*\|?\s*:?-{3,}/m.test(t)
+const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).filter((a) => hasTable(a.text)).length, 0)
 ---
 {ready ? (
   <div class="rd ui-tile ui-tile--lg not-content" data-rd data-recorded={longDate(d.recorded!.slice(0, 10))}>
     <script type="application/json" data-rd-data set:html={JSON.stringify({ models: d.models, sets, questions: d.questions })} />
     <div class="rd-controls">
-      <ChipGroup label="Documents" options={sets.map((s) => ({ value: s.id, label: s.name }))} data-set />
+      <ChipGroup label="Document set" options={sets.map((s) => ({ value: s.id, label: s.name }))} data-set />
       {models.length > 1 && <Segmented label="Answered by" options={models.map(([id, name]) => [id, name] as const)} data-model />}
     </div>
     <p class="rd-rec"><Badge>Recorded</Badge> <span data-rec-line></span></p>
@@ -34,19 +39,25 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
         <p class="rd-cap">Hard questions to try</p>
         {sets.map((s, i) => (
           <div class="rd-qlist" data-for={s.id} hidden={i > 0}>
-            {d.questions.filter((q) => q.set === s.id).map((q) => <Button variant="gray" size="sm" data-q={q.id}>{q.question}</Button>)}
+            {of(s.id).slice(0, FIRST).map((q) => <Button variant="gray" size="sm" data-q={q.id}><span class="rd-kind">{kindName(q.kind ?? '')}</span>{q.question}</Button>)}
+            {of(s.id).length > FIRST && (
+              <Disclosure summary={`${of(s.id).length - FIRST} more questions`}>
+                <div class="rd-more">{of(s.id).slice(FIRST).map((q) => <Button variant="gray" size="sm" data-q={q.id}><span class="rd-kind">{kindName(q.kind ?? '')}</span>{q.question}</Button>)}</div>
+              </Disclosure>
+            )}
           </div>
         ))}
       </div>
       <div class="rd-chat">
-        <agui-chat mode="inline" persist-thread="off" attach="off" quick-replies="off" voice="off" title="Researcher" subtitle="Recorded answers" placeholder="Pick a question"></agui-chat>
+        <agui-chat mode="inline" persist-thread="off" attach="off" quick-replies="off" voice="off" title="Researcher" subtitle="Recorded answers"></agui-chat>
       </div>
     </div>
     <div class="rd-docs" aria-live="polite">
       {sets.map((s, i) => (
         <div class="rd-set" data-for={s.id} hidden={i > 0}>
-          <p class="rd-cap">What this answer read</p>
-          <p class="rd-none" data-none>Pick a question: the documents its answer used appear here, out of {s.documents.length}{pages(s) ? ` (${pages(s).toLocaleString('en-US')} pages)` : ''} in this set.</p>
+          <p class="rd-cap">Sources of this answer</p>
+          <p class="rd-none" data-none>Pick a question. The documents its answer cites appear here, out of {s.documents.length}{pages(s) ? ` (${pages(s).toLocaleString('en-US')} pages)` : ''} in this set.</p>
+          <p class="rd-none" data-nosrc hidden>This answer cites no document.</p>
           <ul>{s.documents.map((x) => <li data-doc={x.id} hidden><span class="rd-doc-t">{x.title}</span><span class="rd-doc-u" data-used></span></li>)}</ul>
           <Disclosure summary={`All ${s.documents.length} documents in this set`}>
             {s.about && <p class="rd-about">{s.about}</p>}
@@ -55,6 +66,7 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
         </div>
       ))}
     </div>
+    {withTables > 0 && <p class="rd-note">{withTables} recorded answer{withTables === 1 ? ' has' : 's have'} a table, which the chat does not draw yet; {withTables === 1 ? 'it is' : 'they are'} not offered here.</p>}
   </div>
 ) : (
   <div class="rd ui-tile ui-tile--lg not-content">
@@ -80,7 +92,8 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
   interface Question { id: string; set: string; question: string; answers: Record<string, Answer> }
   interface DocSet { id: string; name: string; documents: { id: string; title: string }[] }
   const nid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`
-  const NOT_RECORDED = 'This page plays recorded answers. Pick one of the questions; live answers come with the new researcher.'
+  const NOT_RECORDED = 'This question has no recorded answer. Pick one from the list.'
+  const hasTable = (t: string) => /^\s*\|?\s*:?-{3,}/m.test(t)
 
   for (const root of document.querySelectorAll<HTMLElement>('[data-rd]')) {
     const data = JSON.parse(root.querySelector('[data-rd-data]')!.textContent!) as { models: Record<string, string>; sets: DocSet[]; questions: Question[] }
@@ -88,11 +101,14 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
     let set = data.sets[0].id
     let model = Object.keys(data.models).find((m) => data.questions.some((q) => q.answers[m]))!
     const docsOf = () => data.sets.find((s) => s.id === set)!.documents
-    const answerOf = (text: string) => data.questions.find((q) => q.set === set && q.question === text.trim())?.answers[model]
+    const playable = (q: Question | undefined, m = model) => { const a = q?.answers[m]; return a && !hasTable(a.text) ? a : undefined }
+    const answerOf = (text: string) => playable(data.questions.find((q) => q.set === set && q.question === text.trim()))
+    let lastQ: string | null = null   // the question on screen: replayed when the model changes, so two models can be compared
 
     const clearUsed = () => {
       root.querySelectorAll<HTMLElement>('[data-doc]').forEach((li) => { li.hidden = true; li.querySelector('[data-used]')!.textContent = '' })
       root.querySelectorAll<HTMLElement>('[data-none]').forEach((p) => { p.hidden = false })
+      root.querySelectorAll<HTMLElement>('[data-nosrc]').forEach((p) => { p.hidden = true })
     }
     const markUsed = (sources: Source[]) => {
       clearUsed()
@@ -108,12 +124,13 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
         li.hidden = false
         li.querySelector('[data-used]')!.textContent = [...new Set(wheres)].join(' \u00b7 ')
       }
-      const none = box?.querySelector<HTMLElement>('[data-none]')
-      if (none) { none.hidden = by.size > 0; if (!by.size) none.textContent = 'This answer cites no document.' }
+      const none = box?.querySelector<HTMLElement>('[data-none]'), nosrc = box?.querySelector<HTMLElement>('[data-nosrc]')
+      if (none) none.hidden = true
+      if (nosrc) nosrc.hidden = by.size > 0
     }
     const recLine = (a?: Answer) => {
       const bits = [`${root.dataset.recorded}`, data.models[model]]
-      if (a?.depth) bits.push(`depth: ${a.depth}`)
+      if (a?.depth) bits.push(a.depth === 'deep' ? 'long answer' : 'short answer')
       if (typeof a?.seconds === 'number') bits.push(`${a.seconds.toFixed(1)} s`)
       if (typeof a?.cost_usd === 'number') bits.push(`$${a.cost_usd.toFixed(3)}`)
       root.querySelector('[data-rec-line]')!.textContent = bits.join(' · ')
@@ -156,23 +173,25 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
       highlight: false,
     }))
 
-    chat.options = { intro: 'Pick a question to read the recorded answer and its sources.' }
-    const show = () => {
+    chat.options = { intro: 'Pick a question from the list to read the recorded answer and its sources.' }
+    const ask = (id: string, reveal = true) => {
+      const q = data.questions.find((x) => x.id === id)
+      if (!q || !playable(q)) return
+      lastQ = id
+      chat.stop(); void chat.send(q.question)
+      const box = chat.getBoundingClientRect()   // on a phone the chat is below the questions: bring it into view
+      if (reveal && (box.top > innerHeight * 0.6 || box.bottom < 0)) chat.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+    }
+    const show = (replay = false) => {
       root.querySelectorAll<HTMLElement>('[data-for]').forEach((el) => { el.hidden = el.dataset.for !== set })
-      // a question this model was not asked is not offered
-      root.querySelectorAll<HTMLElement>('[data-q]').forEach((b) => { b.hidden = !data.questions.find((q) => q.id === b.dataset.q)?.answers[model] })
+      // a question this model has no answer the chat can draw for is not offered
+      root.querySelectorAll<HTMLElement>('[data-q]').forEach((b) => { b.hidden = !playable(data.questions.find((q) => q.id === b.dataset.q)) })
       chat.stop(); chat.reset(); clearUsed(); recLine()
+      if (replay && lastQ) ask(lastQ, false); else lastQ = null
     }
     root.querySelector('[data-set]')!.addEventListener('ui-change', (e) => { set = (e as CustomEvent<{ value: string }>).detail.value; show() })
-    root.querySelector('[data-model]')?.addEventListener('ui-change', (e) => { model = (e as CustomEvent<{ value: string }>).detail.value; show() })
-    root.querySelectorAll<HTMLElement>('[data-q]').forEach((b) => b.addEventListener('click', () => {
-      const q = data.questions.find((x) => x.id === b.dataset.q)
-      if (q) {
-        chat.stop(); void chat.send(q.question)
-        const box = chat.getBoundingClientRect()   // on a phone the chat is below the questions: bring it into view
-        if (box.top > innerHeight * 0.6 || box.bottom < 0) chat.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
-      }
-    }))
+    root.querySelector('[data-model]')?.addEventListener('ui-change', (e) => { model = (e as CustomEvent<{ value: string }>).detail.value; show(true) })
+    root.querySelectorAll<HTMLElement>('[data-q]').forEach((b) => b.addEventListener('click', () => ask(b.dataset.q!)))
     const scheme = () => chat.setAttribute('scheme', document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
     scheme()
     new MutationObserver(scheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
@@ -184,22 +203,27 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
   /* layout only: the controls are primitives from ./ui, the outer box is a large Tile */
   .rd { margin: 1.5rem 0 2rem; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
   .rd-controls { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; }
-  .rd-rec { margin: 0; display: flex; align-items: center; gap: 8px; font-size: var(--fg-fs-footnote); color: var(--fg-ink-2); font-variant-numeric: tabular-nums; }
-  .rd-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; }
+  .rd-rec { margin: 0; display: flex; align-items: flex-start; gap: 8px; font-size: var(--fg-fs-footnote); line-height: 1.5; color: var(--fg-ink-2); font-variant-numeric: tabular-nums; }
+  .rd-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
   .rd-cap { margin: 0 0 8px; font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); }
-  .rd-about, .rd-all, .rd-none { margin: 0 0 8px; font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
-  .rd-qs { min-width: 0; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+  .rd-about, .rd-all, .rd-none, .rd-note { margin: 0 0 8px; font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
+  .rd-note { margin: 0; }
+  .rd-qs { min-width: 0; }
   .rd-docs ul { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .rd-docs li { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: var(--fg-r-ctl); background: var(--fg-surface); border: 1px solid var(--fg-accent); }
   .rd-docs li[hidden], .rd-none[hidden] { display: none; }
-  .rd-doc-t { font-weight: 600; color: var(--fg-ink); overflow-wrap: anywhere; }
+  .rd-doc-t { font: 600 var(--fg-fs-callout)/1.3 var(--sl-font); color: var(--fg-ink); overflow-wrap: anywhere; }
   .rd-doc-u { font-size: var(--fg-fs-footnote); color: var(--fg-ink-2); }
-  .rd-chat { height: 520px; min-width: 0; }
+  .rd-chat { height: 520px; min-width: 0; position: sticky; top: 5rem; }   /* stays beside a long list of questions */
+  .rd-chat agui-chat::part(composer) { display: none; }   /* a recorded page: nothing to type */
   .rd-chat agui-chat { display: block; height: 100%; --agui-accent: var(--sl-color-accent); --agui-on-accent: #fff; --agui-link: var(--sl-color-accent); }
   :root[data-theme='dark'] .rd-chat agui-chat { --agui-accent: var(--sl-color-accent-high); --agui-on-accent: var(--sl-color-black); --agui-link: var(--sl-color-accent-high); }
-  .rd-qlist { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-  .rd-qlist[hidden], .rd-set[hidden], .rd-qlist .ui-btn[hidden] { display: none; }
-  .rd-qlist .ui-btn { text-align: left; white-space: normal; height: auto; min-height: 44px; padding-block: 8px; }
+  .rd-qlist, .rd-more { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+  .rd-more { margin-top: 8px; }
+  .rd-qlist[hidden], .rd-set[hidden], .rd-qs .ui-btn[hidden] { display: none; }
+  /* a question is a list row, not a pill: several lines of text (a row primitive is asked of the design system) */
+  .rd-qs .ui-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; white-space: normal; height: auto; min-height: 44px; padding-block: 10px; border-radius: var(--fg-r-ctl); }
+  .rd-kind { font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); }
   .rd-empty { margin: 0; color: var(--fg-ink-2); }
   .rd-plain h3 { margin: 0 0 4px; font: 600 var(--fg-fs-headline)/1.3 var(--sl-font); color: var(--fg-ink); }
   .rd-plain ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -207,7 +231,7 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
   .rd-plain li small { font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); }
   @media (max-width: 50rem) {
     .rd-grid { grid-template-columns: minmax(0, 1fr); }
-    .rd-qs { max-height: none; overflow: visible; padding-right: 0; }
-    .rd-chat { height: 480px; scroll-margin-top: 120px; }
+    .rd-rec { min-height: 3em; }   /* two lines kept: nothing below moves when the seconds and the cost arrive */
+    .rd-chat { height: 480px; scroll-margin-top: 120px; position: static; }
   }
 </style>

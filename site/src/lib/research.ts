@@ -23,12 +23,12 @@ export interface DocSet { id: string; title: string; documents: number; pages: n
 export interface Q { set: string; kind: string; depth: string; who?: string; question: string }
 export const RESEARCH = data as unknown as { note: string; scored_by: string; bar_measured_on: string; sets: DocSet[]; runs: Run[]; questions: Q[] }
 
-const MODELS: Record<string, string> = { 'anthropic:claude-haiku-5-5': 'Claude Haiku 5.5', 'openai:gpt-6-luna': 'Luna (gpt-6-luna)' }
+const MODELS: Record<string, string> = { 'anthropic:claude-haiku-5-5': 'Claude Haiku 5.5', 'openai:gpt-6-luna': 'gpt-6-luna' }
 export const modelName = (id: string) => MODELS[id] ?? id.split(':').pop()!
 
 /** The page's own words for each line of the bar (the report's check names are the keys). */
 const CHECKS: Record<string, string> = {
-  'deep: required points covered': 'Long answers: the points a right answer must have',
+  'deep: required points covered': 'Long answers: required points covered',
   'deep: the weakest scenario': 'Long answers: the worst single question',
   'answers with an invented number': 'Answers with a number that is not in the passage they cite',
   'statements without a source': 'Statements with no source',
@@ -36,7 +36,7 @@ const CHECKS: Record<string, string> = {
   'quick: at most 80 words': 'Short answers: at most 80 words',
   'quick: first word p50, s': 'Short answers: first word, median',
   'quick: first word p95, s': 'Short answers: first word, 95th percentile',
-  'the depth chosen is right': 'The right depth chosen for the question',
+  'the depth chosen is right': 'Short or long chosen correctly',
   'pairs: both depths right': 'The same question asked short and long: both right',
   '"the documents do not say" recognised': 'Says "the documents do not say" when they do not',
   'a conflict named': 'Two passages that disagree: the conflict is named',
@@ -63,22 +63,28 @@ const barText = (bar: string) => bar
   .replace(/^>=\s*/, 'at least ')
 
 export interface Row { label: string; bar: string; cells: { text: string; met: boolean | null }[] }
-/** The bar, one row per check, one cell per run. */
-export function barRows(): Row[] {
+const CONFLICT = 'a conflict named'
+function rows(measured: boolean): Row[] {
   const [first] = RESEARCH.runs
-  return first.bar.map((b, i) => ({
-    label: CHECKS[b.check] ?? b.check, bar: barText(b.bar),
-    cells: RESEARCH.runs.map((r) => ({ text: shown(r.bar[i]), met: r.bar[i].met })),
-  }))
+  return first.bar.map((b, i) => ({ b, i })).filter(({ b, i }) => b.check !== CONFLICT && RESEARCH.runs.some((r) => r.bar[i].met !== null) === measured)
+    .map(({ b, i }) => ({
+      label: CHECKS[b.check] ?? b.check, bar: barText(b.bar),
+      cells: RESEARCH.runs.map((r) => ({ text: shown(r.bar[i]), met: r.bar[i].met })),
+    }))
 }
+/** The bar's checks that today's researcher can be measured on: one row per check, one cell per run. */
+export const barRows = (): Row[] => rows(true)
+/** The checks that wait for the new researcher (it reports what they need). */
+export const laterRows = (): Row[] => rows(false)
+const conflictBar = () => barText(RESEARCH.runs[0].bar.find((b) => b.check === CONFLICT)?.bar ?? '')
 /** Speed, cost and the contradictions count: measured, with no bar of their own. */
 export function factRows(): Row[] {
   const rs = RESEARCH.runs
   const row = (label: string, f: (r: Run) => string): Row => ({ label, bar: '', cells: rs.map((r) => ({ text: f(r), met: null })) })
   return [
-    row('Passages that disagree, all answers: the conflict is named', (r) => `${r.contradictions.found} of ${r.contradictions.found + r.contradictions.missed} answers`),
-    row('Short answer: seconds (median / 90th percentile)', (r) => `${r.seconds.quick.median} / ${r.seconds.quick.p90}`),
-    row('Long answer: seconds (median / 90th percentile)', (r) => `${r.seconds.deep.median} / ${r.seconds.deep.p90}`),
+    { ...row('Two passages that disagree: the conflict is named', (r) => `${r.contradictions.found} of ${r.contradictions.found + r.contradictions.missed} answers`), bar: conflictBar() },
+    row('Short answers: seconds (median / 90th percentile)', (r) => `${r.seconds.quick.median} / ${r.seconds.quick.p90}`),
+    row('Long answers: seconds (median / 90th percentile)', (r) => `${r.seconds.deep.median} / ${r.seconds.deep.p90}`),
     row('Cost per short answer', (r) => money(r.usd.quick)),
     row('Cost per long answer', (r) => money(r.usd.deep)),
   ]
@@ -95,9 +101,11 @@ export function researchMarkdown(): string {
   const head = `| Check | ${rs.map((r) => modelName(r.model)).join(' | ')} | The bar |\n| --- | ${rs.map(() => '---').join(' | ')} | --- |`
   const line = (r: Row) => `| ${r.label} | ${r.cells.map((c) => c.text + (c.met === true ? ' (met)' : c.met === false ? ' (not met)' : '')).join(' | ')} | ${r.bar || 'none'} |`
   return [
-    `The researcher as it is today ("before"), on ${t.documents} invented documents (${t.pages} pages) in ${RESEARCH.sets.length} sets: ${t.scenarios} questions, ${t.passes} passes each, ${t.answers} answers a model. Measured on ${longDate(t.date)}. Scored by code checks only; no model judged the answers. The bar is measured on ${RESEARCH.bar_measured_on}.`,
+    `${rs.map((r) => `${modelName(r.model)} does not meet ${r.bar.filter((b) => b.met === false).length} of the ${r.bar.filter((b) => b.met !== null).length} checks measured today`).join('; ')}. This is the "before" point: a starting point, not a ranking of the two models.`,
+    '',
+    `This is the researcher as it is today. ${t.scenarios} questions on ${t.documents} invented documents (${t.pages} pages) in ${RESEARCH.sets.length} sets. Each question was asked ${t.passes} times: ${t.answers} answers per model. Measured on ${longDate(t.date)}. Code checks scored every answer; no model judged them. The bar is the target for each check, measured on ${RESEARCH.bar_measured_on}.`,
     '', head, ...barRows().map(line), ...factRows().map(line), '',
-    `${rs.map((r) => `${modelName(r.model)} misses ${r.bar.filter((b) => b.met === false).length} of the ${r.bar.filter((b) => b.met !== null).length} checks measured today`).join('; ')}. That is what "before" records: a starting point, not a ranking of the two models.`,
+    'Not measured yet (they come with the new researcher):', '', ...laterRows().map((r) => `- ${r.label}: ${r.bar}`),
     '', RESEARCH.note,
     '', ...rs.map((r) => `- ${modelName(r.model)}: \`${r.command}\`, code ${r.commit}`),
   ].join('\n')
