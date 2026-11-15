@@ -18,6 +18,8 @@ export const BLOCKS_CSS = `
 .bk-avatar { display: grid; place-items: center; font-size: 20px; font-weight: 700; color: var(--agui-ink-2); }
 .bk-place-t { flex: 1; min-width: 0; }
 .bk-rating { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* an answered card: its title or place, then the result line, the same 12 px apart as a question card's */
+.bk-title + .ok-line, .bk-place + .ok-line { margin-top: 12px; }
 .bk-big { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .bk-stat.tone-ok .bk-big, .bk-stat.tone-danger .bk-big, .bk-stat.tone-accent .bk-big { color: inherit; } .bk-stat[class*=tone-] .muted { color: var(--agui-ink-2); }
 .bk-arrow { margin: 0 8px; color: var(--agui-ink-3); }
