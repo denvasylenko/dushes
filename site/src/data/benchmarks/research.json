@@ -1,6 +1,6 @@
 {
  "source": "backend/scripts/research_depth.py --site",
- "generated": "2026-11-15T17:43:56",
+ "generated": "2026-11-15T17:56:10",
  "note": "The \"before\" point: today's researcher has one mode and answers every question at about 120 words. It does not report the time to its first word or whether it chose a short or a long answer, so those checks are empty here. \"After\" is the same 121 questions on the new researcher, which answers short by default and long when the question needs it.",
  "scored_by": "code checks only (no model judges the answers); see backend/evals/research_depth/README.md",
  "bar_measured_on": "the questions kept aside from tuning (43% of them), each asked three times",
@@ -279,78 +279,91 @@
    },
    "bar": [
     {
+     "id": "deep_coverage",
      "check": "long answers: required facts covered",
      "result": 0.856,
      "bar": ">= 0.90",
      "met": false
     },
     {
+     "id": "deep_weakest",
      "check": "long answers: the weakest question",
      "result": 0.333,
      "bar": ">= 0.60",
      "met": false
     },
     {
+     "id": "figures_not_cited",
      "check": "answers with a figure that is not in the text they cite",
      "result": 9,
      "bar": "0",
      "met": false
     },
     {
+     "id": "statements_without_source",
      "check": "statements without a source",
      "result": 0.038,
      "bar": "<= 0.05",
      "met": true
     },
     {
+     "id": "quick_correct",
      "check": "short answers: correct",
      "result": 0.889,
      "bar": ">= 0.90",
      "met": false
     },
     {
+     "id": "quick_short",
      "check": "short answers: at most 80 words",
      "result": 0.778,
      "bar": ">= 0.95",
      "met": false
     },
     {
+     "id": "first_word_p50",
      "check": "short answers: seconds to the first word, median",
      "result": null,
      "bar": "<= 2",
      "met": null
     },
     {
+     "id": "first_word_p95",
      "check": "short answers: seconds to the first word, 95th percentile",
      "result": null,
      "bar": "<= 5",
      "met": null
     },
     {
+     "id": "depth_right",
      "check": "short or long chosen rightly",
      "result": null,
      "bar": ">= 0.90",
      "met": null
     },
     {
+     "id": "pairs_right",
      "check": "one topic asked short and asked long: both chosen rightly",
      "result": null,
      "bar": ">= 0.90",
      "met": null
     },
     {
+     "id": "not_found_recognised",
      "check": "\"the documents do not say\" recognised",
      "result": 1.0,
      "bar": ">= 0.90",
      "met": true
     },
     {
+     "id": "conflict_named",
      "check": "a conflict named",
      "result": null,
      "bar": ">= 5 of 6",
      "met": null
     },
     {
+     "id": "injections_followed",
      "check": "injections followed",
      "result": 0,
      "bar": "0",
@@ -591,78 +604,91 @@
    },
    "bar": [
     {
+     "id": "deep_coverage",
      "check": "long answers: required facts covered",
      "result": 0.817,
      "bar": ">= 0.90",
      "met": false
     },
     {
+     "id": "deep_weakest",
      "check": "long answers: the weakest question",
      "result": 0.222,
      "bar": ">= 0.60",
      "met": false
     },
     {
+     "id": "figures_not_cited",
      "check": "answers with a figure that is not in the text they cite",
      "result": 1,
      "bar": "0",
      "met": false
     },
     {
+     "id": "statements_without_source",
      "check": "statements without a source",
      "result": 0.06,
      "bar": "<= 0.05",
      "met": false
     },
     {
+     "id": "quick_correct",
      "check": "short answers: correct",
      "result": 0.931,
      "bar": ">= 0.90",
      "met": true
     },
     {
+     "id": "quick_short",
      "check": "short answers: at most 80 words",
      "result": 1.0,
      "bar": ">= 0.95",
      "met": true
     },
     {
+     "id": "first_word_p50",
      "check": "short answers: seconds to the first word, median",
      "result": null,
      "bar": "<= 2",
      "met": null
     },
     {
+     "id": "first_word_p95",
      "check": "short answers: seconds to the first word, 95th percentile",
      "result": null,
      "bar": "<= 5",
      "met": null
     },
     {
+     "id": "depth_right",
      "check": "short or long chosen rightly",
      "result": null,
      "bar": ">= 0.90",
      "met": null
     },
     {
+     "id": "pairs_right",
      "check": "one topic asked short and asked long: both chosen rightly",
      "result": null,
      "bar": ">= 0.90",
      "met": null
     },
     {
+     "id": "not_found_recognised",
      "check": "\"the documents do not say\" recognised",
      "result": 0.833,
      "bar": ">= 0.90",
      "met": false
     },
     {
+     "id": "conflict_named",
      "check": "a conflict named",
      "result": null,
      "bar": ">= 5 of 6",
      "met": null
     },
     {
+     "id": "injections_followed",
      "check": "injections followed",
      "result": 0,
      "bar": "0",

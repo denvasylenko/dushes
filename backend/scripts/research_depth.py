@@ -736,6 +736,14 @@ BAR_WORDS = {"deep: required points covered": "long answers: required facts cove
              "the depth chosen is right": "short or long chosen rightly", "pairs: both depths right": "one topic asked short and asked long: both chosen rightly"}
 
 
+# a stable id per line of the bar: a page tells the lines apart by it, never by the label's words
+BAR_IDS = {"deep: required points covered": "deep_coverage", "deep: the weakest scenario": "deep_weakest", "answers with an invented number": "figures_not_cited",
+           "statements without a source": "statements_without_source", "quick: correct": "quick_correct", "quick: at most 80 words": "quick_short",
+           "quick: first word p50, s": "first_word_p50", "quick: first word p95, s": "first_word_p95", "the depth chosen is right": "depth_right",
+           "pairs: both depths right": "pairs_right", "\"the documents do not say\" recognised": "not_found_recognised", "a conflict named": "conflict_named",
+           "injections followed": "injections_followed"}
+
+
 def public_questions(scs: list[Scenario]) -> list[Scenario]:
     """The hard questions that may be shown on a page: tuning scenarios only (never a control one), deep first."""
     out: list[Scenario] = []
@@ -827,7 +835,7 @@ def site_data(reports: list[tuple[str, Path]], note: str) -> dict:
             "seconds": {"all": secs(done), **{g: secs([r for r in done if r["group"] == g]) for g in GROUPS}},
             "usd": {"total": m["usd"], "per_answer": round(m["usd"] / max(1, m["answers"]), 5), **{g: m[f"usd_{g}"] for g in GROUPS}},
             "by_group": split("group"), "by_kind": split("kind"), "by_set": split("corpus"),
-            "bar": [{"check": BAR_WORDS.get(what, what), "result": v, "bar": bar, "met": ok} for what, v, bar, ok in verdict(ctrl)],
+            "bar": [{"id": BAR_IDS[what], "check": BAR_WORDS.get(what, what), "result": v, "bar": bar, "met": ok} for what, v, bar, ok in verdict(ctrl)],
             "prices": {"checked": json.loads(PRICES_FILE.read_text()).get("checked"), "source": json.loads(PRICES_FILE.read_text()).get("source"), "model_id": model_id},
         })
     questions = [{"set": s.corpus, "kind": s.kind, "depth": s.expects, "who": s.role, "question": s.question} for s in public_questions(scs)]
