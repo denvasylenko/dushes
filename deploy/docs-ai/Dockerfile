@@ -18,6 +18,8 @@ COPY openspec openspec
 COPY site site
 # the recipe pages show the files QA runs, read at build time (site/src/components/recipe/RecipeFiles.astro)
 COPY backend/demo/recipes backend/demo/recipes
+# the researcher pages show its test documents in full, read at build time (site/src/lib/research-docs.ts)
+COPY backend/demo/research_corpora backend/demo/research_corpora
 COPY frontend frontend
 # the one-script build and its on-demand files next to it: language and theme packs (agui-chat.lang-*.js,
 # agui-chat.theme-*.js), the markup editor (agui-chat.editor.js), the shortcut tooltip (agui-chat.tip.js), the field highlight (agui-chat.highlight.js), the card blocks (agui-chat.blocks.js) and Chart.js
