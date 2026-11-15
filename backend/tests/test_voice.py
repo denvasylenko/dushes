@@ -162,6 +162,8 @@ def test_what_is_heard_becomes_a_run_and_the_answer_is_spoken():
         live.push(type="session.input_transcript.delta", delta="loan cost?")
         live.push(type="session.delegation.created", delegation={"id": "item_1", "type": "delegation", "target": "client"})
         events = talks.events("live_1")
+        growing = [await asyncio.wait_for(events.__anext__(), 1) for _ in range(2)]
+        assert [(e["type"], e["delta"]) for e in growing] == [("hearing", "What does a car "), ("hearing", "loan cost?")]
         heard = await asyncio.wait_for(events.__anext__(), 1)
         assert heard["type"] == "heard" and heard["text"] == "What does a car loan cost?" and "t_ms" in heard
         # the client sends the ordinary run with that text; its events pass the run route, which reports them here

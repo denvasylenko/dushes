@@ -444,6 +444,7 @@ from formguide import voice as _voice  # noqa: E402
 
 VOICE = _voice.Talks(_voice.VoiceConfig.from_env(), title="the Dushes demo")
 if VOICE.config.enabled:
+    from fastapi import HTTPException, Request  # noqa: E402
     from fastapi.responses import HTMLResponse  # noqa: E402
 
     app.include_router(_voice.create_voice_router(_voice.watch(VOICE)), prefix="/voice")
@@ -451,6 +452,14 @@ if VOICE.config.enabled:
     _CLIPS = os.environ.get("VOICE_LAB_CLIPS")   # recorded clips for tests without a microphone (the lab's ?clip=)
     if _CLIPS and Path(_CLIPS).is_dir():
         app.mount("/voice-lab/clips", StaticFiles(directory=_CLIPS), name="voice-clips")
+
+    @app.get("/voice/open")
+    def voice_open(request: Request) -> dict:
+        """How many voice conversations are open: for the local dev host's own script, which must not restart the
+        server under one. Answered to this machine only; from anywhere else the route does not exist."""
+        if not request.client or request.client.host not in ("127.0.0.1", "::1"):
+            raise HTTPException(404)
+        return {"open": len(VOICE.meter.open)}
 
     @app.get("/voice-lab/", response_class=HTMLResponse)
     def voice_lab() -> str:   # the owner's first test page: the demo form with a microphone (not the product's UI)

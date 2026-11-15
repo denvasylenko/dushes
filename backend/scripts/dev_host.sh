@@ -80,6 +80,13 @@ while true; do
   if [ -n "$HEAD_NOW" ] && [ "$HEAD_NOW" != "$BUILT" ]; then
     say "building ${HEAD_NOW:0:7}"
     if build "$HEAD_NOW"; then
+      # never restart under a voice conversation: wait until none is open (at most the six minutes one may last)
+      for _ in $(seq 1 72); do
+        talking="$(curl -s --max-time 2 "http://127.0.0.1:$PORT/voice/open" 2>/dev/null | grep -o '"open": *[0-9]*' | grep -o '[0-9]*$')"
+        [ -z "$talking" ] || [ "$talking" = "0" ] && break
+        say "a voice conversation is open; the restart waits"
+        sleep 5
+      done
       stop
       serve
       BUILT="$HEAD_NOW"

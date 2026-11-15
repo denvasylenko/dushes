@@ -349,6 +349,7 @@ class Talks:
                 if t == "session.input_transcript.delta":
                     state["heard"] += ev.get("delta", "")
                     self.meter.report(talk_id, heard=True)
+                    self._emit(state, {"type": "hearing", "delta": ev.get("delta", "")})   # their words, as they speak
                 elif t == "session.delegation.created":   # the voice wants the agent: hand over what was said
                     text, state["heard"] = state["heard"].strip(), ""
                     state["pending"] = (ev.get("delegation") or {}).get("id")
@@ -413,9 +414,11 @@ class Talks:
         if not state:
             return
         self._emit(state, {"type": "result", "text": text})
+        # the answer belongs to the request the voice handed over; a typed message's answer belongs to none
+        asked, state["pending"] = state["pending"], None
         try:
             await state["ws"].send(_json({"type": "session.commentary.append", "event_id": f"result_{secrets.token_hex(4)}",
-                                          "delegation_id": state["pending"], "content": text}))
+                                          "delegation_id": asked, "content": text}))
         except Exception:  # noqa: BLE001
             await self.end(talk_id, "lost")
 
