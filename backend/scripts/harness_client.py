@@ -306,7 +306,12 @@ class Visit:
         self.leads: list[dict] = []                # per question card with options: its labels and the text left on the page in that run
         self.said: list[tuple[str, str]] = []      # (message id, text) of every message the user sent
         self.ticks: set[str] = set()               # the consents this guest ticks themself (a scenario's answers: {name: true})
+        self.answers_in_words = False              # a field card is left open: the person answers it with their next message
         self.go(path)
+
+    def as_voice(self, prefix: str) -> None:
+        """This visit's thread counts as a voice thread on a stand started with VOICE_AS_IF=<prefix> (no session)."""
+        self.thread = prefix + self.thread
 
     # ------------------------------------------------------------ the page
     def go(self, path: str) -> None:
@@ -474,6 +479,10 @@ class Visit:
             self._refused = None
             self._resume({"answer": reply, **({"config": self.form.config, "ui": self.form.ui} if filled else {}),
                           **({"rejected": refused} if refused else {})}, depth)
+        elif "changes" in interrupt and self.form and self.answers_in_words and not interrupt.get("quiet"):
+            # the person does not tap: the card stays open and their next message ("yes") arrives while it waits
+            self.log.append("   \U0001f0cf card left open (the person answers in words): "
+                            + "; ".join(f"{c.get('label')} = {c.get('display')}" for c in interrupt["changes"]))
         elif "changes" in interrupt and self.form:
             # a consent row is only the person's own tick: accepting the card leaves it out unless this guest gives it
             ch = [c for c in interrupt["changes"] if not c.get("consent") or c["name"] in getattr(self, "ticks", ())]

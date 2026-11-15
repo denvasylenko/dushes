@@ -242,3 +242,21 @@ def test_a_reply_that_chooses_the_city_itself_fails_and_one_that_asks_passes():
     refused = run("\U0001f916 I won't put Saint Petersburg in. That would give the bank an address that isn't yours.")
     assert list(near.values()) == [True, True] and list(refused.values()) == [False, True]
     assert list(chose.values()) == [False, False] and list(asked.values()) == [True, True] and list(card.values()) == [True, True]
+
+
+def test_a_field_card_shown_again_after_a_yes_fails_the_check():
+    import evals
+    from types import SimpleNamespace as NS
+    sc = evals.load_scenario(evals.EVALS / "card_yes_in_words_applies.yaml")
+
+    class Empty(NS):
+        def __getattr__(self, name):
+            return []
+    card = {"type": "set_fields", "changes": [{"name": "loan_amount", "value": 50000}]}
+    other = {"type": "set_fields", "changes": [{"name": "loan_term", "value": {"id": "36"}}]}
+    def run(*cards):
+        got = {c["check"]: c["ok"] for c in evals.checks(sc, Empty(log=[], forms={}, form=None, cards=list(cards)))}
+        return got["no field card is shown twice in a row"]
+    assert run(card, card) is False and run(card, card, card) is False
+    assert run(card) is True and run(card, other) is True and run(card, {"type": "ask"}, other) is True
+

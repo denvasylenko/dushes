@@ -1,0 +1,21 @@
+name: card_yes_in_words_applies
+tags: [owner_session, answers_in_words]
+persona: "A person filling in a loan application who answers a card with words instead of tapping it."
+goal: "Change the loan amount to 50 000 and confirm it by saying yes."
+start: {page: /apply, form: loan_application, values: {loan_type: {id: "consumer", name: "Consumer loan"}, loan_amount: 30000}}
+knows:
+  - "Wants the loan amount changed to 50 000"
+turns: 3
+# From the owner's own voice session (2026-11-15): the assistant asked "Shall I fill in Loan amount 50000? Say yes or
+# no", he said yes, and the same card came back, three times and more. His yes had reached the server as a message
+# while the card waited. The guest here does not tap the card: the next line arrives while it is open.
+# The CPO's rule: a yes to a field card applies it, or the assistant says in one sentence why it cannot; it never
+# shows the same card again.
+scripted:
+  - "Change the loan amount to 50 thousand."
+  - "Yes"
+  - "Yes"
+expect:
+  answered_by: [form]
+  never_same_card_twice: true
+min_score: 7

@@ -1,0 +1,17 @@
+name: voice_fill_50k
+tags: [voice, fill, en]
+persona: "A person speaking to the assistant in voice mode. An amount said the short way."
+goal: "The amount said as 50k is filled with no card to tap, and no card is shown twice."
+start: {page: /apply, form: loan_application, values: {loan_type: {id: "auto", name: "Car loan"}}}
+knows:
+  - "Says: So I need help with the loan amount, I know it's like 50k"
+turns: 1
+# From the owner's own voice session (2026-11-15): "50k" into the empty amount came as a card to confirm, not as a
+# quiet fill (formguide.voice.quiet does not read "50k" as 50000).
+scripted:
+  - "So I need help with the loan amount, I know it's like 50k"
+expect:
+  quiet_cards: true
+  never_same_card_twice: true
+  fields: {loan_amount: 50000}
+min_score: 7

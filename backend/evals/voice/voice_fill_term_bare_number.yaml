@@ -2,7 +2,7 @@ name: voice_fill_term_bare_number
 tags: [voice, fill, en]
 persona: "A person speaking to the assistant in voice mode. A number said without its unit."
 goal: "The term is filled from a bare number, with no card to tap."
-start: {page: /apply, form: loan_application, values: {loan_type: "consumer", loan_amount: 500000}}
+start: {page: /apply, form: loan_application, values: {loan_type: {id: "consumer", name: "Consumer loan"}, loan_amount: 500000}}
 knows:
   - "Says: Like, okay, let's try 36."
 turns: 1
