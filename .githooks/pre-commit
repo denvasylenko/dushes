@@ -1,0 +1,43 @@
+#!/bin/sh
+# Pre-commit check for a checkout shared by several sessions.
+# It stops a commit built from a stale index, which silently reverts other people's files
+# (this happened on 2026-11-14 in the Cheese repo and on 2026-11-15 here).
+#
+# How to commit:
+#   H=$(git rev-parse HEAD); export GIT_INDEX_FILE=$(mktemp); git read-tree $H
+#   git add <your paths>
+#   HF_HEAD=$H HF_PATHS="<your paths, space separated>" git commit -m "..."
+#   unset GIT_INDEX_FILE; git restore --staged <your paths>
+#
+# HF_PATHS  files or folders (prefixes) you are changing. Any other file in the commit stops it.
+# HF_HEAD   the HEAD your index was built from. If HEAD has moved since, the commit stops: rebuild the index.
+# Build the index right before the commit, never before a long build or test run.
+# Bypass (owner or CTO only, with the reason in the commit message): HF_SKIP=1. Merge commits are not checked.
+
+[ "$HF_SKIP" = "1" ] && exit 0
+git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 && exit 0
+
+fail() { printf '\npre-commit: %s\nSee the comment at the top of .githooks/pre-commit.\n\n' "$1" >&2; exit 1; }
+
+[ -n "$HF_PATHS" ] || fail 'HF_PATHS is not set. Name your paths: HF_HEAD=$H HF_PATHS="path1 path2" git commit ...'
+[ -n "$HF_HEAD" ] || fail 'HF_HEAD is not set. Pass the HEAD your index was built from: H=$(git rev-parse HEAD) ... HF_HEAD=$H'
+
+now=$(git rev-parse -q --verify HEAD 2>/dev/null)
+[ "$now" = "$HF_HEAD" ] || fail "HEAD has moved ($HF_HEAD -> $now): someone committed. Rebuild your index from the new HEAD."
+
+bad=""
+nl='
+'
+for f in $(git diff --cached --name-only --no-renames); do
+  ok=0
+  for p in $HF_PATHS; do
+    p=${p%/}
+    case "$f" in "$p"|"$p"/*) ok=1; break ;; esac
+  done
+  [ $ok = 1 ] || bad="$bad$nl  $f"
+done
+
+[ -z "$bad" ] || fail "the commit contains files outside HF_PATHS:$bad
+The index was probably built from an old HEAD. Rebuild it: git read-tree HEAD, then git add only your paths."
+
+exit 0
