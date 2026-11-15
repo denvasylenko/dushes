@@ -223,6 +223,13 @@ A refused `navigate` or `open_form` SHALL return what that page says: the tab or
 - **WHEN** the person asks what car insurance costs and the model calls `navigate` for the insurance page's price tab
 - **THEN** nothing opens, the tool result carries the tab's text, and the answer gives the price before the offer
 
+### Requirement: A page is read without being opened
+The site agent SHALL have a read-only tool, `read_page` (a page path, optionally a tab, accordion or section id), that returns what is written there and sends no directive and no offer. The agent's instructions SHALL require reading the section that would hold an answer before saying it was not found or offering to open that section.
+
+#### Scenario: The fee is in a section of another page
+- **WHEN** the person asks what a renewal costs and the site contents list a Fees section on the renewal page
+- **THEN** the agent reads that section, answers with the fee, and the person stays on their page
+
 ### Requirement: An offer made in words counts
 An answer that ends with a question SHALL count as an offer, whether or not a move was refused in that turn: the next message may be a plain yes to it. A one-word "open it" in the product's languages SHALL count as a direct request.
 

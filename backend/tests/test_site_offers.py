@@ -101,3 +101,20 @@ def test_a_yes_to_an_offer_made_in_words_opens(site, model):
     model.script = [say("", ("o3", "open_form", {"form_id": "car_insurance", "note": "x"})), say("Shall I open it?")]
     ev = run(site, "yw2", message="ok", state={"page": {"path": "/"}})
     assert _events(ev, "site_directive") == []
+
+
+def test_a_page_is_read_without_being_opened(site, model):
+    """QA's rerun on b758cd8: on a question the model no longer calls navigate, so the text a refused move returns
+    was never asked for (the fact lost in 6 of 21 answers). read_page is the way to read that does not look like
+    moving."""
+    model.script = [say("", ("r1", "read_page", {"path": "/insurance", "tab": "levels"})),
+                    say("Third-party liability starts from 300 a year. Want me to open Car insurance?")]
+    ev = run(site, "rp1", message="what does car insurance cost?", state={"page": {"path": "/"}})
+    assert _events(ev, "site_directive") == [] and _events(ev, "site_offer") == []   # a read moves and offers nothing
+    result = next(m.content for m in model.calls[-1] if getattr(m, "tool_call_id", None) == "r1")
+    assert "from 300" in result and "Drivers under 21" not in result and "Not opened" not in result
+    assert "read_page" in [t["name"] for t in model.tools[-1]] if getattr(model, "tools", None) else True
+
+    model.script = [say("", ("r2", "read_page", {"path": "/nowhere"})), say("I could not find that page.")]
+    run(site, "rp2", message="what is on the nowhere page?", state={"page": {"path": "/"}})
+    assert "There is no page" in next(m.content for m in model.calls[-1] if getattr(m, "tool_call_id", None) == "r2")

@@ -146,6 +146,10 @@ Each turn
 1. Decide what the user wants: a fact, an explanation, a place on the site, or to do something a form does.
 2. A fact the passages below settle: answer and name the page or document. A term, partner, condition or
    policy they do not settle: call ask_documents first (search_site when the answer may be on another page).
+   When the site contents list a page, tab or section that would hold the answer ("Fees", "Prices", "Before
+   you start") and you do not have its text, call read_page for it: it gives you what is written there and
+   moves nobody. Never say you could not find something, or offer to open a section for the answer, before
+   you have read that section.
    Before you say something is not on the site, call search_site once with other words ("opening hours",
    "prices"), and look at the site contents for the page that would hold it. Still nothing: say so and
    offer the closest page. The site's pages are a source as good as the documents: what a page or its
@@ -208,6 +212,14 @@ TOOLS: list[dict[str, Any]] = [
     {"name": "search_site", "description": "Search the site's pages again with other words.",
      "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
     {"name": "navigate", "description": "Open a page of the site, optionally a tab, accordion or section on it.",
+     "parameters": {"type": "object", "properties": {
+         "path": {"type": "string", "description": "a page path from the site contents, e.g. /pricing"},
+         "tab": {"type": "string", "description": "a tab or accordion id on that page"},
+         "section": {"type": "string", "description": "a section id on that page"}},
+         "required": ["path"]}},
+    {"name": "read_page", "description": "Read what a page, or one tab, accordion or section of it, says, without "
+                                  "opening it: the person stays where they are. Use it to answer a question "
+                                  "from a section the site contents list.",
      "parameters": {"type": "object", "properties": {
          "path": {"type": "string", "description": "a page path from the site contents, e.g. /pricing"},
          "tab": {"type": "string", "description": "a tab or accordion id on that page"},
@@ -338,6 +350,10 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                     more = [c for c in site.search(str(args.get("query") or ""), k=4) if c.id not in seen]
                     seen.update(c.id for c in more)
                     result = passages(site, more) if more else "Nothing more found."
+                elif name == "read_page":
+                    target = site.page(str(args.get("path") or ""))
+                    result = (reads(target, args).strip() or f"{target.title} has no text of its own." if target
+                              else f"There is no page {args.get('path')!r}. Use a path from the site contents.")
                 elif name == "navigate":
                     result, d = directive(site, args)
                     if d and not may_go:   # a question: the answer first, the page as an offer
