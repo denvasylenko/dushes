@@ -8,7 +8,56 @@
    "scenarios": 26,
    "created": "2026-11-15",
    "file": "backend/evals/sets/pressure-v1.txt",
-   "runs": []
+   "runs": [
+    {
+     "n": 1,
+     "date": "2026-11-15",
+     "commit": "9b93b4a",
+     "agent_model": "anthropic:claude-haiku-5-5",
+     "kind": "main",
+     "repeat": 3,
+     "passed": 77,
+     "total": 78,
+     "usd": 0.301,
+     "report": "backend/scripts/runs/evals-20261115-compare-haiku-fixed.json"
+    },
+    {
+     "n": 2,
+     "date": "2026-11-15",
+     "commit": "9b93b4a",
+     "agent_model": "anthropic:claude-haiku-5-5",
+     "kind": "live",
+     "repeat": 1,
+     "passed": 24,
+     "total": 26,
+     "usd": 0.121,
+     "report": "backend/scripts/runs/evals-20261115-compare-haiku-live.json"
+    },
+    {
+     "n": 3,
+     "date": "2026-11-15",
+     "commit": "9b93b4a",
+     "agent_model": "openai:gpt-6-luna",
+     "kind": "main",
+     "repeat": 3,
+     "passed": 67,
+     "total": 78,
+     "usd": 0.212,
+     "report": "backend/scripts/runs/evals-20261115-compare-luna-fixed.json"
+    },
+    {
+     "n": 4,
+     "date": "2026-11-15",
+     "commit": "9b93b4a",
+     "agent_model": "openai:gpt-6-luna",
+     "kind": "live",
+     "repeat": 1,
+     "passed": 21,
+     "total": 26,
+     "usd": 0.079,
+     "report": "backend/scripts/runs/evals-20261115-compare-luna-live.json"
+    }
+   ]
   },
   {
    "set": "core",
@@ -17,7 +66,32 @@
    "scenarios": 10,
    "created": "2026-11-15",
    "file": "backend/evals/sets/core-v1.txt",
-   "runs": []
+   "runs": [
+    {
+     "n": 1,
+     "date": "2026-11-15",
+     "commit": "9b93b4a",
+     "agent_model": "anthropic:claude-haiku-5-5",
+     "kind": "main",
+     "repeat": 3,
+     "passed": 25,
+     "total": 30,
+     "usd": 0.058,
+     "report": "backend/scripts/runs/evals-20261115-compare-haiku-fixed.json"
+    },
+    {
+     "n": 2,
+     "date": "2026-11-15",
+     "commit": "9b93b4a",
+     "agent_model": "openai:gpt-6-luna",
+     "kind": "main",
+     "repeat": 3,
+     "passed": 22,
+     "total": 30,
+     "usd": 0.039,
+     "report": "backend/scripts/runs/evals-20261115-compare-luna-fixed.json"
+    }
+   ]
   },
   {
    "set": "heldout",
@@ -26,7 +100,32 @@
    "scenarios": 31,
    "created": "2026-11-15",
    "file": "backend/evals/sets/heldout-v1.txt",
-   "runs": []
+   "runs": [
+    {
+     "n": 1,
+     "date": "2026-11-15",
+     "commit": "9b93b4a",
+     "agent_model": "anthropic:claude-haiku-5-5",
+     "kind": "main",
+     "repeat": 3,
+     "passed": 81,
+     "total": 93,
+     "usd": 0.452,
+     "report": "backend/scripts/runs/evals-20261115-compare-haiku-fixed.json"
+    },
+    {
+     "n": 2,
+     "date": "2026-11-15",
+     "commit": "9b93b4a",
+     "agent_model": "openai:gpt-6-luna",
+     "kind": "main",
+     "repeat": 3,
+     "passed": 70,
+     "total": 93,
+     "usd": 0.313,
+     "report": "backend/scripts/runs/evals-20261115-compare-luna-fixed.json"
+    }
+   ]
   }
  ]
 }
