@@ -24,6 +24,9 @@ SAMPLES = Path(__file__).resolve().parents[1] / "demo" / "samples"
 _KB_READY: set[str] = set()
 
 
+MAX_CHAIN = 60   # cards answered one after another in one turn: a long form asked field by field is not an error; a runaway loop is
+
+
 class Session:
     def __init__(self, name: str, form_id: str, http: httpx.Client | None = None):
         self.name = name
@@ -347,8 +350,8 @@ class Visit:
         self._run({"threadId": self.thread, "state": self.state(), "forwardedProps": {"command": {"resume": reply}}}, depth + 1)
 
     def _run(self, body: dict, depth: int = 0) -> None:
-        if depth > 20:   # a chain of question cards answered one after another
-            self.errors.append("more than 20 runs in a row without the user")
+        if depth > MAX_CHAIN:   # a chain of question cards answered one after another
+            self.errors.append(f"more than {MAX_CHAIN} runs in a row without the user")
             return
         texts: dict[str, str] = {}
         calls: dict[str, list] = {}
