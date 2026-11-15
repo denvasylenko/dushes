@@ -17,7 +17,7 @@ pip install "formguide[research]"      # included in formguide[all]
 
 ```yaml title="formguide.yaml"
 models:
-  agent: "anthropic:claude-haiku-5-5"           # required whenever `models:` is written out
+  agent: "anthropic:claude-haiku-5-5"           # left out, it falls back to the top-level `model`
   research: "anthropic:claude-sonnet-5-5"       # the researcher; default: the agent model
 actions:
   ask_documents: auto                           # auto: only when there are documents; true | false

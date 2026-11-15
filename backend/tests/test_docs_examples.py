@@ -38,5 +38,6 @@ def test_the_checks_catch_a_wrong_example():
     assert not c.check_shell('pip install "formguide[all]"', c.cli_flags())
     # the real loader runs each configuration example: a value it refuses is reported in its own words
     assert c.run_config("model: x\nsuggestions: {enabled: true, maxx: 3}\n")[0]
-    assert c.run_config("model: x\nmodels:\n  research: y\n")[0]          # `models:` without `agent`
+    assert c.run_config("models:\n  research: y\n")[0]                    # no agent model anywhere: "models.agent is required"
+    assert c.run_config("model: x\nmodels:\n  research: y\n") == ([], "")   # the agent falls back to the top-level `model`
     assert c.run_config("model: x\ntools: ['my_app.tools:check']\nconfirm_tools: [check]\n") == ([], "")

@@ -90,7 +90,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 
 | Key | Default | Meaning |
 |---|---|---|
-| `model` / `models` | see above | one model for everything (`model`), or one per role under `models`: `agent` (required whenever `models` is written out), `research`, `compile`, `extract` |
+| `model` / `models` | see above | one model for everything (`model`), or one per role under `models`: `agent` (left out, it takes the top-level `model`; with neither, the loader says `models.agent is required`), `research`, `compile`, `extract` |
 | `data_dir` | `data` | where Dushes keeps its own files: learned field dependencies (`deps/`), registered layouts (`layouts/`), documents (`kb/`), attachments (`attachments/`), transcripts (`transcripts/`) unless set elsewhere |
 | `components.containers` | `Tabs: tabs, Tab: tab, Accordion: accordion, Section: section, Form: form` | your component library's container tags → role. **Replaces** the default map when given |
 | `components.fields` | `Input: text, NumberInput: number, TextArea: text, DatePicker: date, Dropdown: select, RadioGroup: radio, MultiSelect: multiselect, Checkbox: bool, FileUpload: file` | field tags → role (`text`, `number`, `date`, `select`, `radio`, `multiselect`, `bool`, `file`) or a **field spec** (below). **Replaces** the default map when given |

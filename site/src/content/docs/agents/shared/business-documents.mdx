@@ -133,7 +133,7 @@ knowledge:
   chunk_chars: 1200                        # default: about this many characters in a section
   chunk_overlap: 150                       # default: shared by neighbouring sections under one heading
 models:
-  agent: "anthropic:claude-haiku-5-5"       # required whenever `models:` is written out
+  agent: "anthropic:claude-haiku-5-5"       # left out, it falls back to the top-level `model`
   compile: "anthropic:claude-haiku-5-5"     # compiles documents into rules; default: agent
   research: "anthropic:claude-haiku-5-5"  # answers from documents; default: agent
 ```
