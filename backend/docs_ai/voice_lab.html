@@ -141,7 +141,8 @@ async function follow(widget) {
       if (!data) continue
       const ev = JSON.parse(data)
       ;(window.voiceLog = window.voiceLog || []).push({ ...ev, at: Math.round(performance.now()) })
-      if (ev.type === 'heard') { line = null; line_('You', ev.text); widget.send(ev.text) }   // the ordinary run, as if typed
+      if (ev.type === 'heard' && ev.answers?.accepted) { line = null; line_('You', ev.text); applyQuietly(widget, ev.answers.card_id) }   // a spoken yes: the card's own button
+      else if (ev.type === 'heard') { line = null; line_('You', ev.text); widget.send(ev.text) }   // the ordinary run, as if typed (a spoken no closes the card this way)
       else if (ev.type === 'spoken') { line = line || line_('Voice', ''); line.textContent += ev.delta }
       else if (ev.type === 'result') { line = null }
       else if (ev.type === 'quiet') { applyQuietly(widget, ev.card_id) }

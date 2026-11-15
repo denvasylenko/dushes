@@ -463,7 +463,12 @@ class Talks:
                     state["pending"] = asked
                     state["answer"] = []
                     if text:
-                        self._emit(state, {"type": "heard", "text": text})
+                        # a plain yes or no while a card waits is the answer to that card: the client accepts or
+                        # rejects it instead of sending the words as a new message (which would close the card)
+                        card, said_yes = state.get("waiting"), yes_or_no(text)
+                        answers = ({"answers": {"card_id": card.get("card_id"), "type": card.get("type") or "set_fields",
+                                                "accepted": said_yes}} if card and said_yes is not None else {})
+                        self._emit(state, {"type": "heard", "text": text, **answers})
                 elif t == "session.output_transcript.delta":
                     self.meter.report(talk_id, heard=True)   # the conversation is alive while the voice speaks
                     said = state.setdefault("said", [])
@@ -490,6 +495,8 @@ class Talks:
     async def _watch(self, talk_id: str) -> None:
         import asyncio
         while talk_id in self._live:
+            if self._live[talk_id].get("waiting"):   # a card waits for an answer: thinking it over is not silence
+                self.meter.report(talk_id, heard=True)
             why = self.meter.over(talk_id)
             if why:
                 await self.end(talk_id, why)
@@ -522,12 +529,13 @@ class Talks:
                 self._emit(state, {"type": "quiet", "card_id": state["card"].get("card_id")})
                 state["answer"], state["card"] = [], False
                 return
-            waits = bool(((ev.get("outcome") or {}).get("interrupts"))) or state.get("card")
+            waits = state.get("waiting")
             if t == "RUN_ERROR":
                 text = "Tell the person that something went wrong and to try again."
+            elif waits:   # a card waits: the voice asks its question itself, and a spoken yes or no answers it
+                text = (text + " " if text else "") + asks(waits)
             elif not text:
-                text = ("A card is on the screen: ask the person to confirm it there." if waits
-                        else "Done. Tell the person it is done, in one short sentence.")
+                text = "Done. Tell the person it is done, in one short sentence."
             state["answer"], state["card"] = [], False
             import asyncio
             asyncio.ensure_future(self._say(talk_id, text))
@@ -541,6 +549,11 @@ class Talks:
                     value = {}
             quiet_card = isinstance(value, dict) and value.get("quiet")
             state["card"] = {"quiet": True, "card_id": value.get("card_id")} if quiet_card else True
+            # a card that waits for the person: remembered until the next run starts, so a spoken yes or no can
+            # answer it and silence does not end the conversation under it
+            state["waiting"] = None if quiet_card else (value if isinstance(value, dict) and value else {"type": "set_fields"})
+        elif t == "RUN_STARTED":
+            state["waiting"] = None
 
     async def _say(self, talk_id: str, text: str) -> None:
         state = self._live.get(talk_id)
@@ -584,6 +597,53 @@ def active(thread_id: str) -> bool:
     if as_if and thread_id.startswith(as_if):
         return True
     return any(thread_id in talks._by_thread for talks in HOSTS)
+
+
+# a plain yes or no, in the product's seven languages (non-ASCII words as code points: the file stays ASCII)
+_YES_WORDS = {"yes", "yeah", "yep", "yup", "sure", "ok", "okay", "correct", "right", "confirm", "agree", "ja", "genau",
+              "oui", "si", "s" + chr(0xED), "s" + chr(0xEC), "claro", "certo",
+              "".join(map(chr, (0x434, 0x430))), "".join(map(chr, (0x430, 0x433, 0x430))),
+              "".join(map(chr, (0x442, 0x430, 0x43A))), "".join(map(chr, (0x432, 0x435, 0x440, 0x43D, 0x43E))),
+              "".join(map(chr, (0x43A, 0x43E, 0x43D, 0x435, 0x447, 0x43D, 0x43E))),
+              "".join(map(chr, (0x445, 0x43E, 0x440, 0x43E, 0x448, 0x43E))),
+              "".join(map(chr, (0x441, 0x43E, 0x433, 0x43B, 0x430, 0x441, 0x435, 0x43D)))}
+_NO_WORDS = {"no", "nope", "nah", "cancel", "wrong", "nein", "non", "not",
+             "".join(map(chr, (0x43D, 0x435, 0x442))), "".join(map(chr, (0x43D, 0x456))),
+             "".join(map(chr, (0x43D, 0x435)))}
+_FILLERS = {"uh", "um", "please", "do", "it", "that", "is", "thanks", "thank", "you", "i", "said", "the", "bitte",
+            "".join(map(chr, (0x43F, 0x43E, 0x436, 0x430, 0x43B, 0x443, 0x439, 0x441, 0x442, 0x430))),
+            "".join(map(chr, (0x432, 0x441, 0x451))), "".join(map(chr, (0x432, 0x441, 0x435)))}
+
+
+def yes_or_no(text: str) -> bool | None:
+    """True for a plain yes, False for a plain no, None for anything else. Plain means six words at most and
+    nothing but the yes or no and filler ("yes please", "I said yes", "no thanks"); "yes, but make it 48" is a
+    request, and both words together are neither."""
+    words = re.findall(_LETTERS, (text or "").lower())
+    if not words or len(words) > 6:
+        return None
+    yes, no = any(w in _YES_WORDS for w in words), any(w in _NO_WORDS for w in words)
+    rest = [w for w in words if w not in _YES_WORDS and w not in _NO_WORDS and w not in _FILLERS]
+    if rest or yes == no:
+        return None
+    return yes
+
+
+def asks(card: dict) -> str:
+    """What the voice is given to say when a card waits for the person: the card's own question, to be answered
+    aloud with yes or no. Never a pointer to the screen."""
+    kind = card.get("type") or "set_fields"
+    # the text is what the voice says (it paraphrases, in the person's language), so it is the question itself
+    if kind == "ask":
+        options = [str(o.get("label") or o.get("id")) for o in card.get("options") or [] if isinstance(o, dict)][:5]
+        return f"{card.get('question') or 'Which one?'}" + (f" The choices are: {', '.join(options)}." if options else "")
+    if kind == "confirm":
+        return f"{card.get('title') or card.get('message') or 'Shall I go ahead?'} Say yes or no."
+    rows = [f"{r.get('label') or r.get('name')}: {r.get('display') or r.get('value')}"
+            for r in card.get("changes") or [] if isinstance(r, dict)][:4]
+    if not rows:
+        return "Shall I fill that in? Say yes or no."
+    return "Shall I fill in " + " and ".join(rows) + "? Say yes or no."
 
 
 ECHO_SECONDS = 15.0   # how long after the voice spoke its own words can come back

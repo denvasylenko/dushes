@@ -201,7 +201,7 @@ def test_a_run_that_ends_with_a_card_or_an_error_still_gives_the_voice_something
         talks.seen("t1", {"type": "RUN_ERROR", "message": "x"})
         await asyncio.sleep(0.01)
         said = [m["content"] for m in live.sent if m["type"] == "session.commentary.append"]
-        assert "card is on the screen" in said[0] and "went wrong" in said[1]
+        assert "yes or no" in said[0] and "confirm it there" not in said[0] and "went wrong" in said[1]
         await talks.end("live_1")
         assert live.closed and {"type": "session.close"} in live.sent
     asyncio.run(go())
@@ -433,3 +433,50 @@ def test_audio_through_the_server_for_a_client_without_webrtc():
                 if message.get("text") and json.loads(message["text"])["type"] == "ended":
                     break
     assert not talks.meter.open and live.closed and {"type": "session.close"} in live.sent
+
+
+def test_a_spoken_yes_or_no_answers_a_waiting_card():
+    """The owner's session (2026-11-15) and the CPO's decision: a turn ended on a card that waited for a tap, the
+    voice said "confirm it on the screen" and the conversation stalled; "I said yes" ticked nothing. The voice now
+    asks the card's own question, a plain yes or no is the answer to that card, and silence under it ends nothing."""
+    yes = voice.yes_or_no
+    assert yes("Yes") is True and yes("yes please") is True and yes("I said yes") is True and yes("ok, do it") is True
+    da, net = "".join(map(chr, (0x434, 0x430))), "".join(map(chr, (0x43D, 0x435, 0x442)))   # a Russian yes and no
+    assert yes(da) is True and yes(net) is False and yes("No thanks") is False
+    assert yes("yes, but make it 48 months") is None and yes("yes no") is None and yes("car loan") is None and yes("") is None
+    card = {"type": "set_fields", "card_id": "c9", "changes": [{"name": "loan_type", "label": "Loan type", "display": "Car loan"},
+                                                               {"name": "loan_purpose", "label": "Purpose", "display": "New car"}]}
+    said = voice.asks(card)
+    assert "Loan type: Car loan" in said and "Purpose: New car" in said and "yes or no" in said
+    assert "Which city" in voice.asks({"type": "ask", "question": "Which city is it?", "options": [{"id": "a", "label": "Kolpino"}]})
+
+    async def go():
+        clock = Clock()
+        talks, live, _ = _talks(silence_seconds=30)
+        talks.meter.now = clock
+        await talks.start("anna", "o", "card-thread")
+        events = talks.events("live_1")
+        for ev in ({"type": "RUN_STARTED"}, {"type": "CUSTOM", "name": "on_interrupt", "value": json.dumps(card)},
+                   {"type": "RUN_FINISHED"}):
+            talks.seen("card-thread", ev)
+        result = await asyncio.wait_for(events.__anext__(), 1)
+        assert result["type"] == "result" and "Loan type: Car loan" in result["text"] and "yes or no" in result["text"]
+        assert "screen" not in result["text"]             # the voice asks; it never points at the screen
+        clock.t += 120                                     # two minutes of thinking it over: not a silence
+        await asyncio.sleep(1.2)
+        assert "live_1" in talks.meter.open
+        live.push(type="session.input_transcript.delta", delta="Yes, please")
+        live.push(type="session.delegation.created", delegation={"id": "d2", "type": "delegation", "target": "client"})
+        seen = []
+        while not seen or seen[-1]["type"] != "heard":
+            seen.append(await asyncio.wait_for(events.__anext__(), 1))
+        assert seen[-1]["answers"] == {"card_id": "c9", "type": "set_fields", "accepted": True}
+        talks.seen("card-thread", {"type": "RUN_STARTED"})   # the client answered the card: nothing waits now
+        live.push(type="session.input_transcript.delta", delta="yes")
+        live.push(type="session.delegation.created", delegation={"id": "d3", "type": "delegation", "target": "client"})
+        seen = []
+        while not seen or seen[-1]["type"] != "heard":
+            seen.append(await asyncio.wait_for(events.__anext__(), 1))
+        assert "answers" not in seen[-1]                     # a yes with no card waiting is an ordinary message
+        await talks.end("live_1")
+    asyncio.run(go())
