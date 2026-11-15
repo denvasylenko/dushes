@@ -27,10 +27,10 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel
 
 try:   # the routes need the HTTP layer; Gate, Meter and Talks do not
-    from fastapi import APIRouter, HTTPException, Request
+    from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
     from fastapi.responses import StreamingResponse
 except ImportError:  # pragma: no cover
-    APIRouter = HTTPException = Request = StreamingResponse = None  # type: ignore[assignment,misc]
+    APIRouter = HTTPException = Request = StreamingResponse = WebSocket = WebSocketDisconnect = None  # type: ignore[assignment,misc]
 
 _NAME = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
 PASS_HOURS = 12.0          # how long a pass lives
@@ -280,6 +280,31 @@ async def open_live(key: str, model: str, sdp: str, instructions: str):
     return sid, body["transport"]["sdp"], ws
 
 
+STREAM_RATE = 24000   # PCM16 mono, both ways, for a conversation whose audio passes through this server
+
+
+async def open_live_stream(key: str, model: str, instructions: str):
+    """Open the provider's session over its WebSocket transport, for audio that passes through this server:
+    (session id, the WebSocket). The audio goes in and comes out on the same socket as the events."""
+    import asyncio
+    import json
+
+    import websockets
+    ws = await websockets.connect(LIVE_HTTP.replace("https://", "wss://"),
+                                  additional_headers={"Authorization": f"Bearer {key}"}, max_size=None)
+    await ws.send(_json({"type": "session.start", "event_id": "start", "session": {
+        "model": model, "instructions": instructions,
+        "audio": {"format": {"type": "audio/pcm", "rate": STREAM_RATE}},
+        "delegation": {"type": "client", "acknowledgement_delay_ms": 800}}}))
+    while True:
+        ev = json.loads(await asyncio.wait_for(ws.recv(), 15))
+        if ev.get("type") == "session.started":
+            return (ev.get("session") or {}).get("id") or f"live_{secrets.token_hex(8)}", ws
+        if ev.get("type") == "error":
+            await ws.close()
+            raise RuntimeError(f"the voice provider refused the session ({(ev.get('error') or {}).get('code')})")
+
+
 class Talks:
     """The voice conversations of one host: who may start one, what each hears and says, when each ends."""
 
@@ -295,6 +320,7 @@ class Talks:
         self.title = title
         self._key = key or (lambda: os.environ.get("OPENAI_API_KEY", ""))
         self._opener = opener or open_live     # tests give a scripted one
+        self._stream_opener = open_live_stream
         self.now = now
         self._live: dict[str, dict] = {}       # talk id -> its state
         self._by_thread: dict[str, str] = {}   # the chat thread -> the talk that speaks its answers
@@ -318,6 +344,49 @@ class Talks:
         return {"talk": talk.id, "sdp": answer,
                 "limits": {"seconds": self.config.max_seconds, "silence_seconds": self.config.silence_seconds}}
 
+    async def start_stream(self, person: str, thread_id: str) -> dict:
+        """A new conversation whose audio passes through this server (a native app, a test runner: a client that
+        must not hold the provider's key and has no WebRTC): {talk, limits}. Feed the microphone with `feed`,
+        read the voice's audio from `audio`, the events from `events`. Raises Refused with the reason."""
+        why = self.meter.refusal(person)
+        if why:
+            raise Refused(why)
+        import asyncio
+        sid, ws = await self._stream_opener(self._key(), self.config.model, INSTRUCTIONS.format(title=self.title))
+        talk = self.meter.start(sid, person)
+        state = {"id": sid, "person": person, "ws": ws, "thread": thread_id, "events": asyncio.Queue(), "heard": "",
+                 "pending": None, "answer": [], "t0": time.monotonic(), "ended": None, "audio": asyncio.Queue(maxsize=600)}
+        self._live[sid] = state
+        self._by_thread[thread_id] = sid
+        self._record(state, {"type": "started", "model": self.config.model, "transport": "stream", "t_ms": 0})
+        state["reader"] = asyncio.create_task(self._read(sid))
+        state["watch"] = asyncio.create_task(self._watch(sid))
+        return {"talk": talk.id, "limits": {"seconds": self.config.max_seconds, "silence_seconds": self.config.silence_seconds},
+                "audio": {"format": "pcm16", "rate": STREAM_RATE, "channels": 1}}
+
+    async def feed(self, talk_id: str, pcm: bytes) -> None:
+        """Microphone audio for a stream conversation: raw PCM16 mono at STREAM_RATE, in real time."""
+        state = self._live.get(talk_id)
+        if not state or not pcm:
+            return
+        import base64
+        try:
+            await state["ws"].send(_json({"type": "session.input_audio.append",
+                                          "audio": base64.b64encode(pcm[:len(pcm) - len(pcm) % 2]).decode()}))
+        except Exception:  # noqa: BLE001
+            await self.end(talk_id, "lost")
+
+    async def audio(self, talk_id: str):
+        """The voice's audio for a stream conversation, as it comes: raw PCM16 mono at STREAM_RATE."""
+        state = self._live.get(talk_id)
+        if not state or state.get("audio") is None:
+            return
+        while True:
+            piece = await state["audio"].get()
+            if piece is None:
+                return
+            yield piece
+
     async def end(self, talk_id: str, reason: str = "closed", seconds: float | None = None) -> float:
         """End a conversation and return what it cost (0 when it was not open)."""
         state = self._live.pop(talk_id, None)
@@ -336,6 +405,11 @@ class Talks:
             task = state.get(name)
             if task and task is not asyncio.current_task():
                 task.cancel()
+        if state.get("audio") is not None:
+            try:
+                state["audio"].put_nowait(None)
+            except Exception:  # noqa: BLE001 - full: the reader ends with the socket
+                pass
         self._emit(state, {"type": "ended", "reason": reason, "cost_usd": round(cost, 4),
                            "seconds": round(seconds if seconds is not None else time.monotonic() - state["t0"], 1)})
         state["events"].put_nowait(None)
@@ -396,6 +470,12 @@ class Talks:
                     said.append((time.monotonic(), ev.get("delta", "")))
                     del said[:-400]
                     self._emit(state, {"type": "spoken", "delta": ev.get("delta", "")})
+                elif t == "session.output_audio.delta" and state.get("audio") is not None:
+                    import base64
+                    try:   # a client that reads too slowly loses sound, never the conversation
+                        state["audio"].put_nowait(base64.b64decode(ev.get("delta", "")))
+                    except Exception:  # noqa: BLE001
+                        pass
                 elif t == "session.usage.updated":
                     self.meter.report(talk_id, seconds=(ev.get("usage") or {}).get("seconds"))
                 elif t == "session.closed":
@@ -720,5 +800,61 @@ def create_voice_router(talks: Talks):
         open_talk = talks.meter.open.get(body.talk)
         cost = await talks.end(body.talk, "closed") if open_talk and open_talk.person == person else 0.0
         return {"cost_usd": round(cost, 4)}
+
+    @r.websocket("/stream")
+    async def stream(socket: WebSocket, thread_id: str) -> None:
+        """One socket for a client whose audio passes through this server (a native app, a test runner).
+            the pass: the X-Voice-Pass header of the opening request
+            client -> server   binary frames: microphone audio, raw PCM16 mono 24 kHz, in real time
+                               a text frame {"type": "end"}: the person ended the conversation
+            server -> client   binary frames: the voice's audio, the same format
+                               text frames: {"type": "started", talk, limits, audio}, then the events of
+                               GET /events (hearing, heard, spoken, result, quiet, echo, error, ended)
+        A refusal is one text frame {"type": "refused", "reason"} and the socket closes: `pass` for no pass, or
+        busy, day, person_day, unavailable. On `heard` the client sends the ordinary run, as on the web."""
+        import asyncio
+        await socket.accept()
+        person = talks.gate.person(socket.headers.get("x-voice-pass"))
+        if not person:
+            await socket.send_text(_json({"type": "refused", "reason": "pass"}))
+            return await socket.close(code=4403)
+        try:
+            opened = await talks.start_stream(person, thread_id)
+        except Refused as e:
+            await socket.send_text(_json({"type": "refused", "reason": str(e)}))
+            return await socket.close(code=4429)
+        except Exception:  # noqa: BLE001 - the provider is down or refused
+            await socket.send_text(_json({"type": "refused", "reason": "unavailable"}))
+            return await socket.close(code=4502)
+        talk = opened["talk"]
+        await socket.send_text(_json({"type": "started", **opened}))
+
+        async def events_out() -> None:
+            async for ev in talks.events(talk):
+                await socket.send_text(_json(ev))
+
+        async def audio_out() -> None:
+            async for piece in talks.audio(talk):
+                await socket.send_bytes(piece)
+
+        out = [asyncio.create_task(events_out()), asyncio.create_task(audio_out())]
+        try:
+            while talk in talks.meter.open:
+                message = await socket.receive()
+                if message.get("type") == "websocket.disconnect":
+                    break
+                if message.get("bytes"):
+                    await talks.feed(talk, message["bytes"])
+                elif message.get("text") and '"end"' in message["text"]:
+                    break
+        except (WebSocketDisconnect, RuntimeError):
+            pass
+        finally:
+            await talks.end(talk, "closed")
+            await asyncio.gather(*out, return_exceptions=True)
+            try:
+                await socket.close()
+            except Exception:  # noqa: BLE001 - the client has gone
+                pass
 
     return r

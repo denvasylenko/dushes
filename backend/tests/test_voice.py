@@ -385,3 +385,51 @@ def test_the_voices_own_words_coming_back_are_not_a_request(monkeypatch):
 
     monkeypatch.setenv("VOICE_AS_IF", "voice-")
     assert voice.active("voice-test-1") and not voice.active("chat-test-1")
+
+
+def test_audio_through_the_server_for_a_client_without_webrtc():
+    """The CTO's D-20 and QA's runner: a native app (or a test runner) may not hold the provider's key and has no
+    WebRTC, so its audio passes through this server on one socket, with the conversation's events beside it."""
+    import base64
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    talks, _unused, _ = _talks()
+    live = FakeLive()
+
+    async def stream_opener(key, model, instructions):
+        return "live_s", live
+    talks._stream_opener = stream_opener
+    app = FastAPI()
+    app.include_router(voice.create_voice_router(talks), prefix="/voice")
+    with TestClient(app) as c:
+        with c.websocket_connect("/voice/stream?thread_id=t-ios") as ws:          # no pass
+            assert ws.receive_json() == {"type": "refused", "reason": "pass"}
+        token = c.post("/voice/unlock", json={"code": "anna-code-0001"}).json()["pass"]
+        with c.websocket_connect("/voice/stream?thread_id=t-ios", headers={"X-Voice-Pass": token}) as ws:
+            started = ws.receive_json()
+            assert started["type"] == "started" and started["talk"] == "live_s"
+            assert started["audio"] == {"format": "pcm16", "rate": 24000, "channels": 1}
+            ws.send_bytes(b"\x01\x00\x02\x00\x03")                                 # an odd byte is not half a sample
+            live.push(type="session.input_transcript.delta", delta="My middle name is Marie")
+            live.push(type="session.delegation.created", delegation={"id": "d1", "type": "delegation", "target": "client"})
+            live.push(type="session.output_audio.delta", delta=base64.b64encode(b"\x10\x00\x20\x00").decode())
+            got, sound = [], b""
+            while len(got) < 2 or not sound:
+                message = ws.receive()
+                if message.get("bytes"):
+                    sound += message["bytes"]
+                elif message.get("text"):
+                    got.append(json.loads(message["text"]))
+            assert [e["type"] for e in got] == ["hearing", "heard"] and got[1]["text"] == "My middle name is Marie"
+            assert sound == b"\x10\x00\x20\x00"                                    # the voice's audio, as raw PCM
+            sent = [m for m in live.sent if m["type"] == "session.input_audio.append"]
+            assert sent and base64.b64decode(sent[0]["audio"]) == b"\x01\x00\x02\x00"
+            ws.send_text(json.dumps({"type": "end"}))
+            while True:
+                message = ws.receive()
+                if message.get("type") == "websocket.close":
+                    break
+                if message.get("text") and json.loads(message["text"])["type"] == "ended":
+                    break
+    assert not talks.meter.open and live.closed and {"type": "session.close"} in live.sent

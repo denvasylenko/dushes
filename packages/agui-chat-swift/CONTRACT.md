@@ -114,3 +114,42 @@ A turn runs on when the client goes away; `POST <agent>/stop` ends it.
   logs through the Swift client and compare what it draws, card by card, with `<agui-chat>`.
 - The widget designer checks behaviour; I review the protocol side and anything that needs a server change. A
   gap in the server contract is asked of the Dushes Tech Lead, not worked around in the client.
+
+## Voice mode (experimental)
+
+A voice model listens and speaks; the agent does the work exactly as in chat. The server side is
+`backend/formguide/voice.py`; a host mounts its routes (the examples use `<host>/voice`) only when it has voice
+codes, so every route answers 404 on a host without the mode: show no trace of it then.
+
+The pass. `POST /voice/unlock {code}` gives `{person, pass}` (403 for a wrong code). The pass lives twelve hours
+and travels in the `X-Voice-Pass` header of every other call, never in an address. The client never holds a key
+of the voice provider.
+
+A native client: one WebSocket. `GET <host>/voice/stream?thread_id=<the chat's threadId>` with the
+`X-Voice-Pass` header.
+
+- client to server: binary frames are microphone audio, raw PCM16 little-endian mono at 24 kHz, sent in real time
+  (100 ms pieces are fine); a text frame `{"type": "end"}` ends the conversation.
+- server to client: binary frames are the voice's audio in the same format (play them in order; frames arrive all
+  the time, silence included, so "speaking" comes from the sound level or the `spoken` events); text frames are
+  JSON events.
+- first event: `{"type": "started", talk, limits: {seconds, silence_seconds}, audio: {format, rate, channels}}`.
+  A refusal is `{"type": "refused", "reason"}` and the socket closes: `pass`, `busy` (another conversation),
+  `day`, `person_day` (a budget is used up), `unavailable`.
+- then, each with `t_ms`: `hearing {delta}` (the person's words as they speak), `heard {text}` (the request the
+  voice hands over: send it as an ordinary user message in the same thread; that run is the normal AG-UI run),
+  `spoken {delta}` (the transcript of what the voice says), `result {text}` (the agent's answer was given to the
+  voice), `quiet {card_id}`, `echo {text}` (the voice's own words came back through the microphone and were
+  dropped: remove what `hearing` had started to show), `error {code}`, `ended {reason, cost_usd, seconds}` with
+  reason `closed`, `time`, `money`, `silence`, `day` or `lost`.
+
+The browser uses WebRTC instead (`POST /voice/session {sdp, thread_id}` gives `{talk, sdp, limits}`, then
+`GET /voice/events?talk=` and `POST /voice/end {talk}`); the events are the same.
+
+Filling without a card. In a thread a voice conversation speaks for, a `set_fields` card may carry
+`quiet: true`: every value on it was said by the person, the fields were empty and none is a consent. Apply it
+through the host's form at once, as an accepted card (the same resume), draw no card, and keep a line with Undo.
+A card without the mark waits as always. A consent is never quiet.
+
+An open conversation is billed by the second, silence included: end it when the person stops, when the app goes
+to the background, and when the screen closes.
