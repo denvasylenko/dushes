@@ -63,6 +63,10 @@ host_boot() {
   done
   kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
   [ "$code" = 200 ] || { tail -20 /tmp/dushes-host-boot.log; return 1; }
+  # once the host reads a price file (it logs "demo prices: ..."), it must have found it, not fallen back
+  if grep -q "demo prices:" /tmp/dushes-host-boot.log && ! grep -q "demo prices: [0-9]* models from" /tmp/dushes-host-boot.log; then
+    grep "demo prices:" /tmp/dushes-host-boot.log; return 1
+  fi
   echo "health 200 after ${i}s"
 }
 step "host starts" host_boot

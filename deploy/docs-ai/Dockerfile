@@ -38,6 +38,8 @@ COPY --from=web /src/site/dist site/dist
 COPY --from=web /src/frontend/dist frontend/dist
 COPY --from=web /src/packages/agui-chat/dist packages/agui-chat/dist
 COPY examples/widget-html examples/widget-html
+# the demo prices every run by its own model from this file (docs_ai.host; without it every model is priced by DEMO_PRICES)
+COPY site/src/data/prices.json site/src/data/prices.json
 RUN cd backend && uv sync --frozen --no-dev --extra all
 WORKDIR /app/backend
 EXPOSE 8080
