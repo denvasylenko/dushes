@@ -26,7 +26,8 @@ export const RESEARCH = data as unknown as { note: string; scored_by: string; ba
 const MODELS: Record<string, string> = { 'anthropic:claude-haiku-5-5': 'Claude Haiku 5.5', 'openai:gpt-6-luna': 'gpt-6-luna' }
 export const modelName = (id: string) => MODELS[id] ?? id.split(':').pop()!
 
-/** The page's own words for each line of the bar (the report's check names are the keys). */
+/** The page's own words for a line of the bar, where the report's label is not already a reader's phrase
+ *  (QA writes the labels in plain words; one not listed here is shown as written, with a capital). */
 const CHECKS: Record<string, string> = {
   'deep: required points covered': 'Long answers: required points covered',
   'deep: the weakest scenario': 'Long answers: the worst single question',
@@ -54,7 +55,7 @@ export const money = (x: number) => `$${x < 0.01 ? x.toFixed(4) : x.toFixed(3)}`
 function shown(b: Bar): string {
   if (b.result === null) return 'not measured yet'
   const isShare = /^(>=|<=)\s*0\.\d/.test(b.bar)
-  return isShare ? share(b.result) : / s$/.test(b.check) ? `${b.result} s` : String(b.result)
+  return isShare ? share(b.result) : /seconds| s$/.test(b.check) ? `${b.result} s` : String(b.result)
 }
 const barText = (bar: string) => bar
   .replace(/^>=\s*(0\.\d+)$/, (_m, x) => `at least ${share(Number(x))}`)
@@ -68,7 +69,7 @@ function rows(measured: boolean): Row[] {
   const [first] = RESEARCH.runs
   return first.bar.map((b, i) => ({ b, i })).filter(({ b, i }) => b.check !== CONFLICT && RESEARCH.runs.some((r) => r.bar[i].met !== null) === measured)
     .map(({ b, i }) => ({
-      label: CHECKS[b.check] ?? b.check, bar: barText(b.bar),
+      label: CHECKS[b.check] ?? b.check.charAt(0).toUpperCase() + b.check.slice(1), bar: barText(b.bar),
       cells: RESEARCH.runs.map((r) => ({ text: shown(r.bar[i]), met: r.bar[i].met })),
     }))
 }

@@ -41,7 +41,7 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
 </div>
 
 <ul>
-  <li><strong>"A number that is not in the passage they cite"</strong> is a strict check. On today's researcher it is mostly a figure taken from a document it read but did not cite, not a made-up figure.</li>
+  <li><strong>"A figure that is not in the text they cite"</strong> is a strict check. On today's researcher it is mostly a figure taken from a document it read but did not cite, not a made-up figure.</li>
   <li><strong>Two passages that disagree</strong> is based on {runs[0].contradictions.found + runs[0].contradictions.missed} answers per model: too few to compare.</li>
 </ul>
 
@@ -52,7 +52,7 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
 
 <p>{RESEARCH.note}</p>
 
-<Disclosure summary="By kind of question: required points covered" panel>
+<Disclosure summary="By kind of question: required facts covered" panel>
   <div class="br br-kinds not-content" role="table" aria-label="Coverage by kind of question">
     <div class="br-row br-head" role="row"><span role="columnheader">Kind of question</span>{names.map((n) => <span role="columnheader">{n}</span>)}<span role="columnheader">Answers</span></div>
     {kinds.map((k) => (
