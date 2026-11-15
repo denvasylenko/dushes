@@ -376,12 +376,25 @@ class Talks:
                     self._emit(state, {"type": "hearing", "delta": ev.get("delta", "")})   # their words, as they speak
                 elif t == "session.delegation.created":   # the voice wants the agent: hand over what was said
                     text, state["heard"] = state["heard"].strip(), ""
-                    state["pending"] = (ev.get("delegation") or {}).get("id")
+                    asked = (ev.get("delegation") or {}).get("id")
+                    if text and is_echo(text, state.get("said", [])):
+                        # the voice's own words came back through the microphone: not a request from the person
+                        self._emit(state, {"type": "echo", "text": text})
+                        try:   # an empty note cancels the "let me check" the voice was about to say
+                            await state["ws"].send(_json({"type": "session.thinking.append", "event_id": "echo",
+                                                          "delegation_id": asked, "content": ""}))
+                        except Exception:  # noqa: BLE001
+                            pass
+                        continue
+                    state["pending"] = asked
                     state["answer"] = []
                     if text:
                         self._emit(state, {"type": "heard", "text": text})
                 elif t == "session.output_transcript.delta":
                     self.meter.report(talk_id, heard=True)   # the conversation is alive while the voice speaks
+                    said = state.setdefault("said", [])
+                    said.append((time.monotonic(), ev.get("delta", "")))
+                    del said[:-400]
                     self._emit(state, {"type": "spoken", "delta": ev.get("delta", "")})
                 elif t == "session.usage.updated":
                     self.meter.report(talk_id, seconds=(ev.get("usage") or {}).get("seconds"))
@@ -485,8 +498,29 @@ def watch(talks: Talks) -> Talks:
 
 
 def active(thread_id: str) -> bool:
-    """Whether a voice conversation is speaking this thread's answers right now."""
+    """Whether a voice conversation is speaking this thread's answers right now. For tests of the voice branch
+    without a paid session, VOICE_AS_IF=<prefix> on a test stand makes every thread with that prefix count."""
+    as_if = os.environ.get("VOICE_AS_IF", "")
+    if as_if and thread_id.startswith(as_if):
+        return True
     return any(thread_id in talks._by_thread for talks in HOSTS)
+
+
+ECHO_SECONDS = 15.0   # how long after the voice spoke its own words can come back
+ECHO_WORDS = 4        # a shorter text is never dropped: "Car loan" after "A car loan or a home loan?" is an answer
+
+
+def is_echo(heard: str, said: list, now: float | None = None) -> bool:
+    """Whether what was heard is the voice's own speech picked up by the microphone: four words or more that are,
+    word for word, a run of what the voice said in the last seconds (`said`: (monotonic time, text) pieces)."""
+    words = re.findall(_LETTERS + r"|\d+", (heard or "").lower())
+    if len(words) < ECHO_WORDS:
+        return False
+    now = time.monotonic() if now is None else now
+    recent = " ".join(text for at, text in said if now - at <= ECHO_SECONDS)
+    spoken_words = re.findall(_LETTERS + r"|\d+", recent.lower())
+    n = len(words)
+    return any(spoken_words[i:i + n] == words for i in range(len(spoken_words) - n + 1))
 
 
 ALOUD = ("\n\n[The person is talking to you by voice and will HEAR your answer. Answer in one or two short spoken "

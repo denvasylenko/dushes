@@ -353,3 +353,35 @@ def test_a_quiet_card_is_marked_and_not_announced(guide, model):
         assert "quiet" not in (json.loads(raw) if isinstance(raw, str) else raw)        # chat is untouched
     finally:
         voice.HOSTS.clear()
+
+
+def test_the_voices_own_words_coming_back_are_not_a_request(monkeypatch):
+    """From the owner's session on laptop speakers: the assistant's spoken question came back through his microphone
+    and was sent as his message. Four words or more that repeat what the voice just said are dropped at the bridge,
+    for every client; a short answer is never dropped."""
+    said = [(100.0, "Sure. "), (100.5, "Choose the date and "), (101.0, "time of the booking, please.")]
+    assert voice.is_echo("choose the date and time of the booking", said, now=103.0)
+    assert not voice.is_echo("choose the date and time of the booking", said, now=130.0)      # long after: his own words
+    assert not voice.is_echo("the booking", said, now=103.0)                                  # a short answer always goes
+    assert not voice.is_echo("choose another date and time please", said, now=103.0)
+
+    async def go():
+        talks, live, _ = _talks()
+        await talks.start("anna", "o", "echo-thread")
+        events = talks.events("live_1")
+        live.push(type="session.output_transcript.delta", delta="What is the loan for, a new car or a used one?")
+        live.push(type="session.input_transcript.delta", delta="What is the loan for, a new car or a used one")
+        live.push(type="session.delegation.created", delegation={"id": "item_e", "type": "delegation", "target": "client"})
+        live.push(type="session.input_transcript.delta", delta="A used one")
+        live.push(type="session.delegation.created", delegation={"id": "item_r", "type": "delegation", "target": "client"})
+        seen = []
+        while not seen or seen[-1]["type"] != "heard":
+            seen.append(await asyncio.wait_for(events.__anext__(), 1))
+        assert [e["type"] for e in seen if e["type"] in ("echo", "heard")] == ["echo", "heard"]
+        assert seen[-1]["text"] == "A used one"
+        assert any(m["type"] == "session.thinking.append" and m["content"] == "" for m in live.sent)   # no "let me check"
+        await talks.end("live_1")
+    asyncio.run(go())
+
+    monkeypatch.setenv("VOICE_AS_IF", "voice-")
+    assert voice.active("voice-test-1") and not voice.active("chat-test-1")
