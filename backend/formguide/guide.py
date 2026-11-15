@@ -611,6 +611,7 @@ class FormGuide:
                 inp = {"user_text": user_text, "config": st["config"], "jsx_hash": st["jsx_hash"],
                        "form_id": st.get("form_id"), "ui": st.get("ui") or {}, "thread_id": thread_id,
                        "attachments": st.get("attachments") or [], "client_results": tool_results or {}}
+                inp["page"] = st["page"] if isinstance(st.get("page"), dict) else None   # what the page says
                 if client_tools is not None:
                     inp["client_tools"] = client_tools
                 inp["capabilities"] = capabilities if isinstance(capabilities, list) else None

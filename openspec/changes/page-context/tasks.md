@@ -2,8 +2,8 @@
 
 ## 0. The form agent sees its page (first, from QA's round 1)
 
-- [ ] 0.1 `FormGuide.run(page=...)` and `state.page.content` render a `<page_facts>` block in the current message, cut to max_chars; Dushes passes the site map's sections for the current path
-- [ ] 0.2 One generic prompt rule: page facts are as good as the form; never deny what `<page_facts>` holds
+- [x] 0.1 `FormGuide.run(page=...)` and `state.page.content` render a `<page_facts>` block in the current message, cut to max_chars; Dushes passes the site map's sections for the current path
+- [x] 0.2 One generic prompt rule: page facts are as good as the form; never deny what `<page_facts>` holds
 - [ ] 0.3 Tests with the scripted model; QA reruns the *_facts scenarios (main and held out)
 
 ## 1. Page context on the server

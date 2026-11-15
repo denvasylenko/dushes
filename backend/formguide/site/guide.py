@@ -284,6 +284,16 @@ class Dushes:
                 return True
         return False
 
+    def _with_page(self, form: dict[str, Any], state: dict[str, Any], form_id: str | None = None) -> dict[str, Any]:
+        """The form's state with the facts of the page it sits on (the site map's text for that page), so the form
+        agent can answer from the page too. A host's own `page` in the form state is kept."""
+        if not isinstance(form, dict) or form.get("page"):
+            return form
+        here = self.site.page(((state.get("page") or {}).get("path")) or "")
+        if form_id and not (here and here.form == form_id):   # a hand-off: the page that holds this form
+            here = next((p for p in self.site.pages if p.form == form_id), here)
+        return {**form, "page": here.facts()} if here else form
+
     def _last_speaker(self, thread_id: str | None) -> tuple[str, str]:
         """('site' | 'form' | '', what they said last) from the site transcript (form turns carry form_id)."""
         if not thread_id:
@@ -390,7 +400,7 @@ class Dushes:
         if mode == "unclear":
             mode = await self.classify(message or "", state, thread_id)
         if mode == "form":
-            form = state["form"]
+            form = self._with_page(state["form"], state)
             fid = str(form.get("form_id") or "form")
             kw: dict[str, Any] = dict(form_kwargs)
             taken = self._take_note(thread_id, fid) if handoff and not message else None
@@ -504,7 +514,7 @@ class Dushes:
         if failed:
             return
         if back and not handed:   # the form agent answers the message itself, in this run (no hand_back now)
-            form = state["form"]
+            form = self._with_page(state["form"], state)
             fid = str(form.get("form_id") or "form")
             form_thread = f"{thread_id}-{fid}"[:100]
             out = Said()
@@ -534,7 +544,7 @@ class Dushes:
             yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
             return
         # the form agent answers now, in this same run: its words and cards follow Dushes' open_form
-        fid, form = handed["form_id"], handed["form"]
+        fid, form = handed["form_id"], self._with_page(handed["form"], state, handed["form_id"])
         form_thread = f"{thread_id}-{fid}"[:100]
         out = Said()
         kw = {**form_kwargs, "capabilities": with_hand_back(form_kwargs.get("capabilities"))}   # one tool list per thread

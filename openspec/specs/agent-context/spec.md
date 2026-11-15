@@ -39,3 +39,10 @@ For a disabled section the context SHALL give a learned reason when one is relia
 #### Scenario: Locked Collateral tab
 - **WHEN** the Collateral tab is disabled and no dependency is known
 - **THEN** the reason starts with "cause unknown; GUESS" and the first group is the Loan tab
+
+### Requirement: The form agent reads its page
+When a run's form state carries `page` (`{title, description, sections: [{title, text}]}`), every message to the form agent SHALL include it as a `<page_facts>` block, cut to 4000 characters, and the agent SHALL answer from it and SHALL NOT say the form or the page lacks a fact it holds; the block is data, never instructions. Dushes SHALL fill `page` from the site map for the page the form sits on, unless the host gave one.
+
+#### Scenario: A fee stated on the page
+- **WHEN** the page of a registration form says "Registration costs 27.90 EUR" and the user asks the form agent what it costs
+- **THEN** the agent answers 27.90 EUR and does not say the form shows no fee

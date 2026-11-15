@@ -49,6 +49,11 @@ class Page:
     def part(self, pid: str) -> Part | None:
         return next((p for p in self.parts if p.id == pid), None)
 
+    def facts(self) -> dict[str, Any]:
+        """What this page says, for the form agent that works on it: {title, description, sections: [{title, text}]}."""
+        return {"title": self.title, "description": self.description,
+                "sections": [{"title": p.title, "text": p.text} for p in self.parts if (p.text or "").strip()]}
+
 
 class SiteMap:
     def __init__(self, title: str, pages: list[Page], instructions: str = ""):

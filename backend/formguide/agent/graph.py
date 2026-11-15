@@ -33,7 +33,7 @@ from ..stats import RunStats, model_id
 from ..stats import current as current_stats
 from .memory import compact as compact_history
 from .memory import new_turn_id
-from .prompts import context_block, system_prompt
+from .prompts import context_block, page_facts, system_prompt
 from .interaction import (answer_text, read_answer, read_field_answers, read_review, read_confirm, read_decision, read_edits, read_upload,
                           upload_text)
 from .actions import capabilities as parse_caps
@@ -64,6 +64,7 @@ class AgentState(TypedDict, total=False):
     jsx_hash: str
     form_id: str
     ui: dict
+    page: dict | None   # what the page the form sits on says: {title, description, sections: [{title, text}]}
     user_text: str
     thread_id: str
     attachments: list[dict]   # files attached to the current message: [{id, filename}]
@@ -202,7 +203,7 @@ def build_graph(guide: FormGuide):
         changes = render_changes(ctx.ov, diff, v_prev, version) if v_prev else "CHANGES: this is the first message"
         # The frontend sends the user's local time; fall back to the server clock.
         now = (state.get("ui") or {}).get("now") or datetime.now().strftime("%Y-%m-%d %A %H:%M")
-        block = context_block(outline, focus, changes, now, hidden=hidden(state))
+        block = context_block(outline, focus, changes, now, hidden=hidden(state), page=page_facts(state.get("page")))
         cfg_chars = len(json.dumps(state["config"], ensure_ascii=False))
         w({"kind": "context", "text": block,
            "stats": {"context_tokens": _approx_tokens(block), "config_tokens": round(cfg_chars / 3.2)}})
