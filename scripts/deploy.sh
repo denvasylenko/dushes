@@ -48,6 +48,15 @@ step "site build" bash -c "cd site && npm run -s build"
 step "site links" python3 scripts/check_links.py site/dist
 step "site exports" python3 scripts/check_exports.py site/dist
 step "site contrast" python3 scripts/check_contrast.py
+widget_chunks() {   # the image builds every widget config by its glob; refuse a config the glob would miss
+  local c missing=""
+  for c in packages/agui-chat/vite.*.config.ts; do
+    grep -q 'vite\.\*\.config\.ts' deploy/docs-ai/Dockerfile || grep -q "$(basename "$c")" deploy/docs-ai/Dockerfile || missing="$missing $(basename "$c")"
+  done
+  [ -z "$missing" ] || { echo "not built by the Dockerfile:$missing"; return 1; }
+  echo "$(ls packages/agui-chat/vite.*.config.ts | wc -l | tr -d ' ') widget configs, all built"
+}
+step "widget files" widget_chunks
 step "widget reference" python3 scripts/check_ts_reference.py   # every public widget type field has a reference row, as in CI
 step "doc examples" bash -c "cd backend && uv run --frozen --quiet python ../scripts/check_examples.py"   # every code example in the docs, as in CI
 # the host app starts with the hosted config (load_config refuses an unknown key) and answers its health check;
