@@ -76,3 +76,7 @@ The orb SHALL be a sky of the voice colour (the host's accent) with a white clou
 #### Scenario: The agent is working
 - **WHEN** a turn runs in voice mode and nothing is typed
 - **THEN** the orb turns faster with the step under it, with no square in it, and the message box shows no stop button of its own
+
+#### Scenario: The line under the orb names the state
+- **WHEN** a turn starts and has not named a step yet, and later the voice speaks the answer
+- **THEN** the line says "Thinking", then the step, then "Speaking", and "Listening" only while the chat listens

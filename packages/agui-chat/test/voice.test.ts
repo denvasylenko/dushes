@@ -146,6 +146,7 @@ describe('the experimental voice mode', () => {
     await tick(10)
     expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['One and a half million for four years'])   // one message, not two
     expect(dock.classList.contains('vo-think')).toBe(true)                      // the turn runs
+    expect($(el, '.vo-step').textContent).toBe('Thinking')                       // and the line says so, not "Listening"
     s.push({ type: 'spoken', delta: 'Checking now' })                          // the voice's own filler: a status under the orb, not a message
     await tick(10)
     expect($(el, '.vo-step').textContent).toBe('Checking now')
@@ -155,8 +156,10 @@ describe('the experimental voice mode', () => {
     await tick(10)
     expect($$(el, '.msg.ai').map((m) => m.textContent!.trim())).toEqual(['Done.'])   // the answer is one message: the written one
     expect(dock.classList.contains('vo-speak')).toBe(true)                      // the voice is talking
+    expect($(el, '.vo-step').textContent).toBe('Speaking')
     await tick(1000)
     expect(dock.classList.contains('vo-listen')).toBe(true)
+    expect($(el, '.vo-step').textContent).toBe('Listening')
     // typing takes the row; the microphone stays within reach; it does not end voice
     const input = $<HTMLTextAreaElement>(el, 'textarea')
     input.value = 'for a car'; input.dispatchEvent(new Event('input'))

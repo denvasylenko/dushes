@@ -113,7 +113,7 @@ export function voice(chat: Chat): void {
 
   // ------------------------------------------------------------------ the conversation
   let pc: RTCPeerConnection | null = null, mic: MediaStream | null = null, talk = '', reader: ReadableStreamDefaultReader<Uint8Array> | null = null
-  let on = false, silent = false, busy = false, spokeAt = 0, wait = false, gen = 0
+  let on = false, silent = false, busy = false, spokeAt = 0, wait = false, gen = 0, stepText = ''
   const dock = el('div', 'vo-dock'), orb = el('button', 'vo-orb'), step = el('div', 'vo-step'), audio = el('audio', '')
   orb.type = 'button'; orb.innerHTML = `<i></i>${svg('M8 8h8v8H8z', 22)}`; step.setAttribute('role', 'status'); audio.autoplay = true
   dock.append(orb, step, audio)
@@ -127,7 +127,10 @@ export function voice(chat: Chat): void {
     const state = silent ? 'silent' : wait ? 'wait' : busy ? 'think' : speaking ? 'speak' : 'listen'
     for (const s of ['silent', 'wait', 'think', 'speak', 'listen']) dock.classList.toggle(`vo-${s}`, s === state)
     orb.setAttribute('aria-label', T(state === 'think' || state === 'speak' ? 'stop' : silent ? 'micOn' : wait ? 'connecting' : 'micOff'))
-    if (wait) step.textContent = T('connecting'); else if (!busy && !caption) step.textContent = silent ? '' : state === 'listen' ? T('listening') : step.textContent
+    if (wait) step.textContent = T('connecting')
+    else if (silent) step.textContent = ''
+    else if (state === 'think') { if (!caption && !stepText) step.textContent = T('thinking') }   // until the turn names its step
+    else if (!caption || state === 'listen') step.textContent = T(state === 'speak' ? 'speaking' : 'listening')
     bMic.innerHTML = svg(silent ? `${MIC}M4 3l16 18` : MIC); bMic.classList.toggle('on', silent)
     bMic.setAttribute('aria-label', T(silent ? 'micOn' : 'micOff')); bMic.title = T(silent ? 'micOn' : 'micOff')
     bX.setAttribute('aria-label', T('end')); bX.title = T('end')
@@ -138,13 +141,13 @@ export function voice(chat: Chat): void {
   const typing = (): void => { foot.classList.toggle('vo-typing', on && (!!input.value || root.activeElement === input)) }
   input.addEventListener('input', typing); input.addEventListener('focus', typing); input.addEventListener('blur', () => setTimeout(typing, 0))
   // a turn runs while the element says `busy` (it ends that on a finished, a stopped and a failed turn alike)
-  new MutationObserver(() => { const was = busy; busy = chat.hasAttribute('busy'); caption = ''; if (busy && !was) audio.muted = false;   // a new turn (spoken, typed or a card's answer) is heard again: a stop silences one answer, not the voice
+  new MutationObserver(() => { const was = busy; busy = chat.hasAttribute('busy'); caption = ''; stepText = ''; if (busy && !was) audio.muted = false;   // a new turn (spoken, typed or a card's answer) is heard again: a stop silences one answer, not the voice
     if (!busy) step.textContent = ''; paint(); if (!busy) setTimeout(typing, 0) }).observe(chat, { attributes: true, attributeFilter: ['busy'] })
   // the turn's own step, under the orb while it works (the conversation's own live line is hidden meanwhile)
   chat.addEventListener('agui:event', (e) => {
     const ev = (e as CustomEvent).detail as { type?: string; name?: string; value?: unknown } | undefined
     if (!on || !ev) return
-    if (ev.type === 'TOOL_CALL_START') queueMicrotask(() => { const all = root.querySelectorAll('.log .steps-t'); caption = ''; step.textContent = all[all.length - 1]?.textContent ?? '' })
+    if (ev.type === 'TOOL_CALL_START') queueMicrotask(() => { const all = root.querySelectorAll('.log .steps-t'); caption = ''; stepText = all[all.length - 1]?.textContent ?? ''; if (stepText) step.textContent = stepText })
     // a field-change card the server marks `quiet` (every row is a value the person said, into an empty field): in
     // voice mode it is filled at once, with no card to tap; the conversation keeps its result line with Undo
     if (ev.type === 'CUSTOM' && ev.name === 'on_interrupt') {
