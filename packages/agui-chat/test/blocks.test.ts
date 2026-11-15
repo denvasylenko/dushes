@@ -32,6 +32,32 @@ const BARBER = { type: 'blocks', name: 'barber_match', blocks: [
 beforeEach(() => { document.body.innerHTML = ''; vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 404 }))) })
 afterEach(() => { vi.unstubAllGlobals() })
 
+describe('a question about one consent', () => {
+  it('a question about one consent shows the consent\'s own text and its document, before and after the answer', async () => {
+    const el = await mount()
+    const answer = el.showCard({ type: 'ask', card_id: 'q1', allow_text: false, question: 'Is the cancellation policy fine with you?',
+      consent: true, label: 'I agree to the cancellation policy', doc: { title: 'Cancellation policy', text: 'Free up to 2 hours before.' },
+      options: [{ id: 'yes', label: 'Yes', value: true }, { id: 'no', label: 'No', value: false }] })
+    await tick()
+    const text = $(el, '.card .c-text')
+    expect(text.firstElementChild!.textContent).toBe('I agree to the cancellation policy')
+    expect($$(el, '.card .chip[aria-pressed=true], .card .chip.on')).toHaveLength(0)   // nothing is pre-selected
+    const read = text.querySelector('button')!
+    expect(text.querySelector<HTMLElement>('.doc')!.hidden).toBe(true)
+    read.click()
+    expect(text.querySelector<HTMLElement>('.doc')!.hidden).toBe(false)
+    expect(text.querySelector('.doc')!.textContent).toBe('Free up to 2 hours before.')
+    $$(el, '.card .chip')[0].click()
+    await answer
+    await tick(250)
+    expect($(el, '.card .c-text').firstElementChild!.textContent).toBe('I agree to the cancellation policy')   // still shown with the answer
+    expect($(el, '.card .c-text button').hasAttribute('disabled')).toBe(false)                              // and its document can still be read
+    void el.showCard({ type: 'ask', card_id: 'q2', allow_text: false, question: 'Which loan?', label: 'Loan type', options: [{ id: 'a', label: 'Car' }] })
+    await tick()
+    expect($$(el, '.card').pop()!.querySelector('.c-text')).toBeNull()                 // only for a consent
+  })
+})
+
 describe('cards from blocks', () => {
   it('draws the blocks in order, groups rows and skips what it does not know', async () => {
     const el = await mount()

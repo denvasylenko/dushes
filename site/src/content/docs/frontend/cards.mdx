@@ -197,6 +197,8 @@ resume: { accepted: true, config }                                       // no n
 
 Typing "yes, I agree" in the chat does not tick it either: the agent cannot give a consent. A client that does not announce the `set.consent` capability gets no consent row; the agent asks with a question card for that field instead, and the user's answer fills it.
 
+A question card about one consent carries `consent: true`, the consent's own `label` and, when there is one, its `doc` (`{title, text | url}`). The widget shows that label under the question, with **Read** for the document, so the person sees exactly what they agree to however the question was worded; it stays on the card after the answer.
+
 ## 2.4 The whole round trip
 
 ```

@@ -51,6 +51,13 @@ When `fieldCard.undo` is on and `revertChanges` is given, an applied card SHALL 
 - **WHEN** the user presses Undo on an applied card
 - **THEN** `revertChanges` receives the previous values and the agent is told the change was undone
 
+### Requirement: A question about one consent shows its text
+A question card with `consent: true` SHALL show the consent's own `label` under the question, set apart from it, and "Read" for its `doc` (the text opens in place; a link opens in a new tab). No option SHALL be preselected, and the text SHALL stay on the card after the answer.
+
+#### Scenario: A loosely worded question
+- **WHEN** the card asks "Is the cancellation policy fine with you?" with the label "I agree to the cancellation policy"
+- **THEN** the label shows under the question with Read, above Yes and No, and stays there after the user taps Yes
+
 ### Requirement: Question card
 A question card SHALL show:
 - option buttons for a single choice;

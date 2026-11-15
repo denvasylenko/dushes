@@ -107,6 +107,16 @@ const GALLERY: Specimen[] = [
       options: [{ id: 'yes', label: 'Yes', value: true }, { id: 'no', label: 'No', value: false }] }),
   },
   {
+    id: 'consent-ask', group: 'ask', tag: 'ask · consent',
+    title: 'A question about one consent',
+    blurb: 'The consent’s own text shows under the question, with Read for its document. Nothing is preselected.',
+    user: 'Can I cancel later?',
+    lead: 'Yes, for free up to 2 hours before. One thing first:',
+    event: ask({ question: 'Is the **cancellation policy** fine with you?', field: 'c_cancel', label: 'I agree to the cancellation policy', consent: true, applies: true,
+      doc: { title: 'Cancellation policy', text: 'Free cancellation up to 2 hours before the visit. Later, the deposit is kept.' },
+      options: [{ id: 'yes', label: 'Yes', value: true }, { id: 'no', label: 'No', value: false }] }),
+  },
+  {
     id: 'details', group: 'ask', tag: 'ask · options with description',
     title: 'Options with details',
     blurb: 'When options need a line of explanation, they become rows. Still one tap.',
