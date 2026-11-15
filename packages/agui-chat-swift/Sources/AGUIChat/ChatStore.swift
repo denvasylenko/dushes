@@ -300,7 +300,7 @@ public final class ChatStore {
         case .toolStart(let id, let name, _):
             tools[id] = items.count
             items.append(.step(id: "tool-" + id, name: name, state: .running))
-        case .toolResult(let id, let content, let flagged):
+        case .toolResult(let id, _, let flagged):
             if let i = tools[id], i < items.count, case .step(let sid, let name, _) = items[i] {
                 // only `error: true` marks a failed step (CONTRACT.md, df83bd9); a refused move («Not opened: …») is not one
                 let failed = flagged
