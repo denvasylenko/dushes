@@ -86,6 +86,20 @@ Your components store values differently? That is normal: describe them once (1.
 
 All of it is optional, but with it the agent can say "the field just below" instead of a long path.
 
+## 1.5 `page`: what the page around the form says
+
+A fee, a deadline or a rule is often on the page, not in the form. Send it, and the agent answers from it instead of saying the form does not show it:
+
+```json
+"page": {
+  "title": "Vehicle registration",
+  "description": "Register a car you bought.",
+  "sections": [{ "title": "Fees", "text": "Registration costs 27.90 EUR, paid when you send the form." }]
+}
+```
+
+It reaches the agent with every message as page facts (up to 4,000 characters): data it answers from, never instructions, and given as the page words it. Under [Dushes](../../../agents/site-agent/) you do not send it: Dushes fills it from the site map for the page the form is on, unless you send your own.
+
 ## Next
 
 <CardGrid>

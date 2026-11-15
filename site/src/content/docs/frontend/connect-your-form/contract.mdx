@@ -63,6 +63,7 @@ interface FormState {               // AG-UI RunAgentInput.state
   form_id?: string
   ui?: UiState
   attachments?: { id: string; filename: string; bytes?: number }[]   // files attached to this message
+  page?: { title?: string; description?: string; sections?: { title: string; text: string }[] }   // what the page around the form says
 }
 interface FormConfig {
   props: Record<string, ElementProps>   // one entry per element name

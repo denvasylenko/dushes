@@ -285,7 +285,9 @@ Before an action with side effects (submitting, cancelling), or before a tool li
   "message": "It goes to the bank and cannot be changed afterwards.", "confirm_label": "Submit", "danger": true }
 ```
 
-Two buttons; make the confirm button red when `danger`. Resume `{accepted: true}` or `{accepted: false}`. For a tool held by `confirm_tools`, the payload also has `tool` and `args`, and the tool runs only after `{accepted: true}`.
+Two buttons; make the confirm button red when `danger`. Resume `{accepted: true}` or `{accepted: false}`. For a tool held by `confirm_tools`, the payload also has `tool` and `args`, and the tool runs only after `{accepted: true}`; that held card is then the only confirmation.
+
+When nothing in the run can act (no host tool, skill tool or page tool), there is nothing to confirm: the agent gets no confirmation, the review shows the form's status without a Send button, and the agent says the form is sent with the form's own button (or, for a form the person does not see, that this chat cannot send it).
 
 With `interrupt_mode: structured` the reasons are `request_file` and `confirm_action`.
 
