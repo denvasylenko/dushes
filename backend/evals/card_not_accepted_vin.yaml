@@ -1,0 +1,26 @@
+name: card_not_accepted_vin
+tags: [cards]
+persona: >-
+  A driver insuring a car who reads the VIN off a dirty sticker and gives only "555". When asked for the VIN on a
+  card, they type the same three digits.
+goal: Get the car's details in; the VIN they give is too short, so the form must refuse it and the chat must say so.
+start: {page: /insure, form: car_insurance}
+knows:
+  - "A 2019 Toyota Corolla, private use"
+  - "Gives the VIN as 555 and nothing else"
+turns: 2
+# The owner's screenshot (2026-11-15): a VIN of "555" showed a green check while the text said it was not entered.
+# A value the form refuses is not an answered card: the run sends card_result not_accepted with the form's reason
+# (e428617), and the words do not say the VIN is in.
+scripted:
+  - "it's a 2019 toyota corolla for private use, the vin is 555"
+  - "i only have 555 for the vin, what now"
+answers:
+  vin: "555"
+  make: toyota
+  usage: private
+expect:
+  answered_by: [form]
+  card_results: [not_accepted]
+  never_says: ["VIN is set", "VIN is now set", "entered the VIN", "VIN is filled", "VIN has been entered"]
+min_score: 7

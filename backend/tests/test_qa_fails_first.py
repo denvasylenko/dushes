@@ -142,3 +142,19 @@ def test_a_question_that_opened_a_form_is_caught():
     assert evals.moves_after(polite, "never said")[2] is False
     chips = ["\U0001f9ed on /", "\n\U0001f464 how much is a haircut?", "\U0001f916 A haircut is $40.", "   \u2699 suggest_next({\"options\": [\"Book a haircut\"]})"]
     assert len(evals.moves_after(chips, ".")[1]) == 2                    # the words and the chip: an offer without a question mark
+
+
+def test_a_refused_value_must_mark_its_card():
+    """e428617: a value the form refuses is not an answered card. The scenario key card_results reads the run's
+    CUSTOM card_result events."""
+    import evals
+    from pathlib import Path
+    sc = evals.load_scenario(Path(evals.HERE) / "evals" / "card_not_accepted_vin.yaml")
+    assert sc.card_results == ["not_accepted"]
+
+
+def test_an_offer_on_the_last_line_of_a_long_reply_is_seen():
+    import evals
+    log = ["\U0001f9ed on /", "\n\U0001f464 what do I need for a car loan?", "\U0001f916 You need a passport and proof of income.\n   \n   Would you like me to open the loan application?"]
+    _moves, said, _seen = evals.moves_after(log, ".")
+    assert "?" in said[0]

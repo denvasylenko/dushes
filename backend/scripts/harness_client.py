@@ -302,6 +302,7 @@ class Visit:
         self.suggestions: list[list[str]] = []   # each set of quick replies offered, in order
         self.stats: list[dict] = []        # per run: ttft_ms, total_ms, tools, tool_errors, output_tokens, model_ms
         self.replies: list[tuple[str, str]] = []   # (message id, text) of every assistant reply, as the widget keeps them
+        self.card_results: list[dict] = []         # CUSTOM card_result events: a card the run marked (not_accepted, with the reason)
         self.leads: list[dict] = []                # per question card with options: its labels and the text left on the page in that run
         self.said: list[tuple[str, str]] = []      # (message id, text) of every message the user sent
         self.ticks: set[str] = set()               # the consents this guest ticks themself (a scenario's answers: {name: true})
@@ -386,6 +387,10 @@ class Visit:
                     texts.pop(gone, None)
                     self.replies = [r for r in self.replies if r[0] != gone]
                     self.log.append("   \u2702 the text above was taken back (replaced before the card)")
+                elif name == "card_result":   # the run says what became of a card: a value the form refused is not an answered card
+                    v = dict(e.get("value") or {})
+                    self.card_results.append(v)
+                    self.log.append(f"   \u26a0 card {v.get('status')}: {str(v.get('reason') or '')[:120]}" + (f" ({v.get('field')})" if v.get("field") else ""))
                 elif name == "site_directive":
                     directive = e["value"]
                 elif name == "suggestions":   # the quick replies the chat offers after an answer

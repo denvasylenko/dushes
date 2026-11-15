@@ -14,4 +14,6 @@ expect:
   answered_by: [dushes]
   stays_put_on: ["."]
   never_tools: [open_form]
+  # the fact the question is about: an offer to open the page is not an answer (found 2026-11-15: 20 of 20 before the gate, 13 of 20 after)
+  says: [["900"]]
 min_score: 7

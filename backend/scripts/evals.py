@@ -40,7 +40,7 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted", "answers"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on",
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -90,6 +90,7 @@ class Scenario:
     no_cards_on: list[str] = field(default_factory=list)    # regexes of user messages: the reply to such a message shows no card
     never_points: bool = False                              # no ui_directive event (nothing on the page is opened or focused)
     options_once: bool = False                              # a choice card's options are not also listed in the text before it
+    card_results: list[str] = field(default_factory=list)   # statuses the run must send for a card (CUSTOM card_result), e.g. not_accepted
     stays_put_on: list[str] = field(default_factory=list)   # regexes of user messages: the reply answers and offers, and opens nothing
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
     file: str = ""
@@ -140,7 +141,7 @@ def load_scenario(path: Path) -> Scenario:
                     min_score=float(raw.get("min_score", 6)), attach=[str(x) for x in raw.get("attach") or []],
                     documents=raw.get("documents") is True, tags=[str(x) for x in raw.get("tags") or []],
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
-                    ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")), options_once=bool(exp.get("options_once")), stays_put_on=[str(x) for x in exp.get("stays_put_on") or []],
+                    ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")), options_once=bool(exp.get("options_once")), stays_put_on=[str(x) for x in exp.get("stays_put_on") or []], card_results=[str(x) for x in exp.get("card_results") or []],
                     no_cards_on=[str(x) for x in exp.get("no_cards_on_turns") or []],
                     scripted=_scripted(raw.get("scripted")), answers=dict(raw.get("answers") or {}),
                     fields=dict(exp.get("fields") or {}), file=path.name, site=_site(start), tools=[str(x) for x in exp.get("tools") or []],
@@ -352,6 +353,8 @@ def moves_after(log: list[str], pattern: str) -> tuple[list[str], list[str], boo
                 moves.append(t[:90])
             elif on and (t.startswith("\U0001f916") or re.match(r"\u2699\ufe0f? ?suggest_next\(", t)):
                 said.append(t)   # the reply's words, and the chips it offers under them
+            elif on and said and said[-1].startswith("\U0001f916") and t and not re.match(r"[\u2699\u2753\U0001f0cf\U0001f4cb\u2702\u26a0\u270f]", t):
+                said[-1] += " " + t   # a reply of several lines: its last line is often the offer
     return moves, said, seen
 
 
@@ -603,6 +606,10 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         led, seen = card_steps_after(visit.log, pattern)
         out.append({"check": f"no card on the turn asking /{pattern}/", "ok": seen and not led,
                     "detail": "; ".join(led)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
+    for status in sc.card_results:   # a value the form refused: the card is marked, it does not look answered
+        got = [str(r.get("status")) for r in getattr(visit, "card_results", [])]
+        out.append({"check": f"marks a card {status} (card_result)", "ok": status in got,
+                    "detail": f"card_result events: {got or 'none'}"[:300], "cap": CAP_OTHER})
     for pattern in sc.stays_put_on:   # "how do I get insurance?" is a question: the answer and an offer, no form opened
         moves, said, seen = moves_after(visit.log, pattern)
         forms = [m for m in moves if "open_form(" in m or "(form " in m]
