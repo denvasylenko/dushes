@@ -21,6 +21,7 @@ Each phase ships on its own, with the owner's yes through the CPO where it chang
 
 ## 3. The deep pipeline
 - [ ] 3.1 plan, retrieve, read (parallel), one gap round, write (streamed), check and repair
+- [ ] 3.1a sub-questions also in the languages of the documents in scope (from the outline), searched in each
 - [ ] 3.2 limits: seconds, dollars or tokens; the partial answer
 - [ ] 3.3 `CUSTOM research` progress events; stop through the run's stop
 - [ ] 3.4 the answer as the assistant's message (`source: "researcher"`), the one-line tool result, sources event
@@ -29,6 +30,7 @@ Each phase ships on its own, with the owner's yes through the CPO where it chang
 
 ## 4. Around it
 - [ ] 4.1 the widget's researching status and stop control (request to the design team)
+- [ ] 4.1a docs: a question in another language than the document needs a vector index (quick); deep searches in the documents' languages (Docs Lead)
 - [ ] 4.2 docs: Researcher overview and configuration, events, architecture diagram, benchmarks page (Docs Lead)
 - [ ] 4.3 `formguide[research]` no longer needed for document questions: README, install page, a deprecation note
 - [x] 4.4a `knowledge-base` synced into the main spec with phase 1

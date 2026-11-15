@@ -122,6 +122,8 @@ knowledge:
 
 ## Decided (the CPO, 2026-11-15)
 
+6. A question in one language about a document in another: word search cannot match them. For now this is the host's vector index (already fused with the words when configured), and the docs say so. In deep mode only, the planner also writes each sub-question in the languages of the documents in scope, so the retrieval runs in those languages too; quick never translates.
+
 1. Quick finds little: the answer says honestly that a short look found nothing, and the turn offers a "Look deeper?" suggestion chip; tapping it runs the same question at deep depth. Never a silent escalation.
 2. Section summaries made at upload: later, behind a setting (`knowledge.summaries`), not in this change.
 3. The deep defaults are the owner's: 45 seconds and $0.05 per answer; revisited after QA's first numbers.
