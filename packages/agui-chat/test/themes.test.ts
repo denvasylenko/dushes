@@ -114,4 +114,11 @@ describe('<agui-chat> theme and scheme', () => {
     el.setAttribute('theme', 'light')
     expect(el.dataset.scheme).toBe('light')
   })
+
+  it('fields keep 16 px on a touch screen (iPhone Safari zooms the page under it); the size is a token', async () => {
+    const { TOKENS } = await import('../src/themes')
+    const { CSS: STYLES } = await import('../src/styles')
+    expect(TOKENS).toContain('input-font-size')
+    expect(STYLES.replace(/\s+/g, '')).toContain('@media(pointer:coarse){input,textarea,select{font-size:max(16px,var(--agui-input-font-size,16px))!important')
+  })
 })

@@ -173,6 +173,13 @@ Before the chat closes (its close button, Esc, the scrim or `close()`), it SHALL
 - **WHEN** the page cancels `agui:before-close` and calls `proceed()` inside its own view transition
 - **THEN** the chat closes inside that transition, and `agui:close` fires once
 
+### Requirement: A field never zooms the page on a phone
+On a touch screen every text field of the chat (the composer, a card's fields, a form block's fields, selects) SHALL have text of at least 16 px, whatever the token `input-font-size` or a host's `::part` style sets, so iPhone Safari does not zoom the page when a field is tapped. Page zoom itself SHALL NOT be disabled. On other screens the token SHALL set the size (16 px by default).
+
+#### Scenario: A host theme with 14 px fields
+- **WHEN** a host styles `agui-chat::part(text-input)` with 14 px and a guest taps the Name field of a booking card on an iPhone
+- **THEN** the field's text is 16 px and the page does not zoom
+
 ### Requirement: A host that runs its own transition
 With `motion="none"` the panel and the scrim SHALL appear and go at once, with no movement or fade of their own, in every mode and at every width. With `scrim="off"` the chat SHALL draw no veil behind the open panel at any width, while the focus trap and Esc stay as `modal` says. The tokens `panel-border` and `panel-shadow` SHALL set or clear the open panel's border and shadow.
 

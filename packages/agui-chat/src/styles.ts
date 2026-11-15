@@ -186,7 +186,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .mode-hero:not(.open) .foot { padding: 0; background: none; }
 /* the hero's field keeps its buttons level with the last line, as everywhere: its 60 px come from the padding */
 .mode-hero:not(.open) .box { min-height: 60px; padding: 12px 12px 12px 16px; align-items: flex-end; box-shadow: 0 10px 30px -14px var(--agui-shadow); }
-.mode-hero:not(.open) textarea { font-size: 17px; line-height: 24px; padding-top: 6px; padding-bottom: 6px; }
+.mode-hero:not(.open) textarea { font-size: 17px !important; line-height: 24px; padding-top: 6px; padding-bottom: 6px; }
 @media (pointer: coarse) { .mode-hero:not(.open) textarea { padding-top: 10px; padding-bottom: 10px; } .mode-hero:not(.open) .box { padding: 8px 8px 8px 16px; } }
 .mode-hero.open .panel { background: var(--agui-panel-bg, var(--agui-bg)); border: var(--agui-panel-border, 1px solid var(--agui-line)); border-radius: var(--agui-radius-lg);
   overflow: hidden; animation: hero-grow .32s var(--agui-ease) both; }
@@ -269,9 +269,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .quick > .err-line { padding: 4px 14px 0; }
 /* inputs, Apple-style: a soft filled field, 44 px tall, the accent ring on focus; 16 px text so iOS does not zoom */
 .field input, .field select, .text-in { width: 100%; min-height: var(--agui-input-height, 44px); border: 1px solid var(--agui-input-border, transparent);
-  border-radius: var(--agui-input-radius, var(--agui-radius-sm)); padding: 10px 14px; font: 16px/1.3 var(--agui-font);
+  border-radius: var(--agui-input-radius, var(--agui-radius-sm)); padding: 10px 14px; font: var(--agui-input-font-size, 16px)/1.3 var(--agui-font);
   background: var(--agui-input-bg, var(--agui-soft)); color: var(--agui-input-ink, var(--agui-ink));
   transition: background .15s, border-color .15s, box-shadow .15s; }
+/* a touch screen: iOS zooms the page for a focused field under 16 px, so no token and no host style (::part) takes one below it */
+@media (pointer: coarse) { input, textarea, select { font-size: max(16px, var(--agui-input-font-size, 16px)) !important; } }
 .field input::placeholder, .text-in::placeholder { color: var(--agui-ink-3); }
 .field input:focus, .field select:focus, .text-in:focus, .field input:focus-visible, .field select:focus-visible, .text-in:focus-visible {
   background: var(--agui-bg); border-color: var(--agui-link); box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 22%, transparent); }
