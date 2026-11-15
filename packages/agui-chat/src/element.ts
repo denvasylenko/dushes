@@ -591,15 +591,16 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     for (const turn of all ? turns : turns.slice(-1)) {
       const bodies = turn.filter((k) => k.matches('.msg.ai[data-message-id]')).map((k) => k.querySelector<HTMLElement>(':scope > .body')).filter((b): b is HTMLElement => !!b && this._texts.has(b))
       if (!bodies.length) continue
-      turn.forEach((k) => k.querySelector(':scope > .body > .msg-acts')?.remove())   // a resumed turn: the row moves to its new end
+      turn.forEach((k) => (k.matches('.tail') ? k : k.querySelector(':scope > .body > .msg-acts'))?.remove())   // a resumed turn: the row moves to its new end
       const pieces = turn.filter((k) => k.isConnected)
       const last = pieces[pieces.length - 1], body = bodies[bodies.length - 1]
       if (!last || !body.isConnected) continue   // the log was cleared meanwhile (a new thread, a teardown): no row to add
       const text = bodies.map((b) => this._texts.get(b)).join('\n\n')
-      // one row per turn, after everything in it: a turn that ends with a card has none (never between a text and a card,
-      // never under a card), and the answer before it is an older one now
-      if (last.contains(body)) this._actions(body, text)
-      else this.$.log.querySelectorAll('.msg.ai.last').forEach((x) => x.classList.remove('last'))
+      // one row per turn, after everything in it. A card that follows an answer belongs to it (one block): the row
+      // comes after the card, at the end of the block, never between the text and its card
+      let at = body
+      if (!last.contains(body)) last.after(h('div', { class: 'msg ai tail', 'data-message-id': body.parentElement!.dataset.messageId }, at = h('div', { class: 'body' })))
+      this._actions(at, text)
     }
     this._scroll()   // the row made the log taller: its end stays in view, above the suggestions
   }
@@ -2386,6 +2387,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       return next
     })
     this._append(el)
+    if (!this._busy) this._turnActions()   // a card that came after the turn's end: the row moves under it
     if (finePointer()) el.querySelector<HTMLElement>('[autofocus], .chip, .btn.pri')?.focus({ preventScroll: true })
   }
 

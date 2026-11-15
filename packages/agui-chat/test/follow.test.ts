@@ -102,7 +102,7 @@ describe('cards after a reload', () => {
     document.body.appendChild(el)
     const root = el.shadowRoot!
     for (let i = 0; i < 200 && !root.querySelector('.srcs .src'); i++) await tick(10)   // the links come with the on-demand file
-    const order = [...root.querySelector('.log')!.children].map((c) => (c.classList.contains('srcs') ? 'sources' : c.classList.contains('me') ? 'user' : 'assistant'))
+    const order = [...root.querySelector('.log')!.children].filter((c) => !c.classList.contains('tail')).map((c) => (c.classList.contains('srcs') ? 'sources' : c.classList.contains('me') ? 'user' : 'assistant'))
     expect(order).toEqual(['user', 'assistant', 'sources', 'user', 'assistant'])
     const [first, second] = [...root.querySelectorAll<HTMLElement>('.srcs .src')]
     expect(first.textContent).toBe('Tariffs 2026 › Early repayment')

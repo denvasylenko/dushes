@@ -122,6 +122,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .tbl tr:last-child td { border-bottom: 0; }
 .tbl :is(th, td):last-child { padding-right: 0; }
 .msg-acts { display: flex; gap: 2px; margin: 8px 0 0 -8px; }
+.card + .msg.ai.tail { margin-top: -20px; } .srcs + .tail { margin-top: -12px; } .tail:not(.last) { display: none; }   /* the row after an answer's card: 8 px under it; an older turn has none */
 .msg-acts .act { width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--agui-ink-3); display: grid; place-items: center; cursor: pointer; }
 .msg-acts .act:hover { background: var(--agui-soft); color: var(--agui-ink); }
 .msg-acts .act[aria-pressed=true], .msg-acts .act.done { color: var(--agui-link); }

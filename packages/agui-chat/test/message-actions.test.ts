@@ -52,7 +52,7 @@ describe('a sent message', () => {
 })
 
 describe('actions under an answer', () => {
-  it('one row per turn, after everything in it: a turn that ends with a card has none; a long press on a phone shows an older row', async () => {
+  it('one row per turn, after everything in it: a card that follows an answer is part of its block, the row comes after the card; a long press on a phone shows an older row', async () => {
     const el = await mount()
     el.use(formguide({ getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'h' }), applyChanges: async () => ({}) }))
     const card = { type: 'CUSTOM', name: 'card', value: { type: 'blocks', blocks: [{ type: 'title', text: 'Visits' }, { type: 'row', label: 'This week', value: '312' }] } }
@@ -61,12 +61,15 @@ describe('actions under an answer', () => {
     el.agent = { run: () => ({ subscribe: (o: Obs) => { const evs = runs.shift() ?? []
       setTimeout(() => { o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' }); evs.forEach((e) => o.next(e)); o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }); return { unsubscribe() {} } } }) } as never
     await el.send('visits?'); await tick(30)
-    expect($$(el, '.turn-acts')).toHaveLength(0)                                    // no row under the card
-    expect($$(el, '.msg-acts')).toHaveLength(0)                                     // and none between the text and the card: this turn has no row
-    expect($$(el, '.msg.ai.last')).toHaveLength(0)
+    // the card belongs to its answer: text, the card right under it, then the one row of actions, at the end of the block
+    expect($$(el, '.msg.ai:not(.tail) .msg-acts')).toHaveLength(0)                  // never between the text and its card
+    const kinds = [...el.shadowRoot!.querySelector('.log')!.children].map((c) => (c.matches('.tail') ? 'actions' : c.matches('.card') ? 'card' : c.matches('.msg.me') ? 'user' : c.matches('.msg.ai') ? 'text' : ''))
+    expect(kinds.filter(Boolean)).toEqual(['user', 'text', 'card', 'actions'])
+    expect($$(el, '.tail.last .msg-acts .act')).not.toHaveLength(0)
     await el.send('thanks'); await tick(30)
+    expect($$(el, '.tail.last')).toHaveLength(0)                                    // an older turn: its row after the card is put away
     await el.send('and then?'); await tick(30)
-    const [, older, latest] = $$(el, '.msg.ai[data-message-id]')
+    const [, older, latest] = $$(el, '.msg.ai[data-message-id]:not(.tail)')
     expect(latest.classList.contains('last')).toBe(true)
     expect(older.classList.contains('last')).toBe(false)
     vi.useFakeTimers()

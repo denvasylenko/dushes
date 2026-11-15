@@ -106,7 +106,7 @@ Every answer SHALL end with its actions from `messageActions` (default `copy`): 
 - **THEN** it is pressed, the thumbs-up is not, and `agui:message-action` carries `{id: "dislike", pressed: true}`
 
 ### Requirement: One turn, one group
-An answer's turn (every text part and card of a run, until the next user message) SHALL read as one group: no actions while it streams, then one actions row after its last text when the turn ends with text (none when it ends with a card); `copy` SHALL copy every text part of the turn. Inside a turn a card and the text above or below it SHALL sit 16 px apart; turns keep their wider gap. A restored conversation SHALL be grouped the same way.
+An answer's turn (every text part and card of a run, until the next user message) SHALL read as one group: no actions while it streams, then one actions row at the end of the group (after the last text, or after the card or sources that follow it); `copy` SHALL copy every text part of the turn. Inside a turn a card and the text above or below it SHALL sit 16 px apart; turns keep their wider gap. A restored conversation SHALL be grouped the same way.
 
 #### Scenario: Text, then a booking card
 - **WHEN** the assistant writes a sentence and then shows a question card in the same run
@@ -120,7 +120,7 @@ Every tap on an action under an answer SHALL fire `agui:message-action` `{id, me
 - **THEN** `onMessageAction("fork", {messageId, text})` is called
 
 ### Requirement: When the actions show
-A turn SHALL get one row of actions, after everything in it and only once it has finished; the row SHALL stay visible only under the latest text answer, and never between a text and a card or under a card: a turn that ends with a card (one still waiting for an answer included) has none. An older answer SHALL show its actions on hover or focus on a computer, and after a long press on a touch screen (44 px targets) until the next touch elsewhere.
+A turn SHALL get one row of actions, after everything in it and only once it has finished; the row SHALL never sit between a text and the card that follows it. A card after an answer's text is part of it: the row comes right after the card, for the latest turn only. A card with no text before it SHALL have none. An older answer SHALL show its actions on hover or focus on a computer, and after a long press on a touch screen (44 px targets) until the next touch elsewhere.
 
 #### Scenario: An older answer
 - **WHEN** the pointer rests on an earlier answer
@@ -131,8 +131,12 @@ A turn SHALL get one row of actions, after everything in it and only once it has
 - **THEN** that answer's actions show, and a touch elsewhere puts them away
 
 #### Scenario: An answer that ends with a card
-- **WHEN** a turn ends with a card after its text
-- **THEN** no actions are drawn, neither under the card nor between the text and the card
+- **WHEN** a turn ends with a card after its text, live or in a restored conversation
+- **THEN** the order is the text, the card right under it, then the actions; nothing is drawn between the text and the card
+
+#### Scenario: A card that stands alone
+- **WHEN** a turn is a card with no text
+- **THEN** the card is its own block and has no actions row
 
 ### Requirement: A card's look
 A card SHALL be set apart from the feed by one means only: in the light scheme the feed's own background with a soft shadow and no border, in the dark scheme a fill one step lighter than the feed with no shadow. The tokens `card-bg`, `card-border` and `card-shadow` SHALL override each part.
