@@ -361,17 +361,21 @@ def test_a_scenario_set_is_run_five_times_at_most(tmp_path):
         assert len(names) == e["scenarios"] and set(names) <= known and not seen & set(names), e["set"]   # one set per scenario
         seen |= set(names)
         assert all(s.scripted for s in every if s.name in names), f"{e['set']}: a scenario has no scripted guest lines"
-    entry = {"set": "x", "version": 1, "status": "active", "file": index["sets"][0]["file"], "runs": [{"kind": "main"}] * 4 + [{"kind": "regression"}]}
+    runs = [{"kind": "main", "commit": f"c{i}"} for i in range(4)] + [{"kind": "regression", "commit": "r"}, {"kind": "live", "commit": "c0+dirty"}]
+    entry = {"set": "x", "version": 1, "status": "active", "file": index["sets"][0]["file"], "runs": runs}
     fake = {"sets": [entry, {"set": "old", "version": 1, "status": "archived", "file": entry["file"], "runs": []}]}
-    evals.check_set(fake, entry, "main")                      # the fifth counted run is allowed (a regression is not counted)
-    entry["runs"].append({"kind": "live"})
+    assert evals.counted(entry) == 4                          # four candidates: a live run on c0 and the regression add none
+    evals.check_set(fake, entry, "main", "c4")                # the fifth candidate is allowed
+    entry["runs"].append({"kind": "main", "commit": "c4"})
+    evals.check_set(fake, entry, "live", "c4")                # its live run, and a repeat on an old candidate, use nothing up
+    evals.check_set(fake, entry, "main", "c2")
     with pytest.raises(evals.ScenarioError, match="used up"):
-        evals.check_set(fake, entry, "main")
+        evals.check_set(fake, entry, "main", "c5")            # a sixth candidate is refused
     with pytest.raises(evals.ScenarioError, match="archived"):
         evals.check_set(fake, fake["sets"][1], "main")
     evals.check_set(fake, fake["sets"][1], "regression")
     assert evals.set_entry(fake, "x") is entry and evals.set_entry(fake, "old-v1")["status"] == "archived"
-    entry["runs"] = [{"kind": "main"}] * 4
+    entry["runs"] = [{"kind": "main", "commit": f"c{i}"} for i in range(4)]
     assert evals.regression_due(fake)                         # four runs so far: the fifth overall is a regression
     path = tmp_path / "index.json"
     path.write_text(json.dumps({"sets": [{**entry, "runs": []}]}))

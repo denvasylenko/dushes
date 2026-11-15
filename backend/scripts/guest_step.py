@@ -103,6 +103,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--answer", help="say: typed into a free-text question card shown in this turn")
     ap.add_argument("--max-usd", type=float, help="say: refuse the line when this folder's agent spend is over the sum")
     ap.add_argument("--out", type=Path, help="done: the report to append the conversation to")
+    ap.add_argument("--max-lines", type=int, default=8, help="say: refuse a guest line beyond this many in one conversation")
     a = ap.parse_args(argv)
     if a.cmd == "serve":
         import uvicorn
@@ -126,6 +127,9 @@ def main(argv: list[str]) -> int:
         if a.max_usd is not None and (now := spent(a.state.parent, meta.get("agent_model"))) > a.max_usd:
             print(f"refused: the agent's spend in {a.state.parent} is ${now:.2f}, over --max-usd {a.max_usd}")
             return 3
+        if len(v.said) >= a.max_lines:   # the owner's limit for a live conversation; an instruction alone was not kept
+            print(f"refused: {len(v.said)} guest lines sent already, the limit is {a.max_lines}; run done")
+            return 3
         rule, typed = evals.RuleGuest(sc), a.answer
 
         def answer(q: dict) -> dict | None:   # the scenario's rule first; a free-text card may take --answer once
@@ -147,7 +151,8 @@ def main(argv: list[str]) -> int:
     who = [f"[{m.get('agent', 'dushes')}] {str(m.get('content', ''))[:90]}" for m in v.messages if m.get("role") == "assistant"]
     text = v.transcript() + ("\n\n" + "\n".join(final) if final else "") + "\n\nWho wrote each reply (dushes: the site assistant, form: the form assistant):\n" + "\n".join(who)
     RUNS.mkdir(exist_ok=True)
-    path = RUNS / f"eval-{sc.name}-live-{a.state.stem}.txt"
+    stem = a.state.stem if a.state.stem != sc.name else a.state.parent.name   # two stands play the same scenario: the folder tells them apart
+    path = RUNS / f"eval-{sc.name}-live-{stem}.txt"
     path.write_text(text + "\n\nCHECKS:\n" + "\n".join(f"{'✅' if r['ok'] else '❌'} {r['check']} {r['detail']}" for r in results)
                     + f"\n\nNOT JUDGED: {'every code check holds' if all(r['ok'] for r in results) else 'a code check failed'}")
     row = {"name": sc.name, "file": sc.file, "score": 10.0 if all(r["ok"] for r in results) else min(r.get("cap", 5) for r in results if not r["ok"]),

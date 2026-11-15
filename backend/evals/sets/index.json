@@ -1,5 +1,5 @@
 {
- "about": "Scenario sets and their runs. A set is run at most 5 times (kinds main and live), then a new version replaces it and it is archived with its results; every 5th run overall is a regression over the archived sets (evals.py --set / --regression).",
+ "about": "Scenario sets and their runs. A set serves at most 5 candidates, then a new version replaces it and it is archived with its results. One run of a set is one candidate commit: its main and its live runs together, every model on it; another run on the same commit uses nothing up (the tuning the rule guards against happens per candidate). The 'before' of a candidate is the previous candidate's run when the scenarios did not change. Every 5th run overall is a regression over the archived sets (evals.py --set, --kind regression). usd is the agent's spend from the report's token counts.",
  "sets": [
   {
    "set": "pressure",

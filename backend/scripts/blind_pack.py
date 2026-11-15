@@ -92,7 +92,9 @@ def page_facts(sc) -> str:
 
 def conversation(text: str) -> str:
     """The log without the checks, the score and the "who wrote each reply" list's model hints."""
-    return text.split("\n\nCHECKS:")[0].rstrip()
+    text = text.split("\n\nCHECKS:")[0].rstrip()
+    # an error line names the provider (and so the model): the scorer sees that it failed, not whose message it was
+    return re.sub(r"model error: .*", "model error (the assistant did not answer; the provider's message is left out)", text)
 
 
 def pick(items: list[dict], only_differing: bool, per: int, rnd: random.Random) -> list[dict]:
