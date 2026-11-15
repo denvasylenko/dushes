@@ -182,3 +182,10 @@ A tool call SHALL always be followed by a result in the history. A failure insid
 #### Scenario: A tool crashes
 - **WHEN** a built-in tool raises an unexpected error for the arguments it got
 - **THEN** the call's result says the tool failed, the model answers the user, and the next message of the conversation is accepted by the provider
+
+### Requirement: A direct request for a valid value is carried out
+When the user tells the agent to put a value into a field and the form allows that value, the agent SHALL propose it. It SHALL NOT refuse it, question it or ask whether to set it anyway because it differs from what the user said earlier or because the agent doubts it is true. It MAY note the difference in one clause. A value the form does not allow is refused with what the form allows.
+
+#### Scenario: Another region than the one named before
+- **WHEN** the user gave an address in a region the form's list does not have, and then says "pick Saint Petersburg for the region"
+- **THEN** the agent proposes Saint Petersburg for the region and says in one clause that it differs from the address given before
