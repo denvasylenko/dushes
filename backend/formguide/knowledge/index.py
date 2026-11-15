@@ -21,21 +21,6 @@ _WORD = re.compile(r"\w+", re.UNICODE)
 # figures and clause numbers as written ("4.2", "27,90", "2026-11-15"), and codes with digits in them ("DE89", "A-118")
 _FIGURE = re.compile(r"\d+(?:[.,:/\-]\d+)+|\b[^\W\d_]+[\-]?\d[\w\-]*|\b\d[\w\-]*[^\W\d_][\w\-]*", re.UNICODE)
 
-# words of a question that say nothing about its subject (a few per language; non-ASCII letters as escapes)
-STOP = frozenset("""
-a an the of to in on at for by with from and or but not is are was were be been do does did can could may must
-shall should will would have has had i me my we us our you your he she it its they them their this that these those
-what which who whom when where why how many much long often there here any some all each per as if so than then
-please tell know need want get give show find about into over under up out
-der die das den dem des ein eine einen einem einer und oder ist sind was wie wer wo wann warum welche welcher
-ich wir mein unser sie ihr es zu von mit auf bei nach aus pro
-el la los las un una y o es son que como cuando donde cual cuanto mi nuestro de del en con por para
-le les une et ou est sont que qui quoi comment quand quel quelle mon notre des du dans avec pour par
-il lo gli i uno e che come quando dove quale quanto mio nostro di del della con per
-""".split()) | frozenset(("\u0438", "\u0432", "\u043d\u0430", "\u043a\u0430\u043a", "\u0447\u0442\u043e",
-                              "\u044d\u0442\u043e", "\u043f\u043e", "\u0434\u043b\u044f", "\u0443", "\u0437\u0430",
-                              "\u0456", "\u0442\u0430", "\u044f\u043a", "\u0449\u043e"))
-
 W_PATH = 1.5     # a match in a section's heading path, next to a match in its text
 W_TITLE = 0.5    # a match in the document's title
 
@@ -96,10 +81,7 @@ class _Postings:
         self.chunks[c.id] = c
         # a section without a heading path is indexed as before paths existed: its heading with its text
         body = Counter(stems(c.text if c.path else f"{c.section} {c.text}"))
-        # the document's name stands at the top of every path, whether the file had a title line of its own or not
-        # (a PDF has none): a question that names a document finds that document's sections
-        name = re.sub(r"\.(md|txt|pdf)$", "", c.title, flags=re.IGNORECASE)
-        head = Counter(stems(f"{name} {c.path}")) if c.path else Counter()
+        head = Counter(stems(c.path)) if c.path else Counter()
         for t, n in body.items():
             self.text.setdefault(t, {})[c.id] = n
         for t, n in head.items():
@@ -146,9 +128,7 @@ class BM25Index:
 
     def search(self, namespaces: list[str], query: str, k: int = 6) -> list[tuple[float, Chunk]]:
         spaces = [self._by_ns[ns] for ns in dict.fromkeys(namespaces) if ns in self._by_ns]
-        words = [w for w in _WORD.findall(query.lower()) if w not in STOP]
-        q = set(stems(" ".join(words) if words else query))   # a question made only of small words is searched as it is
-        q |= {f for f in stems(query) if any(ch.isdigit() for ch in f)}   # figures and codes are kept whatever they sit in
+        q = set(stems(query))
         n = sum(len(p.chunks) for p in spaces)
         if not n or not q:
             return []
@@ -157,8 +137,6 @@ class BM25Index:
         avg_path = sum(p.sum_path for p in spaces) / with_path or 1.0
         scores: dict[tuple[int, str], float] = {}
         for t in q:
-            # a word's rarity is counted per field: a word that is in few headings marks the sections about it,
-            # however common it is in running text (the small words of a question are dropped before this)
             for table, lens, avg, weight in (("text", "len_text", avg_text, 1.0), ("path", "len_path", avg_path, W_PATH)):
                 df = sum(len(getattr(p, table).get(t, ())) for p in spaces)
                 if not df:
