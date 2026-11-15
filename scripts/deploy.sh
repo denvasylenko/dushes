@@ -48,6 +48,23 @@ step "site links" python3 scripts/check_links.py site/dist
 step "site exports" python3 scripts/check_exports.py site/dist
 step "site contrast" python3 scripts/check_contrast.py
 step "widget reference" python3 scripts/check_ts_reference.py   # every public widget type field has a reference row, as in CI
+step "doc examples" bash -c "cd backend && uv run --frozen --quiet python ../scripts/check_examples.py"   # every code example in the docs, as in CI
+# the host app starts with the hosted config (load_config refuses an unknown key) and answers its health check;
+# a placeholder key: start-up calls no model. Port 8188, our own process only, stopped by PID.
+host_boot() {
+  if curl -s -o /dev/null -m 2 http://127.0.0.1:8188/; then echo "port 8188 is taken by another process"; return 1; fi
+  ( cd backend && export PYTHONUNBUFFERED=1 ANTHROPIC_API_KEY=sk-ant-placeholder DEMO_PRICES=0.1,0.5,0.01,0.125 \
+    && exec uv run --frozen --quiet uvicorn docs_ai.host:app --host 127.0.0.1 --port 8188 ) > /tmp/dushes-host-boot.log 2>&1 &
+  local pid=$! code=000 i
+  for i in $(seq 1 90); do
+    code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8188/ai/health || true)"
+    [ "$code" = 200 ] && break; kill -0 "$pid" 2>/dev/null || break; sleep 1
+  done
+  kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+  [ "$code" = 200 ] || { tail -20 /tmp/dushes-host-boot.log; return 1; }
+  echo "health 200 after ${i}s"
+}
+step "host starts" host_boot
 
 dirty="$(git status --porcelain)"
 [ -z "$dirty" ] || { echo "refuse: the worktree changed during build/tests:"; echo "$dirty"; exit 1; } >&2
