@@ -230,16 +230,31 @@ def create_router(guide: Any) -> APIRouter:
                 return
             steps: asyncio.Queue = asyncio.Queue()
             used: list[dict] = []
+            mid: str | None = None   # the answer's message, once its first words are out
             started = RunStats.now()
             try:
                 await ready(set_id)
                 task = asyncio.create_task(research.ask_documents(
                     guide.knowledge, scope(set_id), set_name(set_id), question, model,
-                    lambda tool, args: steps.put_nowait((tool, args)), used))
+                    lambda tool, args: steps.put_nowait((tool, args)), used,
+                    on_text=lambda piece: steps.put_nowait((None, piece))))
                 while not task.done() or not steps.empty():
                     try:
                         tool, args = await asyncio.wait_for(steps.get(), 0.2)
                     except asyncio.TimeoutError:
+                        continue
+                    if tool is None:   # the answer as it is written; None takes back words that were not the answer
+                        if args is None:
+                            if mid:
+                                yield {"type": "TEXT_MESSAGE_END", "messageId": mid}
+                                yield {"type": "CUSTOM", "name": "text_retract", "value": {"messageId": mid}}
+                                mid = None
+                            continue
+                        if not mid:
+                            stats.first_token()
+                            mid = f"msg_{uuid.uuid4().hex[:12]}"
+                            yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
+                        yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": args}
                         continue
                     cid = f"call_{uuid.uuid4().hex[:12]}"
                     yield {"type": "TOOL_CALL_START", "toolCallId": cid, "toolCallName": f"docs.{tool}"}
@@ -248,6 +263,8 @@ def create_router(guide: Any) -> APIRouter:
                 answer = await task
             except Exception as e:  # noqa: BLE001 - a human error, never a stack trace
                 log.exception("the researcher demo failed")
+                if mid:
+                    yield {"type": "TEXT_MESSAGE_END", "messageId": mid}
                 yield {"type": "RUN_ERROR", "message": f"The researcher is unavailable right now ({type(e).__name__})."}
                 return
             finally:
@@ -255,9 +272,11 @@ def create_router(guide: Any) -> APIRouter:
                     stats.model_call(started, None, sum_usage(used), kind="researcher", model=model_id(model))
                     logging.getLogger("formguide.stats").info(json.dumps(stats.as_event(), ensure_ascii=False))
             text = _SOURCES_LINE.sub("", answer).strip() or answer.strip()
-            mid = f"msg_{uuid.uuid4().hex[:12]}"
-            yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
-            yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": text}
+            if not mid:   # nothing was written piece by piece (a model that does not stream): the answer whole
+                stats.first_token()
+                mid = f"msg_{uuid.uuid4().hex[:12]}"
+                yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
+                yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": text}
             yield {"type": "TEXT_MESSAGE_END", "messageId": mid}
             items = research.with_passages(research.parse_sources(answer, guide.knowledge, scope(set_id)),
                                            answer, guide.knowledge, scope(set_id))

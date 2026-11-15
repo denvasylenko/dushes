@@ -173,16 +173,68 @@ def _text(content: Any) -> str:
     return "".join(b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text")
 
 
+_SOURCES = re.compile(r"^\W*sources?\W*:", re.IGNORECASE)
+_MAYBE_SOURCES = re.compile(r"^\W*(s(o(u(r(c(e(s)?)?)?)?)?)?)?\W*$", re.IGNORECASE)   # a line that may still become one
+
+
+class AnswerText:
+    """The answer as it is written, for showing it while the researcher still writes: nothing from the
+    "Sources:" line on (the sources are shown as their own list)."""
+
+    def __init__(self) -> None:
+        self.head = ""        # the start of the current line, held back while it may still be the Sources line
+        self.mid = False      # the current line has started going out, so it is not the Sources line
+        self.done = False     # the Sources line was reached: nothing more is shown
+        self.sent = False     # something was shown
+
+    def feed(self, delta: str) -> str:
+        """The text that may be shown now for this new piece."""
+        out = ""
+        for ch in delta or "":
+            if self.done:
+                break
+            if self.mid:
+                out += ch
+                self.mid = ch != "\n"
+                continue
+            self.head += ch
+            if _SOURCES.match(self.head):
+                self.done, self.head = True, ""
+            elif ch == "\n" or not _MAYBE_SOURCES.match(self.head):
+                out, self.head, self.mid = out + self.head, "", ch != "\n"
+        self.sent = self.sent or bool(out)
+        return out
+
+
 async def ask_documents(kb: KnowledgeBase, form_id: str, title: str, question: str, model: BaseChatModel,
-                        on_step: Callable[[str, Any], None] | None = None, usage: list | None = None) -> str:
+                        on_step: Callable[[str, Any], None] | None = None, usage: list | None = None,
+                        on_text: Callable[[str | None], None] | None = None) -> str:
     """Run the researcher and return its final answer. `on_step(tool, args)` reports progress; `usage`, when
-    given, collects the usage of every model call it made."""
+    given, collects the usage of every model call it made. `on_text(piece)` gets the answer as it is written,
+    without its Sources line; `on_text(None)` says the text so far was not the answer after all (the researcher
+    went on to another step) and must be taken back."""
     if not kb.documents_for(form_id):
         return "This form has no business documents."
     agent = build_researcher(kb, form_id, title, model)
     final = ""
-    async for update in agent.astream({"messages": [{"role": "user", "content": question}]},
-                                      {"recursion_limit": 40}, stream_mode="updates"):
+    writing: AnswerText | None = None
+    async for mode, update in agent.astream({"messages": [{"role": "user", "content": question}]},
+                                            {"recursion_limit": 40}, stream_mode=["updates", "messages"]):
+        if mode == "messages":
+            if on_text is None:
+                continue
+            chunk, meta = update
+            # only the researcher's own words: not a tool's output, and not a sub-agent's (its calls run in a
+            # nested graph, so their checkpoint namespace has more than one part)
+            if getattr(chunk, "type", "") not in ("ai", "AIMessageChunk") or "|" in str((meta or {}).get("langgraph_checkpoint_ns", "")):
+                continue
+            piece = _text(chunk.content)
+            if piece:
+                writing = writing or AnswerText()
+                shown = writing.feed(piece)
+                if shown:
+                    on_text(shown)
+            continue
         for node in update.values():
             for m in (node or {}).get("messages", []) if isinstance(node, dict) else []:
                 if usage is not None and getattr(m, "type", "") == "ai" and getattr(m, "usage_metadata", None):
@@ -190,6 +242,11 @@ async def ask_documents(kb: KnowledgeBase, form_id: str, title: str, question: s
                 for call in getattr(m, "tool_calls", None) or []:
                     if on_step:
                         on_step(call["name"], call.get("args"))
-                if getattr(m, "type", "") == "ai" and not getattr(m, "tool_calls", None):
-                    final = _text(m.content) or final
+                if getattr(m, "type", "") == "ai":
+                    if getattr(m, "tool_calls", None):
+                        if writing is not None and writing.sent and on_text:
+                            on_text(None)   # words before a step, not the answer: take them back
+                        writing = None
+                    else:
+                        final = _text(m.content) or final
     return final or "The researcher returned no answer."

@@ -139,3 +139,10 @@ A quick answer SHALL be followed by a "Look deeper" suggestion; that message SHA
 #### Scenario: Look deeper
 - **WHEN** the visitor taps "Look deeper" under a quick answer
 - **THEN** the same question is answered by the document researcher, and the run says `depth: "deep"`
+
+### Requirement: A detailed answer is written as it comes
+In the researcher demo a detailed answer SHALL be sent as text deltas while the researcher writes it, not whole at the end. Words written before a step SHALL be closed and taken back with `CUSTOM text_retract`. The sources follow the text as their own event, and the text never holds the Sources line.
+
+#### Scenario: A detailed question
+- **WHEN** a visitor asks a question the demo answers in detail
+- **THEN** the first words of the answer arrive before the answer is complete, and the list of sources arrives after its last word

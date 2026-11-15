@@ -53,3 +53,10 @@ A stored file's own id in the researcher's sources ("cbde2404.md") SHALL be reso
 #### Scenario: The model cites the stored name
 - **WHEN** the sources line says "cbde2404.md > Fees" and cbde2404 is the stored id of tariffs_2026.md
 - **THEN** the source reads tariffs_2026.md, section Fees
+
+### Requirement: The answer can be followed as it is written
+The researcher SHALL report its answer's text piece by piece to a caller that asks for it, without the Sources line. Text it wrote before going on to another step is not the answer: the caller SHALL be told to take it back. The returned answer is unchanged.
+
+#### Scenario: A lead before a search
+- **WHEN** the researcher writes a sentence, then searches, then writes its answer
+- **THEN** the caller gets the sentence, a take-back, and then the answer's text without its Sources line

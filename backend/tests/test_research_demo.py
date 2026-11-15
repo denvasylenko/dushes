@@ -26,10 +26,16 @@ def demo(tmp_path, monkeypatch):
     host._day = host.Day("")
     asked = {}
 
-    async def fake(kb, scope, title, question, model, on_step=None, usage=None):
+    async def fake(kb, scope, title, question, model, on_step=None, usage=None, on_text=None):
         asked.update(scope=scope, title=title, question=question, model=model)
         on_step("search_documents", {"query": "late fee"})
+        if asked.get("streams") and on_text:
+            on_text("Let me check the tariffs.")      # words before a step: they are taken back
+            on_text(None)
         on_step("read_section", {"section_id": "x#1"})
+        if asked.get("streams") and on_text:
+            for piece in ("A late payment costs ", "27,90 EUR once the reminder has gone out.\n"):
+                on_text(piece)
         if usage is not None:
             usage.append({"input_tokens": 900, "output_tokens": 60})
         return "A late payment costs 27,90 EUR once the reminder has gone out.\nSources: tariffs_2026.md > Fees"
@@ -149,3 +155,54 @@ def test_only_the_public_sets_are_offered_from_the_shipped_corpora(monkeypatch):
     assert research_demo.set_ids() == ["halden_policies", "orrin_catalogue", "tessel_contract", "veltra_manual"]
     assert research_demo.set_name("orrin_catalogue") == "Product catalogue (Orrin Tools)"
 
+
+
+def test_a_detailed_answer_is_written_as_it_comes(demo):
+    """QA, 2026-11-15: a detailed answer arrived whole after 8 to 19 seconds of steps. Its words now go out as the
+    researcher writes them, without the Sources line; words written before a step are taken back."""
+    demo["streams"] = True
+    with TestClient(host.app) as c:
+        ev = _events(c.post("/research/run", json=_body(depth="deep")))
+    kinds = [e.get("name") or e["type"] for e in ev]
+    assert kinds[-1] == "RUN_FINISHED" and "RUN_ERROR" not in kinds
+    starts = [e["messageId"] for e in ev if e["type"] == "TEXT_MESSAGE_START"]
+    assert len(starts) == 2                                                    # the lead, then the answer
+    assert [e["value"]["messageId"] for e in ev if e.get("name") == "text_retract"] == [starts[0]]
+    answer = [e["delta"] for e in ev if e["type"] == "TEXT_MESSAGE_CONTENT" and e["messageId"] == starts[1]]
+    assert len(answer) == 2 and "".join(answer).strip() == "A late payment costs 27,90 EUR once the reminder has gone out."
+    assert "Sources" not in "".join(answer)                                    # the sources are their own list
+    assert kinds.index("sources") > kinds.index("TEXT_MESSAGE_END")
+    stats = next(e["value"] for e in ev if e.get("name") == "run_stats")
+    assert isinstance(stats["ttft_ms"], int)
+
+
+def test_the_answer_text_never_shows_the_sources_line():
+    from formguide.knowledge.research import AnswerText
+    text = "A late payment costs 27,90 EUR.\nSo pay on time.\n\nSources: tariffs.md > Fees\n"
+    for n in (1, 3, 7, 100):                                                   # however the model cuts its pieces
+        a = AnswerText()
+        assert "".join(a.feed(text[i:i + n]) for i in range(0, len(text), n)) == \
+            "A late payment costs 27,90 EUR.\nSo pay on time.\n\n", n
+    assert AnswerText().feed("Some sources say: yes") == "Some sources say: yes"
+    assert AnswerText().feed("**Sources:** a.md") == ""
+
+
+def test_the_researcher_itself_reports_its_words(tmp_path):
+    """The real researcher graph on a scripted model: a lead before a step is reported and taken back, the answer
+    is reported without its Sources line, and the returned answer is whole."""
+    import asyncio
+
+    from formguide.knowledge import research
+    from formguide.knowledge.base import KnowledgeBase
+
+    from .conftest import ScriptedChatModel, say
+    kb = KnowledgeBase(tmp_path)
+    kb.add_document("f", "tariffs.md", b"# Tariffs\n## Fees\nA late payment costs 27,90 EUR.")
+    model = ScriptedChatModel()
+    model.script = [say("Let me look.", ("s1", "search_documents", {"query": "late fee"})),
+                    say("A late payment costs 27,90 EUR.\nSources: tariffs.md > Fees")]
+    words, steps = [], []
+    answer = asyncio.run(research.ask_documents(kb, "f", "Bank", "late fee?", model, lambda t, a: steps.append(t), [],
+                                                on_text=words.append))
+    assert answer.endswith("Sources: tariffs.md > Fees") and steps == ["search_documents"]
+    assert words == ["Let me look.", None, "A late payment costs 27,90 EUR.\n"]
