@@ -290,6 +290,14 @@ TOOLS += [
             "required": ["attachment_id"],
         },
     },
+    {
+        "name": "calculate",
+        "description": "Exact arithmetic: + - * / ** and parentheses on numbers (e.g. '500000 * 0.01825 / (1 - "
+                       "(1 + 0.01825) ** -36)'). Use it for every figure you state that the form or a tool did "
+                       "not return, never mental arithmetic.",
+        "input_schema": {"type": "object", "properties": {"expression": {"type": "string"}},
+                         "required": ["expression"]},
+    },
 ]
 BUILTIN = {t["name"] for t in TOOLS}
 
@@ -462,6 +470,36 @@ async def run_tool(name: str, raw_args: Any, ctx: ToolCtx) -> str:
 
 
 # ---------------------------------------------------------------- read-only
+
+
+def _t_calculate(a: dict, ctx: ToolCtx) -> str:
+    import ast
+    import operator as op
+
+    text = str(a.get("expression") or "").replace(" ", "").replace("\u00a0", "")
+    if not text or len(text) > 300:
+        raise ToolError("expression must be 1-300 characters")
+    ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul, ast.Div: op.truediv, ast.Pow: op.pow,
+           ast.USub: op.neg, ast.UAdd: op.pos}
+
+    def ev(n: ast.AST) -> float:
+        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)) and not isinstance(n.value, bool):
+            return n.value
+        if isinstance(n, ast.UnaryOp) and type(n.op) in ops:
+            return ops[type(n.op)](ev(n.operand))
+        if isinstance(n, ast.BinOp) and type(n.op) in ops:
+            left, right = ev(n.left), ev(n.right)
+            if isinstance(n.op, ast.Pow) and abs(right) > 1000:
+                raise ToolError("the exponent is too large")
+            return ops[type(n.op)](left, right)
+        raise ToolError("only numbers, + - * / ** and parentheses")
+    try:
+        value = ev(ast.parse(text, mode="eval").body)
+    except ZeroDivisionError:
+        raise ToolError("division by zero") from None
+    except (SyntaxError, ValueError, OverflowError):
+        raise ToolError("not a valid arithmetic expression") from None
+    return f"{text} = {round(value, 6):g}" if abs(value) < 1e15 else f"{text} = {value:.6g}"
 
 
 def _t_get_outline(a: dict, ctx: ToolCtx) -> str:

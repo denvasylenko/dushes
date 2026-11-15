@@ -150,3 +150,10 @@ When a run's state carries `ui.form_visible: false`, the agent SHALL be told the
 #### Scenario: A chat-only form without a host hint
 - **WHEN** a host runs a form with `ui.form_visible: false` and no flow hint about it
 - **THEN** the agent fills it through cards and never tells the person to look at the form
+
+### Requirement: Exact arithmetic and the form's method
+The form agent SHALL have a `calculate` tool (numbers, + - * / ** and parentheses only) and SHALL use it for every figure it states that the form or a tool did not return. Asked how the form arrives at a figure, it SHALL say first that the form does not state its method, MAY work a standard formula and call it "most likely" only when the result matches the form's figure to rounding, and otherwise SHALL say the form's method differs; it SHALL NOT state the form's method as a fact.
+
+#### Scenario: Where a payment comes from
+- **WHEN** the form shows a payment of 19 069 for 500 000 over 36 months at 21.9% and the user asks how it is calculated
+- **THEN** the agent says the form does not state its method, works the annuity formula with calculate, and calls it most likely because it matches
