@@ -744,22 +744,36 @@ describe('closing, taken over by the page', () => {
     document.body.appendChild(el)
     await new Promise((r) => setTimeout(r, 0))
     const open = () => el.shadowRoot!.querySelector('.wrap')!.classList.contains('open')
-    let proceed: (() => void) | null = null, closed = 0
+    let proceed: (() => void) | null = null, closed = 0, by = ''
     el.addEventListener('agui:close', () => { closed++ })
     el.open()
     el.close()
     expect(open()).toBe(false)                                            // nobody listens: it closes as before
     expect(closed).toBe(1)
-    el.addEventListener('agui:before-close', (e) => { e.preventDefault(); proceed = (e as CustomEvent).detail.proceed })
+    // heard on document: the event crosses the shadow root and bubbles
+    const hold = (e: Event): void => { e.preventDefault(); proceed = (e as CustomEvent).detail.proceed; by = (e as CustomEvent).detail.by }
+    document.addEventListener('agui:before-close', hold)
     el.open()
     ;(el.shadowRoot!.querySelector('.icon.close') as HTMLButtonElement).click()   // the widget's own close button
     expect(open()).toBe(true)                                             // the page holds it for its transition
     expect(closed).toBe(1)
+    expect(by).toBe('button')
     proceed!()
     expect(open()).toBe(false)
     expect(closed).toBe(2)
-    el.close()                                                            // already closed: no event, nothing to hold
+    proceed!()                                                            // late, a second time: nothing
     expect(closed).toBe(2)
+    el.open()
+    proceed!()                                                            // a stale one still only closes what is open, once
+    expect(closed).toBe(3)
+    el.open()
+    el.shadowRoot!.querySelector('.panel')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(by).toBe('escape')
+    el.close(true)                                                        // forced: no event to cancel
+    expect(open()).toBe(false)
+    el.close()                                                            // already closed: no event, nothing to hold
+    expect(closed).toBe(4)
+    document.removeEventListener('agui:before-close', hold)
   })
 })
 

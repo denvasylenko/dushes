@@ -149,7 +149,7 @@ When the host page defines `--hf-bg`, the chat's background SHALL be that colour
 - **THEN** the chat's feed is black, and its cards and field stay one step lighter
 
 ### Requirement: The page can take over the closing
-Before the chat closes (its close button, Esc, the scrim or `close()`), it SHALL fire a cancelable `agui:before-close` whose `detail.proceed()` closes it; when the page cancels the event the chat SHALL stay open until `proceed()` is called. `close(true)` SHALL close without the event.
+Before the chat closes (its close button, Esc, the scrim or `close()`), it SHALL fire a cancelable `agui:before-close` that bubbles out of the widget to `document`, with `detail.by` (`button`, `escape`, `scrim`, `api`) and `detail.proceed()`; when the page cancels the event the chat SHALL stay open and usable until `proceed()` is called, and a second `proceed()` SHALL do nothing. `close(true)` SHALL close without the event.
 
 #### Scenario: Collapsing back into the field
 - **WHEN** the page cancels `agui:before-close` and calls `proceed()` inside its own view transition

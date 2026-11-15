@@ -405,10 +405,12 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   }
 
   /** Close the chat. The page can take the closing over (its own transition back into the field that opened the chat):
-   *  `agui:before-close` is cancelable and carries `proceed()`, which closes for real. */
-  close(force = false): void {
+   *  `agui:before-close` is cancelable, reaches `document`, says what asked (`by`) and carries `proceed()`, which
+   *  closes for real, whenever it is called; a second call does nothing. */
+  close(force = false, by: 'button' | 'escape' | 'scrim' | 'api' = 'api'): void {
     const wasOpen = this.$.wrap.classList.contains('open')
-    if (wasOpen && !force && !this.dispatchEvent(new CustomEvent('agui:before-close', { cancelable: true, detail: { proceed: () => this.close(true) } }))) return
+    if (wasOpen && !force && !this.dispatchEvent(new CustomEvent('agui:before-close', { cancelable: true, bubbles: true, composed: true,
+      detail: { by, proceed: () => { if (this.$.wrap.classList.contains('open')) this.close(true) } } }))) return
     this.$.wrap.classList.remove('open')
     if (wasOpen && this._opts.mode === 'bubble') {   // a quick shrink back into the launcher
       this.$.wrap.classList.add('closing')
@@ -616,11 +618,11 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     const greet = h('div', { class: 'greet', part: 'greeting', hidden: true, role: 'status' },
       h('button', { class: 'greet-body', type: 'button', onclick: () => this.open() }, greetText),
       h('button', { class: 'greet-x', type: 'button', 'aria-label': this.t('close'), onclick: () => this._hideGreeting(true) }, '\u00d7'))
-    const scrim = h('div', { class: 'scrim', onclick: () => this.close() })
+    const scrim = h('div', { class: 'scrim', onclick: () => this.close(false, 'scrim') })
     const logo = h('div', { class: 'logo' }); this._icon(logo, 'logo')
     const title = h('div', { class: 'title' }), sub = h('div', { class: 'sub' })
     const btnNew = h('button', { class: 'icon', type: 'button', onclick: () => this.reset() }); this._icon(btnNew, 'plus')
-    const btnClose = h('button', { class: 'icon close', type: 'button', onclick: () => this.close() }); this._icon(btnClose, 'close')
+    const btnClose = h('button', { class: 'icon close', type: 'button', onclick: () => this.close(false, 'button') }); this._icon(btnClose, 'close')
     const head = h('div', { class: 'head', part: 'header' }, logo, h('div', null, title, sub), btnNew, btnClose)
     const log = h('div', { class: 'log', part: 'log', role: 'log', 'aria-live': 'polite', 'aria-relevant': 'additions' })
     const input = h('textarea', { rows: 1, part: 'input' }) as HTMLTextAreaElement
@@ -728,7 +730,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       if (e.key === 'Escape' && this._busy && !e.defaultPrevented) { e.preventDefault(); this.stop(); return }   // Esc stops the answer first
       if (!this._popup && !(this._heroSheet && this.$.wrap.classList.contains('open'))) return
       if (e.key === 'Escape' && this.$.box.classList.contains('rec')) { e.preventDefault(); this._dropDictation(); return }   // drop the recording first
-      if (e.key === 'Escape') { e.preventDefault(); this.close() }
+      if (e.key === 'Escape') { e.preventDefault(); this.close(false, 'escape') }
       if (e.key === 'Tab' && (this._opts.modal !== false || innerWidth <= 760)) this._trapFocus(e)
     })
     requestAnimationFrame(() => fab.classList.add('show'))
