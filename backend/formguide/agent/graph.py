@@ -266,7 +266,8 @@ def build_graph(guide: FormGuide):
         base = guide.models.agent
         server = guide.tools_for(pack.form_id)
         actions = actions_of(state)
-        model = base.bind_tools(tool_schemas(server, actions) + card_schemas(guide.cards, caps_of(state))
+        model = base.bind_tools(tool_schemas(server, actions, frozenset(guide.config.confirm_tools or ()))
+                                + card_schemas(guide.cards, caps_of(state))
                                 + client_tool_schemas(state.get("client_tools"), server_tool_names(pack.form_id)))
         sys_text = state.get("system_prompt") or system_prompt(pack, guide.skills.for_form(pack.form_id),
                                                                actions=actions)

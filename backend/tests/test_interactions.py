@@ -282,3 +282,32 @@ def test_card_keeps_its_lead_sentence(guide, model):
     ev = collect(guide, "lead2", message="hi", state=start(guide, LOAN))
     shown = "".join(e.get("delta", "") for e in ev if e["type"] == "TEXT_MESSAGE_CONTENT")
     assert "Need field names" not in shown                     # other tools: still an internal note
+
+
+def test_only_the_systems_card_confirms_a_held_tool(guide, model):
+    from formguide.agent.tools import SELF_CONFIRMING, tool_schemas
+    ran = []
+
+    @tool
+    def submit_application(reference: str) -> str:
+        """Submit the application to the bank."""
+        ran.append(reference)
+        return f"submitted {reference}"
+
+    guide._tools.append(submit_application)
+    guide.config.confirm_tools = ["submit_application"]
+    model.script = [say("", ("t0", "confirm_action", {"title": "Send the application?", "message": "A-1"})),
+                    say("", ("t1", "submit_application", {"reference": "A-1"}))]
+    ev = collect(guide, "sc1", message="send it", state=start(guide, LOAN))
+    v = interrupt_value(ev)
+    assert v["type"] == "confirm" and v["tool"] == "submit_application" and not ran   # the system's card, not the agent's
+    assert "shows its own confirmation card" in result(model, "t0")
+    model.script = [say("Sent.")]
+    collect(guide, "sc1", resume={"accepted": True})
+    assert ran == ["A-1"]
+    schema = next(s for s in tool_schemas([submit_application], None, {"submit_application"})
+                  if isinstance(s, dict) and s["function"]["name"] == "submit_application")
+    assert schema["function"]["description"].endswith(SELF_CONFIRMING)
+    # an action that no held tool does may still be asked about
+    v, _ = pause(guide, model, "sc2", "confirm_action", {"title": "Cancel the visit?", "message": "x", "other_action": True})
+    assert v["type"] == "confirm" and "tool" not in v

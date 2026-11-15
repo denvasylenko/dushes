@@ -18,3 +18,10 @@ The agent SHALL offer a tool `confirm_action` with `title`, `message`, an option
 #### Scenario: A guarded tool
 - **WHEN** `confirm_tools: [submit_application]` is set and the model calls `submit_application`
 - **THEN** the tool runs only after the user accepts the confirm card
+
+### Requirement: One confirmation, and it is the system's
+For a tool listed in `confirm_tools` the only confirmation SHALL be the held tool's own card: the tool's description SHALL say it asks the user itself, and a `confirm_action` call while such a tool is available SHALL be refused with a message naming the tool, unless the call says `other_action: true` (an action none of these tools performs). The agent SHALL NOT ask for the confirmation in text.
+
+#### Scenario: Sending a change
+- **WHEN** a host lists `submit_deputy_change` in `confirm_tools` and the user asks to send the change
+- **THEN** exactly one confirmation card is shown, the held tool's, and the tool runs only after the user accepts it

@@ -157,6 +157,8 @@ TOOLS: list[dict[str, Any]] = [
                 "title": {"type": "string"}, "message": {"type": "string"},
                 "confirm_label": {"type": "string", "description": "the confirm button, e.g. 'Submit'"},
                 "danger": {"type": "boolean", "description": "the action cannot be undone"},
+                "other_action": {"type": "boolean", "description": "true only when the action is NOT done by a tool "
+                                 "that shows its own confirmation card"},
                 "details": {"type": "array", "description": "what is sent, up to 6 short rows",
                             "items": {"type": "object", "properties": {"label": {"type": "string"},
                                                                        "value": {"type": "string"}},
@@ -292,9 +294,23 @@ TOOLS += [
 BUILTIN = {t["name"] for t in TOOLS}
 
 
-def tool_schemas(extra: list[BaseTool], actions: frozenset[str] | None = None) -> list[Any]:
+SELF_CONFIRMING = " Shows its own confirmation card to the user: call it directly, never ask first."
+
+
+def _self_confirming(t: BaseTool) -> dict:
+    """A host tool from confirm_tools, as a schema whose description says it asks the user by itself."""
+    from langchain_core.utils.function_calling import convert_to_openai_tool
+    s = convert_to_openai_tool(t)
+    s["function"]["description"] = (s["function"].get("description") or "").rstrip() + SELF_CONFIRMING
+    return s
+
+
+def tool_schemas(extra: list[BaseTool], actions: frozenset[str] | None = None,
+                 confirm_tools: frozenset[str] | set[str] = frozenset()) -> list[Any]:
     """Built-in tools in the provider-neutral (OpenAI function) format + extra LangChain tools.
-    `actions`: the switchable actions on in this run (None = all); the others are left out."""
+    `actions`: the switchable actions on in this run (None = all); the others are left out.
+    `confirm_tools`: host tools held for the user's confirmation: their description says so."""
+    extra = [_self_confirming(t) if t.name in confirm_tools else t for t in extra]
     hidden = switchable_off(actions) if actions is not None else frozenset()
     return [{"type": "function", "function": {"name": t["name"], "description": t["description"],
                                               "parameters": t["input_schema"]}}
@@ -960,6 +976,11 @@ def _t_review_form(a: dict, ctx: ToolCtx) -> str:
 def _t_confirm_action(a: dict, ctx: ToolCtx) -> str:
     if _waiting(ctx):
         raise ToolError(WAITING)
+    own = sorted(n for n in ctx.confirm_tools if n in ctx.extra_tools)
+    if own and a.get("other_action") is not True:   # one confirmation, and it is the system's card
+        raise ToolError(f"Do not ask the user yourself: {', '.join(own)} shows its own confirmation card. Call the "
+                        "tool directly, with no question in text either. For an action none of these tools does, "
+                        "call confirm_action with other_action: true.")
     title, message = str(a.get("title") or "").strip(), str(a.get("message") or "").strip()
     if not title or not message:
         raise ToolError("title and message must not be empty")
