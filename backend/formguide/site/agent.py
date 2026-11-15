@@ -297,7 +297,10 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
         paths = dict.fromkeys([here.path if here else "", *(c.doc_id for c in found)])
         pages = [x for x in (site.page(path) for path in paths if path) if x and reads(x)][:UPFRONT_PAGES]
         whole = "".join(f"\n\n<page path=\"{p.path}\">{reads(p).strip()}</page>" for p in pages)
-        whole = whole and "\n\nWhole pages (already read for you: do not call read_page for these):" + whole
+        note = ("\n\nWhole pages (already read for you: do not call read_page for these). The person is waiting in "
+                "silence: when the live facts, the passages or these pages hold the answer, give it now with no "
+                "tool; when none of them does and no other page in the site contents would, say so now:")
+        whole = whole and note + whole
     brief = "\n".join(x.strip() for x in (site.instructions, instructions) if x and x.strip())
     own = f"\nThe business's instructions\n{brief}\n" if brief else ""
     facts = f"\nLive facts from the business (current, trust them over the site passages)\n{live.strip()}\n" if live.strip() else ""
