@@ -9,6 +9,7 @@ description: Every endpoint of Dushes' FastAPI router, with its body and answer.
 | --- | --- | --- |
 | `POST /layouts` | `{jsx, form_id?, domain?, config?}` | `{jsx_hash, ...}` plus warnings; `config` (a sample `{props, state}`) adds value-format warnings. 413 when the JSX is too large |
 | `GET /layouts/{jsx_hash}` | | `{jsx_hash}`, or 404 when unknown (register again) |
+| `GET /models` | | `{choices: [{name, label, default, usable, model}]}`: the model choices a run may name (`models.choices`); an empty list on a server without choices |
 | `POST /run` | an AG-UI `RunAgentInput` | an AG-UI event stream (SSE, or the protocol's binary encoding by `Accept`). The turn finishes even if the client goes away. 422 when the body is not a `RunAgentInput`; 409 when `state.jsx_hash` is unknown |
 | `POST /prefill` | `{state, data?, text?, attachment_ids?, thread_id?}` | validated values to prefill, without a chat |
 | `POST /attachments` | multipart: `thread_id`, `file` | the stored attachment `{id, ...}` for the next run's `state.attachments` |
@@ -48,6 +49,7 @@ description: Every endpoint of Dushes' FastAPI router, with its body and answer.
 | `resume[]` | the answer to a card (AG-UI 1.0 structured mode): `{interrupt_id, status: "resolved", payload}` or `status: "cancelled"` |
 | `traceparent` / `tracestate` headers, or `forwardedProps.traceparent` / `tracestate` | the caller's W3C trace context: with `tracing.otel` the turn span joins that trace; ignored otherwise |
 | `forwardedProps.capabilities` | the cards and variants the client renders ([AG-UI events](../agui-events/#capabilities)); absent = all |
+| `forwardedProps.model` | a name from `GET /models`. The conversation keeps the choice of its first run. Before the stream starts: 422 `{detail, choices}` for an unknown or unusable name, 409 `{detail, code: "model_fixed", choice}` when the conversation already runs on another choice |
 | `forwardedProps.prefill` | `{data?, text?, attachment_ids?, language?}`: values the app already knows |
 
 What comes back is in [AG-UI events](../agui-events/). Behaviour contract: [http-api](../specifications/http-api/), [agui-protocol](../specifications/agui-protocol/).

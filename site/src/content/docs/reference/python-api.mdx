@@ -38,7 +38,7 @@ from formguide.site import Dushes, SiteMap, create_dushes_router
 
 ### `Dushes` methods
 
-<ParamList kind="async method" signature="Dushes.run(thread_id, *, message=None, state=None, resume=None, run_id=None, handoff=False, host=None, reply_to=None, **form_kwargs)" id="dushes-run">
+<ParamList kind="async method" signature="Dushes.run(thread_id, *, message=None, state=None, resume=None, run_id=None, handoff=False, host=None, reply_to=None, model=None, **form_kwargs)" id="dushes-run">
   <Param name="thread_id" type="str" required id="dushes-run-thread-id">The site conversation.</Param>
   <Param name="message" type="str | None" default="None" id="dushes-run-message">The user's new message.</Param>
   <Param name="state" type="dict | None" default="None" id="dushes-run-state">The page: `{page: {path, title}, form?}`; `form` is the form's state on a form page.</Param>
@@ -47,6 +47,7 @@ from formguide.site import Dushes, SiteMap, create_dushes_router
   <Param name="handoff" type="bool" default="False">The run once a form has opened: the UI agent starts with what the user already said on the site.</Param>
   <Param name="host" type="Any" default="None">Your object for this run, built by the router's `host(request)`.</Param>
   <Param name="reply_to" type="list[dict] | None" default="None" id="dushes-run-reply-to">The parts of earlier messages the user answers, as for `FormGuide.run`.</Param>
+  <Param name="model" type="str | None" default="None" id="dushes-run-model">A name from `models.choices`, as for `FormGuide.run`. The site conversation keeps it, and its forms' turns use the same choice.</Param>
   <Fragment slot="returns">An async iterator of AG-UI events: the site agent's answer, or the UI agent's events on a form page. Other keyword arguments go to `FormGuide.run`.</Fragment>
 </ParamList>
 
@@ -59,7 +60,7 @@ from formguide.site import Dushes, SiteMap, create_dushes_router
 
 ### run
 
-<ParamList kind="async method" signature="FormGuide.run(thread_id, *, message=None, state=None, resume=None, run_id=None, client_tools=None, tool_results=None, prefill=None, capabilities=None, trace_context=None, reply_to=None)" id="run">
+<ParamList kind="async method" signature="FormGuide.run(thread_id, *, message=None, state=None, resume=None, run_id=None, client_tools=None, tool_results=None, prefill=None, capabilities=None, trace_context=None, reply_to=None, model=None, model_bound=None)" id="run">
   <Param name="thread_id" type="str" required id="run-thread-id">The conversation.</Param>
   <Param name="message" type="str | None" default="None">The user's new message.</Param>
   <Param name="state" type="dict | None" default="None">The form now: `{config, jsx_hash, form_id, ui?, attachments?}`. Sent with a new message, after frontend tools and with prefill.</Param>
@@ -71,7 +72,9 @@ from formguide.site import Dushes, SiteMap, create_dushes_router
   <Param name="capabilities" type="list[str] | None" default="None">The cards and variants the client renders; `None` means all.</Param>
   <Param name="trace_context" type="dict[str, str] | None" default="None">The caller's W3C trace headers `{traceparent, tracestate}`; with OpenTelemetry on, the turn joins that trace.</Param>
   <Param name="reply_to" type="list[dict] | None" default="None">The parts of earlier messages the user answers: `[{message_id, quote | whole, note?, role?}]`; `role: "user"` marks a quote of the user's own message. The agent reads each quote before the message.</Param>
-  <Fragment slot="returns">An async iterator of AG-UI events, as plain dicts with the protocol's camelCase keys. Everything the user sees is also kept in the thread's display transcript.</Fragment>
+  <Param name="model" type="str | None" default="None" id="run-model">A name from `models.choices`. The conversation keeps the choice of its first run; a run that names another raises `ModelChoiceError`. `None` uses the conversation's choice, or the first one in the file.</Param>
+  <Param name="model_bound" type="str | None" default="None" id="run-model-bound">The choice of the conversation this thread belongs to. Dushes passes its site thread's choice here; you rarely set it yourself.</Param>
+  <Fragment slot="returns">An async iterator of AG-UI events, as plain dicts with the protocol's camelCase keys. Everything the user sees is also kept in the thread's display transcript. On a server with `models.choices`, a `CUSTOM model` event follows `RUN_STARTED`.</Fragment>
 </ParamList>
 
 ### run_detached
@@ -145,6 +148,9 @@ await guide.purge(30)
 | `stop(thread_id)` | stop the thread's running turn (the chat's Stop); `True` when one was running |
 | `running(thread_id)` | whether a turn is running for the thread |
 | `feedback(thread_id, value, card_id=None)` | keep a thumbs rating (`1` or `-1`) from the chat in the thread's transcript |
+| `model_choices()` | the choices a run may name: `[{name, label, default, usable, model}]`; `usable` is false when the server has no key for one of the choice's models. Empty without `models.choices` |
+| `thread_choice(thread_id)` | the choice a conversation started with, or `None` |
+| `check_model(thread_id, model, bound=None)` | the choice a run of this thread uses, or `ModelChoiceError` (`status` 422: an unknown or unusable name; 409: another choice than the conversation's). `None` on a server without choices. Call it before you start a stream of your own |
 | `warm_up()` | load what the first request would wait for (the Whisper model) in the background; `create_app` calls it, call it yourself when you mount the router |
 
 Every key of `GuideConfig` and its YAML form: [Configuration keys](../configuration/#every-key).

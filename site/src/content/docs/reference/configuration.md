@@ -91,6 +91,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | Key | Default | Meaning |
 |---|---|---|
 | `model` / `models` | see above | one model for everything (`model`), or one per role under `models`: `agent` (left out, it takes the top-level `model`; with neither, the loader says `models.agent is required`), `research`, `compile`, `extract` |
+| `models.choices` | none | named sets of models a run may pick by name: `{name: {label?, agent?, research?, compile?, extract?, memory?, suggestions?}}`. The first one is the default; a role a choice leaves out keeps the model set above. A run names one in `forwardedProps.model`, `GET /models` lists them, and a conversation keeps the choice of its first run. A name is letters, digits, `-` and `_`, at most 40 characters |
 | `data_dir` | `data` | where Dushes keeps its own files: learned field dependencies (`deps/`), registered layouts (`layouts/`), documents (`kb/`), attachments (`attachments/`), transcripts (`transcripts/`) unless set elsewhere |
 | `components.containers` | `Tabs: tabs, Tab: tab, Accordion: accordion, Section: section, Form: form` | your component library's container tags → role. **Replaces** the default map when given |
 | `components.fields` | `Input: text, NumberInput: number, TextArea: text, DatePicker: date, Dropdown: select, RadioGroup: radio, MultiSelect: multiselect, Checkbox: bool, FileUpload: file` | field tags → role (`text`, `number`, `date`, `select`, `radio`, `multiselect`, `bool`, `file`) or a **field spec** (below). **Replaces** the default map when given |
@@ -101,6 +102,7 @@ memory: {model: "anthropic:claude-haiku-5-5"}
 | `knowledge.index` | `bm25` | `bm25`, or `{factory: "module:make_store", filter: "module:ns_filter", fetch_factor: 5}`: `make_store()` returns any LangChain `VectorStore`; `ns_filter(namespaces)` returns the store's metadata filter (optional) |
 | `knowledge.chunk_chars` | `1200` | about how many characters a section of a document holds; documents are cut on their headings, then on paragraphs, to this size |
 | `knowledge.chunk_overlap` | `150` | characters shared by neighbouring sections under one heading, so a sentence on a boundary is found from both |
+| `knowledge.document_url` | none | a link to your own copy of a document, added to each source as `url`: a template with `{filename}`, `{doc_id}`, `{namespace}` and `{page}`, e.g. `https://docs.example.com/{filename}#page={page}` |
 | `knowledge.scopes` | each form sees its own namespace | `{form_id: [namespaces]}`, e.g. a form that also sees shared documents |
 | `skills.dir` | none | a folder of skills: `<skill>/SKILL.md` with `name`, `description`, `forms`, `tools` |
 | `tools` | none | `["module:tool"]`: LangChain `BaseTool` objects offered for every form |
