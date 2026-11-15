@@ -439,6 +439,23 @@ _sets = guide._choices
 app.mount("/ai", create_app(refresh=3600,
                             models={n: s.models.agent for n, s in _sets.items() if not s.error} or None,
                             labels={n: s.label for n, s in _sets.items()}))
+# the experimental voice mode: only when the host has voice codes (VOICE_CODES); without them none of this exists
+from formguide import voice as _voice  # noqa: E402
+
+VOICE = _voice.Talks(_voice.VoiceConfig.from_env(), title="the Dushes demo")
+if VOICE.config.enabled:
+    from fastapi.responses import HTMLResponse  # noqa: E402
+
+    app.include_router(_voice.create_voice_router(_voice.watch(VOICE)), prefix="/voice")
+
+    _CLIPS = os.environ.get("VOICE_LAB_CLIPS")   # recorded clips for tests without a microphone (the lab's ?clip=)
+    if _CLIPS and Path(_CLIPS).is_dir():
+        app.mount("/voice-lab/clips", StaticFiles(directory=_CLIPS), name="voice-clips")
+
+    @app.get("/voice-lab/", response_class=HTMLResponse)
+    def voice_lab() -> str:   # the owner's first test page: the demo form with a microphone (not the product's UI)
+        return (Path(__file__).parent / "voice_lab.html").read_text(encoding="utf-8")
+
 _SITE = ROOT / "site" / "dist"
 if _SITE.exists():
     app.mount("/", StaticFiles(directory=_SITE, html=True), name="docs")

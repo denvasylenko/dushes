@@ -8,18 +8,21 @@ Nothing here starts before the owner agrees to the estimate in design.md.
 
 ## 2. Host
 - [x] 2.1a The codes, one per person (`VOICE_CODES`), the signed pass, the tries limit (`formguide.voice.Gate`)
-- [ ] 2.1b `POST /voice/unlock` and the pass on every voice route; routes absent when no code is set
-- [ ] 2.2 `POST /voice/session`: the call created with the host's key, the SDP answer returned
-- [ ] 2.3 The control connection: instructions, the one tool, usage, end of call
-- [ ] 2.4 The bridge: `ask_dushes` starts a Dushes turn; its events reach the widget; a short result is spoken
+- [x] 2.1b `POST /voice/unlock` and the pass on every voice route; routes absent when no code is set
+- [x] 2.2 `POST /voice/session`: the call created with the host's key, the SDP answer returned
+- [x] 2.3 The control connection: instructions, the one tool, usage, end of call
+- [x] 2.4 The bridge: `ask_dushes` starts a Dushes turn; its events reach the widget; a short result is spoken
 - [ ] 2.5 Quiet filling: the server marks a field-change card `quiet` by the agreed list; a consent is never quiet
 - [ ] 2.5a An open card answered by spoken words; consent by tap only
 - [ ] 2.5b Silent mode: no spoken output, short text answers, kept for the conversation
 - [ ] 2.6 Interruption stops the turn in progress
 - [x] 2.7a The limits as logic: the day's budget, a person's own, time and money per conversation, one at once,
       silence (`formguide.voice.Meter`)
-- [ ] 2.7b The limits enforced on a live session (the provider's usage events, closing the session)
-- [ ] 2.8 Offline tests with a scripted realtime session
+- [x] 2.7b The limits enforced on a live session (the provider's usage events, closing the session)
+- [x] 2.8 Offline tests with a scripted realtime session
+
+- [ ] 2.9 A first live conversation through the lab page (`/voice-lab/` on the docs host: the demo form with a
+      microphone; not the product's interface)
 
 ## 3. Widget (Design)
 - [ ] 3.1 The orb view, loaded on demand; the steps under it; compact cards and lines

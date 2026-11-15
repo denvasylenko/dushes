@@ -24,6 +24,14 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from pydantic import BaseModel
+
+try:   # the routes need the HTTP layer; Gate, Meter and Talks do not
+    from fastapi import APIRouter, HTTPException, Request
+    from fastapi.responses import Response, StreamingResponse
+except ImportError:  # pragma: no cover
+    APIRouter = HTTPException = Request = Response = StreamingResponse = None  # type: ignore[assignment,misc]
+
 _NAME = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
 PASS_HOURS = 12.0          # how long a pass lives
 TRIES_PER_DAY = 5          # wrong codes per address a day, then every try is refused
@@ -223,3 +231,297 @@ class Meter:
         cost = talk.seconds / 60 * self.config.minute_usd + talk.agent_usd
         self._spent[talk.person] = self._spent.get(talk.person, 0.0) + cost
         return cost
+
+
+# ---------------------------------------------------------------- the conversation: the voice session and the bridge
+#
+#   browser  <== audio (WebRTC) ==>  the voice provider  <== events (WebSocket, our key) ==>  Talks (this module)
+#   browser  <-- GET /voice/events (what was heard, what is spoken, the end) --------------  Talks
+#   browser  --> the ordinary run with what was heard, as if typed (POST <agent>/run) ------>  the agent
+#   the run's events, watched here by thread id --> the answer's text --> the voice says it
+#
+# So the agent, its rules, its cards and its transcript are the chat's own; the voice only hears and speaks.
+
+LIVE_HTTP = "https://api.openai.com/v1/live/sessions"
+LIVE_WS = "wss://api.openai.com/v1/live/sessions/{id}/attach"
+SAY_CHARS = 1200   # an appended result holds at most 500 tokens: the text is cut well under it
+
+INSTRUCTIONS = (
+    "You are the voice of the assistant of {title}. Speak the language the person speaks, in short sentences. "
+    "You know nothing about this business and can do nothing yourself: every request, question or piece of "
+    "information the person gives goes to the backend, and you say its result briefly. Never invent a fact, a "
+    "price or a confirmation. Do not greet twice and do not repeat what was already said.")
+
+_MARKUP = re.compile(r"[*_`#>|]+|\[(.*?)\]\((.*?)\)")
+
+
+def spoken(text: str) -> str:
+    """An answer's text as words to say: no markup, one paragraph, cut to what one result may hold."""
+    plain = _MARKUP.sub(lambda m: m.group(1) or "", text or "")
+    return re.sub(r"\s+", " ", plain).strip()[:SAY_CHARS]
+
+
+async def open_live(key: str, model: str, sdp: str, instructions: str):
+    """Create the provider's session for a browser's WebRTC offer and attach to it: (session id, the SDP answer,
+    the attached WebSocket). The browser gets the answer only: no key leaves the server."""
+    import httpx
+    import websockets
+    head = {"Authorization": f"Bearer {key}"}
+    async with httpx.AsyncClient(timeout=20) as http:
+        r = await http.post(LIVE_HTTP, headers=head, json={
+            "session": {"model": model, "instructions": instructions,
+                        "delegation": {"type": "client", "acknowledgement_delay_ms": 800}},
+            "transport": {"type": "webrtc", "sdp": sdp}})
+    if r.status_code >= 300:
+        raise RuntimeError(f"the voice provider refused the session ({r.status_code})")
+    body = r.json()
+    sid = body["session"]["id"]
+    ws = await websockets.connect(LIVE_WS.format(id=sid), additional_headers=head, max_size=None)
+    return sid, body["transport"]["sdp"], ws
+
+
+class Talks:
+    """The voice conversations of one host: who may start one, what each hears and says, when each ends."""
+
+    def __init__(self, config: VoiceConfig, *, title: str = "this site", key: Callable[[], str] | None = None,
+                 opener: Callable | None = None, now: Callable[[], float] = time.time):
+        self.config = config
+        self.gate = Gate(config, now)
+        self.meter = Meter(config, now)
+        self.title = title
+        self._key = key or (lambda: os.environ.get("OPENAI_API_KEY", ""))
+        self._opener = opener or open_live     # tests give a scripted one
+        self.now = now
+        self._live: dict[str, dict] = {}       # talk id -> its state
+        self._by_thread: dict[str, str] = {}   # the chat thread -> the talk that speaks its answers
+
+    # -- starting and ending
+    async def start(self, person: str, sdp: str, thread_id: str) -> dict:
+        """A new conversation for a person's WebRTC offer: {talk, sdp, limits}. Raises Refused with the reason."""
+        why = self.meter.refusal(person)
+        if why:
+            raise Refused(why)
+        import asyncio
+        sid, answer, ws = await self._opener(self._key(), self.config.model, sdp, INSTRUCTIONS.format(title=self.title))
+        talk = self.meter.start(sid, person)
+        state = {"ws": ws, "thread": thread_id, "events": asyncio.Queue(), "heard": "", "pending": None,
+                 "answer": [], "t0": time.monotonic(), "ended": None}
+        self._live[sid] = state
+        self._by_thread[thread_id] = sid
+        state["reader"] = asyncio.create_task(self._read(sid))
+        state["watch"] = asyncio.create_task(self._watch(sid))
+        return {"talk": talk.id, "sdp": answer,
+                "limits": {"seconds": self.config.max_seconds, "silence_seconds": self.config.silence_seconds}}
+
+    async def end(self, talk_id: str, reason: str = "closed", seconds: float | None = None) -> None:
+        state = self._live.pop(talk_id, None)
+        if not state:
+            return
+        self._by_thread.pop(state["thread"], None)
+        state["ended"] = reason
+        cost = self.meter.end(talk_id, seconds)
+        try:
+            await state["ws"].send(_json({"type": "session.close"}))
+            await state["ws"].close()
+        except Exception:  # noqa: BLE001 - the session may be gone already
+            pass
+        import asyncio
+        for name in ("reader", "watch"):
+            task = state.get(name)
+            if task and task is not asyncio.current_task():
+                task.cancel()
+        self._emit(state, {"type": "ended", "reason": reason, "cost_usd": round(cost, 4)})
+        state["events"].put_nowait(None)
+
+    # -- the provider's events
+    def _emit(self, state: dict, ev: dict) -> None:
+        state["events"].put_nowait({**ev, "t_ms": round((time.monotonic() - state["t0"]) * 1000)})
+
+    async def _read(self, talk_id: str) -> None:
+        import json
+        state = self._live[talk_id]
+        try:
+            async for raw in state["ws"]:
+                ev = json.loads(raw)
+                t = ev.get("type")
+                if t == "session.input_transcript.delta":
+                    state["heard"] += ev.get("delta", "")
+                    self.meter.report(talk_id, heard=True)
+                elif t == "session.delegation.created":   # the voice wants the agent: hand over what was said
+                    text, state["heard"] = state["heard"].strip(), ""
+                    state["pending"] = (ev.get("delegation") or {}).get("id")
+                    state["answer"] = []
+                    if text:
+                        self._emit(state, {"type": "heard", "text": text})
+                elif t == "session.output_transcript.delta":
+                    self.meter.report(talk_id, heard=True)   # the conversation is alive while the voice speaks
+                    self._emit(state, {"type": "spoken", "delta": ev.get("delta", "")})
+                elif t == "session.usage.updated":
+                    self.meter.report(talk_id, seconds=(ev.get("usage") or {}).get("seconds"))
+                elif t == "session.closed":
+                    await self.end(talk_id, ev.get("reason") or "closed", (ev.get("usage") or {}).get("seconds"))
+                    return
+                elif t == "error":
+                    self._emit(state, {"type": "error", "code": (ev.get("error") or {}).get("code")})
+        except Exception:  # noqa: BLE001 - a dropped connection ends the conversation, it does not break the host
+            pass
+        await self.end(talk_id, "lost")
+
+    async def _watch(self, talk_id: str) -> None:
+        import asyncio
+        while talk_id in self._live:
+            why = self.meter.over(talk_id)
+            if why:
+                await self.end(talk_id, why)
+                return
+            await asyncio.sleep(1)
+
+    # -- the agent's run, seen from the HTTP layer
+    def seen(self, thread_id: str, ev: dict) -> None:
+        """One event of a run of this thread (called for every run: a dictionary lookup when no one is talking).
+        The answer's text is collected, and when the run ends the voice gets it to say."""
+        talk_id = self._by_thread.get(thread_id)
+        state = self._live.get(talk_id) if talk_id else None
+        if not state:
+            return
+        t = ev.get("type")
+        if t == "TEXT_MESSAGE_CONTENT":
+            state["answer"].append((ev.get("messageId"), ev.get("delta", "")))
+        elif t == "CUSTOM" and ev.get("name") == "text_retract":
+            gone = (ev.get("value") or {}).get("messageId")
+            state["answer"] = [(m, d) for m, d in state["answer"] if m != gone]
+        elif t == "CUSTOM" and ev.get("name") == "run_stats":
+            self.meter.report(talk_id, agent_usd=float((ev.get("value") or {}).get("cost_usd") or 0))
+        elif t in ("RUN_FINISHED", "RUN_ERROR"):
+            text = spoken("".join(d for _, d in state["answer"]))
+            waits = bool(((ev.get("outcome") or {}).get("interrupts"))) or state.get("card")
+            if t == "RUN_ERROR":
+                text = "Tell the person that something went wrong and to try again."
+            elif not text:
+                text = ("A card is on the screen: ask the person to confirm it there." if waits
+                        else "Done. Tell the person it is done, in one short sentence.")
+            state["answer"], state["card"] = [], False
+            import asyncio
+            asyncio.ensure_future(self._say(talk_id, text))
+        elif t == "CUSTOM" and ev.get("name") == "on_interrupt":
+            state["card"] = True
+
+    async def _say(self, talk_id: str, text: str) -> None:
+        state = self._live.get(talk_id)
+        if not state:
+            return
+        self._emit(state, {"type": "result", "text": text})
+        try:
+            await state["ws"].send(_json({"type": "session.commentary.append", "event_id": f"result_{secrets.token_hex(4)}",
+                                          "delegation_id": state["pending"], "content": text}))
+        except Exception:  # noqa: BLE001
+            await self.end(talk_id, "lost")
+
+    async def events(self, talk_id: str):
+        """What the client needs to know, as it happens: heard, spoken, result, error, ended."""
+        state = self._live.get(talk_id)
+        if not state:
+            return
+        while True:
+            ev = await state["events"].get()
+            if ev is None:
+                return
+            yield ev
+
+
+HOSTS: list[Talks] = []   # the Talks of this process; the run routes report their events to them
+
+
+def watch(talks: Talks) -> Talks:
+    """Let these conversations hear the runs of their threads."""
+    if talks not in HOSTS:
+        HOSTS.append(talks)
+    return talks
+
+
+def seen(thread_id: str, ev: dict) -> None:
+    """Called by the run routes for every event they send. Costs a list check when no host has voice."""
+    for talks in HOSTS:
+        talks.seen(thread_id, ev)
+
+
+class Refused(Exception):
+    """A conversation may not start: `busy`, `day` or `person_day`."""
+
+
+def _json(value: dict) -> str:
+    import json
+    return json.dumps(value, ensure_ascii=False)
+
+
+class UnlockIn(BaseModel):
+    code: str
+
+
+class StartIn(BaseModel):
+    sdp: str
+    thread_id: str
+
+
+class EndIn(BaseModel):
+    talk: str
+
+
+def create_voice_router(talks: Talks):
+    """The voice routes of a host. Mount them only when `talks.config.enabled`: without a code there is no mode.
+        POST /unlock   {code}                      -> {person, pass}            403 for a wrong code
+        POST /session  {sdp, thread_id}  + pass    -> {talk, sdp, limits}       429 {reason} when it may not start
+        GET  /events?talk=             + pass    -> a stream of what is heard and said (SSE)
+        POST /end      {talk}            + pass    -> 204
+    The pass travels in the X-Voice-Pass header, never in an address."""
+    if APIRouter is None:
+        raise ImportError("the voice routes need: pip install 'formguide[server]'")
+    from . import agui
+
+    r = APIRouter()
+
+    def who(request: Request) -> str:
+        person = talks.gate.person(request.headers.get("x-voice-pass"))
+        if not person:
+            raise HTTPException(403, "A voice pass is needed.")
+        return person
+
+    @r.post("/unlock")
+    def unlock(body: UnlockIn, request: Request) -> dict:
+        got = talks.gate.unlock(body.code, request.client.host if request.client else "?")
+        if not got:
+            raise HTTPException(403, "That code does not open the voice mode.")
+        return {"person": got[0], "pass": got[1]}
+
+    @r.post("/session")
+    async def session(body: StartIn, request: Request) -> dict:
+        person = who(request)
+        try:
+            return await talks.start(person, body.sdp, body.thread_id)
+        except Refused as e:
+            raise HTTPException(429, {"reason": str(e)}) from None
+        except Exception as e:  # noqa: BLE001 - the provider is down or refused: a reason, never a trace
+            raise HTTPException(502, f"The voice is unavailable right now ({type(e).__name__}).") from None
+
+    @r.get("/events")
+    async def events(talk: str, request: Request) -> StreamingResponse:
+        person = who(request)
+        open_talk = talks.meter.open.get(talk)
+        if not open_talk or open_talk.person != person:
+            raise HTTPException(404, "No such conversation.")
+
+        async def body():
+            async for ev in talks.events(talk):
+                yield f"data: {_json(ev)}\n\n"
+        return StreamingResponse(agui.alive(body()), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    @r.post("/end")
+    async def end(body: EndIn, request: Request) -> Response:
+        person = who(request)
+        open_talk = talks.meter.open.get(body.talk)
+        if open_talk and open_talk.person == person:
+            await talks.end(body.talk, "closed")
+        return Response(status_code=204)
+
+    return r

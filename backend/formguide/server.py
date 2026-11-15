@@ -25,7 +25,7 @@ try:
     from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
     from fastapi.responses import Response, StreamingResponse
 
-    from . import agui
+    from . import agui, voice
 except ImportError as e:  # pragma: no cover
     raise ImportError(f"{e}: the HTTP layer needs: pip install 'formguide[server]'") from e
 from pydantic import BaseModel, ValidationError
@@ -101,6 +101,7 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
         async def events():
             # the turn runs on when the client goes away (a reload, a closed tab); POST /stop ends it
             async for ev in guide.run_detached(**kw):
+                voice.seen(kw["thread_id"], ev)   # a voice conversation of this thread says the answer
                 yield agui.encode(ev, enc)
 
         return StreamingResponse(agui.alive(events(), enc), media_type=enc.get_content_type(),

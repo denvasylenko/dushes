@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Voice lab</title>
+<!-- The first working voice conversation, for the owner's own test: the demo form below, a microphone above.
+     It is a lab page, not the product's interface: the orb view in the widget is the designer's work. -->
+<style>
+  :root { color-scheme: light dark; --ink: #1d1d1f; --ink-2: #6e6e73; --line: #d2d2d7; --fill: #f5f5f7; --accent: #0071e3; --bg: #fff; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #f5f5f7; --ink-2: #a1a1a6; --line: #424245; --fill: #1d1d1f; --accent: #2997ff; --bg: #000; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: var(--ink); background: var(--bg);
+         display: flex; flex-direction: column; height: 100dvh; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  header b { font-weight: 600; }
+  input { font: inherit; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); min-width: 220px; }
+  button { font: inherit; font-weight: 600; padding: 8px 16px; border: 0; border-radius: 980px; background: var(--accent); color: #fff; cursor: pointer; min-height: 44px; }
+  button.quiet { background: var(--fill); color: var(--ink); }
+  button[hidden], input[hidden] { display: none; }
+  #state { color: var(--ink-2); }
+  #lines { flex: 0 0 auto; max-height: 22dvh; overflow: auto; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--fill); }
+  #lines:empty { display: none; }
+  #lines p { margin: 4px 0; }
+  #lines .who { color: var(--ink-2); margin-right: 8px; }
+  iframe { flex: 1 1 auto; width: 100%; border: 0; }
+</style>
+</head>
+<body>
+<header>
+  <b>Voice lab</b>
+  <input id="code" type="password" placeholder="Your voice code" autocomplete="off" aria-label="Your voice code">
+  <button id="unlock">Activate Experimental Mode</button>
+  <button id="talk" hidden>Start talking</button>
+  <button id="stop" class="quiet" hidden>Stop</button>
+  <span id="state" role="status"></span>
+</header>
+<div id="lines" aria-live="polite"></div>
+<iframe id="demo" src="/demo/" title="The demo form with its assistant" allow="microphone"></iframe>
+<audio id="voice" autoplay></audio>
+<script>
+const $ = (id) => document.getElementById(id)
+const say = (text) => { $('state').textContent = text }
+let pass = sessionStorage.getItem('voice-pass') || '', pc = null, talk = '', stream = null, reader = null, line = null
+
+function line_(who, text) {
+  const p = document.createElement('p'), w = document.createElement('span'), t = document.createElement('span')
+  w.className = 'who'; w.textContent = who; t.textContent = text; p.append(w, t); $('lines').append(p); $('lines').scrollTop = 1e9
+  return t
+}
+function unlocked(person) {
+  $('code').hidden = true; $('unlock').hidden = true; $('talk').hidden = false
+  say(person ? `Unlocked for ${person}.` : 'Unlocked.')
+}
+if (pass) unlocked('')
+
+$('unlock').onclick = async () => {
+  const r = await fetch('/voice/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: $('code').value }) })
+  if (!r.ok) return say(r.status === 404 ? 'Voice mode is not switched on for this host.' : 'That code does not open the voice mode.')
+  const got = await r.json(); pass = got.pass; sessionStorage.setItem('voice-pass', pass); $('code').value = ''; unlocked(got.person)
+}
+
+// For tests with no microphone and no second model: ?clip=<name> speaks a recorded clip (served by the host from
+// VOICE_LAB_CLIPS) into the conversation two seconds after it connects, then stays silent.
+const CLIP = new URLSearchParams(location.search).get('clip')
+let playClip = null
+async function clipStream() {
+  const ctx = new AudioContext(), out = ctx.createMediaStreamDestination()
+  const buf = await ctx.decodeAudioData(await (await fetch(`/voice-lab/clips/${encodeURIComponent(CLIP)}`)).arrayBuffer())
+  const hush = ctx.createGain(); hush.gain.value = 0; const osc = ctx.createOscillator(); osc.connect(hush).connect(out); osc.start()   // an open, silent microphone
+  playClip = () => { const src = ctx.createBufferSource(); src.buffer = buf; src.connect(out); src.start(); window.clipEndsAt = performance.now() + buf.duration * 1000 }
+  return out.stream
+}
+
+function chat() { return $('demo').contentDocument?.querySelector('agui-chat') }
+
+async function end(why) {
+  try { reader?.cancel() } catch {}
+  if (talk) fetch('/voice/end', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Voice-Pass': pass }, body: JSON.stringify({ talk }) }).catch(() => {})
+  pc?.close(); stream?.getTracks().forEach((t) => t.stop()); pc = null; stream = null; talk = ''; reader = null
+  $('stop').hidden = true; $('talk').hidden = false
+  say(why || 'Stopped.')
+}
+const WHY = { time: 'That is the limit for one conversation.', money: 'That is the limit for one conversation.', silence: 'Ended after a silence.',
+  day: "Today's voice budget is used up.", busy: 'Another voice conversation is going on.', person_day: 'Your voice budget for today is used up.', lost: 'The connection was lost.' }
+
+$('talk').onclick = async () => {
+  const widget = chat()
+  if (!widget) return say('The demo is still loading: try again in a moment.')
+  $('talk').hidden = true; say('Connecting…')
+  try {
+    stream = CLIP ? await clipStream() : await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+    pc = new RTCPeerConnection()
+    pc.ontrack = (e) => { $('voice').srcObject = e.streams[0] }
+    stream.getTracks().forEach((t) => pc.addTrack(t, stream))
+    pc.createDataChannel('oai-events')
+    await pc.setLocalDescription(await pc.createOffer())
+    const r = await fetch('/voice/session', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Voice-Pass': pass },
+      body: JSON.stringify({ sdp: pc.localDescription.sdp, thread_id: widget.threadId }) })
+    if (r.status === 403) { sessionStorage.removeItem('voice-pass'); pass = ''; location.reload(); return }
+    if (!r.ok) { const d = await r.json().catch(() => ({})); return end(WHY[d.detail?.reason] || 'The voice is unavailable right now.') }
+    const got = await r.json(); talk = got.talk
+    await pc.setRemoteDescription({ type: 'answer', sdp: got.sdp })
+    $('stop').hidden = false; say('Listening. Speak.')
+    if (playClip) setTimeout(playClip, 2000)
+    follow(widget)
+  } catch (e) { end(e.name === 'NotAllowedError' ? 'The microphone is not allowed for this page.' : 'Could not connect.') }
+}
+$('stop').onclick = () => end()
+
+async function follow(widget) {
+  const r = await fetch(`/voice/events?talk=${encodeURIComponent(talk)}`, { headers: { 'X-Voice-Pass': pass } })
+  reader = r.body.getReader(); const dec = new TextDecoder(); let buf = ''
+  for (;;) {
+    const { value, done } = await reader.read().catch(() => ({ done: true }))
+    if (done) break
+    buf += dec.decode(value, { stream: true })
+    let cut
+    while ((cut = buf.indexOf('\n\n')) >= 0) {
+      const block = buf.slice(0, cut); buf = buf.slice(cut + 2)
+      const data = block.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).trim()).join('')
+      if (!data) continue
+      const ev = JSON.parse(data)
+      ;(window.voiceLog = window.voiceLog || []).push({ ...ev, at: Math.round(performance.now()) })
+      if (ev.type === 'heard') { line = null; line_('You', ev.text); widget.send(ev.text) }   // the ordinary run, as if typed
+      else if (ev.type === 'spoken') { line = line || line_('Voice', ''); line.textContent += ev.delta }
+      else if (ev.type === 'result') { line = null }
+      else if (ev.type === 'ended') { return end(WHY[ev.reason] || `Ended. This conversation cost $${ev.cost_usd}.`) }
+    }
+  }
+  if (talk) end(WHY.lost)
+}
+</script>
+</body>
+</html>

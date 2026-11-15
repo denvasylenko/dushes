@@ -644,7 +644,7 @@ def create_dushes_router(site: Dushes, host: Any = None):
     from fastapi import APIRouter, HTTPException
     from pydantic import ValidationError
 
-    from .. import agui
+    from .. import agui, voice
 
     r = APIRouter()
 
@@ -690,6 +690,7 @@ def create_dushes_router(site: Dushes, host: Any = None):
 
         async def events():
             async for ev in site.run(**kw):
+                voice.seen(kw["thread_id"], ev)   # a voice conversation of this thread says the answer
                 yield agui.encode(ev, enc)
 
         return StreamingResponse(agui.alive(events(), enc), media_type=enc.get_content_type(),

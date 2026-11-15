@@ -21,6 +21,14 @@ PORT="${DEV_HOST_PORT:-8190}"
 REF="${DEV_HOST_REF:-main}"
 EVERY="${DEV_HOST_EVERY:-20}"
 SERVER=""
+# The experimental voice mode shows only when voice codes are set: from the environment, or from the keychain
+# entry "dushes-voice-codes" (name=code pairs, one per person; add it yourself, the value is typed hidden:
+#   security add-generic-password -a "$USER" -s dushes-voice-codes -w
+# ). It is never printed. Then open http://localhost:8190/voice-lab/ .
+if [ -z "${VOICE_CODES:-}" ]; then
+  VOICE_CODES="$(security find-generic-password -a "$USER" -s dushes-voice-codes -w 2>/dev/null || true)"
+fi
+[ -n "${VOICE_CODES:-}" ] && export VOICE_CODES
 export DEMO_PER_VISITOR_DAY="${DEMO_PER_VISITOR_DAY:-200}" DEMO_PER_IP_DAY="${DEMO_PER_IP_DAY:-400}" DEMO_PER_THREAD="${DEMO_PER_THREAD:-100}"
 
 say() { echo "[dev-host $(date +%H:%M:%S)] $*"; }
