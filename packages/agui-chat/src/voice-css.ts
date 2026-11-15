@@ -39,7 +39,7 @@ export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--a
 .panel:has(.foot.vo-on) .log { display: flex; flex-direction: column; }
 .panel:has(.foot.vo-on) .log > :first-child { margin-top: auto; }
 /* the turn's step is said under the orb: the conversation's own live line keeps its place, unseen, until it is done */
-.panel:has(.foot.vo-on) .log > .steps:not(.done) { visibility: hidden; }
+.panel:has(.foot.vo-on) .log > .steps:not(.done), .panel:has(.foot.vo-on) .log > .msg.ai.wait { visibility: hidden; }   /* and the waiting dots: the orb is the one sign of work */
 /* the row: the composer, then the microphone and the close button; while a message is typed the close button steps
    aside, the microphone stays within reach */
 .foot.vo-on { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; align-items: end; }
