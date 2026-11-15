@@ -59,3 +59,27 @@ def test_a_live_run_stops_before_it_spends():
     import pytest
     with pytest.raises(SystemExit):
         vb.LiveBridge()
+
+
+def test_sound_is_found_by_level_not_by_the_first_frame():
+    quiet, loud = b"\x00" * vb.CHUNK, (2000).to_bytes(2, "little", signed=True) * (vb.CHUNK // 2)
+    assert not vb.is_sound(quiet) and vb.is_sound(loud) and not vb.is_sound((300).to_bytes(2, "little", signed=True) * 100)
+    # silence frames arrive at once; "one moment" at 2.2 s; a pause; the result spoken from 5.0 s
+    frames = [(10.1, quiet), (10.2, quiet), (12.2, loud), (12.3, loud), (12.4, quiet), (15.0, loud), (15.1, loud)]
+    assert vb.sound_times(frames, 10.0) == {"first": 2.2, "last": 5.1, "again": 5.0}
+    assert vb.sound_times([(10.1, quiet)], 10.0) == {"first": None, "last": None, "again": None}
+    assert vb.turn_over(last_sound=15.1, now=18.2, answered=14.0) and not vb.turn_over(15.1, 17.0, 14.0)
+    assert not vb.turn_over(12.3, 16.0, 14.0)                      # only the "one moment" sounded: the result is still to come
+    assert not vb.turn_over(15.1, 19.0, None)
+
+
+def test_a_clip_goes_in_as_a_microphone_would_send_it(tmp_path):
+    import wave
+    p = tmp_path / "c.wav"
+    with wave.open(str(p), "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(vb.SAMPLE_RATE); w.writeframes((1500).to_bytes(2, "little", signed=True) * vb.SAMPLE_RATE)   # one second
+    pcm = vb.pcm_of(p)
+    assert len(pcm) == vb.SAMPLE_RATE * 2
+    parts = vb.pieces(pcm)
+    assert len(parts) == 5 + 10 + 8 and all(len(x) == vb.CHUNK for x in parts)     # 100 ms pieces: half a second of silence, the clip, its tail
+    assert not vb.is_sound(parts[0]) and vb.is_sound(parts[5]) and not vb.is_sound(parts[-1])

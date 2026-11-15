@@ -99,6 +99,52 @@ def entities_kept(said: str, heard: str) -> tuple[int, int]:
     return sum(1 for e in want if e.lower() in low), len(want)
 
 
+# ===================================================================== sound (for the live bridge)
+# What the model check of gpt-live-1 taught (Owner, 2026-11-15): the session sends audio frames all the time, silence
+# included, so "the first sound" is found by level, never by the first audio event; audio goes in at real-time pace in
+# 100 ms pieces, or it is not taken as a microphone; and nothing says "the assistant finished speaking", so a turn ends
+# after END_OF_TURN seconds without sound.
+
+SAMPLE_RATE = 24000
+CHUNK = SAMPLE_RATE * 2 // 10      # 100 ms of 16-bit mono
+LOUD = 800                         # a sample above this is sound, below it the line's own noise
+END_OF_TURN = 3.0
+
+
+def pcm_of(wav: Path) -> bytes:
+    """A clip's samples without the WAV header: raw PCM 16-bit mono 24 kHz, what the session takes."""
+    import wave
+    with wave.open(str(wav)) as w:
+        if (w.getframerate(), w.getnchannels(), w.getsampwidth()) != (SAMPLE_RATE, 1, 2):
+            raise ValueError(f"{wav.name}: {w.getframerate()} Hz, {w.getnchannels()} ch, {8 * w.getsampwidth()} bit; the session takes 24 kHz mono 16 bit")
+        return w.readframes(w.getnframes())
+
+
+def pieces(pcm: bytes, lead_silence: float = 0.5, tail_silence: float = SILENCE_AFTER) -> list[bytes]:
+    """The clip as the microphone would send it: 100 ms pieces, a little silence before and after."""
+    quiet = b"\x00" * CHUNK
+    body = [pcm[i:i + CHUNK] for i in range(0, len(pcm) - len(pcm) % 2, CHUNK)]
+    return [quiet] * round(lead_silence * 10) + body + [quiet] * round(tail_silence * 10)
+
+
+def is_sound(pcm: bytes, level: int = LOUD) -> bool:
+    return any(abs(int.from_bytes(pcm[i:i + 2], "little", signed=True)) > level for i in range(0, len(pcm) - 1, 2))
+
+
+def sound_times(frames: list[tuple[float, bytes]], since: float) -> dict[str, float | None]:
+    """From the frames that came back (time, pcm): when the first sound came after `since`, when the last sound was,
+    and when the sound started again after a pause (the returned result spoken, after the voice's own "one moment")."""
+    loud = [t for t, pcm in frames if t >= since and is_sound(pcm)]
+    again = next((b for a, b in zip(loud, loud[1:]) if b - a > 0.6), None)
+    return {"first": round(loud[0] - since, 2) if loud else None, "last": round(loud[-1] - since, 2) if loud else None,
+            "again": round(again - since, 2) if again is not None else None}
+
+
+def turn_over(last_sound: float | None, now: float, answered: float | None) -> bool:
+    """A turn is over when the result was handed to the voice and nothing has sounded for END_OF_TURN seconds."""
+    return answered is not None and last_sound is not None and now - last_sound > END_OF_TURN and last_sound >= answered
+
+
 # ===================================================================== the bridges
 
 
