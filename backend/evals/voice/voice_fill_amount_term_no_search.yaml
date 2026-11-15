@@ -1,0 +1,18 @@
+name: voice_fill_amount_term_no_search
+tags: [voice, fill, en]
+persona: "A person speaking to the assistant in voice mode. They say values, they ask nothing."
+goal: "An amount and a term are put into the form; the documents are not searched for them."
+start: {page: /apply, form: loan_application, values: {loan_type: "consumer"}}
+knows:
+  - "Says: One and a half million for four years."
+turns: 1
+# From the owner's own voice session (2026-11-15, his screenshot): on this line the loan assistant showed "Searching
+# the documents" before filling. Text runs do not reproduce it (0 of 10 on the form, 0 of 10 on the site assistant),
+# so it is measured in a voice thread only.
+scripted:
+  - "One and a half million for four years."
+expect:
+  never_tools: [ask_documents]
+  quiet_cards: true
+  fields: {loan_amount: 1500000}
+min_score: 7

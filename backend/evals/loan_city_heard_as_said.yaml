@@ -13,6 +13,9 @@ turns: 2
 scripted:
   - "Uh Yeah, sure. But let's switch to the address. So, Uh, region Ukraine, city Luhansk, street Uh Sadovaya, building forty-one, apartment seven, and post code is nine two four one seven. Uh, registered since Um- n- Uh- since I'm born"
   - "Okay, pick some Piterburg Uh- and region of some Piterburg. [inhale ]And for my postal code, Uh, add to the end three"
+# The CPO's decision (2026-11-15): the heard line is ambiguous (the city too, or the region only), so the assistant
+# does not settle it silently. It sets the region and asks one short question ("Is the city Saint Petersburg too?",
+# or a plain "Which city?"). A city set without asking fails. Before: 2 of 5 fail on head 4ab5bb8, Haiku.
 # The guest answers no card by itself: the region is set only by the second line.
 answers: {reg_region: null}
 expect:
