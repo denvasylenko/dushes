@@ -55,6 +55,7 @@ def check_gift_card(code: str) -> str:
     tools: ["my_app.tools:submit_application"]
     confirm_tools: [submit_application]    # held until the user taps Confirm on a card
     ```
+    The held tool's own card is the only confirmation: its description gets "Shows its own confirmation card to the user: call it directly, never ask first.", so the agent never asks in text first.
   </TabItem>
   <TabItem label="In code">
     ```python

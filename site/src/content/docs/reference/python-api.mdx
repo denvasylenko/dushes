@@ -70,7 +70,7 @@ from formguide.site import Dushes, SiteMap, create_dushes_router
   <Param name="prefill" type="dict | None" default="None">A prefilled start: `{data?, text?, attachment_ids?}`, with `state` (see `suggest_prefill`).</Param>
   <Param name="capabilities" type="list[str] | None" default="None">The cards and variants the client renders; `None` means all.</Param>
   <Param name="trace_context" type="dict[str, str] | None" default="None">The caller's W3C trace headers `{traceparent, tracestate}`; with OpenTelemetry on, the turn joins that trace.</Param>
-  <Param name="reply_to" type="list[dict] | None" default="None">The parts of earlier messages the user answers: `[{message_id, quote | whole, note?}]`. The agent reads each quote before the message.</Param>
+  <Param name="reply_to" type="list[dict] | None" default="None">The parts of earlier messages the user answers: `[{message_id, quote | whole, note?, role?}]`; `role: "user"` marks a quote of the user's own message. The agent reads each quote before the message.</Param>
   <Fragment slot="returns">An async iterator of AG-UI events, as plain dicts with the protocol's camelCase keys. Everything the user sees is also kept in the thread's display transcript.</Fragment>
 </ParamList>
 
