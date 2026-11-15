@@ -665,7 +665,15 @@ def build_graph(guide: FormGuide):
                 text = answer_text(got, why)
                 if not got and why:   # an answer was given and could not be taken: the card must not look answered
                     get_stream_writer()({"kind": "card_result", "status": "not_accepted", "reason": why[:300]})
-                if got and (got.get("ids") or got.get("text")) and payload.get("applies") and answer.get("config"):
+                refused = {str(k): str(e) for k, e in (answer.get("rejected") or {}).items() if e} \
+                    if isinstance(answer.get("rejected"), dict) else {}
+                if got and refused:   # the client tried the value on the form and the form said no: nothing was filled
+                    name = payload.get("field") if payload.get("field") in refused else next(iter(refused))
+                    text += (f". The form did not accept it for {name}: {refused[name][:300]}. The field is not filled: "
+                             "tell the user why, in their words, and ask again. Do not say it is filled.")
+                    get_stream_writer()({"kind": "card_result", "status": "not_accepted", "reason": refused[name][:300],
+                                         "field": name})
+                elif got and (got.get("ids") or got.get("text")) and payload.get("applies") and answer.get("config"):
                     # the client filled the field with the chosen option: like an accepted card
                     new_cfg = answer["config"]
                     upd["config"] = new_cfg

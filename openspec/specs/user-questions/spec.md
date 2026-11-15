@@ -173,3 +173,11 @@ When the answer to a question card cannot be taken (the form refuses the value w
 #### Scenario: A VIN of three digits
 - **WHEN** the person types "555" into the VIN question and the form answers "17 characters"
 - **THEN** the card is marked not accepted with "17 characters", and the agent asks for the VIN again
+
+
+### Requirement: A client reports the form's refusal
+A client that tried a typed answer on the form and was refused SHALL restore the old value and resume with the answer and `rejected: {field name: the form's error text}`, without `config`. The run SHALL treat it as a refused answer: `card_result` with that reason and field, and the model told the field is not filled.
+
+#### Scenario: A VIN of three digits
+- **WHEN** the person types "555" into a question card for the VIN and the form says it needs 17 characters
+- **THEN** the resume carries `rejected`, the run sends `card_result` `not_accepted` with the form's words, and the reply asks for the VIN again
