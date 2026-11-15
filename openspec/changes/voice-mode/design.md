@@ -57,6 +57,32 @@ The test (WebSocket, recorded clips made with the Mac's own voice, English and R
 needs the backend): does it connect, does the transcript arrive, does delegation fire, is the returned text
 spoken, how long from the end of speech to the first sound. About two minutes of session: **about $0.15**.
 
+## The check of gpt-live-1 (run 2026-11-15): it passes
+
+Two WebSocket sessions with recorded clips (the Mac's own voices), one request in English and one in Russian,
+client delegation, our agent simulated by a two-second pause and a fixed sentence. 104 seconds of session in
+all: **$0.09**.
+
+| Question | Result |
+| --- | --- |
+| Does the owner's key have access? | Yes. The session started 2 s after connecting. |
+| Does it understand Russian? | Yes: the request was transcribed word for word. |
+| Does it speak Russian? | Yes: it answered in Russian, with our figures intact (18.9%, seven years). How the voice sounds is for the owner's ear: the recordings are in `backend/scripts/runs/voice-check/`. |
+| Does delegation fire, and when? | Yes, 0.8 s after the end of speech, in both languages. |
+| What does the person hear meanwhile? | By itself it says "Sure, I'll check now" 2.2 s after the end of speech. |
+| Is our result spoken? | Yes: 0.4 to 2.4 s after we return it (the longer case: it was still finishing "I'll check now"). |
+| Billing | By the second of connected time, silence included, as documented: 65 s and 39 s reported. |
+
+Not checked yet: Ukrainian and German; an interruption; a long conversation; the WebRTC path from a browser and
+from the Swift client; how it behaves when our agent takes 6 s instead of 2. Two things seen in the run that the
+design must handle: the session sends audio frames all the time, silence included, so "is it speaking" is
+decided from the sound level or the transcript events, not from the arrival of audio; and it greets and
+acknowledges on its own ("Hello, let me check"), which is wanted in voice mode but must not be repeated by our
+agent's text.
+
+**Verdict: gpt-live-1 is the voice.** The cost per conversation is then fixed: $0.05 a minute, $0.25 for five
+minutes, plus our agent's own turns.
+
 ## The two designs
 
 ### A. Realtime direct: the voice model is the agent
