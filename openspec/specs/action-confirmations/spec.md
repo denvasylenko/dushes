@@ -25,3 +25,10 @@ For a tool listed in `confirm_tools` the only confirmation SHALL be the held too
 #### Scenario: Sending a change
 - **WHEN** a host lists `submit_deputy_change` in `confirm_tools` and the user asks to send the change
 - **THEN** exactly one confirmation card is shown, the held tool's, and the tool runs only after the user accepts it
+
+### Requirement: Nothing to confirm without a tool that acts
+When a run has no host tool, no skill tool and no page (client) tool, the agent SHALL NOT be offered `confirm_action`, and `review_form` in `submit` mode SHALL show the `status` card, which has no send button. A review answered with `submit` SHALL then tell the model it has no tool that sends the form.
+
+#### Scenario: A form the person sends themselves
+- **WHEN** a form has no tool that sends it and the user says "send it"
+- **THEN** no confirmation card is shown, and the agent says what is still missing or that the form is ready and is sent with the form's own send button

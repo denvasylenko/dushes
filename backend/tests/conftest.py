@@ -70,3 +70,16 @@ def guide(tmp_path, model) -> FormGuide:
         skills=SkillRegistry.from_dir(DEMO / "skills"),
         translate_missing=False,   # the scripted model answers the agent only; tests of translation turn it on
     ))
+
+
+def can_send(guide):
+    """Give the guide a host tool that sends the form: without one the agent has nothing to confirm."""
+    from langchain_core.tools import tool
+
+    @tool
+    def send_form() -> str:
+        """Send the form."""
+        return "sent"
+
+    guide._tools.append(send_form)
+    return guide

@@ -46,3 +46,17 @@ When a run's form state carries `page` (`{title, description, sections: [{title,
 #### Scenario: A fee stated on the page
 - **WHEN** the page of a registration form says "Registration costs 27.90 EUR" and the user asks the form agent what it costs
 - **THEN** the agent answers 27.90 EUR and does not say the form shows no fee
+
+### Requirement: The context says whether the form was sent
+The form context SHALL say what the form reports about being sent, read from `submitted` in the props of the form's root component: a true value or `{reference, at}` gives a line that the form has been sent, with those details; `false` gives a line that it has not been sent yet; without the key no such line is added.
+
+#### Scenario: The form reports a reference
+- **WHEN** the root's props carry `submitted: {reference: "A-118"}` and the user asks whether it was sent
+- **THEN** the agent says it was sent and gives the reference A-118
+
+### Requirement: The context says who sends the form
+When the run has no tool that acts and the form does not report that it was sent, the form context SHALL say that the person sends the form with the form's own send button, that nothing is sent from the chat, and that the agent never says it was sent and never answers that it cannot tell. For a form the person does not see (`ui.form_visible: false`) it SHALL say instead that the chat cannot send it, and name no button, portal or step.
+
+#### Scenario: Asked whether it went through
+- **WHEN** a form without a sending tool is filled in and the user asks "was it sent?"
+- **THEN** the agent answers that it is sent from the form, not from the chat, and names what is missing or says it is ready to send

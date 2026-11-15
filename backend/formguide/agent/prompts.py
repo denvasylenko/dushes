@@ -156,7 +156,32 @@ def page_facts(page: dict | None, limit: int = PAGE_FACTS_MAX) -> str:
     return f"<page_facts{' page=' + json.dumps(title) if title else ''}>\n{body}\n</page_facts>\n"
 
 
-def context_block(outline: str, focus: str, changes: str, now: str, hidden: bool = False, page: str = "") -> str:
-    return (f"{page}<form_context>\nNOW (user's local time): {now}\n{HIDDEN_FORM if hidden else ''}"
+def sending(submitted: object, can_act: bool, hidden: bool = False) -> str:
+    """One line of the form context about sending: what the form reports (`submitted` on its root: true,
+    false or {at, reference}), and who sends it when the agent has no tool that can."""
+    if submitted:
+        d = submitted if isinstance(submitted, dict) else {}
+        more = "".join(f", {k} {str(d[k]).strip()[:80]}" for k in ("reference", "at") if d.get(k))
+        return (f"SENT: this form has been sent{more}. When asked, say so with these details; it is no longer "
+                "a draft.\n")
+    out = "NOT SENT: this form has not been sent yet. " if submitted is False else ""
+    if not can_act:
+        if hidden:
+            out += ("SENDING: you have no tool that sends this, and the person has no form to send it from. "
+                    "Nothing is ever sent from this chat, so never say it was sent, never offer to send it and "
+                    "never point at a portal, a button or a step: asked to send it or whether it was sent, say "
+                    "that the details are filled in here and that this chat cannot send them.")
+        else:
+            out += ("SENDING: you have no tool that sends this form: the person sends it themselves with the "
+                    "form's own send button, and the form then shows the result. Nothing is ever sent from this "
+                    "chat, so never say it was sent, never offer to send it, and never answer \"I can't tell\": "
+                    "asked whether it was sent, say that it is sent from the form, not from here, and what is "
+                    "still missing or that it is ready to send.")
+    return out.rstrip() + "\n" if out else ""
+
+
+def context_block(outline: str, focus: str, changes: str, now: str, hidden: bool = False, page: str = "",
+                  sending: str = "") -> str:
+    return (f"{page}<form_context>\nNOW (user's local time): {now}\n{HIDDEN_FORM if hidden else ''}{sending}"
             f"{outline}\n\n{focus}\n\n{changes}\n</form_context>\n"
             "Reply in the language of the user's message below, not in the language of this context or of tool results.")

@@ -12,7 +12,7 @@ from langchain_core.tools import tool
 from demo.mock_forms import FORMS
 from formguide.agent import tools as T
 
-from .conftest import say
+from .conftest import can_send, say
 from .test_agent import collect, start
 from .test_agui import check_order
 
@@ -118,6 +118,7 @@ def test_request_file(guide, model):
 
 
 def test_confirm_action(guide, model):
+    can_send(guide)
     v, ev = pause(guide, model, "c1", "confirm_action",
                   {"title": "Submit the application?", "message": "It goes to the bank.", "danger": True})
     assert v["type"] == "confirm" and v["danger"] is True and v["title"] == "Submit the application?"

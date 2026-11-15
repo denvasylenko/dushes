@@ -8,7 +8,7 @@ from langchain_core.tools import tool
 from formguide.knowledge.research import parse_sources
 from formguide.server import create_router
 
-from .conftest import say
+from .conftest import can_send, say
 from .test_agent import collect, start
 from .test_questions import LOAN, interrupt_value
 
@@ -18,6 +18,7 @@ def customs(ev, name):
 
 
 def test_confirm_details_and_consequence(guide, model):
+    can_send(guide)
     model.script = [say("", ("k1", "confirm_action", {
         "title": "Send the application", "message": "To the bank.", "consequence": "You can't edit it after sending.",
         "details": [{"label": "Car loan", "value": "1 500 000"}, {"label": "", "value": "x"}]}))]

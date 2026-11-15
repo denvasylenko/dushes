@@ -1,7 +1,7 @@
 """review_form: progress by section, issues from the form, model warnings and fixes, the resume shapes."""
 from __future__ import annotations
 
-from .conftest import say
+from .conftest import can_send, say
 from .test_agent import collect, start
 from .test_questions import LOAN, interrupt_value, tool_result
 
@@ -40,6 +40,7 @@ def test_submit_with_warnings_and_fixes(guide, model):
 
 
 def test_resume_shapes(guide, model):
+    can_send(guide)
     v, state = review(guide, model, "v3", {"mode": "submit"})
     cfg = {**state["config"], "state": {**state["config"]["state"], "phone_mobile": "+79001234567"}}
     model.script = [say("Fixed.")]
@@ -61,6 +62,7 @@ def test_resume_shapes(guide, model):
 
 def test_a_real_error_is_never_crowded_out(guide, model):
     # the live case: many empty required fields on the first tabs, one real error on the Loan tab
+    can_send(guide)
     state = start(guide, LOAN)
     state["config"]["props"]["loan_amount"]["error"] = "At least 20% of the loan amount"
     for mode in ("status", "submit"):

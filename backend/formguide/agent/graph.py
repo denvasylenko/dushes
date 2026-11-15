@@ -33,7 +33,7 @@ from ..stats import RunStats, model_id
 from ..stats import current as current_stats
 from .memory import compact as compact_history
 from .memory import new_turn_id
-from .prompts import context_block, page_facts, system_prompt
+from .prompts import context_block, page_facts, sending, system_prompt
 from .interaction import (answer_text, read_answer, read_field_answers, read_review, read_confirm, read_decision, read_edits, read_upload,
                           upload_text)
 from .actions import capabilities as parse_caps
@@ -174,7 +174,19 @@ def build_graph(guide: FormGuide):
 
     def actions_of(state: AgentState) -> frozenset[str]:
         on = guide.actions_for(state.get("form_id") or "", caps_of(state))
+        if not can_act(state):
+            on = on - {"confirm_action"}                       # nothing here to confirm: no tool sends or cancels
         return on - {"focus_field"} if hidden(state) else on   # nothing on the page to point at
+
+    def can_act(state: AgentState) -> bool:
+        """The run has a tool that does something outside the form (send, pay, cancel): the host's, a skill's
+        or the page's. Without one the person sends the form themselves, with the form's own button."""
+        return bool(guide.tools_for(state.get("form_id") or "")) or bool(client_names(state))
+
+    def form_sent(state: AgentState) -> Any:
+        """What the form says about being sent: `props[<root>].submitted` (true / false / {at, reference})."""
+        root = (state.get("config") or {}).get("props", {}).get(guide.layout(state["jsx_hash"]).root or "")
+        return root.get("submitted") if isinstance(root, dict) else None
 
     def ctx_for(state: AgentState) -> ToolCtx:
         lay = guide.layout(state["jsx_hash"])
@@ -186,7 +198,7 @@ def build_graph(guide: FormGuide):
                        thread_id=state.get("thread_id") or "", guide=guide,
                        extra_tools={t.name: t for t in guide.tools_for(pack.form_id)},
                        confirm_tools=frozenset(guide.config.confirm_tools or ()),
-                       actions=actions_of(state), caps=caps_of(state), cards=guide.cards,
+                       actions=actions_of(state), caps=caps_of(state), cards=guide.cards, can_act=can_act(state),
                        last_extraction=state.get("last_extraction"), turn_sources=state.get("turn_sources"))
 
     # ------------------------------------------------------------------ nodes
@@ -203,7 +215,8 @@ def build_graph(guide: FormGuide):
         changes = render_changes(ctx.ov, diff, v_prev, version) if v_prev else "CHANGES: this is the first message"
         # The frontend sends the user's local time; fall back to the server clock.
         now = (state.get("ui") or {}).get("now") or datetime.now().strftime("%Y-%m-%d %A %H:%M")
-        block = context_block(outline, focus, changes, now, hidden=hidden(state), page=page_facts(state.get("page")))
+        block = context_block(outline, focus, changes, now, hidden=hidden(state), page=page_facts(state.get("page")),
+                              sending=sending(form_sent(state), can_act(state), hidden(state)))
         cfg_chars = len(json.dumps(state["config"], ensure_ascii=False))
         w({"kind": "context", "text": block,
            "stats": {"context_tokens": _approx_tokens(block), "config_tokens": round(cfg_chars / 3.2)}})
@@ -564,7 +577,11 @@ def build_graph(guide: FormGuide):
                             + render_changes(ctx.ov, diff, v - 1, v))
                 elif action == "submit":
                     text = ("The user wants to send the form now. Ask with confirm_action before the tool that "
-                            "submits it; if errors remain, say what blocks sending instead.")
+                            "submits it; if errors remain, say what blocks sending instead."
+                            if can_act(state) else
+                            "The user wants to send the form now. You have no tool that sends it: say in one "
+                            "sentence what still blocks sending, or that it is ready and they send it with the "
+                            "form's own send button. Do not say it was sent.")
                 elif action == "continue":
                     text = ("The user wants to continue" + (f" with the section {det['section']}" if det["section"]
                                                             else "") + ": guide them to the next fields there.")

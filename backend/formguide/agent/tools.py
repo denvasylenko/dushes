@@ -346,6 +346,7 @@ class ToolCtx:
     caps: frozenset[str] | None = None           # what the client renders; None = everything
     cards: dict[str, Any] = field(default_factory=dict)   # show_<type> -> CardSpec (cards from blocks)
     language: str | None = None                 # the conversation's language, when the agent names it on a card
+    can_act: bool = True                        # the run has a tool that sends or cancels (host, skill or page)
     handed_back: str | None = None              # hand_back's reason: Dushes answers this message
 
     def can(self, variant: str) -> bool:
@@ -1007,6 +1008,8 @@ def _t_review_form(a: dict, ctx: ToolCtx) -> str:
     if _waiting(ctx):
         raise ToolError(WAITING)
     mode = a.get("mode") if a.get("mode") in ("status", "submit") else "status"
+    if mode == "submit" and not ctx.can_act:
+        mode = "status"   # nothing here sends the form: the card must not offer a Send button
     ctx.pending_interaction = review.build(ctx, mode, a.get("warnings"), a.get("fixes"))
     return ""
 
