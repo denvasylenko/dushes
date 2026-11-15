@@ -563,3 +563,51 @@ def test_speaking_over_an_answer_stops_the_turn_and_its_voice():
         assert "interrupted" not in [e["type"] for e in seen] and stopped == ["cut-thread"]
         await talks.end("live_1")
     asyncio.run(go())
+
+
+def test_shortened_numbers_and_the_owners_ways_to_say_yes():
+    """The owner's session of 2026-11-15, 22:59 UTC: "50k" for 50000 came as a card, and "Yeah, but say that Yes"
+    was not taken as a yes."""
+    n = voice.said_numbers
+    assert n("I know it's like 50k") == ["50000"] and n("1.5 million for four years") == ["1500000", "4"]
+    assert n("one and a half million") == ["1500000"] and n("half a million") == ["500000"] and n("2,5 mln") == ["2500000"]
+    poltora = "".join(map(chr, (0x43F, 0x43E, 0x43B, 0x442, 0x43E, 0x440, 0x430)))           # "one and a half"
+    million = "".join(map(chr, (0x43C, 0x438, 0x43B, 0x43B, 0x438, 0x43E, 0x43D, 0x430)))    # "of a million"
+    assert n(f"{poltora} {million}") == ["1500000"]
+    amount = {"name": "loan_amount", "label": "Loan amount", "value": 50000, "display": "50 000", "previous": None}
+    assert voice.quiet({"changes": [amount]}, "50k") and not voice.quiet({"changes": [amount]}, "about sixty")
+    yes = voice.yes_or_no
+    assert yes("Yeah, but say that Yes") is True and yes("yes, all good") is True and yes("set it") is True
+    assert yes("yes but make it 48 months") is None and yes("yes but 48") is None
+
+
+def test_a_card_the_person_said_yes_to_is_not_asked_twice(guide, model, monkeypatch):
+    """The same session: "Shall I fill in Loan amount 50000?" - "Yes" - the same question again, three times. His
+    tab sent the yes as a message, which closes the card; the agent proposed the same value again and it waited
+    again. A card with the same values as the one just confirmed is applied, whatever client sent the yes."""
+    from .test_agent import collect, start
+    from .test_questions import LOAN
+    monkeypatch.setenv("VOICE_AS_IF", "voice-")
+    state = start(guide, LOAN)
+
+    def card(ev):
+        raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+        return json.loads(raw) if isinstance(raw, str) else raw
+
+    propose = ("p", "propose_changes", {"changes": [{"name": "birth_date", "value": "1990-07-01"}]})
+    model.script = [say_("", propose)]
+    first = card(collect(guide, "voice-again", message="I was born on the first of July, nineteen ninety", state=state))
+    assert "quiet" not in first                                   # a date the agent assembled: it asks
+    model.script = [say_("", ("p2", *propose[1:]))]
+    again = card(collect(guide, "voice-again", message="Yes. Yes", state=state))
+    assert again.get("quiet") is True and again["card_id"] != first["card_id"]
+
+    model.script = [say_("", propose)]                             # the same in an ordinary chat thread: it waits
+    collect(guide, "chat-again", message="I was born on the first of July, nineteen ninety", state=state)
+    model.script = [say_("", ("p3", *propose[1:]))]
+    assert "quiet" not in card(collect(guide, "chat-again", message="Yes", state=state))
+
+    model.script = [say_("", propose)]                             # a yes to nothing, then another value: it waits
+    collect(guide, "voice-other", message="I was born on the first of July, nineteen ninety", state=state)
+    model.script = [say_("", ("p4", "propose_changes", {"changes": [{"name": "birth_date", "value": "1991-07-01"}]}))]
+    assert "quiet" not in card(collect(guide, "voice-other", message="Yes", state=state))

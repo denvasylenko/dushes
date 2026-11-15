@@ -475,8 +475,14 @@ class FormGuide:
                                                        **src))
                 value = {**ev["value"], "card_id": entry["id"]}
                 if _voice.active(thread_id):   # in a voice conversation, what the person said is filled without a card
-                    said = next((e.get("text", "") for e in reversed(tx.list(thread_id)) if e["kind"] == "user"), "")
-                    if _voice.quiet(value, said):
+                    past = tx.list(thread_id)
+                    said = next((e.get("text", "") for e in reversed(past) if e["kind"] == "user"), "")
+                    # the same values as the card the person has just said yes to (a client that sent the yes as
+                    # a message closed that card): they confirmed it, so it is not asked a second time
+                    before = next((e for e in reversed(past[:-1]) if e["kind"] == "card"), None)
+                    again = (before is not None and before.get("status") == "dismissed" and _voice.yes_or_no(said) is True
+                             and _voice.same_changes(before.get("changes"), value.get("changes")))
+                    if again or _voice.quiet(value, said):
                         value["quiet"] = True
                 interrupts.append(value)
                 if mode not in ("legacy", "both"):

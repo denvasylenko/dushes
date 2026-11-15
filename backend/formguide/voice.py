@@ -34,6 +34,12 @@ except ImportError:  # pragma: no cover
     APIRouter = HTTPException = Request = StreamingResponse = WebSocket = WebSocketDisconnect = None  # type: ignore[assignment,misc]
 
 _NAME = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
+
+
+def _cyr(*codes: int) -> str:
+    """A Cyrillic word from its code points: this file stays ASCII (the repository is English-only)."""
+    return "".join(map(chr, codes))
+
 PASS_HOURS = 12.0          # how long a pass lives
 TRIES_PER_DAY = 5          # wrong codes per address a day, then every try is refused
 MIN_CODE_CHARS = 8
@@ -670,6 +676,10 @@ def active(thread_id: str) -> bool:
 
 # a plain yes or no, in the product's seven languages (non-ASCII words as code points: the file stays ASCII)
 _YES_WORDS = {"yes", "yeah", "yep", "yup", "sure", "ok", "okay", "correct", "right", "confirm", "agree", "ja", "genau",
+              "fine", "good", "great", "perfect", "set", "apply", "go", "ahead", "exactly",
+              _cyr(0x447, 0x451, 0x442, 0x43A, 0x43E), _cyr(0x447, 0x435, 0x442, 0x43A, 0x43E),      # "chyotko"
+              _cyr(0x441, 0x442, 0x430, 0x432, 0x44C), _cyr(0x434, 0x430, 0x432, 0x430, 0x439),      # "stav'", "davai"
+              _cyr(0x442, 0x43E, 0x447, 0x43D, 0x43E), _cyr(0x43F, 0x43E, 0x434, 0x442, 0x432, 0x435, 0x440, 0x436, 0x434, 0x430, 0x44E),
               "oui", "si", "s" + chr(0xED), "s" + chr(0xEC), "claro", "certo",
               "".join(map(chr, (0x434, 0x430))), "".join(map(chr, (0x430, 0x433, 0x430))),
               "".join(map(chr, (0x442, 0x430, 0x43A))), "".join(map(chr, (0x432, 0x435, 0x440, 0x43D, 0x43E))),
@@ -680,6 +690,7 @@ _NO_WORDS = {"no", "nope", "nah", "cancel", "wrong", "nein", "non", "not",
              "".join(map(chr, (0x43D, 0x435, 0x442))), "".join(map(chr, (0x43D, 0x456))),
              "".join(map(chr, (0x43D, 0x435)))}
 _FILLERS = {"uh", "um", "please", "do", "it", "that", "is", "thanks", "thank", "you", "i", "said", "the", "bitte",
+            "but", "say", "all", "looks", "its", "s", "them", "this", "everything",
             "".join(map(chr, (0x43F, 0x43E, 0x436, 0x430, 0x43B, 0x443, 0x439, 0x441, 0x442, 0x430))),
             "".join(map(chr, (0x432, 0x441, 0x451))), "".join(map(chr, (0x432, 0x441, 0x435)))}
 
@@ -689,13 +700,22 @@ def yes_or_no(text: str) -> bool | None:
     nothing but the yes or no and filler ("yes please", "I said yes", "no thanks"); "yes, but make it 48" is a
     request, and both words together are neither."""
     words = re.findall(_LETTERS, (text or "").lower())
-    if not words or len(words) > 6:
+    if not words or len(words) > 6 or re.search(r"\d", text or ""):   # a figure in it is a new value, not a yes
         return None
     yes, no = any(w in _YES_WORDS for w in words), any(w in _NO_WORDS for w in words)
     rest = [w for w in words if w not in _YES_WORDS and w not in _NO_WORDS and w not in _FILLERS]
     if rest or yes == no:
         return None
     return yes
+
+
+def same_changes(one: list | None, other: list | None) -> bool:
+    """Whether two cards propose the same values for the same fields (a consent is never the same: it is asked)."""
+    def key(rows: list | None) -> list:
+        return sorted((str(r.get("name")), _json({"v": r.get("value")})) for r in rows or [] if isinstance(r, dict))
+    if not one or not other or any(isinstance(r, dict) and r.get("consent") for r in [*one, *other]):
+        return False
+    return key(one) == key(other)
 
 
 def asks(card: dict) -> str:
@@ -754,6 +774,26 @@ _TENS = {w: (i + 2) * 10 for i, w in enumerate("twenty thirty forty fifty sixty 
 _SCALES = {"hundred": 100, "thousand": 1000, "million": 1_000_000}
 
 
+# how people shorten a number aloud: "50k", "1.5 million", "one and a half million", "half a million", and the same
+# in Russian (the words are built from code points: the file stays ASCII)
+_THOUSAND = "(?:k|thousand|" + _cyr(0x43A) + "|" + _cyr(0x442, 0x44B, 0x441) + r"\w*)"
+_MILLION = "(?:m|mln|million|" + _cyr(0x43C, 0x43B, 0x43D) + "|" + _cyr(0x43C, 0x438, 0x43B, 0x43B, 0x438, 0x43E, 0x43D) + r"\w*)"
+_ONE_HALF = "(?:one and a half|" + _cyr(0x43F, 0x43E, 0x43B, 0x442, 0x43E, 0x440) + "[" + _cyr(0x430, 0x44B) + "])"
+_SHORT = [(re.compile(r"(\d+(?:[.,]\d+)?)\s*" + _MILLION + r"\b"), 1_000_000),
+          (re.compile(r"(\d+(?:[.,]\d+)?)\s*" + _THOUSAND + r"\b"), 1000)]
+
+
+def _short_numbers(text: str) -> str:
+    """The text with shortened numbers written out in digits: "50k" 50000, "1.5 million" 1500000, "one and a half
+    million" 1500000, "half a million" 500000."""
+    text = re.sub(_ONE_HALF + r"\s+" + _MILLION + r"\b", "1500000", text)
+    text = re.sub(_ONE_HALF + r"\s+" + _THOUSAND + r"\b", "1500", text)
+    text = re.sub(r"half a\s+" + _MILLION + r"\b", "500000", text)
+    for pattern, times in _SHORT:
+        text = pattern.sub(lambda m, times=times: str(int(round(float(m.group(1).replace(",", ".")) * times))), text)
+    return text
+
+
 def said_numbers(text: str) -> list[str]:
     """The numbers in what was said, in order, as digit strings: digits as written ("93", "2015-06-10" gives
     2015, 06, 10) and English number words ("ninety-three" 93, "four four three four" 4, 4, 3, 4, "five hundred
@@ -770,7 +810,7 @@ def said_numbers(text: str) -> list[str]:
         total = current = 0
         open_, last = False, ""
 
-    for word in re.findall(r"[a-z]+|\d+", (text or "").lower()):
+    for word in re.findall(r"[a-z]+|\d+", _short_numbers((text or "").lower())):
         if word.isdigit():
             flush()
             out.append(word)
