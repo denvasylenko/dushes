@@ -29,7 +29,8 @@
 
 ## 7. Examples, coding agents, Ask AI (the owner, 15.11)
 - [x] 7.1 Anatomy and counts (`anatomy.py`): 271 examples, one of them a run file; 4 pages with code have something live
-- [ ] 7.2 Every example is an included file that CI runs; a typed example fails the build
+- [x] 7.2a Every example is checked against the real code (`scripts/check_examples.py`, in the tests and CI): 237 of 271 examples (Python, YAML, browser, JSON, shell); it found one broken example (the site map's "Every option" was not valid YAML) and one core defect (a misspelled configuration key loads silently, reported to Owner)
+- [ ] 7.2b Examples become included files that are run (a browser example loads without an error; a server example passes `formguide check`); a typed example fails the build
 - [ ] 7.3 Every example shows its result and opens in the playground or its recipe folder
 - [ ] 7.4 Runnable projects: Vue, site agent with hand-off, form only in the chat
 - [ ] 7.5 "Copy for your coding agent" on every guide; task bundles; a drop-in file for a project

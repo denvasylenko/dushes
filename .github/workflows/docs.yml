@@ -8,7 +8,7 @@ name: Docs
 on:
   push:
     branches: [main]
-    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/check_english.py", "scripts/check_links.py", "scripts/check_exports.py", "scripts/check_contrast.py", "scripts/check_ts_reference.py", ".github/workflows/docs.yml"]
+    paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/check_english.py", "scripts/check_links.py", "scripts/check_exports.py", "scripts/check_contrast.py", "scripts/check_ts_reference.py", "scripts/check_examples.py", "backend/formguide/**", ".github/workflows/docs.yml"]
   pull_request:
     paths: ["site/**", "openspec/**", "packages/agui-chat/src/**", "scripts/**"]
   workflow_dispatch:
@@ -48,6 +48,10 @@ jobs:
         run: python3 scripts/check_contrast.py
       - name: Every field of the widget's public types has a reference row
         run: python3 scripts/check_ts_reference.py
+      - name: Every code example in the docs matches the real code (names, arguments, keys, flags)
+        run: |
+          python3 -m pip install --quiet "./backend[server]" pyyaml
+          python3 scripts/check_examples.py
       - name: Install the widget's dependencies (the site builds the widget from its sources, e.g. chart.js)
         working-directory: packages/agui-chat
         run: npm ci
