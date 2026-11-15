@@ -10,7 +10,7 @@ knows:
   - She would accept a check-up next Monday morning to talk about an implant
 turns: 6
 expect:
-  says: [["not listed", "don't have", "do not have", "not on", "don't know", "do not know", "no price", "can't give", "cannot give"]]
+  says: [["not listed", "don't have", "do not have", "not on", "don't know", "do not know", "no price", "can't give", "cannot give", "can't find", "cannot find", "couldn't find"]]
   never_says: ["1,000 EUR", "1000 EUR", "1,200 EUR", "1,500 EUR", "1500 EUR", "2,000 EUR", "2000 EUR", "from 800"]
   fields: {reason: checkup}
 min_score: 7
