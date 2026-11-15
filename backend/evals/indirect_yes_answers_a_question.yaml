@@ -1,0 +1,21 @@
+name: indirect_yes_answers_a_question
+tags: [indirect, navigation, en]
+persona: >-
+  A father asking whether the barbershop cuts children's hair. When the assistant ends with a question, he answers
+  it with a yes and a fact about his son; he has not asked to book.
+goal: Find out whether a seven year old can get a haircut and what it costs. Nothing is to be opened.
+start: {page: /}
+knows:
+  - "First asks: do you cut kids' hair?"
+  - "Then: yes, he is seven, how long does it take?"
+turns: 2
+# A yes that answers the assistant's own question ("is it for a child?") is not a yes to opening the booking.
+scripted:
+  - "do you cut kids' hair?"
+  - "yes, he is seven, how long does it take?"
+expect:
+  answered_by: [dushes]
+  stays_put_on: ["kids' hair", "he is seven"]
+  never_tools: [open_form]
+  says: [["25"]]
+min_score: 7

@@ -1,0 +1,22 @@
+name: indirect_yes_to_more_info
+tags: [indirect, navigation, en]
+persona: >-
+  A driver comparing prices. They ask what full cover costs; whatever the assistant asks at the end of its answer,
+  they say yes to hearing more about how the premium is set. They have not asked for a quote or a form.
+goal: Learn the price of full cover, then how the premium is set. Nothing is to be opened.
+start: {page: /}
+knows:
+  - "First asks: how much is full cover for a car?"
+  - "Then: yes, tell me more about how the premium is set"
+turns: 2
+# The risk Owner named for the gate (2026-11-15): an answer that ends with a question now counts as an offer, so a
+# yes to some other closing question could open a page. A yes that asks for more information opens nothing.
+scripted:
+  - "how much is full cover for a car?"
+  - "yes, tell me more about how the premium is set"
+expect:
+  answered_by: [dushes]
+  stays_put_on: ["how much is full cover", "yes, tell me more"]
+  never_tools: [open_form]
+  says: [["900"]]
+min_score: 7

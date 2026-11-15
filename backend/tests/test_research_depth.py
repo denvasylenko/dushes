@@ -192,3 +192,17 @@ def test_the_demo_file_holds_recorded_answers_of_published_questions_only(tmp_pa
     assert held.question not in json.dumps(d) and held.id not in json.dumps(d)
     docs = {x["id"] for s in d["sets"] for x in s["documents"]}
     assert "staff_handbook_2026.md" in docs and all(x["pages"] >= 1 for s in d["sets"] for x in s["documents"])
+
+
+def test_the_route_check_asks_published_questions_and_reads_an_answer():
+    import research_route_check as rc
+    qs = rc.questions()
+    held = {s.question for s in rd.load() if s.heldout}
+    assert len(qs) == 8 and {q["set"] for q in qs} == set(rd.PUBLIC_SETS) and not [q for q in qs if q["question"] in held]
+    assert {q["expects"] for q in qs} == {"quick", "deep"}
+    good = {"error": None, "text": "The cap is 165 euro.", "depth": "quick", "expects": "quick", "tokens": {"input": 900},
+            "sources": [{"title": "directive_2026_07.md", "excerpt": "The hotel cap rises to 165"}]}
+    assert rc.checks(good, {"directive_2026_07.md"}) == []
+    bad = {**good, "depth": "deep", "sources": [{"title": "other.md"}], "tokens": {}}
+    why = rc.checks(bad, {"directive_2026_07.md"})
+    assert len(why) == 4 and any("needs a quick answer" in w for w in why) and any("excerpt" in w for w in why)

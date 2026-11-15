@@ -52,3 +52,5 @@ indirect_ja_friseur_de
 indirect_si_seguro_es
 indirect_yes_clinic
 indirect_oui_visa_fr
+indirect_yes_to_more_info
+indirect_yes_answers_a_question
