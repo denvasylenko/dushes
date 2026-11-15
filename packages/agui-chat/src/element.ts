@@ -404,8 +404,11 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     if (this._built) { const input = this.$.input as HTMLTextAreaElement; input.placeholder = this._opts.placeholder || this.t('placeholder'); input.setAttribute('aria-label', input.placeholder) }
   }
 
-  close(): void {
+  /** Close the chat. The page can take the closing over (its own transition back into the field that opened the chat):
+   *  `agui:before-close` is cancelable and carries `proceed()`, which closes for real. */
+  close(force = false): void {
     const wasOpen = this.$.wrap.classList.contains('open')
+    if (wasOpen && !force && !this.dispatchEvent(new CustomEvent('agui:before-close', { cancelable: true, detail: { proceed: () => this.close(true) } }))) return
     this.$.wrap.classList.remove('open')
     if (wasOpen && this._opts.mode === 'bubble') {   // a quick shrink back into the launcher
       this.$.wrap.classList.add('closing')
