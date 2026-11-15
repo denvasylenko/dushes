@@ -32,6 +32,7 @@ from .sitemap import SiteMap
 
 log = logging.getLogger("formguide.site")
 MAX_ROUNDS = 4
+UPFRONT_PASSAGES, UPFRONT_PAGES = 8, 3   # what a spoken question gets before the first model call
 STYLE = "Reply in one to three short sentences, in the user's language."
 STAY = ("\n   The user is filling in the form on this page: answer in place and do not navigate away, unless they ask "
         "to go\n   somewhere or the business's instructions above say which page such a question opens.")
@@ -276,32 +277,48 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                  style: str | None = None, tools: list[SiteTool] | None = None, ctx: SiteRunCtx | None = None,
                  suggestions: bool = False, finish: bool = True, stay_on_form: bool = False,
                  to_form: Callable[[str], None] | None = None, stats: RunStats | None = None,
-                 asked: str | None = None, offered: bool = False) -> AsyncIterator[dict]:
+                 asked: str | None = None, offered: bool = False, upfront: bool = False) -> AsyncIterator[dict]:
     """One site turn as AG-UI events.
 
     `on_handoff(form_id, note, language)` keeps the note; when it returns True the form agent answers right after
     in this same run, so the turn ends after that round and the directive says `handoff: "done"`.
     `doc_passages` are the business documents that match the question, `ask_docs` the document researcher;
     `live` and `instructions` come from the host, `tools` are the host's; `finish=False` leaves RUN_FINISHED
-    to the caller."""
+    to the caller. `upfront` (a voice conversation, where every reading round is silence): more passages, and
+    the whole text of the page the user is on and of the pages the best passages come from, so a plain question
+    is answered in one model call."""
     yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
     ctx = ctx or SiteRunCtx(thread_id=thread_id, page=page_path, message=question)
-    found = site.search(question, k=5)
+    found = site.search(asked if upfront and asked else question, k=UPFRONT_PASSAGES if upfront else 5)
     seen = {c.id for c in found}
     here = site.page(page_path)
+    whole = ""
+    if upfront:
+        paths = dict.fromkeys([here.path if here else "", *(c.doc_id for c in found)])
+        pages = [x for x in (site.page(path) for path in paths if path) if x and reads(x)][:UPFRONT_PAGES]
+        whole = "".join(f"\n\n<page path=\"{p.path}\">{reads(p).strip()}</page>" for p in pages)
+        whole = whole and "\n\nWhole pages (already read for you: do not call read_page for these):" + whole
     brief = "\n".join(x.strip() for x in (site.instructions, instructions) if x and x.strip())
     own = f"\nThe business's instructions\n{brief}\n" if brief else ""
     facts = f"\nLive facts from the business (current, trust them over the site passages)\n{live.strip()}\n" if live.strip() else ""
     system = SYSTEM.format(title=site.title, instructions=own, live=facts, style=style or STYLE,
                            stay=STAY if stay_on_form else "",
-                           contents=site.contents(), passages=passages(site, found),
+                           contents=site.contents(), passages=passages(site, found) + whole,
                            doc_passages=doc_passages or "(none matched)",
                            page=f"{here.path} ({here.title})" if here else page_path or "/")
-    msgs: list[Any] = [SystemMessage(system)]
+    from ..models import cache_history, provider_of
+    # Anthropic: the part of the prompt that is the same for every question (the rules, the site contents) is
+    # marked cacheable, and so is everything up to this question, which the later rounds of this run read again
+    head, sep, tail = system.partition("\nThe user is on: ")
+    first = (SystemMessage(content=[{"type": "text", "text": head, "cache_control": {"type": "ephemeral"}},
+                                    {"type": "text", "text": sep + tail}])
+             if sep and provider_of(model) == "anthropic" else SystemMessage(system))
+    msgs: list[Any] = [first]
     for role, text in history:
         if text.strip():
             msgs.append(HumanMessage(text) if role == "user" else AIMessage(text))
     msgs.append(HumanMessage(question or "(the user opened the assistant)"))
+    msgs = cache_history(msgs, model)
     # a page opens and a form starts only on a direct request, or a yes to the last answer's offer (the person's own
     # words decide, `asked`; never the model)
     may_go = wants_to_go(asked if asked is not None else question, offered)
@@ -349,6 +366,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                 yield {"type": "TOOL_CALL_ARGS", "toolCallId": cid, "delta": json.dumps(args, ensure_ascii=False)}
                 yield {"type": "TOOL_CALL_END", "toolCallId": cid}
                 bad = False   # the step failed (a tool that broke or does not exist); a refused move is not a failure
+                t_tool = RunStats.now()
                 if name == "search_site":
                     more = [c for c in site.search(str(args.get("query") or ""), k=4) if c.id not in seen]
                     seen.update(c.id for c in more)
@@ -412,6 +430,8 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                         bad = True
                 else:
                     result, bad = f"Unknown tool {name}.", True
+                if stats is not None:   # the run's stats name Dushes' steps too (a reading round is a step)
+                    stats.tool_call(name, t_tool, bad)
                 msgs.append(ToolMessage(content=result, tool_call_id=cid))
                 yield {"type": "TOOL_CALL_RESULT", "toolCallId": cid, "messageId": f"tool_{uuid.uuid4().hex[:12]}",
                        "content": result[:200], "role": "tool", **({"error": True} if bad else {})}

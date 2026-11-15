@@ -474,16 +474,17 @@ class FormGuide:
                 entry = tx.append(thread_id, new_entry("card", changes=ev["value"].get("changes", []), status="pending",
                                                        **src))
                 value = {**ev["value"], "card_id": entry["id"]}
-                if _voice.active(thread_id):   # in a voice conversation, what the person said is filled without a card
-                    past = tx.list(thread_id)
-                    said = next((e.get("text", "") for e in reversed(past) if e["kind"] == "user"), "")
-                    # the same values as the card the person has just said yes to (a client that sent the yes as
-                    # a message closed that card): they confirmed it, so it is not asked a second time
-                    before = next((e for e in reversed(past[:-1]) if e["kind"] == "card"), None)
-                    again = (before is not None and before.get("status") == "dismissed" and _voice.yes_or_no(said) is True
-                             and _voice.same_changes(before.get("changes"), value.get("changes")))
-                    if again or _voice.quiet(value, said):
-                        value["quiet"] = True
+                past = tx.list(thread_id)
+                said = next((e.get("text", "") for e in reversed(past) if e["kind"] == "user"), "")
+                # the same values as the card the person has just answered yes to in words, spoken or typed (the
+                # message closed that card): they confirmed it, so it is not asked a second time. The client
+                # applies a card marked quiet without a tap
+                before = next((e for e in reversed(past[:-1]) if e["kind"] == "card"), None)
+                again = (before is not None and before.get("status") == "dismissed" and _voice.yes_or_no(said) is True
+                         and _voice.same_changes(before.get("changes"), value.get("changes")))
+                # in a voice conversation, what the person said is filled without a card
+                if again or (_voice.active(thread_id) and _voice.quiet(value, said)):
+                    value["quiet"] = True
                 interrupts.append(value)
                 if mode not in ("legacy", "both"):
                     continue

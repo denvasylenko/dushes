@@ -343,6 +343,28 @@ class Dushes:
             return "unclear"   # a question about none of this form's fields ("how many new requests?")
         return "form"
 
+    def _by_rule(self, message: str, state: dict[str, Any], thread_id: str | None = None) -> str:
+        """'form' or 'site' for an unclear message without a model call (a voice conversation: the router model
+        would add its whole call to the wait). A move or a question about the business is the site's; a message
+        that names a field of this form is the form's; another question, an answer to what Dushes just asked or
+        offered, or words about another page are the site's; anything else on a form page is a value for the form."""
+        from ..voice import yes_or_no
+        here = self.site.page(((state.get("page") or {}).get("path")) or "")
+        text = message.lower()
+        if _NAV.search(text) or _NAV_OTHER.search(text) or _BUSINESS.search(text):
+            mode = "site"
+        elif names_a_field(message, state.get("form") or {}):
+            mode = "form"
+        elif is_question(message) or self._other_page(text, here):
+            mode = "site"
+        elif self._last_speaker(thread_id)[0] == "site" and (
+                yes_or_no(message) is not None or self._last_speaker(thread_id)[1].rstrip().endswith("?")):
+            mode = "site"   # Dushes asked something, or offered: this answers it
+        else:
+            mode = "form"
+        log.info("site route by rule: %r -> %s", message[:60], mode)
+        return mode
+
     async def classify(self, message: str, state: dict[str, Any], thread_id: str | None = None,
                        stats: RunStats | None = None) -> str:
         """One word from a cheap model for an unclear message on a form page; 'form' when it cannot tell."""
@@ -463,7 +485,11 @@ class Dushes:
         state = state or {}
         mode = self.route(message, state, resume, handoff, thread_id)
         if mode == "unclear":
-            mode = await self.classify(message or "", state, thread_id, stats)
+            from .. import voice
+            # a spoken message is not held for the router model: a rule places it, and whoever gets it can give
+            # it to the other in the same run (to_form, hand_back)
+            mode = (self._by_rule(message or "", state, thread_id) if voice.active(thread_id)
+                    else await self.classify(message or "", state, thread_id, stats))
         if mode == "form":
             form = self._with_page(state["form"], state)
             fid = str(form.get("form_id") or "form")
@@ -572,7 +598,7 @@ class Dushes:
                                      instructions=self.instructions, style=self.style, tools=self.tools, ctx=ctx,
                                      suggestions=self.suggestions and not aloud, finish=False,
                                      stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats,
-                                     asked=message, offered=self._offers.pop(thread_id, False)):
+                                     asked=message, offered=self._offers.pop(thread_id, False), upfront=aloud):
             if ev["type"] == "CUSTOM" and ev.get("name") == "site_offer":
                 while len(self._offers) >= 5000:
                     self._offers.pop(next(iter(self._offers)))

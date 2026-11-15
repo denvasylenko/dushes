@@ -509,3 +509,49 @@ def test_a_form_that_hands_back_after_to_form_lets_dushes_answer(site, guide, mo
     ev = run(site, "tf9", message="when do you open, and is my form ok?", state=form_state(guide))
     assert "We open at 10:00." in "".join(e.get("delta", "") for e in ev)
     assert [e["type"] for e in ev].count("RUN_STARTED") == 1
+
+
+def test_a_spoken_unclear_message_is_placed_by_a_rule_not_the_router_model(site, guide, model, monkeypatch):
+    """The cabinet's first voice run (2026-11-16): the router model took 1.8 s of a 6.8 s answer. In a voice
+    conversation an unclear message is placed without a model call; the one who gets it can still give it to the
+    other in the same run."""
+    from formguide.transcript import new_entry
+    st = form_state(guide)
+    rule = lambda text, thread="v-rule": site._by_rule(text, st, thread)  # noqa: E731
+    assert rule("when is the branch open on Saturday?") == "site"       # the business
+    assert rule("I'd also like a haircut") == "site"                    # another page's words
+    assert rule("how many new requests do I have?") == "site"           # a question about none of the fields
+    assert rule("a car loan please") == "form"                          # names a field of this form
+    assert rule("which fields are still required?") == "form"
+    tx = site.forms.transcripts
+    tx.append("v-rule", new_entry("assistant", text="Which one do you mean?"))
+    assert rule("the second one") == "site"                             # Dushes asked: this answers it
+    tx.append("v-rule", new_entry("assistant", text="The office is open until six."))
+    assert rule("Anna Smith") == "form" and rule("yes") == "site"       # a value is the form's; a yes is Dushes'
+    seen = []
+
+    async def fake_run(thread_id, **kw):
+        seen.append("form")
+        yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": "r"}
+    monkeypatch.setattr(site.forms, "run", fake_run)
+    monkeypatch.setenv("VOICE_AS_IF", "voice-")
+    tx.append("voice-r1", new_entry("assistant", text="The office is open until six."))
+    model.script, before = [], len(model.calls)
+    run(site, "voice-r1", message="fifty thousand", state=st)           # unclear (Dushes spoke last): no router call
+    assert seen == ["form"] and len(model.calls) == before
+
+
+def test_a_spoken_question_gets_whole_pages_before_the_first_model_call(site, guide, model, monkeypatch):
+    """The cabinet's first voice run (2026-11-16): three model calls for one answer, two of them to read. In a voice
+    conversation Dushes gets the whole text of the page the person is on and of the pages its passages come from,
+    and the search uses the person's words, not the note about speaking that follows them."""
+    model.script = [say("The office is open 9 to 13 on Saturday.")]
+    run(site, "chat-up", message="when is the branch open on Saturday?", state={"page": {"path": "/faq"}})
+    assert "Whole pages" not in model.calls[-1][0].content
+    monkeypatch.setenv("VOICE_AS_IF", "voice-")
+    model.script = [say("The office is open 9 to 13 on Saturday.")]
+    run(site, "voice-up", message="when is the branch open on Saturday?", state={"page": {"path": "/faq"}})
+    system = model.calls[-1][0].content
+    assert "Whole pages (already read for you" in system and '<page path="/faq">' in system
+    assert system.count("<page path=") <= 3
+    assert "will HEAR your answer" not in system and "will HEAR your answer" in model.calls[-1][-1].content

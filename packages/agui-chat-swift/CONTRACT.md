@@ -157,6 +157,11 @@ Filling without a card. In a thread a voice conversation speaks for, a `set_fiel
 through the host's form at once, as an accepted card (the same resume), draw no card, and keep a line with Undo.
 A card without the mark waits as always. A consent is never quiet.
 
+Outside voice mode too (from the commit that adds this line): a field-change card may carry `quiet: true` when the
+person answered the card before it with a yes in words (they typed "yes" instead of tapping, which closed that
+card, and the agent proposed the same values again). Apply it at once in every mode, as a result line with Undo.
+A client that ignores the mark shows the card again, as before.
+
 An open conversation is billed by the second, silence included: end it when the person stops, when the app goes
 to the background, and when the screen closes.
 

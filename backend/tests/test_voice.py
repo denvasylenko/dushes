@@ -602,10 +602,13 @@ def test_a_card_the_person_said_yes_to_is_not_asked_twice(guide, model, monkeypa
     again = card(collect(guide, "voice-again", message="Yes. Yes", state=state))
     assert again.get("quiet") is True and again["card_id"] != first["card_id"]
 
-    model.script = [say_("", propose)]                             # the same in an ordinary chat thread: it waits
-    collect(guide, "chat-again", message="I was born on the first of July, nineteen ninety", state=state)
+    # an ordinary chat thread: a value that was said still gets its card, and a typed yes to that card applies it
+    # (the CPO, 2026-11-16: QA's card_yes_in_words_applies)
+    model.script = [say_("", propose)]
+    typed = card(collect(guide, "chat-again", message="I was born on the first of July, nineteen ninety", state=state))
+    assert "quiet" not in typed
     model.script = [say_("", ("p3", *propose[1:]))]
-    assert "quiet" not in card(collect(guide, "chat-again", message="Yes", state=state))
+    assert card(collect(guide, "chat-again", message="Yes", state=state)).get("quiet") is True
 
     model.script = [say_("", propose)]                             # a yes to nothing, then another value: it waits
     collect(guide, "voice-other", message="I was born on the first of July, nineteen ninety", state=state)

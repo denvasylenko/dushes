@@ -27,6 +27,13 @@ On a page with a form, an explicit move (go to, open the ..., take me) SHALL go 
 - **WHEN** the user on the loan form page writes "a car loan please", which is also a word of the Loans page
 - **THEN** the router model decides form and the UI agent proposes the loan type
 
+### Requirement: A spoken unclear message is routed by a rule
+In a voice conversation an unclear message SHALL be placed with no model call. A move, a question, words about another page, or an answer to what Dushes just asked or offered SHALL go to Dushes; a message that names a field of the form, and any other statement, SHALL go to the UI agent. Whoever gets the message can still give it to the other in the same run.
+
+#### Scenario: A spoken value after Dushes spoke
+- **WHEN** Dushes answered last and the person says "fifty thousand" in a voice conversation on the loan form page
+- **THEN** the UI agent gets the message and no router model call is made
+
 ### Requirement: Navigation checked against the site map
 Dushes' `navigate` and `open_form` SHALL accept only paths, tabs, sections and forms from the site map; anything else SHALL be refused to the model. A valid call SHALL emit CUSTOM `site_directive {type: "navigate", path, tab?, section?, form_id?}`.
 
@@ -208,6 +215,13 @@ Every UI-agent turn in one conversation (a typed message, a message given by to_
 #### Scenario: Thinking blocks stay valid
 - **WHEN** a conversation mixes typed form turns, to_form turns and a hand-off
 - **THEN** the UI agent's tool list is the same in every turn and the provider accepts its earlier reasoning
+
+### Requirement: A spoken question is answered in one call
+In a voice conversation Dushes SHALL be given, before its first model call, the passages found by the person's own words and the whole text of the page the person is on and of the pages the best passages come from (three pages at most), so that a plain question needs no reading step.
+
+#### Scenario: Opening hours asked aloud
+- **WHEN** the person asks aloud when the branch is open on Saturday and the Contacts page states it
+- **THEN** Dushes answers from the page text it was given, without calling read_page or search_site
 
 ### Requirement: A question is answered before anything opens
 The site agent SHALL open a page or start a form only when the person's own message asks for it (a request such as "open…", "show me…", "take me…", "I want…", "book me…", or the same as a polite question, "can you open…") or says yes to an offer made in the previous answer. This SHALL be decided in code from the person's words: a `navigate` or `open_form` call for any other message is refused, and the model is told to answer first and offer.
