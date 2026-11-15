@@ -8,6 +8,10 @@
     {
       "name": "docs",
       "url": "http://localhost:4321"
+    },
+    {
+      "name": "dev-host",
+      "url": "http://localhost:8190"
     }
   ]
 }
