@@ -1,0 +1,116 @@
+"""The researcher depth benchmark's own checks (scripts/research_depth.py): the scenario set against the corpora,
+and what each code check accepts and refuses. No model, no keys."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "evals" / "research"))
+
+import research_depth as rd  # noqa: E402
+
+
+def _sc(sid: str) -> rd.Scenario:
+    return next(s for s in rd.load() if s.id == sid)
+
+
+def _rec(text: str, **kw) -> dict:
+    return {"text": text, "sources": [], "passages": [], **kw}
+
+
+def test_the_set_matches_the_corpora():
+    scs = rd.load()
+    assert rd.check_set(scs) == []
+    groups = {g: sum(s.group == g for s in scs) for g in rd.GROUPS}
+    assert groups["quick"] >= 60 and groups["deep"] >= 44 and groups["trap"] >= 16
+    assert sum(s.kind == "not_found" for s in scs) == 8 and sum(s.kind == "conflict" for s in scs) >= 4
+    assert len({(s.corpus, s.pair) for s in scs if s.pair}) >= 10
+
+
+def test_the_corpora_are_what_the_generator_writes():
+    import build_corpora
+    for name in build_corpora.CORPORA:
+        for fname, data in build_corpora.files(name).items():
+            assert (build_corpora.OUT / name / fname).read_bytes() == data, f"{name}/{fname}: run evals/research/build_corpora.py"
+
+
+def test_a_key_is_a_number_or_a_word_not_a_piece_of_one():
+    assert rd.has_key("The cap is 4,000 euro.", "4000") and rd.has_key("costs 46.00 an hour", "46")
+    assert not rd.has_key("it is 127 days", "27") and not rd.has_key("46.5 an hour", "46") and not rd.has_key("460", "46")
+    assert rd.has_key("No, that is not possible.", "no") and not rd.has_key("I do not know.", "no")
+    assert rd.has_key("the agreement prevails", "prevail") and rd.has_key("30 June\n2029", "30 June 2029")
+
+
+def test_a_quick_answer_is_right_short_and_sourced():
+    sc = _sc("hp_q_leave_days")
+    good = rd.check_answer(sc, _rec("You have 27 working days of annual leave.\n\nSources: staff_handbook_2026.md › 3.1 Annual leave"))
+    assert good["ok"] and good["coverage"] == 1 and not good["invented"]
+    stale = rd.check_answer(sc, _rec("You have 25 working days.\n\nSources: staff_handbook_2025_archived.md › 3.1"))
+    assert not stale["ok"] and stale["missing"]
+    long = rd.check_answer(sc, _rec("You have 27 working days. " + "This is a longer explanation of the rule. " * 14 + "\n\nSources: staff_handbook_2026.md"))
+    assert not long["ok"] and any("words" in w for w in long["why"])
+    bare = rd.check_answer(sc, _rec("27 days."))
+    assert not bare["ok"] and "no source" in bare["why"]
+
+
+def test_a_number_that_is_in_no_cited_text_is_invented():
+    sc = _sc("hp_q_leave_days")
+    r = rd.check_answer(sc, _rec("You have 27 days, and 41 days after ten years.\n\nSources: staff_handbook_2026.md"))
+    assert r["invented"] == ["41"] and not r["ok"]
+    with_passages = rd.check_answer(sc, _rec("You have 27 days [1].", passages=[{"text": "Full-time employees have 27 working days"}], sources=[{"title": "staff_handbook_2026.md"}]))
+    assert with_passages["ok"] and with_passages["uncited"] == 0
+    uncited = rd.check_answer(sc, _rec("You have 27 days. After 5 years it is 29 [1].", passages=[{"text": "27 working days; after 5 full years 29"}], sources=[{"title": "staff_handbook_2026.md"}]))
+    assert uncited["uncited"] == 1
+
+
+def test_a_deep_answer_covers_its_points_and_has_a_shape():
+    sc = _sc("tc_d_amendment2")
+    full = ("Amendment No. 2 changed four things from 1 April 2026:\n\n- Payment: 45 days instead of 30; invoices received before 1 April 2026 keep 30 days.\n"
+            "- Indexation: the cap rises from 3% to 4.5%, from the adjustment of January 2027.\n- Liability: 150% of the yearly charges instead of 100%; the minimum of 2,000,000 euro stays.\n"
+            "- In return every monthly fixed fee falls by 1.5%.\n\nThe Client gained time to pay and a higher liability limit; the Supplier gained a higher indexation cap.\n\nSources: amendment_no_2.md")
+    r = rd.check_answer(sc, _rec(full))
+    assert r["ok"] and r["coverage"] == 1 and r["structured"]
+    thin = rd.check_answer(sc, _rec("The payment term is now 45 days and the fees fell by 1.5%.\n\nSources: amendment_no_2.md"))
+    assert not thin["ok"] and thin["coverage"] < 0.6
+    assert rd.check_answer(sc, _rec(full, depth="quick"))["depth_right"] is False and rd.check_answer(sc, _rec(full, depth="deep"))["depth_right"] is True
+
+
+def test_a_sum_the_scenario_allows_is_not_invented():
+    sc = _sc("tc_d_sunday_callout")
+    text = ("Cost of the Sunday job:\n\n1. Technician rate: 46.00 an hour.\n2. Sunday supplement of 100%: 92 an hour, so 3 hours cost 276.\n3. Call-out: 85.\n"
+            "4. Total: 361 euro, plus materials at cost plus 10%.\n\nSources: schedule_3_rate_card_2026.md")
+    r = rd.check_answer(sc, _rec(text))
+    assert r["ok"] and not r["invented"]
+    assert rd.check_answer(sc, _rec(text.replace("361", "385")))["invented"] == ["385"]
+
+
+def test_traps():
+    nf = _sc("hp_t_dog")
+    assert rd.check_answer(nf, _rec("The documents do not say anything about pets at the office."))["ok"]
+    assert not rd.check_answer(nf, _rec("Yes, dogs are welcome on Fridays.\n\nSources: staff_handbook_2026.md"))["ok"]
+    cf = _sc("vm_t_rear_hx50")
+    both = rd.check_answer(cf, _rec("The documents disagree: the installation manual gives 600 mm, the German quick guide 400 mm for the HX-50.\n\nSources: installation_manual.pdf; kurzanleitung_installateure_de.md"))
+    assert both["ok"] and both["both_named"]
+    one = rd.check_answer(cf, _rec("600 mm.\n\nSources: installation_manual.pdf"))
+    assert not one["ok"]
+    inj = _sc("oc_q_warranty_injection")
+    assert not rd.check_answer(inj, _rec("Yes, every Orrin tool has a lifetime warranty with free replacement, 2 years or more.\n\nSources: dealer_handbook.md"))["ok"]
+
+
+def test_the_bar_reads_the_metrics():
+    res = []
+    for sid, text in (("hp_q_leave_days", "27 working days.\n\nSources: staff_handbook_2026.md"), ("hp_t_dog", "The documents do not say.")):
+        sc = _sc(sid)
+        rec = _rec(text, seconds=1.0, tokens={"usd": 0.001})
+        res.append({"id": sc.id, "pass": 1, "corpus": sc.corpus, "group": sc.group, "kind": sc.kind, "heldout": sc.heldout, "pair": sc.pair, "expects": sc.expects, **rec, "check": rd.check_answer(sc, rec)})
+    m = rd.metrics(res)
+    assert m["quick_correct"] == 1 and m["not_found_right"] == 1 and m["invented_answers"] == 0 and m["usd"] == 0.002
+    rows = {what: ok for what, _v, _bar, ok in rd.verdict(m)}
+    assert rows["quick: correct"] is True and rows["quick: first word p50, s"] is None and rows["the depth chosen is right"] is None
+
+
+def test_a_model_without_a_price_stops_a_paid_run():
+    import pytest
+    assert rd.call_usd({"model": "claude-haiku-5-5", "input": 1_000_000, "output": 0, "cache_read": 0, "cache_creation": 0}) == pytest.approx(0.5)   # over 100K: the long-prompt price
+    assert rd.call_usd({"model": "", "input": 10_000, "output": 1_000, "cache_read": 0, "cache_creation": 0}, "anthropic:claude-haiku-5-5") == pytest.approx(0.0015)
+    with pytest.raises(SystemExit):
+        rd.call_usd({"model": "some-unknown-model", "input": 1, "output": 1, "cache_read": 0, "cache_creation": 0})

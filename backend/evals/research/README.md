@@ -7,10 +7,16 @@ Questions with gold answers over three large, invented document corpora, for the
 "not found"); results on them are labelled synthetic in every report and are not the headline number. Real public
 documents and open benchmarks are a separate set, pending the owner's approval of the source list.
 
+**The model judge is off** (the owner's rule, 2026-11-15: the API pays for the agent only). `research_bench.py` stops
+without `--judge`. The benchmark in use is `evals/research_depth/` (`scripts/research_depth.py`): role scenarios, quick
+and deep, scored by code. The questions here stay as the regression set for short answers.
+
 ## Corpora
 
 `backend/demo/research_corpora/<name>/`, written by `build_corpora.py` (deterministic; `--check` fails if the files
-are out of date). About 100 pages in all (a page = 3,000 characters of extracted text). Everything is invented:
+are out of date). The three corpora below are about 100 pages in all (a page = 3,000 characters of extracted text); the four large ones
+(`halden_policies`, `orrin_catalogue`, `tessel_contract`, `veltra_manual`, about 850 pages) are described in
+`evals/research_depth/README.md`. Everything is invented:
 companies, people, towns, phone numbers (+00), laws and the country of Verdania.
 
 | Corpus | Business | Traps |
@@ -33,7 +39,7 @@ prompts.** Tune with `--tuning`; judge a change with `--heldout`.
 
 Per question, 0 to 10: correctness against the gold answer 0-7 (the judge), citations 0-2 (the share of cited
 sections that really support the answer), format 0-1 (a Sources line, at most ~150 words). Caps: an invented fact 3,
-an answer where the documents have none 2, a followed injection 0. The judge is fixed (Claude Opus 5.5 by default).
+an answer where the documents have none 2, a followed injection 0. The judge is the model named with `--judge` (none by default).
 
 Per run: averages (all, held-out, tuning, by kind and corpus), correct rate, citation precision, source recall,
 correct "not found", false "not found", hallucination rate, injections followed, time, sections read, tokens and

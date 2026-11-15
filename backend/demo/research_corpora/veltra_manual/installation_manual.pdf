@@ -1,0 +1,383 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Length 3379 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+50 790 Td
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(Veltra HX Installation Manual) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(For Veltra HX-20, HX-35, HX-50 and HX-80 air-to-water heat pumps, firmware 2.4. Edition 4, November) Tj T*
+/F1 9 Tf
+(2025. For a unit running a later firmware, the release notes of that firmware prevail over this) Tj T*
+/F1 9 Tf
+(manual where they differ.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(1 Safety) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(The HX units use R-290 \(propane\), a flammable refrigerant. Only installers with the flammable) Tj T*
+/F1 9 Tf
+(refrigerant certificate may open the refrigerant circuit. Keep a safety zone of 2.0 m around the) Tj T*
+/F1 9 Tf
+(unit free of ignition sources, drains, light wells and air intakes. Never install the unit in a pit) Tj T*
+/F1 9 Tf
+(or below ground level.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(2 Technical data) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(   HX-20   HX-35   HX-50   HX-80) Tj T*
+/F1 9 Tf
+(Heating capacity at A7/W35 \(kW\)   20.4   35.1   49.8   79.5) Tj T*
+/F1 9 Tf
+(COP at A7/W35   4.6   4.5   4.4   4.2) Tj T*
+/F1 9 Tf
+(Heating capacity at A-7/W35 \(kW\)   13.9   24.2   34.6   55.0) Tj T*
+/F1 9 Tf
+(Refrigerant charge \(kg\)   3.8   6.1   8.9   13.5) Tj T*
+/F1 9 Tf
+(Weight \(kg\)   265   390   540   810) Tj T*
+/F1 9 Tf
+(Fuse, 400 V three-phase \(A\)   25   40   63   100) Tj T*
+/F1 9 Tf
+(Minimum flow \(m3/h\)   2.6   4.5   6.4   10.2) Tj T*
+/F1 9 Tf
+(Nominal flow \(m3/h\)   3.5   6.0   8.6   13.7) Tj T*
+/F1 9 Tf
+(Pipe connection \(DN\)   32   40   50   65) Tj T*
+/F1 9 Tf
+(Minimum buffer volume \(l\)   200   300   500   800) Tj T*
+/F1 9 Tf
+(Sound pressure at 5 m \(dB\(A\)\)   52   55   58   62) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Operating range: outdoor air from -20 to 43 degrees; flow temperature up to 70 degrees \(up to 60) Tj T*
+/F1 9 Tf
+(degrees below an outdoor temperature of -10 degrees\).) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(3 Heating capacity by outdoor temperature) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Heating capacity in kW at a flow temperature of 35 degrees, with water \(no glycol\), at full) Tj T*
+/F1 9 Tf
+(compressor speed.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Outdoor air \(degrees\)   HX-20   HX-35   HX-50   HX-80) Tj T*
+/F1 9 Tf
+(-20   10.6   18.3   25.9   41.3) Tj T*
+/F1 9 Tf
+(-15   12.2   21.1   29.9   47.7) Tj T*
+/F1 9 Tf
+(-10   13.5   23.2   32.9   52.5) Tj T*
+/F1 9 Tf
+(-7   13.9   24.2   34.6   55.0) Tj T*
+/F1 9 Tf
+(-2   15.9   27.4   38.8   62.0) Tj T*
+/F1 9 Tf
+(2   17.5   30.2   42.8   68.4) Tj T*
+/F1 9 Tf
+(7   20.4   35.1   49.8   79.5) Tj T*
+/F1 9 Tf
+(12   22.8   39.3   55.8   89.0) Tj T*
+/F1 9 Tf
+(15   24.3   41.8   59.3   94.6) Tj T*
+/F1 9 Tf
+(20   26.5   45.6   64.7   103.4) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(For a flow temperature of 45 degrees multiply by 0.95, for 55 degrees by 0.89, for 65 degrees by) Tj T*
+/F1 9 Tf
+(0.82.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(4 Glycol) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Where the water circuit runs outdoors without frost protection by other means, use a propylene) Tj T*
+/F1 9 Tf
+(glycol mix. Glycol lowers the capacity and raises the flow that is needed:) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Glycol share   Frost protection to   Capacity   Required flow   Pump head needed) Tj T*
+/F1 8 Tf
+T*
+(Veltra HX Installation Manual - page 1 of 3) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4012 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+50 790 Td
+/F1 9 Tf
+(25%   -10 degrees   minus 4%   plus 6%   plus 12%) Tj T*
+/F1 9 Tf
+(35%   -17 degrees   minus 7%   plus 11%   plus 20%) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Never use ethylene glycol or a mix above 40%.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(5 Where to put the unit) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Clearances for air flow and service: front \(air outlet\) 1500 mm, rear \(air inlet\) 600 mm, service) Tj T*
+/F1 9 Tf
+(side 800 mm, other side 300 mm, above 2000 mm. The clearances are the same for all four models. Do) Tj T*
+/F1 9 Tf
+(not blow the outlet air towards a neighbour's windows or a footpath where ice could form.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Put the unit on a level concrete base at least 150 mm above ground, with the anti-vibration feet) Tj T*
+/F1 9 Tf
+(supplied. The base carries at least 1.5 times the unit's weight. Lead the condensate to a frost-free) Tj T*
+/F1 9 Tf
+(drain; in frost the unit makes up to 12 litres of condensate an hour \(HX-80: 30 litres\).) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(6 Water side) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Flush the system before connecting the unit. Fit the strainer supplied in the return, with shut-off) Tj T*
+/F1 9 Tf
+(valves on both sides. Fit flexible connections of at least 500 mm. Fill with water of pH 8.2 to 10.0) Tj T*
+/F1 9 Tf
+(and a hardness of at most 8.4 degrees dH; harder water must be softened. Pressure test the circuit) Tj T*
+/F1 9 Tf
+(at 4.5 bar for 2 hours; set the cold system pressure to 1.5 bar.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(The buffer tank must hold at least the volume in section 2 so that defrosting has enough energy.) Tj T*
+/F1 9 Tf
+(Without it the unit shows fault F212 in frost.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(7 Electrical) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(400 V three-phase with neutral, through its own circuit with the fuse in section 2 and a residual) Tj T*
+/F1 9 Tf
+(current device of type B, 300 mA. The controller needs a separate 230 V supply, fused at 10 A.) Tj T*
+/F1 9 Tf
+(Sensor cables are laid at least 200 mm away from power cables. The utility's blocking signal is) Tj T*
+/F1 9 Tf
+(wired to terminals 21 and 22.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(8 Cascade) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Up to 8 units can run as a cascade under one lead controller. Units of different sizes can be mixed;) Tj T*
+/F1 9 Tf
+(the lead unit is the one with the lowest bus address. Each unit needs its own strainer and its own) Tj T*
+/F1 9 Tf
+(non-return valve.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+() Tj T*
+/F2 10 Tf
+(9 Handover) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(Commissioning is done by a Veltra-certified technician and reported to Veltra within 14 days; the) Tj T*
+/F1 9 Tf
+(warranty starts on the commissioning date only when the report arrived in time, otherwise on the) Tj T*
+/F1 9 Tf
+(delivery date.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 1.** Headings in this document are for convenience only and do not affect its) Tj T*
+/F1 9 Tf
+(interpretation. Words in the singular include the plural and the other way round.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 2.** Where this document refers to a person, that includes a company, a) Tj T*
+/F1 9 Tf
+(partnership and any other body with legal personality, and their lawful successors.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 3.** Customers with accessibility needs can ask for this document in large) Tj T*
+/F1 9 Tf
+(print, audio or another format at no extra cost.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 4.** Nothing in this document limits any right that cannot be limited under the) Tj T*
+/F1 9 Tf
+(law that applies to it. If a provision is found invalid, the rest remains in force.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 5.** Notices must be given in writing. A notice sent through the customer portal) Tj T*
+/F1 8 Tf
+T*
+(Veltra HX Installation Manual - page 2 of 3) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 2138 >>
+stream
+BT
+/F1 9 Tf
+12 TL
+50 790 Td
+/F1 9 Tf
+(counts as written notice from the moment it is shown as delivered.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 6.** Where this document refers to a person, that includes a company, a) Tj T*
+/F1 9 Tf
+(partnership and any other body with legal personality, and their lawful successors.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 7.** We process personal data as described in our privacy notice. We keep) Tj T*
+/F1 9 Tf
+(records only for as long as we need them for the purposes stated there.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 8.** We process personal data as described in our privacy notice. We keep) Tj T*
+/F1 9 Tf
+(records only for as long as we need them for the purposes stated there.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 9.** Notices must be given in writing. A notice sent through the customer portal) Tj T*
+/F1 9 Tf
+(counts as written notice from the moment it is shown as delivered.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 10.** Notices must be given in writing. A notice sent through the customer) Tj T*
+/F1 9 Tf
+(portal counts as written notice from the moment it is shown as delivered.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 11.** Any change to this document must be agreed in writing, except where it) Tj T*
+/F1 9 Tf
+(says that we may change a part of it by publishing a new version.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 12.** This document and the documents it refers to are the whole agreement) Tj T*
+/F1 9 Tf
+(between the parties on its subject and replace any earlier understanding.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 13.** We process personal data as described in our privacy notice. We keep) Tj T*
+/F1 9 Tf
+(records only for as long as we need them for the purposes stated there.) Tj T*
+/F1 9 Tf
+() Tj T*
+/F1 9 Tf
+(**Installation note 14.** The parties will try to resolve any dispute by discussion between senior) Tj T*
+/F1 9 Tf
+(representatives before starting formal proceedings.) Tj T*
+/F1 8 Tf
+T*
+(Veltra HX Installation Manual - page 3 of 3) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000128 00000 n 
+0000000225 00000 n 
+0000000327 00000 n 
+0000003758 00000 n 
+0000003894 00000 n 
+0000007958 00000 n 
+0000008094 00000 n 
+0000010284 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+10421
+%%EOF

@@ -1,0 +1,330 @@
+# Researcher depth benchmark: the Tessel / Marrow facility services framework (corpus demo/research_corpora/tessel_contract, invented).
+# "Today" in these scenarios is after 1 April 2026 (Amendment No. 2 is in force); the reports run to September 2026.
+corpus: tessel_contract
+title: Facility services framework agreement
+scenarios:
+  # ------------------------------------------------------------------ quick
+  - id: tc_q_payment_term
+    group: quick
+    kind: version
+    role: "An accounts payable clerk at the Client."
+    wants: "The payment term for an invoice received this week."
+    question: "Within how many days do we have to pay Tessel's invoices now?"
+    points:
+      - {say: "45 days (Amendment No. 2, from 1 April 2026)", keys: ["45"], where: amendment_no_2.md}
+    pair: amendment
+  - id: tc_q_liability_cap
+    group: quick
+    kind: version
+    role: "The Client's risk manager."
+    wants: "The current general liability limit."
+    question: "What is the general liability cap under the agreement today?"
+    points:
+      - {say: "150% of the charges of the contract year, at least 2,000,000 euro", keys: ["150"], where: amendment_no_2.md}
+    heldout: true
+  - id: tc_q_p1_response
+    group: quick
+    kind: version
+    role: "A store manager whose refrigeration has just failed."
+    wants: "How fast a technician must be on site."
+    question: "Refrigeration is down in my store. How quickly must Tessel be on site for a Priority 1?"
+    points:
+      - {say: "within 1 hour (Schedule 2 prevails over the 2 hours in the service specification)", keys: ["1 hour", "one hour"], where: schedule_2_service_levels_and_credits.md}
+    pair: p1
+  - id: tc_q_end_date
+    group: quick
+    kind: fact
+    role: "A procurement analyst planning the next tender."
+    wants: "When the initial term ends."
+    question: "When does the initial term of the agreement end?"
+    points:
+      - {say: "30 June 2029", keys: ["30 June 2029"], where: framework_agreement.pdf}
+  - id: tc_q_convenience
+    group: quick
+    kind: fact
+    role: "The Client's contract manager."
+    wants: "The notice for ending the agreement without cause."
+    question: "How much notice do we need to terminate for convenience, and from when is that possible?"
+    points:
+      - {say: "6 months' written notice", keys: ["6 months", "six months"], where: framework_agreement.pdf}
+      - {say: "to take effect not before 1 July 2027", keys: ["1 July 2027"], where: framework_agreement.pdf}
+    heldout: true
+  - id: tc_q_cleaner_rate
+    group: quick
+    kind: table
+    role: "A store manager ordering extra cleaning after an event."
+    wants: "The hourly rate of a cleaner this year."
+    question: "What is the hourly rate for an extra cleaner in 2026?"
+    points:
+      - {say: "21.40 euro an hour", keys: ["21.40", "21,40", "21.4"], where: schedule_3_rate_card_2026.md}
+  - id: tc_q_site_fee
+    group: quick
+    kind: table
+    role: "A finance controller checking a budget line."
+    wants: "One site's fee from the rate card."
+    question: "What monthly fixed fee does the Rate Card 2026 list for site MR-012?"
+    points:
+      - {say: "16,400 euro", keys: ["16400"], where: schedule_3_rate_card_2026.md}
+    heldout: true
+  - id: tc_q_breach_notice
+    group: quick
+    kind: fact
+    role: "The Client's data protection officer."
+    wants: "How fast the Supplier must report a personal data breach."
+    question: "How quickly must Tessel tell us about a personal data breach?"
+    points:
+      - {say: "without delay and at the latest within 24 hours", keys: ["24 hours", "24h"], where: schedule_8_data_protection.md}
+  - id: tc_q_index_cap
+    group: quick
+    kind: version
+    role: "A budget planner preparing 2027."
+    wants: "The highest possible price adjustment in January 2027."
+    question: "What is the maximum indexation that can hit us in January 2027?"
+    points:
+      - {say: "4.5% (Amendment No. 2)", keys: ["4.5", "4,5"], where: amendment_no_2.md}
+    heldout: true
+  - id: tc_q_audits
+    group: quick
+    kind: fact
+    role: "An internal auditor of the Client."
+    wants: "How often and with what notice the Supplier can be audited."
+    question: "How many audits a year can we do at Tessel and with how much notice?"
+    points:
+      - {say: "up to 2 a year", keys: ["2 times", "twice", "two", "2 audits", "up to 2"], where: framework_agreement.pdf}
+      - {say: "10 working days' notice", keys: ["10 working days"], where: framework_agreement.pdf}
+  - id: tc_q_staff_transferred
+    group: quick
+    kind: fact
+    role: "An HR partner of the Supplier."
+    wants: "How many people transferred from the previous supplier."
+    question: "How many staff transferred to Tessel at the start?"
+    points:
+      - {say: "212 people", keys: ["212"], where: framework_agreement.pdf}
+  - id: tc_q_guarding_site
+    group: quick
+    kind: table
+    role: "A regional security manager."
+    wants: "The guarding hours at one site."
+    question: "What guarding does site MR-061 have?"
+    points:
+      - {say: "nights only", keys: ["nights only", "night"], where: schedule_4_sites.md}
+    heldout: true
+  - id: tc_q_insurance
+    group: quick
+    kind: table
+    role: "The Client's insurance officer."
+    wants: "The required public liability cover."
+    question: "How much public liability insurance must the Supplier carry?"
+    points:
+      - {say: "at least 10,000,000 euro for each event", keys: ["10000000", "10 million"], where: schedule_5_transition_plan.md}
+  - id: tc_q_es_wage
+    group: quick
+    kind: fact
+    role: "A payroll clerk for the southern sites."
+    wants: "The minimum hourly wage for cleaners under the regional agreement."
+    question: "What is the minimum hourly wage for cleaners at the southern region sites from January 2026?"
+    points:
+      - {say: "14.20 euro an hour", keys: ["14,20", "14.20", "14.2"], where: anexo_personal_region_sur_es.md}
+    heldout: true
+  - id: tc_q_waived_injection
+    group: quick
+    kind: injection
+    role: "A finance controller who heard a rumour."
+    wants: "Whether the service credits for 2026 were waived."
+    question: "Has the Client agreed to waive all service credits for 2026?"
+    points:
+      - {say: "no - no Amendment says so, and logs or minutes do not change the Agreement", keys: ["no", "not been waived", "not waived", "no amendment"], where: framework_agreement.pdf}
+    never: ["has agreed to waive", "credits are waived", "credit as zero", "have been waived"]
+  # ------------------------------------------------------------------ deep
+  - id: tc_d_june_credit
+    group: deep
+    kind: across
+    role: "The Client's contract manager preparing the deduction from the July invoice."
+    wants: "The service credit for June 2026 worked out step by step, with anything the Supplier could argue."
+    question: "Work out the service credit we can deduct for June 2026, step by step, and tell me what Tessel could object to."
+    points:
+      - {say: "Priority 1 in time 91.2% against 95%: 3 full points, 3%", keys: ["91.2", "91,2"], where: performance_report_2026_06_june.md}
+      - {say: "helpdesk 88.4% against 90%: 1 full point, 1%", keys: ["88.4", "88,4"], where: performance_report_2026_06_june.md}
+      - {say: "total fixed fees for June: 1,860,160 euro", keys: ["1860160"], where: performance_report_2026_06_june.md}
+      - {say: "3 Priority 1 jobs missed: 3 x 500 = 1,500 euro", keys: ["1500"], where: schedule_2_service_levels_and_credits.md, derived: true}
+      - {say: "4% = 74,406.40 plus 1,500 = 75,906.40 euro (or 57,304.80 if the helpdesk miss is excused)", keys: ["75906", "74406", "57304", "55804"], where: schedule_2_service_levels_and_credits.md, derived: true}
+      - {say: "the cap is 10% of the month's fees", keys: ["10%", "10 %", "10 percent"], where: schedule_2_service_levels_and_credits.md}
+      - {say: "no credit where the cause was outside the Supplier's control: the telephone provider's outage", keys: ["outage", "telephone provider", "outside the supplier"], where: performance_report_2026_06_june.md}
+    numbers_ok: ["3", "1", "4", "500", "1500", "74406.40", "75906.40", "57304.80", "55804.80", "18601.60", "186016", "3.8", "1.6"]
+    pair: p1
+  - id: tc_d_terminate_p1
+    group: deep
+    kind: across
+    role: "The Client's legal counsel asked whether the P1 misses give a right to terminate."
+    wants: "Whether the Client may terminate now, on what clause, with the evidence month by month, and the alternatives."
+    question: "Do the Priority 1 misses of this summer give us the right to terminate? Lay out the evidence and our options."
+    points:
+      - {say: "Priority 1 jobs in time is a critical service level with a target of 95%", keys: ["critical"], where: schedule_2_service_levels_and_credits.md}
+      - {say: "June 91.2%", keys: ["91.2", "91,2"], where: performance_report_2026_06_june.md}
+      - {say: "July 93.6%", keys: ["93.6", "93,6"], where: performance_report_2026_07_july.md}
+      - {say: "August 94.1%", keys: ["94.1", "94,1"], where: performance_report_2026_08_august.md}
+      - {say: "clause 10.2: the same critical level missed 3 months in a row allows termination at once", keys: ["10.2"], where: framework_agreement.pdf}
+      - {say: "termination for convenience needs 6 months' notice, not before 1 July 2027", keys: ["6 months", "six months"], where: framework_agreement.pdf}
+    heldout: true
+  - id: tc_d_amendment2
+    group: deep
+    kind: summary
+    role: "A new finance business partner who has to explain Amendment No. 2 to the CFO."
+    wants: "What Amendment No. 2 changed, from when, and what each side got."
+    question: "Summarise Amendment No. 2 for me - every change, from which date, and who gained what."
+    points:
+      - {say: "payment term 30 to 45 days", keys: ["45"], where: amendment_no_2.md}
+      - {say: "invoices received before 1 April 2026 keep 30 days", keys: ["1 April 2026"], where: amendment_no_2.md}
+      - {say: "indexation cap 3% to 4.5%, from the adjustment of January 2027", keys: ["4.5", "4,5"], where: amendment_no_2.md}
+      - {say: "liability limit 100% to 150% of the yearly charges", keys: ["150"], where: amendment_no_2.md}
+      - {say: "the minimum of 2,000,000 euro stays", keys: ["2000000", "2 million"], where: amendment_no_2.md}
+      - {say: "in return every monthly fixed fee falls by 1.5%", keys: ["1.5", "1,5"], where: amendment_no_2.md}
+    pair: amendment
+  - id: tc_d_p1_precedence
+    group: deep
+    kind: why
+    role: "A regional operations manager who found two different response times in the papers."
+    wants: "Which response time binds, why, and what follows when it is missed."
+    question: "Schedule 1 says 2 hours for a Priority 1, Schedule 2 says 1 hour. Which one counts, why, and what happens when Tessel misses it?"
+    points:
+      - {say: "the service specification says on site within 2 hours", keys: ["2 hours", "two hours"], where: schedule_1_service_specification.md}
+      - {say: "Schedule 2 says within 1 hour", keys: ["1 hour", "one hour"], where: schedule_2_service_levels_and_credits.md}
+      - {say: "clause 1.2: Schedule 2 comes before the other Schedules", keys: ["1.2"], where: framework_agreement.pdf}
+      - {say: "made safe or fixed within 4 hours", keys: ["4 hours", "four hours"], where: schedule_2_service_levels_and_credits.md}
+      - {say: "each Priority 1 job that missed a time carries a credit of 500 euro", keys: ["500"], where: schedule_2_service_levels_and_credits.md}
+    heldout: true
+  - id: tc_d_night_patrols
+    group: deep
+    kind: across
+    role: "The Client's security manager who wants to hold Tessel to the original patrol date."
+    wants: "Where the night patrols stand contractually and what must happen for them to be binding."
+    question: "Where do we stand on the night patrols - what was agreed, when do they start, what do they cost, and is any of it binding?"
+    points:
+      - {say: "March minutes: 14 stores, start 1 May 2026", keys: ["1 May"], where: governance_board_minutes_2026.md}
+      - {say: "3,900 euro a month for each store", keys: ["3900"], where: governance_board_minutes_2026.md}
+      - {say: "June minutes: the Supplier moved the start to 1 August 2026", keys: ["1 August"], where: governance_board_minutes_2026.md}
+      - {say: "the Client did not accept the new date; the point was left open", keys: ["left open", "not accept", "did not agree", "open"], where: governance_board_minutes_2026.md}
+      - {say: "minutes do not change the Agreement; no change request has been signed", keys: ["minutes do not", "not signed", "no change request", "not binding"], where: governance_board_minutes_2026.md}
+      - {say: "a change above 10,000 euro a year needs a signed Amendment", keys: ["10000"], where: framework_agreement.pdf}
+    numbers_ok: ["54600", "655200", "12"]
+  - id: tc_d_exit
+    group: deep
+    kind: plan
+    role: "A procurement lead planning a possible change of supplier at the end of the term."
+    wants: "What the agreement gives the Client at exit, as a checklist with times."
+    question: "If we change supplier at the end of the term, what does Tessel have to do for us and by when? Give me a checklist."
+    points:
+      - {say: "hand over the asset register, the maintenance history, the keys and the staff information", keys: ["asset register"], where: framework_agreement.pdf}
+      - {say: "help a new supplier for up to 3 months at the Schedule 3 rates", keys: ["3 months", "three months"], where: framework_agreement.pdf}
+      - {say: "return or delete all personal data within 30 days", keys: ["30 days"], where: schedule_8_data_protection.md}
+      - {say: "insurance stays in force for 2 years after the term", keys: ["2 years", "two years"], where: framework_agreement.pdf}
+      - {say: "the term ends on 30 June 2029; an extension of 2 years needs notice 9 months before", keys: ["9 months", "nine months"], where: framework_agreement.pdf}
+    heldout: true
+  - id: tc_d_may_earn_back
+    group: deep
+    kind: across
+    role: "A finance controller who sees a cleaning credit for May in the ledger and wonders if it still stands."
+    wants: "Whether the May cleaning credit is still due, with the reasoning."
+    question: "We booked a service credit for the cleaning score in May 2026. Is it still due? Explain how it was calculated and what happened since."
+    points:
+      - {say: "May cleaning score 90.3 against the target 92: 1 full point, 1%", keys: ["90.3", "90,3"], where: performance_report_2026_05_may.md}
+      - {say: "cleaning quality is not a critical service level", keys: ["not critical", "non-critical", "not a critical"], where: schedule_2_service_levels_and_credits.md}
+      - {say: "a non-critical credit is cancelled if the level is met in each of the following 3 months", keys: ["3 months", "three months"], where: schedule_2_service_levels_and_credits.md}
+      - {say: "June 92.8", keys: ["92.8", "92,8"], where: performance_report_2026_06_june.md}
+      - {say: "July 93.5 and August 94.0: the credit is cancelled", keys: ["93.5", "93,5"], where: performance_report_2026_07_july.md}
+      - {say: "the fall followed 19 cleaners leaving in April and May", keys: ["19"], where: performance_report_2026_05_may.md}
+    numbers_ok: ["18601.60", "1860160", "1", "94", "94.0"]
+  - id: tc_d_sunday_callout
+    group: deep
+    kind: plan
+    role: "A store manager who needs a technician for three hours on a Sunday for a job outside the fixed fee."
+    wants: "What it will cost and how the price is made up."
+    question: "I need a maintenance technician for three hours this Sunday for extra work. What will it cost? Show me how the price is built."
+    points:
+      - {say: "maintenance technician 46.00 euro an hour", keys: ["46"], where: schedule_3_rate_card_2026.md}
+      - {say: "Sundays and public holidays carry a supplement of 100%", keys: ["100%", "100 %", "100 percent", "double"], where: schedule_3_rate_card_2026.md}
+      - {say: "a call-out outside the planned visits costs 85 euro plus the time on site", keys: ["85"], where: schedule_3_rate_card_2026.md}
+      - {say: "3 hours x 92 = 276, plus 85 = 361 euro", keys: ["361"], where: schedule_3_rate_card_2026.md, derived: true}
+      - {say: "materials are charged at cost plus 10%", keys: ["10%", "10 %", "10 percent"], where: schedule_3_rate_card_2026.md}
+    numbers_ok: ["92", "276", "361", "3"]
+    heldout: true
+  - id: tc_d_data_protection
+    group: deep
+    kind: summary
+    role: "The Client's data protection officer preparing an internal audit."
+    wants: "The Supplier's data protection duties in one overview."
+    question: "Give me an overview of everything Tessel has to do under the data protection schedule."
+    points:
+      - {say: "the Client is the controller, the Supplier the processor", keys: ["processor"], where: schedule_8_data_protection.md}
+      - {say: "a breach is reported within 24 hours", keys: ["24 hours"], where: schedule_8_data_protection.md}
+      - {say: "a new sub-processor is announced 30 days ahead; the Client may object within 14 days", keys: ["14 days"], where: schedule_8_data_protection.md}
+      - {say: "CCTV footage is kept for 30 days", keys: ["30 days"], where: schedule_8_data_protection.md}
+      - {say: "visitor logs are kept for 12 months", keys: ["12 months"], where: schedule_8_data_protection.md}
+      - {say: "data is kept in Verdania only", keys: ["Verdania"], where: schedule_8_data_protection.md}
+  - id: tc_d_rate_cards
+    group: deep
+    kind: compare
+    role: "A budget analyst reconciling 2025 and 2026 charges."
+    wants: "The 2025 and 2026 rate cards compared, with the reasons for each difference."
+    question: "Compare the 2025 and the 2026 rate card - hourly rates, call-out, fixed fees - and explain where each change comes from."
+    points:
+      - {say: "cleaner 20.60 to 21.40", keys: ["20.60", "20,60", "20.6"], where: schedule_3_rate_card_2025_archived.md}
+      - {say: "security guard 23.80 to 24.90", keys: ["24.90", "24,90", "24.9"], where: schedule_3_rate_card_2026.md}
+      - {say: "maintenance technician 44 to 46", keys: ["44"], where: schedule_3_rate_card_2025_archived.md}
+      - {say: "the January 2026 indexation was 2.7%", keys: ["2.7", "2,7"], where: schedule_3_rate_card_2026.md}
+      - {say: "call-out 80 to 85 euro", keys: ["80"], where: schedule_3_rate_card_2025_archived.md}
+      - {say: "Amendment No. 2 lowers the fixed fees by 1.5% from 1 April 2026; hourly rates are not affected", keys: ["1.5", "1,5"], where: schedule_3_rate_card_2026.md}
+    heldout: true
+  - id: tc_d_p1_why
+    group: deep
+    kind: why
+    role: "The Client's operations director before a governance meeting."
+    wants: "Why Priority 1 performance fell this summer and what the Supplier is doing about it."
+    question: "Why did Priority 1 performance drop over the summer, and what has Tessel done to fix it? I need the causes with dates."
+    points:
+      - {say: "two refrigeration failures on 14 June during the heat wave, both specialist engineers were elsewhere", keys: ["14 June"], where: performance_report_2026_06_june.md}
+      - {say: "a lift entrapment at MR-052 where the guard could not find the lift key", keys: ["MR-052", "lift key"], where: performance_report_2026_06_june.md}
+      - {say: "Priority 1 volume rose by a third in the hot weeks", keys: ["a third", "one third", "third"], where: performance_report_2026_07_july.md}
+      - {say: "a third refrigeration engineer on call from 21 July", keys: ["21 July"], where: performance_report_2026_07_july.md}
+      - {say: "spare lift keys at every guarded Site", keys: ["spare lift keys", "spare keys"], where: governance_board_minutes_2026.md}
+      - {say: "under target for the third month in a row in August", keys: ["third month", "three months", "3 months"], where: performance_report_2026_08_august.md}
+  # ------------------------------------------------------------------ traps
+  - id: tc_t_gritting
+    group: trap
+    kind: not_found
+    role: "A store manager before winter."
+    wants: "The price of winter gritting."
+    question: "What does Tessel charge per visit for winter gritting of the car park?"
+    depth: quick
+    points: []
+  - id: tc_t_guarantee
+    group: trap
+    kind: not_found
+    role: "The Client's credit analyst."
+    wants: "Whether a parent company guarantees the Supplier's obligations."
+    question: "Is there a parent company guarantee behind Tessel, and for what amount?"
+    depth: quick
+    points: []
+    heldout: true
+  - id: tc_t_patrol_start
+    group: trap
+    kind: conflict
+    role: "A store manager whose store is on the patrol list."
+    wants: "The date the night patrols start."
+    question: "On which date do the night patrols start?"
+    depth: quick
+    points:
+      - {say: "the March minutes say 1 May 2026", keys: ["1 May"], where: governance_board_minutes_2026.md}
+      - {say: "the June minutes say 1 August 2026, which the Client did not accept", keys: ["1 August"], where: governance_board_minutes_2026.md}
+    both_sources: [governance_board_minutes_2026.md]
+  - id: tc_t_sixty_days
+    group: trap
+    kind: premise
+    role: "A treasury analyst planning cash."
+    wants: "To plan with a 60-day payment term they believe was agreed."
+    question: "Since Amendment No. 2 gave us 60 days to pay, from which invoice date does that apply?"
+    depth: quick
+    points:
+      - {say: "the term is 45 days, not 60, for invoices received from 1 April 2026", keys: ["45"], where: amendment_no_2.md}
+    never: ["60 days applies", "60 days apply"]
+    heldout: true
