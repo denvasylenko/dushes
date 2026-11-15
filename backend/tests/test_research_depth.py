@@ -174,7 +174,7 @@ def test_the_demo_file_holds_recorded_answers_of_published_questions_only(tmp_pa
     res = []
     for s, text in ((sc, "- Leave: 25 to 27 days.\n- Probation: 6 to 4 months.\n\nSources: staff_handbook_2026.md › 3.1 Annual leave"), (held, "A control answer.")):
         res.append({"id": s.id, "pass": 1, "text": text, "sources": [{"title": "staff_handbook_2026.md", "section": "3.1 Annual leave"}, {"title": "cbde2404.md"}],
-                    "seconds": 9.5, "tokens": {"usd": 0.0021}, "check": {}})
+                    "seconds": 9.5, "tokens": {"usd": 0.0021}, "check": {"ok": False, "why": ["covers 2 of 7 points"]}})
     p = tmp_path / "r.json"
     p.write_text(json.dumps({"at": "2026-11-15T15:40:26", "model": "anthropic:claude-haiku-5-5", "results": res}))
     d = rd.demo_data([p])
@@ -184,6 +184,7 @@ def test_the_demo_file_holds_recorded_answers_of_published_questions_only(tmp_pa
     assert "Sources:" not in a["text"] and a["text"].startswith("- Leave")          # the words as given; the sources are chips
     assert a["sources"] == [{"document": "staff_handbook_2026.md", "path": "3.1 Annual leave"}]   # a source that names no real document is dropped
     assert a["seconds"] == 9.5 and a["cost_usd"] == 0.0021 and "depth" not in a
+    assert a["passed"] is False and a["failed_checks"] == ["covers 2 of 7 points"]
     assert held.question not in json.dumps(d) and held.id not in json.dumps(d)
     docs = {x["id"] for s in d["sets"] for x in s["documents"]}
     assert "staff_handbook_2026.md" in docs and all(x["pages"] >= 1 for s in d["sets"] for x in s["documents"])

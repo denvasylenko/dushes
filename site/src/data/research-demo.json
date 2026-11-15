@@ -555,7 +555,9 @@
       }
      ],
      "seconds": 14.0,
-     "cost_usd": 0.0023
+     "cost_usd": 0.0023,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "The 2026 handbook applies from 1 January 2026. Changes for employees:\n\n- **Probation:** shortened from 6 months to 4 months.\n- **Notice after probation:** increased from 1 to 2 months for most employees, and from 3 to 4 months for grades G7–G8.\n- **Annual leave:** increased from 25 to 27 days; the extra 2 days for service now start after 5 years, rather than 8.\n- **Carryover:** increased from 3 to 5 days, with the deadline moved from 31 January to 31 March.\n- **Booking longer leave:** requests for more than 10 consecutive working days now need 6 weeks’ notice, up from 4.\n- **Sickness certificates:** required from the third day of absence instead of the second.\n- **Parental leave:** increased from 16 weeks (12 at full pay) to 20 weeks (16 at full pay, then 60% pay).\n- **Birth leave for the other parent:** increased from 2 to 5 paid days.\n- **Office remote work:** eligible roles now have a minimum of 3 onsite days per week, agreed with the line manager; the 2025 handbook instead required written site-director consent for each remote-work period.\n- **Speaking-up hotline:** the contact number changed.",
@@ -586,7 +588,9 @@
       }
      ],
      "seconds": 15.8,
-     "cost_usd": 0.00134
+     "cost_usd": 0.00134,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -625,7 +629,9 @@
       }
      ],
      "seconds": 16.4,
-     "cost_usd": 0.00229
+     "cost_usd": 0.00229,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "1. **Before booking:** Request the trip in the travel tool and get your line manager’s approval. Because you’re travelling outside Verdania, also get the site director’s approval.\n2. **Book:** Use the travel tool at least 14 days ahead; give a reason if booking later. Take rail for journeys of up to four hours by train; otherwise, flights must be economy. As G4, you can’t book business class based on grade.\n3. **Stay:** For an October trip, the hotel cap is €210 per night including breakfast outside Verdania. Get site director approval before any night above the cap.\n4. **Plan money:** You’re in per-diem Band B (G3–G4). The exact rate depends on your destination, which you haven’t specified. Per diem is half-rate on departure and return days; provided meals reduce it. You may request a cash advance up to €1,500 for a six-day trip.\n5. **Afterward:** Claim in the expense tool within 30 days; include receipts for items over €10.",
@@ -656,7 +662,9 @@
       }
      ],
      "seconds": 18.1,
-     "cost_usd": 0.00145
+     "cost_usd": 0.00145,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -691,7 +699,11 @@
       }
      ],
      "seconds": 8.4,
-     "cost_usd": 0.00129
+     "cost_usd": 0.00129,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 170 words"
+     ]
     },
     "gpt-6-luna": {
      "text": "Remote work is allowed up to 3 days per calendar week, with at least 2 days at your site. It must normally be from the home address registered with People. Working from another address in Verdania is allowed for up to 10 working days a year; abroad, up to 20 working days a calendar year, subject to country-list and advance-approval rules.\n\nThe company provides a laptop, headset and one screen, plus a €30 monthly allowance if you work remotely at least 8 days that month. Furniture is not paid for.\n\n**There is a contradiction:** the staff handbook requires office staff who can work remotely to be on site at least 3 days each week, while the remote-work policy says at least 2. The handbook’s rule would leave at most 2 remote days.",
@@ -714,7 +726,12 @@
       }
      ],
      "seconds": 15.1,
-     "cost_usd": 0.00064
+     "cost_usd": 0.00064,
+     "passed": false,
+     "failed_checks": [
+      "covers 4 of 7 points: missing neither text says which prevails and the Board took no decision (back in September 2026); approval by the People team 4 weeks ahead; only after probation and with the manager's agreement",
+      "no structure for a deep answer (a list, steps, headings or a table); 132 words"
+     ]
     }
    }
   },
@@ -741,7 +758,11 @@
       }
      ],
      "seconds": 4.6,
-     "cost_usd": 0.00068
+     "cost_usd": 0.00068,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 106 words"
+     ]
     },
     "gpt-6-luna": {
      "text": "The minimum increased from 12 to 14 characters because the cyber insurer requires 14-character passwords from its renewal on **1 October 2026**. The security team also reported that, in a March 2026 test, 6% of 12-character passwords were cracked within a week.\n\nEmployees must change any existing password shorter than 14 characters **by 30 September 2026**. Passwords must not be reused on another service, and the IT-provided password manager is the only approved place to store them. Passwords do not need scheduled changes; change them when there is a sign of compromise.",
@@ -760,7 +781,11 @@
       }
      ],
      "seconds": 10.2,
-     "cost_usd": 0.00053
+     "cost_usd": 0.00053,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 94 words"
+     ]
     }
    }
   },
@@ -799,7 +824,9 @@
       }
      ],
      "seconds": 13.4,
-     "cost_usd": 0.00246
+     "cost_usd": 0.00246,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "- **Probation:** Four months from your first working day. Either side can end the contract with two weeks’ notice. You’ll have reviews with your line manager at the end of month two and two weeks before probation ends.\n- **Notice:** After probation, notice is two months to the end of a calendar month.\n- **Leave:** If full-time, you get 27 paid working days a year; after five full years, this increases by two days. You may carry over up to five unused days, to use by 31 March.\n- **Pension:** Membership starts after probation. Halden Works contributes 6% of gross salary; you contribute at least 3%, with partial matching on up to two additional percentage points.\n- **Meals:** Arden has no canteen, so you get a €9.50 meal voucher for each working day at the site.\n- **Training:** You have five training days and €1,200 per year. Job-related language courses are paid in full.\n- **Pay day:** Salary is paid on the 27th of each month, or the working day before.",
@@ -830,7 +857,9 @@
       }
      ],
      "seconds": 18.5,
-     "cost_usd": 0.00164
+     "cost_usd": 0.00164,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -865,7 +894,9 @@
       }
      ],
      "seconds": 7.9,
-     "cost_usd": 0.00117
+     "cost_usd": 0.00117,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "As a G7, you’re eligible for a company car: list price up to **€52,000**, electric or plug-in hybrid, with a **€350/month charging or fuel budget**. The car is leased for **48 months or 160,000 km**, whichever comes first; private use is allowed, and the taxable benefit appears on your payslip.\n\nAlternatively, as an entitled employee, you can take a **€700/month mobility allowance** instead. The policy gives no further conditions for the allowance.",
@@ -888,7 +919,11 @@
       }
      ],
      "seconds": 16.9,
-     "cost_usd": 0.00067
+     "cost_usd": 0.00067,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 75 words"
+     ]
     }
    }
   },
@@ -902,13 +937,17 @@
      "text": "The documents I searched do not answer this. I found no policy on dogs or other pets at the office, and no mention of animals on the premises, including assistance dogs. I'd suggest asking your line manager or the People team before bringing a dog in.",
      "sources": [],
      "seconds": 6.2,
-     "cost_usd": 0.00069
+     "cost_usd": 0.00069,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "The documents do not answer the question.",
      "sources": [],
      "seconds": 6.6,
-     "cost_usd": 0.00034
+     "cost_usd": 0.00034,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -931,7 +970,12 @@
       }
      ],
      "seconds": 4.0,
-     "cost_usd": 0.00048
+     "cost_usd": 0.00048,
+     "passed": false,
+     "failed_checks": [
+      "does not give both values: missing the Remote Work Policy says at least 2 days",
+      "does not name both documents"
+     ]
     },
     "gpt-6-luna": {
      "text": "At least 3 days each calendar week, if your role allows remote work. Your line manager agrees which days with the team.",
@@ -942,7 +986,12 @@
       }
      ],
      "seconds": 5.4,
-     "cost_usd": 0.0002
+     "cost_usd": 0.0002,
+     "passed": false,
+     "failed_checks": [
+      "does not give both values: missing the Remote Work Policy says at least 2 days",
+      "does not name both documents"
+     ]
     }
    }
   },
@@ -965,7 +1014,11 @@
       }
      ],
      "seconds": 6.3,
-     "cost_usd": 0.00078
+     "cost_usd": 0.00078,
+     "passed": false,
+     "failed_checks": [
+      "99 words for a quick answer (at most 80)"
+     ]
     },
     "gpt-6-luna": {
      "text": "The hotel limit for a normal town in Verdania is **€165 per night, including breakfast**. Stays that began before 1 July 2026 keep the old limit.",
@@ -976,7 +1029,9 @@
       }
      ],
      "seconds": 13.9,
-     "cost_usd": 0.00075
+     "cost_usd": 0.00075,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1003,7 +1058,9 @@
       }
      ],
      "seconds": 7.2,
-     "cost_usd": 0.00055
+     "cost_usd": 0.00055,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "Your password must be at least 14 characters long.",
@@ -1014,7 +1071,9 @@
       }
      ],
      "seconds": 15.7,
-     "cost_usd": 0.00061
+     "cost_usd": 0.00061,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1045,7 +1104,9 @@
       }
      ],
      "seconds": 9.0,
-     "cost_usd": 0.00203
+     "cost_usd": 0.00203,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "| Model | Torque | Weight (without battery) | Protection | Price |\n|---|---:|---:|---|---:|\n| DD-1840 | 105 Nm | 1.5 kg | IP54 | €219 |\n| DD-1860 | 130 Nm* | 1.7 kg | IP56 | €289 |\n\nFor fitting kitchens, the **DD-1840** makes more sense: it’s described as made for fitting out and interior work, and it’s lighter and cheaper. The DD-1860 offers greater torque and protection, but is intended for plumbing and heating.\n\n*The catalogue’s 140 Nm figure for the DD-1860 was corrected to 130 Nm.*",
@@ -1068,7 +1129,9 @@
       }
      ],
      "seconds": 16.7,
-     "cost_usd": 0.00085
+     "cost_usd": 0.00085,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1099,7 +1162,9 @@
       }
      ],
      "seconds": 7.6,
-     "cost_usd": 0.00117
+     "cost_usd": 0.00117,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "For products bought from 1 January 2026, the **2026 Warranty Terms prevail over the dealer handbook**, so a professional tool gets **3 years if registered within 30 days**—not the handbook’s 2 years. Without registration, coverage is 1 year.\n\nRegister on Orrin’s website using the tool’s serial number and receipt. For a claim, take or send it to an Orrin service partner or book website pickup. To avoid exclusions, don’t overload it, use other brands’ batteries or chargers, expose it to water beyond its protection class, or let anyone other than an Orrin service partner open it. Wear parts aren’t covered.",
@@ -1126,7 +1191,11 @@
       }
      ],
      "seconds": 19.4,
-     "cost_usd": 0.00091
+     "cost_usd": 0.00091,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 101 words"
+     ]
     }
    }
   },
@@ -1149,7 +1218,9 @@
       }
      ],
      "seconds": 14.2,
-     "cost_usd": 0.0026
+     "cost_usd": 0.0026,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "1. Check the serial number on each BP-1840 pack. Packs numbered **B24100000–B24359999**, inclusive, are affected.\n2. Stop using any affected pack. The bulletin warns it can overheat while charging on the CH-1218F fast charger.\n3. Arrange a free replacement through Orrin’s website or any dealer. Replacement is free even if the warranty has expired.\n4. For meanwhile: don’t use affected packs. The bulletin doesn’t specify storage or disposal steps, or whether using another charger is safe.",
@@ -1160,7 +1231,9 @@
       }
      ],
      "seconds": 10.9,
-     "cost_usd": 0.00053
+     "cost_usd": 0.00053,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1187,7 +1260,11 @@
       }
      ],
      "seconds": 7.1,
-     "cost_usd": 0.00111
+     "cost_usd": 0.00111,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 171 words"
+     ]
     },
     "gpt-6-luna": {
      "text": "- **Charging:** Charge only between 0°C and 40°C. CH-1218 charges V12/V18 packs; CH-1218F also charges V12/V18 but **must not** be used with 2.0 Ah BP-1220 or BP-1820. CH-3600 is for V36 packs only.\n- **Storage and life:** Store between 5°C and 25°C and don’t leave packs empty. For storage longer than a month, leave them at about half charge. Under those conditions, packs retain at least 80% capacity for 1,000 charging cycles.\n- **Transport:** Above-100-Wh packs BP-1880, BP-3640 and BP-3680 are dangerous goods by air. By road, no special paperwork is needed for up to four packs in one parcel.\n- **Recall:** Stop using BP-1840 packs with serials B24100000–B24359999; they can overheat on CH-1218F.",
@@ -1210,7 +1287,9 @@
       }
      ],
      "seconds": 16.7,
-     "cost_usd": 0.00104
+     "cost_usd": 0.00104,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1245,7 +1324,9 @@
       }
      ],
      "seconds": 12.7,
-     "cost_usd": 0.00229
+     "cost_usd": 0.00229,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "I’d choose the **RH-3645** for daily work. Both list a concrete drilling capacity above 16 mm: 26 mm for the RH-1826 and 45 mm for the RH-3645. The RH-3645 is heavier (7.4 kg vs. 3.1 kg) and more powerful (9.0 J vs. 2.6 J), but is described as designed for continuous work; its listed vibration value is 3.2 m/s², versus 11.4 m/s² for the RH-1826. The RH-1826 is made for occasional use around the house. The catalogue does not explicitly confirm chiselling capability, so check that before buying.",
@@ -1264,7 +1345,12 @@
       }
      ],
      "seconds": 22.5,
-     "cost_usd": 0.00108
+     "cost_usd": 0.00108,
+     "passed": false,
+     "failed_checks": [
+      "covers 3 of 6 points: missing the RH-1826 weighs 3.4 kg, not 3.1; 379 euro against 829 euro; V18 against V36",
+      "no structure for a deep answer (a list, steps, headings or a table); 96 words"
+     ]
     }
    }
   },
@@ -1299,7 +1385,11 @@
       }
      ],
      "seconds": 10.4,
-     "cost_usd": 0.00196
+     "cost_usd": 0.00196,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 213 words"
+     ]
     },
     "gpt-6-luna": {
      "text": "Take or send it to an Orrin service partner, or book pickup through the website. For an out-of-warranty repair under €150, Orrin charges the flat rate for the tool’s group and doesn’t send a quote first. If it will cost more, Orrin sends a quote; declining it costs €19 for the inspection. The documents don’t give an out-of-warranty turnaround time—the 5-working-day return applies to warranty repairs.\n\nParts are supplied for at least 8 years after a product leaves the range, but availability varies by part. I’d need the trimmer’s article number to check whether its parts are available.",
@@ -1318,7 +1408,11 @@
       }
      ],
      "seconds": 19.8,
-     "cost_usd": 0.00161
+     "cost_usd": 0.00161,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 100 words"
+     ]
     }
    }
   },
@@ -1341,13 +1435,19 @@
       }
      ],
      "seconds": 5.4,
-     "cost_usd": 0.00082
+     "cost_usd": 0.00082,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "The documents don’t specify which country the DD-1840 is manufactured in.",
      "sources": [],
      "seconds": 7.9,
-     "cost_usd": 0.00036
+     "cost_usd": 0.00036,
+     "passed": false,
+     "failed_checks": [
+      "does not say that the documents have no answer"
+     ]
     }
    }
   },
@@ -1370,7 +1470,9 @@
       }
      ],
      "seconds": 3.4,
-     "cost_usd": 0.00049
+     "cost_usd": 0.00049,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "The GR-1812 runs for about 45 minutes on one BP-1850 during continuous grinding.",
@@ -1381,7 +1483,12 @@
       }
      ],
      "seconds": 5.3,
-     "cost_usd": 0.00024
+     "cost_usd": 0.00024,
+     "passed": false,
+     "failed_checks": [
+      "does not give both values: missing the catalogue says about 55 minutes",
+      "does not name both documents"
+     ]
     }
    }
   },
@@ -1404,7 +1511,12 @@
       }
      ],
      "seconds": 4.6,
-     "cost_usd": 0.0006
+     "cost_usd": 0.0006,
+     "passed": false,
+     "failed_checks": [
+      "missing: 3 years when registered within 30 days of purchase",
+      "91 words for a quick answer (at most 80)"
+     ]
     },
     "gpt-6-luna": {
      "text": "Professional tools have a **3-year warranty** if registered within 30 days of purchase; otherwise, the warranty is **1 year**.",
@@ -1415,7 +1527,11 @@
       }
      ],
      "seconds": 5.5,
-     "cost_usd": 0.00023
+     "cost_usd": 0.00023,
+     "passed": false,
+     "failed_checks": [
+      "missing: 3 years when registered within 30 days of purchase"
+     ]
     }
    }
   },
@@ -1438,7 +1554,9 @@
       }
      ],
      "seconds": 3.4,
-     "cost_usd": 0.0004
+     "cost_usd": 0.0004,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "Shipping is free on orders of €150 or more in Verdania.",
@@ -1449,7 +1567,9 @@
       }
      ],
      "seconds": 6.0,
-     "cost_usd": 0.00021
+     "cost_usd": 0.00021,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1488,7 +1608,9 @@
       }
      ],
      "seconds": 25.4,
-     "cost_usd": 0.00356
+     "cost_usd": 0.00356,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "Assuming the reported figures are accurate and no exclusion applies:\n\n1. **Priority 1:** 95.0% target − 91.2% result = 3.8 points below. Three full points × 1% × €1,860,160 = **€55,804.80**. Add 3 late jobs × €500 = **€1,500**. Subtotal: **€57,304.80**.\n2. **Helpdesk:** 90.0% − 88.4% = 1.6 points below. One full point × 1% = **€18,601.60**.\n3. Cleaning and planned maintenance met target. **Total: €75,906.40**, below the €186,016 monthly cap.\n\nTessel could object that a miss was caused by the Client, failed Client utilities, or an external event it could not reasonably prevent. It could also dispute the reported figures through the contract’s dispute process. The report’s timing is not given; a late report counts as a one-point helpdesk miss. The helpdesk credit, as non-critical, is cancelled if Tessel meets that target in each of the next three months.",
@@ -1519,7 +1641,11 @@
       }
      ],
      "seconds": 21.9,
-     "cost_usd": 0.00129
+     "cost_usd": 0.00129,
+     "passed": false,
+     "failed_checks": [
+      "covers 4 of 7 points: missing 4% = 74,406.40 plus 1,500 = 75,906.40 euro (or 57,304.80 if the helpdesk miss is excused); the cap is 10% of the month's fees; no credit where the cause was outside the Supplier's control: the telephone provider's outage"
+     ]
     }
    }
   },
@@ -1538,7 +1664,9 @@
       }
      ],
      "seconds": 6.8,
-     "cost_usd": 0.00075
+     "cost_usd": 0.00075,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "Amendment No. 2 was signed on 16 March 2026 and takes effect on 1 April 2026.\n\n- **Client gains:** more time to pay undisputed invoices—45 days instead of 30. Invoices received before 1 April keep the 30-day term.\n- **Both parties:** the annual liability cap rises from 100% to 150% of charges paid or payable in the contract year; the €2 million minimum remains. This raises each party’s potential liability and the other party’s potential recovery.\n- **Supplier gains:** the annual indexation cap rises from 3% to 4.5%, starting with the January 2027 adjustment.\n- **Client gains; Supplier gives up revenue:** monthly fixed fees fall by 1.5% from 1 April 2026. Hourly rates are unchanged.\n- All other terms remain unchanged.",
@@ -1557,7 +1685,9 @@
       }
      ],
      "seconds": 14.7,
-     "cost_usd": 0.00082
+     "cost_usd": 0.00082,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1580,7 +1710,9 @@
       }
      ],
      "seconds": 9.2,
-     "cost_usd": 0.00107
+     "cost_usd": 0.00107,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "The Client requested mobile patrols at 14 stores. The Supplier proposed **1 May 2026** at **€3,900 per store per month**. Later, the Supplier said it could not start until **1 August 2026**; the Client rejected that date, so the start date remains unresolved. No change request has been signed.\n\nThe board’s agreement was only “in principle”: the minutes do not change the Agreement. At the proposed rate, the annual value for 14 stores is €655,200. Under the variation clause, a change above €10,000 a year requires a signed Amendment. **So the patrols are not bindingly agreed on the record available.**",
@@ -1599,7 +1731,11 @@
       }
      ],
      "seconds": 11.3,
-     "cost_usd": 0.0009
+     "cost_usd": 0.0009,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 100 words"
+     ]
     }
    }
   },
@@ -1638,7 +1774,11 @@
       }
      ],
      "seconds": 17.2,
-     "cost_usd": 0.00321
+     "cost_usd": 0.00321,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 100 words"
+     ]
     },
     "gpt-6-luna": {
      "text": "No. May’s cleaning score was 90.3 against a target of 92.0, a 1.7-point shortfall. The credit is 1% of that month’s fixed fees for each *full* point below target, so the initial credit was 1% of €1,860,160: **€18,601.60**.\n\nCleaning quality is non-critical, and the credit is cancelled if the target is met in each of the following three months. Scores were above target in June (92.8), July (93.5), and August (94.0), so the May credit was cancelled.",
@@ -1669,7 +1809,11 @@
       }
      ],
      "seconds": 14.3,
-     "cost_usd": 0.00117
+     "cost_usd": 0.00117,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 80 words"
+     ]
     }
    }
   },
@@ -1708,7 +1852,9 @@
       }
      ],
      "seconds": 11.4,
-     "cost_usd": 0.00134
+     "cost_usd": 0.00134,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "Tessel acts as the processor for CCTV footage, visitor logs, access-badge data and the Client’s staff contact details. It must:\n\n- Process personal data only on the Client’s written instructions and keep it confidential.\n- Notify the Client of a personal data breach without delay, and no later than 24 hours after becoming aware of it.\n- Give the Client at least 30 days’ notice of a new sub-processor; the Client may object for good reason within 14 days.\n- Keep CCTV footage for 30 days, unless the Client asks in writing to retain a clip, and visitor logs for 12 months.\n- Keep data in Verdania; obtain the Client’s consent for remote access from outside Verdania.\n- Within 30 days after the Agreement ends, return or delete all personal data and confirm this in writing.",
@@ -1739,7 +1885,9 @@
       }
      ],
      "seconds": 24.0,
-     "cost_usd": 0.00119
+     "cost_usd": 0.00119,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1778,7 +1926,9 @@
       }
      ],
      "seconds": 11.5,
-     "cost_usd": 0.00176
+     "cost_usd": 0.00176,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "Priority 1 jobs in time fell from 97.0% in May to 91.2% in June (target: 95%). In June, two refrigeration failures occurred during the 14 June heatwave while both specialist engineers were occupied elsewhere; a third miss was a lift entrapment at MR-052, where the guard could not find the key. In July, Priority 1 volume rose by a third during hot weeks, and performance was 93.6%.\n\nTessel added a third refrigeration engineer on call from 21 July and proposed spare lift keys at every guarded site; the documents give no date for the keys. Performance improved to 94.1% in August but remained below target.",
@@ -1805,7 +1955,11 @@
       }
      ],
      "seconds": 34.5,
-     "cost_usd": 0.0034
+     "cost_usd": 0.0034,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 106 words"
+     ]
     }
    }
   },
@@ -1819,13 +1973,17 @@
      "text": "The documents do not state a per-visit charge for winter gritting of the car park. The only \"Winter gritting\" section is in the 2026 governance board minutes, and it contains just two boilerplate notes and an action item, with no price. The rate card lists hourly rates for extra work and monthly fixed fees per Site, but no gritting item. The minutes also say they do not change the Agreement. You may want to ask Tessel directly or check whether a schedule or amendment covers gritting.",
      "sources": [],
      "seconds": 13.7,
-     "cost_usd": 0.00177
+     "cost_usd": 0.00177,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "The documents do not specify Tessel’s per-visit charge for winter gritting of the car park.",
      "sources": [],
      "seconds": 14.1,
-     "cost_usd": 0.00048
+     "cost_usd": 0.00048,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1839,7 +1997,11 @@
      "text": "The documents give two dates, and the question is still open. The governance board minutes first record a proposed start of 1 May 2026 at €3,900 per store per month, agreed in principle. Later minutes say the Supplier reported the patrols will start on 1 August 2026. The Client's security manager did not accept that date and asked for 1 May to be kept. The point was left open, and no change request has been signed. The documents do not confirm which date will apply.",
      "sources": [],
      "seconds": 5.5,
-     "cost_usd": 0.00048
+     "cost_usd": 0.00048,
+     "passed": false,
+     "failed_checks": [
+      "does not name both documents"
+     ]
     },
     "gpt-6-luna": {
      "text": "The proposed start date is 1 August 2026, but the Client rejected it and the date remains unresolved.",
@@ -1850,7 +2012,11 @@
       }
      ],
      "seconds": 7.5,
-     "cost_usd": 0.00021
+     "cost_usd": 0.00021,
+     "passed": false,
+     "failed_checks": [
+      "does not give both values: missing the March minutes say 1 May 2026"
+     ]
     }
    }
   },
@@ -1864,7 +2030,11 @@
      "text": "Under Amendment No. 2, which took effect on 1 April 2026, you must pay each undisputed Tessel invoice within 45 days of receiving it. Invoices received before 1 April 2026 keep the original 30-day term.",
      "sources": [],
      "seconds": 3.6,
-     "cost_usd": 0.0006
+     "cost_usd": 0.0006,
+     "passed": false,
+     "failed_checks": [
+      "no source"
+     ]
     },
     "gpt-6-luna": {
      "text": "You have 45 days to pay each undisputed invoice, counted from receipt, if it was received on or after 1 April 2026. Invoices received before that date keep the 30-day term.",
@@ -1875,7 +2045,9 @@
       }
      ],
      "seconds": 5.6,
-     "cost_usd": 0.00055
+     "cost_usd": 0.00055,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1894,7 +2066,9 @@
       }
      ],
      "seconds": 2.7,
-     "cost_usd": 0.00033
+     "cost_usd": 0.00033,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "For a Priority 1, Tessel must be on site within 1 hour.",
@@ -1905,7 +2079,9 @@
       }
      ],
      "seconds": 6.6,
-     "cost_usd": 0.00021
+     "cost_usd": 0.00021,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1932,7 +2108,9 @@
       }
      ],
      "seconds": 9.8,
-     "cost_usd": 0.00123
+     "cost_usd": 0.00123,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "The **HX-50** is the smallest model that meets the stated load, but only just:\n\n- At −10°C: HX-50 capacity is **32.9 kW** at 35°C flow temperature.\n- At 45°C: 32.9 × 0.95 = **31.26 kW**.\n- With 25% glycol: 31.26 × 0.96 = **30.01 kW**.\n\nPlan for about **9.1 m³/h nominal flow**: HX-50’s 8.6 m³/h × 1.06 for glycol. Its glycol-adjusted minimum flow is about **6.8 m³/h**: 6.4 × 1.06. Capacity is effectively right at the 30 kW requirement, so there is virtually no margin.",
@@ -1951,7 +2129,9 @@
       }
      ],
      "seconds": 18.1,
-     "cost_usd": 0.00088
+     "cost_usd": 0.00088,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -1982,7 +2162,9 @@
       }
      ],
      "seconds": 8.6,
-     "cost_usd": 0.00116
+     "cost_usd": 0.00116,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "Firmware 3.0 changes the defaults for P112 (anti-legionella target: 55° to 60°), P205 (minimum compressor off-time: 5 to 3 minutes), and P318 (quiet-mode maximum fan speed: 30% to 45%). The notes cite public-shower health rules and avoiding backup heat up to 60° for P112, gentler starts from the new inverter software for P205, and capacity complaints in frosty quiet hours for P318. F147 now locks the unit after 5 high-pressure-switch events in 24 hours instead of 3. Cascade lead selection can use P500, and fault history is sent to the remote portal hourly.\n\nBefore updating: installer-set values are kept; only parameters still at their old defaults change. The update takes about 12 minutes, requires USB file HX_3_0.bin, and heating stops during it. From firmware older than 2.2, update to 2.4 first.",
@@ -2005,7 +2187,11 @@
       }
      ],
      "seconds": 15.2,
-     "cost_usd": 0.00076
+     "cost_usd": 0.00076,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 142 words"
+     ]
     }
    }
   },
@@ -2032,7 +2218,9 @@
       }
      ],
      "seconds": 10.0,
-     "cost_usd": 0.0016
+     "cost_usd": 0.0016,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "- Air-side heat exchanger/fins: clean and inspect every 3 months in dusty locations, otherwise yearly — operator or technician.\n- Strainer: clean 4 weeks after commissioning, then yearly — technician.\n- Refrigerant leak test: every 6 months for the HX-50 — certified technician. Its 8.9 kg charge exceeds the 5.0 kg threshold for the shorter interval.\n- Compressor oil level/acidity: check yearly — certified technician.\n- Electrical terminals: tighten and thermal-scan yearly — technician.\n- Safety chain (high-pressure switch, flow switch, leak detector): test yearly — certified technician.\n- Tank anode: check every 24 months — technician; water quality (pH, hardness, glycol): yearly — technician.\n- Fan bearings: replace at 30,000 operating hours — technician; compressor: assess at 60,000 hours — Veltra service.\n- Condensate drain/heater: check before each winter — operator or technician; firmware: check yearly — technician.\n\nThe leak test is a legal operator duty; missing it may void building insurance. Oil checks became yearly in 2026 after acid formation was found in mostly part-load units; compressor warranty depends on documented checks.",
@@ -2051,7 +2239,9 @@
       }
      ],
      "seconds": 31.7,
-     "cost_usd": 0.00071
+     "cost_usd": 0.00071,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -2082,7 +2272,11 @@
       }
      ],
      "seconds": 10.6,
-     "cost_usd": 0.00172
+     "cost_usd": 0.00172,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 125 words"
+     ]
     },
     "gpt-6-luna": {
      "text": "F212 means defrosting hit its time limit because the water circuit didn’t provide enough energy. The manual says this can happen in frost; the unit issues a warning and switches to backup heating after three F212s in a row.\n\nCheck and correct the water circuit: an HX-35 needs at least a 300 L buffer and a minimum flow of 4.5 m³/h. F212’s troubleshooting guidance says to check both buffer volume and flow; the documents don’t specify a controller setting to change.",
@@ -2101,7 +2295,11 @@
       }
      ],
      "seconds": 32.8,
-     "cost_usd": 0.00151
+     "cost_usd": 0.00151,
+     "passed": false,
+     "failed_checks": [
+      "no structure for a deep answer (a list, steps, headings or a table); 88 words"
+     ]
     }
    }
   },
@@ -2120,7 +2318,9 @@
       }
      ],
      "seconds": 5.5,
-     "cost_usd": 0.0006
+     "cost_usd": 0.0006,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "Use propylene glycol if the water circuit runs outdoors without frost protection by other means. The document lists:\n\n- **25% glycol:** frost protection to −10°, capacity reduced by 4%, required flow increased by 6%, pump head by 12%.\n- **35% glycol:** frost protection to −17°, capacity reduced by 7%, required flow increased by 11%, pump head by 20%.\n\nNever use ethylene glycol or a mix above 40%.",
@@ -2131,7 +2331,9 @@
       }
      ],
      "seconds": 7.0,
-     "cost_usd": 0.00025
+     "cost_usd": 0.00025,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -2154,7 +2356,9 @@
       }
      ],
      "seconds": 5.3,
-     "cost_usd": 0.00077
+     "cost_usd": 0.00077,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "Before connecting and filling, the manual requires you to:\n\n- Flush the system.\n- Fit the supplied strainer in the return, with shut-off valves on both sides.\n- Fit flexible connections at least 500 mm long.\n- Provide a buffer tank of at least the model’s minimum volume: HX-20 200 L, HX-35 300 L, HX-50 500 L, HX-80 800 L.\n- Pressure-test the circuit at 4.5 bar for 2 hours.\n- Fill with water at pH 8.2–10.0 and hardness no more than 8.4 °dH; soften harder water. Set cold system pressure to 1.5 bar.",
@@ -2169,7 +2373,9 @@
       }
      ],
      "seconds": 14.1,
-     "cost_usd": 0.00086
+     "cost_usd": 0.00086,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -2183,13 +2389,17 @@
      "text": "The documents do not give a list price for the HX-50 unit. The only prices I found are for individual spare parts in the 2026 Spare Parts List (for example, a compressor board for HX-35/HX-50 at €4402), and those are not the heat pump's price. A search for \"list price\" returned no matches.",
      "sources": [],
      "seconds": 5.7,
-     "cost_usd": 0.00084
+     "cost_usd": 0.00084,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "The documents do not provide the list price of an HX-50.",
      "sources": [],
      "seconds": 11.1,
-     "cost_usd": 0.00052
+     "cost_usd": 0.00052,
+     "passed": true,
+     "failed_checks": []
     }
    }
   },
@@ -2212,7 +2422,9 @@
       }
      ],
      "seconds": 6.3,
-     "cost_usd": 0.00076
+     "cost_usd": 0.00076,
+     "passed": true,
+     "failed_checks": []
     },
     "gpt-6-luna": {
      "text": "The HX-50 needs **600 mm of rear clearance**.",
@@ -2223,7 +2435,12 @@
       }
      ],
      "seconds": 7.3,
-     "cost_usd": 0.00023
+     "cost_usd": 0.00023,
+     "passed": false,
+     "failed_checks": [
+      "does not give both values: missing the German quick guide says 400 mm for the HX-50",
+      "does not name both documents"
+     ]
     }
    }
   },
@@ -2246,7 +2463,11 @@
       }
      ],
      "seconds": 5.6,
-     "cost_usd": 0.00055
+     "cost_usd": 0.00055,
+     "passed": false,
+     "failed_checks": [
+      "85 words for a quick answer (at most 80)"
+     ]
     },
     "gpt-6-luna": {
      "text": "P112 defaults to 60 degrees.",
@@ -2257,7 +2478,9 @@
       }
      ],
      "seconds": 5.1,
-     "cost_usd": 0.0002
+     "cost_usd": 0.0002,
+     "passed": true,
+     "failed_checks": []
     }
    }
   }

@@ -738,6 +738,8 @@ def demo_data(reports: list[Path]) -> dict:
                     for x in r.get("sources") or [] if str(x.get("title")) in files]
             answers[rep["model"].split(":", 1)[-1]] = {
                 "text": body(r["text"]).strip(), "sources": srcs, "seconds": r["seconds"], "cost_usd": round(r["tokens"]["usd"], 5),
+                # whether this answer passed the benchmark's code checks, and in plain words what it failed on
+                "passed": bool(r["check"].get("ok")), "failed_checks": list(r["check"].get("why") or []),
                 **({"depth": r["depth"]} if r.get("depth") else {})}
         if answers:
             questions.append({"id": f"q{n:02d}", "set": sc.corpus, "question": sc.question, "kind": sc.kind, "answers": answers})
