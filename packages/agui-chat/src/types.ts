@@ -279,6 +279,12 @@ export interface ChatOptions {
   attach: boolean
   /** File types the + button offers, e.g. ".pdf,.jpg"; empty = what the plugin accepts. */
   attachAccept: string
+  /** Commands for the + menu's "Commands" row and for "/" in an empty composer: a pick fires `agui:menu-action`
+   *  (`command: true`) and, unless the host cancels it, sends `send` as a message. */
+  commands?: { id: string; label: string; hint?: string; icon?: string; send?: string }[]
+  /** The host's own rows in the + menu (`icon`: an SVG path on a 24 grid): a pick fires the cancelable
+   *  `agui:menu-action` `{id, label, command}`. */
+  menu?: { id: string; label: string; hint?: string; icon?: string }[]
   /** Allow several files at once. */
   attachMultiple: boolean
   /** Largest file in MB; bigger files are refused with a message. */

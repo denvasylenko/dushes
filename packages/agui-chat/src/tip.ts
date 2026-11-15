@@ -11,7 +11,7 @@
 export interface TipRow { label: string; keys?: string[] }
 
 import { isMac, keyLabel } from './keys'
-import { TIP_CSS } from './tip-css'
+import { TIP_CSS, adoptTipCss } from './tip-css'
 
 export { ariaKeys, isMac, keyLabel } from './keys'
 
@@ -21,18 +21,8 @@ let shown: { el: HTMLElement; host: HTMLElement; timer?: ReturnType<typeof setTi
 /** No hover and no keys on a touch screen. */
 const touchOnly = (): boolean => !!globalThis.matchMedia?.('(hover: none)').matches
 
-const styled = new WeakSet<Node>()
-/** The tooltip's styles in the root it shows in (a shadow root gets them once; the page needs a <style> of its own). */
-function style(host: HTMLElement): void {
-  const root = host.getRootNode()
-  if (styled.has(root) || !(root instanceof ShadowRoot)) return
-  styled.add(root)
-  try { const sh = new CSSStyleSheet(); sh.replaceSync(TIP_CSS); root.adoptedStyleSheets = [...root.adoptedStyleSheets, sh] }
-  catch { const el = document.createElement('style'); el.textContent = TIP_CSS; root.append(el) }
-}
-
 function plate(host: HTMLElement): HTMLElement {
-  style(host)
+  adoptTipCss(host)
   let t = tips.get(host)
   if (!t) {
     t = document.createElement('div')
@@ -112,6 +102,10 @@ export function attachTip(button: HTMLElement, host: HTMLElement, rows: () => Ti
 }
 
 export { TIP_CSS }
+export { openMenu } from './menu'
+export { spotCard } from './spot'
+import './menu'
+import './spot'
 
 // the one-script build: agui-chat.tip.js registers it on window.AguiChat
 const g = globalThis as unknown as { AguiChat?: Record<string, unknown> }

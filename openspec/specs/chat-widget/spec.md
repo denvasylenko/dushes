@@ -148,6 +148,24 @@ When the host page defines `--hf-bg`, the chat's background SHALL be that colour
 - **WHEN** the page defines `--hf-bg: #000` and the chat is dark
 - **THEN** the chat's feed is black, and its cards and field stay one step lighter
 
+### Requirement: The plus opens a menu
+The composer's plus SHALL open a menu over itself (role `menu`, rows of an icon, a label and a chevron for a list), never the file picker directly: "Add files or photos" (and "Take a photo" on a touch screen) when attachments are on, "Commands" when the host gives `commands`, then the host's own `menu` rows. Arrows SHALL move, Enter choose, Esc, a tap outside or the plus itself close it; with nothing to offer there SHALL be no plus. The menu SHALL load on demand.
+
+#### Scenario: Attaching a file
+- **WHEN** the user taps the plus and then "Add files or photos"
+- **THEN** the menu opens first, and the file picker opens only from that row
+
+#### Scenario: Attachments off, commands on
+- **WHEN** the host turns attachments off and gives two commands
+- **THEN** the plus opens a menu with "Commands" only
+
+### Requirement: Commands
+A pick from `commands` (from the menu's "Commands" row, or after typing "/" alone in an empty composer, which opens the list) SHALL fire the cancelable `agui:menu-action` `{id, label, command: true}` and, unless the host cancels it, send the command's `send` text as a message; a host `menu` row SHALL fire the same event with `command: false`.
+
+#### Scenario: A command by slash
+- **WHEN** the user types "/" in an empty composer and picks "Opening hours"
+- **THEN** the slash is cleared and the command's text is sent as the user's message
+
 ### Requirement: The page can take over the closing
 Before the chat closes (its close button, Esc, the scrim or `close()`), it SHALL fire a cancelable `agui:before-close` that bubbles out of the widget to `document`, with `detail.by` (`button`, `escape`, `scrim`, `api`) and `detail.proceed()`; when the page cancels the event the chat SHALL stay open and usable until `proceed()` is called, and a second `proceed()` SHALL do nothing. `close(true)` SHALL close without the event.
 

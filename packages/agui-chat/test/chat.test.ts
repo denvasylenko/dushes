@@ -171,7 +171,7 @@ describe('<agui-chat>', () => {
     await el.send('seats?')
     await tick(5)
     await el.send('show me the seats again')
-    await tick(5)
+    for (let i = 0; i < 200 && !$$(el, '[data-spot]').length; i++) await tick(10)   // the scroll and the glow load on demand
     expect(($$(el, '[data-card-id]').filter((c) => c.dataset.cardId === 'k7'))).toHaveLength(1)   // no copy
     expect($$(el, '[data-card-id]').find((c) => c.dataset.cardId === 'k7')!.hasAttribute('data-spot')).toBe(true)
     expect((bodies[1].forwardedProps as { capabilities: string[] }).capabilities).toContain('card.focus')
