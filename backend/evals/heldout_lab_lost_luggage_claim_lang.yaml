@@ -15,3 +15,8 @@ expect:
   cards: [set_fields]
   fields: {flight_number: AV815, bag_type: backpack, country: FR, postcode: "69002"}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Bonjour, mon sac \u00e0 dos n'est pas arriv\u00e9 hier \u00e0 Lyon avec mon vol. Pouvez-vous m'aider \u00e0 faire une d\u00e9claration ?"
+  - "Here are my details: Flight AV815 yesterday, bag tag AV604418; A green backpack (Osprey) with a laptop stand, clothes and a toiletry bag; Deliver to Julien Moreau, 8 Rue de la Republique, 69002 Lyon, France; phone +33 6 98 76 54 32, email julien.moreau@example.fr."
+  - "Is anything still missing? Please go on."

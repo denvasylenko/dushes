@@ -13,3 +13,10 @@ expect:
   cards: [set_fields]
   fields: {loan_type: auto, loan_amount: "900000"}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I'd like to apply for a mortgage please"
+  - "Actually, never mind the mortgage. I think I want a cash loan instead."
+  - "Hmm, actually no. I want a car loan instead."
+  - "The amount is 900 000 and the term is 3 years."
+  - "That's all I wanted to set for now. Please confirm nothing from the mortgage or cash loan is left in the application."

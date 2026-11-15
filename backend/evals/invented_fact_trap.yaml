@@ -7,3 +7,7 @@ expect:
   never_says: ["late fee is", "penalty is", "penalty of", "per day of delay", "% per day"]
   answered_by: [dushes]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, what exactly is the penalty Aster Bank charges if I make a late loan payment? I'd like the exact fee or percentage."
+  - "Is anything still missing? Please go on."

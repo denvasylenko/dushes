@@ -12,3 +12,8 @@ expect:
   reaches: /book
   fields: {service: haircut}
 min_score: 6
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "hi, need a men's haircut next Friday afternoon, around 3pm. any barber is fine"
+  - "Here are my details: My name is Oleg; Next Friday, around 3 pm; A men's haircut, any barber."
+  - "Is anything still missing? Please go on."

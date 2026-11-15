@@ -10,3 +10,8 @@ expect:
   reaches: /insure
   fields: {make: tesla}
 min_score: 6
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I need car insurance for my 2023 Tesla Model 3. Can you start an application?"
+  - "Here are my details: 2023 Tesla Model 3, used for commuting."
+  - "Is anything still missing? Please go on."

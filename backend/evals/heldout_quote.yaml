@@ -13,3 +13,8 @@ expect:
   cards: [set_fields]
   fields: {make: toyota, model: corolla, year: "2019", usage: personal}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hello, I'd like to fill in the vehicle details for my car insurance application. It's a 2019 Toyota Corolla."
+  - "Here are my details: 2019 Toyota Corolla; VIN JTDBR32E720123456; Personal use, about 12 000 km a year."
+  - "Is anything still missing? Please go on."

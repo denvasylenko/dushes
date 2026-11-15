@@ -17,3 +17,7 @@ expect:
   cards: [set_fields]
   fields: {category: tv, model: vista_55, serial_number: TVK123456789, resolution: repair, postcode: OX1 2JD}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I need to make a warranty claim for my TV. Here's everything: Vista 55\" OLED, bought a year ago at John Lewis, serial number TVK123456789. Fault: no picture. It's never been dropped or got wet and I'd like a repair. I'll upload the receipt myself. My name is Oscar Bennett, email oscar.bennett@example.co.uk, phone 01632 960 123, address 45 Mill Lane, Oxford, OX1 2JD. Can you fill in the whole claim form from that please? The fault description is quite short so please expand it as needed."
+  - "Thanks. One more detail for the fault description: the sound still works, but the screen has been black since Saturday. Can you add that?"

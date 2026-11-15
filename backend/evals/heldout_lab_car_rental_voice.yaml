@@ -17,3 +17,7 @@ expect:
   cards: [set_fields]
   fields: {pickup_location: airport, car_class: compact, extras: child_seat, pickup_time: 10h}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "hi i need to book a compact car pls from the airport next friday at ten am and bring it back to the airport monday after at ten am and i need a child sear for my son he is four"
+  - "yes pls my name is clara nunes my licence number is PT-7766554 and i have had it for twelve years my email is clara.nunes@example.pt and my phone is plus three five one nine one two three four five six seven eight"

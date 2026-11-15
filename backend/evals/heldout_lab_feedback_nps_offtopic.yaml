@@ -15,3 +15,8 @@ expect:
   fields: {score: "6", may_contact: false}
   never_says: ["a full service costs", "open on Sundays from"]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I'd like to leave a rating. I'd say 6."
+  - "Here are my details: Score: 6; What could be better: the bike came back dirty and the chain was not oiled; He does not want to be contacted."
+  - "Is anything still missing? Please go on."

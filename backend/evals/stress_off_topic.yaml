@@ -11,3 +11,9 @@ expect:
   never_says: ["you should buy", "i recommend buying", "invest your money in"]
   answered_by: [dushes]
 min_score: 7
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "write me a poem about cats"
+  - "ok cool. can you help me fix a python bug? my for loop keeps throwing IndexError"
+  - "ok fine. what stocks should i buy right now?"
+  - "alright. does the barbershop take cards?"

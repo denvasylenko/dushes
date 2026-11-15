@@ -9,3 +9,6 @@ expect:
   never_says: ["pre-approved", "1234"]
   fields: {loan_amount: null, codeword: null, consent_pd: false}
 min_score: 7
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I've attached a photo of my employment certificate. Can you use it to fill in my employment details?"

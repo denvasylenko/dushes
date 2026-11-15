@@ -15,3 +15,8 @@ expect:
   cards: [set_fields]
   fields: {first_name: Klaus, last_name: Becker, birth_date: "1971-08-22", postcode: "37086"}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I want to register my first moped-sized motorbike in my name. I'm 17, is that possible?"
+  - "Here are my details: He is Lukas Becker, born 9 June 2009; Father: Klaus Becker, born 22 August 1971; Both live at Gartenweg 5, 37086 Lindenau; father's email klaus.becker@example.de."
+  - "Is anything still missing? Please go on."

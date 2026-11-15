@@ -17,3 +17,8 @@ expect:
   cards: [set_fields]
   fields: {first_name: Sanne, co_1_name: Daan Bakker, co_1_relation: partner}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hoi! Ik wil graag samen met mijn partner een woning aanvragen. Telt zijn inkomen ook mee?"
+  - "Here are my details: Sanne de Vries, born 17 June 1996, email sanne.devries@example.nl, phone +31 6 98765432; Sanne is employed at Rabobank and earns 2100 EUR net a month; Daan Bakker is her partner, email daan.bakker@example.nl, self-employed, earns 1900 EUR net a month."
+  - "Is anything still missing? Please go on."

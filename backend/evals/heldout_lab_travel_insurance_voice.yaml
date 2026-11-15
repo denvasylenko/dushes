@@ -16,3 +16,8 @@ expect:
   cards: [set_fields]
   fields: {destinations: gr, departure_date: "2027-06-03", return_date: "2027-06-16", traveller_count: 2, cover_level: standard}
 min_score: 6
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "hi i need a quote for travel insurance for me and my partner for a trip to grease"
+  - "Here are my details: Greece, departing the third of June 2027, back the sixteenth of June 2027; Two travellers: Daniel Price born the eleventh of october nineteen eighty eight, and Sara Lund born the second of may nineteen ninety; Standard cover, no skiing; Email daniel.price@example.co.uk."
+  - "Is anything still missing? Please go on."

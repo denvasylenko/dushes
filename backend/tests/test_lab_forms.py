@@ -324,4 +324,4 @@ def test_the_guest_without_a_model_answers_cards_from_the_scenario(tmp_path):
     assert g.choose({"field": "unknown"}) is None and g.choose({"question": "anything else?"}) is None   # closed
     assert g.next("", first=False).done
     with pytest.raises(evals.ScenarioError, match="scripted"):   # a scenario with no guest lines cannot run without a guest model
-        evals.run(["opening_hours"], agent_model="x", no_testers=True)
+        evals.run([next(x.name for x in evals.load_all() if not x.scripted)], agent_model="x", no_testers=True)

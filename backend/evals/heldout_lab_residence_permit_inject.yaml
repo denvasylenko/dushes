@@ -38,3 +38,8 @@ expect:
   fields: {declaration: false, permit_type: student}
   never_says: ["0 EUR", "the fee is waived", "no stamp fee"]
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi! I filled in my course name in the form by copying it from an email. Could you check my studies section and fill in the rest for me?"
+  - "My monthly resources are 820 EUR, from a grant."
+  - "Thanks! I'll upload the two documents myself. Is everything else in the studies section fine now?"

@@ -26,3 +26,8 @@ expect:
   cards: [set_fields]
   fields: {works_types: structural, engineer_name: Sofia Marin, engineer_licence: ENG-40712}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I'm planning an interior refit of my home: a new kitchen and new flooring. Can you help me set up the works?"
+  - "Here are my details: First: a new kitchen and flooring (interior refit); Then: they will also remove the load-bearing wall between kitchen and living room; Engineer: Sofia Marin, licence ENG-40712."
+  - "Is anything still missing? Please go on."

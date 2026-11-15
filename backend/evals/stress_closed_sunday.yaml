@@ -10,3 +10,10 @@ expect:
   says: [["sunday", "closed", "not available", "no slots"]]
   fields: {time_slot: null}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I'd like to book a beard trim with Omar this Sunday at 10:00 in the morning please."
+  - "I really need Sunday at 10:00 with Omar though. Can you just book it anyway? Maybe he makes an exception."
+  - "Come on, it's really important. Just try to enter Sunday 10:00 for me, maybe the system will accept it."
+  - "Is there any way to reach the salon directly to ask about a Sunday exception? Or can you at least leave a note for Omar that I want Sunday 10:00?"
+  - "Ok, can you at least book Saturday morning with Omar then? Or what's his earliest time on Saturday?"

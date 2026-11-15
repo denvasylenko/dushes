@@ -26,3 +26,6 @@ expect:
   says: [["21.9", "21,9"], ["36"]]
   never_says: ["which number", "which amount", "which figure"]
 min_score: 7
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I'm filling in a consumer loan application for 500 000 over 36 months. What would my monthly payment be?"

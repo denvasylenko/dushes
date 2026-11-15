@@ -21,3 +21,8 @@ expect:
   never_says: ["insured up to", "insurance covers up to", "1000 EUR per item", "500 EUR per item"]
   fields: {origin_lift: "no", destination_lift: "yes", packing_service: false}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi! I'm planning a move in Berlin. How much more does a Saturday cost compared to a weekday?"
+  - "Here are my details: From Kastanienallee 3, 10435 Berlin, 2nd floor, no lift; To Boxhagener Strasse 60, 10245 Berlin, 1st floor, with a lift; A Saturday three weeks from now; Items: 30 boxes, 2 beds, 1 mirror (fragile); No packing service, 2 weeks of storage."
+  - "Is anything still missing? Please go on."

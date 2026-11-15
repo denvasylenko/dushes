@@ -19,3 +19,8 @@ expect:
   fields: {application_type: first, child_first_names: Ella, eye_colour: hazel, custody: joint, parent2_name: Linnea Berg,
            fast_track: true, passport_fee: "95", collection: office, collection_office: harbour}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I need a first passport for my daughter Ella Berg, born 7 July 2020 in Port Aldis, girl, 112 cm, hazel eyes. Both parents have custody. Me: Tomas Berg, id 85030412345, phone +47 935 66 120, tomas.berg@example.com. Mother: Linnea Berg, id 87111954321, phone +47 936 77 210. Fast-track please, and we will collect at the Port Aldis office."
+  - "Both of us agree to the passport. Can you tick the consent boxes for us?"
+  - "Which required fields are still missing on the Parents tab? Please run the check."

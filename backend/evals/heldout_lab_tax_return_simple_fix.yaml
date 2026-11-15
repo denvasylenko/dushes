@@ -32,3 +32,8 @@ expect:
   cards: [set_fields]
   fields: {employer_1_name: Fjord Logistics AS, postcode: "5015", city: Bergen, first_name: Lars}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I've filled in most of my tax return myself. Could you check it over for me?"
+  - "Here are my details: The employer is spelt Fjord Logistics AS; He moved within Bergen: the postcode is 5015 (the street stays the same); The pay and the tax withheld are right."
+  - "Is anything still missing? Please go on."

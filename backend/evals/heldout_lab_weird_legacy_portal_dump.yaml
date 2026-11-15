@@ -18,3 +18,6 @@ expect:
   cards: [set_fields]
   fields: {svc_code: C3, co_nm: Moreau Bakery Ltd, txt1: "12", txt2: "4302", appl_nm: Ines Moreau}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I've just taken over the bakery and need to change the account holder to my company. I'm Ines Moreau, phone +44 7700 900742, company is Moreau Bakery Ltd, house number 12, postcode 4302, bill reference R118804. Please move the account from the previous owner to Moreau Bakery Ltd."

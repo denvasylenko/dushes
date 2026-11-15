@@ -15,3 +15,8 @@ expect:
   cards: [set_fields]
   fields: {job_1_company: Booking.com, notice_period: none, visa_sponsorship: "no"}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I want to fill in my application. Python Engineer at Booking, June 2018 to May 2024. Salary range from 90000 to 70000."
+  - "Here are my details: One job to list: Python Engineer at Booking (corrects to Booking.com) from June 2018 to May 2024; First says the salary is from 90000 to 70000; when told, he means from 70000 to 90000; He is available now and needs no visa sponsorship."
+  - "Is anything still missing? Please go on."

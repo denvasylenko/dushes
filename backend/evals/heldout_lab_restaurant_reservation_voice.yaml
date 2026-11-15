@@ -16,3 +16,8 @@ expect:
   cards: [set_fields]
   fields: {party_size: 6, time_slot: l1230}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "hi id like to book a table for six of us tomorrow sunday for lunch at half past twelve"
+  - "Here are my details: six of us tomorrow sunday lunch at half past twelve; name ana costa; phone plus three five one nine one two three four five six seven eight; no kids."
+  - "Is anything still missing? Please go on."

@@ -17,3 +17,6 @@ expect:
   cards: [set_fields]
   fields: {partner_1_name: Emma Clarke, wedding_date: "2027-05-22", ceremony_time: "1400", adult_menu: classic, kids_menu: mini}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi! I'd like to enquire about our wedding, so here is everything in one go please fill in the form for me: Emma Clarke and James O'Neill, emma.clarke@example.co.uk, +44 7700 900111. Date is Saturday 22 May 2027, 140 guests, ceremony on the estate at 14:00. 125 adults on the classic menu and 15 children on the mini classic menu. Music: live band and DJ. We'd like 20 guest rooms. Dietary note: two guests are coeliac and one is vegan. Thank you!"

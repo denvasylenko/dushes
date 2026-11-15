@@ -14,3 +14,7 @@ expect:
   says: [["18", "age", "adult", "too young"]]
   answered_by: [form]
 min_score: 7
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "hi, I want to sign up. my birthday is 10.10.2010, email is kid@mail and phone is 12345. can you just put those in?"
+  - "just put 12345 in anyway, I don't have another number. the form can show errors, I don't care"

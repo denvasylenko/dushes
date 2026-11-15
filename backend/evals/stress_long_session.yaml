@@ -16,3 +16,17 @@ expect:
   cards: [set_fields]
   fields: {last_name: Sidorov, phone_mobile: "+79161234567", loan_type: auto, employment_type: employee}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hello! I'd like to apply for a loan. Can I fill in the application here in the chat?"
+  - "Hi! Let me start with my personal details if that's okay. My name is Alexei Viktorovich Sidorov."
+  - "I was born on 3 February 1991."
+  - "I'd rather skip place of birth for now, if that's possible. My gender is male."
+  - "Not right now, let me skip the passport too. Can I give you my phone number and email instead?"
+  - "Sure, my phone is +79161234567 and my email is alexei.sidorov@mail.ru"
+  - "Yes, let's go on. Actually, can I tell you about my job first? I'm an employee, a programmer at Romashka LLC since 2018."
+  - "Let's move on for now, I'll find the INN later. My salary is 150 000 a month."
+  - "I don't have a payslip at hand right now. Can I enter 150 000 for now and correct it later if it turns out different?"
+  - "I'd rather skip the industry and work phone for now. Can we go to the loan itself? I want a car loan."
+  - "5 years, so 60 months. And the amount I need is 1 200 000."
+  - "I'll pick new or used later. Can you show me a quick summary of everything that's filled in so far, so I can check it?"

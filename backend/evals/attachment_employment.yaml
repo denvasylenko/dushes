@@ -8,3 +8,7 @@ expect:
   answered_by: [form]
   cards: [set_fields]
 min_score: 6
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I have a photo of my employment certificate. Can you use it to fill in the employment details on my loan application?"
+  - "Is anything still missing? Please go on."

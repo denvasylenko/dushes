@@ -18,3 +18,8 @@ expect:
   cards: [set_fields]
   fields: {child_first_names: Zofia, child_surname: both, marriage_cert_number: MC-19870245, declarant_role: father}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Dzie\u0144 dobry. Wczoraj urodzi\u0142a nam si\u0119 c\u00f3rka. Chc\u0119 j\u0105 zarejestrowa\u0107. Czy mo\u017ce mie\u0107 oba nazwiska?"
+  - "Here are my details: Baby Zofia, a girl, born yesterday at 11:05 at Harbour District Hospital, Westmere; Mother: Katarzyna Nowak, born 9 March 1994, id 94030912345, address Havnegata 7, Westmere; Father: Piotr Wisniewski, born 21 December 1991, id 91122154321; Married, certificate MC-19870245; Zofia takes both surnames, Nowak-Wisniewski; He registers as the father; phone +47 968 44 120."
+  - "Is anything still missing? Please go on."

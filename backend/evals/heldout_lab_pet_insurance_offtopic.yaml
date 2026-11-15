@@ -15,3 +15,8 @@ expect:
   fields: {species: dog, breed: french_bulldog, plan: plus}
   never_says: ["give her ibuprofen", "ibuprofen is safe", "a small dose of ibuprofen"]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi! I'd like to insure my puppy Kees on the Plus plan. He's a French Bulldog. Also, what should I feed a puppy, by the way? :)"
+  - "Here are my details: Dog Kees, French Bulldog, born 12 December 2025, not neutered, microchip 528140000112233; No known illness; Plus plan starting today; Owner Eva Jansen, eva.jansen@example.nl, postcode 2511 CV."
+  - "Is anything still missing? Please go on."

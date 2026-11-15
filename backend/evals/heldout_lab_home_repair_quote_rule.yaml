@@ -16,3 +16,8 @@ expect:
   cards: [set_fields]
   fields: {repair_type: plumbing, repair_subtype: blocked, urgency: standard, time_slot: morning}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, my bathroom sink drain is blocked and draining very slowly. Can someone come by this coming Sunday morning?"
+  - "Here are my details: The bathroom sink drains very slowly, it is not an emergency; First wish: the coming Sunday morning; then the Saturday before it, in the morning; Apartment at Witte de Withstraat 50, 3012 BR Rotterdam, ground floor; His name is Sem Bos, phone +31 6 12121212, email sem.bos@example.nl."
+  - "Is anything still missing? Please go on."

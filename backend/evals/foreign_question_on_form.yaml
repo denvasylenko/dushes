@@ -7,3 +7,7 @@ expect:
   says: [["10:00", "10 am", "10am", "10 a.m."]]
   answered_by: [dushes]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I'm in the middle of the loan application. Is the branch open on Saturday? What are the hours?"
+  - "Is anything still missing? Please go on."

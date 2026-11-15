@@ -17,3 +17,8 @@ expect:
   never_says: ["free delivery above 1000", "free delivery above 2500", "free shipping above 1000", "5% off", "10% off", "volume discount of 5%"]
   fields: {company_name: Vos Horeca B.V.}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I'm thinking of placing a first order as a business. What is the minimum order amount?"
+  - "Here are my details: Company Vos Horeca B.V., registered in Belgium."
+  - "Is anything still missing? Please go on."

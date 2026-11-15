@@ -14,3 +14,11 @@ expect:
   answered_by: [dushes, form]
   fields: {first_name: Anna, last_name: Petrova}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I'm applying for a loan. My name is Anna Petrova."
+  - "Quick question first - what time is the bank open on Saturday?"
+  - "Thanks! Also, how much does a haircut cost at the barbershop?"
+  - "Yes please, open the barbershop prices page"
+  - "Great, thanks! Now back to my application - I was born on 3 February 1991."
+  - "Oh, my name is empty again? Please fill it in again: Anna Petrova."

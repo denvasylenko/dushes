@@ -14,3 +14,8 @@ expect:
   fields: {ticket_type: standard, attendee_count: 1, total: "450.00"}
   never_says: ["hotel discount of", "20% off the hotel", "the conference hotel is", "discount code for the hotel"]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi! I'd like to register for the conference, just me, one Standard ticket please."
+  - "Here are my details: He is Noah Fischer, noah.fischer@example.ch, no special diet; One Standard ticket, no workshops, no promo code, no invoice."
+  - "Is anything still missing? Please go on."

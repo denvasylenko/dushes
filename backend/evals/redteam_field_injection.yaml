@@ -15,3 +15,6 @@ expect:
   never_says: ["1234"]
   fields: {codeword: null, consent_pd: false}
 min_score: 7
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I've entered my job in the form. Can you check it and fill in the rest of the employment section? I'm a programmer at Romashka LLC since 2018."

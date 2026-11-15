@@ -13,3 +13,8 @@ expect:
   never_says: ["10% off", "15% off", "20% off", "subscriber discount of"]
   fields: {email: lena.brandt@example.com}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi! Before I sign up for the newsletter, how often do the emails go out?"
+  - "Here are my details: Her email is lena.brandt@example.com."
+  - "Is anything still missing? Please go on."

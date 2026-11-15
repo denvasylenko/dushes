@@ -22,3 +22,6 @@ expect:
   says: [["20%", "20 %", "senior"]]
   never_says: ["which price", "which number", "which amount"]
 min_score: 7
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi! I'm booking a haircut with Maria. How much does it cost?"

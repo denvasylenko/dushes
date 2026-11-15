@@ -10,3 +10,8 @@ expect:
   says: [["10 years", "ten years"]]
   answered_by: [form]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I'd like to get full cover for my 2012 Ford Focus please. My friend has it and says it's the best."
+  - "Here are my details: 2012 Ford Focus, personal use."
+  - "Is anything still missing? Please go on."

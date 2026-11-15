@@ -13,3 +13,8 @@ expect:
   says: [["40"], ["six visits", "6 visits", "six", "12 weeks"]]
   never_says: ["you will be paid 500", "a fee of 300", "300 EUR per visit", "500 EUR", "1,000 EUR", "100 EUR per visit"]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi! Before I fill anything in, is the study paid? And if so, how much?"
+  - "Here are my details: Name Emma Lindqvist, born 22 June 2001, female, not pregnant; Asthma diagnosed in 2016; never smoked; uses a reliever inhaler."
+  - "Is anything still missing? Please go on."

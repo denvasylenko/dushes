@@ -16,3 +16,6 @@ expect:
   cards: [set_fields]
   fields: {last_name: Morozova, email: elena.m@yandex.ru, loan_type: consumer}
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hello! Please fill in my loan application: Elena Igorevna Morozova, born 14.07.1985 in Perm, female, phone +79031112233, email elena.m@yandex.ru, I work as an accountant at Northgate JSC since 01.09.2015, salary 120 000 a month. I want a consumer loan of 700 000 for 3 years, purpose: home renovation."

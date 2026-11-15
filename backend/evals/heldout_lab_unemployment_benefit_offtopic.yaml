@@ -25,3 +25,8 @@ expect:
   fields: {job_1_employer: Westmere Hospital, job_2_employer: Northgate Care Home, leaving_reason: contract_end}
   never_says: ["you should sue", "is hiring", "here is your CV"]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I need to fill in my work history on this form. My fixed-term contract just ended. Can you help me with that?"
+  - "Here are my details: Two jobs: Westmere Hospital from 1 November 2024 to 31 October 2026, and Northgate Care Home from 1 August 2023 to 31 October 2024; Her fixed-term contract ended; last working day 31 October 2026."
+  - "Is anything still missing? Please go on."

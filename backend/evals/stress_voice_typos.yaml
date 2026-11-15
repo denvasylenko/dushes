@@ -15,3 +15,8 @@ expect:
   cards: [set_fields]
   fields: {last_name: Morozova, first_name: Elena, birth_date: "1985-07-14"}
 min_score: 7
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "hi i want to apply for a loan my nme is elena igorevna morozva"
+  - "my date of birth is fourteen jly nineteen eighty five"
+  - "female"

@@ -17,3 +17,8 @@ expect:
   cards: [set_fields]
   fields: {first_name: Emily, guardian_name: Katrin Braun, plan: monthly, account_holder: Katrin Braun}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hello, I would like to sign up my 17-year-old daughter for a Monthly membership. I'm her mother."
+  - "Here are my details: Daughter Emily Braun, born 30 April 2009, emily.braun@example.de; Address Osterstra\u00dfe 101, 20259 Hamburg; Mother Katrin Braun is the guardian; she confirms the guardian signature when asked; Monthly plan, start next Monday, no promo code; Account holder Katrin Braun, IBAN DE89 3704 0044 0532 0130 00; she authorises the debit when asked."
+  - "Is anything still missing? Please go on."

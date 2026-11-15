@@ -40,3 +40,8 @@ expect:
   says: [["30,000", "30000", "10%"]]
   fields: {purchase_price: 300000, deposit: 30000, loan_amount: "270000", ltv: "90.0"}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I've done the first five tabs and now I'm on the property one. I'm looking at a leasehold flat in Nottingham for \u00a3300,000, and I'd like to put down a \u00a320,000 deposit. Can you help me fill that in?"
+  - "Here are my details: A leasehold flat in Nottingham at 300,000 GBP, 30-year term, capital and interest; He first offers a 20,000 GBP deposit; once told the minimum, he raises it to 30,000 GBP."
+  - "Is anything still missing? Please go on."

@@ -14,3 +14,8 @@ expect:
   never_says: ["1,000 EUR", "1000 EUR", "1,200 EUR", "1,500 EUR", "1500 EUR", "2,000 EUR", "2000 EUR", "from 800"]
   fields: {reason: checkup}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hello, I have a missing tooth and I'm interested in a dental implant. How much does it cost at your practice, and how long does it take?"
+  - "Here are my details: Her name is Sofia Greco, codice fiscale GRCSFO80E52A944T, mobile +39 339 145 2266; She would accept a check-up next Monday morning to talk about an implant."
+  - "Is anything still missing? Please go on."

@@ -10,3 +10,7 @@ expect:
   says: [["20%", "20 %"], ["entrada", "inicial", "hipoteca", "pago"]]
   answered_by: [dushes]
 min_score: 7
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hi, I have a question about your mortgages."
+  - "Hola, \u00bfcu\u00e1l es el pago inicial m\u00ednimo para la hipoteca?"

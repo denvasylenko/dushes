@@ -16,3 +16,8 @@ expect:
   never_says: ["15 days", "10 working days", "15 calendar days", "will be granted", "guaranteed"]
   fields: {surname: Mendes}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi! I'm planning a trip with my two kids, aged 8 and 4. How much would the visas cost in total for the three of us?"
+  - "Here are my details: Her name is Laura Mendes, first name Laura; The children are 8 and 4 years old."
+  - "Is anything still missing? Please go on."

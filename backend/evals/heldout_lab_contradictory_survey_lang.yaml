@@ -17,3 +17,8 @@ expect:
   cards: [set_fields]
   fields: {tenancy_ref: T654210, years_in_home: y5p, letters: false, repairs_rating: none}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Dzie\u0144 dobry, chcia\u0142abym uzupe\u0142ni\u0107 swoje dane i cz\u0119\u015b\u0107 o mieszkaniu. M\u00f3j numer najmu to T654210, nazywam si\u0119 Agnieszka Wojcik."
+  - "Here are my details: Tenancy reference T654210, name Agnieszka Wojcik; Born 3 September 1990 (36 years old); Lived in her home for 7 years; Overall: neutral; no repairs needed; She does not want any letters by post."
+  - "Is anything still missing? Please go on."

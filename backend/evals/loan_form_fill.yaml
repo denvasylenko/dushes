@@ -10,3 +10,8 @@ expect:
   answered_by: [form]
   cards: [set_fields]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi! I'm filling in a loan application and would rather tell you my details than type them into the fields. Can you help me with that?"
+  - "Here are my details: Full name Elena Igorevna Morozova; Born on 14 July 1985."
+  - "Is anything still missing? Please go on."

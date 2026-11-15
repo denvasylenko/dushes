@@ -33,3 +33,8 @@ expect:
   never_says: ["3 working days", "5 working days", "within a week", "2 weeks"]
   fields: {delivery_method: pickup, pickup_office: harbour}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, is picking up my licence at an office free? I'm trying to save money."
+  - "Here are my details: She works near the harbour; Her licence expires next month."
+  - "Is anything still missing? Please go on."

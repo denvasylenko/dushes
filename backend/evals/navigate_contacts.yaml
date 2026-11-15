@@ -8,3 +8,7 @@ expect:
   answered_by: [dushes]
   reaches: /contacts
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, can you take me to the page that shows the barbershop's phone number?"
+  - "Is anything still missing? Please go on."

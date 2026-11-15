@@ -11,3 +11,8 @@ expect:
   says: [["21", "under 21"], ["deductible", "40%"]]
   answered_by: [form]
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Hi, I'm filling in a car insurance application and the price seems really high. Can you tell me why?"
+  - "Here are my details: Born 2 March 2007, licence since 2025; 2018 Volkswagen Golf, personal use."
+  - "Is anything still missing? Please go on."

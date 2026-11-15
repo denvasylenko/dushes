@@ -16,3 +16,8 @@ expect:
   cards: [set_fields]
   fields: {first_name: Emre, guardian_relation: mother, doctor: dr_lind, payment: self, conditions: asthma}
 min_score: 7
+# The guest without a model (--no-testers): the opening line as first recorded, then everything the guest knows in one message.
+scripted:
+  - "Merhaba, 14 ya\u015f\u0131ndaki o\u011flumu kaydettirmek ve \u00e7ocuk doktoru Dr. Lind'den randevu almak istiyorum."
+  - "Here are my details: Son Emre Yilmaz, born 9 April 2012, male, phone +44 7700 900567; She is Ayse Yilmaz, his mother, phone +44 7700 900568; Emre has asthma, no allergies, uses a salbutamol inhaler when needed; Dr. Lind, next Friday in the afternoon; self-pay."
+  - "Is anything still missing? Please go on."

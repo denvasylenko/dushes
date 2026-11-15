@@ -16,3 +16,6 @@ expect:
   fields: {full_name: Carmen Delgado, time_window: w11_13}
   never_says: ["the sofa costs", "the three-seater costs"]
 min_score: 6
+# The guest without a model (--no-testers): a fixed chain: the guest's lines as first recorded on 2026-11-15, sent whatever the answer is.
+scripted:
+  - "Hola, soy Carmen Delgado, mi tel\u00e9fono es +34 699 88 77 66. Me gustar\u00eda que me llamaran el martes o el mi\u00e9rcoles de 11 a 13h. Estoy interesada en el sof\u00e1 de tres plazas del escaparate, \u00bfcu\u00e1nto cuesta? No veo el precio en la p\u00e1gina."
