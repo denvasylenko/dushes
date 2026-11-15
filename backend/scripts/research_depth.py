@@ -762,9 +762,20 @@ def demo_data(reports: list[Path]) -> dict:
         docs = []
         for f in sorted(x for x in (CORPORA / c).iterdir() if x.is_file()):
             text = doc_text(c, f.name)
-            first = next((ln.strip().lstrip("# ").strip() for ln in text.splitlines() if ln.strip()), f.name)
-            docs.append({"id": f.name, "title": first[:90], "pages": max(1, round(len(text) / 3000))})
-        sets.append({"id": c, "name": name, "about": SET_ABOUT[c], "documents": docs})
+            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+            first = lines[0].lstrip("# ").strip() if lines else f.name
+            # what the document is, in its own first sentence (the line under its title)
+            body_line = next((ln for ln in lines[1:] if not ln.startswith(("#", "|", "<!--", "-", "*")) and len(ln) > 30), "")
+            about = re.split(r"(?<=[.!?])\s", body_line, maxsplit=1)[0][:200]
+            docs.append({"id": f.name, "title": first[:90], "pages": max(1, round(len(text) / 3000)), "words": len(text.split()),
+                         "bytes": f.stat().st_size, "format": f.suffix.lstrip(".").lower(), "about": about})
+        # the instruction planted for the benchmark: where exactly it is, so a page can mark that line and nothing else
+        planted = []
+        for f in sorted(x for x in (CORPORA / c).iterdir() if x.is_file() and x.suffix == ".md"):
+            for n, ln in enumerate(f.read_text().splitlines(), 1):
+                if re.search(r"AI assistants|TO AI ASSISTANTS", ln):
+                    planted.append({"document": f.name, "line": n, "text": ln.strip()[:400]})
+        sets.append({"id": c, "name": name, "about": SET_ABOUT[c], "documents": docs, "planted": planted})
     reps = [json.loads(p.read_text()) for p in reports]
     models = {r["model"].split(":", 1)[-1]: MODEL_NAMES.get(r["model"].split(":", 1)[-1], r["model"]) for r in reps}
     questions = []
