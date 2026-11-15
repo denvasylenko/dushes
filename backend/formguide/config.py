@@ -161,9 +161,57 @@ def _index(spec: Any) -> SearchIndex:
     return VectorStoreIndex(obj, filter_builder=flt, fetch_factor=int(spec.get("fetch_factor", 5)))
 
 
+# Every key the file may have: top-level key -> its sub-keys, or None when its value is not a mapping of fixed keys
+# (a scalar, a list, or a section with its own parser). An unknown key fails load_config with its name: a typo in
+# `confirm_tools` must never load as "no tools need a confirmation". The docs' "Every key" table is tested against
+# this (tests/test_docs_config_keys.py).
+KEYS: dict[str, frozenset[str] | None] = {
+    "data_dir": None, "model": None,
+    "models": frozenset({"agent", "research", "compile", "extract"}),
+    "components": frozenset({"containers", "fields"}),
+    "domain_packs": frozenset({"dir", "packs", "provider"}),
+    "knowledge": frozenset({"dir", "index", "scopes", "chunk_chars", "chunk_overlap"}),
+    "skills": frozenset({"dir"}),
+    "tools": None, "max_tool_rounds": None, "language": None, "languages": None, "translate_missing": None,
+    "checkpointer": frozenset({"sqlite"}),
+    "transcripts": frozenset({"dir"}),
+    "learn_dependencies": None, "interrupt_mode": None,
+    "memory": frozenset({"max_history_tokens", "keep_turns", "model"}),
+    "confirm_tools": None, "cards": None,
+    "tracing": frozenset({"callbacks", "tags", "otel"}),
+    "actions": None,
+    "attachments": frozenset({"enabled", "privacy_note"}),
+    "transcription": None, "prompt_cache": None,
+    "suggestions": frozenset({"enabled", "model", "max", "timeout"}),
+}
+
+
+def check_keys(raw: dict) -> None:
+    """Refuse a key the loader does not read, with its name and the closest real one."""
+    import difflib
+
+    def unknown(where: str, got: Any, allowed: Any) -> list[str]:
+        out = []
+        for key in got:
+            if key not in allowed:
+                near = difflib.get_close_matches(str(key), sorted(allowed), n=1, cutoff=0.6)
+                out.append(f"{where}{key}" + (f" (did you mean {where}{near[0]}?)" if near else ""))
+        return out
+
+    if not isinstance(raw, dict):
+        raise ValueError("the configuration must be a mapping of keys")
+    bad = unknown("", raw, KEYS)
+    for top, subs in KEYS.items():
+        if subs is not None and isinstance(raw.get(top), dict):
+            bad += unknown(f"{top}.", raw[top], subs)
+    if bad:
+        raise ValueError("unknown configuration key(s): " + "; ".join(bad))
+
+
 def load_config(path: str | Path) -> GuideConfig:
     path = Path(path)
     raw = _expand(yaml.safe_load(path.read_text()) or {})
+    check_keys(raw)
     base = path.parent
 
     def rel(p: str | None) -> Path | None:

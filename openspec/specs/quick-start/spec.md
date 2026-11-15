@@ -32,3 +32,10 @@ The package SHALL install with core dependencies only (LangGraph, LangChain core
 #### Scenario: Core-only install
 - **WHEN** formguide is installed without extras
 - **THEN** `import formguide` works and only the features that need an extra report what to install
+
+### Requirement: An unknown configuration key is refused
+`load_config` SHALL fail with the key's name, and the closest known key when there is one, for a top-level key or a key of a fixed section that the loader does not read. The accepted keys SHALL be listed in `formguide.config.KEYS`, and the documentation's key table SHALL be tested against it.
+
+#### Scenario: A typo in confirm_tools
+- **WHEN** a file has `confrim_tools: [send_form]`
+- **THEN** loading fails with "confrim_tools (did you mean confirm_tools?)", and no agent starts with a tool that needed a confirmation left unguarded
