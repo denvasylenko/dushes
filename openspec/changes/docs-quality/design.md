@@ -68,3 +68,21 @@ A reader with no context (a subagent that is given only the built site's pages) 
 ## Order
 
 1. Benchmark baseline on the published site. 2. Generated reference (the plugin's options first). 3. Glossary and names. 4. The new map with redirects. 5. Guides rewritten in reading order: Quickstart, Connect a form, Cards, Themes, the agent pages, the site pages. 6. Benchmark again after 2 and after 5.
+
+## Anatomy, examples, coding agents, Ask AI (the owner's request of 15.11; `anatomy.py` reproduces the counts)
+
+**Anatomy.** 69 reader pages: 50 guides, 8 concepts, 8 reference pages, 3 recipes. By section: Frontend 23 pages (16 plus 7 under "connect your form"), Agents 32 (shared 8, how it works 7, UI agent 6, site agent 4, researcher 3, recipes 3, overview 1), Get started 5, Reference 8, home 1. More than half of all code (85 of 271 examples) sits in the eight "shared" server pages.
+
+**Examples.** 271 code examples on 49 pages (Python 58, YAML 56, shell 32, JavaScript and TypeScript 57, JSON 19). Exactly one is a file that is run (the Quickstart's HTML); the other 270 are typed into the page and nothing checks that they work. Of the 49 pages with code, 16 have a diagram, 1 a picture and 4 something live; 111 examples are on pages with nothing to look at. There are three runnable example projects (plain HTML, react-hook-form, CopilotKit): none for Vue, the site agent, the hand-off or a form only in the chat. The Playground covers the chat's settings, and no example links into it.
+
+**Coding agents.** One setup prompt (landing and Quickstart); "Copy page", "Open in Claude" and "Open in ChatGPT" on every page; `llms.txt` (121 lines), `<page>.md` and `llms-full.txt` (679 KB, more than many agents can hold). No other guide has a prompt for its task, there is no file an agent can drop into a project (an `AGENTS.md` section or a skill), and no task-sized bundle of pages.
+
+**Ask AI.** It answers in one or two sentences and puts the rest in cards (one code block, steps, pages, a live card), from the six best BM25 passages of `llms-full.txt`. Its measured quality is seven scenarios on two topics (a cheaper research model; showing a card again), all passing. Nothing measures whether it can do the ten developer tasks, whether it says "not documented" when it is not, or how often it shows the wrong block. By design it cannot explain a "why" in more than two sentences or join a server part and a page part except as steps.
+
+### What follows
+
+- **Every example is a file that runs.** Examples move to `site/public/examples/` and `backend/demo/recipes/`, are included into the page, and CI runs them (a browser example loads without an error; a server example passes `formguide check`). A typed example fails the build.
+- **Every example shows its result and opens somewhere.** A browser example gets "what you see" (a live preview where the chat can run on the page, a picture where it cannot) and "Open in the playground" with its settings; a server example gets the recorded conversation it produces and its recipe folder.
+- **Runnable projects for the missing cases**: Vue, the site agent with a hand-off, a form only in the chat.
+- **A prompt on every guide**: "Copy for your coding agent", built like the setup prompt (it asks first, then writes, then checks), plus task bundles (`llms-<task>.txt`), and one file to drop into a project so an agent knows the product's rules.
+- **Ask AI is measured by the same ten tasks** as the docs benchmark, with the same keys, and on questions the docs do not answer. Then: longer answers when the question is "why" or "how does it work", both sides of a task in one answer, a link to the reference row of every name it shows, and a record of the questions it could not answer, which become docs work. Changes to how it answers go through Owner with a QA scenario that fails first.

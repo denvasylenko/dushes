@@ -26,3 +26,11 @@
 ## 6. Check
 - [ ] 6.1 Benchmark after 2 and after 5: 9 of 10 with no hints
 - [ ] 6.2 ux-auditor at 1280 and 390; build, links, exports, English, drift checks
+
+## 7. Examples, coding agents, Ask AI (the owner, 15.11)
+- [x] 7.1 Anatomy and counts (`anatomy.py`): 271 examples, one of them a run file; 4 pages with code have something live
+- [ ] 7.2 Every example is an included file that CI runs; a typed example fails the build
+- [ ] 7.3 Every example shows its result and opens in the playground or its recipe folder
+- [ ] 7.4 Runnable projects: Vue, site agent with hand-off, form only in the chat
+- [ ] 7.5 "Copy for your coding agent" on every guide; task bundles; a drop-in file for a project
+- [ ] 7.6 Ask AI on the ten tasks and on undocumented questions (QA's runner); then the changes, through Owner
