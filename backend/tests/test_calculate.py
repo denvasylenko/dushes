@@ -22,3 +22,9 @@ def test_the_prompt_says_how_to_explain_a_figure():
     core = " ".join(CORE.split())
     assert "say first that the form does not state its method" in core
     assert "so the form's method differs" in core and "with calculate" in core
+    assert "when a field note or the page facts state the method, give it as the form's own words" in core
+
+
+def test_a_locked_value_is_the_forms_value():
+    core = " ".join(CORE.split())
+    assert "is the form's real, current value" in core and "never call it a placeholder" in core

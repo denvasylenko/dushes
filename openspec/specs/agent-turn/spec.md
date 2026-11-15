@@ -151,9 +151,27 @@ When a run's state carries `ui.form_visible: false`, the agent SHALL be told the
 - **WHEN** a host runs a form with `ui.form_visible: false` and no flow hint about it
 - **THEN** the agent fills it through cards and never tells the person to look at the form
 
-### Requirement: Exact arithmetic and the form's method
-The form agent SHALL have a `calculate` tool (numbers, + - * / ** and parentheses only) and SHALL use it for every figure it states that the form or a tool did not return. Asked how the form arrives at a figure, it SHALL say first that the form does not state its method, MAY work a standard formula and call it "most likely" only when the result matches the form's figure to rounding, and otherwise SHALL say the form's method differs; it SHALL NOT state the form's method as a fact.
+### Requirement: Exact arithmetic
+The form agent SHALL have a `calculate` tool (numbers, + - * / ** and parentheses only) and SHALL use it for every figure it states that the form or a tool did not return.
+
+#### Scenario: Checking the user's sum
+- **WHEN** the user multiplies the form's payment of 19 069 by 36 and asks whether that is right
+- **THEN** the agent checks it with calculate and states the product, without a figure of its own
+
+### Requirement: The form's method
+Asked how the form arrives at a figure that no field note or page fact explains, the agent SHALL say first that the form does not state its method, MAY work a standard formula and call it "most likely" only when the result matches the form's figure to rounding, and otherwise SHALL say the form's method differs; it SHALL NOT state as a fact a method that no note or page fact gives.
 
 #### Scenario: Where a payment comes from
 - **WHEN** the form shows a payment of 19 069 for 500 000 over 36 months at 21.9% and the user asks how it is calculated
 - **THEN** the agent says the form does not state its method, works the annuity formula with calculate, and calls it most likely because it matches
+
+#### Scenario: A note gives the method
+- **WHEN** the payment field's note says "interest-only pays interest alone" and the user asks whether the figure is the annuity formula
+- **THEN** the agent gives the note's method as the form's own, without saying the form does not state it
+
+### Requirement: A value in a locked field is the form's value
+A value the form shows in a disabled or read-only field SHALL be stated plainly when the user asks for it. The agent SHALL NOT call it a placeholder, unavailable or not calculated yet, and SHALL look for a figure with `search_fields` before saying the form does not show one.
+
+#### Scenario: A payment in a locked summary
+- **WHEN** the summary section is locked, its calculated monthly payment shows 1000.00 and the user asks for the estimated payment
+- **THEN** the agent answers 1 000 as the form's estimate and does not say it is unavailable

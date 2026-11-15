@@ -51,3 +51,8 @@ def test_dushes_gives_the_form_agent_its_page(guide, model):
     seen = " ".join(_text for call in model.calls for m in call
                     for _text in [m.content if isinstance(m.content, str) else str(m.content)])
     assert f'<page_facts page="{here.title}"' in seen and here.facts()["sections"][0]["text"][:30] in seen
+
+
+def test_the_rule_forbids_adding_to_a_page_fact():
+    from formguide.agent.prompts import CORE
+    assert "Give a fact as the page words it and add nothing to it" in CORE
