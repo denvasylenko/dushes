@@ -5,6 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
+import json  # noqa: E402
+
 import evals  # noqa: E402
 import voice_bench as vb  # noqa: E402
 import voice_clips as vc  # noqa: E402
@@ -57,10 +59,103 @@ def test_a_mock_run_plays_a_scenario_end_to_end(tmp_path):
     assert garbled["turns"][0]["wer"] == 0
 
 
-def test_a_live_run_stops_before_it_spends():
+def test_a_live_run_stops_before_it_spends(monkeypatch):
     import pytest
-    with pytest.raises(SystemExit):
-        vb.LiveBridge()
+    monkeypatch.delenv("VOICE_BENCH_CODE", raising=False)
+    monkeypatch.setattr(sys, "argv", ["voice_bench.py", "--live", "--max-usd", "1"])
+    with pytest.raises(SystemExit):      # no host and no code: nothing is opened
+        vb.main()
+
+
+def test_the_live_bridge_plays_a_clip_through_the_socket_and_reads_the_run(tmp_path):
+    """The live path end to end without a provider and without money: the host's own /voice/stream with a scripted
+    provider behind it (as tests/test_voice.py does), the offline demo for the chat run, a real socket between."""
+    import asyncio
+    import base64
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+    from formguide import voice
+
+    class FakeLive:   # the provider's side: the test puts events in and reads what the bridge sent
+        def __init__(self):
+            self.inbox, self.sent, self.loop = asyncio.Queue(), [], asyncio.get_running_loop()
+
+        def push(self, **ev):
+            self.loop.call_soon_threadsafe(self.inbox.put_nowait, json.dumps(ev))
+
+        async def send(self, raw):
+            self.sent.append(json.loads(raw))
+
+        async def close(self):
+            self.inbox.put_nowait(None)
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            raw = await self.inbox.get()
+            if raw is None:
+                raise StopAsyncIteration
+            return raw
+
+    lives = []
+
+    async def opener(key, model, instructions):
+        lives.append(FakeLive())
+        return f"live_{len(lives)}", lives[-1]
+    talks = voice.Talks(voice.VoiceConfig(codes={"qa": "qa-test-code-0001"}), title="the demo", key=lambda: "k")
+    talks._stream_opener = opener
+    app = evals.offline_client(tmp_path).app
+    app.include_router(voice.create_voice_router(voice.watch(talks)), prefix="/voice")
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
+    threading.Thread(target=server.run, daemon=True).start()
+    until = time.monotonic() + 20
+    while not server.started and time.monotonic() < until:
+        time.sleep(0.05)
+    try:
+        sc = evals.load_scenario(vb.SCENARIOS / "voice_ask_car_insurance.yaml")
+        wav = tmp_path / "clip.wav"
+        import wave
+        with wave.open(str(wav), "wb") as w:
+            w.setnchannels(1), w.setsampwidth(2), w.setframerate(vb.SAMPLE_RATE)
+            w.writeframes((2000).to_bytes(2, "little", signed=True) * (vb.SAMPLE_RATE // 2))   # half a second of sound
+        manifest = [{"scenario": sc.name, "turn": 1, "text": sc.scripted[1], "file": str(wav), "seconds": 0.5}]
+        bridge = vb.LiveBridge(f"http://127.0.0.1:{port}", "qa-test-code-0001", max_usd=1.0)
+
+        def provider():   # hears the clip, hands the words over, then speaks the answer it is given
+            while not lives or not any(m["type"] == "session.input_audio.append" for m in lives[0].sent):
+                time.sleep(0.05)
+            live = lives[0]
+            time.sleep(0.8)
+            live.push(type="session.input_transcript.delta", delta=sc.scripted[1])
+            live.push(type="session.delegation.created", delegation={"id": "d1", "type": "delegation", "target": "client"})
+            until = time.monotonic() + 20
+            while time.monotonic() < until and not any("commentary" in m["type"] or "delegation" in m["type"] for m in live.sent):
+                time.sleep(0.05)
+            loud = base64.b64encode((3000).to_bytes(2, "little", signed=True) * 2400).decode()
+            for _ in range(3):
+                live.push(type="session.output_audio.delta", delta=loud)
+        threading.Thread(target=provider, daemon=True).start()
+        vb.END_OF_TURN, old = 0.5, vb.END_OF_TURN
+        try:
+            r = vb.play(sc, bridge, manifest)
+        finally:
+            vb.END_OF_TURN = old
+    finally:
+        server.should_exit = True
+        if talks in voice.HOSTS:
+            voice.HOSTS.remove(talks)
+    t = r["turns"][0]
+    assert t["heard"] == sc.scripted[1] and t["wer"] == 0 and not t["error"]
+    assert t["first_step_s"] is not None and t["useful_s"] is not None and t["first_sound_s"] is not None
+    assert "Offline answer" in r["transcript"]                 # the ordinary chat run of the same thread was read
+    assert r["cost_usd"] is not None and r["connected_s"] > 0 and bridge.spent > 0
 
 
 def test_sound_is_found_by_level_not_by_the_first_frame():

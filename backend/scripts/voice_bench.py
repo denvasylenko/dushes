@@ -2,7 +2,7 @@
 
     uv run python scripts/voice_bench.py --mock                       # no session, no key, no money: the plumbing
     uv run python scripts/voice_bench.py --mock voice_fill_toyota     # one scenario
-    uv run python scripts/voice_bench.py --live --max-usd 3.00        # a real session (needs the owner's yes and the bridge)
+    uv run python scripts/voice_bench.py --live --base http://127.0.0.1:8097 --max-usd 1.40   # real sessions (the owner's yes)
 
 A scenario (evals/voice/*.yaml) is a chat scenario whose scripted lines are spoken: each line is a clip recorded once
 by scripts/voice_clips.py with the Mac's own voice. Nothing here calls a model to play the person.
@@ -12,8 +12,11 @@ Two bridges:
            offline demo (a one-line model), and "speaks" the first sentence of the reply. Times are those of this
            process, the voice's delays are fixed numbers. It proves the runner, the scenarios, the checks and the
            report; its task results say nothing about the product.
-  --live   formguide.voice over its server-to-server transport. Not built yet: the runner states what it needs and
-           stops. A paid voice run needs the owner's yes with a price (the CPO relays it) and a stop sum.
+  --live   formguide.voice over its one WebSocket (GET <host>/voice/stream, the socket a native app uses): the clip
+           goes in as a microphone would send it, the voice's audio and the conversation's events come back, and on
+           every "heard" the runner posts the ordinary chat run in the same thread, as the widget does. It needs a
+           host with voice on (--base) and one of its codes in VOICE_BENCH_CODE (a test code of your own stand, in
+           the environment, never in a file). A paid voice run needs the owner's yes with a price and a stop sum.
 
 Measured per spoken line: what was heard against what was said (word error rate; numbers and names exactly), the
 time from the end of speech to the first sound, to the first step on screen and to the first useful sentence; for an
@@ -25,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import statistics
 import sys
@@ -65,6 +69,8 @@ class Session:
     turns: list[Turn] = field(default_factory=list)
     connected_s: float = 0.0
     visit: Any = None                      # the chat-side view of the same conversation: the checks read it
+    cost_usd: float | None = None          # live: what the host says the conversation cost (voice seconds and the agent's turns)
+    line: Any = None                       # live: the open socket
 
 
 # ===================================================================== what was heard
@@ -167,7 +173,7 @@ class MockBridge:
             visit.form.apply(sc.values)
         return Session(visit=visit, connected_s=0.0)
 
-    def say(self, s: Session, clip: dict, cut_in: bool) -> Turn:
+    def say(self, s: Session, clip: dict, cut_in: bool, then_cut_in: bool = False) -> Turn:
         t = Turn(said=clip["text"], clip_seconds=float(clip.get("seconds") or 0), cut_in=cut_in)
         t.heard = re.sub(r"\d", "0", clip["text"]) if self.garble else clip["text"]
         before = len(s.visit.replies)
@@ -191,21 +197,185 @@ class MockBridge:
         s.visit.finish()
 
 
-class LiveBridge:
-    """formguide.voice over its server-to-server transport. It needs, from the bridge: audio in and out as frames,
-    the bridge's clock on every event (end of speech, delegation, run started, first text, result handed over, first
-    audio out, response finished), the text heard and spoken, the Dushes turn's AG-UI events and thread, connected
-    seconds and run_stats, a fixed voice and language, an event for an interruption, and a stop sum."""
-    name = "live"
+class StopSum(Exception):
+    """The stop sum is reached: no more sessions are opened."""
 
-    def __init__(self, *_a: Any, **_k: Any):
+
+class Line:
+    """One open /voice/stream socket: a thread reads what comes back (events and audio, each with this process's
+    clock), another sends a 100 ms piece every 100 ms, the clip's while one plays and silence otherwise, so the
+    socket is a live microphone from the first moment to the last."""
+
+    def __init__(self, ws: Any):
+        import queue
+        import threading
+        self.ws, self.t0 = ws, time.monotonic()
+        self.events: list[tuple[float, dict]] = []
+        self.frames: list[tuple[float, bytes]] = []
+        self._out: Any = queue.Queue()
+        self.alive = True
+        self.marks: dict[str, float] = {}
+        threading.Thread(target=self._read, daemon=True).start()
+        threading.Thread(target=self._feed, daemon=True).start()
+
+    def now(self) -> float:
+        return time.monotonic() - self.t0
+
+    def _read(self) -> None:
         try:
-            import formguide.voice  # noqa: F401
-        except ImportError:
-            raise SystemExit("formguide.voice is not in this checkout: the live voice run waits for the bridge. "
-                             "Use --mock to run the scenarios against the scripted voice.") from None
-        raise SystemExit("the live bridge's transport is not wired into this runner yet (it is written against the "
-                         "bridge once it exists); and a paid voice run needs the owner's yes with a price.")
+            for m in self.ws:
+                if isinstance(m, bytes):
+                    self.frames.append((self.now(), m))
+                else:
+                    self.events.append((self.now(), json.loads(m)))
+        except Exception:  # noqa: BLE001 - the socket closed
+            pass
+        self.alive = False
+
+    def _feed(self) -> None:
+        import queue
+        due = time.monotonic()
+        while self.alive:
+            try:
+                piece, mark = self._out.get_nowait()
+            except queue.Empty:
+                piece, mark = b"\x00" * CHUNK, None
+            try:
+                self.ws.send(piece)
+            except Exception:  # noqa: BLE001
+                break
+            if mark:
+                self.marks[mark] = self.now()
+            due += 0.1
+            time.sleep(max(0.0, due - time.monotonic()))
+
+    def speak(self, pcm: bytes, tag: str) -> tuple[float, float]:
+        """Plays a clip into the socket at real-time pace; returns when its last piece went: (start, end)."""
+        body = pieces(pcm, 0, 0)
+        for n, piece in enumerate(body):
+            self._out.put((piece, f"{tag}:start" if n == 0 else f"{tag}:end" if n == len(body) - 1 else None))
+        while f"{tag}:end" not in self.marks and self.alive:
+            time.sleep(0.05)
+        return self.marks.get(f"{tag}:start", self.now()), self.marks.get(f"{tag}:end", self.now())
+
+    def last_sound(self, since: float = 0.0) -> float | None:
+        return next((t for t, pcm in reversed(self.frames) if t >= since and is_sound(pcm)), None)
+
+    def quiet_now(self, for_seconds: float = 1.0) -> bool:
+        last = self.last_sound()
+        return last is None or self.now() - last > for_seconds
+
+
+class LiveBridge:
+    """formguide.voice over its one WebSocket (the route a native app uses): audio in and out as raw PCM16 mono
+    24 kHz, the conversation's events beside it. On "heard" the runner posts the ordinary chat run in the same thread
+    (the Visit), so every chat check reads that run. One session a scenario. Times are from this process's clock:
+    the end of speech is the moment the clip's last piece was sent."""
+    name = "live"
+    HEAR_WAIT, ANSWER_WAIT = 20.0, 90.0    # seconds: for the words to be heard, for the answer to be over
+
+    def __init__(self, base: str, code: str, max_usd: float):
+        import uuid
+
+        import httpx
+        self.base, self.max_usd, self.spent, self.failed_starts = base.rstrip("/"), max_usd, 0.0, 0
+        self.http = httpx.Client(base_url=self.base, timeout=180, headers={"X-Demo-Visitor": f"qa-{uuid.uuid4().hex[:8]}"})
+        r = self.http.post("/voice/unlock", json={"code": code})
+        if r.status_code != 200:
+            raise SystemExit(f"{self.base}/voice/unlock answered {r.status_code}: is voice on at this host (VOICE_CODES), and is VOICE_BENCH_CODE one of its codes?")
+        self.token = r.json()["pass"]
+
+    def open(self, sc: Any) -> Session:
+        import evals
+        from harness_client import Visit
+        from websockets.sync.client import connect
+        if self.spent >= self.max_usd:
+            raise StopSum(f"${self.spent:.2f} spent, the stop sum is ${self.max_usd:.2f}")
+        visit = Visit(self.http, sc.page, answer=evals.RuleGuest(sc).choose, site=sc.site)
+        visit.ticks = set()              # by voice no consent is ever ticked: a tick is a tap
+        if sc.values and visit.form:
+            visit.form.apply(sc.values)
+        ws = connect(self.base.replace("http", "ws", 1) + f"/voice/stream?thread_id={visit.thread}",
+                     additional_headers={"X-Voice-Pass": self.token}, max_size=None, open_timeout=30)
+        first = json.loads(ws.recv(timeout=40))
+        if first.get("type") != "started":
+            self.failed_starts += 1
+            self.spent += OPEN_SECONDS / 60 * 0.05   # not stated whether a failed start is billed: counted as billed
+            ws.close()
+            raise RuntimeError(f"the conversation did not start: {json.dumps(first)[:200]}")
+        return Session(visit=visit, line=Line(ws))
+
+    def say(self, s: Session, clip: dict, cut_in: bool, then_cut_in: bool = False) -> Turn:
+        L: Line = s.line
+        t = Turn(said=clip["text"], clip_seconds=float(clip.get("seconds") or 0), cut_in=cut_in)
+        s.turns.append(t)
+        if not cut_in:                   # a new line waits until the voice is silent; a cut-in speaks over it
+            until = L.now() + 15
+            while not L.quiet_now() and L.now() < until:
+                time.sleep(0.1)
+        seen = len(L.events)
+        start, end = L.speak(pcm_of(Path(clip["file"]) if Path(clip["file"]).is_absolute() else CLIPS / clip["file"]), f"turn{len(s.turns)}")
+        heard_at = answered = None
+        while L.alive:
+            for at, ev in L.events[seen:]:
+                seen += 1
+                kind = ev.get("type")
+                if kind == "heard" and str(ev.get("text") or "").strip():
+                    t.heard = (t.heard + " " + ev["text"]).strip()
+                    heard_at = heard_at if heard_at is not None else at
+                    if not ev.get("answers"):    # the widget sends what was heard as an ordinary message of the same thread
+                        try:
+                            s.visit.say(ev["text"])
+                        except Exception as e:  # noqa: BLE001
+                            t.error = f"{type(e).__name__}: {e}"[:200]
+                elif kind == "result":
+                    answered = at
+                    t.spoken = str(ev.get("text") or "")
+                elif kind == "interrupted" and cut_in:
+                    t.cancelled = True
+                elif kind in ("error", "ended"):
+                    t.error = t.error or f"{kind}: {json.dumps(ev)[:160]}"
+            now = L.now()
+            if t.error and "ended" in t.error:
+                break
+            if heard_at is None and now - end > self.HEAR_WAIT:
+                t.error = t.error or f"nothing was heard in {self.HEAR_WAIT:.0f} s"
+                break
+            if answered is not None and then_cut_in and L.last_sound(answered) is not None:
+                break                    # the answer has started to sound: the next line speaks over it
+            if turn_over(L.last_sound(end), now, answered) or now - end > self.ANSWER_WAIT:
+                break
+            time.sleep(0.1)
+        sounds = sound_times(L.frames, end)
+        t.first_sound_s = sounds["first"]
+        t.first_step_s = round(heard_at - end, 2) if heard_at is not None else None      # the words arrive: the run starts
+        t.useful_s = round(answered - end, 2) if answered is not None else None           # the answer is handed to the voice
+        if cut_in:                       # from the cut-in's first piece to the voice falling silent
+            loud = [at for at, pcm in L.frames if at >= start and is_sound(pcm)]
+            gap = next((a for a, b in zip(loud, loud[1:] + [L.now() + 9]) if b - a > 0.5), None)
+            t.silence_s = round(max(0.0, (gap if gap is not None else start) - start), 2)
+            t.cancelled = bool(t.cancelled)
+        return t
+
+    def close(self, s: Session) -> None:
+        L: Line = s.line
+        try:
+            L.ws.send(json.dumps({"type": "end"}))
+        except Exception:  # noqa: BLE001
+            pass
+        until = time.monotonic() + 15
+        ended = None
+        while time.monotonic() < until and ended is None:
+            ended = next((ev for _at, ev in L.events if ev.get("type") == "ended"), None)
+            time.sleep(0.1)
+        try:
+            L.ws.close()
+        except Exception:  # noqa: BLE001
+            pass
+        s.connected_s = float((ended or {}).get("seconds") or L.now())
+        s.cost_usd = (ended or {}).get("cost_usd")
+        self.spent += float(s.cost_usd if s.cost_usd is not None else s.connected_s / 60 * 0.05)
+        s.visit.finish()
 
 
 # ===================================================================== one scenario, the report
@@ -234,9 +404,12 @@ def play(sc: Any, bridge: Any, manifest: list[dict]) -> dict:
     import evals
     s = bridge.open(sc)
     cut = "interruption" in sc.tags
-    for n, clip in enumerate(clips_for(sc, manifest)):
-        bridge.say(s, clip, cut_in=cut and n > 0)
-    bridge.close(s)
+    mine = clips_for(sc, manifest)
+    try:
+        for n, clip in enumerate(mine):
+            bridge.say(s, clip, cut_in=cut and n > 0, then_cut_in=cut and n + 1 < len(mine))
+    finally:                             # a session that was opened is always closed: an open one is billed
+        bridge.close(s)
     checks = evals.checks(sc, s.visit)
     turns = []
     for t in s.turns:
@@ -246,7 +419,7 @@ def play(sc: Any, bridge: Any, manifest: list[dict]) -> dict:
     hard = hard_outcome(sc, s.visit) if "hard" in sc.tags else None
     return {"hard": hard, "name": sc.name, "group": sc.tags[1] if len(sc.tags) > 1 else "", "lang": sc.tags[2] if len(sc.tags) > 2 else "en",
             "turns": turns, "checks": checks, "ok": all(c.get("ok") for c in checks) and not any(t.error for t in s.turns),
-            "connected_s": round(s.connected_s, 1), "agent_tokens": dict(tok), "transcript": s.visit.transcript()}
+            "connected_s": round(s.connected_s, 1), "cost_usd": s.cost_usd, "agent_tokens": dict(tok), "transcript": s.visit.transcript()}
 
 
 def _q(xs: list[float], p: float) -> float | None:
@@ -274,6 +447,7 @@ def metrics(results: list[dict], usd_per_minute: float, agent_usd: float) -> dic
         "hard": {k: sum(1 for r in results if r.get("hard") == k) for k in ("exact", "asked", "wrong")},
         "failed_starts": sum(1 for r in results if not r["turns"] or all(t["error"] for t in r["turns"])),
         "cut_ins": len(cuts), "cut_ins_cancelled": sum(1 for t in cuts if t["cancelled"]), "silence_p50": _q([t["silence_s"] for t in cuts], 0.5),
+        "host_usd": round(sum(r["cost_usd"] for r in results if r.get("cost_usd") is not None), 4) if any(r.get("cost_usd") is not None for r in results) else None,
         "connected_minutes": round(seconds / 60, 2), "voice_usd": voice_usd, "agent_usd": round(agent_usd, 4),
         "usd_per_task": round((voice_usd + agent_usd) / max(1, len(results)), 4),
         "usd_per_minute": round((voice_usd + agent_usd) / max(0.01, seconds / 60), 4),
@@ -299,6 +473,7 @@ def report_md(rep: dict) -> str:
              f"| interruptions: the turn cancelled | {m['cut_ins_cancelled']} of {m['cut_ins']} (silence after p50 {m['silence_p50']} s) |",
              f"| billed minutes (a session is at least {OPEN_SECONDS} s) | {m['connected_minutes']} |",
              f"| sessions that did not start (counted as {OPEN_SECONDS} s each) | {m['failed_starts']} |",
+             f"| dollars the host reports (voice seconds and the agent's turns) | {m['host_usd']} |",
              f"| dollars: voice / agent | {m['voice_usd']} / {m['agent_usd']} |",
              f"| dollars a task / a connected minute | {m['usd_per_task']} / {m['usd_per_minute']} |", "",
              "By group and language (tasks that pass): " + ", ".join(f"{k} {a}/{b}" for k, (a, b) in m["by"].items()), "", "## Failed", ""]
@@ -321,9 +496,10 @@ def main() -> int:
     ap.add_argument("--max-usd", type=float, help="--live: stop opening sessions once this much is spent")
     ap.add_argument("--usd-per-minute", type=float, default=0.05, help="the voice's price per connected minute")
     ap.add_argument("--label", default="")
+    ap.add_argument("--base", help="--live: the host with voice on, e.g. http://127.0.0.1:8097 (a stand of your own, never production)")
     a = ap.parse_args()
-    if a.live and a.max_usd is None:
-        sys.exit("a live voice run needs --max-usd (and the owner's yes with a price)")
+    if a.live and (a.max_usd is None or not a.base or not os.environ.get("VOICE_BENCH_CODE")):
+        sys.exit("a live voice run needs --base, --max-usd and VOICE_BENCH_CODE in the environment (and the owner's yes with a price)")
     import evals
     mf = CLIPS / f"manifest-pass{a.pass_no}.json"
     if not mf.exists():
@@ -335,9 +511,18 @@ def main() -> int:
         sys.exit("no scenarios match")
     results = []
     with tempfile.TemporaryDirectory() as tmp:
-        bridge = MockBridge(Path(tmp), a.garble) if a.mock else LiveBridge()
+        bridge = MockBridge(Path(tmp), a.garble) if a.mock else LiveBridge(a.base, os.environ["VOICE_BENCH_CODE"], a.max_usd)
         for sc in scs:
-            r = play(sc, bridge, manifest)
+            try:
+                r = play(sc, bridge, manifest)
+            except StopSum as e:
+                print(f"stopped: {e}; {len(scs) - len(results)} scenarios not run", flush=True)
+                break
+            except RuntimeError as e:   # a conversation that did not start: counted, the run goes on
+                print(f"\u274c {sc.name:<30} {e}", flush=True)
+                results.append({"name": sc.name, "group": sc.tags[1], "lang": sc.tags[2], "turns": [], "checks": [], "ok": False, "hard": None,
+                                "connected_s": 0.0, "cost_usd": None, "agent_tokens": {}, "transcript": str(e)})
+                continue
             results.append(r)
             t = r["turns"][-1]
             print(f"{'✅' if r['ok'] else '❌'} {sc.name:<30} {r['group']:<12} {r['lang']}  wer {max(x['wer'] for x in r['turns']):.2f}  "

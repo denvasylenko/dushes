@@ -5,16 +5,18 @@ how long do they wait for a sound and for a useful sentence, what does a task co
 the assistant. The agent behind the voice is the same Dushes agent as in chat (design B of
 `openspec/changes/voice-mode/design.md`), so every existing rule keeps its meaning and its check.
 
-Status: prepared, not run live. The set (`voice-v1.txt`, 52 scenarios), the clip recorder and the runner exist and a
-mock run passes end to end; the live run waits for `formguide.voice`'s server-to-server transport and for the owner's
-yes with a price (every paid voice test needs it; the CPO relays it). The speaker is a set of recorded clips, never
-a second model: the API pays for the voice session and the agent, nothing else.
+Status: ready to run live, not run yet. The set (`voice-v1.txt`, 52 scenarios), the clip recorder and the runner
+exist; a mock run passes end to end, and the live path (the host's `/voice/stream` socket, the one a native app uses)
+passes a test with a scripted provider behind the real socket. Every paid voice run needs the owner's yes with a
+price, relayed by the CPO. The speaker is a set of recorded clips, never a second model: the API pays for the voice
+session and the agent, nothing else.
 
 ```bash
 cd backend
 uv run python scripts/voice_clips.py            # record the 68 clips with the Mac's voices (free; scripts/runs/voice-clips/)
 uv run python scripts/voice_bench.py --mock     # the scripted voice over an offline demo: the plumbing, free
-uv run python scripts/voice_bench.py --live --max-usd 1.40 --set evals/voice/voice-v1-en.txt   # not yet: the bridge, and the owner's yes
+VOICE_BENCH_CODE=... uv run python scripts/voice_bench.py --live --base http://127.0.0.1:8097 --max-usd 1.40 --set evals/voice/voice-v1-en.txt
+# --base: a stand of your own with voice on (VOICE_CODES, VOICE_DAY_USD as a second stop); the code is one of its test codes, in the environment only
 ```
 
 **English first** (the owner, 2026-11-15): the live passes run on the 34 English scenarios, `voice-v1-en.txt`
