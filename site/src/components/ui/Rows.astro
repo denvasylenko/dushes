@@ -1,0 +1,11 @@
+---
+/**
+ * Rows: an iOS inset grouped list. Rows sit in one rounded group with a hairline between them. Use it for a list of
+ * tappable choices whose text runs to several lines, such as questions to try or pages to open. A pill Button would
+ * wrap into a tall capsule there. `label` names the group for screen readers (and shows above it when `title`).
+ */
+interface Props { label?: string; title?: boolean; class?: string; [attr: string]: unknown }
+const { label, title = false, class: cls, ...rest } = Astro.props
+---
+{title && label && <p class="ui-rows-title">{label}</p>}
+<div class:list={['ui-rows', cls]} role="list" aria-label={label} {...rest}><slot /></div>

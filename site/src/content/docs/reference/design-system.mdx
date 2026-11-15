@@ -4,7 +4,7 @@ description: 'Every control the docs use, live in light and dark, with the snipp
 ---
 import { LinkCard as SlLinkCard, CardGrid } from '@astrojs/starlight/components';
 import SearchSpecimen from '../../../components/SearchSpecimen.astro';
-import { Badge, Button, Compare, Entries, Entry, Masonry, Icon, Metric, Metrics, Param, ParamList, SectionTabs, Select, SourceList, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
+import { Badge, Button, Compare, Entries, Entry, Masonry, Icon, Metric, Metrics, Param, ParamList, Row, Rows, SectionTabs, Select, SourceList, Summary, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, LinkCard, Menu, Range, Segmented, Specimen, Swatches, Tile } from '../../../components/ui';
 
 Every piece of interface on this site comes from one folder, `site/src/components/ui/`. Each primitive is shaped like its Apple counterpart, built from the tokens in `site/src/styles/theme.css`, and shown below working. A new pattern is added there first and shown on this page, then used.
 
@@ -89,11 +89,14 @@ Two to five exclusive views or modes, like iOS: a track with a raised thumb. Use
 <Specimen layout="col">
   <Segmented label="Scheme" options={[['light', 'Light'], ['dark', 'Dark']]} value="dark" />
   <Segmented options={[['inline', 'Inline'], ['floating', 'Floating'], ['sheet', 'Sheet']]} inline />
+  <Segmented label="Answered by (example)" options={[['haiku', 'Claude Haiku 5.5'], ['luna', 'Luna'], ['both', 'Both']]} />
 </Specimen>
 
 ```astro
 <Segmented label="Scheme" options={[['light', 'Light'], ['dark', 'Dark']]} value="dark" />
 ```
+
+Each segment grows from its own label and the spare width is shared, so a long label such as a model name keeps its air instead of being squeezed into an equal share.
 
 ## Disclosure
 
@@ -211,13 +214,18 @@ A short status word or a count. **Accent** for "new", **ok** and **warn** only w
   <Badge variant="ok">Filled</Badge>
   <Badge variant="warn">Needs a look</Badge>
   <Badge mono>ask_user</Badge>
+  <Badge variant="ok" icon="check">Met</Badge>
+  <Badge icon="close">Not met</Badge>
   <span class="ui-dot" aria-hidden="true"></span>
 </Specimen>
 
 ```astro
 <Badge variant="accent">New</Badge>
 <Badge mono>ask_user</Badge>
+<Badge variant="ok" icon="check">Met</Badge>
 ```
+
+`icon` puts a glyph before the word, so a status such as met or not met never rests on colour alone.
 
 ## Summary
 
@@ -372,6 +380,32 @@ import { SectionTabs } from './ui'
 ```
 
 The header (`components/Header.astro`) feeds it from `starlight-sidebar-topics`. Its row is part of `--sl-nav-height` on a computer, so the sidebar, the page, **On this page** and anchor scrolling all start below it.
+
+## Rows
+
+A list of tappable choices whose text runs to several lines: an iOS inset grouped list. The rows sit in one rounded group with a hairline between them. Each row has an optional caption above its text (the kind, a section) and a chevron at the right. Use it where a pill Button would wrap into a tall capsule, such as questions to try or pages to open.
+- A row is a button, or a link with `href`. `aria-pressed` or `aria-current` marks the chosen one with the soft accent.
+- Every row is at least 44 px tall. `hidden` on a row removes its cell.
+
+<Specimen layout="col">
+  <div style="width:min(100%,30rem)">
+    <Rows label="Questions to try (example)">
+      <Row caption="Comparison">Which of these two loan offers costs less over five years, counting the fees?</Row>
+      <Row caption="Fact" aria-pressed="true">What is the current base rate, and when did it last change?</Row>
+      <Row caption="Open question">What should a first-time buyer check before signing?</Row>
+    </Rows>
+  </div>
+</Specimen>
+
+```astro
+---
+import { Row, Rows } from './ui'
+---
+<Rows label="Questions to try">
+  <Row caption="Comparison" data-q="q1">Which of these two loan offers costs less over five years?</Row>
+  <Row caption="Fact" data-q="q2">What is the current base rate?</Row>
+</Rows>
+```
 
 ## Parameter list
 

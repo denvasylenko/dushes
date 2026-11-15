@@ -1,0 +1,18 @@
+---
+/**
+ * Row: one cell of a Rows group, like an iOS list cell. Its text can run to several lines; `caption` is a small line
+ * above it (the kind, a section); a chevron at the right says it opens or shows something (on by default, `chevron=
+ * {false}` drops it). An `href` makes it a link, otherwise it is a button. `aria-pressed` or `aria-current` on it marks
+ * the chosen one with the soft accent. At least 44 px tall.
+ */
+import Icon from './Icon.astro'
+interface Props { caption?: string; href?: string; chevron?: boolean; class?: string; [attr: string]: unknown }
+const { caption, href, chevron = true, class: cls, ...rest } = Astro.props
+const Tag = href ? 'a' : 'button'
+---
+<div class="ui-row-item" role="listitem">
+  <Tag class:list={['ui-row', cls]} href={href} type={href ? undefined : 'button'} {...rest}>
+    <span class="ui-row-body">{caption && <span class="ui-row-cap">{caption}</span>}<span class="ui-row-text"><slot /></span></span>
+    {chevron && <Icon name="chevron" class="ui-row-chev" />}
+  </Tag>
+</div>

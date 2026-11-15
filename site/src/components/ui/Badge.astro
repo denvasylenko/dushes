@@ -1,6 +1,9 @@
 ---
-/** Badge: a short status word or a count. `mono` for a code name. */
-interface Props { variant?: 'neutral' | 'accent' | 'ok' | 'warn'; mono?: boolean; class?: string }
-const { variant = 'neutral', mono = false, class: cls } = Astro.props
+/** Badge: a short status word or a count. `mono` for a code name. `icon` puts a glyph before the word (a check for
+ * "met", a cross for "not met"), so the status never rests on colour alone. */
+import Icon from './Icon.astro'
+import type { IconName } from './icons'
+interface Props { variant?: 'neutral' | 'accent' | 'ok' | 'warn'; mono?: boolean; icon?: IconName; class?: string }
+const { variant = 'neutral', mono = false, icon, class: cls } = Astro.props
 ---
-<span class:list={['ui-badge', variant !== 'neutral' && `ui-badge--${variant}`, { 'ui-badge--mono': mono }, cls]}><slot /></span>
+<span class:list={['ui-badge', variant !== 'neutral' && `ui-badge--${variant}`, { 'ui-badge--mono': mono }, cls]}>{icon && <Icon name={icon} />}<slot /></span>

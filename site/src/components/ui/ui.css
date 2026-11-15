@@ -75,7 +75,7 @@
 /* ---------- Segmented control: two to five exclusive views (role=radiogroup) ---------- */
 .ui-seg { display: flex; padding: 2px; gap: 2px; border-radius: var(--fg-r-pill); background: var(--fg-fill); }
 .ui-seg > button {
-  flex: 1; min-width: 0; min-height: calc(var(--fg-h-sm) - 4px); padding: 0 12px; border: 0; border-radius: var(--fg-r-pill);
+  flex: 1 1 auto; min-width: 0; min-height: calc(var(--fg-h-sm) - 4px); padding: 0 12px;   /* grows from its label, so a long one keeps its air */ border: 0; border-radius: var(--fg-r-pill);
   background: none; color: var(--fg-ink-2); font: 500 var(--fg-fs-sub)/1.2 var(--sl-font); cursor: pointer; white-space: nowrap;
   transition: background var(--fg-dur-quick) var(--fg-ease), color var(--fg-dur-instant), box-shadow var(--fg-dur-quick);
 }
@@ -220,6 +220,7 @@
 .ui-badge--ok { background: color-mix(in srgb, var(--sl-color-green) 18%, transparent); color: var(--fg-ok); }
 .ui-badge--warn { background: color-mix(in srgb, var(--sl-color-orange) 18%, transparent); color: var(--fg-warn); }
 .ui-badge--mono { font: 500 var(--fg-fs-footnote)/1.2 var(--sl-font-mono); letter-spacing: 0; }
+.ui-badge .ui-icon { font-size: 12px; stroke-width: 2; }
 .ui-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 999px; background: var(--fg-accent); }
 
 /* ---------- Summary: "at a glance" rows at the top of a guide (label column muted, value column text) ---------- */
@@ -558,3 +559,25 @@ html.ui-select-lock { overflow: hidden; }
 .ui-params-returns { padding-top: 16px; }
 .sl-markdown-content .ui-params .ui-params-returns .ui-param-desc { margin-top: 8px; }
 .sl-markdown-content .ui-params .ui-params-example { margin-top: 12px; }
+
+/* ---------- Rows: an iOS inset grouped list of tappable, multi-line cells ---------- */
+.ui-rows-title { margin: 0 0 6px 16px; font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); }
+.ui-rows { display: flex; flex-direction: column; border-radius: var(--fg-r-card); background: var(--fg-surface); box-shadow: inset 0 0 0 1px var(--fg-line); overflow: hidden; }
+.sl-markdown-content .ui-rows, .sl-markdown-content .ui-rows * { margin-top: 0; }
+.ui-row-item:has(> .ui-row[hidden]) { display: none; }
+.ui-row-item + .ui-row-item .ui-row { box-shadow: inset 0 1px 0 var(--fg-line); }   /* the hairline between cells */
+.ui-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--fg-h-lg); padding: 10px 12px 10px 16px;
+  border: 0; background: none; color: var(--fg-ink); text-align: start; text-decoration: none; cursor: pointer;
+  font: 400 var(--fg-fs-callout)/1.4 var(--sl-font); transition: background-color var(--fg-dur-instant) var(--fg-ease);
+}
+.ui-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ui-row-cap { font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); }
+.ui-row-text { overflow-wrap: anywhere; }
+.ui-row-chev { flex: none; font-size: 14px; color: var(--fg-ink-3); transition: transform var(--fg-dur-quick) var(--fg-ease); }
+@media (hover: hover) { .ui-row:hover { background: var(--fg-fill); } .ui-row:hover .ui-row-chev { transform: translateX(2px); } }
+.ui-row:active { background: var(--fg-fill-2); }
+.ui-row:focus-visible { outline: 3px solid var(--fg-focus); outline-offset: -3px; }
+.ui-row:is([aria-pressed='true'], [aria-current]) { background: var(--fg-accent-soft); }
+.ui-row:is([aria-pressed='true'], [aria-current]) .ui-row-cap { color: var(--fg-accent-ink); }
+@media (prefers-reduced-motion: reduce) { .ui-row, .ui-row-chev { transition: none; } }
