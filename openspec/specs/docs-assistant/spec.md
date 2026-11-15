@@ -146,3 +146,10 @@ In the researcher demo a detailed answer SHALL be sent as text deltas while the 
 #### Scenario: A detailed question
 - **WHEN** a visitor asks a question the demo answers in detail
 - **THEN** the first words of the answer arrive before the answer is complete, and the list of sources arrives after its last word
+
+### Requirement: A demo source opens the whole document
+In the researcher demo every source of a published set SHALL carry a `url` to that document's page on the docs site: a Markdown document at the heading of the cited section, a PDF at the cited page. A set that has no such pages SHALL get no link. The address SHALL be configurable on the host and removable.
+
+#### Scenario: A source from a manual
+- **WHEN** an answer cites a section of a Markdown document of a published set
+- **THEN** the source's `url` opens that document's page and the browser shows the section's heading

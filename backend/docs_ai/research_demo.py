@@ -89,6 +89,32 @@ def set_ids() -> list[str]:
     return found if os.environ.get("RESEARCH_DEMO_DIR") else [s for s in PUBLIC if s in found]
 
 
+def linked(set_id: str, items: list[dict]) -> list[dict]:
+    """The sources with a link to the whole document on the docs site (/research-documents/<set>/<name>/, built
+    from the same files): a Markdown page opens at the section's heading (a text fragment: the browser scrolls to
+    it and marks it), a PDF at its page. Only the published sets have such pages; RESEARCH_DOCS_URL moves or, when
+    empty, removes the links."""
+    from urllib.parse import quote
+    base = os.environ.get("RESEARCH_DOCS_URL", "/research-documents/")
+    if not base or set_id not in PUBLIC:
+        return items
+    out = []
+    for it in items:
+        name = str(it.get("title") or "")
+        if not name or it.get("url"):
+            out.append(it)
+            continue
+        if name.lower().endswith(".pdf"):
+            url = f"{base}{set_id}/{quote(name)}" + (f"#page={it['page']}" if it.get("page") else "")
+        else:
+            heading = re.split(r"\s*[\u203a>]\s*", str(it.get("section") or ""))[-1].strip()
+            stem = name[:-3] if name.lower().endswith(".md") else name
+            # "-" is syntax inside a text fragment, so it is escaped too
+            url = f"{base}{set_id}/{quote(stem)}/" + (f"#:~:text={quote(heading, safe='').replace('-', '%2D')}" if heading else "")
+        out.append({**it, "url": url})
+    return out
+
+
 def set_name(set_id: str) -> str:
     return PUBLIC.get(set_id) or set_id.replace("_", " ").capitalize()
 
@@ -207,7 +233,7 @@ def create_router(guide: Any) -> APIRouter:
                 return
             cited = [hits[n - 1] for n in dict.fromkeys(int(x) for x in _CITED.findall(text)) if 0 < n <= len(hits)] if hits else []
             named = [{"n": hits.index(c) + 1, "title": c.title, "section": c.section} for c in cited]
-            items = research.with_passages(named, text, kb, ns)
+            items = linked(set_id, research.with_passages(named, text, kb, ns))
             if items:
                 yield {"type": "CUSTOM", "name": "sources", "value": {"items": items}}
             yield {"type": "CUSTOM", "name": "suggestions", "value": {"items": [DEEPER]}}   # the full answer, on request
@@ -278,8 +304,8 @@ def create_router(guide: Any) -> APIRouter:
                 yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
                 yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": text}
             yield {"type": "TEXT_MESSAGE_END", "messageId": mid}
-            items = research.with_passages(research.parse_sources(answer, guide.knowledge, scope(set_id)),
-                                           answer, guide.knowledge, scope(set_id))
+            items = linked(set_id, research.with_passages(
+                research.parse_sources(answer, guide.knowledge, scope(set_id)), answer, guide.knowledge, scope(set_id)))
             if items:
                 yield {"type": "CUSTOM", "name": "sources", "value": {"items": items}}
             yield {"type": "CUSTOM", "name": "run_stats", "value": stats.as_event()}

@@ -206,3 +206,21 @@ def test_the_researcher_itself_reports_its_words(tmp_path):
                                                 on_text=words.append))
     assert answer.endswith("Sources: tariffs.md > Fees") and steps == ["search_documents"]
     assert words == ["Let me look.", None, "A late payment costs 27,90 EUR.\n"]
+
+
+def test_a_source_links_to_the_whole_document(monkeypatch):
+    """CPO, 2026-11-15: "Open document" in the demo opens the test document's page on the docs site, at the section."""
+    from docs_ai.research_demo import linked
+    items = [{"title": "safety_manual.md", "section": "Lock-out › Zero-energy check", "excerpt": "x"},
+             {"title": "service_agreement.pdf", "section": "Fees", "page": 7},
+             {"title": "notes.md"}, {"title": "kept.md", "url": "https://example.com/kept"}]
+    got = [i.get("url") for i in linked("veltra_manual", items)]
+    assert got == ["/research-documents/veltra_manual/safety_manual/#:~:text=Zero%2Denergy%20check",   # the heading
+                   "/research-documents/veltra_manual/service_agreement.pdf#page=7",
+                   "/research-documents/veltra_manual/notes/", "https://example.com/kept"]
+    assert linked("veltra_manual", items)[0]["excerpt"] == "x"                 # the rest of a source is untouched
+    assert all("url" not in i for i in linked("bank_tariffs", items[:3]))      # a set with no pages: no link
+    monkeypatch.setenv("RESEARCH_DOCS_URL", "https://docs.example.com/dushes/research-documents/")
+    assert linked("veltra_manual", items)[2]["url"] == "https://docs.example.com/dushes/research-documents/veltra_manual/notes/"
+    monkeypatch.setenv("RESEARCH_DOCS_URL", "")
+    assert all("url" not in i for i in linked("veltra_manual", items[:3]))
