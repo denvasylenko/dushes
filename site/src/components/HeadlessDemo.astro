@@ -17,22 +17,22 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined
       <Badge class="hd-rec">Recorded run</Badge>
     </span>
   </div>
-  <p class="hd-text" data-text>{SAMPLES[0].text}</p>
+  <Tile size="sm" class="hd-text"><p data-text>{SAMPLES[0].text}</p></Tile>
   <div class="hd-acts">
-    <Button data-run>Run</Button>
+    <Button variant="filled" data-run>Run</Button>
     <span class="hd-status" data-status aria-live="polite">Nothing has run yet.</span>
   </div>
 
   <div class="hd-grid">
-    <Tile as="section" class="hd-tile" aria-labelledby="hd-steps-h">
-      <h3 class="hd-h" id="hd-steps-h">What the agent did</h3>
-      <ol class="hd-steps" data-steps><li class="hd-empty">Press Run. Each request, tool call and proposal appears here as it happens.</li></ol>
-    </Tile>
     <Tile as="section" class="hd-tile" aria-labelledby="hd-vals-h">
       <h3 class="hd-h" id="hd-vals-h">The form's fields</h3>
       <dl class="hd-vals" data-vals>
         {FIELDS.map((f) => <div data-field={f.name}><dt>{f.label}{f.required && <span class="hd-req"> · required</span>}</dt><dd>Empty</dd></div>)}
       </dl>
+    </Tile>
+    <Tile as="section" class="hd-tile" aria-labelledby="hd-steps-h">
+      <h3 class="hd-h" id="hd-steps-h">What the UI agent did</h3>
+      <ol class="hd-steps" data-steps><li class="hd-empty">Press Run. Each request, tool call and proposal appears here as it happens.</li></ol>
     </Tile>
   </div>
   <div class="hd-grid">
@@ -64,6 +64,7 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined
       ? layoutHash(url, SCHEMA.id).then((h) => { if (h) { hash = h; live = liveDemo(url, recorded, new URL('../../../get-started/quickstart/', location.href).href, mode) } mode() })
       : Promise.resolve()
 
+    const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
     const line = (text: string, cls = '') => { const li = document.createElement('li'); li.textContent = text; if (cls) li.className = cls; steps.append(li); li.scrollIntoView({ block: 'nearest' }) }
     const clear = () => {
       steps.replaceChildren()
@@ -79,14 +80,15 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined
         line(s.n === 1 ? 'Request 1: the message and the empty form' : `Request ${s.n}: the values are in, the agent continues`, 'hd-req-line')
         if (s.n === 1) code('[data-req]').textContent = JSON.stringify(s.body, null, 2)
       } else if (s.kind === 'tool') line(`Tool: ${s.name}`)
-      else if (s.kind === 'text') line(`Agent: ${s.text}`)
-      else if (s.kind === 'proposed') { s.changes.forEach((c) => { values[c.name] = c.value }); line(`Proposed ${s.changes.length} values: ${s.changes.map((c) => c.label).join(', ')}`) }
-      else if (s.kind === 'applied') { fill(values, s.names); line('Your service put them in the form and answered the card') }
+      else if (s.kind === 'text') line(`UI agent: ${s.text}`)
+      else if (s.kind === 'proposed') { s.changes.forEach((c) => { values[c.name] = c.value }); line(`Proposed ${count(s.changes.length, 'value')}: ${s.changes.map((c) => c.label).join(', ')}`) }
+      else if (s.kind === 'applied') { fill(values, s.names); line('Your service put them in the form and accepted the proposal') }
     }
     const finish = (r: Result) => {
       const names = Object.fromEntries(FIELDS.map((f) => [f.name, f.label]))
-      status.textContent = r.status === 'done' ? `Done in ${r.requests} requests.${r.missing.length ? ` Required and still empty: ${r.missing.map((m) => names[m]).join(', ')}.` : ''}`
-        : r.status === 'needs_input' ? 'The agent needs a person to answer; your service gets the question.' : `It did not finish: ${r.message}`
+      const filled = root.querySelectorAll('[data-field][data-filled]').length
+      status.textContent = r.status === 'done' ? `Done in ${count(r.requests, 'request')}: ${filled} of ${FIELDS.length} fields filled.${r.missing.length ? ` Required and still empty: ${r.missing.map((m) => names[m]).join(', ')}.` : ''}`
+        : r.status === 'needs_input' ? 'Needs a person. Your service gets the question.' : 'The run stopped. Press Run again.'
       code('[data-res]').textContent = JSON.stringify(r, null, 2)
     }
 
@@ -120,14 +122,14 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined
   .hd-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
   .hd:not([data-live]) .hd-live, .hd[data-live] .hd-rec { display: none; }
   .hd-mode :global(.ui-dot) { width: 6px; height: 6px; background: var(--fg-ok); }
-  .hd-text { margin: 0; padding: 12px 16px; border-radius: var(--fg-r-ctl); background: var(--fg-sunken); color: var(--fg-ink); font-size: var(--fg-fs-callout); }
+  .hd-text :global(p), .hd-text p { margin: 0; color: var(--fg-ink); font-size: var(--fg-fs-callout); }
   .hd-acts { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; }
   .hd-status { color: var(--fg-ink-2); font-size: var(--fg-fs-sub); }
   .hd-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); align-items: start; }
   .hd-grid > :global(*) { min-width: 0; }
   .hd-tile { display: flex; flex-direction: column; gap: 12px; }
   .hd-h { margin: 0; font-size: var(--fg-fs-headline); line-height: 1.25; }
-  .hd-steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 6px; font-size: var(--fg-fs-sub); color: var(--fg-ink); max-height: 320px; overflow-y: auto; }
+  .hd-steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; font-size: var(--fg-fs-sub); color: var(--fg-ink); height: 300px; overflow-y: auto; }
   .hd-steps :global(.hd-empty) { list-style: none; margin-left: -1.4em; color: var(--fg-ink-2); }
   .hd-steps :global(.hd-req-line) { font-weight: 600; }
   .hd-vals { margin: 0; display: flex; flex-direction: column; }

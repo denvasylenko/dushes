@@ -169,7 +169,7 @@ export default defineConfig({
 					] },
 					{ label: 'Researcher', items: [
 						{ label: 'Overview', slug: 'agents/researcher' },
-						{ label: 'Demo', slug: 'agents/researcher/demo', badge: { text: 'recorded', variant: 'note' } },
+						{ label: 'Demo', slug: 'agents/researcher/demo', badge: { text: 'live', variant: 'success' } },
 						{ label: 'Toolsets', slug: 'agents/researcher/toolsets' },
 						{ label: 'Configuration', slug: 'agents/researcher/configuration' },
 					] },

@@ -25,7 +25,7 @@ export interface Feature {
 const ANSWER = 'Your monthly income goes on the **Applicant** tab, in **Monthly income**. Enter what you take home after tax; include bonuses only if they are regular. If you are self-employed, use the average of the last 12 months.'
 const LONG = Array.from({ length: 6 }, (_, i) => `${i + 1}. ${['Pick the loan type: car, personal or mortgage.', 'Enter the amount and the term.', 'Fill in your name and email.', 'Tell us how you are employed.', 'Add your monthly income after tax.', 'Attach a payslip or tax certificate, and send the form.'][i]}`).join('\n')
 
-const TABLE = 'Here are the two loans side by side:\n\n| | Car loan | Personal loan |\n| --- | --- | --- |\n| Amount | up to $80,000 | up to $30,000 |\n| Term | 12 to 84 months | 6 to 60 months |\n| Rate from | 5.9% | 8.4% |\n| Deposit | from 10% | none |\n\nThe car loan is cheaper, but the car is its security.'
+const TABLE = '| | Car loan | Personal loan |\n| --- | --- | --- |\n| Amount | up to $80,000 | up to $30,000 |\n| Term | 12 to 84 months | 6 to 60 months |\n| Rate from | 5.9% | 8.4% |'
 const COMMANDS = [
   { id: 'summary', label: 'Summarise the form', hint: 'What is filled and what is missing', send: 'Summarise the form' },
   { id: 'person', label: 'Talk to a person', hint: 'Hand the conversation to the team', send: 'I want to talk to a person' },
@@ -33,21 +33,21 @@ const COMMANDS = [
 
 export const FEATURES: Feature[] = [
   {
-    id: 'layouts', title: 'Five layouts: bubble, side panel, inline, page, hero',
-    why: 'One tag, five places for the chat: a round launcher in the corner, a button with a side panel, a box in your page, the whole window, or only the message field until the first message.',
+    id: 'layouts', title: 'Layouts: bubble, side panel, inline, page, hero',
+    why: 'One tag, five places for the chat: a round launcher in the corner, a button with a side panel, a box in your page, the whole window, or only the message field until the first message. The side panel can also dock beside the page.',
     ref: { label: 'mode', href: '../../reference/agui-chat/' },
     show: { kind: 'link', href: '../playground/', label: 'Switch layouts in the playground' },
-    code: { lang: 'HTML', text: '<agui-chat mode="bubble"></agui-chat>     <!-- a round launcher that grows into a chat window -->\n<agui-chat mode="floating"></agui-chat>   <!-- the default: a button and a side panel -->\n<agui-chat mode="floating" modal="off"></agui-chat>   <!-- the panel docks beside the page, which stays usable -->\n<agui-chat mode="inline"></agui-chat>     <!-- fills the box you put it in -->\n<agui-chat mode="page"></agui-chat>       <!-- the whole window -->\n<agui-chat mode="hero"></agui-chat>       <!-- only the field, then the chat grows in place -->' },
+    code: { lang: 'HTML', text: '<!-- a round launcher that grows into a chat window -->\n<agui-chat mode="bubble"></agui-chat>\n\n<!-- the default: a button opens a side panel -->\n<agui-chat mode="floating"></agui-chat>\n\n<!-- fills the box you put it in -->\n<agui-chat mode="inline"></agui-chat>\n\n<!-- the whole window -->\n<agui-chat mode="page"></agui-chat>\n\n<!-- only the field, then the chat grows in place -->\n<agui-chat mode="hero"></agui-chat>\n\n<!-- the side panel docked: the page beside it stays usable -->\n<agui-chat mode="floating" modal="off"></agui-chat>' },
   },
   {
     id: 'menu', title: 'The + menu and commands',
-    why: 'Everything that is not typing lives behind one +: files, your commands and your own rows. Typing / in an empty field opens the commands too.',
-    try: 'Tap + and pick a command, or type / in the empty field. "Start over" is a row this page added: it clears the chat.',
+    why: 'Everything that is not typing lives behind one +: files, your commands and your own menu items. Typing / in an empty field opens the commands too.',
+    try: 'Tap + next to the message field and pick a command, or type / in the empty field. "Start over" is an item this page added: it clears the chat.',
     ref: { label: 'commands, menu', href: '../widget/#attachments' },
     show: { kind: 'live', user: 'What can I do here besides typing?', reply: 'Tap **+** next to the message field: you can add a file, run a command, or start over. Typing **/** in the empty field opens the commands as well.', upload: true,
       options: { commands: COMMANDS, menu: [{ id: 'restart', label: 'Start over', hint: 'Clear this chat' }] },
       more: { 'Summarise the form': 'Filled: **loan type** (car) and **amount** ($18,000). Still missing: **term**, **monthly income** and your **email**.', 'I want to talk to a person': 'I have passed this conversation to the team. Someone will write to you here within a working day.' } },
-    code: { lang: 'JavaScript', text: "chat.options = {\n  commands: [   // the Commands row, and \"/\" in an empty field; `send` goes out as a message\n    { id: 'summary', label: 'Summarise the form', hint: 'What is filled and what is missing', send: 'Summarise the form' },\n    { id: 'person', label: 'Talk to a person', send: 'I want to talk to a person' },\n  ],\n  menu: [{ id: 'restart', label: 'Start over', hint: 'Clear this chat' }],   // your own rows\n}\nchat.addEventListener('agui:menu-action', (e) => {\n  if (e.detail.id === 'restart') { e.preventDefault(); chat.reset() }   // handled here, nothing is sent\n})" },
+    code: { lang: 'JavaScript', text: "chat.options = {\n  commands: [   // the Commands row, and \"/\" in an empty field; `send` goes out as a message\n    { id: 'summary', label: 'Summarise the form', hint: 'What is filled and what is missing', send: 'Summarise the form' },\n    { id: 'person', label: 'Talk to a person', send: 'I want to talk to a person' },\n  ],\n  menu: [{ id: 'restart', label: 'Start over', hint: 'Clear this chat' }],   // your own items\n}\nchat.addEventListener('agui:menu-action', (e) => {\n  if (e.detail.id === 'restart') { e.preventDefault(); chat.reset() }   // handled here, nothing is sent\n})" },
   },
   {
     id: 'tables', title: 'Tables in an answer',

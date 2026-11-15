@@ -220,6 +220,43 @@ guide = FormGuide(GuideConfig(
 ```
 
 
+## Let a run choose its models
+
+Offer two or three named sets of models, and let each conversation pick one: a fast one by default, a stronger one for people who ask for it, an experimental one beside it.
+
+```yaml title="formguide.yaml"
+model: "anthropic:claude-haiku-5-5"
+models:
+  agent: "anthropic:claude-haiku-5-5"
+  choices:                                  # the first one is the default
+    haiku: {label: "Claude Haiku 5.5"}      # nothing else: the models above
+    luna: {label: "GPT-6 Luna (experimental)", agent: "openai:gpt-6-luna", research: "openai:gpt-6-luna"}
+```
+
+A role a choice leaves out keeps the model set above it. The client asks what it may offer, and names its pick in the run:
+
+```http
+GET /agent/models
+```
+
+```json
+{"choices": [
+  {"name": "haiku", "label": "Claude Haiku 5.5", "default": true, "usable": true, "model": "claude-haiku-5-5"},
+  {"name": "luna", "label": "GPT-6 Luna (experimental)", "default": false, "usable": false, "model": "gpt-6-luna"}
+]}
+```
+
+```json title="POST /agent/run (the part that names the choice)"
+{"threadId": "t-42", "forwardedProps": {"model": "luna"}}
+```
+
+- `usable: false` means the server has no key for one of that choice's models. Do not offer it; a run that names it gets 422.
+- **A conversation keeps the choice of its first run.** A later run that names another one gets 409 with `code: "model_fixed"`: start a new conversation to switch. This keeps one conversation's history with one model.
+- Each run starts with a `CUSTOM model` event, `{choice, label, model}`, so the client can show which model answers.
+- Under Dushes the site conversation's choice also holds for its forms.
+
+In Python: `guide.model_choices()`, `guide.check_model(thread_id, model)` and `guide.run(..., model="luna")`; see the [Python API](../../../reference/python-api/#run).
+
 ## Every way to write a model
 
 | Form | Example | Becomes |

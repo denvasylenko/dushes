@@ -41,4 +41,4 @@ export const LABEL: Record<string, string> = Object.fromEntries(FIELDS.map((f) =
 
 /** A value as a person reads it: a choice by its name. */
 export const display = (v: unknown): string =>
-  v === null || v === undefined || v === '' ? '' : typeof v === 'object' ? String((v as { name?: unknown }).name ?? JSON.stringify(v)) : String(v)
+  v === null || v === undefined || v === '' ? '' : typeof v === 'number' ? v.toLocaleString('en-US') : typeof v === 'object' ? String((v as { name?: unknown }).name ?? JSON.stringify(v)) : String(v)

@@ -7,13 +7,13 @@ import { Summary } from '../../../../components/ui';
 import HeadlessDemo from '../../../../components/HeadlessDemo.astro';
 import fill from '../../../../../public/examples/no-ui/fill.py?raw';
 
-<Summary what={"The UI agent filling a form for a service: plain words in, field values out."} when={"The data comes from another system (an email, a CRM note, a call transcript), not from a person in a chat."} write={"A loop of about thirty lines around `POST /agent/run`."} />
+<Summary what={"The UI agent filling a form for a service: plain words in, field values out."} when={"The data comes from another system (an email, a CRM note, a call transcript), not from a person in a chat."} write={"One function around `POST /agent/run`."} />
 
-The chat widget is one client of the agent. A service can be another: it sends the same request the widget sends and reads the same events. Where the widget would show a card and wait for a tap, the service puts the proposed values into the form and answers the card itself.
+The chat widget is one client of the UI agent. A service can be another: it sends the same request the widget sends and reads the same events. Where the widget would show a card (a proposal with buttons) and wait for a tap, the service puts the proposed values into the form and answers the card itself.
 
 ## Try it
 
-Pick a request and press **Run**. Nothing here is a chat: the page shows the request body, each step of the agent, the form's fields as they fill, and the JSON your service would get back.
+Pick a request and press **Run**. Nothing here is a chat: the page shows the request body, each step of the UI agent, the form's fields as they fill, and the JSON your service would get back.
 
 <HeadlessDemo />
 
@@ -34,12 +34,12 @@ sequenceDiagram
   Note over S: no card left: done
 ```
 
-1. **Send one message with the form's state.** The state is the object a page sends: `{config, jsx_hash, form_id}`. The form is registered once with `POST /agent/layouts`, exactly as for the chat.
+1. **Send one message with the form's state.** The state is the object a page sends: `{config, jsx_hash, form_id}`. `jsx_hash` is the id `POST /agent/layouts` returns when you register the form, once, exactly as for the chat.
 2. **Read the events.** Tool calls and text are progress. A `CUSTOM` event named `on_interrupt` with `type: "set_fields"` is the agent proposing values; in the chat it is the card with **Fill in**.
-3. **Put the values in and answer the card.** Apply `changes` to your form, then call `/agent/run` again on the same thread with `forwardedProps.command.resume = {accepted: true, config}`, where `config` is the form after the change. The agent validated every value against the form before proposing it.
+3. **Put the values in and answer the card.** Apply `changes` to your form, then call `/agent/run` again with the same `threadId` and `forwardedProps.command.resume = {accepted: true, config}`, where `config` is the form after the change. The agent validated every value against the form before proposing it.
 4. **Stop when a run ends with no card.** The values you applied are the result.
 
-If the agent sends any other card (a question, a confirmation before sending), nobody is there to answer it: return it to the caller as "needs input" and let a person decide. A tool listed in `confirm_tools`, such as one that submits the form, always asks first, so a service cannot submit by accident.
+If the agent sends any other card (a question, a confirmation before sending), nobody is there to answer it: return it to the caller as `needs_input` and let a person decide. The example also stops after five requests, so a run cannot loop. A tool listed in `confirm_tools`, such as one that submits the form, always asks first, so a service cannot submit by accident.
 
 ## The code
 
@@ -109,5 +109,5 @@ What comes back from `fill()`:
   <LinkCard title="Prefill" description="Values in one call, with no thread." href="../prefill/" />
   <LinkCard title="HTTP API" description="Every endpoint, with its body and answer." href="../../../reference/http-api/" />
   <LinkCard title="AG-UI events" description="Every event the run sends." href="../../../reference/agui-events/" />
-  <LinkCard title="Chat-only form" description="The same idea with a chat: the form is never drawn." href="../../recipes/chat-only-form/" />
+  <LinkCard title="A form only in the chat" description="The same idea with a chat: the form is never drawn." href="../../recipes/chat-only-form/" />
 </CardGrid>

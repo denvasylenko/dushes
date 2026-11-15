@@ -1,15 +1,25 @@
 ---
 title: Researcher demo
-description: Pick a set of documents, tap a hard question, and read the answer with the document and section it came from.
-tableOfContents: false
+description: Ask the researcher about a set of large documents and read the answer with the document and section it came from. Live, plus recorded answers with the benchmark's checks.
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 import { Summary } from '../../../../components/ui';
 import ResearchDemo from '../../../../components/ResearchDemo.astro';
+import ResearchLive from '../../../../components/ResearchLive.astro';
 
-<Summary what={"The researcher answering hard questions from large documents, with its sources"} when={"You want to see what it finds, and what it says when the answer is not there"} write={"Nothing: pick a set, a model and a question"} />
+<Summary what={"The researcher answering questions from large documents, with its sources"} when={"You want to see what it finds, and what it says when the answer is not there"} write={"Nothing: pick a set of documents and ask"} />
 
-The researcher reads your business documents for the agent and answers in a few lines, with sources. The documents here are test documents written for this benchmark, about fictional companies. The answers below are **recorded**: they are the real output of the benchmark runs, wrong ones included, replayed in the real chat. Each answer names the documents and sections it used, and says which of the benchmark's checks it passed.
+The researcher reads your business documents for the agents and answers in a few lines, with sources. Here it works on test documents written for this benchmark, about fictional companies.
+
+## Ask it yourself
+
+Pick a set of documents, then type a question or tap one of the starters. The answer comes with the documents and sections it used. **Short** is one search and one answer; **Detailed** searches and reads in several steps; **Auto** chooses by the question and offers "Look deeper" after a short answer.
+
+<ResearchLive />
+
+## Recorded answers, with the benchmark's checks
+
+These answers are **recorded**: the real output of the benchmark runs, wrong ones included, replayed in the real chat. Each one names the documents and sections it used, and says which of the benchmark's checks it passed. Switch the model to compare the same question on both.
 
 <ResearchDemo />
 

@@ -1,0 +1,104 @@
+---
+/**
+ * The researcher, live: type a question about a set of documents and read the answer with its sources. The chat
+ * talks to the docs host's researcher route (POST /research/run, backend/docs_ai/research_demo.py): `state.set`
+ * names the document set, `forwardedProps.depth` the kind of answer (auto, quick, deep) and `forwardedProps.model`
+ * the model choice. The host's visitor limits apply; past them the chat says so. Without the hosted route (a local
+ * build) the block says where it runs, and the recorded answers below stand in.
+ */
+import { Badge, Button, ChipGroup, Segmented, Tile } from './ui'
+import DEMO from '../data/research-demo.json'
+const d = DEMO as unknown as { sets: { id: string; name: string }[]; questions: { set: string; question: string; kind?: string }[] }
+const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined
+// the researcher route sits beside the agent's on the docs host
+const runUrl = (import.meta.env.PUBLIC_RESEARCH_URL as string | undefined) ?? agentUrl?.replace(/agent\/run\/?$/, 'research/run')
+const starters = Object.fromEntries(d.sets.map((s) => [s.id, d.questions.filter((q) => q.set === s.id).slice(0, 3).map((q) => q.question)]))
+const hosted = 'https://dushes-ai.fly.dev/agents/researcher/demo/'
+---
+{runUrl ? (
+  <div class="rl not-content" data-rl data-run-url={runUrl} data-models-url={agentUrl?.replace(/run\/?$/, 'models')}>
+    <script type="application/json" data-rl-starters set:html={JSON.stringify(starters)} />
+    <div class="rl-top">
+      <ChipGroup label="Document set" options={d.sets.map((s) => ({ value: s.id, label: s.name }))} data-set />
+      <div class="rl-pick">
+        <Segmented label="Answer" options={[['auto', 'Auto'], ['quick', 'Short'], ['deep', 'Detailed']]} data-depth />
+        <span data-model-wrap hidden><Segmented label="Answered by" options={[['haiku', 'Haiku'], ['luna', 'Luna (experimental)']]} data-model /></span>
+      </div>
+    </div>
+    <div class="rl-chat">
+      <agui-chat mode="inline" persist-thread="off" attach="off" voice="off" title="Researcher" subtitle="Live" placeholder="Ask about these documents"></agui-chat>
+    </div>
+    <div class="rl-foot">
+      <Badge variant="ok"><span class="ui-dot" aria-hidden="true"></span>Live</Badge>
+      <span>Within the public demo's daily limits; a question is up to 600 characters. <b>Auto</b> gives a short answer and offers "Look deeper"; a question that compares or asks why gets the detailed one.</span>
+      <Button variant="plain" size="sm" data-reset>Start over</Button>
+    </div>
+  </div>
+) : (
+  <Tile class="rl-off not-content">
+    <p><b>The live researcher runs on the hosted docs.</b> This build has no researcher route, so there is nothing to type into here; the recorded answers below are the same researcher's real output.</p>
+    <Button variant="gray" size="sm" href={hosted}>Open the live demo</Button>
+  </Tile>
+)}
+
+<script>
+  import '../../../packages/agui-chat/src/index'
+  import { formguide } from '../../../packages/agui-chat/src/formguide/index'
+  import type { AguiChatElement } from '../../../packages/agui-chat/src/element'
+  import { liveDemo } from '../demo/live'
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-rl]')) {
+    const chat = root.querySelector('agui-chat') as AguiChatElement
+    const starters = JSON.parse(root.querySelector('[data-rl-starters]')!.textContent!) as Record<string, string[]>
+    let set = Object.keys(starters)[0], depth = 'auto', model = ''
+    const live = liveDemo(root.dataset.runUrl!, null, new URL('../../../get-started/quickstart/', location.href).href, () => { /* the chat says it itself */ })
+
+    // sources arrive as a CUSTOM `sources` event; the form plugin draws them (there is no form here)
+    chat.use(formguide({
+      getState: () => ({ config: { props: {}, state: {} }, jsx_hash: 'research', form_id: set }),
+      applyChanges: async () => ({ props: {}, state: {} }),
+      highlight: false,
+    }))
+    const options = () => ({
+      intro: 'Ask anything about this set of documents, or start with a question below.',
+      starters: starters[set] ?? [],
+      transport: (input: Parameters<typeof live.transport>[0], ctx: { signal: AbortSignal }) => live.transport({
+        ...input, state: { set },
+        forwardedProps: { ...((input.forwardedProps as Record<string, unknown>) ?? {}), depth, ...(model ? { model } : {}) },
+      }, ctx),
+    })
+    chat.options = options()
+    const scheme = () => chat.setAttribute('scheme', document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
+    scheme()
+    new MutationObserver(scheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+
+    const restart = () => { chat.stop(); chat.reset(); chat.options = options() }
+    root.querySelector('[data-set]')!.addEventListener('ui-change', (e) => { set = (e as CustomEvent<{ value: string }>).detail.value; restart() })
+    root.querySelector('[data-depth]')!.addEventListener('ui-change', (e) => { depth = (e as CustomEvent<{ value: string }>).detail.value })
+    root.querySelector('[data-model]')!.addEventListener('ui-change', (e) => { model = (e as CustomEvent<{ value: string }>).detail.value })
+    root.querySelector('[data-reset]')!.addEventListener('click', restart)
+
+    // the model switch shows only when the host offers both choices and can run them
+    const modelsUrl = root.dataset.modelsUrl
+    if (modelsUrl) void fetch(modelsUrl).then((r) => (r.ok ? r.json() : null)).then((j: { choices?: { name: string; usable: boolean }[] } | null) => {
+      const ok = (name: string) => j?.choices?.some((c) => c.name === name && c.usable)
+      if (ok('haiku') && ok('luna')) { model = 'haiku'; root.querySelector<HTMLElement>('[data-model-wrap]')!.hidden = false }
+    }).catch(() => { /* no switch: the host's default model answers */ })
+  }
+</script>
+
+<style>
+  /* layout only: every control is a primitive from ./ui */
+  .rl { display: flex; flex-direction: column; gap: 16px; margin: 1.5rem 0 2rem; }
+  .rl-top { display: flex; flex-direction: column; gap: 12px; }
+  .rl-pick { display: flex; gap: 12px 24px; flex-wrap: wrap; align-items: flex-end; }
+  .rl-pick [hidden] { display: none; }
+  .rl-chat { height: min(560px, 75svh); min-width: 0; }
+  .rl-chat agui-chat { display: block; height: 100%; --agui-accent: var(--sl-color-accent); --agui-on-accent: #fff; --agui-link: var(--sl-color-accent); }
+  :global(:root[data-theme='dark']) .rl-chat agui-chat { --agui-accent: var(--sl-color-accent-high); --agui-on-accent: var(--sl-color-black); --agui-link: var(--sl-color-accent-high); }
+  .rl-foot { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
+  .rl-foot :global(.ui-dot) { width: 6px; height: 6px; background: var(--fg-ok); }
+  .rl-foot span { flex: 1 1 16rem; }
+  .rl-off { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; margin: 1.5rem 0; }
+  .rl-off p { margin: 0; color: var(--fg-ink-2); }
+</style>
