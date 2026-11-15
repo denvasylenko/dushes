@@ -40,7 +40,8 @@ step() {   # step <name> <command...>: run quietly, show the tail on failure and
 
 step "specs" npx --yes @fission-ai/openspec@1.17.0 validate --all --strict --no-interactive
 step "English only" python3 scripts/check_english.py
-step "backend tests" bash -c "cd backend && uv run --quiet pytest -q -p no:cacheprovider"
+step "lock is current" bash -c "cd backend && uv lock --check"   # pyproject.toml and uv.lock agree, as the image's uv sync --frozen assumes
+step "backend tests" bash -c "cd backend && uv run --frozen --quiet pytest -q -p no:cacheprovider"   # the locked dependencies, as in the image
 step "site install" bash -c "cd site && npm ci --silent --no-audit --no-fund && cd ../packages/agui-chat && npm ci --silent --no-audit --no-fund"
 step "site build" bash -c "cd site && npm run -s build"
 step "site links" python3 scripts/check_links.py site/dist
