@@ -66,17 +66,19 @@ describe('attachments in the composer', () => {
     expect(box.querySelectorAll('.files .att')).toHaveLength(1)
   })
 
-  it('the view has a bar on top: x, the name with "1 of 2", the pencil; composer images page too', async () => {
+  it('the view: the name with "1 of 2" on top; close and the pencil under it in one column beside the picture; composer images page too', async () => {
     const el = await mount()
     await pick(el, [new File(['x'], 'a.png', { type: 'image/png' }), new File(['y'], 'b.png', { type: 'image/png' })])
     ;(el.shadowRoot!.querySelector('.files .att-open') as HTMLButtonElement).click()
     await viewer(el)
     const zoom = el.shadowRoot!.querySelector('dialog.zoom') as HTMLDialogElement
     const top = zoom.querySelector('.zoom-top')!
-    expect(top.querySelector('.zoom-x')!.getAttribute('aria-label')).toBe('Close')
+    const side = zoom.querySelector('.zoom-stage .zoom-side')!                         // next to the picture, not in the screen's corners
+    expect([...side.children].map((b) => b.getAttribute('aria-label'))).toEqual(['Close', 'Mark up'])   // close on top, the pencil below
+    expect(top.querySelector('button')).toBeNull()
     expect(top.querySelector('.zoom-name')!.textContent).toBe('a.png')
     expect(top.querySelector('.zoom-n')!.textContent).toBe('1 of 2')
-    expect(top.querySelector<HTMLElement>('.zoom-edit')!.getAttribute('aria-label')).toBe('Mark up')
+    expect(side.querySelector<HTMLElement>('.zoom-edit')!.style.visibility).toBe('')
     zoom.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     expect(top.querySelector('.zoom-name')!.textContent).toBe('b.png')
     expect(zoom.querySelector('.zoom-stage img')!.getAttribute('alt')).toBe('b.png')
@@ -118,6 +120,25 @@ describe('attachments in the composer', () => {
     expect([...bar.querySelectorAll('button[data-tool]')].map((b) => b.getAttribute('aria-label'))).toEqual(['Pen', 'Rectangle', 'Text'])
     for (const label of ['Colour', 'Line width', 'Undo', 'Redo', 'Clear', 'Save', 'Close']) expect(bar.querySelector(`[aria-label="${label}"]`), label).not.toBeNull()
     expect(zoom.querySelector('.mk')).toBeNull()                                     // not the phone-style markup
+    // the line width is a menu above the bar: four named widths, the chosen one ticked
+    const widthBtn = bar.querySelector('[aria-label="Line width"]') as HTMLButtonElement
+    widthBtn.click()
+    const items = () => [...zoom.querySelectorAll<HTMLElement>('.pk-menu.list [role=menuitemradio]')]
+    expect(items().map((b) => b.textContent)).toEqual(['Thin', 'Medium', 'Thick', 'Extra thick'])
+    expect(items().map((b) => b.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'false'])
+    expect(widthBtn.getAttribute('aria-expanded')).toBe('true')
+    items()[2].click()                                                               // Thick: the menu closes, the choice is kept
+    expect(zoom.querySelector('.pk-menu')).toBeNull()
+    widthBtn.click()
+    expect(items().map((b) => b.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'false'])
+    zoom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))              // Esc closes the menu first, the editor stays
+    expect(zoom.querySelector('.pk-menu')).toBeNull()
+    expect(zoom.querySelector('.pk')).not.toBeNull()
+    ;(bar.querySelector('[aria-label="Colour"]') as HTMLButtonElement).click()        // the colours: a row above the bar, one menu at a time
+    expect(zoom.querySelectorAll('.pk-menu.row [role=menuitemradio]')).toHaveLength(7)
+    widthBtn.click()
+    expect(zoom.querySelectorAll('.pk-menu')).toHaveLength(1)
+    widthBtn.click()
     ;(bar.querySelector('[aria-label="Close"]') as HTMLButtonElement).click()        // back to the picture, the view stays
     expect(zoom.querySelector('.pk')).toBeNull()
     expect(zoom.open).toBe(true)

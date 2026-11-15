@@ -1,7 +1,8 @@
 /**
  * The tool panel for an image still in the composer, like the editor in the Claude desktop app: one bar under the
- * picture with the pen, a frame and text, a colour, a line width, undo, redo, clear, Save and close. Save gives the
- * marked-up image back; close and Esc go back to the picture. (A sent picture gets the phone-style markup, editor.ts.)
+ * picture with the pen, a frame and text, a colour, a line width, undo, redo, clear, Save and close. The colour and
+ * the line width open a small menu above the bar (Thin, Medium, Thick, Extra thick, the chosen one ticked). Save gives
+ * the marked-up image back; close and Esc go back to the picture. A picture already sent is never drawn on.
  * Loaded with the image view; it brings its own styles.
  */
 export interface PanelOptions {
@@ -17,7 +18,17 @@ export interface PanelOptions {
 import type { Shape } from './editor'
 
 const COLORS = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#0a84ff', '#ffffff', '#1d1d1f']   // the iOS Markup palette
-const WIDTHS = [3, 6, 12]
+const WIDTHS = [2, 5, 9, 14]   // Thin, Medium, Thick, Extra thick
+/** The names of the widths, here and not in the chat's own strings, so they cost the main file nothing. */
+const NAMES: Record<string, string[]> = {
+  en: ['Thin', 'Medium', 'Thick', 'Extra thick'],
+  ru: ['\u0422\u043e\u043d\u043a\u0430\u044f', '\u0421\u0440\u0435\u0434\u043d\u044f\u044f', '\u0422\u043e\u043b\u0441\u0442\u0430\u044f', '\u041e\u0447\u0435\u043d\u044c \u0442\u043e\u043b\u0441\u0442\u0430\u044f'],   // Tonkaya, Srednyaya, Tolstaya, Ochen tolstaya
+  uk: ['\u0422\u043e\u043d\u043a\u0430', '\u0421\u0435\u0440\u0435\u0434\u043d\u044f', '\u0422\u043e\u0432\u0441\u0442\u0430', '\u0414\u0443\u0436\u0435 \u0442\u043e\u0432\u0441\u0442\u0430'],   // Tonka, Serednya, Tovsta, Duzhe tovsta
+  de: ['D\u00fcnn', 'Mittel', 'Dick', 'Sehr dick'],
+  fr: ['Fin', 'Moyen', '\u00c9pais', 'Tr\u00e8s \u00e9pais'],
+  es: ['Fino', 'Medio', 'Grueso', 'Muy grueso'],
+  it: ['Sottile', 'Medio', 'Spesso', 'Molto spesso'],
+}
 
 const ICON: Record<string, string> = {
   pen: 'M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20zM14 7l3 3',
@@ -43,13 +54,26 @@ const CSS = `
 .pk-bar button { flex: none; min-width: 44px; height: 44px; border: 0; border-radius: 12px; background: none; color: white; display: grid; place-items: center; cursor: pointer; font: inherit; }
 .pk-bar button[aria-pressed=true] { background: color-mix(in srgb, white 16%, transparent); color: var(--agui-link, #0a84ff); }
 .pk-bar button:disabled { opacity: .35; cursor: default; }
-@media (max-width: 520px) { .pk-bar .pk-sep { display: none; } }
-.pk-bar .pk-sep { width: 1px; height: 24px; margin: 0 4px; background: color-mix(in srgb, white 18%, transparent); }
+.pk-bar button[aria-expanded=true] { background: color-mix(in srgb, white 16%, transparent); }
+.pk-bar button:focus-visible, .pk-menu button:focus-visible { outline: 2px solid var(--agui-link, #0a84ff); outline-offset: -2px; }
 .pk-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid color-mix(in srgb, white 70%, transparent); }
-.pk-line { width: 26px; border-radius: 99px; background: white; }
-.pk-save { padding: 0 18px; background: white !important; color: black !important; font-weight: 600 !important; border-radius: 99px !important; }
-.pk-pop { display: flex; gap: 6px; padding: 0 4px; }
-.pk-pop[hidden] { display: none; }
+.pk-line { display: block; width: 26px; border-radius: 99px; background: white; }
+.pk-save { padding: 0 16px; background: color-mix(in srgb, white 16%, transparent) !important; font-weight: 500 !important; font-size: 16px !important; }
+/* a menu above the bar, over its button: the colours in a row, the line widths as a list with the chosen one ticked */
+.pk-menu { position: fixed; z-index: 2; padding: 6px; border-radius: 16px; background: color-mix(in srgb, white 16%, black);
+  border: 1px solid color-mix(in srgb, white 12%, transparent); box-shadow: 0 12px 32px -8px black; animation: pk-in .14s ease both; }
+.pk-menu.row { display: flex; gap: 2px; }
+.pk-menu.list { display: grid; min-width: 220px; }
+.pk-menu button { border: 0; background: none; color: white; cursor: pointer; font: inherit; border-radius: 10px; }
+.pk-menu.row button { width: 44px; height: 44px; display: grid; place-items: center; }
+.pk-menu.list button { display: grid; grid-template-columns: 30px 1fr 22px; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; text-align: left; font-size: 17px; }
+.pk-menu button:hover { background: color-mix(in srgb, white 12%, transparent); }
+.pk-menu .tick { color: var(--agui-link, #0a84ff); visibility: hidden; }
+.pk-menu [aria-checked=true] .tick { visibility: visible; }
+.pk-menu.row [aria-checked=true] .pk-dot { box-shadow: 0 0 0 2px var(--agui-link, #0a84ff); }
+@keyframes pk-in { from { opacity: 0; transform: translateY(4px); } }
+@media (hover: hover) { .pk-menu.list button { min-height: 40px; font-size: 15px; } }
+@media (prefers-reduced-motion: reduce) { .pk-menu { animation: none; } }
 `
 
 export function openPanel(o: PanelOptions): void {
@@ -72,7 +96,6 @@ export function openPanel(o: PanelOptions): void {
     b.addEventListener('click', (e) => { e.stopPropagation(); onclick() })
     return b
   }
-  const sep = (): HTMLElement => { const s = document.createElement('span'); s.className = 'pk-sep'; return s }
 
   const draw = (extra?: Shape): void => {
     undo.disabled = !shapes.length; redo.disabled = !undone.length; clear.disabled = !shapes.length
@@ -148,15 +171,43 @@ export function openPanel(o: PanelOptions): void {
   for (const t of ['pen', 'rect', 'text'] as const) {
     const b = button(o.t(t), svg(t), () => pickTool(t)); b.dataset.tool = t; tools.push(b)
   }
-  const dot = document.createElement('span'); dot.className = 'pk-dot'; dot.style.background = color
-  const colors = document.createElement('span'); colors.className = 'pk-pop'; colors.hidden = true
-  for (const c of COLORS) {
-    const b = button(c, `<span class="pk-dot" style="background:${c}"></span>`, () => { color = c; dot.style.background = c; colors.hidden = true })
-    colors.append(b)
+  // ---- the two menus above the bar (one at a time): a tap on its button, outside or Esc closes it; arrows move
+  let menu: { el: HTMLElement; from: HTMLButtonElement } | null = null
+  const shutMenu = (focus = false): void => { if (!menu) return; const { el, from } = menu; menu = null; el.remove(); from.setAttribute('aria-expanded', 'false'); if (focus) from.focus({ preventScroll: true }) }
+  const openMenu = (from: HTMLButtonElement, kind: 'row' | 'list', items: HTMLButtonElement[]): void => {
+    if (menu?.from === from) return shutMenu(true)
+    shutMenu()
+    const el = document.createElement('div'); el.className = `pk-menu ${kind}`; el.setAttribute('role', 'menu'); el.setAttribute('aria-label', from.getAttribute('aria-label') ?? '')
+    el.append(...items)
+    el.addEventListener('keydown', (k) => {
+      const i = items.indexOf((root.getRootNode() as ShadowRoot | Document).activeElement as HTMLButtonElement)
+      const d = k.key === 'ArrowDown' || k.key === 'ArrowRight' ? 1 : k.key === 'ArrowUp' || k.key === 'ArrowLeft' ? -1 : 0
+      if (d) { k.preventDefault(); k.stopPropagation(); items[(i + d + items.length) % items.length].focus() }
+    })
+    root.append(el)
+    const b = from.getBoundingClientRect(), w = el.offsetWidth, vw = root.getBoundingClientRect().width || innerWidth
+    el.style.left = `${Math.max(8, Math.min(vw - w - 8, b.left + b.width / 2 - w / 2))}px`
+    el.style.bottom = `${innerHeight - b.top + 14}px`
+    from.setAttribute('aria-expanded', 'true')
+    menu = { el, from }
+    ;(items.find((x) => x.getAttribute('aria-checked') === 'true') ?? items[0]).focus({ preventScroll: true })
   }
-  const colorBtn = button(o.t('colour'), '', () => { colors.hidden = !colors.hidden }); colorBtn.append(dot)
-  const line = document.createElement('span'); line.className = 'pk-line'; line.style.height = `${width}px`
-  const widthBtn = button(o.t('lineWidth'), '', () => { width = WIDTHS[(WIDTHS.indexOf(width) + 1) % WIDTHS.length]; line.style.height = `${width}px` }); widthBtn.append(line)
+  const option = (label: string, inner: string, on: boolean, pick: () => void): HTMLButtonElement => {
+    const b = button(label, inner, () => { pick(); shutMenu(true) })
+    b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(on))
+    return b
+  }
+  const dot = document.createElement('span'); dot.className = 'pk-dot'; dot.style.background = color
+  const colorBtn = button(o.t('colour'), '', () => openMenu(colorBtn, 'row', COLORS.map((c) =>
+    option(c, `<span class="pk-dot" style="background:${c}"></span>`, c === color, () => { color = c; dot.style.background = c }))))
+  colorBtn.append(dot); colorBtn.setAttribute('aria-haspopup', 'menu'); colorBtn.setAttribute('aria-expanded', 'false')
+  const names = NAMES[String((o.mount.getRootNode() as ShadowRoot).host?.getAttribute?.('lang') ?? ((o.mount.getRootNode() as ShadowRoot).host as { lang?: string } | undefined)?.lang ?? 'en')] ?? NAMES.en
+  const sample = (w: number): string => `<span class="pk-line" style="height:${Math.max(2, Math.round(w * 0.9))}px"></span>`
+  const TICK = '<svg class="tick" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>'
+  const line = document.createElement('span'); line.className = 'pk-line'; line.style.height = `${Math.max(2, Math.round(width * 0.9))}px`
+  const widthBtn = button(o.t('lineWidth'), '', () => openMenu(widthBtn, 'list', WIDTHS.map((w, i) =>
+    option(names[i], `${sample(w)}<span>${names[i]}</span>${TICK}`, w === width, () => { width = w; line.style.height = `${Math.max(2, Math.round(w * 0.9))}px` }))))
+  widthBtn.append(line); widthBtn.setAttribute('aria-haspopup', 'menu'); widthBtn.setAttribute('aria-expanded', 'false')
   const undo = button(o.t('undo'), svg('undo'), () => { const s = shapes.pop(); if (s) undone.push(s); draw() })
   const redo = button(o.t('redo'), svg('redo'), () => { const s = undone.pop(); if (s) shapes.push(s); draw() })
   const clear = button(o.t('clearAll'), svg('clear'), () => { undone.push(...shapes.splice(0).reverse()); draw() })
@@ -165,7 +216,7 @@ export function openPanel(o: PanelOptions): void {
   }, 'pk-save')
   const shut = (): void => { root.remove(); o.onClose() }
   const close = button(o.t('close'), svg('close'), shut)
-  bar.append(...tools, sep(), colorBtn, colors, widthBtn, sep(), undo, redo, clear, save, close)
+  bar.append(...tools, colorBtn, widthBtn, undo, redo, clear, save, close)
   pickTool('pen')
 
   img.onload = () => {
@@ -173,9 +224,11 @@ export function openPanel(o: PanelOptions): void {
     draw()
   }
   img.src = o.src
-  root.addEventListener('click', (e) => e.stopPropagation())   // taps in the editor never close the image view
+  root.addEventListener('click', (e) => { e.stopPropagation(); if (menu && !menu.el.contains(e.target as Node) && !menu.from.contains(e.target as Node)) shutMenu() })   // taps in the editor never close the image view; one outside a menu closes the menu
+  canvas.addEventListener('pointerdown', () => shutMenu(), true)
   const onKey = (e: KeyboardEvent): void => {
     if (!root.isConnected) return void o.mount.removeEventListener('keydown', onKey)
+    if (e.key === 'Escape' && menu) { e.preventDefault(); e.stopPropagation(); shutMenu(true); return }   // the menu first, then the editor
     if (e.key === 'Escape' && !(e.target as HTMLElement).matches?.('.pk-text')) { e.preventDefault(); shut() }
   }
   o.mount.addEventListener('keydown', onKey)

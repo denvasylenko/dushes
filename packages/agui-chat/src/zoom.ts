@@ -1,6 +1,7 @@
 /**
- * The image view, like Photos and the Claude app: the picture over the chat, a bar on top with x, the file's name and
- * "1 of 2", and a pencil; the images of one message (or of the composer) page with a swipe, the arrows beside the
+ * The image view, like the Claude app's: the picture over the chat, the file's name and "1 of 2" on top, and close with
+ * the pencil under it in one column right beside the picture's top right corner (on a narrow screen, where there is
+ * no room beside it, just inside that corner); the images of one message (or of the composer) page with a swipe, the arrows beside the
  * picture and the arrow keys. The pencil is only for an image still in the composer: it opens the tool panel
  * (editor-panel.ts) and Save puts the copy in its place. A picture that was already sent is only looked at: it has no
  * pencil and nothing on it can be drawn (a drawing there would change nothing). Loaded the first time an
@@ -24,8 +25,9 @@ const CSS = `
   background: black; }   /* black in both schemes, like Photos: nothing of the chat shows through */
 .zoom::backdrop { background: transparent; }
 .zoom:not([open]) { display: none; }
-.zoom-top { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 12px;
-  padding: max(10px, env(safe-area-inset-top, 0px)) 12px 10px; }
+.zoom-top { display: grid; align-items: center; min-height: 44px; padding: max(10px, env(safe-area-inset-top, 0px)) 68px 10px; }
+/* close and the pencil: one column at the picture's top right corner, placed when the picture is laid out */
+.zoom-side { position: absolute; z-index: 1; display: grid; gap: 8px; }
 .zoom-title { text-align: center; min-width: 0; line-height: 1.25; }
 .zoom-name { display: block; font: 600 15px/20px var(--agui-font, inherit); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .zoom-n { display: block; font-size: 13px; color: color-mix(in srgb, white 64%, transparent); font-variant-numeric: tabular-nums; }
@@ -71,8 +73,22 @@ export function openZoom(host: ZoomHost, opener: HTMLElement, legacyEdit?: (imag
   pencil.innerHTML = PENCIL
   const img = h('img', { alt: '' }) as HTMLImageElement
   const stage = h('div', { class: 'zoom-stage' }, img)
+  const side = h('div', { class: 'zoom-side' }, x, pencil)
+  stage.append(side)
   const view = h('dialog', { class: 'zoom', part: 'zoom' },
-    h('style', {}, CSS), h('div', { class: 'zoom-top' }, x, h('span', { class: 'zoom-title' }, name, count), pencil), stage) as HTMLDialogElement
+    h('style', {}, CSS), h('div', { class: 'zoom-top' }, h('span', { class: 'zoom-title' }, name, count)), stage) as HTMLDialogElement
+  /** The column sits 12 px to the right of the picture, level with its top; with no room there (a phone, a wide
+   *  picture) it sits 8 px inside the picture's top right corner. */
+  const place = (): void => {
+    const s = stage.getBoundingClientRect(), i = img.getBoundingClientRect()
+    if (!i.width || !s.width) return
+    const outside = i.right + 12 + 44 <= s.right - 8
+    side.style.left = `${(outside ? i.right + 12 : i.right - 8 - 44) - s.left}px`
+    side.style.top = `${(outside ? i.top : i.top + 8) - s.top}px`
+  }
+  img.addEventListener('load', place)
+  const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(place) : null
+  watch?.observe(stage)
 
   // only what is still in the composer can be drawn on; a sent picture is history
   const canMark = (i: number): boolean => !!row[i]?.src && row[i].el.dataset.file !== undefined && markable(row[i].src) && (!!host.mark || (!!legacyEdit && row[i].el === opener))
@@ -95,6 +111,7 @@ export function openZoom(host: ZoomHost, opener: HTMLElement, legacyEdit?: (imag
     count.hidden = row.length < 2
     prev.disabled = at === 0; next.disabled = at === row.length - 1
     pencil.style.visibility = canMark(at) ? '' : 'hidden'
+    place()
   }
   show(at)
 
@@ -112,9 +129,10 @@ export function openZoom(host: ZoomHost, opener: HTMLElement, legacyEdit?: (imag
   })
   const close = (): void => { view.close() }
   x.addEventListener('click', close)
+  side.addEventListener('click', (e) => e.stopPropagation())
   stage.addEventListener('click', (e) => { if (swiped) { swiped = false; return } if (e.target === stage) close() })   // a tap beside the picture
   view.addEventListener('cancel', (e) => { if (marking) e.preventDefault() })   // Esc in markup leaves markup only (the editor handles it)
-  view.addEventListener('close', () => view.remove())
+  view.addEventListener('close', () => { watch?.disconnect(); view.remove() })
 
   pencil.addEventListener('click', (e) => {
     e.stopPropagation()

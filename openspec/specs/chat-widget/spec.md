@@ -269,7 +269,7 @@ A user who scrolled up SHALL stay where they read while new text arrives, and a 
 - **THEN** the view stays, the button shows the dots, and a tap on it scrolls to the end
 
 ### Requirement: The image view's bar
-The large view of an image SHALL show a bar on top: close on the left, the file's name with "1 of 2" under it in the middle, and the pencil on the right when the picture can be marked up. Esc, the close button or a tap beside the picture SHALL close it.
+The large view of an image SHALL show the file's name with "1 of 2" under it on top, and close with the pencil under it (when the picture can be marked up) in one column right beside the picture's top right corner, never in the screen's corners. Where there is no room beside the picture, the column SHALL sit just inside that corner. Esc, the close button or a tap beside the picture SHALL close it.
 
 #### Scenario: A screenshot on a phone
 - **WHEN** the user taps a screenshot in a message on a 390 px screen
@@ -292,6 +292,13 @@ While attachments are on, the large view SHALL offer a pencil for a picture it c
 #### Scenario: Close goes back
 - **WHEN** the user taps the panel's close button or presses Esc
 - **THEN** the panel goes and the picture stays open
+
+### Requirement: The tool panel's menus
+In the tool panel the colour and the line width SHALL each open a menu above the bar, one at a time. The line widths SHALL be Thin, Medium, Thick and Extra thick, each with a sample of the line and the chosen one ticked. A pick, a tap outside or Esc SHALL close the menu; Esc SHALL close an open menu before the panel.
+
+#### Scenario: A thicker line
+- **WHEN** the user taps the line width and picks Thick
+- **THEN** the menu closes, the next strokes are thick, and Thick is ticked when the menu opens again
 
 ### Requirement: A sent image is only looked at
 A picture already sent, or shown in an answer, SHALL open in the image view only: the picture, its name, paging and close. It SHALL have no pencil, and no drawing tools SHALL open on it by a tap or a key. Drawing is only for an image still in the composer, before it is sent.
