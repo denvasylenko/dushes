@@ -417,9 +417,10 @@ struct CardView: View {
     }
 
     private var open: Bool {
+        guard store.isAnswerable(card) else { return false }
         switch card.status {
-        case .open, .refused: true
-        default: false
+        case .open, .refused: return true
+        default: return false
         }
     }
 }

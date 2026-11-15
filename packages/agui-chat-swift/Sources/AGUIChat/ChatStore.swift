@@ -57,7 +57,7 @@ public final class ChatStore {
     public var threadId: String
 
     /// What this client draws (`forwardedProps.capabilities`): the server leaves out the rest.
-    public static let capabilities: [JSONValue] = ["ask", "confirm"]   // set_fields is not switched by capabilities
+    public static let capabilities: [JSONValue] = ["ask", "confirm", "sources"]   // set_fields is not switched by capabilities
 
     /// A CUSTOM name the host draws itself (its cards), and what it does with a `site_directive`.
     public var hostEvents: Set<String> = []
@@ -224,7 +224,11 @@ public final class ChatStore {
 
     // MARK: The run
 
+    /// The message the current run carries: kept when the server answers «busy» (it did not take it).
+    private var carrying: RunAgentInput.Message?
+
     private func start(messages: [RunAgentInput.Message], props: [String: JSONValue], answering cardId: String? = nil) {
+        carrying = messages.last(where: { $0.role == "user" && $0.id == lastUser?.id })
         error = nil
         suggestions = []
         running = true
@@ -258,11 +262,18 @@ public final class ChatStore {
             }
             guard let self else { return }
             self.running = false
-            // a card is answered only by a run that reached RUN_FINISHED and did not refuse it; after an error, a cut-off
-            // stream or a stop it is open again (review, 2)
+            // a card is answered only by a run that reached RUN_FINISHED and did not refuse it. After an error, a cut-off
+            // stream or a stop it opens again only when the server still waits for THIS card (review 2, finding 2: a resume
+            // has no card id, the server gives it to whatever card is pending)
             if let cardId, let i = self.cardIndex(cardId), case .card(var c) = self.items[i], c.status == .sending {
-                c.status = self.finished ? .answered : .open
-                self.items[i] = .card(c)
+                if self.finished {
+                    c.status = .answered
+                    self.items[i] = .card(c)
+                } else {
+                    c.status = .closed
+                    self.items[i] = .card(c)
+                    self.reopenIfPending(cardId)
+                }
             }
             self.finishSteps()
             if self.handoffAfterRun, self.error == nil {
@@ -271,7 +282,7 @@ public final class ChatStore {
                 return
             }
             self.handoffAfterRun = false
-            if self.busy { self.followLater() }
+            if self.busy { self.followLater(resend: self.carrying) }
             if let next = self.queued, !self.busy {
                 self.queued = nil
                 self.send(next)
@@ -371,15 +382,46 @@ public final class ChatStore {
         if recent.count > 8 { recent.removeFirst(recent.count - 8) }
     }
 
-    /// The server is still on the previous turn: read the thread again in a moment.
-    private func followLater() {
+    /// The server is still on the previous turn (RUN_ERROR «busy»: it did NOT take this run's message): follow the thread
+    /// until its turn ends, then send the message again (review 2, finding 1). Gives up after about two minutes.
+    private func followLater(resend message: RunAgentInput.Message? = nil) {
         running = true
+        error = nil
         Task {
-            try? await Task.sleep(for: .seconds(2))
+            var thread: RestoredThread?
+            for _ in 0..<60 {
+                try? await Task.sleep(for: .seconds(2))
+                thread = try? await transport.restore(threadId: threadId)
+                if thread?.running != true { break }
+            }
             running = false
-            await restore()
-            if let next = queued { queued = nil; send(next) }
+            if let thread { await restore(thread) }
+            if let message {
+                items.append(.user(id: message.id, text: message.content))
+                remember(message)
+                start(messages: Array(recent.suffix(8)), props: [:])
+            } else if let next = queued {
+                queued = nil
+                send(next)
+            }
         }
+    }
+
+    /// After a failed card answer: open the card again only when the server's pending card is this one.
+    private func reopenIfPending(_ cardId: String) {
+        Task {
+            guard let thread = try? await transport.restore(threadId: threadId),
+                  thread.pending_card?["card_id"]?.string == cardId,
+                  let i = cardIndex(cardId), case .card(var c) = items[i] else { return }
+            c.status = .open
+            items[i] = .card(c)
+        }
+    }
+
+    /// Only the newest card can be answered: an older one (refused, or left behind by the agent's next card) is not.
+    public func isAnswerable(_ card: ChatCard) -> Bool {
+        guard let last = items.last(where: { if case .card = $0 { true } else { false } }) else { return false }
+        return last.id == "card-" + card.id
     }
 
     private func fail(_ message: String) {

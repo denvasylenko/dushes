@@ -111,16 +111,53 @@ final class AGUIChatTests: XCTestCase {
 
     @MainActor
     func testACardIsOpenAgainWhenItsRunFails() async throws {
-        let store = ChatStore(transport: ReplayTransport(pause: .zero) { _ in
+        let pending = RestoredThread(thread_id: nil, messages: [], pending_card: ["type": "confirm", "card_id": "k-3"], running: false)
+        let store = ChatStore(transport: ReplayTransport(pause: .zero, thread: pending) { _ in
             [.runStarted(threadId: nil, runId: nil), .runError(message: "boom", code: nil)]
         })
         store.apply(.custom(name: "on_interrupt", value: .string(#"{"type":"confirm","card_id":"k-3","title":"Publish?"}"#)))
         guard case .card(let card) = store.items.last else { return XCTFail("no card") }
         store.confirm(card, true)
         for _ in 0..<50 where store.running { try await Task.sleep(for: .milliseconds(10)) }
-        guard case .card(let after) = store.items.last else { return XCTFail("no card") }
+        for _ in 0..<50 { try await Task.sleep(for: .milliseconds(10)) }
+        guard case .card(let after) = store.items.first(where: { $0.id == "card-k-3" }) else { return XCTFail("no card") }
         XCTAssertEqual(after.status, .open)
         XCTAssertNotNil(store.error)
+    }
+
+    /// Review 2, finding 2: after a failed answer the card does not reopen when the server waits for another card.
+    @MainActor
+    func testAFailedAnswerDoesNotReopenACardTheServerNoLongerWaitsFor() async throws {
+        let other = RestoredThread(thread_id: nil, messages: [], pending_card: ["type": "confirm", "card_id": "k-other"], running: false)
+        let store = ChatStore(transport: ReplayTransport(pause: .zero, thread: other) { _ in
+            [.runStarted(threadId: nil, runId: nil)]                      // cut off
+        })
+        store.apply(.custom(name: "on_interrupt", value: .string(#"{"type":"confirm","card_id":"k-4","title":"Publish?"}"#)))
+        guard case .card(let card) = store.items.last else { return XCTFail("no card") }
+        store.confirm(card, true)
+        for _ in 0..<60 { try await Task.sleep(for: .milliseconds(10)) }
+        guard case .card(let after) = store.items.first(where: { $0.id == "card-k-4" }) else { return XCTFail("no card") }
+        XCTAssertEqual(after.status, .closed)
+        XCTAssertFalse(store.isAnswerable(ChatCard(id: "k-old", type: "confirm", body: [:])))
+    }
+
+    /// Review 2, finding 1: «busy» means the server did not take the message — it is sent again once the turn ends.
+    @MainActor
+    func testABusyMessageIsSentAgainAfterTheRunningTurn() async throws {
+        let calls = Captured()
+        let count = Counter()
+        let idle = RestoredThread(thread_id: "t", messages: [], pending_card: nil, running: false)
+        let store = ChatStore(transport: ReplayTransport(pause: .zero, thread: idle) { input in
+            calls.set(input)
+            if count.next() == 1 { return [.runStarted(threadId: nil, runId: nil), .runError(message: "", code: "busy")] }
+            return [.runStarted(threadId: nil, runId: nil), .runFinished(outcome: nil)]
+        }, threadId: "t")
+        store.send("Hello")
+        for _ in 0..<400 where count.value < 2 || store.running { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(count.value, 2)
+        XCTAssertEqual(calls.value?.messages.last?.content, "Hello")
+        XCTAssertTrue(store.items.contains { if case .user(_, "Hello") = $0 { true } else { false } })
+        XCTAssertNil(store.error)
     }
 
     @MainActor
@@ -150,6 +187,13 @@ final class AGUIChatTests: XCTestCase {
         for _ in 0..<50 where store.running { try await Task.sleep(for: .milliseconds(10)) }
         XCTAssertNotNil(store.error)
     }
+}
+
+final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var n = 0
+    func next() -> Int { lock.lock(); defer { lock.unlock() }; n += 1; return n }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return n }
 }
 
 final class Captured: @unchecked Sendable {
