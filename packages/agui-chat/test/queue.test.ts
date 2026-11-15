@@ -150,6 +150,40 @@ describe('the message queue', () => {
     expect($$(el, '.msg.queued').map((m) => m.querySelector('.bubble')!.textContent)).toEqual(['another'])
   })
 
+  it('a tap is never dropped: a starter or a suggestion tapped while a turn runs is shown as waiting, then goes by itself', async () => {
+    // the owner's case ("I tap and nothing happens"): an empty chat whose turn is still running, and a tap on a starter
+    const el = await mount(), a = agent()
+    el.agent = a as never
+    el.options = { starters: ['What can you do?', 'Book a table'] }
+    await tick()
+    void el.run()                                                        // a turn with no message of the person's (the host started it): the chat is busy
+    await tick(5)
+    const starter = $$(el, '.empty .chip').find((c) => c.textContent === 'What can you do?')!
+    starter.click()
+    await tick(5)
+    expect(a.runs).toHaveLength(1)                                       // not sent over the running turn
+    const waiting = $$(el, '.msg.queued')
+    expect(waiting).toHaveLength(1)                                      // and not dropped: it is on screen, marked as waiting
+    expect(waiting[0].textContent).toContain('What can you do?')
+    expect(waiting[0].querySelector('.q-tag')!.textContent).toBe('Queued')
+    expect(waiting[0].querySelector('.q-now')).not.toBeNull()            // with a way to send it now (it stops the stuck turn)
+    await a.release()
+    await tick(300)
+    expect(a.runs).toHaveLength(2)                                       // it went by itself when the turn ended
+    expect(lastUser(a.runs[1].input)).toBe('What can you do?')
+    expect($$(el, '.msg.queued')).toHaveLength(0)
+    // suggestion chips over the composer: none is on screen while a turn runs, so none can be tapped into nothing
+    await a.release()
+    el.setSuggestions(['Thanks'])
+    await tick()
+    expect($$(el, '.quick .chip').map((c) => c.textContent)).toEqual(['Thanks'])
+    void el.send('one more')
+    await tick(5)
+    expect($$(el, '.quick .chip')).toHaveLength(0)
+    await el.send('Thanks')                                              // and the same words sent by the page meanwhile wait too
+    expect($$(el, '.msg.queued').map((m) => m.textContent).join(' ')).toContain('Thanks')
+  })
+
   it('a double tap queues once; Esc stops the answer and brings the suggestions back', async () => {
     const el = await mount(), a = agent()
     el.agent = a as never

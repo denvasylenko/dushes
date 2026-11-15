@@ -720,6 +720,10 @@ A message sent while a turn runs SHALL NOT interrupt it: it SHALL wait last in t
 - **WHEN** the user sends "second" while the answer to "first" is still coming
 - **THEN** "second" shows below the answer, marked Queued, and is sent by itself when that answer ends
 
+#### Scenario: A starter tapped while a turn runs
+- **WHEN** the chat is still empty, a turn is running and the person taps a starter
+- **THEN** the starter's text shows as a message marked Queued (never nothing), with Send now, and is sent by itself when the turn ends
+
 ### Requirement: Acting on a queued message
 Send now SHALL stop the running answer and send that message next; Edit SHALL put its text back into the input, under any draft there, and take it out of the queue; Remove SHALL take it out with Undo. Only the next queued message SHALL show its actions at rest. The queue SHALL be kept per thread across a reload and cleared by a new chat.
 
