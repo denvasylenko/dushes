@@ -293,16 +293,16 @@ While attachments are on, the large view SHALL offer a pencil for a picture it c
 - **WHEN** the user taps the panel's close button or presses Esc
 - **THEN** the panel goes and the picture stays open
 
-### Requirement: Marking up a sent image
-For a picture already sent, or shown in an answer, the pencil SHALL open the phone-style markup: on top close, undo, redo and one check mark; at the bottom one tool button with the pen, frame, text and colours. The check mark SHALL add the marked-up copy to the composer as a new attachment; the sent picture SHALL stay as it was.
+### Requirement: A sent image is only looked at
+A picture already sent, or shown in an answer, SHALL open in the image view only: the picture, its name, paging and close. It SHALL have no pencil, and no drawing tools SHALL open on it by a tap or a key. Drawing is only for an image still in the composer, before it is sent.
 
 #### Scenario: A sent screenshot
-- **WHEN** the user opens a screenshot already sent, taps the pencil, circles a button and taps the check mark
-- **THEN** the composer holds a marked-up copy ready to send, and the sent screenshot is unchanged
+- **WHEN** the user opens a screenshot already sent
+- **THEN** the view shows it with no pencil, nothing can be drawn on it, and the composer stays as it was
 
-#### Scenario: Back to the picture
-- **WHEN** the user draws, then taps x or presses Esc
-- **THEN** markup closes, the picture stays open, and the pencil brings the drawing back
+#### Scenario: Before sending
+- **WHEN** the user opens an image that is still in the composer
+- **THEN** the pencil is there and opens the tool panel
 
 ### Requirement: Hero mode
 With `mode="hero"` the chat SHALL show only the composer until the first message (no header, no message list, no empty state). The first message SHALL grow it into the chat in place on screens 760 px wide and more (messages above the composer, at most 70% of the viewport high), and open it as a full-screen sheet with a close button on narrower screens. Closing SHALL return to the field and keep the conversation.

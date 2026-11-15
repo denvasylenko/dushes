@@ -132,42 +132,31 @@ describe('attachments in the composer', () => {
     expect(names).toEqual(['shot.png', 'shot-markup.png'])
   })
 
-  it('a sent image: the pencil opens the phone-style markup (x, undo, redo, one check mark); the copy joins the composer, the sent one stays', async () => {
+  it('a sent image is only looked at: no pencil, and the drawing tools never open on it', async () => {
     const el = await mount()
-    HTMLCanvasElement.prototype.toBlob = function (cb: BlobCallback) { cb(new Blob(['png'], { type: 'image/png' })) }
-    const composer = () => [...el.shadowRoot!.querySelectorAll<HTMLElement>('.files .att')].map((t) => t.title)
     await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])
     el.agent = { run: () => ({ subscribe: (o: { next: (e: unknown) => void; complete: () => void }) => { setTimeout(() => { o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' }); o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }); return { unsubscribe() {} } } }) } as never
     await el.send('look')
     await tick(5)
+    expect(el.shadowRoot!.querySelectorAll('.files .att')).toHaveLength(0)            // it was sent: nothing left in the composer
     ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()
     await viewer(el)
     const zoom = el.shadowRoot!.querySelector('dialog.zoom') as HTMLDialogElement
-    expect(zoom.querySelector('.mk, .pk')).toBeNull()                                 // opened to look at: nothing is editable yet
-    ;(zoom.querySelector('.zoom-edit') as HTMLButtonElement).click()
-    const mk = zoom.querySelector('.mk')!
-    expect(zoom.querySelector('.pk')).toBeNull()
-    expect([...mk.querySelectorAll('.mk-top button')].map((b) => b.getAttribute('aria-label'))).toEqual(['Cancel', 'Undo', 'Redo', 'Done'])
-    expect(mk.querySelector('.mk-tool')!.getAttribute('aria-label')).toBe('Pen, Colour')
-    const undo = mk.querySelector<HTMLButtonElement>('[aria-label="Undo"]')!
-    expect(undo.disabled).toBe(true)
-    const canvas = mk.querySelector('canvas')!
-    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 5, clientY: 5 }))
-    canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: 9, clientY: 9 }))
-    expect(undo.disabled).toBe(false)
-    zoom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))               // back to the picture, the view stays
-    expect(zoom.querySelector('.mk')).toBeNull()
-    expect(zoom.open).toBe(true)
-    ;(zoom.querySelector('.zoom-edit') as HTMLButtonElement).click()                   // the drawing is still there
-    expect(zoom.querySelector<HTMLButtonElement>('.mk [aria-label="Undo"]')!.disabled).toBe(false)
-    ;(zoom.querySelector('.mk [aria-label="Done"]') as HTMLButtonElement).click()
+    expect(zoom.open).toBe(true)                                                      // the viewer: the picture, its name, close
+    const pencil = zoom.querySelector<HTMLButtonElement>('.zoom-edit')!
+    expect(pencil.style.visibility).toBe('hidden')                                    // no way in to drawing
+    pencil.click()                                                                    // and even a click that reaches it opens nothing
+    for (const key of ['e', 'Enter', 'm']) zoom.dispatchEvent(new KeyboardEvent('keydown', { key }))
     await tick(20)
-    expect(composer()).toEqual(['photo-markup.png'])                                  // a new attachment, ready to send
-    expect(el.shadowRoot!.querySelectorAll('.msg.me .att')).toHaveLength(1)           // the sent picture is untouched
-    el.options = { attach: false }                                                    // attachments off: nowhere for a copy to go, so no pencil
-    ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()
+    expect(zoom.querySelector('.mk, .pk, canvas')).toBeNull()                         // no markup, no tool panel, no canvas
+    expect(el.shadowRoot!.querySelectorAll('.files .att')).toHaveLength(0)            // nothing was added to the composer
+    expect(el.shadowRoot!.querySelectorAll('.msg.me .att')).toHaveLength(1)           // the sent picture is as it was
+    ;(zoom.querySelector('.zoom-x') as HTMLButtonElement).click()
+    // an image still in the composer keeps its pencil
+    await pick(el, [new File(['y'], 'next.png', { type: 'image/png' })])
+    ;(el.shadowRoot!.querySelector('.files .att-open') as HTMLButtonElement).click()
     await viewer(el)
-    expect(el.shadowRoot!.querySelector<HTMLElement>('dialog.zoom .zoom-edit')!.style.visibility).toBe('hidden')
+    expect(el.shadowRoot!.querySelector<HTMLElement>('dialog.zoom .zoom-edit')!.style.visibility).toBe('')
   })
 
   it('a footnote sits under the composer; an upload writes no line that would shift it', async () => {

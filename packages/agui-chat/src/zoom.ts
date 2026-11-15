@@ -1,13 +1,12 @@
 /**
  * The image view, like Photos and the Claude app: the picture over the chat, a bar on top with x, the file's name and
  * "1 of 2", and a pencil; the images of one message (or of the composer) page with a swipe, the arrows beside the
- * picture and the arrow keys. The pencil marks a picture up: an image still in the composer gets the tool panel
- * (editor-panel.ts) and Save puts the copy in its place; a sent picture gets the phone-style markup (editor.ts) and
- * its check mark adds the copy to the composer, the sent one staying as it was. Loaded the first time an
+ * picture and the arrow keys. The pencil is only for an image still in the composer: it opens the tool panel
+ * (editor-panel.ts) and Save puts the copy in its place. A picture that was already sent is only looked at: it has no
+ * pencil and nothing on it can be drawn (a drawing there would change nothing). Loaded the first time an
  * image is opened (agui-chat.editor.js next to the one-script build), with its own styles, so the chat stays small.
  */
 import { h } from './dom'
-import { openEditor, type Shape } from './editor'
 import { openPanel } from './editor-panel'
 
 export interface ZoomHost {
@@ -64,7 +63,6 @@ export function openZoom(host: ZoomHost, opener: HTMLElement, legacyEdit?: (imag
   const pic = (b: HTMLElement): HTMLImageElement | null => (b instanceof HTMLImageElement ? b : b.querySelector('img'))   // a picture in an answer opens itself
   const row = openers.map((b) => ({ el: b, src: pic(b)?.getAttribute('src') ?? '', name: b.getAttribute('aria-label') || pic(b)?.alt || '' }))
   let at = Math.max(0, openers.indexOf(opener))
-  const drawn = new Map<number, Shape[]>()   // what was drawn on each image while the view is open: x in markup keeps it
 
   const x = h('button', { class: 'zoom-x', type: 'button', 'aria-label': host.t('close') }); host.icon(x, 'close')
   const name = h('span', { class: 'zoom-name' })
@@ -76,7 +74,8 @@ export function openZoom(host: ZoomHost, opener: HTMLElement, legacyEdit?: (imag
   const view = h('dialog', { class: 'zoom', part: 'zoom' },
     h('style', {}, CSS), h('div', { class: 'zoom-top' }, x, h('span', { class: 'zoom-title' }, name, count), pencil), stage) as HTMLDialogElement
 
-  const canMark = (i: number): boolean => !!row[i]?.src && markable(row[i].src) && (!!host.mark || (!!legacyEdit && row[i].el === opener))
+  // only what is still in the composer can be drawn on; a sent picture is history
+  const canMark = (i: number): boolean => !!row[i]?.src && row[i].el.dataset.file !== undefined && markable(row[i].src) && (!!host.mark || (!!legacyEdit && row[i].el === opener))
   const go = (d: number): HTMLButtonElement => {
     const b = h('button', { class: `zoom-go ${d < 0 ? 'prev' : 'next'}`, type: 'button', 'aria-label': host.t(d < 0 ? 'prevImage' : 'nextImage') }) as HTMLButtonElement
     b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}"/></svg>`
@@ -128,10 +127,8 @@ export function openZoom(host: ZoomHost, opener: HTMLElement, legacyEdit?: (imag
       if (host.mark) host.mark(item.el, image, item.name); else legacyEdit?.(image)
       close()
     }
-    // still in the composer: the tool panel, Save replaces it; already sent: the phone-style markup, a copy joins the composer
-    if (item.el.dataset.file !== undefined) openPanel({ src: item.src, name: item.name, mount: view, t: (k) => host.t(k), onSave: done, onClose: back })
-    else openEditor({ src: item.src, name: item.name, mount: view, t: (k) => host.t(k), shapes: drawn.get(i), onDone: done,
-      onCancel: (shapes) => { drawn.set(i, shapes); back() } })
+    // the tool panel; Save puts the copy in the picture's place in the composer
+    openPanel({ src: item.src, name: item.name, mount: view, t: (k) => host.t(k), onSave: done, onClose: back })
   })
 
   host.wrap.append(view)

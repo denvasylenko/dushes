@@ -1540,8 +1540,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   private _zoom(opener: HTMLElement): void {
     const mark = !this._canAttach ? undefined : (from: HTMLElement, image: Blob, name: string): void => {
       const i = from.dataset.file
-      if (i !== undefined && this._files[+i]) this._replaceFile(+i, image, name)
-      else void this._upload([new File([image], `${(name || 'image').replace(/\.[a-z0-9]{1,5}$/i, '')}-markup.png`, { type: 'image/png' })])
+      if (i !== undefined && this._files[+i]) this._replaceFile(+i, image, name)   // only an image still in the composer is drawn on
       if (finePointer()) (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true })   // the next step is to say what to do with it
     }
     void loadZoom().then((open) => open({ wrap: this.$.wrap, t: this.t.bind(this), icon: (el, n) => this._icon(el, n), mark }, opener)).catch(() => {})
