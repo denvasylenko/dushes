@@ -1,0 +1,174 @@
+---
+title: Voice mode (experimental)
+description: Mount the voice routes on your host so people can talk to the agent. The routes, the events, the limits and the money.
+---
+import { Aside, LinkCard, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"The server side of talking to the agent: a pass, a conversation with the voice, its events and its limits."} when={"You want people to speak to the assistant instead of typing."} write={"Three lines that mount `create_voice_router`, and `VOICE_CODES` in the host's environment."} />
+
+<Aside type="caution" title="Experimental">
+Voice contract 1. Routes, frames and events keep their meaning while the number stays 1; new events may be added, and a breaking change gets a new number. The mode is off until you give the host voice codes.
+</Aside>
+
+A voice model listens and speaks. The agent does the work exactly as in chat: what the person said arrives as an ordinary message in the same conversation, and the answer is the agent's own answer, read aloud. In this mode the person's voice is sent to OpenAI; the server keeps the transcribed text only.
+
+```mermaid
+sequenceDiagram
+  participant C as Client (widget or app)
+  participant H as Your host (/voice)
+  participant V as Voice model
+  participant A as Agent (/agent/run)
+  C->>H: POST /voice/unlock {code}
+  H-->>C: {person, pass}
+  C->>H: start a conversation (WebRTC or WebSocket) + pass
+  H->>V: opens the voice session (your key stays on the host)
+  V-->>C: event heard {text}
+  C->>A: the same text, as an ordinary message
+  A-->>C: the usual run: steps, cards, the answer
+  H-->>C: the answer, spoken; event spoken {delta}
+  C->>H: end
+  H-->>C: event ended {reason, cost_usd, seconds}
+```
+
+## Mount it
+
+```python title="app.py"
+from formguide import voice
+
+talks = voice.Talks(
+    voice.VoiceConfig.from_env(),        # VOICE_CODES and the VOICE_* limits
+    title="Acme",                        # how the voice names your site
+    stop=guide.stop,                     # speaking over an answer stops the turn in progress
+)
+if talks.config.enabled:                 # no codes: no voice mode, and no routes
+    app.include_router(voice.create_voice_router(voice.watch(talks)), prefix="/voice")
+```
+
+```bash title="The host's environment"
+VOICE_CODES="anna=correct-horse-battery,ben=another-long-code"   # one code per person, 8 characters or more
+OPENAI_API_KEY=...                                               # the voice model's key; it never reaches a client
+```
+
+`voice.watch(talks)` lets the conversations hear the runs of their threads, so the answer of a run is the one the voice reads. On a host without codes every voice route answers 404: a client shows no trace of the mode then.
+
+## The routes
+
+The examples mount them under `/voice`. Every call but `unlock` carries the pass in the `X-Voice-Pass` header, never in an address.
+
+| Route | Body | Answer |
+| --- | --- | --- |
+| `POST /voice/unlock` | `{code}` | `{person, pass}`; 403 for a wrong code. A pass lives twelve hours; five wrong codes a day from one address, then every try is refused |
+| `POST /voice/session` | `{sdp, thread_id}` | a browser starts a conversation over WebRTC: `{talk, sdp, contract, limits}`; 429 `{reason}` when it may not start; 502 when the voice is unavailable |
+| `GET /voice/events?talk=` | | the conversation's events, as server-sent events |
+| `POST /voice/end` | `{talk}` | `{cost_usd}`: what the conversation cost; 404 for an unknown conversation |
+| `WebSocket /voice/stream?thread_id=` | | a native app or a test runner: one socket for audio both ways and the events |
+
+`thread_id` is the chat's own `threadId`: the voice speaks for that conversation.
+
+<Tabs syncKey="voice-client">
+<TabItem label="Browser (WebRTC)">
+
+```http
+POST /voice/session
+X-Voice-Pass: <pass>
+Content-Type: application/json
+
+{"sdp": "<the browser's WebRTC offer>", "thread_id": "t-42"}
+```
+
+The answer's `sdp` completes the connection; then read `GET /voice/events?talk=<talk>` and call `POST /voice/end` when the person stops. The `<agui-chat>` widget does all of this itself: see [Voice mode in the chat](../../../frontend/voice-mode/).
+
+</TabItem>
+<TabItem label="Native app (WebSocket)">
+
+```http
+GET /voice/stream?thread_id=t-42
+X-Voice-Pass: <pass>
+Upgrade: websocket
+```
+
+- **Client to server:** binary frames are microphone audio, raw PCM16 little-endian mono at 24 kHz, sent in real time (100 ms pieces are fine). The text frame `{"type": "end"}` ends the conversation.
+- **Server to client:** binary frames are the voice's audio in the same format; play them in order. Text frames are the events below, as JSON.
+- A refusal is `{"type": "refused", "reason"}` and the socket closes.
+
+</TabItem>
+</Tabs>
+
+## The events
+
+The first event is `started`: `{talk, contract: 1, limits: {seconds, silence_seconds}, audio: {format, rate, channels}}`. Every later event carries `t_ms`. Ignore a type you do not know.
+
+| Event | Carries | What the client does |
+| --- | --- | --- |
+| `hearing` | `{delta}` | the person's words as they speak: grow their message |
+| `heard` | `{text}` | the request the voice hands over: send it as an ordinary user message in the same thread. That run is the normal AG-UI run |
+| `heard` with `answers` | `{card_id, type, accepted}` | a spoken yes or no while a card waits is the answer to that card: accept or reject the card with its own resume, and do not send the words as a message |
+| `interrupted` | | the person spoke over a turn: the server has stopped it. Drop what was shown as in progress; the next `heard` is the new request |
+| `spoken` | `{delta}` | the transcript of what the voice says |
+| `result` | `{text}` | the agent's answer was given to the voice |
+| `quiet` | `{card_id}` | that card was filled without being shown (see below) |
+| `echo` | `{text}` | the voice's own words came back through the microphone and were dropped: remove what `hearing` had started to show |
+| `error` | `{code}` | something failed; the conversation may go on |
+| `ended` | `{reason, cost_usd, seconds}` | the conversation is over. `reason`: `closed`, `time`, `money`, `silence`, `day` or `lost` |
+
+A conversation that may not start is refused with a reason: `pass` (no valid pass), `busy` (another conversation is open), `day` or `person_day` (a budget is used up), `unavailable`.
+
+## Filling without a card
+
+In chat every proposed value is a card the person accepts. In a voice conversation a value the person just said aloud is filled at once: the `set_fields` card of that thread carries `quiet: true`. A client applies it through the form as an accepted card (the same resume), draws no card and keeps a line with Undo.
+
+A card is marked quiet only when every value on it was said by the person, the fields were empty, and none is a consent. Everything else waits as a card, as always: a consent tick, an action that cannot be undone, a value the person did not say, replacing a value typed by hand, a value the form refused, a real choice between options. The form keeps the last word: a value it refuses comes back as a card.
+
+## Limits and money
+
+An open conversation is billed by the second, silence included, so end it when the person stops, when the app goes to the background and when the screen closes. The server ends it by itself at the limits below, and `ended` says why and what it cost.
+
+## A host that already knows its people
+
+A host with its own sign-in needs no code and no pass. Give `Talks` a hook that names the person of each request, and the client sends its usual credentials:
+
+```python title="app.py"
+talks = voice.Talks(
+    voice.VoiceConfig(at_once_person=1),
+    person_of=lambda headers: my_session(headers),      # the person's name, or None to refuse
+    spent_today=lambda person: ledger.voice_spent(person),   # what was spent today; None: the whole host
+    on_cost=lambda person, usd, seconds: ledger.add(person, usd, seconds),
+    stop=guide.stop,
+    log_dir="data/voice",                                # one JSON line an event, per conversation
+)
+```
+
+| Hook | What it is for |
+| --- | --- |
+| `person_of(headers)` | your way of naming the person of a request (a session, a bearer token); with it, no route asks for a pass |
+| `spent_today(person)` | today's voice spend from your own ledger, for one person or (with `None`) the whole host |
+| `on_cost(person, usd, seconds)` | called with what a conversation cost, so you keep the money in your own ledger |
+| `stop(thread_id)` | ends the agent's turn in progress (`FormGuide.stop`); without it the turn runs on and only its answer is not spoken |
+| `log_dir` | a folder for the record of each conversation: what was heard, what the voice said, the end and its cost |
+
+## Every option
+
+The settings are the host's environment variables, read by `VoiceConfig.from_env()`; they are not keys of `formguide.yaml`. In Python they are the fields of `VoiceConfig`.
+
+| Environment | `VoiceConfig` | Default | Meaning |
+| --- | --- | --- | --- |
+| `VOICE_CODES` | `codes` | none | `name=code,name=code`: one code per person, 8 characters or more. Without it there is no voice mode |
+| `VOICE_DAY_USD` | `day_usd` | `5.0` | this host's voice budget for a day |
+| `VOICE_PERSON_DAY_USD` | `person_day_usd` | `0` (none) | one person's daily budget inside it |
+| `VOICE_MAX_SECONDS` | `max_seconds` | `300` | one conversation ends here |
+| `VOICE_MAX_USD` | `max_usd` | `0.75` | or here, whichever comes first (the voice and the agent's turns together) |
+| `VOICE_AT_ONCE` | `at_once` | `1` | voice conversations at the same time on this host |
+| | `at_once_person` | `1` | and for one person |
+| `VOICE_SILENCE_SECONDS` | `silence_seconds` | `30` | this long without speech ends a conversation |
+| `VOICE_MODEL` | `model` | `gpt-live-1` | the voice model |
+| `VOICE_MINUTE_USD` | `minute_usd` | `0.05` | the voice provider's price of a connected minute, used to count the spend |
+| `VOICE_SECRET` | `secret` | a new one at every start | signs the passes; set it so passes survive a restart |
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Voice mode in the chat" description="What the person sees and says, and how to turn it on in the widget." href="../../../frontend/voice-mode/" />
+  <LinkCard title="HTTP API" description="Every endpoint of the agent." href="../../../reference/http-api/" />
+  <LinkCard title="Deploy and secure" description="Keys, limits and a public host." href="../deploy/" />
+</CardGrid>

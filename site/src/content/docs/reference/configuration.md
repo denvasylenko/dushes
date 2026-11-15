@@ -16,6 +16,7 @@ Check a file without calling any model: `formguide check --config formguide.yaml
 
 ## How the file is read
 
+- **Voice mode** (experimental) is set in the host's environment (`VOICE_CODES` and the `VOICE_*` limits), not in this file: [Voice mode](../../agents/shared/voice/#every-option).
 - **Paths** (`data_dir`, `domain_packs.dir`, `knowledge.dir`, `skills.dir`, `checkpointer.sqlite`, `transcripts.dir`) are relative to the YAML file, not to the working directory.
 - **`${VAR}`** anywhere in a string value is replaced by the environment variable (`os.path.expandvars`); an unset variable stays as the literal text. Keep secrets in the environment, not in the file.
 - **Import strings** `"package.module:attr"` (tools, providers, factories, model classes) are imported with the Python path of the running process, so your own modules must be importable.

@@ -137,6 +137,7 @@ export default defineConfig({
 						{ label: 'Cards and answers', slug: 'frontend/cards' },
 						{ label: 'Blocks', slug: 'frontend/blocks' },
 						{ label: 'What the chat can do', slug: 'frontend/what-the-chat-can-do', badge: { text: 'live', variant: 'tip' } },
+						{ label: 'Voice mode', slug: 'frontend/voice-mode', badge: { text: 'experimental', variant: 'caution' } },
 						{ label: 'Field highlight', slug: 'frontend/field-highlight', badge: { text: 'live', variant: 'tip' } },
 						{ label: 'Card gallery', slug: 'frontend/card-gallery', badge: { text: 'live', variant: 'tip' } },
 						{ label: 'Themes and styling', slug: 'frontend/themes' },
@@ -183,6 +184,7 @@ export default defineConfig({
 						{ label: 'Persistence and history', slug: 'agents/shared/persistence' },
 						{ label: 'Deploy and secure', slug: 'agents/shared/deploy' },
 						{ label: 'Speed and tracing', slug: 'agents/shared/observability' },
+						{ label: 'Voice mode', slug: 'agents/shared/voice', badge: { text: 'experimental', variant: 'caution' } },
 					] },
 					{ label: 'How it works', collapsed: true, items: [
 						{ label: 'System overview', slug: 'agents/how-it-works' },

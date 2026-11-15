@@ -1,0 +1,87 @@
+---
+title: Voice mode (experimental)
+description: Talk to the assistant instead of typing. It answers aloud and fills what you said; cards appear only when you have to confirm.
+---
+import { Aside, LinkCard, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Summary } from '../../../components/ui';
+
+<Summary what={"Talking to the assistant: it listens, answers aloud and fills the form from what you say."} when={"Typing is slow or your hands are busy."} write={"`voice-mode` on `<agui-chat>`, on a host that has the voice routes."} />
+
+<Aside type="caution" title="Experimental, and behind a personal code">
+It is a trial and can mishear. Each person needs their own access code from whoever runs the site. In this mode your voice is sent to OpenAI; the site keeps the transcribed text only.
+</Aside>
+
+This is not dictation. [Dictation](../what-the-chat-can-do/#voice) turns speech into text in the message field, and you still send it. In voice mode you have a conversation: you speak, the assistant answers aloud, and the chat shows the same messages it would show if you had typed.
+
+## What a person does
+
+1. **Tap + and choose "Experimental voice mode".** The row says "Needs your code" the first time.
+2. **Enter the access code** and tap **Activate Experimental Mode**. The code is asked again after twelve hours.
+3. **Allow the microphone** when the browser asks, and talk. An orb above the message field shows what is happening: **Listening**, **Thinking**, **Speaking**.
+
+Later, a small orb in the message field starts voice mode in one tap.
+
+## What happens when you talk
+
+- **Your words appear as your message** while you speak, and are sent when you stop.
+- **The assistant answers aloud**, in one or two short sentences. The written answer in the chat is the same answer.
+- **What you said is filled in at once.** If you say your name, it goes into the name field with no card to accept. A line under the orb says what was filled ("First name: Anna") with **Undo**.
+- **A card appears only when you have to decide**: a consent tick, an action that cannot be undone (sending the form), a value you did not say yourself, replacing something you typed by hand, a value the form refused, or a real choice between options. The assistant asks the question aloud, and you can answer with a spoken yes or no.
+- **Speaking over an answer stops it.** So does a press on the orb.
+
+## Silent mode: the microphone button
+
+The microphone button turns the microphone off. The conversation with the voice ends, you type, and the assistant answers in text without speaking. The same button turns the voice back on. The close button leaves voice mode.
+
+The microphone is never on without the moving orb on screen. Closing the chat, leaving the page, starting a new chat or a failed start all end the conversation with the voice.
+
+## The limits
+
+A conversation is short on purpose, because an open one costs money every second, silence included.
+
+| What ends it | What the chat says |
+| --- | --- |
+| Five minutes, or the conversation's budget | "Voice mode stopped: this conversation reached its limit. You can keep typing." |
+| Thirty seconds of silence | "Voice mode stopped after a silence. Tap the microphone to go on." |
+| The site's budget for the day | "Voice mode stopped: today's limit is reached. It is back tomorrow." |
+| Your own budget for the day | "Your voice limit for today is reached. It is back tomorrow." |
+| A second conversation at the same time | "Another voice conversation is going on. End it there, or try again in a minute." |
+| A lost connection | "Voice mode stopped: the connection was lost. Tap the microphone to go on." |
+
+The figures are the defaults; the host can change them ([every option](../../agents/shared/voice/#every-option)). The chat itself always keeps working: you can type at any time.
+
+## Turn it on
+
+The host must have the voice routes first: [Voice mode on the server](../../agents/shared/voice/).
+
+<Tabs syncKey="voice-client">
+<TabItem label="Web widget">
+
+```html
+<agui-chat url="/agent/run" voice-mode="on"></agui-chat>
+```
+
+```html
+<!-- the voice routes somewhere else than /voice on the agent's host -->
+<agui-chat url="/agent/run" voice-mode="on" voice-url="https://api.example.com/voice"></agui-chat>
+```
+
+With `voice-mode` on, the chat loads one more file, `agui-chat.voice.js`, and adds the row to the + menu. Nothing else changes until a person enters a code, and no key of the voice provider ever reaches the browser. To change a word, use `i18n` with `voice` in front of the key, for example `i18n: { voiceMenu: 'Talk to us' }`.
+
+</TabItem>
+<TabItem label="Swift client">
+
+A native app opens one WebSocket to the host, sends the microphone as audio frames and plays the frames it gets back. The frames, the events and the rules for filling without a card are in the client contract: [CONTRACT.md, "Voice mode (experimental), voice contract 1"](https://github.com/denvasylenko/dushes/blob/main/packages/agui-chat-swift/CONTRACT.md). The same rules, for any client: [Voice mode on the server](../../agents/shared/voice/#the-events).
+
+</TabItem>
+</Tabs>
+
+`voice-mode` is not the `voice` option: `voice` chooses how [dictation](../what-the-chat-can-do/#voice) turns speech into text.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Voice mode on the server" description="The routes, the events, the limits and the money." href="../../agents/shared/voice/" />
+  <LinkCard title="What the chat can do" description="Every feature of the chat, live, dictation included." href="../what-the-chat-can-do/" />
+  <LinkCard title="Playground" description="Try every setting of the chat live and copy the code." href="../playground/" />
+</CardGrid>

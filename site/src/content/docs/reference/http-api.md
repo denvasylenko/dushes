@@ -53,3 +53,17 @@ description: Every endpoint of Dushes' FastAPI router, with its body and answer.
 | `forwardedProps.prefill` | `{data?, text?, attachment_ids?, language?}`: values the app already knows |
 
 What comes back is in [AG-UI events](../agui-events/). Behaviour contract: [http-api](../specifications/http-api/), [agui-protocol](../specifications/agui-protocol/).
+
+## Voice mode (experimental)
+
+A separate router, `create_voice_router`, mounted by the host (the examples use `/voice`) only when it has voice codes. The pass from `unlock` travels in the `X-Voice-Pass` header of every other call.
+
+| Method and path | Body | Returns |
+| --- | --- | --- |
+| `POST /voice/unlock` | `{code}` | `{person, pass}`; 403 for a wrong code |
+| `POST /voice/session` | `{sdp, thread_id}` | `{talk, sdp, contract, limits}` (a browser, WebRTC); 429 `{reason}` when it may not start |
+| `GET /voice/events?talk=` | | the conversation's events (SSE) |
+| `POST /voice/end` | `{talk}` | `{cost_usd}` |
+| `WebSocket /voice/stream?thread_id=` | | audio both ways (binary PCM16 mono, 24 kHz) and the events as text frames, for a native app |
+
+The events, the limits and the settings: [Voice mode](../../agents/shared/voice/).
