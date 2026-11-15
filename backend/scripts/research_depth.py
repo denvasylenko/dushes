@@ -701,6 +701,54 @@ SET_ABOUT = {
     "veltra_manual": "The documentation of an invented heat pump range: installation, commissioning, parameters, fault codes, maintenance and firmware release notes.",
 }
 MODEL_NAMES = {"claude-haiku-5-5": "Claude Haiku 5.5", "gpt-6-luna": "gpt-6-luna"}
+# What a document is, where its own first sentence does not say it (a version line, a date). Written by hand.
+DOC_ABOUT = {
+    "halden_policies": {
+        "betriebsvereinbarung_kelmar_de.md": "The works agreement of the Kelmar site, in German: overtime, night work and shift plans. It prevails there over the staff handbook.",
+        "company_car_policy.md": "Who gets a company car, the price limits, the lease, private use, damage, and the allowance instead of a car.",
+        "directive_2026_07.md": "A Management Board directive that changes the hotel cap, the single-quote threshold and the password length from 1 July 2026. It prevails over the policies it amends.",
+        "disciplinary_and_grievance_procedure.md": "How a grievance is raised and heard, the disciplinary steps and how long each stays on file, appeals.",
+        "health_and_safety_manual.md": "Safety rules by hazard (forklifts, work at height, hot work and fifteen more): licences, permits, protection, what to do when something goes wrong.",
+        "information_security_policy.md": "Classes of information, passwords and second factor, devices, incidents, suppliers, working away from the site.",
+        "procurement_policy.pdf": "How many quotes an order needs by its value, purchase orders, approvals, new suppliers, urgent purchases. A PDF.",
+        "records_retention_schedule.md": "A table of fifty kinds of record: how long each is kept, from when, who owns it and how it is destroyed.",
+        "remote_work_policy.md": "Who may work remotely, how many days, from where, and what the company pays. It disagrees with the staff handbook on office days.",
+        "staff_handbook_2025_archived.md": "The staff handbook's 2025 edition, archived: superseded by the 2026 edition and kept for events before 2026.",
+        "staff_handbook_2026.md": "The staff handbook in force: joining, leave, working time, pay, conduct, learning, leaving.",
+        "supplier_code_of_conduct.md": "What every supplier signs before the first order: labour, safety and environment, integrity, audits.",
+        "travel_and_expenses_policy.md": "Approvals, transport, hotels, per diem, claims and what is not paid. It prevails over other guides on travel.",
+    },
+    "orrin_catalogue": {
+        "battery_and_charger_guide.md": "The three battery platforms, every pack and charger, charging times, runtime measured on site, care and transport.",
+        "dealer_handbook.md": "For dealers and service partners: dealer levels and discounts, warranty handling, demonstration tools, the list of service partners.",
+        "service_bulletins_2026.md": "Forty bulletins of 2026: a battery recall, corrections to two catalogue values, changes to parts. A bulletin prevails over the catalogue.",
+        "spare_parts_list_2026.md": "Spare parts for every product: part number, price and availability.",
+        "warranty_terms_2026.pdf": "How long each kind of product is covered, what is and is not covered, how to claim, repairs after the warranty, returns. A PDF; it prevails on warranty questions.",
+    },
+    "tessel_contract": {
+        "amendment_no_1.md": "The first amendment: four sites added and lift maintenance at distribution centres.",
+        "amendment_no_2.md": "The second amendment: a longer payment term, a higher liability limit and indexation cap, lower fixed fees. It prevails over the agreement.",
+        "framework_agreement.pdf": "The agreement itself: term, services, staff, charges, service levels, liability, termination, exit, and the order in which its documents apply. A PDF.",
+        "helpdesk_log_extract_2026.md": "A table of 1,600 helpdesk requests from April to September 2026: site, priority, what happened, time to arrive.",
+        "schedule_1_service_specification.md": "What the supplier does: cleaning tasks and frequencies, guarding, planned maintenance by asset, response times, the helpdesk.",
+        "schedule_3_rate_card_2025_archived.md": "The 2025 rate card, archived: hourly rates and each site's monthly fee until 31 December 2025.",
+        "schedule_3_rate_card_2026.md": "The rate card in force: hourly rates, supplements, the call-out fee and each site's monthly fixed fee.",
+        "schedule_4_sites.md": "The eighty sites: type, area, opening hours, cleaning, guarding, and each site's asset register.",
+        "schedule_5_transition_plan.md": "The transition steps and dates, the named contract managers, transferring staff, required insurance, approved subcontractors.",
+        **{f"performance_report_2026_{n:02d}_{m}.md": f"The supplier's monthly report for {m.capitalize()} 2026: the four service levels against target, Priority 1 jobs, a score for every site."
+           for n, m in enumerate(["january", "february", "march", "april", "may", "june", "july", "august", "september"], 1)},
+    },
+    "veltra_manual": {
+        "commissioning_guide.md": "The nineteen commissioning steps in order, reference pressures by model, common mistakes, the report. Written for firmware 2.4.",
+        "controller_parameter_reference.md": "About 420 controller parameters in eight groups: range, default, access level, and notes on the important ones. Written for firmware 2.4.",
+        "fault_code_reference.md": "About 320 fault codes: meaning, what the unit does, what to do, and a note on each. Written for firmware 2.4.",
+        "kurzanleitung_installateure_de.md": "A short installer's guide in German: clearances, hydraulics, electrics. It disagrees with the installation manual on one clearance.",
+        "maintenance_manual.md": "The maintenance plan with its intervals and who does each task, why the intervals matter, the log, taking a unit out of service.",
+        "spare_parts_list_2026.md": "1,500 spare parts: description, models, price, delivery, who may fit them.",
+        "troubleshooting_guide.md": "Thirty symptoms, each with the checks to make in order and the faults usually seen with it.",
+        "hydraulic_schemes.md": "The twelve hydraulic schemes a controller can be set to, with the sensors and outputs each expects.",
+    },
+}
 
 
 def reader_words(why: str) -> str:
@@ -766,7 +814,7 @@ def demo_data(reports: list[Path]) -> dict:
             first = lines[0].lstrip("# ").strip() if lines else f.name
             # what the document is, in its own first sentence (the line under its title)
             body_line = next((ln for ln in lines[1:] if not ln.startswith(("#", "|", "<!--", "-", "*")) and len(ln) > 30), "")
-            about = re.split(r"(?<=[.!?])\s", body_line, maxsplit=1)[0][:200]
+            about = DOC_ABOUT.get(c, {}).get(f.name) or re.split(r"(?<=[.!?])\s", body_line, maxsplit=1)[0][:200]
             docs.append({"id": f.name, "title": first[:90], "pages": max(1, round(len(text) / 3000)), "words": len(text.split()),
                          "bytes": f.stat().st_size, "format": f.suffix.lstrip(".").lower(), "about": about})
         # the instruction planted for the benchmark: where exactly it is, so a page can mark that line and nothing else

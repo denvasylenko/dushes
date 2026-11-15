@@ -35,7 +35,7 @@
      "words": 220,
      "bytes": 1418,
      "format": "md",
-     "about": "Zwischen der Halden Works Kelmar GmbH und dem Betriebsrat des Standorts Kelmar."
+     "about": "The works agreement of the Kelmar site, in German: overtime, night work and shift plans. It prevails there over the staff handbook."
     },
     {
      "id": "company_car_policy.md",
@@ -44,7 +44,7 @@
      "words": 399,
      "bytes": 2215,
      "format": "md",
-     "about": "Version 5, in force from 1 January 2026."
+     "about": "Who gets a company car, the price limits, the lease, private use, damage, and the allowance instead of a car."
     },
     {
      "id": "directive_2026_07.md",
@@ -53,7 +53,7 @@
      "words": 165,
      "bytes": 983,
      "format": "md",
-     "about": "Issued by the Management Board on 12 June 2026."
+     "about": "A Management Board directive that changes the hotel cap, the single-quote threshold and the password length from 1 July 2026. It prevails over the policies it amends."
     },
     {
      "id": "disciplinary_and_grievance_procedure.md",
@@ -62,7 +62,7 @@
      "words": 547,
      "bytes": 3057,
      "format": "md",
-     "about": "Version 3, in force from 1 June 2025."
+     "about": "How a grievance is raised and heard, the disciplinary steps and how long each stays on file, appeals."
     },
     {
      "id": "health_and_safety_manual.md",
@@ -71,7 +71,7 @@
      "words": 4224,
      "bytes": 23372,
      "format": "md",
-     "about": "Version 12, in force from 1 October 2025."
+     "about": "Safety rules by hazard (forklifts, work at height, hot work and fifteen more): licences, permits, protection, what to do when something goes wrong."
     },
     {
      "id": "information_security_policy.md",
@@ -80,7 +80,7 @@
      "words": 811,
      "bytes": 4718,
      "format": "md",
-     "about": "Version 9, in force from 1 September 2025."
+     "about": "Classes of information, passwords and second factor, devices, incidents, suppliers, working away from the site."
     },
     {
      "id": "intranet_faq.md",
@@ -242,7 +242,7 @@
      "words": 660,
      "bytes": 6547,
      "format": "pdf",
-     "about": "Version 4, in force from 1 March 2025."
+     "about": "How many quotes an order needs by its value, purchase orders, approvals, new suppliers, urgent purchases. A PDF."
     },
     {
      "id": "records_retention_schedule.md",
@@ -251,7 +251,7 @@
      "words": 1183,
      "bytes": 5863,
      "format": "md",
-     "about": "Version 5, in force from 1 January 2026."
+     "about": "A table of fifty kinds of record: how long each is kept, from when, who owns it and how it is destroyed."
     },
     {
      "id": "remote_work_policy.md",
@@ -260,7 +260,7 @@
      "words": 456,
      "bytes": 2549,
      "format": "md",
-     "about": "Version 2, in force from 1 February 2026."
+     "about": "Who may work remotely, how many days, from where, and what the company pays. It disagrees with the staff handbook on office days."
     },
     {
      "id": "site_annex_arden.md",
@@ -377,7 +377,7 @@
      "words": 1506,
      "bytes": 8537,
      "format": "md",
-     "about": "Edition 2025."
+     "about": "The staff handbook's 2025 edition, archived: superseded by the 2026 edition and kept for events before 2026."
     },
     {
      "id": "staff_handbook_2026.md",
@@ -386,7 +386,7 @@
      "words": 1545,
      "bytes": 8716,
      "format": "md",
-     "about": "Edition 2026, in force from 1 January 2026."
+     "about": "The staff handbook in force: joining, leave, working time, pay, conduct, learning, leaving."
     },
     {
      "id": "supplier_code_of_conduct.md",
@@ -395,7 +395,7 @@
      "words": 448,
      "bytes": 2649,
      "format": "md",
-     "about": "Version 3, 2025."
+     "about": "What every supplier signs before the first order: labour, safety and environment, integrity, audits."
     },
     {
      "id": "training_catalogue_2026.md",
@@ -413,7 +413,7 @@
      "words": 739,
      "bytes": 4178,
      "format": "md",
-     "about": "Version 6, in force from 1 January 2026."
+     "about": "Approvals, transport, hotels, per diem, claims and what is not paid. It prevails over other guides on travel."
     }
    ],
    "planted": [
@@ -445,7 +445,7 @@
      "words": 717,
      "bytes": 3563,
      "format": "md",
-     "about": "V12 is for compact tools, V18 is the main professional platform, V36 is for heavy tools and the garden range."
+     "about": "The three battery platforms, every pack and charger, charging times, runtime measured on site, care and transport."
     },
     {
      "id": "catalogue_compressors_nailers.md",
@@ -544,7 +544,7 @@
      "words": 2111,
      "bytes": 10868,
      "format": "md",
-     "about": "For authorised Orrin dealers and service partners."
+     "about": "For dealers and service partners: dealer levels and discounts, warranty handling, demonstration tools, the list of service partners."
     },
     {
      "id": "price_list_2025_archived.md",
@@ -571,7 +571,7 @@
      "words": 1342,
      "bytes": 8670,
      "format": "md",
-     "about": "Bulletins correct or add to the catalogue and the manuals."
+     "about": "Forty bulletins of 2026: a battery recall, corrections to two catalogue values, changes to parts. A bulletin prevails over the catalogue."
     },
     {
      "id": "spare_parts_list_2026.md",
@@ -580,7 +580,7 @@
      "words": 22838,
      "bytes": 102195,
      "format": "md",
-     "about": "Parts are supplied for at least 8 years after a product leaves the range."
+     "about": "Spare parts for every product: part number, price and availability."
     },
     {
      "id": "suplemento_region_sur_es.md",
@@ -598,7 +598,7 @@
      "words": 538,
      "bytes": 5495,
      "format": "pdf",
-     "about": "Valid for products bought from 1 January 2026."
+     "about": "How long each kind of product is covered, what is and is not covered, how to claim, repairs after the warranty, returns. A PDF; it prevails on warranty questions."
     }
    ],
    "planted": [
@@ -621,7 +621,7 @@
      "words": 70,
      "bytes": 422,
      "format": "md",
-     "about": "Signed on 30 September 2025, in force from 1 October 2025."
+     "about": "The first amendment: four sites added and lift maintenance at distribution centres."
     },
     {
      "id": "amendment_no_2.md",
@@ -630,7 +630,7 @@
      "words": 137,
      "bytes": 776,
      "format": "md",
-     "about": "Signed on 16 March 2026, in force from 1 April 2026."
+     "about": "The second amendment: a longer payment term, a higher liability limit and indexation cap, lower fixed fees. It prevails over the agreement."
     },
     {
      "id": "anexo_personal_region_sur_es.md",
@@ -648,7 +648,7 @@
      "words": 1973,
      "bytes": 17585,
      "format": "pdf",
-     "about": "between Marrow Retail Group SA (\"the Client\") and Tessel Facility Services Ltd (\"the Supplier\"),"
+     "about": "The agreement itself: term, services, staff, charges, service levels, liability, termination, exit, and the order in which its documents apply. A PDF."
     },
     {
      "id": "governance_board_minutes_2026.md",
@@ -666,7 +666,7 @@
      "words": 32786,
      "bytes": 125926,
      "format": "md",
-     "about": "Requests as logged by the helpdesk."
+     "about": "A table of 1,600 helpdesk requests from April to September 2026: site, priority, what happened, time to arrive."
     },
     {
      "id": "performance_report_2026_01_january.md",
@@ -675,7 +675,7 @@
      "words": 1163,
      "bytes": 3954,
      "format": "md",
-     "about": "Sent by the Supplier under Schedule 2, section 5."
+     "about": "The supplier's monthly report for January 2026: the four service levels against target, Priority 1 jobs, a score for every site."
     },
     {
      "id": "performance_report_2026_02_february.md",
@@ -684,7 +684,7 @@
      "words": 1163,
      "bytes": 3954,
      "format": "md",
-     "about": "Sent by the Supplier under Schedule 2, section 5."
+     "about": "The supplier's monthly report for February 2026: the four service levels against target, Priority 1 jobs, a score for every site."
     },
     {
      "id": "performance_report_2026_03_march.md",
@@ -693,7 +693,7 @@
      "words": 1160,
      "bytes": 3929,
      "format": "md",
-     "about": "Sent by the Supplier under Schedule 2, section 5."
+     "about": "The supplier's monthly report for March 2026: the four service levels against target, Priority 1 jobs, a score for every site."
     },
     {
      "id": "performance_report_2026_04_april.md",
@@ -702,7 +702,7 @@
      "words": 1160,
      "bytes": 3922,
      "format": "md",
-     "about": "Sent by the Supplier under Schedule 2, section 5."
+     "about": "The supplier's monthly report for April 2026: the four service levels against target, Priority 1 jobs, a score for every site."
     },
     {
      "id": "performance_report_2026_05_may.md",
@@ -711,7 +711,7 @@
      "words": 1174,
      "bytes": 4015,
      "format": "md",
-     "about": "Sent by the Supplier under Schedule 2, section 5."
+     "about": "The supplier's monthly report for May 2026: the four service levels against target, Priority 1 jobs, a score for every site."
     },
     {
      "id": "performance_report_2026_06_june.md",
@@ -720,7 +720,7 @@
      "words": 1212,
      "bytes": 4241,
      "format": "md",
-     "about": "Sent by the Supplier under Schedule 2, section 5."
+     "about": "The supplier's monthly report for June 2026: the four service levels against target, Priority 1 jobs, a score for every site."
     },
     {
      "id": "performance_report_2026_07_july.md",
@@ -729,7 +729,7 @@
      "words": 1190,
      "bytes": 4112,
      "format": "md",
-     "about": "Sent by the Supplier under Schedule 2, section 5."
+     "about": "The supplier's monthly report for July 2026: the four service levels against target, Priority 1 jobs, a score for every site."
     },
     {
      "id": "performance_report_2026_08_august.md",
@@ -738,7 +738,7 @@
      "words": 1177,
      "bytes": 4044,
      "format": "md",
-     "about": "Sent by the Supplier under Schedule 2, section 5."
+     "about": "The supplier's monthly report for August 2026: the four service levels against target, Priority 1 jobs, a score for every site."
     },
     {
      "id": "performance_report_2026_09_september.md",
@@ -747,7 +747,7 @@
      "words": 1163,
      "bytes": 3961,
      "format": "md",
-     "about": "Sent by the Supplier under Schedule 2, section 5."
+     "about": "The supplier's monthly report for September 2026: the four service levels against target, Priority 1 jobs, a score for every site."
     },
     {
      "id": "schedule_1_service_specification.md",
@@ -756,7 +756,7 @@
      "words": 993,
      "bytes": 5388,
      "format": "md",
-     "about": "Cleaning is done outside opening hours where the Site is not open 24 hours."
+     "about": "What the supplier does: cleaning tasks and frequencies, guarding, planned maintenance by asset, response times, the helpdesk."
     },
     {
      "id": "schedule_2_service_levels_and_credits.md",
@@ -774,7 +774,7 @@
      "words": 912,
      "bytes": 4463,
      "format": "md",
-     "about": "In force from 1 July 2025 to 31 December 2025."
+     "about": "The 2025 rate card, archived: hourly rates and each site's monthly fee until 31 December 2025."
     },
     {
      "id": "schedule_3_rate_card_2026.md",
@@ -783,7 +783,7 @@
      "words": 929,
      "bytes": 4566,
      "format": "md",
-     "about": "In force from 1 January 2026, after the indexation of January 2026 (2.7%)."
+     "about": "The rate card in force: hourly rates, supplements, the call-out fee and each site's monthly fixed fee."
     },
     {
      "id": "schedule_4_sites.md",
@@ -792,7 +792,7 @@
      "words": 29028,
      "bytes": 140069,
      "format": "md",
-     "about": "The Sites served under the Agreement at signature."
+     "about": "The eighty sites: type, area, opening hours, cleaning, guarding, and each site's asset register."
     },
     {
      "id": "schedule_5_transition_plan.md",
@@ -801,7 +801,7 @@
      "words": 479,
      "bytes": 2623,
      "format": "md",
-     "about": "The transition takes 12 weeks to the go-live of wave 1 on 1 July 2025."
+     "about": "The transition steps and dates, the named contract managers, transferring staff, required insurance, approved subcontractors."
     },
     {
      "id": "schedule_8_data_protection.md",
@@ -833,7 +833,7 @@
      "words": 708,
      "bytes": 3860,
      "format": "md",
-     "about": "Firmware 2.4."
+     "about": "The nineteen commissioning steps in order, reference pressures by model, common mistakes, the report. Written for firmware 2.4."
     },
     {
      "id": "controller_parameter_reference.md",
@@ -842,7 +842,7 @@
      "words": 23229,
      "bytes": 111863,
      "format": "md",
-     "about": "Firmware 2.4."
+     "about": "About 420 controller parameters in eight groups: range, default, access level, and notes on the important ones. Written for firmware 2.4."
     },
     {
      "id": "fault_code_reference.md",
@@ -851,7 +851,7 @@
      "words": 22705,
      "bytes": 137764,
      "format": "md",
-     "about": "Firmware 2.4."
+     "about": "About 320 fault codes: meaning, what the unit does, what to do, and a note on each. Written for firmware 2.4."
     },
     {
      "id": "field_service_notes.md",
@@ -878,7 +878,7 @@
      "words": 1649,
      "bytes": 9730,
      "format": "md",
-     "about": "The twelve schemes that P020 selects."
+     "about": "The twelve hydraulic schemes a controller can be set to, with the sensors and outputs each expects."
     },
     {
      "id": "installation_manual.pdf",
@@ -896,7 +896,7 @@
      "words": 115,
      "bytes": 795,
      "format": "md",
-     "about": "Ausgabe 2, 2025."
+     "about": "A short installer's guide in German: clearances, hydraulics, electrics. It disagrees with the installation manual on one clearance."
     },
     {
      "id": "maintenance_manual.md",
@@ -905,7 +905,7 @@
      "words": 743,
      "bytes": 4264,
      "format": "md",
-     "about": "Edition 3, January 2026."
+     "about": "The maintenance plan with its intervals and who does each task, why the intervals matter, the log, taking a unit out of service."
     },
     {
      "id": "spare_parts_list_2026.md",
@@ -914,7 +914,7 @@
      "words": 27545,
      "bytes": 138635,
      "format": "md",
-     "about": "Prices excluding VAT."
+     "about": "1,500 spare parts: description, models, price, delivery, who may fit them."
     },
     {
      "id": "troubleshooting_guide.md",
@@ -923,7 +923,7 @@
      "words": 3474,
      "bytes": 18872,
      "format": "md",
-     "about": "By symptom."
+     "about": "Thirty symptoms, each with the checks to make in order and the faults usually seen with it."
     }
    ],
    "planted": [
