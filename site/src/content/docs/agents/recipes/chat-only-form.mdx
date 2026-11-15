@@ -1,0 +1,85 @@
+---
+title: A form only in the chat
+description: "The user asks \"Can I change my deputy?\" and fills the form in the chat: cards collect the values, your server receives them after a confirm card. No form on the page."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+import RecipeFiles from '../../../../components/recipe/RecipeFiles.astro';
+import RecipeResult from '../../../../components/recipe/RecipeResult.astro';
+
+<Summary what={"A form the user never sees, filled with cards and sent to your server"} when={"A short request (a deputy, an address, a leave day) does not deserve a page of its own"} write={"A domain pack that says the form is hidden, a submit tool, and its name in `confirm_tools`"} />
+
+Your server owns the form: its fields, rules and the API it is sent to. The page shows only the chat. The UI agent asks for the values with cards, and your own tool sends them, held until the user taps Confirm.
+
+<Aside type="caution" title="Where it works today">The user must already be talking to this form's agent: on the page that hosts it, or opened by a link. The site agent cannot start a hidden form from another page yet; forms declared on the server, and host tools that return a card, are planned.</Aside>
+
+## The files
+
+The recipe is the folder `backend/demo/recipes/chat-only-form/`. `deputy_tools.py` sits at the folder root and is referenced as `"deputy_tools:submit_deputy_change"`. Replace its body with a call to your own API.
+
+<RecipeFiles name="chat-only-form" />
+
+## Tell the agent the form is hidden
+
+Nothing in the library knows the form is invisible: the domain pack says so. This is the part you write. Without it, the agent may say "see the field on the right".
+
+```json title="domain_packs/deputy_change.json"
+{
+  "title": "Change my deputy",
+  "starters": ["Can I change my deputy?", "Who is my deputy now?"],
+  "flow_hints": [
+    "The person does not see this form: the page shows only this chat. Collect every value here with cards and never point at a field, a button or a form on the page.",
+    "When all four values are set, send the change with submit_deputy_change."
+  ]
+}
+```
+
+```yaml title="formguide.yaml"
+domain_packs: {dir: domain_packs}
+```
+
+## The page
+
+The page still sends the form's state with every message, but keeps it in memory instead of on screen: describe the four fields once with `schemaForm(schema, access)`, and keep the values in a plain object. Fetch the schema from your server, so the server stays the one place the form is defined. See [React Hook Form and schemaForm](../../../frontend/react-hook-form/).
+
+## What happens
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant A as UI agent
+  participant T as submit_deputy_change
+  U->>A: Can I change my deputy?
+  A-->>U: cards for the name, email, start date and reason
+  U->>A: Dana Whitfield, dana.whitfield@northwind.example, from 1 March 2027, vacation
+  A-->>U: the values to accept
+  U->>A: Send it
+  A-->>U: confirm card (the tool and its summary)
+  alt Confirm
+    U->>A: accepted
+    A->>T: runs once
+    T-->>A: Deputy change DP-4F2A9C sent
+  else Close the card
+    Note over T: never runs
+  end
+```
+
+## How well it works
+
+Two scenarios: the user confirms (the change must be sent), and the user closes the confirm card (it must not be sent). When the user confirms, the run also fails if more than one confirm card was shown, or a confirm card that is not the held tool's own. In both, the agent's replies are checked for words that point at a form on the page ("on the right", "the field on", "scroll", "fill in the form").
+
+<RecipeResult name="chat-only-form" />
+
+## Pitfalls
+
+- Without the hint in the domain pack, nothing stops the agent from pointing at the page. Keep the hint, and say "never point at a field, a button or a form".
+- Hold the submit tool by name in `confirm_tools`; asking the model to "confirm first" in the prompt is not a hold.
+- The confirm card reads "Run submit_deputy_change?" with the tool's arguments: give it one readable `summary` argument.
+- The held tool's card is the only confirmation: the agent never asks "Send it?" by itself, in words or with a card of its own. Do not ask for a confirmation in your domain pack either.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Confirm before a side effect" description="The hold on its own, with a visible form." href="../confirm-side-effect/" />
+  <LinkCard title="Domain packs" description="Persona, flow hints, glossary and where packs live." href="../../ui-agent/domain-packs/" />
+</CardGrid>

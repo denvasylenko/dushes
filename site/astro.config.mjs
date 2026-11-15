@@ -164,6 +164,7 @@ export default defineConfig({
 					{ label: 'Recipes', items: [
 						{ label: 'Overview', slug: 'agents/recipes' },
 						{ label: 'Confirm before a side effect', slug: 'agents/recipes/confirm-side-effect' },
+						{ label: 'A form only in the chat', slug: 'agents/recipes/chat-only-form' },
 					] },
 					{ label: 'Researcher', items: [
 						{ label: 'Overview', slug: 'agents/researcher' },
