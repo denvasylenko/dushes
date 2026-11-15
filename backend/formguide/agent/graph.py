@@ -663,8 +663,13 @@ def build_graph(guide: FormGuide):
         answer = answer if isinstance(answer, dict) else {"accepted": bool(answer)}
         applied, declined = read_decision(p["changes"], answer)
         comment = f" Comment: {answer['comment']}" if answer.get("comment") else ""
+        unticked = [c["name"] for c in p["changes"] if c.get("consent") and c["name"] in declined]
+        consent_note = (f" Not ticked by the user: {', '.join(unticked)}. A consent is only the person's own tick: "
+                        "do not set it. When it is required, say it is still needed; you may ask about it with a "
+                        "question card for that field, and their answer fills it.") if unticked else ""
         if not applied:
-            text = "The user rejected the changes." + comment
+            text = ("Nothing was applied." if unticked and len(unticked) == len(declined)
+                    else "The user rejected the changes.") + consent_note + comment
         else:
             new_cfg = answer.get("config") or state["config"]
             upd["config"] = new_cfg
@@ -680,6 +685,7 @@ def build_graph(guide: FormGuide):
             if edits:
                 head += " The user edited before applying: " + "; ".join(
                     f"{k} -> {json.dumps(v, ensure_ascii=False)}" for k, v in edits.items()) + "."
+            head += consent_note
             text = head + "\n" + render_changes(ctx.ov, diff, v - 1, v)
         if p.get("partial_errors"):
             text += "\nFailed validation and were not proposed:\n" + p["partial_errors"]

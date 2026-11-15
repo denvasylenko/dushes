@@ -28,8 +28,13 @@ def test_consent_rows_from_the_pack(guide, model):
     v = card(guide, model, "k2", [{"name": "contact_messenger", "value": True}], state=state)
     row = v["changes"][0]
     assert row["consent"] is True and row["required"] is False and row["doc"]["title"] == "Messaging terms"
-    v = card(guide, model, "k3", [{"name": "contact_messenger", "value": True}], state=state, caps=["ask"])
-    assert "consent" not in v["changes"][0]                       # the client cannot show consent rows
+    # a client that cannot show a consent row: the agent does not set the consent at all
+    model.script = [say("", ("p1", "propose_changes", {"changes": [{"name": "contact_messenger", "value": True}]})),
+                    say("Please tick it in the form.")]
+    ev = collect(guide, "k3", message="go", state=state, capabilities=["ask"])
+    assert not any(e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt" for e in ev)
+    result = next(m.content for m in model.calls[-1] if getattr(m, "tool_call_id", None) == "p1")
+    assert "is a consent: only the person gives it" in result
 
 
 def test_soft_issue_on_a_row(guide, model):

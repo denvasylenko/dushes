@@ -1166,6 +1166,10 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
             if _unchanged(e, val):   # nothing to change: a card would claim it was filled in
                 raise ToolError(f"{n.name} already has this value ({vals.display(e.value)}): nothing changes; "
                                 "tell the user it is already set, without a card")
+            if is_consent(ctx, n, e) and not ctx.can("set.consent"):   # no row the person could tick themselves
+                raise ToolError(f"{n.name} is a consent: only the person gives it, with their own tick. Do not set "
+                                "it: ask them to tick it in the form, or ask with ask_user(field) and let their "
+                                "answer fill it")
             # card text for the user: language-neutral; `value` is in the form's own format
             ok.append({"name": n.name, "label": e.label or n.name, "kind": n.role,
                        "value": form_value(ctx, n.name, val),
@@ -1213,11 +1217,33 @@ def _t_propose_changes(a: dict, ctx: ToolCtx) -> str:
 # ---------------------------------------------------------------- delegated (separate model calls)
 
 
+# a checkbox whose label is an agreement or a declaration (non-ASCII letters as escapes: the repository is English-only)
+_CONSENT = re.compile(
+    r"^consent\b|\bi (accept|agree|consent|confirm|certify|declare|authori[sz]e|understand|have read)\b"
+    r"|\b(accept|agree|consent)s? (to )?(the|our|a|these|this)\b|\bagree to\b|\bterms (and|&|of)\b"
+    r"|\bprivacy (policy|notice)\b|\bdeclaration\b|\btrue and (complete|correct|accurate)\b"
+    r"|akzeptiere|stimme .{0,40}zu\b|einverstanden|j'accepte|accetto|acconsento|acepto|autorizo"
+    r"|\u0441\u043e\u0433\u043b\u0430\u0441|\u043f\u0440\u0438\u043d\u0438\u043c\u0430\u044e|\u043f\u043e\u0433\u043e\u0434\u0436\u0443",
+    re.IGNORECASE)
+
+
+def is_consent(ctx: ToolCtx, n: Any, e: Any) -> bool:
+    """A consent, an acceptance of terms or a declaration: a checkbox the pack lists in `consents`, the form marks
+    with `consent: true`, or whose label reads as one. `consent: false` on the field says it is not."""
+    if n.role != "bool":
+        return False
+    if (ctx.pack is not None and n.name in ctx.pack.consents) or e.props.get("consent") is True:
+        return True
+    if e.props.get("consent") is False:
+        return False
+    return bool(_CONSENT.search(str(e.label or "")))
+
+
 def _row_extras(ctx: ToolCtx, n: Any, e: Any, ch: dict, val: Any) -> dict:
     """What a card row carries besides the value: a consent, a soft issue, the document confidence."""
     out: dict[str, Any] = {}
     consent = ctx.pack.consents.get(n.name) if ctx.pack else None
-    if n.role == "bool" and (consent is not None or e.props.get("consent")) and ctx.can("set.consent"):
+    if is_consent(ctx, n, e):
         consent = consent or {}
         doc = consent.get("doc") or e.props.get("consent_doc")
         out.update(consent=True, required=bool(consent.get("required", e.required)),

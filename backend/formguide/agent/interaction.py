@@ -22,8 +22,9 @@ def read_decision(changes: list[dict], resume: dict[str, Any]) -> tuple[list[str
     if not accepted:
         return [], names
     keep = resume.get("names")
-    if keep is None:
-        return names, []
+    if keep is None:   # "accept all" never gives a consent: only a tick on its own row does (it comes in `names`)
+        own = [c["name"] for c in changes if c.get("consent")]
+        return [n for n in names if n not in own], own
     keep = {str(k) for k in keep} if isinstance(keep, list) else set()
     return [n for n in names if n in keep], [n for n in names if n not in keep]
 

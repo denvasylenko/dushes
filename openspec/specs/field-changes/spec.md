@@ -123,3 +123,17 @@ A proposed value equal to the field's current value (as the user sees it) SHALL 
 #### Scenario: Gender is already set
 - **WHEN** the user asks to fill in gender and it is already Male, and the agent proposes Male
 - **THEN** no "Filled in" card appears and the agent says gender is already set
+
+### Requirement: A consent is the person's own tick
+A checkbox is a consent when the pack lists it in `consents`, the form marks it `consent: true`, or its label reads as an agreement, an acceptance of terms or a declaration; `consent: false` on the field says it is not. On a field-change card such a row SHALL be a consent row, shown unticked, and it SHALL be applied only when the answer names it in `names`: an answer that accepts everything, or a typed "yes", never applies it.
+
+#### Scenario: Accept all on a card with the terms
+- **WHEN** a card holds the first name and "I accept the rental terms", and the answer is `{accepted: true}` with no `names`
+- **THEN** the first name is applied, the terms are not, and the model is told the consent was not ticked
+
+### Requirement: The agent cannot give a consent
+When the client cannot show a consent row, a proposal for a consent field SHALL be refused, and the model is told that only the person gives it, with their own tick in the form or their answer to a question about that field.
+
+#### Scenario: A client without consent rows
+- **WHEN** the client lists capabilities without `set.consent` and the model proposes `accept_terms = true`
+- **THEN** no card is shown and the tool result says the field is a consent only the person gives
