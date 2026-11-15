@@ -18,7 +18,7 @@ export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--a
 .foot:has(.vo-think)::before, .foot:has(.vo-wait)::before { opacity: .07; }
 .foot:has(.vo-speak)::before { opacity: .3; background: radial-gradient(60% 100% at 50% 100%, var(--agui-voice-warm), transparent 100%); }
 /* the answer being spoken: dim, with the words said so far bright */
-.msg.ai.vo-read > .body { color: color-mix(in srgb, var(--agui-ink) 46%, transparent); }
+.msg.ai.vo-read > .body { color: color-mix(in srgb, var(--agui-ink) 40%, transparent); }
 ::highlight(vo-said) { color: var(--agui-ink); }
 .vo-orb { position: relative; width: var(--agui-voice-orb, 76px); height: var(--agui-voice-orb, 76px); padding: 0; border: 0; border-radius: 50%; overflow: hidden; cursor: pointer;
   /* the sky: lighter where the light comes from, the voice colour below; never dark at the rim */

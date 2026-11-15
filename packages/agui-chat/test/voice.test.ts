@@ -359,10 +359,11 @@ describe('the experimental voice mode', () => {
     expect(applied).toHaveLength(1)
     ;($(el, '[data-card-id="c2"] .btn.pri') as HTMLButtonElement).click()
     await tick(60)
-    $(el, '.vo-x').click()                                                      // voice mode left: a quiet mark means nothing in the plain chat
+    $(el, '.vo-x').click()                                                      // voice mode left: a quiet card is filled at once in the plain chat too (a typed yes)
     await el.send('amount again')
-    await tick(120)
-    expect($$(el, '[data-card-id="c3"] .btn.pri')).toHaveLength(1)
+    await tick(160)
+    expect($$(el, '[data-card-id="c3"] .btn.pri')).toHaveLength(0)
+    expect(applied).toHaveLength(3)
   })
 
   it('a spoken yes or no answers the waiting card as its own buttons do, and is not sent as a new message; a consent takes the spoken yes', async () => {
@@ -441,6 +442,9 @@ describe('the experimental voice mode', () => {
     s.push({ type: 'spoken', delta: 'Done' })
     await tick(450)
     expect(marks.get('vo-said')!.range.toString()).toBe('Done.')                 // the word said is bright
+    s.push({ type: 'result', text: 'Next sentence.' })                          // the answer is handed over sentence by sentence: the light does not start again
+    await tick(20)
+    expect(marks.get('vo-said')!.range.toString()).toBe('Done.')
     await tick(2600)                                                            // the voice is done
     expect(answer.classList.contains('vo-read')).toBe(false)
     expect(marks.has('vo-said')).toBe(false)

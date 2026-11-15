@@ -143,27 +143,6 @@ export function voice(chat: Chat): void {
   // a turn runs while the element says `busy` (it ends that on a finished, a stopped and a failed turn alike)
   new MutationObserver(() => { const was = busy; busy = chat.hasAttribute('busy'); caption = ''; if (busy && !was) audio.muted = false;   // a new turn (spoken, typed or a card's answer) is heard again: a stop silences one answer, not the voice
     if (!busy) step.textContent = ''; paint(); if (!busy) setTimeout(typing, 0) }).observe(chat, { attributes: true, attributeFilter: ['busy'] })
-  // the turn's own step, under the orb while it works (the conversation's own live line is hidden meanwhile)
-  chat.addEventListener('agui:event', (e) => {
-    const ev = (e as CustomEvent).detail as { type?: string; name?: string; value?: unknown } | undefined
-    if (!on || !ev) return
-    // a field-change card the server marks `quiet` (every row is a value the person said, into an empty field): in
-    // voice mode it is filled at once, with no card to tap; the conversation keeps its result line with Undo
-    if (ev.type === 'CUSTOM' && ev.name === 'on_interrupt') {
-      let v = ev.value as { type?: string; quiet?: boolean; card_id?: string } | string | null
-      if (typeof v === 'string') { try { v = JSON.parse(v) } catch { v = null } }
-      if (v && typeof v === 'object' && v.type === 'set_fields' && v.quiet && v.card_id) quiet.add(v.card_id)
-    }
-  })
-  const quiet = new Set<string>()
-  // the card is drawn after the text above it has finished: when it arrives, it is accepted before it is ever painted
-  new MutationObserver((recs) => {
-    for (const r of recs) for (const n of r.addedNodes) {
-      const id = (n as HTMLElement).dataset?.cardId
-      if (!id || !quiet.delete(id) || !on) continue
-      ;(n as HTMLElement).querySelector<HTMLButtonElement>('.btn.pri')?.click()
-    }
-  }).observe($('.log'), { childList: true })
   // the orb always does something: it stops the answer being thought or spoken; otherwise it is the microphone
   orb.addEventListener('click', () => {
     if (busy) { chat.stop(); audio.muted = true; paint(); return }
@@ -333,9 +312,10 @@ export function voice(chat: Chat): void {
     clearInterval(reading.timer); reading.msg.classList.remove('vo-read'); hl()?.reg.delete('vo-said'); reading = null
   }
   function read(): void {
-    unread()
     const k = hl()
     const body = [...root!.querySelectorAll<HTMLElement>('.log > .msg.ai:not(.wait):not(.tail) > .body')].pop()
+    if (reading && reading.body === body) return   // the next sentence of the same answer: the light goes on from where it is
+    unread()
     if (!k || !body || !body.textContent?.trim()) return
     const msg = body.parentElement as HTMLElement
     msg.classList.add('vo-read')

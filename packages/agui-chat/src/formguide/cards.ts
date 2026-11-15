@@ -287,6 +287,9 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
     }
   })
   sync()
+  // a card the server marks `quiet` (the person already said or typed these values, or their yes): filled at once,
+  // with no card to tap; the conversation keeps its result line with Undo
+  if ((it as { quiet?: boolean }).quiet && !c.restored) setTimeout(() => primary.click())
   return card
 }
 

@@ -57,11 +57,15 @@ A voice conversation SHALL end, with the microphone released, when the chat is c
 - **THEN** no microphone stays open, no session is left running, and the button starts voice when tapped again
 
 ### Requirement: Filling without a card
-In voice mode a `set_fields` card whose payload has `quiet: true` SHALL be applied through the host's form as soon as it arrives, exactly as if the person had accepted it, without a card that waits: the conversation SHALL keep its result line with Undo. A card without the mark SHALL be drawn and wait, and outside voice mode the mark SHALL change nothing.
+A `set_fields` card whose payload has `quiet: true` SHALL be applied, in voice mode and in the plain chat alike, through the host's form as soon as it arrives, exactly as if the person had accepted it, without a card that waits: the conversation SHALL keep its result line with Undo. A card without the mark SHALL be drawn and wait. A card drawn from a restored conversation SHALL NOT be applied by the mark.
 
 #### Scenario: A value the person said
 - **WHEN** voice mode is on and a `set_fields` card with `quiet: true` arrives for Amount
 - **THEN** the field is filled with no tap, the run is resumed as accepted, and the conversation shows the result line with Undo
+
+#### Scenario: A typed yes in the plain chat
+- **WHEN** the person types "yes" instead of tapping a card, and the same values come again in a card with `quiet: true`
+- **THEN** the fields are filled at once, with the result line and Undo, and no second card waits
 
 ### Requirement: The voice's own echo is not the person
 The microphone SHALL be asked for with echo cancelling, noise suppression and automatic gain. A `heard` text of four words or more that is, word for word, part of what the voice said or the agent wrote in the last 15 seconds SHALL be taken as the voice heard through the speakers: it SHALL NOT be sent or shown as the person's message. A shorter text SHALL always be sent.
