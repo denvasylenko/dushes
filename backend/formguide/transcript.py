@@ -179,7 +179,9 @@ def sqlite_checkpointer(path: str | Path):
             return await (await self._saver()).aput_writes(config, writes, task_id, task_path)
 
         async def adelete_thread(self, thread_id):
-            return await (await self._saver()).adelete_thread(thread_id)
+            saver = await self._saver()
+            await saver.setup()   # a fresh store has no tables until its first write: nothing to delete is not an error
+            return await saver.adelete_thread(thread_id)
 
         def get_next_version(self, current, channel):
             from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver

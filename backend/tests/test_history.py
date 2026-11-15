@@ -110,3 +110,17 @@ def test_thread_endpoints(guide, model):
     assert [e["kind"] for e in r["transcript"]] == ["user", "assistant"] and r["pending_card"] is None
     assert c.get("/agent/threads/..%2Fetc").status_code in (400, 404)
     assert c.delete("/agent/threads/h3").status_code == 200 and c.get("/agent/threads/h3").json()["transcript"] == []
+
+
+def test_deleting_a_thread_from_a_fresh_sqlite_store_is_not_an_error(tmp_path):
+    """Found by SRE's dry run (2026-11-15): a host with no volume starts with an empty checkpoint file, and the
+    hourly clean-up of demo chats failed with "no such table: checkpoints" before the first conversation."""
+    import asyncio
+
+    from formguide.transcript import sqlite_checkpointer
+
+    async def go():
+        saver = sqlite_checkpointer(tmp_path / "fresh" / "checkpoints.sqlite")
+        await saver.adelete_thread("never-written")
+        await saver.adelete_thread("never-written")   # and again, the tables are there now
+    asyncio.run(go())
