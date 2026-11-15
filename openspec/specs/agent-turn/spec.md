@@ -189,3 +189,10 @@ When the user tells the agent to put a value into a field and the form allows th
 #### Scenario: Another region than the one named before
 - **WHEN** the user gave an address in a region the form's list does not have, and then says "pick Saint Petersburg for the region"
 - **THEN** the agent proposes Saint Petersburg for the region and says in one clause that it differs from the address given before
+
+### Requirement: An ambiguous answer is not settled silently
+When what the user said could mean a second field as well as the one it was given for, the agent SHALL fill the field that is certain and ask about the other in one short question. It SHALL NOT fill a dependent field because a matching option exists.
+
+#### Scenario: A name that may be the region or the city
+- **WHEN** the user says "pick Saint Petersburg, and region of Saint Petersburg" after an address in a city the form does not list
+- **THEN** the agent sets the region, does not set the city, and asks "Is the city Saint Petersburg too?"
