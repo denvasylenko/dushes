@@ -106,7 +106,7 @@ The first event is `started`: `{talk, contract: 1, limits: {seconds, silence_sec
 | `heard` with `answers` | `{card_id, type, accepted}` | a spoken yes or no while a card waits is the answer to that card: accept or reject the card with its own resume, and do not send the words as a message. A client that sends the yes as an ordinary message anyway gets the same values back as a quiet card, so a card is never asked twice |
 | `interrupted` | | the person spoke over a turn: the server has stopped it. Drop what was shown as in progress; the next `heard` is the new request |
 | `spoken` | `{delta}` | the transcript of what the voice says |
-| `result` | `{text}` | the agent's answer was given to the voice |
+| `result` | `{text}` | a piece of the agent's answer was given to the voice (one run may send several: the first sentences go to the voice while the rest is still being written) |
 | `quiet` | `{card_id}` | that card was filled without being shown (see below) |
 | `echo` | `{text}` | the voice's own words came back through the microphone and were dropped: remove what `hearing` had started to show |
 | `error` | `{code}` | something failed; the conversation may go on |
