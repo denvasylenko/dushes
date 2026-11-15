@@ -1,113 +1,97 @@
 ---
 title: Fill a form with no UI
-description: Your service sends plain words, the UI agent fills the form's fields, and your service gets the values back as JSON. No chat on the page.
+description: Your service sends what it knows in plain words, and gets back the values for the form's fields as JSON. One call, no chat on the page.
 ---
-import { Code, LinkCard, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+import { LinkCard, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
 import { Summary } from '../../../../components/ui';
 import HeadlessDemo from '../../../../components/HeadlessDemo.astro';
-import fill from '../../../../../public/examples/no-ui/fill.py?raw';
 
-<Summary what={"The UI agent filling a form for a service: plain words in, field values out."} when={"The data comes from another system (an email, a CRM note, a call transcript), not from a person in a chat."} write={"One function around `POST /agent/run`."} />
+<Summary what={"The UI agent filling a form for a service: plain words in, field values out."} when={"The data comes from another system (an email, a CRM note, a call transcript), not from a person in a chat."} write={"One call: `POST /agent/prefill` with the form's state and the text."} />
 
-The chat widget is one client of the UI agent. A service can be another: it sends the same request the widget sends and reads the same events. Where the widget would show a card (a proposal with buttons) and wait for a tap, the service puts the proposed values into the form and answers the card itself.
+The chat is one way to reach the UI agent. A service does not need it: it sends the form's state and what it knows, and the answer is a list of values for this form's fields. Every value is checked against the form the same way the agent's own proposals are, so a wrong option or a field that does not exist comes back as an error, not as a value.
 
 ## Try it
 
-Pick a request and press **Run**. Nothing here is a chat: the page shows the request body, each step of the UI agent, the form's fields as they fill, and the JSON your service would get back.
+Pick what the service knows and press **Run**. Nothing here is a chat: the page shows the form's fields with the values that came back, the request body and the JSON answer.
 
 <HeadlessDemo />
 
-The badge says where the run came from. **Live agent** is the hosted agent, within the public demo's daily limits; **Recorded run** replays the same events on this page, and nothing leaves it.
+The badge says where the answer came from. **Live agent** is the hosted agent, within the public demo's daily limits; **Recorded answer** is the same answer kept on this page, and nothing leaves it.
 
 ## How it works
 
 ```mermaid
 sequenceDiagram
   participant S as Your service
-  participant A as UI agent (POST /agent/run)
-  S->>A: message in plain words + the form's state
-  A-->>S: events: tool calls, text
-  A-->>S: on_interrupt: set_fields {changes}
-  Note over S: put the values in your form
-  S->>A: resume {accepted: true, config}
-  A-->>S: text, RUN_FINISHED
-  Note over S: no card left: done
+  participant A as UI agent (POST /agent/prefill)
+  S->>A: the form's state + what you know, in plain words
+  Note over A: reads the text, maps it to this form's fields, checks every value
+  A-->>S: {values, errors, notes}
+  Note over S: put the values in your form, or show them to a person
 ```
 
-1. **Send one message with the form's state.** The state is the object a page sends: `{config, jsx_hash, form_id}`. `jsx_hash` is the id `POST /agent/layouts` returns when you register the form, once, exactly as for the chat.
-2. **Read the events.** Tool calls and text are progress. A `CUSTOM` event named `on_interrupt` with `type: "set_fields"` is the agent proposing values; in the chat it is the card with **Fill in**.
-3. **Put the values in and answer the card.** Apply `changes` to your form, then call `/agent/run` again with the same `threadId` and `forwardedProps.command.resume = {accepted: true, config}`, where `config` is the form after the change. The agent validated every value against the form before proposing it.
-4. **Stop when a run ends with no card.** The values you applied are the result.
+1. **Register the form once**, as for the chat: `POST /agent/layouts` returns its `jsx_hash`.
+2. **Send the state and what you know.** `state` is the object a page sends, `{config, jsx_hash, form_id}`. What you know goes in `text` (free words), `data` (keys and values from your system) or `attachment_ids` (files).
+3. **Use the answer.** `values` are ready for your form. `errors` say what was refused and why. `notes` say what was left out, for example a value read with low confidence.
 
-If the agent sends any other card (a question, a confirmation before sending), nobody is there to answer it: return it to the caller as `needs_input` and let a person decide. The example also stops after five requests, so a run cannot loop. A tool listed in `confirm_tools`, such as one that submits the form, always asks first, so a service cannot submit by accident.
+Nothing is written for you: the call proposes, your service decides. Sending the form stays your own step.
 
 ## The code
 
 <Tabs syncKey="lang">
-<TabItem label="Python">
-
-<Code code={fill} lang="python" title="fill.py" />
-
-</TabItem>
 <TabItem label="HTTP">
 
-```http title="First request"
-POST /agent/run
-Accept: text/event-stream
-Content-Type: application/json
-
-{
-  "threadId": "7b0c1c0e-5a2f-4b0b-9d3e-2f6f3a1c9e11",
-  "messages": [{"role": "user", "content": "Car loan for Alex Morgan, alex.morgan@example.com, $28,000 over 36 months."}],
-  "state": {"config": {"props": {}, "state": {}}, "jsx_hash": "<from POST /agent/layouts>", "form_id": "loan_application"}
-}
+```bash
+curl -X POST http://localhost:8000/agent/prefill -H "Content-Type: application/json" -d '{
+  "state": {"config": {"props": {}, "state": {}}, "jsx_hash": "3f9a1c0d2b7e4a55", "form_id": "loan_application"},
+  "text":  "Car loan for Alex Morgan, alex.morgan@example.com. Wants $28,000 over 36 months."
+}'
 ```
 
-```http title="After a set_fields card: the values are in, the card is accepted"
-POST /agent/run
-Accept: text/event-stream
-Content-Type: application/json
+</TabItem>
+<TabItem label="Python">
 
-{
-  "threadId": "7b0c1c0e-5a2f-4b0b-9d3e-2f6f3a1c9e11",
-  "messages": [{"role": "user", "content": "Car loan for Alex Morgan, alex.morgan@example.com, $28,000 over 36 months."}],
-  "state": {"config": {"props": {}, "state": {"full_name": "Alex Morgan"}}, "jsx_hash": "<the same>", "form_id": "loan_application"},
-  "forwardedProps": {"command": {"resume": {"accepted": true, "config": {"props": {}, "state": {"full_name": "Alex Morgan"}}}}}
-}
+```python
+result = await guide.suggest_prefill(
+    state,                                         # {config, jsx_hash, form_id}
+    text="Car loan for Alex Morgan, alex.morgan@example.com. Wants $28,000 over 36 months.",
+)
+for v in result["values"]:
+    print(v["name"], "=", v["display"])            # put v["value"] into your form
 ```
 
 </TabItem>
 </Tabs>
 
-What comes back from `fill()`:
+What comes back:
 
 ```json
 {
-  "status": "done",
-  "values": {
-    "full_name": "Alex Morgan",
-    "email": "alex.morgan@example.com",
-    "loan_type": {"id": "auto", "name": "Car loan"},
-    "amount": 28000
-  }
+  "values": [
+    {"name": "full_name", "label": "Full name", "value": "Alex Morgan", "display": "Alex Morgan", "status": "now", "source": "text", "confidence": "high"},
+    {"name": "loan_type", "label": "Loan type", "value": {"id": "auto", "name": "Car loan"}, "display": "Car loan", "status": "now", "source": "text", "confidence": "high"},
+    {"name": "amount", "label": "Amount", "value": 28000, "display": "28000", "status": "now", "source": "text", "confidence": "high"}
+  ],
+  "errors": [],
+  "notes": []
 }
 ```
 
-`status` is `done`, `needs_input` (with the agent's `question`) or `error` (with a `message`). A choice comes back as `{id, name}`, the form's own option.
+A choice comes back as the form's own option. `status` is `now` for a field that can be filled at once and `later` for one that is hidden or disabled until another field is set. Every field of the answer: [Prefill](../prefill/#what-comes-back).
 
 ## One call, or a conversation?
 
 | You have | Use | Why |
 | --- | --- | --- |
-| Structured data, a note or a document, and want values back in one call | [Prefill](../prefill/): `POST /agent/prefill` | One request, one JSON answer, no thread |
-| Plain words that may need the agent's tools, your documents or a follow-up | This page: the loop on `POST /agent/run` | The whole agent, with its steps visible |
+| A note, structured data or a document, and no person in the loop | This page: `POST /agent/prefill` | One request, one JSON answer, no conversation |
+| The same data, and a person who should confirm it | [Start the chat with prefill](../prefill/#prefill-inside-a-chat) | The values arrive as a card the person accepts or edits |
 | A person who will answer questions | [The chat widget](../../../frontend/widget/) | Cards, Undo, voice |
 
 ## Next
 
 <CardGrid>
-  <LinkCard title="Prefill" description="Values in one call, with no thread." href="../prefill/" />
+  <LinkCard title="Prefill" description="Every input and every field of the answer." href="../prefill/" />
   <LinkCard title="HTTP API" description="Every endpoint, with its body and answer." href="../../../reference/http-api/" />
-  <LinkCard title="AG-UI events" description="Every event the run sends." href="../../../reference/agui-events/" />
+  <LinkCard title="User documents" description="Values read from a scan or a PDF." href="../user-documents/" />
   <LinkCard title="A form only in the chat" description="The same idea with a chat: the form is never drawn." href="../../recipes/chat-only-form/" />
 </CardGrid>

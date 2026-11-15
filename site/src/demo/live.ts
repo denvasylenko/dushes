@@ -14,7 +14,7 @@ const VISITOR_KEY = 'dushes-demo-visitor'
 const LIMIT_LINE = "The live demo has reached today's limit, so this is a recorded run."
 const ERROR_LINE = "The live demo can't be reached right now, so this is a recorded run."
 
-function visitor(): string | null {
+export function visitor(): string | null {
   try {
     let v = localStorage.getItem(VISITOR_KEY)
     if (!v || !/^[A-Za-z0-9_-]{8,64}$/.test(v)) {

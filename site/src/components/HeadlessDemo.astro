@@ -1,9 +1,9 @@
 ---
 /**
- * Filling a form with no UI: pick a request, press Run, and see the request body, the agent's steps, the field
- * values and the JSON your service gets back. No chat widget on the page. With PUBLIC_DEMO_AGENT_URL the requests go
- * to the hosted agent (within the public demo's limits) and fall back to the recorded run; without it the run is
- * the recorded one, and the page says so.
+ * Filling a form with no UI: pick what the service knows, press Run, and see the form's fields with the values that
+ * came back, the request body and the JSON answer. One call to POST /agent/prefill, no chat on the page. With
+ * PUBLIC_DEMO_AGENT_URL the call goes to the hosted agent (within the public demo's limits) and falls back to the
+ * recorded answer; without it the answer is the recorded one, and the page says so.
  */
 import { Badge, Button, ChipGroup, CodePanel, Tile } from './ui'
 import { FIELDS, SAMPLES } from '../demo/headless-data'
@@ -11,10 +11,10 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined
 ---
 <div class="hd not-content" data-hd data-agent-url={agentUrl}>
   <div class="hd-top">
-    <ChipGroup label="The request your service sends" options={SAMPLES.map((s) => ({ value: s.id, label: s.label }))} data-sample />
+    <ChipGroup label="What your service knows" options={SAMPLES.map((s) => ({ value: s.id, label: s.label }))} data-sample />
     <span class="hd-mode" aria-live="polite">
       <Badge variant="ok" class="hd-live"><span class="ui-dot" aria-hidden="true"></span>Live agent</Badge>
-      <Badge class="hd-rec">Recorded run</Badge>
+      <Badge class="hd-rec">Recorded answer</Badge>
     </span>
   </div>
   <Tile size="sm" class="hd-text"><p data-text>{SAMPLES[0].text}</p></Tile>
@@ -23,73 +23,54 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined
     <span class="hd-status" data-status aria-live="polite">Nothing has run yet.</span>
   </div>
 
+  <Tile as="section" class="hd-tile" aria-labelledby="hd-vals-h">
+    <h3 class="hd-h" id="hd-vals-h">The form's fields</h3>
+    <dl class="hd-vals" data-vals>
+      {FIELDS.map((f) => <div data-field={f.name}><dt>{f.label}{f.required && <span class="hd-req"> · required</span>}</dt><dd>Empty</dd></div>)}
+    </dl>
+  </Tile>
   <div class="hd-grid">
-    <Tile as="section" class="hd-tile" aria-labelledby="hd-vals-h">
-      <h3 class="hd-h" id="hd-vals-h">The form's fields</h3>
-      <dl class="hd-vals" data-vals>
-        {FIELDS.map((f) => <div data-field={f.name}><dt>{f.label}{f.required && <span class="hd-req"> · required</span>}</dt><dd>Empty</dd></div>)}
-      </dl>
-    </Tile>
-    <Tile as="section" class="hd-tile" aria-labelledby="hd-steps-h">
-      <h3 class="hd-h" id="hd-steps-h">What the UI agent did</h3>
-      <ol class="hd-steps" data-steps><li class="hd-empty">Press Run. Each request, tool call and proposal appears here as it happens.</li></ol>
-    </Tile>
-  </div>
-  <div class="hd-grid">
-    <CodePanel label="First request: POST /agent/run" maxHeight="320px" data-req>Press Run to see the body.</CodePanel>
-    <CodePanel label="What your service gets back" maxHeight="320px" data-res>Press Run to see the result.</CodePanel>
+    <CodePanel label="Request: POST /agent/prefill" maxHeight="320px" data-req>Press Run to see the body.</CodePanel>
+    <CodePanel label="Answer" maxHeight="320px" data-res>Press Run to see the answer.</CodePanel>
   </div>
 </div>
 
 <script>
-  import { FIELDS, RecordedFill, SAMPLES, display, fillWithoutUi, type Result, type Step } from '../demo/headless'
-  import { layoutHash, liveDemo } from '../demo/live'
-  import { runAgent } from '../../../packages/agui-chat/src/transport'
+  import { FIELDS, SAMPLES, display, prefillBody, prefillLive, prefillRecorded, type PrefillResult } from '../demo/headless'
+  import { layoutHash } from '../demo/live'
   import { SCHEMA } from '../demo/form'
 
   const root = document.querySelector<HTMLElement>('[data-hd]')
   if (root) {
     const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!
-    const steps = $<HTMLOListElement>('[data-steps]'), status = $('[data-status]'), runBtn = $<HTMLButtonElement>('[data-run]')
+    const status = $('[data-status]'), runBtn = $<HTMLButtonElement>('[data-run]')
     const code = (s: string) => $(`${s} code`)
-    const recorded = new RecordedFill()
     const url = root.dataset.agentUrl
+    const prefillUrl = url?.replace(/run\/?$/, 'prefill')
     let sample = SAMPLES[0]
     let stop: AbortController | null = null
-    // the hosted agent when the page was built with it and it knows the form; the recorded run otherwise
-    let live: ReturnType<typeof liveDemo> | null = null
-    let hash = 'demo'
-    const mode = () => { root.toggleAttribute('data-live', !!live?.live()) }
-    const ready = url
-      ? layoutHash(url, SCHEMA.id).then((h) => { if (h) { hash = h; live = liveDemo(url, recorded, new URL('../../../get-started/quickstart/', location.href).href, mode) } mode() })
-      : Promise.resolve()
+    // the hosted agent when the page was built with it and it knows the form; the recorded answer otherwise
+    let hash: string | null = null
+    const ready = url ? layoutHash(url, SCHEMA.id).then((h) => { hash = h; root.toggleAttribute('data-live', !!h) }) : Promise.resolve()
 
     const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
-    const line = (text: string, cls = '') => { const li = document.createElement('li'); li.textContent = text; if (cls) li.className = cls; steps.append(li); li.scrollIntoView({ block: 'nearest' }) }
     const clear = () => {
-      steps.replaceChildren()
       root.querySelectorAll<HTMLElement>('[data-field]').forEach((d) => { d.removeAttribute('data-filled'); d.querySelector('dd')!.textContent = 'Empty' })
       code('[data-req]').textContent = ''; code('[data-res]').textContent = ''
     }
-    const fill = (values: Record<string, unknown>, names: string[]) => names.forEach((n) => {
-      const d = root.querySelector<HTMLElement>(`[data-field="${n}"]`)
-      if (d) { d.dataset.filled = 'true'; d.querySelector('dd')!.textContent = display(values[n]) || 'Empty' }
-    })
-    const show = (s: Step, values: Record<string, unknown>) => {
-      if (s.kind === 'request') {
-        line(s.n === 1 ? 'Request 1: the message and the empty form' : `Request ${s.n}: the values are in, the agent continues`, 'hd-req-line')
-        if (s.n === 1) code('[data-req]').textContent = JSON.stringify(s.body, null, 2)
-      } else if (s.kind === 'tool') line(`Tool: ${s.name}`)
-      else if (s.kind === 'text') line(`UI agent: ${s.text}`)
-      else if (s.kind === 'proposed') { s.changes.forEach((c) => { values[c.name] = c.value }); line(`Proposed ${count(s.changes.length, 'value')}: ${s.changes.map((c) => c.label).join(', ')}`) }
-      else if (s.kind === 'applied') { fill(values, s.names); line('Your service put them in the form and accepted the proposal') }
-    }
-    const finish = (r: Result) => {
+    const show = (r: PrefillResult, recorded: boolean, why = '') => {
+      for (const v of r.values) {
+        const d = root.querySelector<HTMLElement>(`[data-field="${v.name}"]`)
+        if (d) { d.dataset.filled = 'true'; d.querySelector('dd')!.textContent = v.display || display(v.value) || 'Empty' }
+      }
       const names = Object.fromEntries(FIELDS.map((f) => [f.name, f.label]))
-      const filled = root.querySelectorAll('[data-field][data-filled]').length
-      status.textContent = r.status === 'done' ? `Done in ${count(r.requests, 'request')}: ${filled} of ${FIELDS.length} fields filled.${r.missing.length ? ` Required and still empty: ${r.missing.map((m) => names[m]).join(', ')}.` : ''}`
-        : r.status === 'needs_input' ? 'Needs a person. Your service gets the question.' : 'The run stopped. Press Run again.'
+      const got = new Set(r.values.map((v) => v.name))
+      const missing = FIELDS.filter((f) => f.required && !got.has(f.name)).map((f) => names[f.name])
+      status.textContent = `${why}${count(r.values.length, 'value')} for ${FIELDS.length} fields.`
+        + (r.errors.length ? ` ${count(r.errors.length, 'error')}.` : '') + (r.notes.length ? ` ${count(r.notes.length, 'note')}.` : '')
+        + (missing.length ? ` Required and still empty: ${missing.join(', ')}.` : '')
       code('[data-res]').textContent = JSON.stringify(r, null, 2)
+      root.toggleAttribute('data-live', !recorded)
     }
 
     async function run(): Promise<void> {
@@ -97,20 +78,30 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined
       const mine = stop
       await ready
       clear(); status.textContent = 'Running…'; runBtn.textContent = 'Run again'
-      const transport = live ? live.transport : (input: Parameters<typeof runAgent>[1], ctx: { signal: AbortSignal }) => runAgent(recorded, input, ctx.signal)
-      const seen: Record<string, unknown> = {}
-      for await (const s of fillWithoutUi(transport, sample.text, hash, mine.signal)) {
-        if (mine.signal.aborted) return
-        if (s.kind === 'done') finish(s.result); else show(s, seen)
+      const body = prefillBody(sample.text, hash ?? '<the id POST /agent/layouts returned>')
+      code('[data-req]').textContent = JSON.stringify(body, null, 2)
+      if (prefillUrl && hash) {
+        try {
+          const r = await prefillLive(prefillUrl, body, mine.signal)
+          if (!mine.signal.aborted) show(r, false)
+          return
+        } catch (e) {
+          if (mine.signal.aborted) return
+          const r = await prefillRecorded(sample)
+          if (!mine.signal.aborted) show(r, true, (e as Error).message === 'limit' ? "The live demo has reached today's limit, so this is the recorded answer: " : "The live agent can't be reached, so this is the recorded answer: ")
+          return
+        }
       }
-      mode()
+      const r = await prefillRecorded(sample)
+      if (!mine.signal.aborted) show(r, true)
     }
 
     runBtn.addEventListener('click', () => { void run() })
     $('[data-sample]').addEventListener('ui-change', (e) => {
       sample = SAMPLES.find((s) => s.id === (e as CustomEvent<{ value: string }>).detail.value) ?? SAMPLES[0]
       $('[data-text]').textContent = sample.text
-      stop?.abort(); clear(); line('Press Run. Each request, tool call and proposal appears here as it happens.', 'hd-empty')
+      stop?.abort(); clear()
+      code('[data-req]').textContent = 'Press Run to see the body.'; code('[data-res]').textContent = 'Press Run to see the answer.'
       status.textContent = 'Nothing has run yet.'; runBtn.textContent = 'Run'
     })
   }
@@ -122,16 +113,13 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined
   .hd-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
   .hd:not([data-live]) .hd-live, .hd[data-live] .hd-rec { display: none; }
   .hd-mode :global(.ui-dot) { width: 6px; height: 6px; background: var(--fg-ok); }
-  .hd-text :global(p), .hd-text p { margin: 0; color: var(--fg-ink); font-size: var(--fg-fs-callout); }
+  .hd-text p { margin: 0; color: var(--fg-ink); font-size: var(--fg-fs-callout); }
   .hd-acts { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; }
-  .hd-status { color: var(--fg-ink-2); font-size: var(--fg-fs-sub); }
-  .hd-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); align-items: start; }
+  .hd-status { flex: 1 1 14rem; color: var(--fg-ink-2); font-size: var(--fg-fs-sub); }
+  .hd-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); align-items: start; }
   .hd-grid > :global(*) { min-width: 0; }
   .hd-tile { display: flex; flex-direction: column; gap: 12px; }
   .hd-h { margin: 0; font-size: var(--fg-fs-headline); line-height: 1.25; }
-  .hd-steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; font-size: var(--fg-fs-sub); color: var(--fg-ink); height: 300px; overflow-y: auto; }
-  .hd-steps :global(.hd-empty) { list-style: none; margin-left: -1.4em; color: var(--fg-ink-2); }
-  .hd-steps :global(.hd-req-line) { font-weight: 600; }
   .hd-vals { margin: 0; display: flex; flex-direction: column; }
   .hd-vals > div { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--fg-line); font-size: var(--fg-fs-sub); }
   .hd-vals > div:last-child { border-bottom: 0; }
