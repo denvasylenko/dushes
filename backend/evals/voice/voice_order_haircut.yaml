@@ -1,0 +1,15 @@
+name: voice_order_haircut
+tags: [voice, order, en]
+persona: "A person speaking to the assistant in voice mode. A direct order opens the form at once."
+goal: "A direct order opens the form at once."
+start: {page: /}
+knows:
+  - "Says: book me a haircut for tomorrow morning please"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "book me a haircut for tomorrow morning please"
+expect:
+  reaches: "/book"
+min_score: 7

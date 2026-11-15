@@ -1,0 +1,16 @@
+name: voice_fill_toyota
+tags: [voice, fill, en]
+persona: "A person speaking to the assistant in voice mode. A value the person said goes into the form without a card."
+goal: "A value the person said goes into the form without a card."
+start: {page: /insure, form: car_insurance}
+knows:
+  - "Says: it's a twenty nineteen Toyota Corolla for personal use"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "it's a twenty nineteen Toyota Corolla for personal use"
+expect:
+  never_cards: ["set_fields"]
+  fields: {make: "toyota", usage: "personal"}
+min_score: 7

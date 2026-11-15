@@ -1,0 +1,17 @@
+name: voice_ask_insurance_uk
+tags: [voice, answer, uk]
+persona: "A person speaking to the assistant in voice mode. A question is answered aloud; nothing is opened."
+goal: "A question is answered aloud; nothing is opened."
+start: {page: /}
+knows:
+  - "Says: \u044f\u043a \u043e\u0444\u043e\u0440\u043c\u0438\u0442\u0438 \u0430\u0432\u0442\u043e\u0441\u0442\u0440\u0430\u0445\u0443\u0432\u0430\u043d\u043d\u044f?"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "\u044f\u043a \u043e\u0444\u043e\u0440\u043c\u0438\u0442\u0438 \u0430\u0432\u0442\u043e\u0441\u0442\u0440\u0430\u0445\u0443\u0432\u0430\u043d\u043d\u044f?"
+expect:
+  answered_by: ["dushes"]
+  stays_put_on: ["."]
+  never_tools: ["open_form"]
+min_score: 7

@@ -1,0 +1,15 @@
+name: voice_hard_vin
+tags: [voice, hard, en]
+persona: "A person speaking to the assistant in voice mode. Hard to hear."
+goal: "Seventeen characters said one by one."
+start: {page: /insure, form: car_insurance}
+knows:
+  - "Says: the VIN is W V W Z Z Z one J Z X W zero zero zero zero zero one"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "the VIN is W V W Z Z Z one J Z X W zero zero zero zero zero one"
+expect:
+  fields: {vin: "WVWZZZ1JZXW000001"}
+min_score: 7

@@ -1,0 +1,15 @@
+name: voice_hard_mixed_ru
+tags: [voice, hard, ru]
+persona: "A person speaking to the assistant in voice mode. Hard to hear."
+goal: "Russian with an English word in it."
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - "Says: \u043c\u043d\u0435 \u043d\u0443\u0436\u043d\u0430 \u043c\u0430\u0448\u0438\u043d\u0430 \u043a\u043b\u0430\u0441\u0441\u0430 compact, \u0437\u0430\u0431\u0440\u0430\u0442\u044c \u0432 \u0430\u044d\u0440\u043e\u043f\u043e\u0440\u0442\u0443"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "\u043c\u043d\u0435 \u043d\u0443\u0436\u043d\u0430 \u043c\u0430\u0448\u0438\u043d\u0430 \u043a\u043b\u0430\u0441\u0441\u0430 compact, \u0437\u0430\u0431\u0440\u0430\u0442\u044c \u0432 \u0430\u044d\u0440\u043e\u043f\u043e\u0440\u0442\u0443"
+expect:
+  fields: {car_class: "compact", pickup_location: "airport"}
+min_score: 7

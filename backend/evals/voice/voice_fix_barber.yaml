@@ -1,0 +1,17 @@
+name: voice_fix_barber
+tags: [voice, fix, en]
+persona: "A person speaking to the assistant in voice mode. The person corrects what they said."
+goal: "The person corrects what they said."
+start: {page: /book, form: barber_booking}
+knows:
+  - "Says: a haircut with Alex please"
+  - "Says: no, with Maria, not Alex"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "a haircut with Alex please"
+  - "no, with Maria, not Alex"
+expect:
+  fields: {service: "haircut", barber: "maria"}
+min_score: 7

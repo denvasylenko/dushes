@@ -1,0 +1,15 @@
+name: voice_card_replace_typed
+tags: [voice, card, en]
+persona: "A person speaking to the assistant in voice mode. A confirmation needs a card."
+goal: "Replacing a value the person typed by hand needs a card."
+start: {page: /apply, form: loan_application, values: {first_name: "Ana"}}
+knows:
+  - "Says: my first name is Anna, with two n's"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "my first name is Anna, with two n's"
+expect:
+  cards: ["set_fields"]
+min_score: 7

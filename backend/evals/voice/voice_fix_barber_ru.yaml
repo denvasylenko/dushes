@@ -1,0 +1,17 @@
+name: voice_fix_barber_ru
+tags: [voice, fix, ru]
+persona: "A person speaking to the assistant in voice mode. The person corrects what they said."
+goal: "The person corrects what they said."
+start: {page: /book, form: barber_booking}
+knows:
+  - "Says: \u0441\u0442\u0440\u0438\u0436\u043a\u0430 \u0443 \u0410\u043b\u0435\u043a\u0441\u0430"
+  - "Says: \u043d\u0435\u0442, \u0443 \u041c\u0430\u0440\u0438\u0438, \u043d\u0435 \u0443 \u0410\u043b\u0435\u043a\u0441\u0430"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "\u0441\u0442\u0440\u0438\u0436\u043a\u0430 \u0443 \u0410\u043b\u0435\u043a\u0441\u0430"
+  - "\u043d\u0435\u0442, \u0443 \u041c\u0430\u0440\u0438\u0438, \u043d\u0435 \u0443 \u0410\u043b\u0435\u043a\u0441\u0430"
+expect:
+  fields: {service: "haircut", barber: "maria"}
+min_score: 7

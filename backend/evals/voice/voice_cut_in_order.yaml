@@ -1,0 +1,17 @@
+name: voice_cut_in_order
+tags: [voice, interruption, en]
+persona: "A person speaking to the assistant in voice mode. The person speaks over the assistant."
+goal: "The second line starts while the assistant is speaking: the sound stops, the first turn is cancelled, the order is carried out."
+start: {page: /}
+knows:
+  - "Says: tell me everything about your loans, every type, every rate and every document"
+  - "Says: stop, just open the loan application"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "tell me everything about your loans, every type, every rate and every document"
+  - "stop, just open the loan application"
+expect:
+  reaches: "/apply"
+min_score: 7

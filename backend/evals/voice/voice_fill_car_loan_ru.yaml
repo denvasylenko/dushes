@@ -1,0 +1,16 @@
+name: voice_fill_car_loan_ru
+tags: [voice, fill, ru]
+persona: "A person speaking to the assistant in voice mode. A value the person said goes into the form without a card."
+goal: "A value the person said goes into the form without a card."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Says: \u043c\u043d\u0435 \u043d\u0443\u0436\u0435\u043d \u043a\u0440\u0435\u0434\u0438\u0442 \u043d\u0430 \u043c\u0430\u0448\u0438\u043d\u0443"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "\u043c\u043d\u0435 \u043d\u0443\u0436\u0435\u043d \u043a\u0440\u0435\u0434\u0438\u0442 \u043d\u0430 \u043c\u0430\u0448\u0438\u043d\u0443"
+expect:
+  never_cards: ["set_fields"]
+  fields: {loan_type: "auto"}
+min_score: 7

@@ -1,0 +1,18 @@
+name: voice_yes_haircut_uk
+tags: [voice, offer_yes, uk]
+persona: "A person speaking to the assistant in voice mode. A question, an offer, then a yes that opens."
+goal: "A question, an offer, then a yes that opens."
+start: {page: /}
+knows:
+  - "Says: \u0441\u043a\u0456\u043b\u044c\u043a\u0438 \u043a\u043e\u0448\u0442\u0443\u0454 \u0441\u0442\u0440\u0438\u0436\u043a\u0430?"
+  - "Says: \u0442\u0430\u043a, \u0432\u0456\u0434\u043a\u0440\u0438\u0439 \u0437\u0430\u043f\u0438\u0441"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "\u0441\u043a\u0456\u043b\u044c\u043a\u0438 \u043a\u043e\u0448\u0442\u0443\u0454 \u0441\u0442\u0440\u0438\u0436\u043a\u0430?"
+  - "\u0442\u0430\u043a, \u0432\u0456\u0434\u043a\u0440\u0438\u0439 \u0437\u0430\u043f\u0438\u0441"
+expect:
+  stays_put_on: ["\u0441\u043a\u0456\u043b\u044c\u043a\u0438 \u043a\u043e\u0448\u0442\u0443\u0454"]
+  reaches: "/book"
+min_score: 7

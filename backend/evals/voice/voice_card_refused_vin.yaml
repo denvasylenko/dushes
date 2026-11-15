@@ -1,0 +1,18 @@
+name: voice_card_refused_vin
+tags: [voice, card, en]
+persona: "A person speaking to the assistant in voice mode. A confirmation needs a card."
+goal: "A value the form refuses: said aloud that it was not taken, and why."
+start: {page: /insure, form: car_insurance}
+knows:
+  - "Says: the VIN is five five five"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "the VIN is five five five"
+answers:
+  vin: "555"
+expect:
+  says: [["17"]]
+  never_says: ["VIN is now set", "entered the VIN"]
+min_score: 7

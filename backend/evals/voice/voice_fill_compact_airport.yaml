@@ -1,0 +1,16 @@
+name: voice_fill_compact_airport
+tags: [voice, fill, en]
+persona: "A person speaking to the assistant in voice mode. A value the person said goes into the form without a card."
+goal: "A value the person said goes into the form without a card."
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - "Says: a compact car, picked up at the airport"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "a compact car, picked up at the airport"
+expect:
+  never_cards: ["set_fields"]
+  fields: {car_class: "compact", pickup_location: "airport"}
+min_score: 7

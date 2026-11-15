@@ -1,0 +1,15 @@
+name: voice_hard_email
+tags: [voice, hard, en]
+persona: "A person speaking to the assistant in voice mode. Hard to hear."
+goal: "An address spelled aloud: the right value, or a question; never a guess filled in silence."
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - "Says: my email is clara dot nunes at example dot p t"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "my email is clara dot nunes at example dot p t"
+expect:
+  fields: {email: "clara.nunes@example.pt"}
+min_score: 7

@@ -1,0 +1,15 @@
+name: voice_hard_surname
+tags: [voice, hard, en]
+persona: "A person speaking to the assistant in voice mode. Hard to hear."
+goal: "A name the voice model has to spell right; the screen shows it for the person to check."
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - "Says: the driver is Agnieszka Kowalczyk"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "the driver is Agnieszka Kowalczyk"
+expect:
+  fields: {driver_name: "Agnieszka Kowalczyk"}
+min_score: 7

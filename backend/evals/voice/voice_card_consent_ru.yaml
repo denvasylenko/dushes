@@ -1,0 +1,15 @@
+name: voice_card_consent_ru
+tags: [voice, card, ru]
+persona: "A person speaking to the assistant in voice mode. A confirmation needs a card."
+goal: "The same in Russian."
+start: {site: lab, page: /lab/car-rental, form: car_rental}
+knows:
+  - "Says: \u044f \u0441\u043e\u0433\u043b\u0430\u0441\u043d\u0430 \u0441 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u043c\u0438 \u0430\u0440\u0435\u043d\u0434\u044b, \u043f\u043e\u0441\u0442\u0430\u0432\u044c \u0433\u0430\u043b\u043e\u0447\u043a\u0443"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "\u044f \u0441\u043e\u0433\u043b\u0430\u0441\u043d\u0430 \u0441 \u0443\u0441\u043b\u043e\u0432\u0438\u044f\u043c\u0438 \u0430\u0440\u0435\u043d\u0434\u044b, \u043f\u043e\u0441\u0442\u0430\u0432\u044c \u0433\u0430\u043b\u043e\u0447\u043a\u0443"
+expect:
+  fields: {accept_terms: false}
+min_score: 7

@@ -1,0 +1,16 @@
+name: voice_fill_toyota_uk
+tags: [voice, fill, uk]
+persona: "A person speaking to the assistant in voice mode. A value the person said goes into the form without a card."
+goal: "A value the person said goes into the form without a card."
+start: {page: /insure, form: car_insurance}
+knows:
+  - "Says: \u0443 \u043c\u0435\u043d\u0435 \u0442\u043e\u0439\u043e\u0442\u0430, \u0457\u0436\u0434\u0436\u0443 \u0434\u043b\u044f \u0441\u0435\u0431\u0435"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "\u0443 \u043c\u0435\u043d\u0435 \u0442\u043e\u0439\u043e\u0442\u0430, \u0457\u0436\u0434\u0436\u0443 \u0434\u043b\u044f \u0441\u0435\u0431\u0435"
+expect:
+  never_cards: ["set_fields"]
+  fields: {make: "toyota", usage: "personal"}
+min_score: 7

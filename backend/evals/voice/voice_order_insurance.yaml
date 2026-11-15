@@ -1,0 +1,15 @@
+name: voice_order_insurance
+tags: [voice, order, en]
+persona: "A person speaking to the assistant in voice mode. A direct order opens the form at once."
+goal: "A direct order opens the form at once."
+start: {page: /}
+knows:
+  - "Says: open the car insurance application, I want a quote now"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "open the car insurance application, I want a quote now"
+expect:
+  reaches: "/insure"
+min_score: 7

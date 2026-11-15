@@ -1,0 +1,18 @@
+name: voice_ask_insurance_ru
+tags: [voice, answer, ru]
+persona: "A person speaking to the assistant in voice mode. A question is answered aloud; nothing is opened."
+goal: "A question is answered aloud; nothing is opened."
+start: {page: /}
+knows:
+  - "Says: \u043a\u0430\u043a \u043e\u0444\u043e\u0440\u043c\u0438\u0442\u044c \u0441\u0442\u0440\u0430\u0445\u043e\u0432\u043a\u0443 \u043d\u0430 \u043c\u0430\u0448\u0438\u043d\u0443 \u0438 \u0441\u043a\u043e\u043b\u044c\u043a\u043e \u044d\u0442\u043e \u0441\u0442\u043e\u0438\u0442?"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "\u043a\u0430\u043a \u043e\u0444\u043e\u0440\u043c\u0438\u0442\u044c \u0441\u0442\u0440\u0430\u0445\u043e\u0432\u043a\u0443 \u043d\u0430 \u043c\u0430\u0448\u0438\u043d\u0443 \u0438 \u0441\u043a\u043e\u043b\u044c\u043a\u043e \u044d\u0442\u043e \u0441\u0442\u043e\u0438\u0442?"
+expect:
+  answered_by: ["dushes"]
+  stays_put_on: ["."]
+  never_tools: ["open_form"]
+  says: [["300"]]
+min_score: 7

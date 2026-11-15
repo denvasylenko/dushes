@@ -1,0 +1,16 @@
+name: voice_fill_car_loan
+tags: [voice, fill, en]
+persona: "A person speaking to the assistant in voice mode. A value the person said goes into the form without a card."
+goal: "A value the person said goes into the form without a card."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Says: I need a car loan, my first name is Anna"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "I need a car loan, my first name is Anna"
+expect:
+  never_cards: ["set_fields"]
+  fields: {loan_type: "auto", first_name: "Anna"}
+min_score: 7

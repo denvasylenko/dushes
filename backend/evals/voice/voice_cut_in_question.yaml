@@ -1,0 +1,18 @@
+name: voice_cut_in_question
+tags: [voice, interruption, en]
+persona: "A person speaking to the assistant in voice mode. The person speaks over the assistant."
+goal: "An interruption with a new question: the answer is to the new question."
+start: {page: /}
+knows:
+  - "Says: tell me about all the cover levels of your car insurance in detail"
+  - "Says: wait, how much is the cheapest one?"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "tell me about all the cover levels of your car insurance in detail"
+  - "wait, how much is the cheapest one?"
+expect:
+  says: [["300"]]
+  stays_put_on: ["how much is the cheapest"]
+min_score: 7

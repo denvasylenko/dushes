@@ -1,17 +1,31 @@
-# Voice benchmark (design, before the bridge exists)
+# Voice benchmark
 
 What it answers: in the experimental voice mode, does a person who speaks get the same result as a person who types,
 how long do they wait for a sound and for a useful sentence, what does a task cost, and does an interruption stop
 the assistant. The agent behind the voice is the same Dushes agent as in chat (design B of
 `openspec/changes/voice-mode/design.md`), so every existing rule keeps its meaning and its check.
 
-Status: a design. Nothing here runs until `formguide.voice` has a server-to-server transport. The speaker is a set
-of recorded clips, never a second model: the API pays for the voice session and the agent, nothing else.
+Status: prepared, not run live. The set (`voice-v1.txt`, 40 scenarios), the clip recorder and the runner exist and a
+mock run passes end to end; the live run waits for `formguide.voice`'s server-to-server transport and for the owner's
+yes with a price (every paid voice test needs it; the CPO relays it). The speaker is a set of recorded clips, never
+a second model: the API pays for the voice session and the agent, nothing else.
+
+```bash
+cd backend
+uv run python scripts/voice_clips.py            # record the 49 clips with the Mac's voices (free; scripts/runs/voice-clips/)
+uv run python scripts/voice_bench.py --mock     # the scripted voice over an offline demo: the plumbing, free
+uv run python scripts/voice_bench.py --live --max-usd 3.00   # not yet: the bridge, and the owner's yes
+```
+
+A mock run's task results mean nothing (a one-line model answers); it proves the clips, the scenarios, the checks and
+the report. Its connected time, 14.4 minutes for the set with the opening charges, is the floor of a live pass:
+about $0.72 at $0.05 a minute, before the assistant's real speaking time.
 
 ## The speaker: recorded clips
 
-`scripts/voice_clips.py` (to write) reads `evals/voice/clips.yaml` and makes one WAV per line with the Mac's own
-voices (`say`), free and offline. A clip has: the text, the language, the voice, the rate, the silence after it.
+`scripts/voice_clips.py` reads the scenarios and makes one WAV per spoken line with the Mac's own voices (`say`),
+free and offline: Samantha (English), Milena (Russian), Lesya (Ukrainian). Its manifest gives each clip's text,
+language, voice, rate and length.
 
 - English, Russian and Ukrainian at least; one voice per language to start, a second voice and a faster rate for the
   second pass (a model that hears one synthetic voice well may not hear another).
@@ -21,7 +35,7 @@ voices (`say`), free and offline. A clip has: the text, the language, the voice,
 - A synthetic voice is cleaner than a person in a room. Results with it are an upper bound; the report says so. A
   small set of clips with added street noise is a later pass, not the first.
 
-## Scenarios (voice-v1, about 40)
+## Scenarios (voice-v1, 40)
 
 Each scenario is a chat scenario's twin: a start (site, page, form), the clips in order, what to do with a card, and
 the same `expect` keys as `evals/*.yaml`. Groups:

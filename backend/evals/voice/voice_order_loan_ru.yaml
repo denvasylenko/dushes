@@ -1,0 +1,15 @@
+name: voice_order_loan_ru
+tags: [voice, order, ru]
+persona: "A person speaking to the assistant in voice mode. A direct order opens the form at once."
+goal: "A direct order opens the form at once."
+start: {page: /}
+knows:
+  - "Says: \u043e\u0442\u043a\u0440\u043e\u0439 \u0437\u0430\u044f\u0432\u043a\u0443 \u043d\u0430 \u043a\u0440\u0435\u0434\u0438\u0442, \u0445\u043e\u0447\u0443 \u043e\u0444\u043e\u0440\u043c\u0438\u0442\u044c"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "\u043e\u0442\u043a\u0440\u043e\u0439 \u0437\u0430\u044f\u0432\u043a\u0443 \u043d\u0430 \u043a\u0440\u0435\u0434\u0438\u0442, \u0445\u043e\u0447\u0443 \u043e\u0444\u043e\u0440\u043c\u0438\u0442\u044c"
+expect:
+  reaches: "/apply"
+min_score: 7

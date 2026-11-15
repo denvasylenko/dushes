@@ -1,0 +1,18 @@
+name: voice_yes_insurance
+tags: [voice, offer_yes, en]
+persona: "A person speaking to the assistant in voice mode. A question, an offer, then a yes that opens."
+goal: "A question, an offer, then a yes that opens."
+start: {page: /}
+knows:
+  - "Says: how can I get car insurance?"
+  - "Says: yes please, open it"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "how can I get car insurance?"
+  - "yes please, open it"
+expect:
+  stays_put_on: ["how can I get"]
+  reaches: "/insure"
+min_score: 7
