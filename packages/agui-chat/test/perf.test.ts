@@ -17,7 +17,8 @@ function fastest(fn: () => void | Promise<void>, runs = 5): Promise<number> {
     let best = Infinity
     for (let i = 0; i < runs; i++) {
       const t = performance.now()
-      await fn()
+      const r = fn()
+      if (r) await r   // only an async step waits: an await on a sync one would time whatever else is queued (the widget's start-up)
       best = Math.min(best, performance.now() - t)
     }
     return best

@@ -589,6 +589,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       turn.forEach((k) => { if (k.matches('.turn-acts')) k.remove(); else k.querySelector(':scope > .body > .msg-acts')?.remove() })   // a resumed turn: the row moves to its new end
       const pieces = turn.filter((k) => k.isConnected && !k.matches('.turn-acts'))
       const last = pieces[pieces.length - 1], body = bodies[bodies.length - 1]
+      if (!last || !body.isConnected) continue   // the log was cleared meanwhile (a new thread, a teardown): no row to add
       const text = bodies.map((b) => this._texts.get(b)).join('\n\n')
       if (last.contains(body)) { this._actions(body, text); continue }
       const holder = h('div', { class: 'msg ai turn-acts' })   // after a card: the row under it, still this answer's
