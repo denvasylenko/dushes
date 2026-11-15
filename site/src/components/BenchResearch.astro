@@ -4,7 +4,7 @@
  * same checks by kind of question. All from research.json (lib/research.ts); nothing is typed here. Rows are a grid,
  * not a table: on a phone a row's label takes the full width and its values sit under it, so nothing is clipped.
  */
-import { Disclosure, Icon } from './ui'
+import { Badge, Disclosure } from './ui'
 import BenchFreshness from './BenchFreshness.astro'
 import { RESEARCH, barRows, factRows, kindName, laterRows, modelName, share, totals } from '../lib/research'
 import { longDate } from '../lib/bench'
@@ -27,7 +27,7 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
   {barRows().map((r) => (
     <div class="br-row" role="row">
       <span class="br-label" role="rowheader">{r.label}</span>
-      {r.cells.map((c, i) => <span class="br-cell" role="cell" data-met={c.met === null ? undefined : String(c.met)}><small>{names[i]}</small><b>{c.text}</b>{mark(c.met) && <em><Icon name={c.met ? 'check' : 'close'} />{mark(c.met)}</em>}</span>)}
+      {r.cells.map((c, i) => <span class="br-cell" role="cell" data-met={c.met === null ? undefined : String(c.met)}><small>{names[i]}</small><b>{c.text}</b>{mark(c.met) && <Badge variant={c.met ? 'ok' : 'neutral'} icon={c.met ? 'check' : 'close'}>{mark(c.met)}</Badge>}</span>)}
       <span class="br-bar" role="cell"><small>The bar</small>{r.bar}</span>
     </div>
   ))}
@@ -76,9 +76,6 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
   .br-label { color: var(--fg-ink); }
   .br-cell { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
   .br-cell b { font-weight: 600; color: var(--fg-ink); }
-  .br-cell em { display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-size: var(--fg-fs-footnote); font-weight: 600; color: var(--fg-ink); }
-  .br-cell em svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .br-cell[data-met='true'] em { color: var(--fg-ok); font-weight: 400; }
   .br-verdict { font-size: var(--fg-fs-headline); line-height: 1.4; }
   .br-bar { color: var(--fg-ink-2); font-variant-numeric: tabular-nums; }
   .br small { display: none; font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); }

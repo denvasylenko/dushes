@@ -6,7 +6,7 @@
  * the shipped `sources` chips. The documents of the set are listed beside the chat and the pages an answer used
  * light up. With no recorded answers yet the page says so; nothing is invented.
  */
-import { Badge, Button, ChipGroup, Disclosure, Segmented } from './ui'
+import { Badge, ChipGroup, Disclosure, Row, Rows, Segmented } from './ui'
 import data from '../data/research-demo.json'
 import { longDate } from '../lib/bench'
 import { RESEARCH, kindName } from '../lib/research'
@@ -39,10 +39,10 @@ const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).fil
         <p class="rd-cap">Hard questions to try</p>
         {sets.map((s, i) => (
           <div class="rd-qlist" data-for={s.id} hidden={i > 0}>
-            {of(s.id).slice(0, FIRST).map((q) => <Button variant="gray" size="sm" data-q={q.id}><span class="rd-kind">{kindName(q.kind ?? '')}</span>{q.question}</Button>)}
+            <Rows label="Questions to try">{of(s.id).slice(0, FIRST).map((q) => <Row caption={kindName(q.kind ?? '')} chevron={false} data-q={q.id}>{q.question}</Row>)}</Rows>
             {of(s.id).length > FIRST && (
               <Disclosure summary={`${of(s.id).length - FIRST} more questions`}>
-                <div class="rd-more">{of(s.id).slice(FIRST).map((q) => <Button variant="gray" size="sm" data-q={q.id}><span class="rd-kind">{kindName(q.kind ?? '')}</span>{q.question}</Button>)}</div>
+                <div class="rd-more"><Rows label="More questions">{of(s.id).slice(FIRST).map((q) => <Row caption={kindName(q.kind ?? '')} chevron={false} data-q={q.id}>{q.question}</Row>)}</Rows></div>
               </Disclosure>
             )}
           </div>
@@ -192,6 +192,7 @@ const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).fil
       const q = data.questions.find((x) => x.id === id)
       if (!q || !playable(q)) return
       lastQ = id
+      root.querySelectorAll<HTMLElement>('[data-q]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.q === id)))
       chat.stop(); void chat.send(q.question)
       const box = chat.getBoundingClientRect()   // on a phone the chat is below the questions: bring it into view
       if (reveal && (box.top > innerHeight * 0.6 || box.bottom < 0)) chat.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
@@ -201,7 +202,7 @@ const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).fil
       // a question this model has no answer the chat can draw for is not offered
       root.querySelectorAll<HTMLElement>('[data-q]').forEach((b) => { b.hidden = !playable(data.questions.find((q) => q.id === b.dataset.q)) })
       chat.stop(); chat.reset(); clearUsed(); recLine(); verdict()
-      if (replay && lastQ) ask(lastQ, false); else lastQ = null
+      if (replay && lastQ) ask(lastQ, false); else { lastQ = null; root.querySelectorAll<HTMLElement>('[data-q]').forEach((b) => b.setAttribute('aria-pressed', 'false')) }
     }
     root.querySelector('[data-set]')!.addEventListener('ui-change', (e) => { set = (e as CustomEvent<{ value: string }>).detail.value; show() })
     root.querySelector('[data-model]')?.addEventListener('ui-change', (e) => { model = (e as CustomEvent<{ value: string }>).detail.value; show(true) })
@@ -240,10 +241,7 @@ const withTables = d.questions.reduce((n, q) => n + Object.values(q.answers).fil
   :root[data-theme='dark'] .rd-chat agui-chat { --agui-accent: var(--sl-color-accent-high); --agui-on-accent: var(--sl-color-black); --agui-link: var(--sl-color-accent-high); }
   .rd-qlist, .rd-more { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
   .rd-more { margin-top: 8px; }
-  .rd-qlist[hidden], .rd-set[hidden], .rd-qs .ui-btn[hidden] { display: none; }
-  /* a question is a list row, not a pill: several lines of text (a row primitive is asked of the design system) */
-  .rd-qs .ui-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; white-space: normal; height: auto; min-height: 44px; padding-block: 10px; border-radius: var(--fg-r-ctl); }
-  .rd-kind { font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); }
+  .rd-qlist[hidden], .rd-set[hidden] { display: none; }
   .rd-empty { margin: 0; color: var(--fg-ink-2); }
   .rd-plain h3 { margin: 0 0 4px; font: 600 var(--fg-fs-headline)/1.3 var(--sl-font); color: var(--fg-ink); }
   .rd-plain ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
