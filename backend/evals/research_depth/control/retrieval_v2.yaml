@@ -57,3 +57,26 @@ items:
   - {id: rc_vm_11, corpus: veltra_manual, q: "What should I do before taking the unit out of service for the winter?", keys: ["4 weeks in winter"], where: maintenance_manual.md}
   - {id: rc_vm_12, corpus: veltra_manual, q: "What water hardness is allowed in the heating circuit?", keys: ["8.4"], where: installation_manual.pdf}
   - {id: rc_vm_13, corpus: veltra_manual, q: "The hot water program runs at the wrong time. Where do I set it?", keys: ["P113"], where: controller_parameter_reference.md}
+  # ---- a corpus nobody has looked at (control/corpora/corvane_university): no scenario, no demo, no tuning
+  - {id: rc_cu_01, corpus: corvane_university, q: "What is the pass mark for an examination?", keys: ["pass mark is 50"], where: academic_regulations_2026.pdf}
+  - {id: rc_cu_02, corpus: corvane_university, q: "How many times can I resit a failed exam?", keys: ["resat 2 times"], where: academic_regulations_2026.pdf}
+  - {id: rc_cu_03, corpus: corvane_university, q: "I handed my coursework in two days late. What happens to my mark?", keys: ["loses 5 marks"], where: academic_regulations_2026.pdf}
+  - {id: rc_cu_04, corpus: corvane_university, q: "How long can a bachelor's thesis be?", keys: ["12000 words"], where: academic_regulations_2026.pdf}
+  - {id: rc_cu_05, corpus: corvane_university, q: "By when do I have to appeal against a mark?", keys: ["15 working days"], where: academic_regulations_2026.pdf}
+  - {id: rc_cu_06, corpus: corvane_university, q: "What happens the first time a student is caught plagiarising?", keys: ["mark of zero"], where: academic_regulations_2026.pdf}
+  - {id: rc_cu_07, corpus: corvane_university, q: "How much attendance is required in seminars?", keys: ["75%"], where: academic_regulations_2026.pdf}
+  - {id: rc_cu_08, corpus: corvane_university, q: "What does a year of the bachelor's programme in Law cost this year?", keys: ["Bachelor in Law"], where: fee_schedule_2026_27.md}
+  - {id: rc_cu_09, corpus: corvane_university, q: "Can I pay my tuition in parts, and when are the payments due?", keys: ["instalments"], where: fee_schedule_2026_27.md}
+  - {id: rc_cu_10, corpus: corvane_university, q: "I withdrew in the third week of October. Do I get any tuition back?", keys: ["31 October"], where: fee_schedule_2026_27.md}
+  - {id: rc_cu_11, corpus: corvane_university, q: "What average do I need for the merit scholarship?", keys: ["merit scholarship"], where: fee_schedule_2026_27.md}
+  - {id: rc_cu_12, corpus: corvane_university, q: "How much is a single room in student housing?", keys: ["single room costs"], where: student_housing_rules.md}
+  - {id: rc_cu_13, corpus: corvane_university, q: "How much notice do I need to give to leave my room in the halls?", keys: ["6 weeks"], where: student_housing_rules.md}
+  - {id: rc_cu_14, corpus: corvane_university, q: "How many books can I borrow at once and for how long?", keys: ["15 items"], where: library_rules.md}
+  - {id: rc_cu_15, corpus: corvane_university, q: "When are the resit examinations held?", keys: ["Resit examinations"], where: academic_calendar_2026_27.md}
+  - {id: rc_cu_16, corpus: corvane_university, q: "What is the deadline for handing in a bachelor's thesis?", keys: ["7 June 2027"], where: academic_calendar_2026_27.md}
+  - {id: rc_cu_17, corpus: corvane_university, q: "Was kostet die Anerkennung eines ausländischen Schulabschlusses?", keys: ["185 euro"], where: anhang_anerkennung_de.md}
+  - {id: rc_cu_18, corpus: corvane_university, q: "How long is the required placement in the Faculty of Medicine?", keys: ["placement of 12 weeks"], where: faculty_annex_medicine.md}
+  - {id: rc_cu_19, corpus: corvane_university, q: "What is the pass mark of the entrance examination for Law?", keys: ["pass mark is 70"], where: faculty_annex_law.md}
+  - {id: rc_cu_20, corpus: corvane_university, q: "How is the course ENG146-002 assessed?", keys: ["ENG146-002"], where: course_catalogue_2026_27.md}
+  - {id: rc_cu_21, corpus: corvane_university, q: "How far is Salmere Hall from the campus?", keys: ["Salmere Hall"], where: student_housing_rules.md}
+  - {id: rc_cu_22, corpus: corvane_university, q: "How long does a thesis defence last in the Faculty of Law?", keys: ["defence lasts 45 minutes"], where: faculty_annex_law.md}

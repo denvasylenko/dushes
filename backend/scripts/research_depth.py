@@ -144,13 +144,21 @@ def load(folder: Path = SCENARIOS) -> list[Scenario]:
 
 # ===================================================================== text helpers
 
+CONTROL_CORPORA = SCENARIOS / "control" / "corpora"
+
+
+def corpus_dir(corpus: str) -> Path:
+    """Where a corpus lives: the public folder, or the retrieval control's own (no demo route lists that one)."""
+    return CORPORA / corpus if (CORPORA / corpus).is_dir() else CONTROL_CORPORA / corpus
+
+
 _TEXTS: dict[tuple[str, str], str] = {}
 
 
 def doc_text(corpus: str, name: str) -> str:
     """A document's text as the researcher can read it (a PDF through pypdf)."""
     if (corpus, name) not in _TEXTS:
-        p = CORPORA / corpus / name
+        p = corpus_dir(corpus) / name
         if name.endswith(".pdf"):
             from pypdf import PdfReader
             _TEXTS[(corpus, name)] = "\n".join(pg.extract_text() or "" for pg in PdfReader(str(p)).pages)
@@ -331,7 +339,7 @@ def check_set(scs: list[Scenario]) -> list[str]:
     """Problems with the scenario set against the corpora (offline)."""
     problems: list[str] = []
     for s in scs:
-        d = CORPORA / s.corpus
+        d = corpus_dir(s.corpus)
         if not d.is_dir():
             problems.append(f"{s.id}: no corpus {s.corpus}")
             continue
@@ -414,7 +422,7 @@ def call_usd(c: dict, fallback: str = "") -> float:
 def build_kb(corpus: str, root: Path) -> Any:
     from formguide.knowledge.base import KnowledgeBase
     kb = KnowledgeBase(root / corpus)
-    for f in sorted((CORPORA / corpus).iterdir()):
+    for f in sorted(corpus_dir(corpus).iterdir()):
         if f.is_file():
             kb.add_document(corpus, f.name, f.read_bytes())
     return kb
@@ -1007,7 +1015,7 @@ def main() -> int:
         print(f"retrieval control v2: {len(items)} questions, top {r['k']}")
         for key, v in sorted(r["by"].items()):
             if isinstance(v, list) and "/" not in key:
-                print(f"  {key:<20} {v[0]:>2} of {v[1]:<2} ({v[0] / v[1]:.0%})")
+                print(f"  {key:<20} {v[0]:>2} of {v[1]:<2} ({v[0] / v[1]:.0%})" + ("   unseen corpus" if not (CORPORA / key).is_dir() else ""))
         tot = [sum(v[0] for kk, v in r["by"].items() if isinstance(v, list) and "/" not in kk), len(items)]
         print(f"  {'all':<20} {tot[0]:>2} of {tot[1]:<2} ({tot[0] / tot[1]:.0%})")
         return 0

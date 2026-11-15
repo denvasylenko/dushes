@@ -14,18 +14,21 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from gen import brightline, halden, northwind, orrin, quanta, tessel, veltra  # noqa: E402
+from gen import brightline, corvane, halden, northwind, orrin, quanta, tessel, veltra  # noqa: E402
 from gen.common import render_pdf  # noqa: E402
 
 OUT = HERE.parents[1] / "demo" / "research_corpora"
 CORPORA = {"northwind_insurance": northwind, "brightline_freight": brightline, "quanta_cloud": quanta,
            "halden_policies": halden, "orrin_catalogue": orrin, "tessel_contract": tessel, "veltra_manual": veltra}
+# the retrieval control's own corpus: outside demo/research_corpora, so that no demo route lists it
+CONTROL_OUT = HERE.parent / "research_depth" / "control" / "corpora"
+CONTROL = {"corvane_university": corvane}
 PAGE_CHARS = 3000
 
 
 def files(name: str) -> dict[str, bytes]:
     out: dict[str, bytes] = {}
-    for fname, body in CORPORA[name].build().items():
+    for fname, body in {**CORPORA, **CONTROL}[name].build().items():
         if isinstance(body, tuple):   # ("pdf", markdown source, title)
             _, src, title = body
             out[fname] = render_pdf(src, title)
@@ -49,8 +52,8 @@ def main() -> int:
     a = ap.parse_args()
     total = 0
     bad = []
-    for name in CORPORA:
-        d = OUT / name
+    for name in [*CORPORA, *CONTROL]:
+        d = (CONTROL_OUT if name in CONTROL else OUT) / name
         fs = files(name)
         chars = 0
         for fname, data in fs.items():

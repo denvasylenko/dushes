@@ -28,9 +28,11 @@ def test_the_set_matches_the_corpora():
 
 def test_the_corpora_are_what_the_generator_writes():
     import build_corpora
-    for name in build_corpora.CORPORA:
+    for name in [*build_corpora.CORPORA, *build_corpora.CONTROL]:
+        out = build_corpora.CONTROL_OUT if name in build_corpora.CONTROL else build_corpora.OUT
         for fname, data in build_corpora.files(name).items():
-            assert (build_corpora.OUT / name / fname).read_bytes() == data, f"{name}/{fname}: run evals/research/build_corpora.py"
+            assert (out / name / fname).read_bytes() == data, f"{name}/{fname}: run evals/research/build_corpora.py"
+    assert not (build_corpora.OUT / "corvane_university").exists()      # the control corpus is on no demo's path
 
 
 def test_a_key_is_a_number_or_a_word_not_a_piece_of_one():
@@ -143,7 +145,8 @@ def test_numbers_are_compared_as_numbers_and_sums_are_allowed():
 
 def test_the_retrieval_control_is_sound_and_never_names_a_miss():
     items = rd.control_items()
-    assert len(items) >= 50 and all(s.heldout for s in items)
+    assert len(items) >= 70 and all(s.heldout for s in items)
+    assert sum(s.corpus == "corvane_university" for s in items) >= 20 and "corvane_university" not in rd.PUBLIC_SETS
     assert [p for p in rd.check_set(items) if not p.startswith(("quick:", "deep:", "trap:"))] == []   # every key is in its document
     r = rd.retrieval(items[:6], 8)
     assert r["missed"] == []          # a control miss is counted, never listed
