@@ -326,7 +326,7 @@ export interface Slots {
   /** Quick replies under the last answer. */
   suggestions?: (items: string[], chat: ChatApi) => Out
   /** Sources under an answer (from plugins such as formguide). */
-  sources?: (items: { title: string; section?: string; quote?: string }[], chat: ChatApi) => Out
+  sources?: (items: { title: string; section?: string; quote?: string; excerpt?: string; marks?: [number, number][]; url?: string; page?: number | string }[], chat: ChatApi) => Out
   /** The bubble's launcher content (the widget keeps the click and the unread dot). */
   launcher?: (data: { open: boolean; unread: boolean }, chat: ChatApi) => Out
   /** The composer: build your own and call chat.send(text). */

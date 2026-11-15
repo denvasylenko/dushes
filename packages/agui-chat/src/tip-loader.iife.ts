@@ -17,3 +17,7 @@ export const loadMenu = (): Promise<typeof openMenu> => tip()
 import type { spotCard } from './spot'
 /** Bringing a card back (card_focus): in agui-chat.tip.js too. */
 export const loadSpot = (): Promise<typeof spotCard> => tip().then(() => (globalThis as unknown as { AguiChat: { spotCard: typeof spotCard } }).AguiChat.spotCard)
+
+import type { fillSources } from './sources'
+/** The source links and their sheet: in agui-chat.tip.js too. */
+export const loadSources = (): Promise<typeof fillSources> => tip().then(() => (globalThis as unknown as { AguiChat: { fillSources: typeof fillSources } }).AguiChat.fillSources)

@@ -4,6 +4,7 @@
  * several short fields, the form review, sources, receipts and the thumbs rating.
  * Each view falls back to the plain controls when its data or the host's callback is missing.
  */
+import { loadSources } from '#tip-loader'
 import { h, numberBox } from '../dom'
 import type { ChatApi, Interrupt, RendererContext } from '../types'
 import type { Ctx } from './index'
@@ -183,21 +184,12 @@ export function reviewCard(it: Interrupt, c: RendererContext, ctx: Ctx, undoFor:
 
 // ---------------------------------------------------------------- sources, receipt, feedback
 
-/** Chips under an answer: where it came from. */
-export function sourcesEl(items: { title: string; section?: string; quote?: string }[]): HTMLElement {
-  return h('div', { class: 'chips srcs', part: 'sources' }, items.map((s) => {
-    const label = `${s.title}${s.section ? ` › ${s.section}` : ''}`
-    const chip = h('button', { class: 'chip src-chip', type: 'button', title: s.quote ?? label, 'aria-expanded': 'false' }, label) as HTMLButtonElement
-    if (s.quote) {
-      chip.addEventListener('click', () => {
-        const q = chip.nextElementSibling as HTMLElement | null
-        if (q?.classList.contains('quote')) { q.remove(); chip.setAttribute('aria-expanded', 'false'); return }
-        chip.after(h('div', { class: 'muted quote' }, `“${s.quote}”`))
-        chip.setAttribute('aria-expanded', 'true')
-      })
-    }
-    return chip
-  }))
+/** The source links under an answer: the box at once (so nothing moves later), the links and what a tap opens
+ *  (a sheet on a phone, a popover with a mouse) from the on-demand file. */
+export function sourcesEl(items: unknown[], t: (k: string, v?: Record<string, string | number>) => string): HTMLElement {
+  const box = h('div', { class: 'srcs', part: 'sources' })
+  loadSources().then((fill) => fill(box, items as Parameters<typeof fill>[1], t), () => { box.className = 'muted srcs'; box.textContent = (items as { title: string }[]).map((s) => s.title).join(' \u00b7 ') })
+  return box
 }
 
 /** Was this helpful? One tap, sent once; it does not come back. */

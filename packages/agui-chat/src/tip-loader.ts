@@ -10,3 +10,7 @@ export const loadMenu = (): Promise<typeof openMenu> => import('./tip').then((m)
 import type { spotCard } from './spot'
 /** Bringing a card back (card_focus): the same chunk. */
 export const loadSpot = (): Promise<typeof spotCard> => import('./tip').then((m) => m.spotCard)
+
+import type { fillSources } from './sources'
+/** The source links under an answer and the sheet a tap opens: the same chunk. */
+export const loadSources = (): Promise<typeof fillSources> => import('./tip').then((m) => m.fillSources)

@@ -102,6 +102,7 @@ Unknown option names are ignored with a console warning.
 | `chat.updateCard(id, patch)` | redraw a shown card in place: `{blocks}` for a card from blocks |
 | `agui:message-action` | an action under an answer was tapped: `{id, messageId, text, pressed?}` (`pressed` for like, dislike, speak) |
 | `agui:applied` | the plugin filled fields: `{fields, values, undo}` (also after Undo) |
+| `agui:source-open` | a source under an answer was opened or paged to: `{source}` (the item of `CUSTOM sources` as sent) |
 | `agui:card-missing` | `CUSTOM card_focus` named a card that is no longer in the log: `{card_id}` (nothing is drawn) |
 | `chat.stop()` | abort the running turn |
 | `chat.use(plugin)`, `chat.plugins = [...]` | add plugins |

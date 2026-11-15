@@ -268,11 +268,13 @@ const GALLERY: Specimen[] = [
   {
     id: 'sources', group: 'reply', tag: 'CUSTOM sources',
     title: 'Where it came from',
-    blurb: 'Chips under an answer from your documents. A tap shows the quote.',
+    blurb: 'Links under an answer from your documents. A tap opens the passage with the lines the answer rests on marked: a sheet on a phone, a popover with a mouse.',
     user: 'Can I repay early?',
     lead: 'Yes. Early repayment is **free after the first 3 months**; before that it costs 1% of the amount repaid.',
     event: { name: 'sources', value: { items: [
-      { title: 'Tariffs 2026', section: 'Early repayment', quote: 'Early repayment is free of charge after three months from the start of the loan.' },
+      { title: 'Tariffs 2026', section: 'Early repayment', path: ['4 Loans', '4.3 Early repayment'], page: 7,
+        excerpt: 'A loan can be repaid early, in full or in part, at any time. Early repayment is free of charge after three months from the start of the loan. The request is made in the app or at a branch.',
+        marks: [[61, 141]], url: 'https://example.com/tariffs-2026.pdf#page=7' },
       { title: 'Lending policy', section: '4.2 Fees', quote: 'Within the first three months the fee is 1% of the amount repaid.' }] } },
   },
   {

@@ -201,8 +201,8 @@ export function formguide(opts: FormguideOptions): Plugin {
         return true
       }
       if (ev.name === 'sources') {   // chips under the answer: where it came from
-        const items = (ev.value as { items?: { title: string; section?: string; quote?: string }[] })?.items ?? []
-        if (items.length) chat.append(chat.renderSlot('sources', items) ?? sourcesEl(items))   // render.sources replaces the chips
+        const items = (ev.value as { items?: { title: string }[] })?.items ?? []
+        if (items.length) chat.append(chat.renderSlot('sources', items) ?? sourcesEl(items, (chat.tc ?? chat.t).bind(chat)))   // render.sources replaces the links
         return true
       }
       if (ev.name === 'receipt') {   // the confirmed card turns into its receipt

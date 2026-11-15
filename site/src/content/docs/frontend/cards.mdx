@@ -40,7 +40,7 @@ The agent streams AG-UI events. Here is **everything the frontend can receive**,
 | `CUSTOM on_interrupt`, `type: "upload"` (2.6) | the agent asks for a document | a drop zone; upload, then answer with the attachment ids |
 | `CUSTOM on_interrupt`, `type: "confirm"` (2.7) | the agent needs a yes/no before an action | a confirmation: Confirm / Cancel, with details and one consequence line |
 | `CUSTOM on_interrupt`, `type: "review"` (2.8) | the form's status, or the check before sending | sections with what is left and Continue; errors with Fix and Show, warnings with Why |
-| `CUSTOM sources` (2.8) | after an answer that used the business documents | source chips under the answer |
+| `CUSTOM sources` (2.8) | after an answer that used the business documents | source links under the answer; a tap opens the passage with the used lines marked (a sheet on a phone, a popover with a mouse), "1 of N" through the sources and "Open document" when the source has a `url` |
 | `CUSTOM receipt` (2.8) | the confirmed action returned a receipt | the confirm card turns into the receipt: number, Copy number |
 | `CUSTOM tool_progress` | a sub-step of a running tool (the researcher) | optional: `<agui-chat>` does not show it (its steps line names the tool only); another client may |
 | `CUSTOM suggestions` | after an answer (when enabled on the server) | 2-3 chips; clicking one sends it as a message; an entry in `applies` (validated field changes) makes it an action chip that fills the fields first, with Undo |

@@ -109,6 +109,7 @@ Each component reads its own tokens first, falling back to the global ones, so y
 | chips and options | `chip-bg`, `chip-ink`, `chip-border`, `chip-radius`, `chip-on-bg`, `chip-on-ink`, `option-bg`, `option-ink`, `option-border`, `option-radius` |
 | inputs | `input-bg`, `input-ink`, `input-border`, `input-radius`, `input-height`, `input-font-size` (16 px; on a touch screen never under 16 px, whatever the token or a `::part` style says, so iPhone Safari does not zoom the page on a tap) |
 | composer | `composer-bg`, `composer-border`, `composer-radius`, `composer-area-bg` |
+| sources | `source-bg` (a source link), `sheet-bg` (the sheet or popover a tap opens), `mark-bg` (the marked lines of the passage); parts `sources`, `source`, `source-view` |
 | calendar | `calendar-on-bg`, `calendar-on-ink` |
 | bubble mode | `bubble-width` (400px), `bubble-height` (680px), `bubble-offset` (20px), `bubble-window-radius` (24px), `launcher-size` (60px) |
 
@@ -138,7 +139,7 @@ chat.options = { icons: { logo: '<svg viewBox="0 0 24 24">...</svg>', send: mySe
 | `error({message, kind, text, retry}, chat)` | the failure | the error line and its Try again |
 | `suggestions(items, chat)` | quick replies | the chips under the answer |
 | `launcher({open, unread}, chat)` | | the bubble's launcher content (an avatar, a brand mark); the click, the unread dot and the open state stay the widget's |
-| `sources(items, chat)` | `{title, section, quote}[]` | the source chips (form plugin) |
+| `sources(items, chat)` | `{title, section?, path?, page?, excerpt?, marks?, url?, quote?}[]` | the source links and what a tap opens (form plugin) |
 | `composer(chat)` | | the whole composer; call `chat.send(text)` |
 
 <Tabs>

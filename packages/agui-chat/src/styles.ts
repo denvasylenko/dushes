@@ -667,13 +667,14 @@ button.bubble-q { cursor: pointer; }
 .issue-line { font-size: 13px; margin-top: 2px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
 .issue-line.warning { color: color-mix(in srgb, var(--agui-danger) 70%, var(--agui-ink)); }
 .issue-line.error, .row.issue.error .sev { color: var(--agui-danger); }
-.why, .doc, .quote { margin-top: 4px; font-size: 13px; }
+.why, .doc { margin-top: 4px; font-size: 13px; }
 .shared { margin: -4px 0 8px; font-size: 13px; }
 .doc-head { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
 .doc-head .thumb { width: 44px; height: 32px; border-radius: var(--agui-radius-sm); background: var(--agui-soft); object-fit: cover; flex: none; }
 .rev .row { width: 100%; border-left: 0; border-right: 0; border-bottom: 0; background: none; color: inherit; font: inherit; text-align: left; }
 .row.issue .ok-line { margin-top: 4px; }
-.srcs { margin: -10px 0 18px; }
+.srcs { min-height: 38px; margin: -11px -3px 15px; padding: 3px; }
+@media (hover: none) { .srcs { min-height: 44px; margin: -14px -3px 12px; padding: 6px 3px; } }
 .src-chip { font-size: 12px; padding: 5px 10px; }
 .why .src-chip { display: inline-block; margin-left: 6px; border: 1px solid var(--agui-line-2); border-radius: var(--agui-radius-pill); }
 .details { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 8px 0 0; font-size: 14px; }

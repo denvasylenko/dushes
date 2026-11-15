@@ -279,13 +279,54 @@ describe('card kit: field card, review, confirm', () => {
     expect($(el, '.feedback').textContent).toBe('Thanks for the feedback')
   })
 
-  it('sources become chips under the answer', async () => {
-    const { el } = await chatWith(run(...text('m1', 'Early repayment is free.'),
-      { type: 'CUSTOM', name: 'sources', value: { items: [{ title: 'Tariffs 2026', section: 'Early repayment', quote: 'free after 3 months' }] } } as AguiEvent))
-    const chip = $(el, '.srcs .src-chip')
-    expect(chip.textContent).toBe('Tariffs 2026 › Early repayment')
-    chip.click()
-    expect($(el, '.quote').textContent).toContain('free after 3 months')
+  it('sources become links under the answer; a tap opens the passage with the used lines marked, pages, and closes on Esc', async () => {
+    const excerpt = 'Early repayment is possible at any time. It is free after 3 months. Before that the fee is 1%.'
+    const a = excerpt.indexOf('It is free'), b = excerpt.indexOf(' Before that')
+    const items = [
+      { id: 's1', title: 'Tariffs 2026', section: 'Early repayment', path: ['4 Loans', '4.3 Early repayment'], page: 7, excerpt, marks: [[a, b]], url: 'https://bank.example/tariffs.pdf#page=7' },
+      { title: 'FAQ', section: 'Fees', quote: 'free after 3 months' },
+      { title: 'Handbook', url: 'javascript:alert(1)' },
+      { title: 'Guide', url: '/research-documents/bank/guide/#:~:text=Early%20repayment' },
+      { title: 'Elsewhere', url: '//evil.example/x' },
+    ]
+    const { el } = await chatWith(run(...text('m1', 'Early repayment is free.'), { type: 'CUSTOM', name: 'sources', value: { items } } as AguiEvent))
+    expect($$(el, '.srcs')).toHaveLength(1)                                       // the box is there at once
+    for (let i = 0; i < 100 && !$$(el, '.srcs .src').length; i++) await tick(10)   // the links come with the on-demand file
+    const [first, second, third, fourth, fifth] = $$(el, '.srcs .src')
+    expect(first.textContent).toBe('Tariffs 2026 \u203a Early repayment')
+    expect(third.tagName).toBe('SPAN')                                            // nothing to show (a bad link is not a link): a plain label
+    const opened: unknown[] = []
+    el.addEventListener('agui:source-open', (e) => opened.push(((e as CustomEvent).detail.source as { title: string }).title))
+    first.click()
+    const view = $(el, '.src-view')
+    expect(view.getAttribute('role')).toBe('dialog')
+    expect(view.querySelector('.src-head b')!.textContent).toBe('Tariffs 2026')
+    expect(view.querySelector('.src-head small')!.textContent).toBe('4 Loans \u203a 4.3 Early repayment \u00b7 p. 7')
+    expect(view.querySelector('mark')!.textContent).toBe('It is free after 3 months.')
+    expect(view.querySelector('.src-text')!.textContent).toBe(excerpt)
+    expect(fifth.tagName).toBe('SPAN')                                            // another site without a scheme: not a link either
+    expect(view.querySelector('.src-pager span')!.textContent).toBe('1 of 3')
+    expect((view.querySelector('a') as HTMLAnchorElement).href).toBe('https://bank.example/tariffs.pdf#page=7')
+    expect(first.getAttribute('aria-expanded')).toBe('true')
+    ;(view.querySelectorAll('.src-go')[1] as HTMLButtonElement).click()           // the next source: its short quote, no link
+    expect(view.querySelector('.src-head b')!.textContent).toBe('FAQ')
+    expect(view.querySelector('mark')!.textContent).toBe('free after 3 months')
+    expect(view.querySelector('a')).toBeNull()
+    expect(second.classList.contains('on')).toBe(true)
+    expect(opened).toEqual(['Tariffs 2026', 'FAQ'])
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }))   // the arrow keys page while the focus is inside
+    expect(view.querySelector('.src-head b')!.textContent).toBe('Tariffs 2026')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await tick(200)                                                               // it leaves the way it came, then it is gone
+    expect($$(el, '.src-view')).toHaveLength(0)
+    expect(first.getAttribute('aria-expanded')).toBe('false')
+    fourth.click()                                                               // a path on the same site, as sent: its text fragment is kept
+    expect($(el, '.src-view a').getAttribute('href')).toBe('/research-documents/bank/guide/#:~:text=Early%20repayment')
+    expect(($(el, '.src-view a') as HTMLAnchorElement).target).toBe('_blank')
+    fourth.click()
+    first.click(); first.click()                                                  // the link toggles
+    await tick(200)
+    expect($$(el, '.src-view')).toHaveLength(0)
   })
 })
 

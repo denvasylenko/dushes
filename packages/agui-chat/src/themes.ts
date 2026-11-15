@@ -38,7 +38,7 @@ export const TOKENS = [
   'button-bg', 'button-ink', 'button-radius', 'button-secondary-bg', 'button-secondary-ink', 'button-secondary-border',
   'chip-bg', 'chip-ink', 'chip-border', 'chip-radius', 'chip-on-bg', 'chip-on-ink',
   'option-bg', 'option-ink', 'option-border', 'option-radius',
-  'input-bg', 'input-ink', 'input-border', 'input-radius', 'input-height', 'input-font-size',
+  'input-bg', 'input-ink', 'input-border', 'input-radius', 'input-height', 'input-font-size', 'source-bg', 'sheet-bg', 'mark-bg',
   'composer-bg', 'composer-border', 'composer-radius', 'composer-area-bg', 'composer-shadow', 'composer-shadow-focus',
   'calendar-on-bg', 'calendar-on-ink',
   'bubble-width', 'bubble-height', 'bubble-offset', 'bubble-window-radius', 'launcher-size',

@@ -115,6 +115,20 @@ For a question card with `applies: true`, a field and no options, typed text tha
 - **WHEN** the user types "Where do I find it?"
 - **THEN** the field is not touched and the agent gets the text as the answer
 
+### Requirement: A source opens its passage
+Sources under an answer SHALL be one row of links (a document glyph, the title and section) whose place is kept from the start, so nothing moves when they arrive. A tap SHALL open, over the chat, the title, the path and page, the `excerpt` with its `marks` marked and in view, "1 of N" to page, and "Open document" for a `url` (http(s) or a same-site path, opened in a new tab exactly as sent): a sheet on a touch or narrow screen, a popover over the link otherwise.
+
+#### Scenario: A citation on a phone
+- **WHEN** the person taps a source that has an excerpt, one marked sentence and a url
+- **THEN** a sheet rises with the title, the section, the passage with that sentence marked and "Open document", and the conversation does not move
+
+### Requirement: A source's sheet closes easily and names itself
+The sheet SHALL close on its close button, a swipe down, a tap on the veil or Esc; the popover on Esc, a click outside or its link again; the focus SHALL return to the link. A source with no excerpt, quote or valid url SHALL be a plain label. With a mouse the link SHALL show a hand cursor, a hover fill and the tooltip "Show source". Each source shown SHALL fire `agui:source-open` with `{source}`.
+
+#### Scenario: A source with nothing to show
+- **WHEN** a source has only a title
+- **THEN** it is drawn as a label, not a button
+
 ### Requirement: A typed value the form refuses is put back
 When the form's new config flags an error on the field a typed answer filled, the widget SHALL put the previous value back, resume with `{answer: {text}, rejected: {<field>: <the form's error text>}}` and no config, and shrink the card to a not-accepted line (a cross, the typed text and the form's words, no Undo), never the answered line.
 
