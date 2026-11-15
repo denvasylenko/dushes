@@ -10,7 +10,8 @@
 #   DEV_HOST_PORT   the port (8190)          DEV_HOST_REF   what to follow (main)
 #   DEV_HOST_EVERY  seconds between looks at the ref (20)
 # The money limits are the public ones ($3 Haiku + $2 Luna a day). The message limits are higher here, so that
-# testing does not stop at ten messages (the CPO, 2026-11-15): 200 a visitor and 400 an address a day. Any DEMO_*
+# testing does not stop at ten messages (the CPO, 2026-11-15): 200 a visitor and 400 an address a day, 100 in one
+# conversation. Any DEMO_*
 # variable set before the start wins (docs_ai/host.py).
 set -uo pipefail
 
@@ -20,7 +21,7 @@ PORT="${DEV_HOST_PORT:-8190}"
 REF="${DEV_HOST_REF:-main}"
 EVERY="${DEV_HOST_EVERY:-20}"
 SERVER=""
-export DEMO_PER_VISITOR_DAY="${DEMO_PER_VISITOR_DAY:-200}" DEMO_PER_IP_DAY="${DEMO_PER_IP_DAY:-400}"
+export DEMO_PER_VISITOR_DAY="${DEMO_PER_VISITOR_DAY:-200}" DEMO_PER_IP_DAY="${DEMO_PER_IP_DAY:-400}" DEMO_PER_THREAD="${DEMO_PER_THREAD:-100}"
 
 say() { echo "[dev-host $(date +%H:%M:%S)] $*"; }
 
