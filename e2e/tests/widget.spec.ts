@@ -527,3 +527,57 @@ test('with attachments off and nothing else to offer there is no plus at all', a
   await open(page)                                            // no upload, no commands, no host rows
   await expect(page.locator('agui-chat .clip')).toBeHidden()
 })
+
+// ---------------------------------------------------------------------------------------------- a value the form refuses
+// The owner (2026-11-15): a VIN of "555" showed a green check while the text said it was not entered.
+
+const vinAsk = (id: string) => ({ type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'ask', card_id: id,
+  question: 'What is the VIN?', field: 'vin', applies: true, label: 'VIN', input: { type: 'text' } }) })
+
+async function useVinForm(page: Page): Promise<void> {
+  await page.route('**/agent/layouts', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"jsx_hash":"h"}' }))
+  await open(page)
+  await page.evaluate(() => {
+    const el = document.querySelector('agui-chat') as unknown as { use: (p: unknown) => void }
+    const fg = (window as unknown as { AguiChat: { formguide: (o: unknown) => unknown } }).AguiChat.formguide
+    let state: Record<string, unknown> = { vin: '' }
+    const config = () => ({ props: String(state.vin ?? '').length && String(state.vin).length !== 17 ? { vin: { error: '17 characters' } } : {}, state })
+    el.use(fg({ getState: () => ({ config: config(), jsx_hash: 'h' }), applyChanges: async (v: Record<string, unknown>) => { state = { ...state, ...v }; return config() } }))
+  })
+}
+
+test('a typed value the form refuses: the card shows a cross and the reason, never the green line, and says why to the server', async ({ page }) => {
+  const bodies = await agent(page, { events: run(...text('m1', 'Let me take the VIN.'), vinAsk('v1')) }, { events: run(...text('m2', 'A VIN has 17 characters.')) })
+  await useVinForm(page)
+  await say(page, 'my vin is 555')
+  const card = page.locator('agui-chat [data-card-id="v1"]')
+  const field = card.locator('input, textarea').first()
+  await expect(field).toBeVisible()
+  await field.fill('555')
+  await field.press('Enter')
+  const line = card.locator('.ok-line')
+  await expect(line).toHaveClass(/\boff\b/)                   // never the answered line
+  await expect(line).toContainText('555')
+  await expect(line).toContainText('17 characters')           // the form's own reason
+  await expect(line.locator('.btn')).toHaveCount(0)           // nothing to undo: nothing was entered
+  await expect(card).toHaveClass(/\bdone\b/)
+  await expect(page.locator('agui-chat .msg.ai .body').last()).toHaveText('A VIN has 17 characters.', { timeout: 15_000 })   // the next run, slow on a busy machine
+  const resume = (bodies.at(-1) as { forwardedProps: { command: { resume: unknown } } }).forwardedProps.command.resume
+  expect(resume).toEqual({ answer: { text: '555' }, rejected: { vin: '17 characters' } })   // the reason, and no config: the form kept its old value
+})
+
+test('card_result not_accepted turns an answered card into a refused one, once', async ({ page }) => {
+  const refused = { type: 'CUSTOM', name: 'card_result', value: { card_id: 'v2', status: 'not_accepted', reason: 'This VIN is not in the register' } }
+  await agent(page, { events: run(...text('m1', 'Let me take the VIN.'), vinAsk('v2')) }, { events: run(refused, refused, ...text('m2', 'That VIN was not accepted.')) })
+  await useVinForm(page)
+  await say(page, 'here is my vin')
+  const card = page.locator('agui-chat [data-card-id="v2"]')
+  const field = card.locator('input, textarea').first()
+  await field.fill('WVWZZZ1JZXW000001')                        // 17 characters: the form takes it, the server refuses it
+  await field.press('Enter')
+  const line = card.locator('.ok-line')
+  await expect(line).toHaveClass(/\boff\b/)
+  await expect(line).toContainText('This VIN is not in the register')
+  await expect(line.locator('.btn')).toHaveCount(0)           // Undo is gone
+  expect((await line.textContent())!.split('This VIN is not in the register').length - 1).toBe(1)   // sent twice, said once
+})

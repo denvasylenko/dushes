@@ -158,3 +158,23 @@ def test_an_offer_on_the_last_line_of_a_long_reply_is_seen():
     log = ["\U0001f9ed on /", "\n\U0001f464 what do I need for a car loan?", "\U0001f916 You need a passport and proof of income.\n   \n   Would you like me to open the loan application?"]
     _moves, said, _seen = evals.moves_after(log, ".")
     assert "?" in said[0]
+
+
+def test_the_guest_tells_the_server_why_the_form_refused_a_typed_value():
+    """As the widget does (066cca7): {answer, rejected: {field: reason}} and no config; the form keeps its old value."""
+    from harness_client import Visit
+
+    class Page:
+        def __init__(self):
+            self.config, self.ui = {"state": {"vin": ""}, "props": {}}, {}
+
+        def apply(self, changes):
+            v = str(changes.get("vin") or "")
+            self.config = {"state": {"vin": v}, "props": {"vin": {"error": "17 characters"}} if v and len(v) != 17 else {}}
+
+    v = Visit.__new__(Visit)
+    v.form, v.log, v.cards, sent = Page(), [], [], []
+    v._resume = lambda reply, depth: sent.append(reply)
+    v.answer = lambda c: {"text": "555"}
+    v._card({"type": "ask", "field": "vin", "applies": True, "label": "VIN", "question": "The VIN?", "input": {"type": "text"}}, 0)
+    assert sent == [{"answer": {"text": "555"}, "rejected": {"vin": "17 characters"}}] and v.form.config["state"]["vin"] == ""

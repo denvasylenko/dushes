@@ -444,8 +444,11 @@ class Visit:
             return False
         before = self.form.config["state"].get(name)
         self.form.apply({name: value})
-        if not chosen and ((self.form.config.get("props") or {}).get(name) or {}).get("error"):
+        error = ((self.form.config.get("props") or {}).get(name) or {}).get("error")
+        if not chosen and error:   # a typed value the form refuses: the old value goes back, the reason goes to the server
             self.form.apply({name: card.get("previous", before)})
+            self._refused = {name: str(error)}
+            self.log.append(f"   \u2715 the form refused {json.dumps(value, ensure_ascii=False)} for {card.get('label') or name}: {error}")
             return False
         self.log.append(f"   \u270f\ufe0f the answer filled the field on the page: {card.get('label') or name} = {json.dumps(value, ensure_ascii=False)}")
         return True
@@ -467,7 +470,10 @@ class Visit:
             if not reply:
                 return self._resume({"accepted": False}, depth)
             filled = self._fill_from_answer(interrupt, reply)
-            self._resume({"answer": reply, **({"config": self.form.config, "ui": self.form.ui} if filled else {})}, depth)
+            refused = getattr(self, "_refused", None)   # the widget's answer for a typed value the form refused (066cca7)
+            self._refused = None
+            self._resume({"answer": reply, **({"config": self.form.config, "ui": self.form.ui} if filled else {}),
+                          **({"rejected": refused} if refused else {})}, depth)
         elif "changes" in interrupt and self.form:
             # a consent row is only the person's own tick: accepting the card leaves it out unless this guest gives it
             ch = [c for c in interrupt["changes"] if not c.get("consent") or c["name"] in getattr(self, "ticks", ())]
