@@ -1,0 +1,17 @@
+name: voice_fix_loan_type
+tags: [voice, fix, en]
+persona: "A person speaking to the assistant in voice mode. The person corrects what they said."
+goal: "The person corrects what they said."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Says: I need a mortgage"
+  - "Says: no, sorry, a car loan, not a mortgage"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "I need a mortgage"
+  - "no, sorry, a car loan, not a mortgage"
+expect:
+  fields: {loan_type: "auto"}
+min_score: 7

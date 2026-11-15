@@ -1,0 +1,18 @@
+name: voice_yes_loan
+tags: [voice, offer_yes, en]
+persona: "A person speaking to the assistant in voice mode. A question, an offer, then a yes that opens."
+goal: "A question, an offer, then a yes that opens."
+start: {page: /}
+knows:
+  - "Says: can I get a loan to buy a car?"
+  - "Says: okay, let's do it"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "can I get a loan to buy a car?"
+  - "okay, let's do it"
+expect:
+  stays_put_on: ["can I get a loan"]
+  reaches: "/apply"
+min_score: 7

@@ -1,0 +1,17 @@
+name: voice_fix_name
+tags: [voice, fix, en]
+persona: "A person speaking to the assistant in voice mode. The person corrects what they said."
+goal: "The person corrects what they said."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Says: a car loan, my first name is Anna"
+  - "Says: sorry, the first name is Hannah, not Anna"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "a car loan, my first name is Anna"
+  - "sorry, the first name is Hannah, not Anna"
+expect:
+  fields: {loan_type: "auto", first_name: "Hannah"}
+min_score: 7

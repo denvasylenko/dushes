@@ -20,3 +20,11 @@ voice_fix_barber
 voice_fix_make
 voice_cut_in_order
 voice_cut_in_question
+voice_yes_haircut
+voice_yes_loan
+voice_yes_short
+voice_order_loan
+voice_cut_in_fill
+voice_cut_in_stop
+voice_fix_loan_type
+voice_fix_name

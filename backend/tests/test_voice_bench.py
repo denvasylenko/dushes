@@ -14,9 +14,9 @@ SET = vb.SCENARIOS / "voice-v1.txt"
 
 def test_the_set_loads_and_covers_the_groups_and_three_languages():
     scs = [evals.load_scenario(vb.SCENARIOS / f"{n}.yaml") for n in SET.read_text().split()]
-    assert len(scs) == 40 and all(s.tags[0] == "voice" and s.scripted for s in scs)
+    assert len(scs) == 48 and all(s.tags[0] == "voice" and s.scripted for s in scs)
     groups = {g: sum(s.tags[1] == g for s in scs) for g in ("answer", "order", "offer_yes", "fill", "hard", "card", "fix", "interruption")}
-    assert groups == {"answer": 10, "order": 4, "offer_yes": 3, "fill": 8, "hard": 5, "card": 4, "fix": 3, "interruption": 3}
+    assert groups == {"answer": 10, "order": 5, "offer_yes": 6, "fill": 8, "hard": 5, "card": 4, "fix": 5, "interruption": 5}
     langs = {lang: sum(s.tags[2] == lang for s in scs) for lang in vc.LANGS}
     assert langs["en"] >= 20 and langs["ru"] >= 8 and langs["uk"] >= 6
     assert all(len(s.scripted) == 2 for s in scs if s.tags[1] == "interruption")     # the second clip is the cut-in
@@ -88,5 +88,7 @@ def test_a_clip_goes_in_as_a_microphone_would_send_it(tmp_path):
 def test_the_english_set_is_the_english_scenarios_of_the_whole_set():
     en = (vb.SCENARIOS / "voice-v1-en.txt").read_text().split()
     scs = [evals.load_scenario(vb.SCENARIOS / f"{n}.yaml") for n in en]
-    assert len(en) == 22 and all(s.tags[2] == "en" for s in scs) and set(en) <= set(SET.read_text().split())
+    assert len(en) == 30 and all(s.tags[2] == "en" for s in scs) and set(en) <= set(SET.read_text().split())
     assert {s.tags[1] for s in scs} == {"answer", "order", "offer_yes", "fill", "hard", "card", "fix", "interruption"}   # every group is still there
+    from collections import Counter
+    assert min(Counter(s.tags[1] for s in scs).values()) >= 3   # no group is an anecdote

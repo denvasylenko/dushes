@@ -1,0 +1,18 @@
+name: voice_yes_haircut
+tags: [voice, offer_yes, en]
+persona: "A person speaking to the assistant in voice mode. A question, an offer, then a yes that opens."
+goal: "A question, an offer, then a yes that opens."
+start: {page: /}
+knows:
+  - "Says: how much is a haircut and when are you open?"
+  - "Says: yes, book me in"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "how much is a haircut and when are you open?"
+  - "yes, book me in"
+expect:
+  stays_put_on: ["how much is a haircut"]
+  reaches: "/book"
+min_score: 7

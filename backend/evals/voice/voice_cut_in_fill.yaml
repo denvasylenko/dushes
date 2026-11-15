@@ -1,0 +1,17 @@
+name: voice_cut_in_fill
+tags: [voice, interruption, en]
+persona: "A person speaking to the assistant in voice mode. The person speaks over the assistant."
+goal: "The second line starts while the assistant is speaking: the sound stops and the new line is carried out."
+start: {page: /book, form: barber_booking}
+knows:
+  - "Says: tell me about every service you have and how long each one takes"
+  - "Says: stop, just a haircut with Maria"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "tell me about every service you have and how long each one takes"
+  - "stop, just a haircut with Maria"
+expect:
+  fields: {service: "haircut", barber: "maria"}
+min_score: 7

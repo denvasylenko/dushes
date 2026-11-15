@@ -1,0 +1,15 @@
+name: voice_order_loan
+tags: [voice, order, en]
+persona: "A person speaking to the assistant in voice mode. A direct order opens the form at once."
+goal: "A direct order opens the form at once."
+start: {page: /}
+knows:
+  - "Says: I want to apply for a loan, open the application"
+turns: 1
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "I want to apply for a loan, open the application"
+expect:
+  reaches: "/apply"
+min_score: 7

@@ -1,0 +1,18 @@
+name: voice_cut_in_stop
+tags: [voice, interruption, en]
+persona: "A person speaking to the assistant in voice mode. The person speaks over the assistant."
+goal: "The person stops the assistant and asks for nothing: the sound stops, nothing is opened."
+start: {page: /}
+knows:
+  - "Says: tell me everything about your car insurance, every cover level and every price"
+  - "Says: stop, thank you, that's enough"
+turns: 2
+# Each line is one recorded clip, spoken in order. In the interruption group the second clip starts while the
+# assistant is still speaking.
+scripted:
+  - "tell me everything about your car insurance, every cover level and every price"
+  - "stop, thank you, that's enough"
+expect:
+  stays_put_on: ["."]
+  never_tools: ["open_form"]
+min_score: 7
