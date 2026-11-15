@@ -22,5 +22,5 @@ answers:
 expect:
   answered_by: [form]
   card_results: [not_accepted]
-  never_says: ["VIN is set", "VIN is now set", "entered the VIN", "VIN is filled", "VIN has been entered"]
+  never_says: ["VIN is set", "VIN is now set", "entered the VIN", "VIN is now filled", "VIN has been entered"]
 min_score: 7

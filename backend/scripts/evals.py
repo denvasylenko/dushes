@@ -612,11 +612,16 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
                     "detail": f"card_result events: {got or 'none'}"[:300], "cap": CAP_OTHER})
     for pattern in sc.stays_put_on:   # "how do I get insurance?" is a question: the answer and an offer, no form opened
         moves, said, seen = moves_after(visit.log, pattern)
-        forms = [m for m in moves if "open_form(" in m or "(form " in m]
+        # a move is the page changing; a navigate or open_form call the server refused moved nobody (the gate
+        # answers such a call with the page's text), so the calls are named in the detail and decide nothing
+        went = [m for m in moves if m.startswith("\U0001f9ed")]
+        tried = [m for m in moves if not m.startswith("\U0001f9ed")]
+        forms = [m for m in went if "(form " in m]
         out.append({"check": f"opens no form on the turn asking /{pattern}/", "ok": seen and not forms,
                     "detail": "; ".join(forms)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
-        out.append({"check": f"stays on the page on the turn asking /{pattern}/", "ok": seen and not moves,
-                    "detail": "; ".join(moves)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
+        out.append({"check": f"stays on the page on the turn asking /{pattern}/", "ok": seen and not went,
+                    "detail": ("; ".join(went) or ("refused calls: " + "; ".join(tried) if tried else ""))[:300] if seen else "the user never sent such a message",
+                    "cap": CAP_OTHER})
         words = [x for x in said if x.startswith("\U0001f916")]
         offers = any(ch in " ".join(words) for ch in "?\uff1f\u061f") or len(said) > len(words)   # a question, or a chip under the answer
         out.append({"check": f"answers and offers the next step on the turn asking /{pattern}/", "ok": bool(words) and offers,
