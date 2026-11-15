@@ -135,6 +135,10 @@ describe('the experimental voice mode', () => {
     const dock = $(el, '.vo-dock'), foot = $(el, '.foot')
     expect(foot.classList.contains('vo-on')).toBe(true)
     expect(dock.classList.contains('vo-listen')).toBe(true)
+    // the outline round the chat: there with voice, its palette named by the state, never in the way of a tap
+    const glow = $(el, '.panel > .vo-glow')
+    expect(glow.dataset.s).toBe('listen')
+    expect(glow.getAttribute('aria-hidden')).toBe('true')
     // the person speaks: their message grows, then it is the ordinary message
     s.push({ type: 'hearing', delta: 'One and a half ' }); s.push({ type: 'hearing', delta: 'million' })
     await tick(10)
@@ -143,6 +147,7 @@ describe('the experimental voice mode', () => {
     await tick(10)
     expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['One and a half million for four years'])   // one message, not two
     expect(dock.classList.contains('vo-think')).toBe(true)                      // the turn runs
+    expect(glow.dataset.s).toBe('think')
     s.push({ type: 'spoken', delta: 'Checking now' })                          // the voice's own filler: a status under the orb, not a message
     await tick(10)
     expect($(el, '.vo-step').textContent).toBe('Checking now')
@@ -152,6 +157,7 @@ describe('the experimental voice mode', () => {
     await tick(10)
     expect($$(el, '.msg.ai').map((m) => m.textContent!.trim())).toEqual(['Done.'])   // the answer is one message: the written one
     expect(dock.classList.contains('vo-speak')).toBe(true)                      // the voice is talking
+    expect(glow.dataset.s).toBe('speak')
     await tick(1000)
     expect(dock.classList.contains('vo-listen')).toBe(true)
     // typing takes the row; the microphone stays within reach; it does not end voice
@@ -163,6 +169,7 @@ describe('the experimental voice mode', () => {
     $(el, '.vo-mic').click()
     await tick(10)
     expect(dock.classList.contains('vo-silent')).toBe(true)
+    expect(glow.dataset.s).toBe('silent')                                       // no outline in silence
     expect(audio.open()).toBe(0)
     expect(audio.live.mics).toBe(0)
     expect(s.ends()).toEqual(['t1'])
@@ -178,6 +185,7 @@ describe('the experimental voice mode', () => {
     $(el, '.vo-x').click()
     await tick(10)
     expect($(el, '.vo-dock')).toBeNull()
+    expect($(el, '.vo-glow')).toBeNull()
     expect(foot.classList.contains('vo-on')).toBe(false)
     expect($(el, '.vo-go').hidden).toBe(false)
     expect($$(el, '.msg.me')).toHaveLength(2)

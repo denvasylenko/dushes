@@ -70,6 +70,17 @@ The microphone SHALL be asked for with echo cancelling, noise suppression and au
 - **WHEN** the voice says "Choose the date and time of the booking" and the stream then sends `heard` with the same words
 - **THEN** no message is sent and none of the person's is drawn
 
+### Requirement: The outline of voice mode
+While voice mode is on, the chat SHALL carry an outline: a line of light round the chat with a glow inward, its palette going round. The palette SHALL follow the state: listening as set by the voice colour, thinking shifted and faster, speaking shifted the other way and wider; it SHALL be dim while connecting and absent while silent. The line SHALL widen with the person's voice. The outline SHALL take no taps, SHALL stand still with reduced motion, and SHALL go when voice mode is left.
+
+#### Scenario: The state changes the palette
+- **WHEN** the person stops speaking and a turn starts
+- **THEN** the outline's palette shifts and turns faster, and it shifts again when the answer is spoken
+
+#### Scenario: Silent mode
+- **WHEN** the microphone is switched off
+- **THEN** the outline is not shown
+
 ### Requirement: The look of voice mode
 The orb SHALL be a sky of the voice colour (the host's accent) with a white cloud bank going round. It SHALL carry no mark at rest; the stop mark shows only under the pointer, the focus or a press. While voice mode is on, the header SHALL say "Voice" or "Silent", the message box SHALL show a ring that fills with the person's voice, its send and stop buttons SHALL show only while a message is typed, and a short conversation SHALL sit low, by the orb.
 

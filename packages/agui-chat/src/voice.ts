@@ -120,19 +120,22 @@ export function voice(chat: Chat): void {
   const bMic = el('button', 'vo-b vo-mic'), bX = el('button', 'vo-b vo-x')
   bMic.type = 'button'; bX.type = 'button'; bX.innerHTML = svg('M6.5 6.5l11 11m0-11-11 11', 18)
   const tag = el('span', 'vo-tag'), lvl = el('span', 'vo-lvl'); lvl.setAttribute('aria-hidden', 'true')
+  // the outline: a line of light round the chat and its glow inward, turning; its palette follows the state
+  const glow = el('div', 'vo-glow'); glow.setAttribute('aria-hidden', 'true'); glow.innerHTML = '<i><b></b></i><i><b></b></i>'
 
   /** What the orb shows: silent, or waiting for the connection, or thinking (a turn runs), speaking, listening. */
   function paint(): void {
     const speaking = !silent && !audio.muted && Date.now() - spokeAt < 900
     const state = silent ? 'silent' : wait ? 'wait' : busy ? 'think' : speaking ? 'speak' : 'listen'
     for (const s of ['silent', 'wait', 'think', 'speak', 'listen']) dock.classList.toggle(`vo-${s}`, s === state)
+    glow.dataset.s = state
     orb.setAttribute('aria-label', T(state === 'think' || state === 'speak' ? 'stop' : silent ? 'micOn' : wait ? 'connecting' : 'micOff'))
     if (wait) step.textContent = T('connecting'); else if (!busy && !caption) step.textContent = silent ? '' : state === 'listen' ? T('listening') : step.textContent
     bMic.innerHTML = svg(silent ? `${MIC}M4 3l16 18` : MIC); bMic.classList.toggle('on', silent)
     bMic.setAttribute('aria-label', T(silent ? 'micOn' : 'micOff')); bMic.title = T(silent ? 'micOn' : 'micOff')
     bX.setAttribute('aria-label', T('end')); bX.title = T('end')
     tag.textContent = T(silent ? 'tagSilent' : 'tagVoice')
-    if (silent) foot.style.removeProperty('--vo-l')
+    if (silent) { foot.style.removeProperty('--vo-l'); glow.style.removeProperty('--vo-l') }
     if (on) input.placeholder = T('field')   // short: the box is narrow beside the two buttons
   }
   const typing = (): void => { foot.classList.toggle('vo-typing', on && (!!input.value || root.activeElement === input)) }
@@ -204,13 +207,13 @@ export function voice(chat: Chat): void {
     if (level > 4) { const was = Date.now() - spokeAt < 900; spokeAt = Date.now(); if (!was) paint() } else if (dock.classList.contains('vo-speak') && Date.now() - spokeAt >= 900) paint()
   })
   /** The person's own voice: the orb breathes with it and the ring in the message box fills. */
-  const hear = (stream: MediaStream): void => meter(stream, (level) => { foot.style.setProperty('--vo-l', String(Math.min(1, Math.round(level / 2.4) / 10))) })
+  const hear = (stream: MediaStream): void => meter(stream, (level) => { const l = String(Math.min(1, Math.round(level / 2.4) / 10)); foot.style.setProperty('--vo-l', l); glow.style.setProperty('--vo-l', l) })
 
   /** Enter voice mode and connect. */
   async function start(): Promise<void> {
     if (on) return
     on = true; silent = false
-    foot.classList.add('vo-on'); box.before(dock); box.after(bMic, bX)
+    foot.classList.add('vo-on'); box.before(dock); box.after(bMic, bX); foot.closest('.panel')!.append(glow)
     box.querySelector('.send')!.before(lvl); $('.head .title').parentElement!.after(tag)   // after the name, before the header's buttons
     typing()
     if (root!.activeElement !== input) bMic.focus({ preventScroll: true })
@@ -323,7 +326,7 @@ export function voice(chat: Chat): void {
     pc?.close(); mic?.getTracks().forEach((t) => t.stop())
     pc = null; mic = null; reader = null; talk = ''; wait = false; audio.srcObject = null; audio.muted = false
     if (ear) { ear.timers.forEach(clearInterval); void ear.ctx.close().catch(() => {}); ear = null }
-    foot.style.removeProperty('--vo-l')
+    foot.style.removeProperty('--vo-l'); glow.style.removeProperty('--vo-l')
     hearEl?.classList.remove('vo-hearing'); hearEl = null; saidEl = null; caption = ''; step.textContent = ''
   }
   /** Leave voice mode: the conversation above is untouched, the small orb is back in the message box. */
@@ -331,7 +334,7 @@ export function voice(chat: Chat): void {
     if (!on) return
     hang(true)
     on = false; silent = false
-    dock.remove(); bMic.remove(); bX.remove(); tag.remove(); lvl.remove(); foot.classList.remove('vo-on', 'vo-typing'); foot.style.removeProperty('--vo-l')
+    dock.remove(); bMic.remove(); bX.remove(); tag.remove(); lvl.remove(); glow.remove(); foot.classList.remove('vo-on', 'vo-typing'); foot.style.removeProperty('--vo-l')
     input.placeholder = String(chat.options.placeholder || (chat as unknown as { t(k: string): string }).t('placeholder'))
     if (focus && chat.isConnected) go.focus({ preventScroll: true })
   }

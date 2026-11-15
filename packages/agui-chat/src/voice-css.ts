@@ -2,7 +2,8 @@
  *  cloud that goes round), its one step line, the row (the composer, the microphone, the close button) and the code
  *  sheet. The orb keeps one box (`--agui-voice-orb`, 76) and changes by transform only, so the conversation never
  *  moves with its state: x .9 and lifted while thinking, x .66 at rest and silent (the shared ratios). */
-export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--agui-link)); --agui-on-voice: #fff; --agui-voice-cloud: #fff; }
+export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--agui-link)); --agui-on-voice: #fff; --agui-voice-cloud: #fff;
+  --agui-voice-2: color-mix(in oklch, var(--agui-voice) 45%, fuchsia); --agui-voice-3: color-mix(in oklch, var(--agui-voice) 50%, aqua); }
 :host(.dark) { --agui-on-voice: #1d1d1f; }
 .vo-dock { display: grid; justify-items: center; align-content: end; gap: 8px; box-sizing: border-box; height: calc(var(--agui-voice-orb, 76px) + 38px); padding: 4px 0 8px; overflow: hidden;
   animation: vo-in .2s var(--agui-ease) both; }
@@ -67,6 +68,26 @@ export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--a
 .vo-lvl { flex: none; align-self: center; width: 22px; height: 22px; margin: 0 6px; border-radius: 50%; background: conic-gradient(var(--agui-voice) calc(var(--vo-l, 0) * 1turn), var(--agui-line-2) 0);
   -webkit-mask: radial-gradient(circle, transparent 7.5px, #000 8px); mask: radial-gradient(circle, transparent 7.5px, #000 8px); transition: opacity .2s; }
 .foot:not(.vo-on) .vo-lvl { display: none; }
+/* the outline: a line of light round the chat (2 px, 5 with the person's voice) and its glow inward, the palette going
+   round in 5 s. The state changes the palette: listening as set, thinking warmer and faster, speaking cooler and
+   wider; dim while it connects, gone when silent. Nothing in it takes a tap. */
+.vo-glow { position: absolute; inset: 0; z-index: 6; border-radius: inherit; overflow: hidden; pointer-events: none; animation: vo-fade .5s ease both; transition: opacity .5s, filter .7s; }
+.vo-glow > i, .vo-glow b { position: absolute; inset: 0; border-radius: inherit; }
+.vo-glow > i { filter: blur(1.5px); }
+.vo-glow > i + i { filter: blur(12px); opacity: .4; }
+.vo-glow b { box-sizing: border-box; overflow: hidden; padding: calc(2px + var(--vo-l, 0) * 3px); transition: padding .08s linear;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.vo-glow > i + i b { padding: calc(14px + var(--vo-l, 0) * 26px); transition-duration: .16s; }
+.vo-glow b::before { content: ''; position: absolute; left: 50%; top: 50%; width: 142vmax; height: 142vmax; margin: -71vmax; animation: vo-turn 5s linear infinite;
+  background: conic-gradient(var(--agui-voice), var(--agui-voice-2), var(--agui-voice-3), var(--agui-voice), var(--agui-voice-2), var(--agui-voice-3), var(--agui-voice)); }
+.vo-glow[data-s=think] { filter: hue-rotate(50deg); }
+.vo-glow[data-s=think] b::before { animation-duration: 2.6s; }
+.vo-glow[data-s=speak] { filter: hue-rotate(-40deg) saturate(1.25); }
+.vo-glow[data-s=speak] b { padding: 4px; }
+.vo-glow[data-s=speak] > i + i b { padding: 20px; animation: vo-breathe 1.6s ease-in-out infinite alternate; }
+.vo-glow[data-s=wait] { opacity: .45; }
+.vo-glow[data-s=silent] { opacity: 0; }
+@keyframes vo-breathe { to { padding: 30px; } }
 /* the header says which way the conversation goes */
 .vo-tag { flex: none; margin-left: auto; padding: 3px 9px; border: 1px solid var(--agui-line-2); border-radius: var(--agui-radius-pill); font: 600 11px/14px var(--agui-font); color: var(--agui-ink-2); }
 .vo-tag + * { margin-left: 8px; }
@@ -93,4 +114,4 @@ export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--a
 @keyframes vo-up { from { transform: translateY(100%); } }
 @keyframes vo-fade { from { opacity: 0; } }
 @keyframes vo-shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-@media (prefers-reduced-motion: reduce) { .vo-orb::before, .vo-orb > i, .vo-go i::before, .vo-sheet, .vo-veil, .vo-dock, .vo-sheet.bad input { animation: none; } .vo-orb { transition: none; } }`
+@media (prefers-reduced-motion: reduce) { .vo-orb::before, .vo-orb > i, .vo-go i::before, .vo-sheet, .vo-veil, .vo-dock, .vo-sheet.bad input, .vo-glow, .vo-glow b, .vo-glow b::before { animation: none; } .vo-orb { transition: none; } }`
