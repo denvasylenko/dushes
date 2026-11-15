@@ -470,7 +470,6 @@ test('the plus opens a menu; the file picker opens only from its row', async ({ 
 })
 
 test('the plus says it opens a menu before it is ever opened (aria-haspopup, aria-expanded)', async ({ page }) => {
-  test.fail(true, 'be950b8 sets both only when the menu first opens (menu.ts); reported to Design 2026-11-15. Remove this line when it passes')
   await openWithUpload(page)
   const plus = page.locator('agui-chat .clip')
   await expect(plus).toHaveAttribute('aria-haspopup', 'menu')   // a screen reader hears "menu" on the button itself
