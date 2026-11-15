@@ -17,6 +17,11 @@ uv run python scripts/voice_bench.py --mock     # the scripted voice over an off
 uv run python scripts/voice_bench.py --live --max-usd 3.00   # not yet: the bridge, and the owner's yes
 ```
 
+**English first** (the owner, 2026-11-15): the live passes run on the 22 English scenarios, `voice-v1-en.txt`
+(27 spoken lines, 74 s of speech). The Russian and Ukrainian scenarios and clips stay recorded and are not run now.
+Estimate for the English set: 27 lines of 20 to 25 s and 22 sessions opened, 14.5 to 17 connected minutes, $0.73 to
+$0.84 a pass at $0.05 a minute; two passes about $1.60. An estimate from the price list, not a measurement.
+
 A mock run's task results mean nothing (a one-line model answers); it proves the clips, the scenarios, the checks and
 the report. Its connected time, 14.4 minutes for the set with the opening charges, is the floor of a live pass:
 about $0.72 at $0.05 a minute, before the assistant's real speaking time.

@@ -83,3 +83,10 @@ def test_a_clip_goes_in_as_a_microphone_would_send_it(tmp_path):
     parts = vb.pieces(pcm)
     assert len(parts) == 5 + 10 + 8 and all(len(x) == vb.CHUNK for x in parts)     # 100 ms pieces: half a second of silence, the clip, its tail
     assert not vb.is_sound(parts[0]) and vb.is_sound(parts[5]) and not vb.is_sound(parts[-1])
+
+
+def test_the_english_set_is_the_english_scenarios_of_the_whole_set():
+    en = (vb.SCENARIOS / "voice-v1-en.txt").read_text().split()
+    scs = [evals.load_scenario(vb.SCENARIOS / f"{n}.yaml") for n in en]
+    assert len(en) == 22 and all(s.tags[2] == "en" for s in scs) and set(en) <= set(SET.read_text().split())
+    assert {s.tags[1] for s in scs} == {"answer", "order", "offer_yes", "fill", "hard", "card", "fix", "interruption"}   # every group is still there
