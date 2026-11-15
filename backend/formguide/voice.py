@@ -28,9 +28,9 @@ from pydantic import BaseModel
 
 try:   # the routes need the HTTP layer; Gate, Meter and Talks do not
     from fastapi import APIRouter, HTTPException, Request
-    from fastapi.responses import Response, StreamingResponse
+    from fastapi.responses import StreamingResponse
 except ImportError:  # pragma: no cover
-    APIRouter = HTTPException = Request = Response = StreamingResponse = None  # type: ignore[assignment,misc]
+    APIRouter = HTTPException = Request = StreamingResponse = None  # type: ignore[assignment,misc]
 
 _NAME = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
 PASS_HOURS = 12.0          # how long a pass lives
@@ -313,10 +313,11 @@ class Talks:
         return {"talk": talk.id, "sdp": answer,
                 "limits": {"seconds": self.config.max_seconds, "silence_seconds": self.config.silence_seconds}}
 
-    async def end(self, talk_id: str, reason: str = "closed", seconds: float | None = None) -> None:
+    async def end(self, talk_id: str, reason: str = "closed", seconds: float | None = None) -> float:
+        """End a conversation and return what it cost (0 when it was not open)."""
         state = self._live.pop(talk_id, None)
         if not state:
-            return
+            return 0.0
         self._by_thread.pop(state["thread"], None)
         state["ended"] = reason
         cost = self.meter.end(talk_id, seconds)
@@ -332,6 +333,7 @@ class Talks:
                 task.cancel()
         self._emit(state, {"type": "ended", "reason": reason, "cost_usd": round(cost, 4)})
         state["events"].put_nowait(None)
+        return cost
 
     # -- the provider's events
     def _emit(self, state: dict, ev: dict) -> None:
@@ -472,7 +474,7 @@ def create_voice_router(talks: Talks):
         POST /unlock   {code}                      -> {person, pass}            403 for a wrong code
         POST /session  {sdp, thread_id}  + pass    -> {talk, sdp, limits}       429 {reason} when it may not start
         GET  /events?talk=             + pass    -> a stream of what is heard and said (SSE)
-        POST /end      {talk}            + pass    -> 204
+        POST /end      {talk}            + pass    -> {cost_usd}: what the conversation cost
     The pass travels in the X-Voice-Pass header, never in an address."""
     if APIRouter is None:
         raise ImportError("the voice routes need: pip install 'formguide[server]'")
@@ -517,11 +519,10 @@ def create_voice_router(talks: Talks):
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     @r.post("/end")
-    async def end(body: EndIn, request: Request) -> Response:
+    async def end(body: EndIn, request: Request) -> dict:
         person = who(request)
         open_talk = talks.meter.open.get(body.talk)
-        if open_talk and open_talk.person == person:
-            await talks.end(body.talk, "closed")
-        return Response(status_code=204)
+        cost = await talks.end(body.talk, "closed") if open_talk and open_talk.person == person else 0.0
+        return {"cost_usd": round(cost, 4)}
 
     return r

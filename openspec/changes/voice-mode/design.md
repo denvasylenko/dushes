@@ -80,6 +80,25 @@ decided from the sound level or the transcript events, not from the arrival of a
 acknowledges on its own ("Hello, let me check"), which is wanted in voice mode but must not be repeated by our
 agent's text.
 
+### The bridge, live (2026-11-15)
+
+One conversation through the lab page in a browser, the real path: WebRTC through our host, the real form agent
+on Haiku, the demo loan form; a recorded clip in place of the microphone. About 40 seconds of session, **about
+$0.03 for the voice by the clock** (the page did not show the server's figure on Stop then; it does now) plus one
+agent turn.
+
+| From the end of speech | Seconds |
+| --- | --- |
+| What was said reaches the page as text | 1.1 |
+| The voice says "Checking now" | 2.4 |
+| The agent's turn is done and its answer handed to the voice | 6.4 |
+| The voice starts saying the answer | 7.3 |
+
+The agent did what it does in chat: it read the form, explained that the price depends on fields still empty,
+and proposed "Loan type: Car loan" on a card; the voice said the same in its own words. So the whole chain
+works. What it shows about the experience: seven seconds to the answer is the agent's own five seconds plus the
+voice's two, and the answer aloud is a paraphrase, not our text word for word.
+
 **Verdict: gpt-live-1 is the voice.** The cost per conversation is then fixed: $0.05 a minute, $0.25 for five
 minutes, plus our agent's own turns.
 

@@ -234,7 +234,8 @@ def test_the_routes_need_a_pass_and_never_take_it_from_the_address():
         busy = c.post("/voice/session", json={"sdp": "o", "thread_id": "t2"}, headers={"X-Voice-Pass": ben})
         assert busy.status_code == 429 and busy.json()["detail"] == {"reason": "busy"}
         assert c.get("/voice/events", params={"talk": "live_1"}, headers={"X-Voice-Pass": ben}).status_code == 404   # not his
-        assert c.post("/voice/end", json={"talk": "live_1"}, headers={"X-Voice-Pass": got["pass"]}).status_code == 204
+        ended = c.post("/voice/end", json={"talk": "live_1"}, headers={"X-Voice-Pass": got["pass"]})
+        assert ended.status_code == 200 and ended.json()["cost_usd"] >= 0          # the person sees what it cost
 
 
 def test_a_host_without_codes_has_no_voice_routes():

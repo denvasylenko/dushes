@@ -21,7 +21,8 @@ Nothing here starts before the owner agrees to the estimate in design.md.
 - [x] 2.7b The limits enforced on a live session (the provider's usage events, closing the session)
 - [x] 2.8 Offline tests with a scripted realtime session
 
-- [ ] 2.9 A first live conversation through the lab page (`/voice-lab/` on the docs host: the demo form with a
+- [x] 2.9a The bridge live with a recorded clip through the lab page (design.md, "The bridge, live")
+- [ ] 2.9 The owner's own first conversation through the lab page (`/voice-lab/` on the docs host: the demo form with a
       microphone; not the product's interface)
 
 ## 3. Widget (Design)
