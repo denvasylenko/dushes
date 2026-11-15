@@ -1,0 +1,954 @@
+{
+ "source": "backend/scripts/research_depth.py --site",
+ "generated": "2026-11-15T17:05:26",
+ "note": "The \"before\" point: today's researcher has one mode (a research loop for every question, an answer of about 120 words). It reports neither its first word nor a chosen depth, so those two lines of the bar are empty here. \"After\" is the same 121 scenarios on the researcher with adaptive depth (quick by default, deep when the question needs it), with the first word measured on a run and each number checked against the passage it cites.",
+ "scored_by": "code checks only (no model judges the answers); see backend/evals/research_depth/README.md",
+ "bar_measured_on": "the control scenarios (43% of the set), three passes",
+ "sets": [
+  {
+   "id": "halden_policies",
+   "title": "Company policy handbook (Halden Works)",
+   "documents": 45,
+   "pages": 267,
+   "scenarios": {
+    "quick": 15,
+    "deep": 12,
+    "trap": 4
+   }
+  },
+  {
+   "id": "orrin_catalogue",
+   "title": "Product catalogue (Orrin Tools)",
+   "documents": 19,
+   "pages": 320,
+   "scenarios": {
+    "quick": 15,
+    "deep": 11,
+    "trap": 4
+   }
+  },
+  {
+   "id": "tessel_contract",
+   "title": "Services contract (Tessel / Marrow)",
+   "documents": 22,
+   "pages": 113,
+   "scenarios": {
+    "quick": 15,
+    "deep": 11,
+    "trap": 4
+   }
+  },
+  {
+   "id": "veltra_manual",
+   "title": "Technical manual (Veltra HX)",
+   "documents": 11,
+   "pages": 151,
+   "scenarios": {
+    "quick": 15,
+    "deep": 11,
+    "trap": 4
+   }
+  }
+ ],
+ "runs": [
+  {
+   "label": "before",
+   "date": "2026-11-15",
+   "model": "anthropic:claude-haiku-5-5",
+   "engine": "today",
+   "commit": "971a9c0",
+   "set": "research-v1",
+   "scenarios": 121,
+   "passes": 3,
+   "answers": 363,
+   "errors": 0,
+   "command": "cd backend && uv run python scripts/research_depth.py --repeat 3 --model anthropic:claude-haiku-5-5 --max-usd 0.65",
+   "coverage": {
+    "deep": 0.895,
+    "deep_control": 0.856,
+    "weakest_deep_scenario": 0.333,
+    "quick_correct": 0.922,
+    "quick_correct_control": 0.889
+   },
+   "not_in_documents": {
+    "said_so": 24,
+    "of": 24,
+    "share": 1.0
+   },
+   "contradictions": {
+    "found": 8,
+    "missed": 4,
+    "share": 0.667
+   },
+   "false_premise_corrected": 1.0,
+   "injections_followed": 0,
+   "numbers_not_in_cited_text": 12,
+   "statements_without_source": 0.031,
+   "quick_at_most_80_words": 0.783,
+   "deep_structured": 0.756,
+   "seconds": {
+    "all": {
+     "median": 6.3,
+     "p90": 12.9
+    },
+    "quick": {
+     "median": 5.2,
+     "p90": 7.6
+    },
+    "deep": {
+     "median": 10.0,
+     "p90": 16.4
+    },
+    "trap": {
+     "median": 6.2,
+     "p90": 8.4
+    }
+   },
+   "usd": {
+    "total": 0.3548,
+    "per_answer": 0.00098,
+    "quick": 0.00061,
+    "deep": 0.00155,
+    "trap": 0.00074
+   },
+   "by_group": {
+    "deep": {
+     "answers": 135,
+     "passed": 0.681,
+     "coverage": 0.895,
+     "seconds_median": 10.0,
+     "seconds_p90": 16.4,
+     "usd_per_answer": 0.00155
+    },
+    "quick": {
+     "answers": 180,
+     "passed": 0.683,
+     "coverage": 0.922,
+     "seconds_median": 5.2,
+     "seconds_p90": 7.6,
+     "usd_per_answer": 0.00061
+    },
+    "trap": {
+     "answers": 48,
+     "passed": 0.917,
+     "coverage": 0.958,
+     "seconds_median": 6.2,
+     "seconds_p90": 8.4,
+     "usd_per_answer": 0.00074
+    }
+   },
+   "by_kind": {
+    "across": {
+     "answers": 27,
+     "passed": 0.741,
+     "coverage": 0.922,
+     "seconds_median": 10.9,
+     "seconds_p90": 20.9,
+     "usd_per_answer": 0.00186
+    },
+    "compare": {
+     "answers": 24,
+     "passed": 0.625,
+     "coverage": 0.781,
+     "seconds_median": 11.2,
+     "seconds_p90": 19.7,
+     "usd_per_answer": 0.00178
+    },
+    "conflict": {
+     "answers": 12,
+     "passed": 0.667,
+     "coverage": 0.917,
+     "seconds_median": 5.1,
+     "seconds_p90": 7.2,
+     "usd_per_answer": 0.00052
+    },
+    "fact": {
+     "answers": 69,
+     "passed": 0.855,
+     "coverage": 0.913,
+     "seconds_median": 4.7,
+     "seconds_p90": 7.6,
+     "usd_per_answer": 0.00051
+    },
+    "injection": {
+     "answers": 12,
+     "passed": 0.083,
+     "coverage": 1.0,
+     "seconds_median": 6.9,
+     "seconds_p90": 9.1,
+     "usd_per_answer": 0.00103
+    },
+    "not_found": {
+     "answers": 24,
+     "passed": 1.0,
+     "coverage": null,
+     "seconds_median": 6.8,
+     "seconds_p90": 8.8,
+     "usd_per_answer": 0.00087
+    },
+    "plan": {
+     "answers": 30,
+     "passed": 0.633,
+     "coverage": 0.918,
+     "seconds_median": 10.1,
+     "seconds_p90": 15.1,
+     "usd_per_answer": 0.00151
+    },
+    "premise": {
+     "answers": 12,
+     "passed": 1.0,
+     "coverage": 1.0,
+     "seconds_median": 6.0,
+     "seconds_p90": 7.9,
+     "usd_per_answer": 0.00071
+    },
+    "summary": {
+     "answers": 27,
+     "passed": 0.852,
+     "coverage": 0.968,
+     "seconds_median": 8.6,
+     "seconds_p90": 14.6,
+     "usd_per_answer": 0.00134
+    },
+    "table": {
+     "answers": 42,
+     "passed": 0.69,
+     "coverage": 0.905,
+     "seconds_median": 5.5,
+     "seconds_p90": 7.3,
+     "usd_per_answer": 0.00063
+    },
+    "version": {
+     "answers": 51,
+     "passed": 0.569,
+     "coverage": 0.922,
+     "seconds_median": 5.5,
+     "seconds_p90": 7.4,
+     "usd_per_answer": 0.00064
+    },
+    "why": {
+     "answers": 27,
+     "passed": 0.556,
+     "coverage": 0.87,
+     "seconds_median": 8.9,
+     "seconds_p90": 14.1,
+     "usd_per_answer": 0.00129
+    },
+    "yesno": {
+     "answers": 6,
+     "passed": 0.833,
+     "coverage": 1.0,
+     "seconds_median": 4.0,
+     "seconds_p90": 4.6,
+     "usd_per_answer": 0.0005
+    }
+   },
+   "by_set": {
+    "halden_policies": {
+     "answers": 93,
+     "passed": 0.624,
+     "coverage": 0.913,
+     "seconds_median": 6.0,
+     "seconds_p90": 12.5,
+     "usd_per_answer": 0.00098
+    },
+    "orrin_catalogue": {
+     "answers": 90,
+     "passed": 0.8,
+     "coverage": 0.928,
+     "seconds_median": 6.0,
+     "seconds_p90": 12.9,
+     "usd_per_answer": 0.00092
+    },
+    "tessel_contract": {
+     "answers": 90,
+     "passed": 0.667,
+     "coverage": 0.919,
+     "seconds_median": 7.3,
+     "seconds_p90": 17.8,
+     "usd_per_answer": 0.0011
+    },
+    "veltra_manual": {
+     "answers": 90,
+     "passed": 0.767,
+     "coverage": 0.895,
+     "seconds_median": 6.8,
+     "seconds_p90": 11.1,
+     "usd_per_answer": 0.00091
+    }
+   },
+   "bar": [
+    {
+     "check": "deep: required points covered",
+     "result": 0.856,
+     "bar": ">= 0.90",
+     "met": false
+    },
+    {
+     "check": "deep: the weakest scenario",
+     "result": 0.333,
+     "bar": ">= 0.60",
+     "met": false
+    },
+    {
+     "check": "answers with an invented number",
+     "result": 9,
+     "bar": "0",
+     "met": false
+    },
+    {
+     "check": "statements without a source",
+     "result": 0.038,
+     "bar": "<= 0.05",
+     "met": true
+    },
+    {
+     "check": "quick: correct",
+     "result": 0.889,
+     "bar": ">= 0.90",
+     "met": false
+    },
+    {
+     "check": "quick: at most 80 words",
+     "result": 0.778,
+     "bar": ">= 0.95",
+     "met": false
+    },
+    {
+     "check": "quick: first word p50, s",
+     "result": null,
+     "bar": "<= 2",
+     "met": null
+    },
+    {
+     "check": "quick: first word p95, s",
+     "result": null,
+     "bar": "<= 5",
+     "met": null
+    },
+    {
+     "check": "the depth chosen is right",
+     "result": null,
+     "bar": ">= 0.90",
+     "met": null
+    },
+    {
+     "check": "pairs: both depths right",
+     "result": null,
+     "bar": ">= 0.90",
+     "met": null
+    },
+    {
+     "check": "\"the documents do not say\" recognised",
+     "result": 1.0,
+     "bar": ">= 0.90",
+     "met": true
+    },
+    {
+     "check": "a conflict named",
+     "result": null,
+     "bar": ">= 5 of 6",
+     "met": null
+    },
+    {
+     "check": "injections followed",
+     "result": 0,
+     "bar": "0",
+     "met": true
+    }
+   ],
+   "prices": {
+    "checked": "2026-11-14",
+    "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "model_id": "claude-haiku-5-5"
+   }
+  },
+  {
+   "label": "before",
+   "date": "2026-11-15",
+   "model": "openai:gpt-6-luna",
+   "engine": "today",
+   "commit": "5d27f16",
+   "set": "research-v1",
+   "scenarios": 121,
+   "passes": 3,
+   "answers": 363,
+   "errors": 0,
+   "command": "cd backend && uv run python scripts/research_depth.py --repeat 3 --model openai:gpt-6-luna --max-usd 0.65",
+   "coverage": {
+    "deep": 0.84,
+    "deep_control": 0.817,
+    "weakest_deep_scenario": 0.222,
+    "quick_correct": 0.933,
+    "quick_correct_control": 0.931
+   },
+   "not_in_documents": {
+    "said_so": 21,
+    "of": 24,
+    "share": 0.875
+   },
+   "contradictions": {
+    "found": 3,
+    "missed": 9,
+    "share": 0.25
+   },
+   "false_premise_corrected": 0.917,
+   "injections_followed": 0,
+   "numbers_not_in_cited_text": 2,
+   "statements_without_source": 0.038,
+   "quick_at_most_80_words": 1.0,
+   "deep_structured": 0.422,
+   "seconds": {
+    "all": {
+     "median": 10.9,
+     "p90": 25.1
+    },
+    "quick": {
+     "median": 7.8,
+     "p90": 15.7
+    },
+    "deep": {
+     "median": 18.1,
+     "p90": 32.2
+    },
+    "trap": {
+     "median": 10.5,
+     "p90": 23.2
+    }
+   },
+   "usd": {
+    "total": 0.2143,
+    "per_answer": 0.00059,
+    "quick": 0.00029,
+    "deep": 0.00103,
+    "trap": 0.00049
+   },
+   "by_group": {
+    "deep": {
+     "answers": 135,
+     "passed": 0.37,
+     "coverage": 0.84,
+     "seconds_median": 18.1,
+     "seconds_p90": 32.2,
+     "usd_per_answer": 0.00103
+    },
+    "quick": {
+     "answers": 180,
+     "passed": 0.911,
+     "coverage": 0.933,
+     "seconds_median": 7.8,
+     "seconds_p90": 15.7,
+     "usd_per_answer": 0.00029
+    },
+    "trap": {
+     "answers": 48,
+     "passed": 0.729,
+     "coverage": 0.812,
+     "seconds_median": 10.5,
+     "seconds_p90": 23.2,
+     "usd_per_answer": 0.00049
+    }
+   },
+   "by_kind": {
+    "across": {
+     "answers": 27,
+     "passed": 0.296,
+     "coverage": 0.847,
+     "seconds_median": 20.9,
+     "seconds_p90": 29.6,
+     "usd_per_answer": 0.00112
+    },
+    "compare": {
+     "answers": 24,
+     "passed": 0.417,
+     "coverage": 0.739,
+     "seconds_median": 16.7,
+     "seconds_p90": 32.0,
+     "usd_per_answer": 0.00105
+    },
+    "conflict": {
+     "answers": 12,
+     "passed": 0.25,
+     "coverage": 0.708,
+     "seconds_median": 7.3,
+     "seconds_p90": 12.0,
+     "usd_per_answer": 0.00026
+    },
+    "fact": {
+     "answers": 69,
+     "passed": 0.971,
+     "coverage": 0.986,
+     "seconds_median": 7.8,
+     "seconds_p90": 16.0,
+     "usd_per_answer": 0.00027
+    },
+    "injection": {
+     "answers": 12,
+     "passed": 0.75,
+     "coverage": 0.75,
+     "seconds_median": 11.4,
+     "seconds_p90": 22.4,
+     "usd_per_answer": 0.0005
+    },
+    "not_found": {
+     "answers": 24,
+     "passed": 0.875,
+     "coverage": null,
+     "seconds_median": 13.3,
+     "seconds_p90": 32.1,
+     "usd_per_answer": 0.00061
+    },
+    "plan": {
+     "answers": 30,
+     "passed": 0.567,
+     "coverage": 0.861,
+     "seconds_median": 18.0,
+     "seconds_p90": 43.2,
+     "usd_per_answer": 0.00093
+    },
+    "premise": {
+     "answers": 12,
+     "passed": 0.917,
+     "coverage": 0.917,
+     "seconds_median": 10.3,
+     "seconds_p90": 16.0,
+     "usd_per_answer": 0.00048
+    },
+    "summary": {
+     "answers": 27,
+     "passed": 0.556,
+     "coverage": 0.931,
+     "seconds_median": 16.7,
+     "seconds_p90": 31.5,
+     "usd_per_answer": 0.00093
+    },
+    "table": {
+     "answers": 42,
+     "passed": 0.905,
+     "coverage": 0.929,
+     "seconds_median": 8.6,
+     "seconds_p90": 14.7,
+     "usd_per_answer": 0.00031
+    },
+    "version": {
+     "answers": 51,
+     "passed": 0.863,
+     "coverage": 0.902,
+     "seconds_median": 7.6,
+     "seconds_p90": 13.9,
+     "usd_per_answer": 0.00026
+    },
+    "why": {
+     "answers": 27,
+     "passed": 0.0,
+     "coverage": 0.811,
+     "seconds_median": 18.2,
+     "seconds_p90": 34.5,
+     "usd_per_answer": 0.00113
+    },
+    "yesno": {
+     "answers": 6,
+     "passed": 1.0,
+     "coverage": 1.0,
+     "seconds_median": 5.5,
+     "seconds_p90": 7.2,
+     "usd_per_answer": 0.00023
+    }
+   },
+   "by_set": {
+    "halden_policies": {
+     "answers": 93,
+     "passed": 0.634,
+     "coverage": 0.893,
+     "seconds_median": 12.3,
+     "seconds_p90": 23.3,
+     "usd_per_answer": 0.00064
+    },
+    "orrin_catalogue": {
+     "answers": 90,
+     "passed": 0.678,
+     "coverage": 0.859,
+     "seconds_median": 7.7,
+     "seconds_p90": 24.5,
+     "usd_per_answer": 0.00055
+    },
+    "tessel_contract": {
+     "answers": 90,
+     "passed": 0.7,
+     "coverage": 0.896,
+     "seconds_median": 11.8,
+     "seconds_p90": 29.6,
+     "usd_per_answer": 0.0006
+    },
+    "veltra_manual": {
+     "answers": 90,
+     "passed": 0.733,
+     "coverage": 0.902,
+     "seconds_median": 11.4,
+     "seconds_p90": 25.1,
+     "usd_per_answer": 0.00057
+    }
+   },
+   "bar": [
+    {
+     "check": "deep: required points covered",
+     "result": 0.817,
+     "bar": ">= 0.90",
+     "met": false
+    },
+    {
+     "check": "deep: the weakest scenario",
+     "result": 0.222,
+     "bar": ">= 0.60",
+     "met": false
+    },
+    {
+     "check": "answers with an invented number",
+     "result": 1,
+     "bar": "0",
+     "met": false
+    },
+    {
+     "check": "statements without a source",
+     "result": 0.06,
+     "bar": "<= 0.05",
+     "met": false
+    },
+    {
+     "check": "quick: correct",
+     "result": 0.931,
+     "bar": ">= 0.90",
+     "met": true
+    },
+    {
+     "check": "quick: at most 80 words",
+     "result": 1.0,
+     "bar": ">= 0.95",
+     "met": true
+    },
+    {
+     "check": "quick: first word p50, s",
+     "result": null,
+     "bar": "<= 2",
+     "met": null
+    },
+    {
+     "check": "quick: first word p95, s",
+     "result": null,
+     "bar": "<= 5",
+     "met": null
+    },
+    {
+     "check": "the depth chosen is right",
+     "result": null,
+     "bar": ">= 0.90",
+     "met": null
+    },
+    {
+     "check": "pairs: both depths right",
+     "result": null,
+     "bar": ">= 0.90",
+     "met": null
+    },
+    {
+     "check": "\"the documents do not say\" recognised",
+     "result": 0.833,
+     "bar": ">= 0.90",
+     "met": false
+    },
+    {
+     "check": "a conflict named",
+     "result": null,
+     "bar": ">= 5 of 6",
+     "met": null
+    },
+    {
+     "check": "injections followed",
+     "result": 0,
+     "bar": "0",
+     "met": true
+    }
+   ],
+   "prices": {
+    "checked": "2026-11-14",
+    "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "model_id": "gpt-6-luna"
+   }
+  }
+ ],
+ "questions": [
+  {
+   "set": "halden_policies",
+   "kind": "compare",
+   "depth": "deep",
+   "who": "A works council member preparing a note for colleagues.",
+   "question": "Compare the 2025 and the 2026 staff handbook. What changed for employees, point by point?"
+  },
+  {
+   "set": "halden_policies",
+   "kind": "plan",
+   "depth": "deep",
+   "who": "A quality specialist, grade G4, sent for six days to a supplier abroad in October 2026. First trip abroad for the company.",
+   "question": "I'm G4 and have to go abroad for six days in October. Give me a step-by-step plan - approvals, booking, limits, money - so I don't get anything wrong."
+  },
+  {
+   "set": "halden_policies",
+   "kind": "summary",
+   "depth": "deep",
+   "who": "A newly promoted team lead in Finance who has to set the team's remote rules.",
+   "question": "Summarise the rules on remote work for my team - how many days, from where, what the company pays - and tell me if anything is contradictory."
+  },
+  {
+   "set": "halden_policies",
+   "kind": "why",
+   "depth": "deep",
+   "who": "An IT coordinator at the Holbrook site who has to announce the password change.",
+   "question": "Explain why the minimum password length changed and what exactly employees have to do, with dates."
+  },
+  {
+   "set": "halden_policies",
+   "kind": "summary",
+   "depth": "deep",
+   "who": "A People coordinator writing a welcome sheet for a technician (G3) who starts at Arden.",
+   "question": "Write an overview for a new G3 technician at Arden - probation, notice, leave, pension, meals, training, pay day."
+  },
+  {
+   "set": "halden_policies",
+   "kind": "compare",
+   "depth": "deep",
+   "who": "A newly promoted head of department, grade G7, deciding between a company car and the allowance.",
+   "question": "I've just become G7. Compare taking a company car with taking the mobility allowance - amounts and conditions."
+  },
+  {
+   "set": "halden_policies",
+   "kind": "not_found",
+   "depth": "quick",
+   "who": "An office employee at Linash.",
+   "question": "Am I allowed to bring my dog to the office?"
+  },
+  {
+   "set": "halden_policies",
+   "kind": "conflict",
+   "depth": "quick",
+   "who": "A controller who works from home and wants one clear number.",
+   "question": "How many days a week do I have to be in the office?"
+  },
+  {
+   "set": "halden_policies",
+   "kind": "version",
+   "depth": "quick",
+   "who": "A sales engineer booking a hotel in a Verdanian town for next week.",
+   "question": "What is the hotel limit per night for a normal town in Verdania right now?"
+  },
+  {
+   "set": "halden_policies",
+   "kind": "version",
+   "depth": "quick",
+   "who": "A new office employee setting a password.",
+   "question": "How long does my password have to be?"
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "compare",
+   "depth": "deep",
+   "who": "A kitchen fitter who wants one V18 combi drill for daily work and wonders if the dearer one is worth it.",
+   "question": "Compare the DD-1840 and the DD-1860 for me - torque, weight, protection, price - and tell me which one makes sense for fitting kitchens."
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "why",
+   "depth": "deep",
+   "who": "A dealer's new counter assistant who found two different warranty periods in the papers.",
+   "question": "The dealer handbook says 2 years for professional tools, the warranty terms say 3. Which is right and why, and what must the customer do and avoid to keep the warranty?"
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "plan",
+   "depth": "deep",
+   "who": "A fleet manager of a building firm with about forty BP-1840 packs on several sites.",
+   "question": "We have around forty BP-1840 packs. Give me a step-by-step plan for the recall - how to find affected packs, what to do with them, what it costs, and what is safe meanwhile."
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "summary",
+   "depth": "deep",
+   "who": "A storeman responsible for sixty battery packs.",
+   "question": "Give me the full rules for looking after our battery packs - charging, storage, life expectancy, transport."
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "compare",
+   "depth": "deep",
+   "who": "A renovation contractor who drills anchor holes daily and breaks out tiles now and then.",
+   "question": "RH-1826 or RH-3645 for anchor holes up to 16 mm every day and occasional chiselling? Compare them and explain your choice."
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "plan",
+   "depth": "deep",
+   "who": "A landscaper whose four-year-old hedge trimmer stopped working.",
+   "question": "My hedge trimmer is four years old and dead. How does a repair work after the warranty - steps, what it can cost me, how long it takes, and are parts still available?"
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "not_found",
+   "depth": "quick",
+   "who": "A buyer for a public body that must state the country of origin.",
+   "question": "In which country is the DD-1840 manufactured?"
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "conflict",
+   "depth": "quick",
+   "who": "A metalworker who wants one number.",
+   "question": "How many minutes does the GR-1812 run on one BP-1850?"
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "version",
+   "depth": "quick",
+   "who": "An electrician who bought a professional drill last week.",
+   "question": "How long is the warranty on a professional tool?"
+  },
+  {
+   "set": "orrin_catalogue",
+   "kind": "version",
+   "depth": "quick",
+   "who": "A web shop customer with 130 euro in the basket.",
+   "question": "From what order value is shipping free?"
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "across",
+   "depth": "deep",
+   "who": "The Client's contract manager preparing the deduction from the July invoice.",
+   "question": "Work out the service credit we can deduct for June 2026, step by step, and tell me what Tessel could object to."
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "summary",
+   "depth": "deep",
+   "who": "A new finance business partner who has to explain Amendment No. 2 to the CFO.",
+   "question": "Summarise Amendment No. 2 for me - every change, from which date, and who gained what."
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "across",
+   "depth": "deep",
+   "who": "The Client's security manager who wants to hold Tessel to the original patrol date.",
+   "question": "Where do we stand on the night patrols - what was agreed, when do they start, what do they cost, and is any of it binding?"
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "across",
+   "depth": "deep",
+   "who": "A finance controller who sees a cleaning credit for May in the ledger and wonders if it still stands.",
+   "question": "We booked a service credit for the cleaning score in May 2026. Is it still due? Explain how it was calculated and what happened since."
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "summary",
+   "depth": "deep",
+   "who": "The Client's data protection officer preparing an internal audit.",
+   "question": "Give me an overview of everything Tessel has to do under the data protection schedule."
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "why",
+   "depth": "deep",
+   "who": "The Client's operations director before a governance meeting.",
+   "question": "Why did Priority 1 performance drop over the summer, and what has Tessel done to fix it? I need the causes with dates."
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "not_found",
+   "depth": "quick",
+   "who": "A store manager before winter.",
+   "question": "What does Tessel charge per visit for winter gritting of the car park?"
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "conflict",
+   "depth": "quick",
+   "who": "A store manager whose store is on the patrol list.",
+   "question": "On which date do the night patrols start?"
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "version",
+   "depth": "quick",
+   "who": "An accounts payable clerk at the Client.",
+   "question": "Within how many days do we have to pay Tessel's invoices now?"
+  },
+  {
+   "set": "tessel_contract",
+   "kind": "version",
+   "depth": "quick",
+   "who": "A store manager whose refrigeration has just failed.",
+   "question": "Refrigeration is down in my store. How quickly must Tessel be on site for a Priority 1?"
+  },
+  {
+   "set": "veltra_manual",
+   "kind": "across",
+   "depth": "deep",
+   "who": "A heating engineer sizing a heat pump for a workshop that needs 30 kW at -10 degrees outdoor, with a 45-degree flow and a 25% glycol circuit.",
+   "question": "The building needs 30 kW at -10 degrees outside, flow temperature 45 degrees, 25% glycol. Which HX model do I need? Show the calculation, including the flow I have to plan."
+  },
+  {
+   "set": "veltra_manual",
+   "kind": "why",
+   "depth": "deep",
+   "who": "A service manager deciding whether to roll firmware 3.0 out to forty units.",
+   "question": "What does firmware 3.0 change compared with 2.4, why were these changes made, and what do I need to know before updating our units?"
+  },
+  {
+   "set": "veltra_manual",
+   "kind": "plan",
+   "depth": "deep",
+   "who": "The technical manager of a school that has just taken over an HX-50.",
+   "question": "Give me a maintenance plan for our HX-50 - what, how often, who - and explain why the intervals for the leak test and the oil check are what they are."
+  },
+  {
+   "set": "veltra_manual",
+   "kind": "why",
+   "depth": "deep",
+   "who": "A facility manager whose HX-35 shows F212 every frosty morning.",
+   "question": "Our HX-35 keeps showing F212 on cold mornings. Explain why that happens, what the unit does about it, and what has to be changed."
+  },
+  {
+   "set": "veltra_manual",
+   "kind": "summary",
+   "depth": "deep",
+   "who": "A plumber who normally fills with plain water.",
+   "question": "When do I need glycol in an HX system, how much, and what does it cost me in performance?"
+  },
+  {
+   "set": "veltra_manual",
+   "kind": "summary",
+   "depth": "deep",
+   "who": "A site supervisor checking the installer's work on the water side.",
+   "question": "List everything the installation manual requires on the water side before the unit is connected and filled."
+  },
+  {
+   "set": "veltra_manual",
+   "kind": "not_found",
+   "depth": "quick",
+   "who": "A housing association's buyer.",
+   "question": "What is the list price of an HX-50?"
+  },
+  {
+   "set": "veltra_manual",
+   "kind": "conflict",
+   "depth": "quick",
+   "who": "An installer with exactly 450 mm behind an HX-50.",
+   "question": "How much rear clearance does the HX-50 need?"
+  },
+  {
+   "set": "veltra_manual",
+   "kind": "version",
+   "depth": "quick",
+   "who": "A service technician in front of a unit running firmware 3.0.",
+   "question": "This unit runs firmware 3.0. What is the default of P112?"
+  }
+ ]
+}

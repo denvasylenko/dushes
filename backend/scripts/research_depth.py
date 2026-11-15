@@ -688,6 +688,73 @@ def blind_pack(reports: list[Path], n: int, out: Path, seed: int = 20261115) -> 
     return kp
 
 
+SITE_FILE = HERE.parent / "site" / "src" / "data" / "benchmarks" / "research.json"
+PUBLIC_SETS = {"halden_policies": "Company policy handbook (Halden Works)", "orrin_catalogue": "Product catalogue (Orrin Tools)",
+               "tessel_contract": "Services contract (Tessel / Marrow)", "veltra_manual": "Technical manual (Veltra HX)"}
+
+
+def site_data(reports: list[tuple[str, Path]], note: str) -> dict:
+    """What the docs page shows (site/src/data/benchmarks/research.json): totals only, never a control scenario's
+    text or id. The published questions are tuning scenarios."""
+    scs = load()
+    sets = []
+    for c, title in PUBLIC_SETS.items():
+        files = sorted(f for f in (CORPORA / c).iterdir() if f.is_file())
+        chars = sum(len(doc_text(c, f.name)) for f in files)
+        mine = [s for s in scs if s.corpus == c]
+        sets.append({"id": c, "title": title, "documents": len(files), "pages": round(chars / 3000),
+                     "scenarios": {g: sum(s.group == g for s in mine) for g in GROUPS}})
+    runs = []
+    for label, path in reports:
+        rep = json.loads(path.read_text())
+        done = [r for r in rep["results"] if "check" in r]
+        m = metrics(done)
+        ctrl = metrics([r for r in done if r["heldout"]])
+
+        def secs(rs: list[dict]) -> dict:
+            return {"median": _pct([r["seconds"] for r in rs], 0.5), "p90": _pct([r["seconds"] for r in rs], 0.9)}
+
+        def split(key: str) -> dict:
+            out = {}
+            for k in sorted({r[key] for r in done}):
+                rs = [r for r in done if r[key] == k]
+                cov = [r["check"]["coverage"] for r in rs if r["check"]["coverage"] is not None]
+                out[k] = {"answers": len(rs), "passed": round(sum(r["check"]["ok"] for r in rs) / len(rs), 3),
+                          "coverage": round(statistics.mean(cov), 3) if cov else None, **{"seconds_" + a: b for a, b in secs(rs).items()},
+                          "usd_per_answer": round(statistics.mean(r["tokens"]["usd"] for r in rs), 5)}
+            return out
+
+        nf = [r for r in done if r["kind"] == "not_found"]
+        cf = [r for r in done if r["kind"] == "conflict"]
+        model_id = rep["model"].split(":", 1)[-1]
+        runs.append({
+            "label": label, "date": rep["at"][:10], "model": rep["model"], "engine": rep["engine"], "commit": rep["commit"], "set": rep["set"],
+            "scenarios": m["scenarios"], "passes": rep["repeat"], "answers": m["answers"], "errors": m["errors"],
+            "command": f"cd backend && uv run python scripts/research_depth.py --repeat {rep['repeat']} --model {rep['model']} --max-usd 0.65",
+            "coverage": {"deep": m["deep_coverage"], "deep_control": ctrl["deep_coverage"], "weakest_deep_scenario": m["deep_lowest"], "quick_correct": m["quick_correct"],
+                         "quick_correct_control": ctrl["quick_correct"]},
+            "not_in_documents": {"said_so": sum(r["check"]["ok"] for r in nf), "of": len(nf), "share": m["not_found_right"]},
+            "contradictions": {"found": sum(r["check"]["ok"] for r in cf), "missed": sum(not r["check"]["ok"] for r in cf), "share": m["conflicts_right"]},
+            "false_premise_corrected": m["premises_right"], "injections_followed": m["injections_followed"],
+            "numbers_not_in_cited_text": m["invented_answers"], "statements_without_source": m["uncited_share"],
+            "quick_at_most_80_words": m["quick_short"], "deep_structured": m["deep_structured"],
+            "seconds": {"all": secs(done), **{g: secs([r for r in done if r["group"] == g]) for g in GROUPS}},
+            "usd": {"total": m["usd"], "per_answer": round(m["usd"] / max(1, m["answers"]), 5), **{g: m[f"usd_{g}"] for g in GROUPS}},
+            "by_group": split("group"), "by_kind": split("kind"), "by_set": split("corpus"),
+            "bar": [{"check": what, "result": v, "bar": bar, "met": ok} for what, v, bar, ok in verdict(ctrl)],
+            "prices": {"checked": json.loads(PRICES_FILE.read_text()).get("checked"), "source": json.loads(PRICES_FILE.read_text()).get("source"), "model_id": model_id},
+        })
+    questions = []
+    for c in PUBLIC_SETS:   # hard questions that may be shown: tuning scenarios only, deep first
+        pool = [s for s in scs if s.corpus == c and not s.heldout and s.kind != "injection"]
+        pick = [s for s in pool if s.group == "deep"][:6] + [s for s in pool if s.group == "trap"][:2] + [s for s in pool if s.kind == "version"][:2]
+        questions += [{"set": c, "kind": s.kind, "depth": s.expects, "who": s.role, "question": s.question} for s in pick]
+    return {"source": "backend/scripts/research_depth.py --site", "generated": datetime.now().isoformat(timespec="seconds"),
+            "note": note, "scored_by": "code checks only (no model judges the answers); see backend/evals/research_depth/README.md",
+            "bar_measured_on": "the control scenarios (43% of the set), three passes",
+            "sets": sets, "runs": runs, "questions": questions}
+
+
 # ===================================================================== the command line
 
 
@@ -746,9 +813,16 @@ def main() -> int:
     ap.add_argument("--from", dest="from_reports", type=Path, nargs="+", metavar="REPORT")
     ap.add_argument("--out", type=Path, metavar="DIR")
     ap.add_argument("--retrieval-control", type=int, nargs="?", const=8, metavar="K", help="no model: the retrieval control questions (totals only; QA runs it)")
+    ap.add_argument("--site", nargs="+", metavar="LABEL=REPORT.json", help="write site/src/data/benchmarks/research.json from finished reports (totals only)")
+    ap.add_argument("--note", default="", help="--site: the note shown with the numbers")
     ap.add_argument("--check", action="store_true", help="validate the scenarios against the corpora offline and exit")
     ap.add_argument("--report", type=Path, help="rebuild the Markdown report of an earlier run's JSON and exit")
     a = ap.parse_args()
+    if a.site:
+        pairs = [(x.split("=", 1)[0], Path(x.split("=", 1)[1])) for x in a.site]
+        SITE_FILE.write_text(json.dumps(site_data(pairs, a.note), ensure_ascii=False, indent=1) + "\n")
+        print(f"wrote {SITE_FILE}")
+        return 0
     if a.blind:
         if not a.from_reports or not a.out:
             sys.exit("--blind N needs --from REPORT.json [REPORT.json ...] and --out DIR")

@@ -147,3 +147,21 @@ def test_the_retrieval_control_is_sound_and_never_names_a_miss():
     assert [p for p in rd.check_set(items) if not p.startswith(("quick:", "deep:", "trap:"))] == []   # every key is in its document
     r = rd.retrieval(items[:6], 8)
     assert r["missed"] == []          # a control miss is counted, never listed
+
+
+def test_the_site_file_shows_totals_and_only_tuning_questions(tmp_path):
+    import json
+    res = []
+    for sid, text in (("hp_q_leave_days", "27 working days.\n\nSources: staff_handbook_2026.md"), ("hp_t_dog", "The documents do not say."), ("hp_q_probation", "4 months.\n\nSources: staff_handbook_2026.md")):
+        sc = _sc(sid)
+        rec = _rec(text, seconds=1.0, tokens={"usd": 0.001})
+        res.append({"id": sc.id, "pass": 1, "corpus": sc.corpus, "group": sc.group, "kind": sc.kind, "heldout": sc.heldout, "pair": sc.pair, "expects": sc.expects, **rec, "check": rd.check_answer(sc, rec)})
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps({"at": "2026-11-15T15:40:26", "engine": "today", "model": "anthropic:claude-haiku-5-5", "repeat": 1, "set": "research-v1", "commit": "x", "results": res}))
+    d = rd.site_data([("before", p)], "a note")
+    held = {s.question for s in rd.load() if s.heldout}
+    assert d["questions"] and not [q for q in d["questions"] if q["question"] in held]
+    assert not any(s.id in json.dumps(d) for s in rd.load())          # no scenario id reaches the page
+    run = d["runs"][0]
+    assert run["not_in_documents"] == {"said_so": 1, "of": 1, "share": 1.0} and run["coverage"]["quick_correct"] == 1
+    assert run["prices"]["model_id"] == "claude-haiku-5-5" and {s["id"] for s in d["sets"]} == set(rd.PUBLIC_SETS)
