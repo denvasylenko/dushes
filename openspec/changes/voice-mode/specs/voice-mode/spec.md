@@ -35,9 +35,27 @@ When the person speaks while the voice is answering, the voice SHALL stop, and t
 - **WHEN** the person says "wait, not that one" while an answer is being spoken
 - **THEN** the speech stops and the turn in progress is cancelled before the new request is taken
 
-### Requirement: A change is never applied by voice alone without a yes
-A field-change card in voice mode SHALL be applied only after the person accepts it, by a tap or by an explicit spoken yes; a consent tick SHALL be accepted by a tap only.
+### Requirement: What the person said is filled without a card
+In voice mode a value the person said aloud in this conversation SHALL be applied to its field without a card, through the host's form, and shown as a short line with Undo. A card SHALL be shown only when a confirmation is needed: a consent, an action that cannot be undone, a value the person did not say, a value that replaces one typed by hand, a value the form refused, or a choice the agent cannot make. In chat mode nothing changes.
+
+#### Scenario: A name said aloud
+- **WHEN** the person says "my first name is Anna"
+- **THEN** the field is filled, the voice says so, a line "First name: Anna" with Undo appears, and no card is shown
+
+#### Scenario: A value from a document
+- **WHEN** the agent reads an income figure from an uploaded document and proposes it
+- **THEN** a card asks for confirmation before the field is filled
+
+### Requirement: A consent is a tap
+A consent tick SHALL never be applied by voice: its card SHALL be shown and accepted by a tap only.
 
 #### Scenario: A consent
 - **WHEN** the agent proposes ticking a consent and the person says "yes"
 - **THEN** the consent is not ticked, and the card asks for a tap
+
+### Requirement: Silent mode
+The voice mode SHALL have a silent switch (the crossed-out microphone): while it is on the agent SHALL NOT speak and SHALL answer in short text; the person MAY still speak or type. The switch SHALL hold for the conversation.
+
+#### Scenario: The person turns the sound off
+- **WHEN** the person taps the crossed-out microphone and asks a question aloud
+- **THEN** the answer appears as short text under the orb and nothing is spoken
