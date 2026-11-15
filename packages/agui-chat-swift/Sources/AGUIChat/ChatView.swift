@@ -12,6 +12,8 @@ public struct ChatView<HostCard: View>: View {
     var hostCard: (String, JSONValue) -> HostCard
     var voice: VoiceController?
     var voiceTint: Color = AGUITheme.link
+    /// The host's own items in the «+» menu (after «New conversation»).
+    var menuItems: [ChatMenuItem] = []
 
     @State private var draft = ""
     @State private var sources: [JSONValue]?
@@ -20,7 +22,9 @@ public struct ChatView<HostCard: View>: View {
     /// `voice`: the voice mode (the microphone starts it); without it the microphone calls `onMicrophone` (dictation).
     public init(store: ChatStore, placeholder: LocalizedStringKey = "Ask AI",
                 onMicrophone: (() -> Void)? = nil, voice: VoiceController? = nil, voiceTint: Color? = nil,
+                menuItems: [ChatMenuItem] = [],
                 @ViewBuilder hostCard: @escaping (String, JSONValue) -> HostCard) {
+        self.menuItems = menuItems
         self.store = store
         self.placeholder = placeholder
         self.onMicrophone = onMicrophone
@@ -198,6 +202,9 @@ public struct ChatView<HostCard: View>: View {
                 Button(String(localized: "New conversation", bundle: .module), systemImage: "square.and.pencil") {
                     store.newConversation()
                 }
+                ForEach(menuItems) { item in
+                    Button(item.title, systemImage: item.icon, action: item.action)
+                }
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 17, weight: .medium))
@@ -281,6 +288,17 @@ public struct ChatView<HostCard: View>: View {
 extension ChatView where HostCard == EmptyView {
     public init(store: ChatStore, placeholder: LocalizedStringKey = "Ask AI", onMicrophone: (() -> Void)? = nil) {
         self.init(store: store, placeholder: placeholder, onMicrophone: onMicrophone) { _, _ in EmptyView() }
+    }
+}
+
+/// A host's item in the «+» menu.
+public struct ChatMenuItem: Identifiable {
+    public let id = UUID()
+    public let title: String
+    public let icon: String
+    public let action: () -> Void
+    public init(title: String, icon: String, action: @escaping () -> Void) {
+        self.title = title; self.icon = icon; self.action = action
     }
 }
 
