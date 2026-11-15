@@ -1,0 +1,86 @@
+---
+/**
+ * The researcher's benchmark section: what was run, the bar check by check for each model, speed and cost, and the
+ * same checks by kind of question. All from research.json (lib/research.ts); nothing is typed here. Rows are a grid,
+ * not a table: on a phone a row's label takes the full width and its values sit under it, so nothing is clipped.
+ */
+import { Disclosure } from './ui'
+import BenchFreshness from './BenchFreshness.astro'
+import { RESEARCH, barRows, factRows, kindName, modelName, share, totals } from '../lib/research'
+import { longDate } from '../lib/bench'
+const t = totals()
+const runs = RESEARCH.runs
+const names = runs.map((r) => modelName(r.model))
+const missed = runs.map((r) => r.bar.filter((b) => b.met === false).length)
+const measured = runs.map((r) => r.bar.filter((b) => b.met !== null).length)
+const kinds = Object.keys(runs[0].by_kind)
+const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'not met' : '')
+---
+<p>The researcher as it is today, called "before": {t.scenarios} questions over {t.documents} invented documents ({t.pages.toLocaleString('en-US')} pages) in {RESEARCH.sets.length} sets, {t.passes} passes each, {t.answers} answers a model. Scored by code checks only: no model judged the answers. The bar is measured on {RESEARCH.bar_measured_on}.</p>
+
+<BenchFreshness date={t.date} model={names.join(' and ')} what="The researcher's benchmark" />
+
+<div class="br not-content" role="table" aria-label="The researcher's bar, check by check">
+  <div class="br-row br-head" role="row"><span role="columnheader">Check</span>{names.map((n) => <span role="columnheader">{n}</span>)}<span role="columnheader">The bar</span></div>
+  {barRows().map((r) => (
+    <div class="br-row" role="row">
+      <span class="br-label" role="rowheader">{r.label}</span>
+      {r.cells.map((c, i) => <span class="br-cell" role="cell" data-met={c.met === null ? undefined : String(c.met)}><small>{names[i]}</small><b>{c.text}</b>{mark(c.met) && <em>{mark(c.met)}</em>}</span>)}
+      <span class="br-bar" role="cell"><small>The bar</small>{r.bar}</span>
+    </div>
+  ))}
+  {factRows().map((r) => (
+    <div class="br-row" role="row">
+      <span class="br-label" role="rowheader">{r.label}</span>
+      {r.cells.map((c, i) => <span class="br-cell" role="cell"><small>{names[i]}</small><b>{c.text}</b></span>)}
+      <span class="br-bar" role="cell"><small>The bar</small>none</span>
+    </div>
+  ))}
+</div>
+
+<p>{names.map((n, i) => `${n} misses ${missed[i]} of the ${measured[i]} checks measured today`).join('; ')}. That is what "before" records: a starting point, not a ranking of the two models.</p>
+
+<ul>
+  <li><strong>"A number that is not in the passage they cite"</strong> is a strict check. On today's researcher it is mostly a figure taken from a document it read but did not cite, not a made-up figure.</li>
+  <li><strong>Passages that disagree</strong> rests on {runs[0].contradictions.found + runs[0].contradictions.missed} answers a model. That is small.</li>
+  <li><strong>"Not measured yet"</strong>: today's researcher reports neither its first word nor a chosen depth.</li>
+</ul>
+
+<p>{RESEARCH.note}</p>
+
+<Disclosure summary="By kind of question: required points covered" panel>
+  <div class="br br-kinds not-content" role="table" aria-label="Coverage by kind of question">
+    <div class="br-row br-head" role="row"><span role="columnheader">Kind of question</span>{names.map((n) => <span role="columnheader">{n}</span>)}<span role="columnheader">Answers</span></div>
+    {kinds.map((k) => (
+      <div class="br-row" role="row">
+        <span class="br-label" role="rowheader">{kindName(k)}</span>
+        {runs.map((r, i) => <span class="br-cell" role="cell"><small>{names[i]}</small><b>{r.by_kind[k]?.coverage == null ? `${share(r.by_kind[k]?.passed ?? 0)} right` : share(r.by_kind[k].coverage!)}</b></span>)}
+        <span class="br-bar" role="cell"><small>Answers</small>{runs[0].by_kind[k].answers}</span>
+      </div>
+    ))}
+  </div>
+</Disclosure>
+
+<p>Cost: at the prices checked on {runs.map((r, i) => r.prices ? `${longDate(r.prices.checked)} for ${names[i]}` : '').filter(Boolean).join(' and ')}. To run it again:</p>
+<ul>{runs.map((r, i) => <li>{names[i]} (code <code>{r.commit}</code>): <code>{r.command}</code></li>)}</ul>
+
+<style is:global>
+  /* layout only; the type and colours are the design system's tokens */
+  .br { margin: 1rem 0 1.5rem; font-size: var(--fg-fs-sub); }
+  .br-row { display: grid; grid-template-columns: minmax(0, 2.2fr) repeat(2, minmax(0, 1fr)) minmax(0, 1fr); gap: 4px 16px; padding: 10px 0; border-bottom: 1px solid var(--fg-line); align-items: baseline; }
+  .br-head { font-weight: 600; color: var(--fg-ink-2); font-size: var(--fg-fs-footnote); }
+  .br-label { color: var(--fg-ink); }
+  .br-cell { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
+  .br-cell b { font-weight: 600; color: var(--fg-ink); }
+  .br-cell em { font-style: normal; font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); }
+  .br-cell[data-met='true'] em { color: var(--fg-ok); }
+  .br-bar { color: var(--fg-ink-2); font-variant-numeric: tabular-nums; }
+  .br small { display: none; font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); }
+  @media (max-width: 50rem) {
+    .br-head { display: none; }
+    .br-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .br-label { grid-column: 1 / -1; font-weight: 600; }
+    .br small { display: block; flex-basis: 100%; }
+    .br-bar small { display: block; }
+  }
+</style>

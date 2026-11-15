@@ -6,9 +6,10 @@
  * the shipped `sources` chips. The documents of the set are listed beside the chat and the pages an answer used
  * light up. With no recorded answers yet the page says so; nothing is invented.
  */
-import { Badge, Button, ChipGroup, Segmented } from './ui'
+import { Badge, Button, ChipGroup, Disclosure, Segmented } from './ui'
 import data from '../data/research-demo.json'
 import { longDate } from '../lib/bench'
+import { RESEARCH, kindName } from '../lib/research'
 
 interface Source { document: string; path?: string; page?: number; quote?: string }
 interface Answer { text: string; sources?: Source[]; seconds?: number; cost_usd?: number; depth?: string }
@@ -21,38 +22,51 @@ const ready = sets.length > 0 && models.length > 0 && !!d.recorded
 const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
 ---
 {ready ? (
-  <div class="rd ui-tile ui-tile--lg not-content" data-rd data-recorded={longDate(d.recorded!)}>
+  <div class="rd ui-tile ui-tile--lg not-content" data-rd data-recorded={longDate(d.recorded!.slice(0, 10))}>
     <script type="application/json" data-rd-data set:html={JSON.stringify({ models: d.models, sets, questions: d.questions })} />
     <div class="rd-controls">
       <ChipGroup label="Documents" options={sets.map((s) => ({ value: s.id, label: s.name }))} data-set />
       {models.length > 1 && <Segmented label="Answered by" options={models.map(([id, name]) => [id, name] as const)} data-model />}
     </div>
     <p class="rd-rec"><Badge>Recorded</Badge> <span data-rec-line></span></p>
-    <div class="rd-qs">
-      <p class="rd-cap">Hard questions to try</p>
-      {sets.map((s, i) => (
-        <div class="rd-qlist" data-for={s.id} hidden={i > 0}>
-          {d.questions.filter((q) => q.set === s.id).map((q) => <Button variant="gray" size="sm" data-q={q.id}>{q.question}</Button>)}
-        </div>
-      ))}
-    </div>
     <div class="rd-grid">
-      <div class="rd-docs" aria-live="polite">
+      <div class="rd-qs">
+        <p class="rd-cap">Hard questions to try</p>
         {sets.map((s, i) => (
-          <div class="rd-set" data-for={s.id} hidden={i > 0}>
-            <p class="rd-cap">{s.documents.length} document{s.documents.length === 1 ? '' : 's'}{pages(s) ? ` · ${pages(s).toLocaleString('en-US')} pages` : ''}</p>
-            {s.about && <p class="rd-about">{s.about}</p>}
-            <ul>{s.documents.map((x) => <li data-doc={x.id}><span class="rd-doc-t">{x.title}</span><span class="rd-doc-p">{x.pages ? `${x.pages} pages` : ''}</span><span class="rd-doc-u" data-used></span></li>)}</ul>
+          <div class="rd-qlist" data-for={s.id} hidden={i > 0}>
+            {d.questions.filter((q) => q.set === s.id).map((q) => <Button variant="gray" size="sm" data-q={q.id}>{q.question}</Button>)}
           </div>
         ))}
       </div>
       <div class="rd-chat">
-        <agui-chat mode="inline" persist-thread="off" attach="off" quick-replies="off" voice="off" title="Researcher" subtitle="Recorded answers" placeholder="Pick a question above"></agui-chat>
+        <agui-chat mode="inline" persist-thread="off" attach="off" quick-replies="off" voice="off" title="Researcher" subtitle="Recorded answers" placeholder="Pick a question"></agui-chat>
       </div>
+    </div>
+    <div class="rd-docs" aria-live="polite">
+      {sets.map((s, i) => (
+        <div class="rd-set" data-for={s.id} hidden={i > 0}>
+          <p class="rd-cap">What this answer read</p>
+          <p class="rd-none" data-none>Pick a question: the documents its answer used appear here, out of {s.documents.length}{pages(s) ? ` (${pages(s).toLocaleString('en-US')} pages)` : ''} in this set.</p>
+          <ul>{s.documents.map((x) => <li data-doc={x.id} hidden><span class="rd-doc-t">{x.title}</span><span class="rd-doc-u" data-used></span></li>)}</ul>
+          <Disclosure summary={`All ${s.documents.length} documents in this set`}>
+            {s.about && <p class="rd-about">{s.about}</p>}
+            <p class="rd-all">{s.documents.map((x) => x.title).join(' · ')}</p>
+          </Disclosure>
+        </div>
+      ))}
     </div>
   </div>
 ) : (
-  <div class="rd ui-tile ui-tile--lg not-content"><p class="rd-empty">Recorded answers are being prepared. This page will show real answers from the researcher's benchmark runs, each with its sources.</p></div>
+  <div class="rd ui-tile ui-tile--lg not-content">
+    <p class="rd-empty"><Badge>Being prepared</Badge> The recorded answers are not here yet. Below are the document sets and the questions the researcher is tested on; each will play its real answer, with sources, as soon as the answers are in.</p>
+    {RESEARCH.sets.map((s) => (
+      <section class="rd-plain" aria-labelledby={`rd-${s.id}`}>
+        <h3 id={`rd-${s.id}`}>{s.title}</h3>
+        <p class="rd-cap">{s.documents} documents · {s.pages.toLocaleString('en-US')} pages</p>
+        <ul>{RESEARCH.questions.filter((q) => q.set === s.id).map((q) => <li><span>{q.question}</span><small>{kindName(q.kind)} · {q.depth === 'deep' ? 'a long answer' : 'a short answer'}</small></li>)}</ul>
+      </section>
+    ))}
+  </div>
 )}
 
 <script>
@@ -66,7 +80,7 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
   interface Question { id: string; set: string; question: string; answers: Record<string, Answer> }
   interface DocSet { id: string; name: string; documents: { id: string; title: string }[] }
   const nid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`
-  const NOT_RECORDED = 'This page plays recorded answers. Pick one of the questions above; live answers come with the new researcher.'
+  const NOT_RECORDED = 'This page plays recorded answers. Pick one of the questions; live answers come with the new researcher.'
 
   for (const root of document.querySelectorAll<HTMLElement>('[data-rd]')) {
     const data = JSON.parse(root.querySelector('[data-rd-data]')!.textContent!) as { models: Record<string, string>; sets: DocSet[]; questions: Question[] }
@@ -76,18 +90,26 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
     const docsOf = () => data.sets.find((s) => s.id === set)!.documents
     const answerOf = (text: string) => data.questions.find((q) => q.set === set && q.question === text.trim())?.answers[model]
 
-    const clearUsed = () => root.querySelectorAll<HTMLElement>('[data-doc]').forEach((li) => { li.removeAttribute('data-hit'); li.querySelector('[data-used]')!.textContent = '' })
+    const clearUsed = () => {
+      root.querySelectorAll<HTMLElement>('[data-doc]').forEach((li) => { li.hidden = true; li.querySelector('[data-used]')!.textContent = '' })
+      root.querySelectorAll<HTMLElement>('[data-none]').forEach((p) => { p.hidden = false })
+    }
     const markUsed = (sources: Source[]) => {
       clearUsed()
-      const by = new Map<string, number[]>()
-      for (const s of sources) by.set(s.document, [...(by.get(s.document) ?? []), ...(s.page ? [s.page] : [])])
-      for (const [doc, ps] of by) {
-        const li = root.querySelector<HTMLElement>(`.rd-set:not([hidden]) [data-doc="${CSS.escape(doc)}"]`)
-        if (!li) continue
-        li.setAttribute('data-hit', '')
-        const uniq = [...new Set(ps)].sort((a, b) => a - b)
-        li.querySelector('[data-used]')!.textContent = uniq.length ? `used: p. ${uniq.join(', ')}` : 'used'
+      const by = new Map<string, string[]>()
+      for (const s of sources) {
+        const where = [s.path?.replace(/\s*>\s*/g, ' \u203a '), s.page ? `p. ${s.page}` : ''].filter(Boolean).join(', ')
+        by.set(s.document, [...(by.get(s.document) ?? []), ...(where ? [where] : [])])
       }
+      const box = root.querySelector<HTMLElement>('.rd-set:not([hidden])')
+      for (const [doc, wheres] of by) {
+        const li = box?.querySelector<HTMLElement>(`[data-doc="${CSS.escape(doc)}"]`)
+        if (!li) continue
+        li.hidden = false
+        li.querySelector('[data-used]')!.textContent = [...new Set(wheres)].join(' \u00b7 ')
+      }
+      const none = box?.querySelector<HTMLElement>('[data-none]')
+      if (none) { none.hidden = by.size > 0; if (!by.size) none.textContent = 'This answer cites no document.' }
     }
     const recLine = (a?: Answer) => {
       const bits = [`${root.dataset.recorded}`, data.models[model]]
@@ -134,7 +156,7 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
       highlight: false,
     }))
 
-    chat.options = { intro: 'Pick a question above to read the recorded answer and its sources.' }
+    chat.options = { intro: 'Pick a question to read the recorded answer and its sources.' }
     const show = () => {
       root.querySelectorAll<HTMLElement>('[data-for]').forEach((el) => { el.hidden = el.dataset.for !== set })
       // a question this model was not asked is not offered
@@ -163,16 +185,15 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
   .rd { margin: 1.5rem 0 2rem; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
   .rd-controls { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; }
   .rd-rec { margin: 0; display: flex; align-items: center; gap: 8px; font-size: var(--fg-fs-footnote); color: var(--fg-ink-2); font-variant-numeric: tabular-nums; }
-  .rd-grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 16px; }
+  .rd-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; }
   .rd-cap { margin: 0 0 8px; font: 600 var(--fg-fs-footnote)/1.3 var(--sl-font); color: var(--fg-ink-2); }
-  .rd-about { margin: 0 0 12px; font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
-  .rd-docs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-  .rd-docs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px; border-radius: var(--fg-r-ctl); background: var(--fg-surface);
-    border: 1px solid var(--fg-line); transition: border-color var(--fg-dur-instant) var(--fg-ease); }
-  .rd-docs li[data-hit] { border-color: var(--fg-accent); }
+  .rd-about, .rd-all, .rd-none { margin: 0 0 8px; font-size: var(--fg-fs-sub); color: var(--fg-ink-2); }
+  .rd-qs { min-width: 0; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+  .rd-docs ul { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .rd-docs li { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: var(--fg-r-ctl); background: var(--fg-surface); border: 1px solid var(--fg-accent); }
+  .rd-docs li[hidden], .rd-none[hidden] { display: none; }
   .rd-doc-t { font-weight: 600; color: var(--fg-ink); overflow-wrap: anywhere; }
-  .rd-doc-p { font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); font-variant-numeric: tabular-nums; }
-  .rd-doc-u { grid-column: 1 / -1; font-size: var(--fg-fs-footnote); color: var(--fg-accent); min-height: 1.3em; font-variant-numeric: tabular-nums; }
+  .rd-doc-u { font-size: var(--fg-fs-footnote); color: var(--fg-ink-2); }
   .rd-chat { height: 520px; min-width: 0; }
   .rd-chat agui-chat { display: block; height: 100%; --agui-accent: var(--sl-color-accent); --agui-on-accent: #fff; --agui-link: var(--sl-color-accent); }
   :root[data-theme='dark'] .rd-chat agui-chat { --agui-accent: var(--sl-color-accent-high); --agui-on-accent: var(--sl-color-black); --agui-link: var(--sl-color-accent-high); }
@@ -180,9 +201,13 @@ const pages = (s: DocSet) => s.documents.reduce((n, x) => n + (x.pages ?? 0), 0)
   .rd-qlist[hidden], .rd-set[hidden], .rd-qlist .ui-btn[hidden] { display: none; }
   .rd-qlist .ui-btn { text-align: left; white-space: normal; height: auto; min-height: 44px; padding-block: 8px; }
   .rd-empty { margin: 0; color: var(--fg-ink-2); }
+  .rd-plain h3 { margin: 0 0 4px; font: 600 var(--fg-fs-headline)/1.3 var(--sl-font); color: var(--fg-ink); }
+  .rd-plain ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .rd-plain li { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-top: 1px solid var(--fg-line); color: var(--fg-ink); }
+  .rd-plain li small { font-size: var(--fg-fs-footnote); color: var(--fg-ink-3); }
   @media (max-width: 50rem) {
     .rd-grid { grid-template-columns: minmax(0, 1fr); }
-    .rd-chat { order: -1; scroll-margin-top: 120px; }   /* the answer first, what it read under it */
-    .rd-chat { height: 480px; }
+    .rd-qs { max-height: none; overflow: visible; padding-right: 0; }
+    .rd-chat { height: 480px; scroll-margin-top: 120px; }
   }
 </style>

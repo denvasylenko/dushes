@@ -1,10 +1,11 @@
 ---
 title: Benchmarks
-description: How fast and how lean Dushes is, measured on the demo forms, and how the public agent benchmarks relate to it.
+description: How fast and how lean Dushes is, how well the researcher answers from large documents, and how the public agent benchmarks relate to it.
 ---
 import { LinkCard, CardGrid, Aside } from '@astrojs/starlight/components';
 import { Summary, Metrics, Metric, Compare } from '../../../components/ui';
 import BenchSpeed from '../../../components/BenchSpeed.astro';
+import BenchResearch from '../../../components/BenchResearch.astro';
 import { SPEED, longDate, num, pct } from '../../../lib/bench';
 
 export const fill = SPEED.scenarios.find((r) => r.name === 'fill');
@@ -37,6 +38,12 @@ This page does not rank models: runs on different days, code or models are not c
 ```bash
 cd backend && uv run python scripts/bench.py --base https://dushes-ai.fly.dev --repeat 3   # or your own server
 ```
+
+## The researcher
+
+How well the [researcher](../../agents/researcher/) answers hard questions from large documents: the points a right answer must have, whether it says so when the documents do not answer, whether it notices two passages that disagree, and what an answer takes in seconds and in money. Read real answers on the [researcher demo](../../agents/researcher/demo/).
+
+<BenchResearch />
 
 ## Dushes' own overhead
 

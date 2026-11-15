@@ -1,6 +1,7 @@
 /** A docs entry as plain Markdown for llms.txt, llms-full.txt and <page>.md (what AI tools read). */
 import { speedMarkdown } from './bench';
 import { recipeFilesMarkdown, recipeResultMarkdown } from './recipes';
+import { researchMarkdown } from './research';
 import type { CollectionEntry } from 'astro:content';
 
 const fragments = import.meta.glob('../fragments/*.html', { query: '?raw', eager: true, import: 'default' }) as Record<string, string>;
@@ -67,6 +68,7 @@ function proseToMd(part: string, raw: Record<string, string>): string {
     .replace(/<Summary\s+what=\{("(?:[^"\\]|\\.)*")\}\s+when=\{("(?:[^"\\]|\\.)*")\}\s+write=\{("(?:[^"\\]|\\.)*")\}[^>]*\/>/g,
       (_m, a, b, c) => `- **What:** ${JSON.parse(a)}\n- **When you need it:** ${JSON.parse(b)}\n- **You write:** ${JSON.parse(c)}`)
     .replace(/<BenchSpeed\s*\/>/g, () => speedMarkdown())   // data-driven sections: the same numbers as the page
+    .replace(/<BenchResearch\s*\/>/g, () => researchMarkdown())
     // a recipe's own files, as on the page; stashed, so the component rules below never touch the code
     .replace(/<RecipeFiles\s+name="([^"]+)"\s*\/>/g, (_m, n) => `\u0000${stash.push(recipeFilesMarkdown(n)) - 1}\u0000`)
     .replace(/<RecipeResult\s+name="([^"]+)"\s*\/>/g, (_m, n) => recipeResultMarkdown(n))
