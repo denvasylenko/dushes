@@ -38,7 +38,7 @@ EVALS = HERE / "evals"
 BASELINE = EVALS / "baseline.json"
 CONFIG = HERE / "demo" / "formguide.yaml"
 
-KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted"}
+KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted", "answers"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
 EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
@@ -86,6 +86,7 @@ class Scenario:
     values: dict[str, Any] = field(default_factory=dict)    # what the user typed into the form before the chat
     ui: dict[str, Any] = field(default_factory=dict)        # merged into state.ui, e.g. {form_visible: false}: a form shown only in the chat
     scripted: dict[int, str] = field(default_factory=dict)  # {turn number: the user's message, word for word} (1 = the first)
+    answers: dict[str, Any] = field(default_factory=dict)   # what the guest puts into a card, by field name (else expect.fields)
     no_cards_on: list[str] = field(default_factory=list)    # regexes of user messages: the reply to such a message shows no card
     never_points: bool = False                              # no ui_directive event (nothing on the page is opened or focused)
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
@@ -139,7 +140,7 @@ def load_scenario(path: Path) -> Scenario:
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
                     ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")),
                     no_cards_on=[str(x) for x in exp.get("no_cards_on_turns") or []],
-                    scripted={int(k): str(v) for k, v in (raw.get("scripted") or {}).items()},
+                    scripted=_scripted(raw.get("scripted")), answers=dict(raw.get("answers") or {}),
                     fields=dict(exp.get("fields") or {}), file=path.name, site=_site(start), tools=[str(x) for x in exp.get("tools") or []],
                     never_tools=[str(x) for x in exp.get("never_tools") or []], never_cards=[str(x) for x in exp.get("never_cards") or []],
                     never_repeat_questions=bool(exp.get("never_repeat_questions")),
@@ -152,6 +153,13 @@ def load_scenario(path: Path) -> Scenario:
                     never_model_kinds=[str(x) for x in exp.get("never_model_kinds") or []],
                     cards_in_language=bool(exp.get("cards_in_language")), plain_numbers=[str(x) for x in exp.get("plain_numbers") or []], sources=[str(x) for x in exp.get("sources") or []],
                     corpus=raw["documents"] if isinstance(raw.get("documents"), str) else None, gold=str(raw.get("gold") or "").strip(), quote=_quote(path, raw.get("quote")))
+
+
+def _scripted(v: Any) -> dict[int, str]:
+    """scripted: a list (every turn from the first, in order) or {turn number: message}."""
+    if isinstance(v, list):
+        return {i + 1: str(x) for i, x in enumerate(v)}
+    return {int(k): str(x) for k, x in (v or {}).items()}
 
 
 def _quote(path: Path, q: Any) -> dict:
@@ -325,6 +333,45 @@ class User:
         if hit:
             return {"ids": [hit["id"]]}
         return {"text": c.text or c.option} if (c.text or c.option) else None
+
+
+class RuleGuest:
+    """The guest without a model: only the scenario's scripted messages, and a card is answered by rule from the
+    scenario's own data (`answers`, else the expected final values in `expect.fields`). A card the scenario has no
+    value for is closed. Nothing here calls a model, so a run costs the agent's tokens alone."""
+
+    def __init__(self, sc: Scenario):
+        self.sc = sc
+        self.known = {**sc.fields, **sc.answers}
+
+    def next(self, transcript: str, first: bool) -> UserTurn:   # every message is scripted; nothing more to say
+        return UserTurn(message="", done=True)
+
+    @staticmethod
+    def _plain(v: Any) -> str:
+        if isinstance(v, dict):
+            return str(v.get("id") or v.get("name") or "")
+        if isinstance(v, bool):
+            return "yes" if v else "no"
+        return "" if v is None else str(v)
+
+    def _pick(self, opts: list[dict], v: Any) -> list[str]:
+        want = [self._plain(x).strip().lower() for x in (v if isinstance(v, list) else [v])]
+        want += [str(x.get("name") or "").strip().lower() for x in (v if isinstance(v, list) else [v]) if isinstance(x, dict)]
+        return [str(o["id"]) for o in opts if str(o.get("id", "")).lower() in want or str(o.get("label", "")).strip().lower() in want]
+
+    def choose(self, q: dict) -> dict | None:
+        if q.get("fields"):
+            got = {f["name"]: self._plain(self.known[f["name"]]) for f in q["fields"] if self._plain(self.known.get(f.get("name")))}
+            return {"answers": got} if got else None
+        name = q.get("field")
+        if name not in self.known or self.known[name] is None:
+            return None
+        opts, v = q.get("options") or [], self.known[name]
+        if opts:
+            ids = self._pick(opts, v)
+            return {"ids": ids if q.get("multiple") else ids[:1]} if ids else ({"text": self._plain(v)} if q.get("allow_text") else None)
+        return {"text": self._plain(v)} if self._plain(v) else None
 
 
 def facts(pages: dict[str, dict], sc: Scenario, http: httpx.Client | None = None, forms: list[str] | None = None) -> str:
@@ -619,7 +666,7 @@ def _play(sc: Scenario, http: httpx.Client, user: User | None, judge_model: Any,
                 break
             visit.say(sc.goal)
             continue
-        t = user.next(visit.transcript(), first=i == 0)
+        t = user.next(visit.transcript(), first=i == 0)   # a RuleGuest has nothing beyond its script: done
         if t.done or not t.message.strip():
             break
         visit.say(t.message.strip())
@@ -634,13 +681,16 @@ def _play(sc: Scenario, http: httpx.Client, user: User | None, judge_model: Any,
                      + json.dumps(vals, ensure_ascii=False)[:3000])
     who = [f"[{m.get('agent', 'dushes')}] {str(m.get('content', ''))[:90]}" for m in visit.messages if m.get("role") == "assistant"]
     transcript = visit.transcript() + ("\n\n" + "\n".join(final) if final else "") + "\n\nWho wrote each reply (dushes: the site assistant, form: the form assistant):\n" + "\n".join(who)
-    verdict = Verdict(score=10) if offline else judge(judge_model, sc, transcript, facts(visit.pages, sc, http, list(visit.forms)))
+    unjudged = offline or judge_model is None   # no judge: the code checks alone decide, the logs are read afterwards
+    verdict = Verdict(score=10) if unjudged else judge(judge_model, sc, transcript, facts(visit.pages, sc, http, list(visit.forms)))
     score = capped(verdict.score, results)
     RUNS.mkdir(exist_ok=True)
     (RUNS / f"eval-{sc.name}{suffix}.txt").write_text(transcript + "\n\nCHECKS:\n" + "\n".join(
         f"{'✅' if r['ok'] else '❌'} {r['check']} {r['detail']}" for r in results) +
-        f"\n\nSCORE {score} (judge {verdict.score})\n" + "\n".join(f"-{x.points} {x.reason}" for x in verdict.lost))
-    return {"name": sc.name, "file": sc.file, "score": score, "judge_score": verdict.score, "min_score": sc.min_score,
+        (f"\n\nNOT JUDGED: {'every code check holds' if all(r['ok'] for r in results) else 'a code check failed'}" if unjudged else
+         f"\n\nSCORE {score} (judge {verdict.score})\n" + "\n".join(f"-{x.points} {x.reason}" for x in verdict.lost)))
+    return {"name": sc.name, "file": sc.file, "score": score, "judge_score": None if unjudged else verdict.score, "min_score": sc.min_score,
+            "judged": not unjudged, "passed_checks": all(r["ok"] for r in results),
             "checks": results, "lost": [x.model_dump() for x in verdict.lost], "path": visit.path,
             "tokens": {"assistant": visit.tokens, "user_and_judge": dict(_TESTER)}, "tags": sc.tags, "lang": language(sc), "runs_stats": visit.stats,
             "tool_calls": [{"tool": t, "args": a} for t, a in visit.tools], "sources": visit.sources,
@@ -841,8 +891,13 @@ def agent_client(data_dir: Path, agent: Any, research: Any = None) -> httpx.Clie
 def run(names: list[str] | None = None, *, model: str | None = None, offline: bool = False, margin: float = 0.5,
         save_baseline: bool = False, folder: Path = EVALS, baseline_file: Path = BASELINE,
         tag: str | None = None, repeat: int = 1, agent_model: str | None = None,
-        research_model: str | None = None, judge: str | None = None) -> tuple[dict, bool]:
+        research_model: str | None = None, judge: str | None = None, no_testers: bool = False,
+        max_usd: float | None = None) -> tuple[dict, bool]:
     scenarios = load_all(names, folder, tag)   # a bad file stops the run before any model call
+    if no_testers:   # the owner's rule (2026-11-15): the API pays for the agent alone; guest lines are scripted, no judge
+        bad = [sc.name for sc in scenarios if not sc.scripted]
+        if bad:
+            raise ScenarioError(f"--no-testers needs `scripted` guest lines; missing in: {', '.join(bad[:8])}")
     started = datetime.now().isoformat(timespec="seconds")
     from bench import git_commit
     commit = git_commit(BASE if not agent_model else "127.0.0.1")   # read at the start: other sessions commit during a long round
@@ -851,21 +906,39 @@ def run(names: list[str] | None = None, *, model: str | None = None, offline: bo
         http, user_model, judge_model = offline_client(Path(tmp)), None, None
     elif agent_model:   # the demo in-process with another agent model; the user and the judge stay as configured
         http = agent_client(Path(tempfile.mkdtemp(prefix="formguide-bench-")), agent_model, research_model)
-        user_model, judge_model = models_for(model)
+        user_model, judge_model = (None, None) if no_testers else models_for(model)
     else:
         http = httpx.Client(base_url=BASE, timeout=300, headers=host_headers())
-        user_model, judge_model = models_for(model)
-    if judge and not offline:   # only the judge (the user keeps --model / the config)
+        user_model, judge_model = (None, None) if no_testers else models_for(model)
+    price = None
+    if max_usd is not None:   # the agent's spend so far, at its own list price; the run stops itself over the sum
+        from bench import price_for
+        from eval_summary import PRICES_FILE
+        price = price_for(json.loads(PRICES_FILE.read_text()), agent_model or "claude-haiku-5-5", None)
+        if not price:
+            raise ScenarioError(f"--max-usd needs a price for {agent_model} in {PRICES_FILE.name}")
+    spent, stopped = 0.0, None
+    if judge and not offline and not no_testers:   # only the judge (the user keeps --model / the config)
         from formguide.models import build_model
         judge_model = build_model(judge)
     results = []
     for sc in scenarios:
+        if price and spent > max_usd:
+            stopped = f"stopped before {sc.name}: the agent's spend ${spent:.2f} is over --max-usd {max_usd}"
+            print("\u26d4 " + stopped, flush=True)
+            break
         runs = []
         for i in range(max(1, repeat)):
             print(f"▶ {sc.name}" + (f" ({i + 1}/{repeat})" if repeat > 1 else ""), flush=True)
             try:
-                runs.append(play(sc, http, None if offline else User(user_model, sc), judge_model, offline,
+                guest = None if offline else RuleGuest(sc) if no_testers else User(user_model, sc)
+                runs.append(play(sc, http, guest, judge_model, offline,
                                  suffix=f"-r{i + 1}" if repeat > 1 else ""))
+                if price:
+                    t = (runs[-1].get("tokens") or {}).get("assistant") or {}
+                    cr = t.get("cache_read") or 0
+                    spent += (max(0, (t.get("input") or 0) - cr) * price["input"] + cr * price.get("cache_read", price["input"])
+                              + (t.get("output") or 0) * price["output"]) / 1e6
             except Exception as e:  # noqa: BLE001 — one broken scenario does not stop the others
                 runs.append({"name": sc.name, "file": sc.file, "score": 0.0, "judge_score": None, "min_score": sc.min_score,
                              "checks": [{"check": "the scenario ran", "ok": False, "detail": f"{type(e).__name__}: {e}", "cap": 0}],
@@ -876,6 +949,8 @@ def run(names: list[str] | None = None, *, model: str | None = None, offline: bo
     report = {"at": datetime.now().isoformat(timespec="seconds"), "started": started, "offline": offline, "model": model,
               "agent_model": agent_model, "user_model": _name(user_model), "judge_model": _name(judge_model),
               "commit": commit, "repeat": repeat, "rubric_version": RUBRIC_VERSION,
+              "judged": not (offline or no_testers), "guest": "scripted" if no_testers else "offline" if offline else "model",
+              "agent_usd": round(spent, 4) if price else None, "stopped": stopped,
               "average": avg, "failed": failed, "scenarios": results}
     RUNS.mkdir(exist_ok=True)
     out = RUNS / f"evals-{datetime.now():%Y%m%d-%H%M%S}{'-offline' if offline else ''}.json"   # an offline report never looks live
@@ -904,6 +979,9 @@ def main(argv: list[str]) -> int:
                     'e.g. openai:gpt-5-mini, ollama:qwen3:8b or a JSON spec; the user and the judge are unchanged')
     ap.add_argument("--judge-model", help="the judge alone, e.g. anthropic:claude-opus-5-5 (default: as --model / the config)")
     ap.add_argument("--research-model", help="with --agent-model: the researcher's model (default: the agent model)")
+    ap.add_argument("--no-testers", action="store_true", help="no user model and no judge: scripted guest lines, cards answered "
+                    "by rule, the code checks alone (the API pays for the agent only)")
+    ap.add_argument("--max-usd", type=float, help="stop the run when the agent's spend, at its list price, is over this sum")
     ap.add_argument("--names-file", type=Path, help="scenario names, one per line or space-separated")
     ap.add_argument("--folder", type=Path, default=EVALS, help="another folder of scenarios (a host's own, e.g. cheese/docs/qa/evals)")
     ap.add_argument("--baseline", type=Path, help="the baseline file (default: baseline.json in the scenario folder)")
@@ -914,7 +992,8 @@ def main(argv: list[str]) -> int:
         names = (a.names or []) + (a.names_file.read_text().split() if a.names_file else [])
         _, failed = run(names or None, model=a.model, offline=a.offline, margin=a.margin, save_baseline=a.save_baseline and not a.agent_model,
                         tag=a.tag, repeat=a.repeat, agent_model=a.agent_model, research_model=a.research_model,
-                        judge=a.judge_model, folder=a.folder, baseline_file=a.baseline or a.folder / "baseline.json")
+                        judge=a.judge_model, folder=a.folder, baseline_file=a.baseline or a.folder / "baseline.json",
+                        no_testers=a.no_testers, max_usd=a.max_usd)
     except ScenarioError as e:
         print(f"scenario error: {e}", file=sys.stderr)
         return 2

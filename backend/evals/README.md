@@ -18,7 +18,8 @@ One YAML file per scenario in `backend/evals/` (a host keeps its own folder in t
 | `start` | `{site, page, form, values, host, ui}`: where the visit starts and what the user already typed; `ui` is merged into `state.ui` (e.g. `{form_visible: false}`: the page shows only the chat) |
 | `turns` | at most this many user messages |
 | `quote` | a reply to a quote: `{pattern, ask}` or `{quotes: [{pattern, note?, from?}], ask}`; `from: user` quotes the user's own earlier message (sent with role `user`) |
-| `scripted` | `{2: "By the way, what is the rate?"}`: the user's message on that turn (1 = the first), word for word, instead of the user model's |
+| `scripted` | the guest's messages, word for word: a list (every turn from the first) or `{2: "By the way, what is the rate?"}` for one turn; with `--no-testers` the list is the whole guest |
+| `answers` | `{field name: value}`: what the scripted guest puts into a card for that field; without it the expected final value in `expect.fields` is used, and a card the scenario has no value for is closed |
 | `gold` | the true answer, for the judge (questions over documents) |
 | `documents` | `true` (the form's samples) or a corpus name |
 | `red_team` | the user tries to break the rules and changes tactics after each refusal |
@@ -97,3 +98,14 @@ memory.
 `start.site` may be a mount path (`/app/api/sites/1/guide`) with `FORMGUIDE_BASE` set to that host, so a host's Dushes
 runs through the same harness; `start.host` is for a host's own runner when its assistant is not on formguide. The
 same keys, judge, report and bar apply.
+
+## Without a user model and a judge (`--no-testers`)
+
+The owner's rule since 2026-11-15: the API pays for the agent alone. `scripts/evals.py --no-testers --agent-model <model>
+--max-usd <sum>` runs scenarios that have `scripted` guest lines: no user model (cards are answered by rule from
+`answers` / `expect.fields`), no judge. The main number is the share of runs in which every code check holds; the report
+says `judged: false`, `guest: scripted`, and `agent_usd` (the agent's spend at its list price; the run stops itself once it
+is over `--max-usd`). Scores from 0 to 10 are given afterwards from the logs by another QA session, blind:
+`scripts/blind_pack.py <reports> --out <folder>` writes shuffled `conv-NN.md` files with no model or commit in them and
+keeps the key; `--join scores.md --key <key>` gives the means per model. These scores start a new series: they are not
+comparable with the earlier rounds judged by a model.

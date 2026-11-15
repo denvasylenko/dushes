@@ -304,3 +304,24 @@ def test_no_card_on_the_turn_of_a_pure_question_is_read_from_the_log():
     assert evals.card_steps_after(log, "never said") == ([], False)
     assert evals.load_all(["midfill_question_loan"])[0].no_cards_on == ["what is the interest rate"]
     assert evals.load_all(["midfill_question_loan"])[0].scripted == {2: "By the way, what is the interest rate?"}
+
+
+def test_the_guest_without_a_model_answers_cards_from_the_scenario(tmp_path):
+    """No API user and no judge (the owner, 2026-11-15): scripted lines, cards by rule, the code checks alone."""
+    import evals
+    (tmp_path / "g.yaml").write_text(
+        "name: g\npersona: p\ngoal: g\nscripted: ['hello', 'second']\nanswers: {city: Bologna}\n"
+        "expect:\n  fields: {reason: {id: vacation, name: Vacation}, start_date: '2027-03-01', agree: true, pets: [cat]}\n")
+    sc = evals.load_scenario(tmp_path / "g.yaml")
+    assert sc.scripted == {1: "hello", 2: "second"}
+    g = evals.RuleGuest(sc)
+    opts = [{"id": "leave", "label": "Leave"}, {"id": "vacation", "label": "Vacation"}]
+    assert g.choose({"field": "reason", "options": opts}) == {"ids": ["vacation"]}
+    assert g.choose({"field": "start_date", "input": {"type": "date"}}) == {"text": "2027-03-01"}
+    assert g.choose({"field": "agree", "options": [{"id": "yes", "label": "Yes"}, {"id": "no", "label": "No"}]}) == {"ids": ["yes"]}
+    assert g.choose({"field": "pets", "multiple": True, "options": [{"id": "cat", "label": "Cat"}, {"id": "dog", "label": "Dog"}]}) == {"ids": ["cat"]}
+    assert g.choose({"fields": [{"name": "city"}, {"name": "unknown"}]}) == {"answers": {"city": "Bologna"}}
+    assert g.choose({"field": "unknown"}) is None and g.choose({"question": "anything else?"}) is None   # closed
+    assert g.next("", first=False).done
+    with pytest.raises(evals.ScenarioError, match="scripted"):   # a scenario with no guest lines cannot run without a guest model
+        evals.run(["opening_hours"], agent_model="x", no_testers=True)
