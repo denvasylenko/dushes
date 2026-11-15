@@ -303,6 +303,7 @@ export function voice(chat: Chat): void {
           if (hearEl) { hearEl.classList.remove('vo-hearing'); hearEl = null }
           if (!saidEl) { saidEl = el('div', 'msg ai'); saidEl.append(el('div', 'body')); add(saidEl) }
           saidEl.firstElementChild!.textContent += ev.delta
+        } else if (ev.type === 'echo') { hearEl?.remove(); hearEl = null   // the server heard the voice itself: the words that grew were not the person's
         } else if (ev.type === 'ended') {
           const reason = ev.reason ?? 'closed'
           hang(false); silent = true; paint()
