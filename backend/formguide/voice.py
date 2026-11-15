@@ -226,8 +226,8 @@ class Meter:
             return 0.0
         if seconds is not None:
             talk.seconds = max(talk.seconds, float(seconds))
-        elif not talk.seconds:
-            talk.seconds = self.now() - talk.started
+        else:   # no final figure from the provider: its last report can lag, so never less than the clock
+            talk.seconds = max(talk.seconds, self.now() - talk.started)
         cost = talk.seconds / 60 * self.config.minute_usd + talk.agent_usd
         self._spent[talk.person] = self._spent.get(talk.person, 0.0) + cost
         return cost

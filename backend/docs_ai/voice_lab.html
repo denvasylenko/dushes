@@ -77,8 +77,15 @@ function chat() { return $('demo').contentDocument?.querySelector('agui-chat') }
 
 async function end(why) {
   try { reader?.cancel() } catch {}
-  if (talk) fetch('/voice/end', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Voice-Pass': pass }, body: JSON.stringify({ talk }) })
-    .then((r) => r.json()).then((d) => { if (!why && d.cost_usd) say(`Stopped. This conversation cost $${d.cost_usd}.`) }).catch(() => {})
+  let cost = 0
+  if (talk) {
+    const ending = talk; talk = ''
+    try {
+      const r = await fetch('/voice/end', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Voice-Pass': pass }, body: JSON.stringify({ talk: ending }) })
+      cost = (await r.json()).cost_usd || 0
+    } catch {}
+  }
+  if (!why && cost) why = `Stopped. This conversation cost $${cost}.`
   pc?.close(); stream?.getTracks().forEach((t) => t.stop()); pc = null; stream = null; talk = ''; reader = null
   $('stop').hidden = true; $('talk').hidden = false
   say(why || 'Stopped.')
