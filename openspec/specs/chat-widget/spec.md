@@ -183,11 +183,15 @@ The large view SHALL page through the images of the same message, or of the comp
 - **THEN** the second image shows with "2 of 2", and the next arrow is dimmed
 
 ### Requirement: Marking up an image
-While attachments are on, the large view SHALL offer a pencil for a picture it can read back (an attachment, or a picture from this site). The pencil SHALL load markup on demand: on top close, undo, redo and one check mark; at the bottom one tool button with the pen, frame, text and colours. The check mark SHALL put the marked-up copy in the composer: in place of an image still there, as a new attachment otherwise.
+An image still in the composer SHALL offer a pencil in its large view; a sent image or a picture in an answer SHALL only be viewed. The pencil SHALL load markup on demand: on top close, undo, redo and one check mark; at the bottom one tool button with the pen, frame, text and colours. The check mark SHALL put the marked-up copy in place of the image, uploaded like any file.
 
 #### Scenario: Circling a button
-- **WHEN** the user opens a sent screenshot, taps the pencil, circles a button and taps the check mark
-- **THEN** the view closes and the composer holds the marked-up copy, ready to send with a few words
+- **WHEN** the user opens a pasted screenshot, taps the pencil, circles a button and taps the check mark
+- **THEN** the view closes and the composer holds the marked-up copy in place of the screenshot
+
+#### Scenario: A sent screenshot
+- **WHEN** the user opens a screenshot already sent
+- **THEN** it opens large without the pencil
 
 #### Scenario: Back to the picture
 - **WHEN** the user draws, then taps x or presses Esc

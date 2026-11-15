@@ -82,18 +82,12 @@ describe('attachments in the composer', () => {
     expect(zoom.querySelector('.zoom-stage img')!.getAttribute('alt')).toBe('b.png')
   })
 
-  it('the pencil is there for a sent image too while attachments are on, and gone when they are off', async () => {
+  it('a sent image is only viewed: no pencil', async () => {
     const el = await mount()
     await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])
     el.agent = { run: () => ({ subscribe: (o: { next: (e: unknown) => void; complete: () => void }) => { setTimeout(() => { o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' }); o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }); return { unsubscribe() {} } } }) } as never
     await el.send('look')
     await tick(5)
-    ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()
-    await viewer(el)
-    expect(el.shadowRoot!.querySelector<HTMLElement>('dialog.zoom .zoom-edit')!.style.visibility).toBe('')
-    ;(el.shadowRoot!.querySelector('dialog.zoom .zoom-x') as HTMLButtonElement).click()
-    await tick()
-    el.options = { attach: false }
     ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()
     await viewer(el)
     expect(el.shadowRoot!.querySelector<HTMLElement>('dialog.zoom .zoom-edit')!.style.visibility).toBe('hidden')
@@ -143,7 +137,7 @@ describe('attachments in the composer', () => {
     expect(zoom.querySelector<HTMLButtonElement>('.mk [aria-label="Undo"]')!.disabled).toBe(false)
   })
 
-  it('the check mark puts the marked-up copy in place of a composer image; for a sent one it joins the composer', async () => {
+  it('the check mark puts the marked-up copy in place of the composer image', async () => {
     const el = await mount()
     const names: string[] = []
     el.options = { upload: async (f: File) => { names.push(f.name); return { id: `att_${f.name}`, filename: f.name } } }
@@ -163,13 +157,9 @@ describe('attachments in the composer', () => {
     await draw(el.shadowRoot!.querySelector('.files .att-open') as HTMLElement)
     expect(el.shadowRoot!.querySelector('dialog.zoom')).toBeNull()             // the view closes
     expect(composer()).toEqual(['shot-markup.png'])                            // in its place
-    el.agent = { run: () => ({ subscribe: (o: { next: (e: unknown) => void; complete: () => void }) => { setTimeout(() => { o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' }); o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }); return { unsubscribe() {} } } }) } as never
-    await el.send('look')
-    await tick(5)
-    await draw(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLElement)
-    expect(composer()).toEqual(['shot-markup-markup.png'])                     // a new attachment, ready to send
-    expect(names).toEqual(['shot.png', 'shot-markup.png', 'shot-markup-markup.png'])
+    expect(names).toEqual(['shot.png', 'shot-markup.png'])
   })
+
 
   it('a footnote sits under the composer; an upload writes no line that would shift it', async () => {
     const el = await mount()
