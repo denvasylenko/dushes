@@ -53,6 +53,54 @@ EARLY_MIN = 40
 _SECOND = re.compile(r"[.!?\u2026]['\")\u00bb\u201d]*\s+\S")   # a sentence ends and the next one starts
 
 
+_BULLET = re.compile(r"^\s*(?:[-*+\u2022\u2013]|\d+[.)])\s+")
+_SENTENCE = re.compile(r"(?<=[.!?\u2026])\s+")
+
+
+def without_options(text: str, labels: list[str], question: str = "") -> str:
+    """The words written before a choice card, without the list of its options: the card shows them. Lines and
+    sentences that name an option go, and so does a line left only to introduce them; the text is returned as
+    it was when it names fewer than two of the options."""
+    names = [x.strip().lower() for x in labels if isinstance(x, str) and len(x.strip()) > 1]
+    low = text.lower()
+    if sum(n in low for n in dict.fromkeys(names)) < 2:
+        return text
+
+    def names_one(part: str) -> bool:
+        return any(n in part.lower() for n in names)
+
+    kept: list[str] = []
+
+    def drop_intro() -> None:
+        """The sentence that only introduced the list ("Here are the services:") goes with it."""
+        i = len(kept) - 1
+        while i >= 0 and not kept[i].strip():
+            i -= 1
+        if i >= 0 and kept[i].rstrip().endswith(":"):
+            rest = _SENTENCE.split(kept[i].rstrip())[:-1]
+            if rest:
+                kept[i] = " ".join(rest)
+            else:
+                del kept[i:]
+
+    for line in text.split("\n"):
+        if _BULLET.match(line):
+            if names_one(line):
+                drop_intro()
+            else:
+                kept.append(line)
+            continue
+        sentences = _SENTENCE.split(line)
+        rest = [sent for sent in sentences if not names_one(sent)]
+        if len(rest) < len(sentences) and not rest:
+            drop_intro()
+        if rest or not line.strip():
+            kept.append(" ".join(rest))
+    result = re.sub(r"\n{3,}", "\n\n", "\n".join(kept)).strip()
+    same = re.sub(r"\W+", " ", result).strip().lower() == re.sub(r"\W+", " ", question).strip().lower()
+    return "" if same else result
+
+
 def flows(held: str) -> bool:
     """The held text is clearly a reply: it may be shown now."""
     return len(held) >= EARLY_CHARS or (len(held) >= EARLY_MIN and bool(_SECOND.search(held)))
@@ -75,6 +123,7 @@ class AgentState(TypedDict, total=False):
     tool_round: int
     said: bool      # the user saw some text this turn
     lead_id: str | None   # a short lead shown before this turn's tools: taken back if the model writes again
+    text_id: str | None   # the message id of the words the last model call put on the page (None: it wrote none)
     nudged: bool    # we already asked the model to reply with text
     limited: bool   # the turn used up max_tool_rounds: the model was asked to reply without more tools
     handed_back: str | None   # hand_back was called: the turn ends, Dushes answers
@@ -273,7 +322,7 @@ def build_graph(guide: FormGuide):
         return {
             "messages": [*(state.get("messages") or []), *new],
             "snapshot": ctx.ov.snapshot(), "version": version, "pending": None, "tool_round": 0,
-            "said": False, "lead_id": None, "nudged": False, "limited": False, "handed_back": None, "attachments": [], "system_prompt": frozen,
+            "said": False, "lead_id": None, "text_id": None, "nudged": False, "limited": False, "handed_back": None, "attachments": [], "system_prompt": frozen,
             "prompt_sent": current if current != frozen else "",
             "pending_client": None, "client_results": {}, "turn_sources": None,
         }
@@ -407,7 +456,7 @@ def build_graph(guide: FormGuide):
             lead = None   # this call's words stay: an older lead is no longer the last thing said before an answer
         return {"messages": [*history, msg],
                 "stop_reason": "tool_use" if msg.tool_calls else "end_turn",
-                "said": bool(state.get("said")) or started, "lead_id": lead}
+                "said": bool(state.get("said")) or started, "lead_id": lead, "text_id": msg_id if started else None}
 
     def route_llm(state: AgentState) -> str:
         if state.get("stop_reason") != "tool_use":
@@ -518,6 +567,21 @@ def build_graph(guide: FormGuide):
                               **({"source": ctx.pending_source} if ctx.pending_source else {})}
         elif client_ids:
             upd["pending_client"] = {"ids": client_ids, "server_results": results}
+        if upd.get("pending") and upd["pending"].get("kind") == "ask" and state.get("text_id"):
+            # the options are on the card: the words before it do not list them again
+            pay = upd["pending"]["payload"]
+            labels = [str(o.get("label") or "") for o in pay.get("options") or [] if isinstance(o, dict)]
+            last = state["messages"][-1]
+            said_now = last.content if isinstance(last.content, str) else "".join(
+                b.get("text", "") for b in last.content if isinstance(b, dict) and b.get("type") == "text")
+            short = without_options(said_now, labels, str(pay.get("question") or ""))
+            if short != said_now:
+                w({"kind": "text_retract", "id": state["text_id"]})
+                if short:
+                    again = str(uuid.uuid4())
+                    w({"kind": "text_start", "id": again})
+                    w({"kind": "text_delta", "id": again, "delta": short})
+                    w({"kind": "text_end", "id": again})
         if upd.get("pending"):   # the card in the conversation's language, before it is shown or stored
             from ..language import conversation, localize
             lang = conversation(guide.config, ctx.ov[ctx.ov.layout.root].props if ctx.ov.layout.root else None,
