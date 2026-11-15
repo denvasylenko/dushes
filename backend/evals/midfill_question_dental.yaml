@@ -10,6 +10,8 @@ knows:
   - Marta Rossi, a check-up, phone +39 333 123 4567
   - The second message is only the question about Wednesday afternoons, word for word
 turns: 4
+scripted:
+  2: "Are you open on Wednesday afternoons?"   # the second message is this, word for word
 expect:
   says: [["wednesday"]]
   cards: [set_fields]

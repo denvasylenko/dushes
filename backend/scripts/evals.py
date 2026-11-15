@@ -38,7 +38,7 @@ EVALS = HERE / "evals"
 BASELINE = EVALS / "baseline.json"
 CONFIG = HERE / "demo" / "formguide.yaml"
 
-KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold"}
+KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
 EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
@@ -85,6 +85,7 @@ class Scenario:
     red_team: bool = False                                  # the user tries to break the assistant's rules
     values: dict[str, Any] = field(default_factory=dict)    # what the user typed into the form before the chat
     ui: dict[str, Any] = field(default_factory=dict)        # merged into state.ui, e.g. {form_visible: false}: a form shown only in the chat
+    scripted: dict[int, str] = field(default_factory=dict)  # {turn number: the user's message, word for word} (1 = the first)
     no_cards_on: list[str] = field(default_factory=list)    # regexes of user messages: the reply to such a message shows no card
     never_points: bool = False                              # no ui_directive event (nothing on the page is opened or focused)
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
@@ -138,6 +139,7 @@ def load_scenario(path: Path) -> Scenario:
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
                     ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")),
                     no_cards_on=[str(x) for x in exp.get("no_cards_on_turns") or []],
+                    scripted={int(k): str(v) for k, v in (raw.get("scripted") or {}).items()},
                     fields=dict(exp.get("fields") or {}), file=path.name, site=_site(start), tools=[str(x) for x in exp.get("tools") or []],
                     never_tools=[str(x) for x in exp.get("never_tools") or []], never_cards=[str(x) for x in exp.get("never_cards") or []],
                     never_repeat_questions=bool(exp.get("never_repeat_questions")),
@@ -609,6 +611,9 @@ def _play(sc: Scenario, http: httpx.Client, user: User | None, judge_model: Any,
                 quoted = True
                 visit.say(sc.quote["ask"], reply_to=rt)
                 continue
+        if i + 1 in sc.scripted and (i or not offline):   # this turn's message is fixed, not the user model's
+            visit.say(sc.scripted[i + 1])
+            continue
         if offline:   # the scripted user: the goal, once
             if i:
                 break

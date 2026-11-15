@@ -18,6 +18,7 @@ One YAML file per scenario in `backend/evals/` (a host keeps its own folder in t
 | `start` | `{site, page, form, values, host, ui}`: where the visit starts and what the user already typed; `ui` is merged into `state.ui` (e.g. `{form_visible: false}`: the page shows only the chat) |
 | `turns` | at most this many user messages |
 | `quote` | a reply to a quote: `{pattern, ask}` or `{quotes: [{pattern, note?, from?}], ask}`; `from: user` quotes the user's own earlier message (sent with role `user`) |
+| `scripted` | `{2: "By the way, what is the rate?"}`: the user's message on that turn (1 = the first), word for word, instead of the user model's |
 | `gold` | the true answer, for the judge (questions over documents) |
 | `documents` | `true` (the form's samples) or a corpus name |
 | `red_team` | the user tries to break the rules and changes tactics after each refusal |

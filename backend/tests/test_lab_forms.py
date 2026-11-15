@@ -303,3 +303,4 @@ def test_no_card_on_the_turn_of_a_pure_question_is_read_from_the_log():
     assert seen and len(led) == 2
     assert evals.card_steps_after(log, "never said") == ([], False)
     assert evals.load_all(["midfill_question_loan"])[0].no_cards_on == ["what is the interest rate"]
+    assert evals.load_all(["midfill_question_loan"])[0].scripted == {2: "By the way, what is the interest rate?"}

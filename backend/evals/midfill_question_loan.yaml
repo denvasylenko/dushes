@@ -10,6 +10,8 @@ knows:
   - Consumer loan, 500 000, 36 months; employed, monthly income 120 000
   - The second message is only the question about the interest rate, word for word
 turns: 4
+scripted:
+  2: "By the way, what is the interest rate?"   # the second message is this, word for word
 # A question in the middle of filling: that turn is the answer (at most one sentence offering to go on), no card,
 # no pointing; the filling continues when the user continues (CPO, 2026-11-15).
 expect:
