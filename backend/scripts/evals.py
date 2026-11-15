@@ -1060,7 +1060,9 @@ def main(argv: list[str]) -> int:
                         tag=a.tag, repeat=a.repeat, agent_model=a.agent_model, research_model=a.research_model,
                         judge=a.judge_model, folder=a.folder, baseline_file=a.baseline or a.folder / "baseline.json",
                         no_testers=a.no_testers, max_usd=a.max_usd)
-        if a.set_name and not a.offline:
+        if a.set_name and report.get("stopped"):   # cut short by --max-usd: not a run of the set, nothing is recorded
+            print(f"set {a.set_name}: not recorded ({report['stopped']})", file=sys.stderr)
+        elif a.set_name and not a.offline:
             row = record_run(index_path, a.set_name, a.kind, report, Path(report["_path"]))
             print(f"set {a.set_name}: run {row['n']} recorded, {row['passed']}/{row['total']} with every check holding")
     except ScenarioError as e:
