@@ -5,7 +5,7 @@
  */
 import type { AguiEvent, RunAgentInput } from '../../../packages/agui-chat/src/types'
 
-export type Live = { kind: 'live'; user: string; reply: string; attrs?: Record<string, string>; options?: Record<string, unknown>; shadow?: boolean; upload?: boolean }
+export type Live = { kind: 'live'; user: string; reply: string; /** replies to later messages, by their text */ more?: Record<string, string>; attrs?: Record<string, string>; options?: Record<string, unknown>; shadow?: boolean; upload?: boolean }
 export type Card = { kind: 'card'; specimen: string }
 export type Link = { kind: 'link'; href: string; label: string }
 export interface Feature {
@@ -25,7 +25,37 @@ export interface Feature {
 const ANSWER = 'Your monthly income goes on the **Applicant** tab, in **Monthly income**. Enter what you take home after tax; include bonuses only if they are regular. If you are self-employed, use the average of the last 12 months.'
 const LONG = Array.from({ length: 6 }, (_, i) => `${i + 1}. ${['Pick the loan type: car, personal or mortgage.', 'Enter the amount and the term.', 'Fill in your name and email.', 'Tell us how you are employed.', 'Add your monthly income after tax.', 'Attach a payslip or tax certificate, and send the form.'][i]}`).join('\n')
 
+const TABLE = 'Here are the two loans side by side:\n\n| | Car loan | Personal loan |\n| --- | --- | --- |\n| Amount | up to $80,000 | up to $30,000 |\n| Term | 12 to 84 months | 6 to 60 months |\n| Rate from | 5.9% | 8.4% |\n| Deposit | from 10% | none |\n\nThe car loan is cheaper, but the car is its security.'
+const COMMANDS = [
+  { id: 'summary', label: 'Summarise the form', hint: 'What is filled and what is missing', send: 'Summarise the form' },
+  { id: 'person', label: 'Talk to a person', hint: 'Hand the conversation to the team', send: 'I want to talk to a person' },
+]
+
 export const FEATURES: Feature[] = [
+  {
+    id: 'layouts', title: 'Five layouts: bubble, side panel, inline, page, hero',
+    why: 'One tag, five places for the chat: a round launcher in the corner, a button with a side panel, a box in your page, the whole window, or only the message field until the first message.',
+    ref: { label: 'mode', href: '../../reference/agui-chat/' },
+    show: { kind: 'link', href: '../playground/', label: 'Switch layouts in the playground' },
+    code: { lang: 'HTML', text: '<agui-chat mode="bubble"></agui-chat>     <!-- a round launcher that grows into a chat window -->\n<agui-chat mode="floating"></agui-chat>   <!-- the default: a button and a side panel -->\n<agui-chat mode="floating" modal="off"></agui-chat>   <!-- the panel docks beside the page, which stays usable -->\n<agui-chat mode="inline"></agui-chat>     <!-- fills the box you put it in -->\n<agui-chat mode="page"></agui-chat>       <!-- the whole window -->\n<agui-chat mode="hero"></agui-chat>       <!-- only the field, then the chat grows in place -->' },
+  },
+  {
+    id: 'menu', title: 'The + menu and commands',
+    why: 'Everything that is not typing lives behind one +: files, your commands and your own rows. Typing / in an empty field opens the commands too.',
+    try: 'Tap + and pick a command, or type / in the empty field. "Start over" is a row this page added: it clears the chat.',
+    ref: { label: 'commands, menu', href: '../widget/#attachments' },
+    show: { kind: 'live', user: 'What can I do here besides typing?', reply: 'Tap **+** next to the message field: you can add a file, run a command, or start over. Typing **/** in the empty field opens the commands as well.', upload: true,
+      options: { commands: COMMANDS, menu: [{ id: 'restart', label: 'Start over', hint: 'Clear this chat' }] },
+      more: { 'Summarise the form': 'Filled: **loan type** (car) and **amount** ($18,000). Still missing: **term**, **monthly income** and your **email**.', 'I want to talk to a person': 'I have passed this conversation to the team. Someone will write to you here within a working day.' } },
+    code: { lang: 'JavaScript', text: "chat.options = {\n  commands: [   // the Commands row, and \"/\" in an empty field; `send` goes out as a message\n    { id: 'summary', label: 'Summarise the form', hint: 'What is filled and what is missing', send: 'Summarise the form' },\n    { id: 'person', label: 'Talk to a person', send: 'I want to talk to a person' },\n  ],\n  menu: [{ id: 'restart', label: 'Start over', hint: 'Clear this chat' }],   // your own rows\n}\nchat.addEventListener('agui:menu-action', (e) => {\n  if (e.detail.id === 'restart') { e.preventDefault(); chat.reset() }   // handled here, nothing is sent\n})" },
+  },
+  {
+    id: 'tables', title: 'Tables in an answer',
+    why: 'A comparison reads best as a table. When the agent answers with a Markdown table, the chat draws it; a wide one scrolls sideways inside the answer.',
+    ref: { label: 'Cards and answers', href: '../cards/' },
+    show: { kind: 'live', user: 'Compare the car loan and the personal loan', reply: TABLE },
+    code: { lang: 'HTML', text: '<agui-chat></agui-chat>   <!-- nothing to turn on: Markdown in an answer is drawn, tables included -->' },
+  },
   {
     id: 'reply', title: 'Reply to a part of an answer',
     why: 'Ask about one sentence, not the whole answer. The quote goes with the question, so the answer is about exactly that.',
@@ -113,18 +143,17 @@ export const FEATURES: Feature[] = [
   },
 ]
 
-/** Coming next: named only, no options until they ship. */
-export const PLANNED = ['A "+" menu in the composer', 'Slash commands', 'Submit after review: the form is sent only when the user taps the card']
-
 const nid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`
 
 /** A one-reply agent: the first message gets the feature's reply; later ones a short line. */
 export class OneReplyAgent {
   private runs = 0
-  constructor(private reply: string) {}
+  constructor(private reply: string, private more: Record<string, string> = {}) {}
   reset(): void { this.runs = 0 }
   run(input: RunAgentInput) {
-    const text = this.runs++ === 0 ? this.reply : 'This chat has one recorded reply. Tap **Replay** to start again.'
+    const last = [...(input.messages ?? [])].reverse().find((m) => m.role === 'user')
+    const said = typeof last?.content === 'string' ? last.content.trim() : ''
+    const text = this.runs++ === 0 ? this.reply : this.more[said] ?? 'This chat has one recorded reply. Tap **Replay** to start again.'
     const messageId = nid('m')
     const events: AguiEvent[] = [
       { type: 'RUN_STARTED', threadId: input.threadId, runId: nid('run') } as AguiEvent,

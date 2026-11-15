@@ -157,6 +157,7 @@ export default defineConfig({
 						{ label: 'Overview', slug: 'agents/ui-agent' },
 						{ label: 'Domain packs', slug: 'agents/ui-agent/domain-packs' },
 						{ label: 'Prefill', slug: 'agents/ui-agent/prefill' },
+						{ label: 'Fill a form with no UI', slug: 'agents/ui-agent/without-a-ui' },
 						{ label: 'Skills and tools', slug: 'agents/ui-agent/skills' },
 						{ label: 'Cards from blocks', slug: 'agents/ui-agent/cards-from-blocks' },
 						{ label: 'User documents', slug: 'agents/ui-agent/user-documents' },

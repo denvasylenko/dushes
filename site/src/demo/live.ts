@@ -27,10 +27,10 @@ function visitor(): string | null {
   }
 }
 
-/** The layout's hash for the pre-registered landing form (GET /agent/layouts/<form_id>); null when unavailable. */
-export async function landingLayout(runUrl: string): Promise<string | null> {
+/** The layout's hash for a form the host registered at start-up (GET /agent/layouts/<form_id>); null when unavailable. */
+export async function layoutHash(runUrl: string, formId: string): Promise<string | null> {
   try {
-    const url = new URL(runUrl.replace(/\/run\/?$/, '') + `/layouts/${LIVE_FORM_ID}`, location.href)
+    const url = new URL(runUrl.replace(/\/run\/?$/, '') + `/layouts/${formId}`, location.href)
     const r = await fetch(url)
     if (!r.ok) return null
     const j = await r.json()
@@ -40,19 +40,34 @@ export async function landingLayout(runUrl: string): Promise<string | null> {
   }
 }
 
+/** The landing form's hash. */
+export const landingLayout = (runUrl: string) => layoutHash(runUrl, LIVE_FORM_ID)
+
 export interface LiveDemo {
   transport: (input: RunAgentInput, ctx: { signal: AbortSignal }) => AsyncIterable<AguiEvent>
   /** true while runs go to the real agent */
   live: () => boolean
 }
 
-/** runUrl: the live agent; replay: the scripted agent; quickstart: the absolute link the fallback line shows;
- *  onFallback: called once when the demo switches to the replay. */
-export function liveDemo(runUrl: string, replay: AgentLike, quickstart: string, onFallback: () => void): LiveDemo {
+/** runUrl: the live agent; replay: the scripted agent, or null when there is no recording (the fallback is then the
+ *  line alone); quickstart: the absolute link the fallback line shows; onFallback: called once when the live agent
+ *  stops answering. */
+export function liveDemo(runUrl: string, replay: AgentLike | null, quickstart: string, onFallback: () => void): LiveDemo {
   let live = true
   const id = visitor()
+  const limitLine = replay ? LIMIT_LINE : "The live demo has reached today's limit."
+  const errorLine = replay ? ERROR_LINE : "The live demo can't be reached right now."
 
   async function* fallback(input: RunAgentInput, line: string, signal: AbortSignal): AsyncGenerator<AguiEvent> {
+    if (!replay) {   // nothing recorded: one run that says so
+      const messageId = `limit_${Date.now()}`
+      yield { type: 'RUN_STARTED', threadId: input.threadId, runId: input.runId } as AguiEvent
+      yield { type: 'TEXT_MESSAGE_START', messageId, role: 'assistant' } as AguiEvent
+      yield { type: 'TEXT_MESSAGE_CONTENT', messageId, delta: `${line} [Try it on your own form](${quickstart}).` } as AguiEvent
+      yield { type: 'TEXT_MESSAGE_END', messageId } as AguiEvent
+      yield { type: 'RUN_FINISHED', threadId: input.threadId, runId: input.runId } as AguiEvent
+      return
+    }
     let said = false
     for await (const ev of runAgent(replay, input, signal)) {
       yield ev
@@ -74,6 +89,7 @@ export function liveDemo(runUrl: string, replay: AgentLike, quickstart: string, 
 
   async function* transport(input: RunAgentInput, { signal }: { signal: AbortSignal }): AsyncGenerator<AguiEvent> {
     if (!live) {
+      if (!replay) { yield* fallback(input, errorLine, signal); return }
       yield* runAgent(replay, input, signal)
       return
     }
@@ -88,14 +104,14 @@ export function liveDemo(runUrl: string, replay: AgentLike, quickstart: string, 
     } catch (e) {
       if (signal.aborted) return
       toReplay()
-      yield* fallback(input, ERROR_LINE, signal)
+      yield* fallback(input, errorLine, signal)
       return
     }
     if (!res.ok || !res.body) {
       let limit = false
       try { limit = res.status === 429 && (await res.json()).code === 'demo_limit' } catch { /* not JSON */ }
       toReplay()
-      yield* fallback(input, limit ? LIMIT_LINE : ERROR_LINE, signal)
+      yield* fallback(input, limit ? limitLine : errorLine, signal)
       return
     }
     for await (const ev of sseEvents(res.body, signal)) {
