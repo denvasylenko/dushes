@@ -312,6 +312,7 @@ async def open_live(key: str, model: str, sdp: str, instructions: str):
 
 
 STREAM_RATE = 24000   # PCM16 mono, both ways, for a conversation whose audio passes through this server
+CONTRACT = 1          # the voice routes and events as CONTRACT.md describes them; a breaking change gets a new number
 
 
 async def open_live_stream(key: str, model: str, instructions: str):
@@ -342,12 +343,16 @@ class Talks:
     def __init__(self, config: VoiceConfig, *, title: str = "this site", key: Callable[[], str] | None = None,
                  opener: Callable | None = None, now: Callable[[], float] = time.time,
                  log_dir: str | os.PathLike | None = None,
+                 stop: Callable[[str], Any] | None = None,
                  person_of: Callable[[Any], str | None] | None = None,
                  spent_today: Callable[[str | None], float] | None = None,
                  on_cost: Callable[[str, float, float], None] | None = None):
         # person_of(headers): the host names the person of a request its own way (its session, a bearer token);
         # then no code and no pass are asked on any route. Without it, the pass from /unlock (or gate.issue) is.
         self.person_of = person_of
+        # stop(thread_id): ends the agent's turn in progress for that thread (FormGuide.stop). With it, speaking
+        # over an answer cancels the turn; without it the turn runs on and only its answer is not spoken.
+        self._stop = stop
         # a conversation is recorded when log_dir is given: one JSON line an event (what was heard, what the voice
         # said, the answers handed to it, the clock, the end and its cost), in <log_dir>/<day>_<talk>.jsonl
         self.log_dir = log_dir
@@ -388,7 +393,7 @@ class Talks:
         self._record(state, {"type": "started", "model": self.config.model, "t_ms": 0})
         state["reader"] = asyncio.create_task(self._read(sid))
         state["watch"] = asyncio.create_task(self._watch(sid))
-        return {"talk": talk.id, "sdp": answer,
+        return {"talk": talk.id, "sdp": answer, "contract": CONTRACT,
                 "limits": {"seconds": self.config.max_seconds, "silence_seconds": self.config.silence_seconds}}
 
     async def start_stream(self, person: str, thread_id: str) -> dict:
@@ -408,7 +413,8 @@ class Talks:
         self._record(state, {"type": "started", "model": self.config.model, "transport": "stream", "t_ms": 0})
         state["reader"] = asyncio.create_task(self._read(sid))
         state["watch"] = asyncio.create_task(self._watch(sid))
-        return {"talk": talk.id, "limits": {"seconds": self.config.max_seconds, "silence_seconds": self.config.silence_seconds},
+        return {"talk": talk.id, "contract": CONTRACT,
+                "limits": {"seconds": self.config.max_seconds, "silence_seconds": self.config.silence_seconds},
                 "audio": {"format": "pcm16", "rate": STREAM_RATE, "channels": 1}}
 
     async def feed(self, talk_id: str, pcm: bytes) -> None:
@@ -507,6 +513,16 @@ class Talks:
                         except Exception:  # noqa: BLE001
                             pass
                         continue
+                    if text and state.get("running"):
+                        # the person spoke over a turn in progress: that turn is stopped and its answer is not
+                        # spoken; what they said now is the request
+                        state["running"], state["skip_run"], state["waiting"] = False, True, None
+                        if self._stop is not None:
+                            try:
+                                self._stop(state["thread"])
+                            except Exception:  # noqa: BLE001 - a turn that cannot be stopped still loses its voice
+                                pass
+                        self._emit(state, {"type": "interrupted"})
                     state["pending"] = asked
                     state["answer"] = []
                     if text:
@@ -559,6 +575,12 @@ class Talks:
         if not state:
             return
         t = ev.get("type")
+        if t == "RUN_STARTED":
+            state["running"], state["skip_run"] = True, False
+        elif state.get("skip_run"):
+            return   # the rest of a turn the person spoke over: nothing of it is said
+        if t in ("RUN_FINISHED", "RUN_ERROR"):
+            state["running"] = False
         if t == "TEXT_MESSAGE_CONTENT":
             state["answer"].append((ev.get("messageId"), ev.get("delta", "")))
         elif t == "CUSTOM" and ev.get("name") == "text_retract":

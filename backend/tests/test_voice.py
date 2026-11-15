@@ -522,3 +522,44 @@ def test_a_host_names_the_person_and_keeps_the_money_itself():
     assert gate.person(gate.issue("c42")) == "c42"
     with pytest.raises(ValueError):
         gate.issue("not a plain word")
+
+
+def test_speaking_over_an_answer_stops_the_turn_and_its_voice():
+    """Task 2.6: the person speaks while the agent's turn is still running. The turn is stopped on the server, the
+    client is told, and nothing of that turn is spoken; what they said now is the request."""
+    async def go():
+        talks, live, _ = _talks()
+        stopped = []
+        talks._stop = stopped.append
+        await talks.start("anna", "o", "cut-thread")
+        events = talks.events("live_1")
+        talks.seen("cut-thread", {"type": "RUN_STARTED"})
+        talks.seen("cut-thread", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "The car loan starts from "})
+        live.push(type="session.input_transcript.delta", delta="Wait, not the car loan, the mortgage")
+        live.push(type="session.delegation.created", delegation={"id": "d9", "type": "delegation", "target": "client"})
+        seen = []
+        while not seen or seen[-1]["type"] != "heard":
+            seen.append(await asyncio.wait_for(events.__anext__(), 1))
+        assert [e["type"] for e in seen if e["type"] in ("interrupted", "heard")] == ["interrupted", "heard"]
+        assert stopped == ["cut-thread"]
+        # the stopped turn may still send its last events: none of it reaches the voice
+        talks.seen("cut-thread", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "18.9% a year."})
+        talks.seen("cut-thread", {"type": "RUN_FINISHED"})
+        await asyncio.sleep(0.01)
+        assert not [m for m in live.sent if m["type"] == "session.commentary.append"]
+        # the new request's own turn is spoken as usual
+        for ev in ({"type": "RUN_STARTED"}, {"type": "TEXT_MESSAGE_CONTENT", "messageId": "n", "delta": "A mortgage starts from 16.5%."},
+                   {"type": "RUN_FINISHED"}):
+            talks.seen("cut-thread", ev)
+        await asyncio.sleep(0.01)
+        said = [m["content"] for m in live.sent if m["type"] == "session.commentary.append"]
+        assert said == ["A mortgage starts from 16.5%."]
+        # speaking when no turn is running interrupts nothing
+        live.push(type="session.input_transcript.delta", delta="And for how many years")
+        live.push(type="session.delegation.created", delegation={"id": "d10", "type": "delegation", "target": "client"})
+        seen = []
+        while not seen or seen[-1]["type"] != "heard":
+            seen.append(await asyncio.wait_for(events.__anext__(), 1))
+        assert "interrupted" not in [e["type"] for e in seen] and stopped == ["cut-thread"]
+        await talks.end("live_1")
+    asyncio.run(go())

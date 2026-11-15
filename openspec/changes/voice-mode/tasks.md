@@ -15,9 +15,11 @@ Nothing here starts before the owner agrees to the estimate in design.md.
 - [x] 2.5 Quiet filling: the server marks a field-change card `quiet` when every row is a value the person said,
       goes into an empty field and is not a consent (`formguide.voice.quiet`); the lab page applies it without a tap
 - [x] 2.5c A spoken answer is short and makes no suggestion chips; every conversation is recorded (`log_dir`)
-- [ ] 2.5a An open card answered by spoken words; consent by tap only
+- [x] 2.5a A waiting card is asked aloud and answered by a spoken yes or no; a consent by the explicit yes to its
+      question (the CPO, 2026-11-15); silence does not end a conversation under a card
 - [ ] 2.5b Silent mode: no spoken output, short text answers, kept for the conversation
-- [ ] 2.6 Interruption stops the turn in progress
+- [x] 2.6 Speaking over a turn in progress stops it and its voice (`interrupted`); a spoken yes or no answers a
+      waiting card; the voice asks the card's question itself
 - [x] 2.7a The limits as logic: the day's budget, a person's own, time and money per conversation, one at once,
       silence (`formguide.voice.Meter`)
 - [x] 2.7b The limits enforced on a live session (the provider's usage events, closing the session)

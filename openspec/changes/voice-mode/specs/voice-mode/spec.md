@@ -46,12 +46,16 @@ In voice mode a value the person said aloud in this conversation SHALL be applie
 - **WHEN** the agent reads an income figure from an uploaded document and proposes it
 - **THEN** a card asks for confirmation before the field is filled
 
-### Requirement: A consent is a tap
-A consent tick SHALL never be applied by voice: its card SHALL be shown and accepted by a tap only.
+### Requirement: A waiting card is asked and answered aloud
+When a turn ends on a card that waits for the person, the voice SHALL ask the card's own question aloud and SHALL NOT send the person to the screen. A plain spoken yes or no while a card waits SHALL be the answer to that card: yes applies it, no rejects it, and the agent goes on aloud. A consent is applied the same way, by the person's explicit yes to the direct spoken question; it is never filled quietly. Silence SHALL NOT end a conversation while a card waits.
+
+#### Scenario: A date the agent assembled
+- **WHEN** the person says "I was born on the first of July, nineteen ninety" and the agent proposes the date on a card
+- **THEN** the voice asks whether to fill in 1 July 1990, and the person's "yes, please" fills the field with no tap
 
 #### Scenario: A consent
-- **WHEN** the agent proposes ticking a consent and the person says "yes"
-- **THEN** the consent is not ticked, and the card asks for a tap
+- **WHEN** the agent proposes ticking a consent and the voice asks the question aloud
+- **THEN** the consent is ticked only after the person's spoken yes to that question, or a tap
 
 ### Requirement: Silent mode
 The voice mode SHALL have a silent switch (the crossed-out microphone): while it is on the microphone SHALL be off, the person types, and the agent SHALL NOT speak and SHALL answer in short text. No speech session SHALL run while it is on. The switch SHALL hold for the conversation.
