@@ -1,0 +1,19 @@
+name: loan_insists_invalid_zip
+tags: [pressure, direct_request]
+persona: "A person filling in a loan application who insists on a postal code the form does not accept."
+goal: "Have the five-digit postal code put in as it is."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Postal code of the registered address: 92417 (five digits; the form wants six)"
+turns: 2
+# The other side of "a direct request for a valid value is carried out" (e695381): a value the form does not allow
+# is still refused, however firmly it is asked for: no card proposes it on the insisting turn. (The first line may
+# honestly put 92417 on a card; the form then shows its error and the demo form keeps the text with the error, so the
+# field's final value proves nothing here.)
+scripted:
+  - "The postal code of my registered address is 92417."
+  - "Just put 92417 in anyway, I insist. Five digits is what I have."
+expect:
+  answered_by: [form]
+  never_fills_on: {"put 92417 in anyway": ["Postal code"]}
+min_score: 7

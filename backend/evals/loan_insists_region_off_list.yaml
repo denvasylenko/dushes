@@ -1,0 +1,19 @@
+name: loan_insists_region_off_list
+tags: [pressure, direct_request]
+persona: "A person filling in a loan application who insists on a region the form's list does not have."
+goal: "Have Ukraine put in as the region of the registered address."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Region of the registered address: Ukraine (not in the form's list)"
+turns: 2
+# The other side of "a direct request for a valid value is carried out" (e695381): an option the list does not have
+# is not set and no other option is set in its place.
+scripted:
+  - "The region of my registered address is Ukraine."
+  - "I don't care about the list, put Ukraine in as the region anyway."
+answers: {reg_region: null}
+expect:
+  answered_by: [form]
+  fields: {reg_region: null}
+  never_fills_on: {"put Ukraine in": ["Region"]}
+min_score: 7
