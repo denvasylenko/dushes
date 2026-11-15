@@ -4,8 +4,9 @@
         [--only-differing] [--per-scenario 1] [--seed 7]
 
 Each run of each report becomes conv-NN.md (shuffled; NN is its only label): the scenario's goal, what the guest
-knows, what the site and its documents say (the facts the scorer checks truth against), then the conversation as
-logged, without the checks and without any score. rubric.md holds the rubric text and how to write scores.md
+knows, what the site, its documents and the form say (the facts the scorer checks truth against; what the scenario
+expects is left out, it would hand the scorer the answer), then the conversation as logged, without the checks and
+without any score. rubric.md holds the rubric text and how to write scores.md
 (label, score 0 to 10, one line on what cost points). The key (label -> report, scenario, run, agent model, whether
 the code checks passed) is written to --key (default: scripts/runs/blind-key-<time>.json), never into the folder:
 the author of the run keeps it and joins the scores afterwards with --join.
@@ -55,16 +56,38 @@ def runs_of(report: dict, path: Path) -> list[dict]:
 
 
 def page_facts(sc) -> str:
-    """What the scenario's page says (the site map's own text): the facts a scorer checks truth against."""
+    """Everything the assistants could have read: every page of the scenario's site (the site map's own text), the
+    site's and the form's documents, and the form's own options, notes and computed values at the start. These are
+    the facts a scorer checks truth against."""
     import yaml
     sys.path.insert(0, str(HERE))
+    from demo.mock_forms import FORMS
     from demo.mock_forms.lab import site_map
     pages = (site_map() if sc.site == "/lab" else yaml.safe_load((HERE / "demo" / "site.yaml").read_text())).get("pages") or []
-    page = next((x for x in pages if x.get("path") == sc.page), None)
-    if not page:
-        return ""
-    parts = [f"- {x.get('title')}: {x.get('text')}" for k in ("sections", "tabs", "accordions") for x in page.get(k) or [] if x.get("text")]
-    return f"The page {page.get('path')} ({page.get('title')}): {page.get('description') or ''}\n" + "\n".join(parts)
+    if sc.site == "/lab":   # the Lab has a page per unrelated business: only the scenario's own page and the home page
+        pages = [x for x in pages if x.get("path") in (sc.page, "/")]
+    out = [evals.facts({x["path"]: x for x in pages}, sc)]
+    form = FORMS.get(sc.form) if sc.form else None
+    if form:
+        cfg, lines = form.compute(sc.values or None), []
+        for name, pr in (cfg.get("props") or {}).items():
+            bits = [str(pr.get("label") or name)]
+            if pr.get("options"):
+                bits.append("options: " + ", ".join(str(o.get("name") or o.get("label") or o.get("id")) for o in pr["options"][:14]))
+            for k in ("hint", "note", "description", "error"):
+                if pr.get(k):
+                    bits.append(f"{k}: {pr[k]}")
+            v = (cfg.get("state") or {}).get(name)
+            if v not in (None, "", [], {}, False):
+                bits.append(f"value: {json.dumps(v, ensure_ascii=False)}")
+            if len(bits) > 1:
+                lines.append("- " + "; ".join(bits))
+        notes = (form.domain or {}).get("glossary") or {}
+        hints = (form.domain or {}).get("flow_hints") or []
+        out.append(f"The form {sc.form} (what its fields offer and show at the start):\n" + "\n".join(lines[:80])
+                   + ("\nThe form's notes: " + "; ".join(f"{k}: {v}" for k, v in notes.items()) if notes else "")
+                   + ("\nThe form's rules of order: " + " ".join(hints) if hints else ""))
+    return "\n\n".join(x for x in out if x.strip())[:14000]
 
 
 def conversation(text: str) -> str:
@@ -104,8 +127,7 @@ def pack(reports: list[Path], out: Path, key: Path, only_differing: bool, per: i
         sc = scenarios.get(x["scenario"])
         head = (f"# {label}\n\nGoal of the guest: {sc.goal}\nWhat the guest knows: {'; '.join(sc.knows)}\n"
                 + (f"The true answer (from the documents): {sc.gold}\n" if sc.gold else "")
-                + f"\n## What the page says (true; anything about the business that is not here or in the form is unsupported)\n\n{page_facts(sc)}\n"
-                + f"\n## What the scenario expects\n\n{json.dumps({k: v for k, v in (('says', sc.says), ('never_says', sc.never_says), ('final values', sc.fields), ('cards', sc.cards)) if v}, ensure_ascii=False)}\n"
+                + f"\n## What the site, its documents and the form say (true; anything about the business that is not here is unsupported)\n\n{page_facts(sc)}\n"
                 ) if sc else f"# {label}\n"
         (out / f"{label}.md").write_text(head + "\n## Conversation\n\n" + conversation(path.read_text()) + "\n")
         keys[label] = {k: x[k] for k in ("report", "scenario", "run", "agent_model", "commit", "passed_checks")}

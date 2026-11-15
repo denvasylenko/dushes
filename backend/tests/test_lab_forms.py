@@ -2,6 +2,7 @@
 filled state, and every lab scenario (evals/*.yaml on the Lab site) names a lab form, a page and real fields."""
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -325,3 +326,25 @@ def test_the_guest_without_a_model_answers_cards_from_the_scenario(tmp_path):
     assert g.next("", first=False).done
     with pytest.raises(evals.ScenarioError, match="scripted"):   # a scenario with no guest lines cannot run without a guest model
         evals.run([next(x.name for x in evals.load_all() if not x.scripted)], agent_model="x", no_testers=True)
+
+
+def test_a_live_guest_conversation_is_kept_between_steps(tmp_path, monkeypatch):
+    """guest_step.py: new / say / done; the visit survives in the state file (the server keeps the thread)."""
+    import evals
+    import guest_step
+    import harness_client
+    http = evals.offline_client(tmp_path / "data")
+    monkeypatch.setattr(guest_step.httpx, "Client", lambda **_kw: http)
+    monkeypatch.setattr(guest_step, "RUNS", tmp_path)
+    state, out = tmp_path / "live" / "c1.json", tmp_path / "live" / "run.json"
+    name = "pure_question_rule"
+    assert guest_step.main(["new", "--state", str(state), "--agent-model", "offline", name]) == 0
+    assert guest_step.main(["say", "--state", str(state), "Can I book for a Sunday?"]) == 0
+    meta, v = guest_step.load(state)
+    assert meta["scenario"] == name and v.said[0][1] == "Can I book for a Sunday?" and any(str(x).startswith("\U0001f916") for x in v.log)
+    assert isinstance(v.form, harness_client.Form) and v.form.form_id == "barber_booking"
+    assert guest_step.main(["say", "--state", str(state), "ok, thanks"]) == 0
+    assert guest_step.main(["done", "--state", str(state), "--out", str(out)]) == 0
+    rep = json.loads(out.read_text())
+    assert rep["guest"] == "live" and rep["judged"] is False and rep["scenarios"][0]["name"] == name
+    assert (tmp_path / f"eval-{name}-live-c1.txt").read_text().count("\U0001f464") == 2

@@ -109,3 +109,9 @@ is over `--max-usd`). Scores from 0 to 10 are given afterwards from the logs by 
 `scripts/blind_pack.py <reports> --out <folder>` writes shuffled `conv-NN.md` files with no model or commit in them and
 keeps the key; `--join scores.md --key <key>` gives the means per model. These scores start a new series: they are not
 comparable with the earlier rounds judged by a model.
+
+Live pressure without a user model: `scripts/guest_step.py` (`serve`, then `new` / `say` / `done` with `--state`), the same
+commands as Herefront QA's `assistant_step.py`. A QA session (or its subagents, one per scenario) writes each guest line
+after reading the answer; cards go by the scenario's rule, `--answer` types into a free-text card, `say --max-usd` is the
+spend lock, and `done --out` appends the conversation to a report that `blind_pack.py` takes as is. Stress and red-team
+scenarios are played this way; the other scenarios run on their scripted lines.

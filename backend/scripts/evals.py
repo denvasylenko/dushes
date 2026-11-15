@@ -832,11 +832,16 @@ def offline_client(data_dir: Path) -> httpx.Client:
 
 
 def agent_client(data_dir: Path, agent: Any, research: Any = None) -> httpx.Client:
-    """The demo (demo/formguide.yaml: packs, skills, cards, Main Street at /site, the Form Lab at /lab) in-process,
+    """The demo in-process with only the agent's models replaced (see agent_app)."""
+    from fastapi.testclient import TestClient
+    return TestClient(agent_app(data_dir, agent, research))
+
+
+def agent_app(data_dir: Path, agent: Any, research: Any = None):
+    """The demo (demo/formguide.yaml: packs, skills, cards, Main Street at /site, the Form Lab at /lab) as an app,
     with only the agent's models replaced: the model benchmark compares agents on the same everything else.
     agent / research: a model spec, "provider:model" (init_chat_model) or a JSON object as in formguide.yaml."""
     from fastapi import APIRouter
-    from fastapi.testclient import TestClient
 
     from demo.mock_forms import FORMS
     from demo.mock_forms.lab import site_map
@@ -882,7 +887,7 @@ def agent_client(data_dir: Path, agent: Any, research: Any = None) -> httpx.Clie
         guide.add_document("site", doc.name, doc.read_bytes())
     for prefix, sm in (("/site", SiteMap.load(HERE / "demo" / "site.yaml")), ("/lab", SiteMap.load(site_map()))):
         app.include_router(create_dushes_router(Dushes(guide, sm, suggestions=True, form_for=form_for)), prefix=prefix)
-    return TestClient(app)
+    return app
 
 
 # ===================================================================== main
