@@ -40,7 +40,7 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page",
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -85,6 +85,7 @@ class Scenario:
     red_team: bool = False                                  # the user tries to break the assistant's rules
     values: dict[str, Any] = field(default_factory=dict)    # what the user typed into the form before the chat
     ui: dict[str, Any] = field(default_factory=dict)        # merged into state.ui, e.g. {form_visible: false}: a form shown only in the chat
+    no_cards_on: list[str] = field(default_factory=list)    # regexes of user messages: the reply to such a message shows no card
     never_points: bool = False                              # no ui_directive event (nothing on the page is opened or focused)
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
     file: str = ""
@@ -136,6 +137,7 @@ def load_scenario(path: Path) -> Scenario:
                     documents=raw.get("documents") is True, tags=[str(x) for x in raw.get("tags") or []],
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
                     ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")),
+                    no_cards_on=[str(x) for x in exp.get("no_cards_on_turns") or []],
                     fields=dict(exp.get("fields") or {}), file=path.name, site=_site(start), tools=[str(x) for x in exp.get("tools") or []],
                     never_tools=[str(x) for x in exp.get("never_tools") or []], never_cards=[str(x) for x in exp.get("never_cards") or []],
                     never_repeat_questions=bool(exp.get("never_repeat_questions")),
@@ -385,6 +387,22 @@ def judge(model: Any, sc: Scenario, transcript: str, known: str = "") -> Verdict
 # ===================================================================== checks without a model
 
 
+def card_steps_after(log: list[str], pattern: str) -> tuple[list[str], bool]:
+    """The card steps (ask_user, propose_changes, focus_field, a question or field card) in the agent's reply to each
+    user message matching `pattern`, and whether such a message was sent at all."""
+    import re
+    led, seen, on = [], False, False
+    for entry in log:
+        for line in str(entry).splitlines():
+            t = line.strip()
+            if t.startswith("\U0001f464"):
+                on = bool(re.search(pattern, t, re.I))
+                seen = seen or on
+            elif on and (re.match(r"\u2699\ufe0f? ?(ask_user|propose_changes|focus_field)\(", t) or t.startswith(("\u2753", "\U0001f0cf"))):
+                led.append(t[:80])
+    return led, seen
+
+
 def checks(sc: Scenario, visit: Visit) -> list[dict]:
     """Each check: {check, ok, detail, cap}. Computed from the server's conversation and the visit."""
     replies = [m.get("content", "") for m in visit.messages if m.get("role") == "assistant"]
@@ -472,6 +490,10 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         out.append({"check": f"calls {tool}", "ok": tool in called, "detail": f"called: {sorted(called)}"[:300], "cap": CAP_OTHER})
     for tool in sc.never_tools:
         out.append({"check": f"never calls {tool}", "ok": tool not in called, "detail": f"called: {sorted(called)}"[:300], "cap": CAP_OTHER})
+    for pattern in sc.no_cards_on:   # a pure question in the middle of filling: the answer, no card, no pointing
+        led, seen = card_steps_after(visit.log, pattern)
+        out.append({"check": f"no card on the turn asking /{pattern}/", "ok": seen and not led,
+                    "detail": "; ".join(led)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
     if sc.never_points:   # a form the person does not see: nothing on the page is opened, scrolled to or focused
         n = getattr(visit.form, "directives", 0) if visit.form else 0
         out.append({"check": "never points at a place on the page (ui_directive)", "ok": n == 0, "detail": f"{n} ui_directive events", "cap": CAP_OTHER})

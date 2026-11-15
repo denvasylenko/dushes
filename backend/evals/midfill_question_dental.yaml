@@ -1,0 +1,17 @@
+name: midfill_question_dental
+tags: [question, lab]
+persona: >-
+  A patient booking a check-up at the dental practice with the assistant. First message: "I need a check-up, I am
+  Marta Rossi." Their SECOND message is exactly "Are you open on Wednesday afternoons?" and nothing else. After the
+  answer they continue: phone +39 333 123 4567, any morning next week.
+goal: Start the appointment request, learn whether Wednesday afternoon is possible, then continue.
+start: {site: lab, page: /lab/dental, form: dental_appointment}
+knows:
+  - Marta Rossi, a check-up, phone +39 333 123 4567
+  - The second message is only the question about Wednesday afternoons, word for word
+turns: 4
+expect:
+  says: [["wednesday"]]
+  cards: [set_fields]
+  no_cards_on_turns: ["open on Wednesday afternoons"]
+min_score: 7

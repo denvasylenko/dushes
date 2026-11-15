@@ -2,3 +2,5 @@ pure_question_rate
 pure_question_field_meaning
 pure_question_rule
 heldout_pure_question_lab
+midfill_question_loan
+midfill_question_dental

@@ -1,0 +1,20 @@
+name: midfill_question_loan
+tags: [question]
+persona: >-
+  Someone filling in a consumer loan application with the assistant. First message: they want a consumer loan of
+  500 000 for 36 months. Their SECOND message is exactly "By the way, what is the interest rate?" and nothing else.
+  After the answer they go on with the form (they are employed, a monthly income of 120 000).
+goal: Start the application, learn the interest rate on the way, then continue filling.
+start: {page: /apply, form: loan_application}
+knows:
+  - Consumer loan, 500 000, 36 months; employed, monthly income 120 000
+  - The second message is only the question about the interest rate, word for word
+turns: 4
+# A question in the middle of filling: that turn is the answer (at most one sentence offering to go on), no card,
+# no pointing; the filling continues when the user continues (CPO, 2026-11-15).
+expect:
+  answered_by: [form]
+  says: [["21.9", "21,9"]]
+  cards: [set_fields]
+  no_cards_on_turns: ["what is the interest rate"]
+min_score: 7

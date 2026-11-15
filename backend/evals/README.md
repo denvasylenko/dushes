@@ -41,6 +41,7 @@ Every failed check caps the score: a failed `never_says` at 3, any other at 5, s
 | `reaches` | the visit ends on another page |
 | `tools` / `never_tools` | a tool was not called / was called (a recipe's own tool; no researcher when the site knows) |
 | `never_points_at_the_page` | no `ui_directive` event: nothing on the page is opened, scrolled to or focused (a form the person does not see) |
+| `no_cards_on_turns` | regexes of user messages: the reply to such a message has no `ask_user`, `propose_changes` or `focus_field` and no question or field card (a pure question in the middle of filling); fails too when no such message was sent |
 | `sources` | the source chips do not cite this document or section |
 | `never_repeat_questions` | a question is asked twice, or asks about a field an earlier card filled |
 | `never_suggests` | a quick reply offers what is already done ("Pick a day" after a booking) |

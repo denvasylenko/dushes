@@ -291,3 +291,15 @@ def test_the_evals_judge_uses_the_packages_rubric_and_reports_its_version(tmp_pa
     report, _failed = evals.run(["opening_hours"], offline=True)
     assert report["rubric_version"] == judge.RUBRIC_VERSION
     assert [p.name.endswith("-offline.json") for p in tmp_path.glob("evals-*.json")] == [True]   # an offline report never looks live
+
+
+def test_no_card_on_the_turn_of_a_pure_question_is_read_from_the_log():
+    import evals
+    log = ["\n\U0001f464 a consumer loan of 500 000", "   \u2699 propose_changes({})", "   \U0001f0cf card shown", "\U0001f916 Set.",
+           "\n\U0001f464 By the way, what is the interest rate?", "\U0001f916 21.9% a year.",
+           "\n\U0001f464 ok, I am employed", "   \u2699 ask_user({})", "   \u2753 question card: income?"]
+    assert evals.card_steps_after(log, "what is the interest rate") == ([], True)
+    led, seen = evals.card_steps_after(log, "I am employed")
+    assert seen and len(led) == 2
+    assert evals.card_steps_after(log, "never said") == ([], False)
+    assert evals.load_all(["midfill_question_loan"])[0].no_cards_on == ["what is the interest rate"]
