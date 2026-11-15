@@ -36,8 +36,8 @@ export const mdInline = (s: string): string => esc(s)
   .replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>')
   .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
 
-/** Minimal markdown: paragraphs, line breaks, **bold**, *italic*, `code`, [links](https://...), "- " lists and
- *  fenced code blocks (```lang, or ```lang title="file") with a copy button. An unclosed fence (text still streaming)
+/** Minimal markdown: paragraphs, line breaks, **bold**, *italic*, `code`, [links](https://...), "- " lists, tables
+ *  (a header, a row of dashes, the rows; wide ones scroll sideways in their own box) and fenced code blocks (```lang, or ```lang title="file") with a copy button. An unclosed fence (text still streaming)
  *  is shown as code too. */
 export function md(src: string, labels: { copy?: string } = {}): string {
   const inline = mdInline
@@ -47,7 +47,16 @@ export function md(src: string, labels: { copy?: string } = {}): string {
   let code: string[] | null = null
   let lang = ''
   let title = ''
-  const flushPara = () => { if (para.length) out.push(`<p>${para.map(inline).join('<br>')}</p>`); para = [] }
+  const cells = (line: string): string[] => line.trim().replace(/^\||\|$/g, '').split('|')
+  const flushPara = () => {
+    // a table: a header row, a row of dashes (":" at its end: that column is right-aligned), then the rows
+    if (para.length > 1 && para[0].includes('|') && /^[\s|:-]*-[\s|:-]*$/.test(para[1])) {
+      const right = cells(para[1]).map((c) => (/:\s*$/.test(c) ? ' style="text-align:right"' : ''))
+      const row = (line: string, tag: string): string => `<tr>${cells(line).map((c, i) => `<${tag}${right[i] ?? ''}>${inline(c.trim())}</${tag}>`).join('')}</tr>`
+      out.push(`<div class="tbl"><table>${row(para[0], 'th')}${para.slice(2).map((l) => row(l, 'td')).join('')}</table></div>`)
+    } else if (para.length) out.push(`<p>${para.map(inline).join('<br>')}</p>`)
+    para = []
+  }
   const flushList = () => { if (list) out.push(`<ul>${list.map((x) => `<li>${inline(x)}</li>`).join('')}</ul>`); list = null }
   const flushCode = () => {
     if (!code) return

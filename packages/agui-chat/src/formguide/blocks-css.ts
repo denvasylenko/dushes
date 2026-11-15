@@ -127,4 +127,39 @@ export const BLOCKS_CSS = `
 .bk-ico { width: 20px; height: 20px; flex: none; display: grid; place-items: center; } .bk-ico svg { width: 20px; height: 20px; }
 .bk-row .bk-ico { color: var(--agui-ink-3); }
 .bk-hr { border: 0; border-top: 1px solid var(--agui-line); margin: 0; }
+
+/* the month grid, a range's value row and the review card's marks: drawn by the on-demand file only (month.ts, typed.ts, review.ts) */
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cal-title { border: 0; background: none; font: 600 15px/1.2 var(--agui-font); color: var(--agui-ink); padding: 6px 8px; border-radius: var(--agui-radius-sm);
+  cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.cal-title:hover { background: var(--agui-soft); }
+.cal-caret { color: var(--agui-link); font-weight: 600; transition: transform .2s; }
+.cal[data-mode=years] .cal-caret, .cal[data-mode=months] .cal-caret { transform: rotate(90deg); }
+.cal-navs { display: inline-flex; gap: 2px; }
+.cal-nav { width: 36px; height: 36px; border: 0; border-radius: var(--agui-radius-pill); background: none; color: var(--agui-link); cursor: pointer;
+  display: grid; place-items: center; }
+.cal-nav:hover { background: var(--agui-soft); }
+.cal-nav:disabled { color: var(--agui-ink-3); opacity: .5; cursor: default; background: none; }
+.cal-nav svg { width: 14px; height: 14px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.cal-wd { font-size: 11px; font-weight: 600; color: var(--agui-ink-2); padding: 4px 0; }
+.cal-d { aspect-ratio: 1; max-height: 40px; border: 0; border-radius: var(--agui-radius-pill); background: none; color: var(--agui-ink); font: 15px/1 var(--agui-font);
+  cursor: pointer; display: grid; place-items: center; transition: background .15s; }
+.cal-d:hover { background: var(--agui-soft); }
+.cal-d.today { color: var(--agui-link); font-weight: 600; }
+.cal-d.on { background: var(--agui-calendar-on-bg, var(--agui-accent)); color: var(--agui-calendar-on-ink, var(--agui-on-accent)); font-weight: 600; }
+.cal-d:disabled { color: var(--agui-ink-3); opacity: .45; cursor: default; background: none; }
+.cal-years { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cal-y { min-height: 40px; border: 0; border-radius: var(--agui-radius-sm); background: var(--agui-soft); color: var(--agui-ink); font: 15px/1 var(--agui-font); cursor: pointer; }
+.cal-y.on { background: var(--agui-accent); color: var(--agui-on-accent); font-weight: 600; }
+.cal-y:disabled { opacity: .4; cursor: default; }
+.range-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.range-v { font-weight: 600; }
+.range-p { font-size: 17px; font-weight: 600; }
+.stepper .range-v { min-width: 44px; padding: 0 4px; text-align: center; font-size: 17px; font-variant-numeric: tabular-nums; }
+.rev-s { cursor: pointer; align-items: center; }
+.rev-s .dot { width: 14px; height: 14px; border: 1.5px dashed var(--agui-ink-3); border-radius: var(--agui-radius-pill); flex: none; }
+.rev-s .okmark { width: 14px; color: var(--agui-ok); font-style: normal; font-weight: 700; flex: none; }
+.row.issue .sev { width: 14px; font-style: normal; font-weight: 700; flex: none; color: var(--agui-ink-2); }
+.row.issue.fixed .sev { color: var(--agui-ok); }
 `

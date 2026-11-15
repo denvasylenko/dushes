@@ -27,4 +27,18 @@ describe('md: fenced code blocks', () => {
     expect(html).toContain('<p>In Python:</p>')
     expect(html).toContain('<code>guide = 1</code>')
   })
+
+  it('draws a table: a header, right-aligned columns from the dashes row, inline marks in cells, in its own scrolling box', () => {
+    const html = md('**Pick:**\n\n| Model | Torque | Price |\n|---|---:|---:|\n| DD-1840 | 105 Nm | \u20ac219 |\n| **DD-1860** | 130 Nm | \u20ac289 |\n\nDone.')
+    const box = document.createElement('div'); box.innerHTML = html
+    const table = box.querySelector('.tbl table')!
+    expect([...table.querySelectorAll('th')].map((x) => x.textContent)).toEqual(['Model', 'Torque', 'Price'])
+    expect([...table.querySelectorAll('tr')].length).toBe(3)                       // the dashes row is not a row
+    expect(table.querySelectorAll('td')[1].getAttribute('style')).toBe('text-align:right')
+    expect(table.querySelector('td b')!.textContent).toBe('DD-1860')
+    expect(box.textContent).not.toContain('|')                                     // no raw pipes left
+    expect(box.querySelectorAll('p').length).toBe(2)                               // the text around it stays text
+    expect(md('a | b is not a table\nnext line')).not.toContain('<table')         // a pipe alone does not make one
+    expect(md('| x | <img src=y onerror=1> |\n|---|---|\n| 1 | 2 |')).not.toContain('<img')   // cells are escaped
+  })
 })

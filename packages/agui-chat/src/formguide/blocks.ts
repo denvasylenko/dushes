@@ -21,10 +21,10 @@ import { BLOCKS_CSS } from './blocks-css'
 
 // the blocks' styles go into each shadow root a card from blocks lands in: once, before the theme (the theme wins)
 let sheet: CSSStyleSheet | null | undefined
-const styled = new WeakSet<Node>()
+const adopted = new WeakSet<Node>()
 function adopt(root: Node): void {
-  if (styled.has(root) || !(root instanceof ShadowRoot)) return
-  styled.add(root)
+  if (adopted.has(root) || !(root instanceof ShadowRoot)) return
+  adopted.add(root)
   try {
     sheet ??= new CSSStyleSheet()
     if (!sheet.cssRules.length) sheet.replaceSync(BLOCKS_CSS)
@@ -37,6 +37,9 @@ function adopt(root: Node): void {
     if (base) base.after(style); else root.prepend(style)
   }
 }
+/** What the on-demand file draws outside a blocks card (a calendar, a typed answer, the review card) gets the same styles. */
+export function styled<T extends HTMLElement | null>(el: T): T { if (el) styleWhenShown(el); return el }
+
 /** Style the card where it is shown: now if it is in the chat already, else as soon as it gets there. */
 function styleWhenShown(card: HTMLElement): void {
   const root = card.getRootNode()

@@ -111,6 +111,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .notice { text-align: center; font-size: 12px; color: var(--agui-ink-2); margin: 0 0 16px; }
 .error { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--agui-danger-ink, var(--agui-danger)); font-size: 13px; margin: 0 0 16px; }
 /* the actions under an answer: quiet icons; on a computer they show on hover (the latest answer keeps them) */
+/* a table in an answer: its own box that scrolls sideways when it is wider than the chat; hairlines, no grid */
+.tbl { overflow-x: auto; margin: 8px 0; }
+.tbl table { border-collapse: collapse; min-width: 100%; font-size: 15px; line-height: 1.35; }
+.tbl th, .tbl td { padding: 8px 16px 8px 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--agui-line); }
+.tbl th { font-size: 13px; font-weight: 600; color: var(--agui-ink-2); white-space: nowrap; }
+.tbl td { overflow-wrap: normal; word-break: normal; }   /* a word is never broken in a cell: a wide table scrolls */
+.tbl td:first-child { font-weight: 500; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl :is(th, td):last-child { padding-right: 0; }
 .msg-acts { display: flex; gap: 2px; margin: 8px 0 0 -8px; }
 .msg-acts .act { width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--agui-ink-3); display: grid; place-items: center; cursor: pointer; }
 .msg-acts .act:hover { background: var(--agui-soft); color: var(--agui-ink); }
@@ -128,6 +137,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   border: 1px solid var(--agui-line-2); background: var(--agui-panel-bg, var(--agui-bg)); color: var(--agui-ink-2); display: grid; place-items: center; cursor: pointer;
   box-shadow: 0 4px 14px -6px var(--agui-shadow); animation: fade-up .18s var(--agui-ease) both; }
 .jump[hidden] { display: none; }
+.jump::before { content: ''; position: absolute; inset: -4px; }   /* a 44 px target around the 36 px button */
 .jump.over { visibility: hidden; animation: none; }   /* out of the tab order too */
 .jump-ico { display: grid; }
 @keyframes fade-up { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -287,30 +297,6 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 /* our calendar (calendar.ts): a month grid, round days, the accent for the chosen one, a ring for today */
 .cal-slot { display: contents; }   /* the month grid arrives with the blocks script */
 .cal { margin-top: 10px; border: 1px solid var(--agui-line); border-radius: var(--agui-radius); padding: 10px; background: var(--agui-bg); max-width: 340px; }
-.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.cal-title { border: 0; background: none; font: 600 15px/1.2 var(--agui-font); color: var(--agui-ink); padding: 6px 8px; border-radius: var(--agui-radius-sm);
-  cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
-.cal-title:hover { background: var(--agui-soft); }
-.cal-caret { color: var(--agui-link); font-weight: 600; transition: transform .2s; }
-.cal[data-mode=years] .cal-caret, .cal[data-mode=months] .cal-caret { transform: rotate(90deg); }
-.cal-navs { display: inline-flex; gap: 2px; }
-.cal-nav { width: 36px; height: 36px; border: 0; border-radius: var(--agui-radius-pill); background: none; color: var(--agui-link); cursor: pointer;
-  display: grid; place-items: center; }
-.cal-nav:hover { background: var(--agui-soft); }
-.cal-nav:disabled { color: var(--agui-ink-3); opacity: .5; cursor: default; background: none; }
-.cal-nav svg { width: 14px; height: 14px; }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
-.cal-wd { font-size: 11px; font-weight: 600; color: var(--agui-ink-2); padding: 4px 0; }
-.cal-d { aspect-ratio: 1; max-height: 40px; border: 0; border-radius: var(--agui-radius-pill); background: none; color: var(--agui-ink); font: 15px/1 var(--agui-font);
-  cursor: pointer; display: grid; place-items: center; transition: background .15s; }
-.cal-d:hover { background: var(--agui-soft); }
-.cal-d.today { color: var(--agui-link); font-weight: 600; }
-.cal-d.on { background: var(--agui-calendar-on-bg, var(--agui-accent)); color: var(--agui-calendar-on-ink, var(--agui-on-accent)); font-weight: 600; }
-.cal-d:disabled { color: var(--agui-ink-3); opacity: .45; cursor: default; background: none; }
-.cal-years { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.cal-y { min-height: 40px; border: 0; border-radius: var(--agui-radius-sm); background: var(--agui-soft); color: var(--agui-ink); font: 15px/1 var(--agui-font); cursor: pointer; }
-.cal-y.on { background: var(--agui-accent); color: var(--agui-on-accent); font-weight: 600; }
-.cal-y:disabled { opacity: .4; cursor: default; }
 .date-face { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
 .date-face .ph { color: var(--agui-ink-3); }
 .date-face .ico { color: var(--agui-ink-2); flex: none; }
@@ -678,13 +664,9 @@ button.bubble-q { cursor: pointer; }
 .strip .btn.link { margin-top: 6px; }
 .slots { margin-top: 8px; }
 .range input[type=range] { width: 100%; margin: 4px 0; }
-.range-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.range-v { font-weight: 600; }
-.range-p { font-size: 17px; font-weight: 600; }
 .stepper { display: inline-flex; align-items: center; gap: 4px; }
 .stepper .btn { width: 36px; height: 36px; min-height: 36px; padding: 0; display: grid; place-items: center; font-size: 17px; line-height: 1;
   border-radius: var(--agui-radius-pill); }
-.stepper .range-v { min-width: 44px; padding: 0 4px; text-align: center; font-size: 17px; font-variant-numeric: tabular-nums; }
 .fields { display: grid; gap: 8px; }
 .fields .text-in { margin-top: 0; }
 .fld { display: grid; gap: 4px; }
@@ -701,11 +683,6 @@ button.bubble-q { cursor: pointer; }
 .doc-head { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
 .doc-head .thumb { width: 44px; height: 32px; border-radius: var(--agui-radius-sm); background: var(--agui-soft); object-fit: cover; flex: none; }
 .rev .row { width: 100%; border-left: 0; border-right: 0; border-bottom: 0; background: none; color: inherit; font: inherit; text-align: left; }
-.rev-s { cursor: pointer; align-items: center; }
-.rev-s .dot { width: 14px; height: 14px; border: 1.5px dashed var(--agui-ink-3); border-radius: var(--agui-radius-pill); flex: none; }
-.rev-s .okmark { width: 14px; color: var(--agui-ok); font-style: normal; font-weight: 700; flex: none; }
-.row.issue .sev { width: 14px; font-style: normal; font-weight: 700; flex: none; color: var(--agui-ink-2); }
-.row.issue.fixed .sev { color: var(--agui-ok); }
 .row.issue .ok-line { margin-top: 4px; }
 .srcs { margin: -10px 0 18px; }
 .src-chip { font-size: 12px; padding: 5px 10px; }

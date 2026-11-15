@@ -215,6 +215,13 @@ A chip that cannot be chosen (a closed day, the chips while an action applies) S
 - **WHEN** the day strip offers Monday, which is closed
 - **THEN** the Monday chip is grey and cannot be tapped, and it is not struck through
 
+### Requirement: Tables in an answer
+A markdown table in an answer (a header row, a row of dashes, the rows) SHALL be drawn as a table, with a column right-aligned when its dashes end with a colon and inline marks kept in its cells; raw pipes SHALL NOT show. A table wider than the chat SHALL scroll sideways in its own box, never break a word in a cell and never widen the chat or the page.
+
+#### Scenario: A comparison on a phone
+- **WHEN** an answer holds a five-column table on a 390 px screen
+- **THEN** the table is drawn, scrolls sideways inside the message, and the page does not scroll sideways
+
 ### Requirement: The jump button never covers a card
 While a card is under the button that brings the user to the latest message, the button SHALL be away (not shown, not clickable), and it SHALL come back when no card is under it.
 
@@ -230,7 +237,7 @@ In `mode="page"` the feed SHALL be as wide as the window, so its scrollbar sits 
 - **THEN** the scrollbar is at the window's right edge and the messages are centred
 
 ### Requirement: Back to the latest message
-A user who scrolled up SHALL stay where they read while new text arrives, and a round button over the composer SHALL bring them to the latest message; it SHALL always show its arrow and sit in one place over the field. A tap SHALL take it away at once, keep it away during its own scroll, end at the very bottom, and leave no tooltip. Sending a message SHALL bring the view down.
+A user who scrolled up SHALL stay where they read while new text arrives, and a round button over the composer, with a touch target of at least 44 px, SHALL bring them to the latest message; it SHALL always show its arrow and sit in one place over the field. A tap SHALL take it away at once, keep it away during its own scroll, end at the very bottom, and leave no tooltip. Sending a message SHALL bring the view down.
 
 #### Scenario: Reading back while it answers
 - **WHEN** the user scrolls up during an answer
