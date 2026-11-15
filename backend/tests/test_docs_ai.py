@@ -329,3 +329,32 @@ def test_a_question_that_stands_alone_is_searched_alone():
     assert follows_up("And for Azure?") and follows_up("Show me the config for that")
     assert not follows_up("Show me the config for Azure OpenAI with a cheaper research model again")
     assert not follows_up("How do I run the scenario evals against my own server from the backend folder?")
+
+
+def test_a_question_names_a_model_choice_and_may_change_it(tmp_path, caplog):
+    import json
+    import logging
+    haiku, luna = ScriptedChatModel(script=[AIMessage(content="Haiku says.")]), ScriptedChatModel(
+        script=[AIMessage(content="Luna says.")])
+    c, _ = _client(tmp_path, models={"haiku": haiku, "luna": luna}, labels={"luna": "Luna (experimental)"})
+
+    def ask(model=None):
+        body = {"threadId": "t9", "runId": "r", "state": {}, "messages": [{"id": "m", "role": "user", "content": "models?"}],
+                "tools": [], "context": [], "forwardedProps": {"model": model} if model else {}}
+        return c.post("/ask/run", json=body, headers={"Accept": "text/event-stream"})
+
+    with caplog.at_level(logging.INFO, logger="formguide.stats"):
+        first = [json.loads(x[5:]) for x in ask().text.splitlines() if x.startswith("data:")]
+        second = [json.loads(x[5:]) for x in ask("luna").text.splitlines() if x.startswith("data:")]   # the same thread
+    assert len(haiku.calls) == 1 and len(luna.calls) == 1
+    assert [e["value"]["choice"] for e in first if e.get("name") == "model"] == ["haiku"]
+    told = next(e["value"] for e in second if e.get("name") == "model")
+    assert told["choice"] == "luna" and told["label"] == "Luna (experimental)"
+    assert second[0]["type"] == "RUN_STARTED" and second[1].get("name") == "model"
+    lines = [json.loads(r.getMessage()) for r in caplog.records]
+    assert [(x["agent"], x["choice"]) for x in lines] == [("docs", "haiku"), ("docs", "luna")]   # the host's budget reads these
+    assert ask("gpt-9").status_code == 422
+    plain, _ = _client(tmp_path)
+    assert plain.post("/ask/run", json={"threadId": "t", "runId": "r", "state": {}, "tools": [], "context": [],
+                                        "messages": [{"id": "m", "role": "user", "content": "x"}],
+                                        "forwardedProps": {"model": "luna"}}).status_code == 422

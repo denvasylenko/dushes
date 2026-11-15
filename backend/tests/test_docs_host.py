@@ -90,7 +90,7 @@ def test_the_cost_cap_comes_from_run_stats(monkeypatch):
 
 
 def test_without_prices_the_cost_cap_is_off(monkeypatch):
-    _fresh(monkeypatch, PRICES=None, COST_DAY=0)
+    _fresh(monkeypatch, PRICES=None, TABLE={}, COST_DAY=0)
     with TestClient(host.app) as c:
         assert _run(c, "n1").status_code != 429
 

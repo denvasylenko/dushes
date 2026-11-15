@@ -158,7 +158,11 @@ def sqlite_checkpointer(path: str | Path):
                     raise ImportError("the sqlite checkpointer needs: pip install 'formguide[sqlite]'") from e
 
                 self.file.parent.mkdir(parents=True, exist_ok=True)
-                self._inner = AsyncSqliteSaver(await aiosqlite.connect(str(self.file)))
+                conn = aiosqlite.connect(str(self.file))
+                worker = getattr(conn, "_thread", conn)   # aiosqlite runs the database on a thread of its own
+                if hasattr(worker, "daemon"):
+                    worker.daemon = True   # it must not keep the process alive when the server stops
+                self._inner = AsyncSqliteSaver(await conn)
             return self._inner
 
         async def aget_tuple(self, config):

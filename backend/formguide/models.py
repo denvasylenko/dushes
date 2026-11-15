@@ -89,6 +89,17 @@ class ResolvedModels:
     memory: BaseChatModel | None = None   # summarizer for long chats (set by FormGuide; default: research)
 
 
+@dataclass
+class ModelSet:
+    """Everything a run talks to: the models per role and the helpers' models. One per model choice."""
+    name: str | None            # the choice's name; None for a server without choices
+    label: str
+    models: ResolvedModels
+    suggestions: Any = None     # quick replies; None when suggestions are off
+    translation: Any = None     # card text the form does not translate
+    error: str = ""             # why the choice cannot be used (its model could not be built)
+
+
 # ===================================================================== provider-specific touches
 
 # a provider's key field on the LangChain model -> the environment variable that fills it

@@ -32,6 +32,7 @@ class RunStats:
         self.ttft: float | None = None
         self.models: list[dict[str, Any]] = []
         self.tools: list[dict[str, Any]] = []
+        self.choice: str | None = None  # the run's model choice (models.choices), when the server has choices
         self.agent: str | None = None   # "site" for Dushes' own calls; the form agent leaves it out
         self.span: Any = None   # the run's OpenTelemetry turn span (otel.TurnSpan), when tracing is on
 
@@ -78,6 +79,7 @@ class RunStats:
         tin, tout, tcache = total("input_tokens"), total("output_tokens"), total("cache_read_tokens")
         return {
             "run_id": self.run_id, "thread_id": self.thread_id, **({"agent": self.agent} if self.agent else {}),
+            **({"choice": self.choice} if self.choice else {}),
             "ttft_ms": round(self.ttft * 1000) if self.ttft is not None else None,
             "total_ms": self._ms(self.t0),
             "model_ms": sum(m["ms"] for m in self.models),

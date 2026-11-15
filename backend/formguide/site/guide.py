@@ -234,10 +234,19 @@ class Dushes:
         self.stay_on_forms = stay_on_forms   # on a form page, answer in place while the user fills the form in
         self.site = site
         self.model = model   # Dushes' model; default: the form guide's agent model
-        self.router_model = router_model or form_guide.models.memory   # a cheap model for unclear messages
+        self._router_model = router_model   # a cheap model for unclear messages; default: the run's memory model
         # the site's documents: the "site" namespace and the forms' own, seen through one knowledge scope
         spaces = knowledge_namespaces or ["site", *dict.fromkeys(p.form for p in site.pages if p.form)]
         self.forms.knowledge.scopes.setdefault(SCOPE, list(spaces))
+
+    @property
+    def router_model(self) -> Any:
+        """The model that decides an unclear message: the one given, else the memory model of the run's choice."""
+        return self._router_model or self.forms.models.memory
+
+    @router_model.setter
+    def router_model(self, value: Any) -> None:
+        self._router_model = value
 
     # ------------------------------------------------------------ the site's documents
     def doc_passages(self, question: str, k: int = 3) -> str:
@@ -406,15 +415,39 @@ class Dushes:
     # ------------------------------------------------------------ a turn
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None, handoff: bool = False,
-                  host: Any = None, reply_to: list[dict[str, Any]] | None = None, **form_kwargs: Any) -> AsyncIterator[dict]:
+                  host: Any = None, reply_to: list[dict[str, Any]] | None = None, model: str | None = None,
+                  **form_kwargs: Any) -> AsyncIterator[dict]:
         """One run as AG-UI events. Dushes' own model calls (its answers, the router, its document researcher)
         are reported in a CUSTOM `run_stats` event with `agent: "site"`, right before the terminal event; a form
-        agent's turn in the same run reports its own, as it does alone."""
+        agent's turn in the same run reports its own, as it does alone.
+
+        `model`: a name from `models.choices`. The site conversation keeps the choice of its first run, and the
+        form agents it hands to run on the same one; a CUSTOM `model` event follows RUN_STARTED."""
+        from ..guide import _choice
+        from ..stats import model_id as _model_id
+        check_thread_id(thread_id)
+        choice = self.forms.check_model(thread_id, model)
+        if choice:
+            if self.forms.thread_choice(thread_id) is None:
+                self.forms.transcripts.append(thread_id, new_entry("model", choice=choice))
+            form_kwargs = {**form_kwargs, "model_bound": choice}   # its form threads follow the site thread
+        _choice.set(choice)
+        told = False
         run_id = run_id or str(uuid.uuid4())
         stats = RunStats(run_id, thread_id)
         stats.agent = "site"
+        stats.choice = choice
         async for ev in self._run(thread_id, stats, message=message, state=state, resume=resume, run_id=run_id,
                                   handoff=handoff, host=host, reply_to=reply_to, **form_kwargs):
+            if ev.get("type") == "CUSTOM" and ev.get("name") == "model":
+                continue   # the form agent's: this run already said which model answers
+            if choice and not told and ev.get("type") == "RUN_STARTED":
+                told = True
+                s = self.forms._choices[choice]
+                yield ev
+                yield {"type": "CUSTOM", "name": "model",
+                       "value": {"choice": choice, "label": s.label, "model": _model_id(self.model or s.models.agent)}}
+                continue
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and stats.models:
                 summary = stats.as_event()
                 stats.models = []   # once per run
@@ -638,6 +671,11 @@ def create_dushes_router(site: Dushes, host: Any = None):
             raise HTTPException(409, "unknown jsx_hash: POST /layouts first")
         if host is not None:
             kw["host"] = await maybe_await(host(request))
+        from ..guide import ModelChoiceError
+        try:   # before the stream starts: an unknown choice, or another model than the conversation's
+            site.forms.check_model(kw["thread_id"], kw.get("model"))
+        except ModelChoiceError as e:
+            raise HTTPException(e.status, e.detail) from None
         enc = agui.encoder(request.headers.get("accept"))
 
         async def events():

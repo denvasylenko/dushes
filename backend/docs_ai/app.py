@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import json
 import os
 import time
 import uuid
@@ -117,7 +118,10 @@ class Quota:
 def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None = None,
                origins: list[str] | None = None, per_minute: int | None = None, per_day: int | None = None,
                max_chars: int | None = None, refresh: float | None = None, per_thread: int | None = None,
-               site_per_day: int | None = None) -> FastAPI:
+               site_per_day: int | None = None, models: dict[str, BaseChatModel] | None = None,
+               labels: dict[str, str] | None = None) -> FastAPI:
+    """`models`: named model choices ({name: model}, the first is the default); a question names one in
+    `forwardedProps.model` and may name another the next time. Without it the one `model` answers."""
     env = os.environ.get
     source = corpus_source or env("DOCS_AI_CORPUS") or str(Path(__file__).resolve().parents[2] / "site/dist/llms-full.txt")
     limiter = Limiter(per_minute or int(env("DOCS_AI_PER_MINUTE", "6")), per_day or int(env("DOCS_AI_PER_DAY", "60")))
@@ -187,8 +191,19 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
             raise HTTPException(503, "The docs are still loading. Try again in a moment.")
         if (why := quota.allow(inp.thread_id)) is not None:
             raise HTTPException(429, why)
-        if state["model"] is None:
+        fwd = inp.forwarded_props if isinstance(inp.forwarded_props, dict) else {}
+        choice = None
+        if models:
+            choice = str(fwd.get("model") or next(iter(models)))
+            if choice not in models:
+                raise HTTPException(422, {"detail": f"unknown model choice {choice[:40]!r}; one of {', '.join(models)}",
+                                          "choices": list(models)})
+        elif fwd.get("model"):
+            raise HTTPException(422, {"detail": "this server has no model choices: a question cannot name a model",
+                                      "choices": []})
+        if not models and state["model"] is None:
             state["model"] = default_model()
+        the_model = models[choice] if choice else state["model"]
         enc = agui.encoder(request.headers.get("accept"))
 
         async def events() -> AsyncIterator[str]:
@@ -198,8 +213,18 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
             answers[tid] += 1
             now = answers[tid]
             seen = shown.get(tid, ())
-            async for ev in answer(state["model"], corpus, question, history[-7:-1], tid, inp.run_id,
-                                   shown=[c["label"] for c in seen]):
+            from formguide.stats import RunStats, model_id
+            stats = RunStats(inp.run_id, tid)
+            stats.agent, stats.choice = "docs", choice
+            async for ev in answer(the_model, corpus, question, history[-7:-1], tid, inp.run_id,
+                                   shown=[c["label"] for c in seen], stats=stats):
+                if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and stats.models:
+                    logging.getLogger("formguide.stats").info(json.dumps(stats.as_event(), ensure_ascii=False))
+                    stats.models = []
+                if choice and ev.get("type") == "RUN_STARTED":   # which model answers, before its first word
+                    yield agui.encode(ev, enc)
+                    ev = {"type": "CUSTOM", "name": "model", "value": {
+                        "choice": choice, "label": (labels or {}).get(choice, choice), "model": model_id(the_model)}}
                 if ev.get("type") == "CUSTOM" and ev.get("name") == "docs_card":
                     card = dict(ev.get("value") or {})
                     key = card_key(card)

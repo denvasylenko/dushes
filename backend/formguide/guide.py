@@ -42,6 +42,8 @@ from .prefill import prefill_instruction, suggest_prefill
 from .skills import SkillRegistry
 from .form.values import value_warnings
 from .agent.interaction import read_answer, read_confirm, read_decision, read_edits, read_review, read_upload
+from contextvars import ContextVar
+
 from .stats import RunStats, activate, deactivate
 from .suggestions import suggest
 
@@ -57,15 +59,28 @@ def _loads(s: str) -> Any:
         return s
 
 
+# the model choice of the run in progress (a name from `models.choices`), read by FormGuide.models
+_choice: ContextVar[str | None] = ContextVar("formguide_model_choice", default=None)
+
+
+class ModelChoiceError(ValueError):
+    """A run named a model choice it cannot have. `status` is the HTTP status, `detail` the body."""
+
+    def __init__(self, message: str, status: int = 422, **detail: Any):
+        super().__init__(message)
+        self.status, self.detail = status, {"detail": message, **detail}
+
+
 class FormGuide:
     def __init__(self, config: GuideConfig | None = None):
         cfg = config or GuideConfig()
         self.config = cfg
         self._turns: dict[str, asyncio.Task] = {}   # thread id -> its running turn (see run_detached)
         self.cards = {c.tool: c for c in parse_cards(cfg.cards)}   # show_<type> -> CardSpec (cards from blocks)
-        self.models = cfg.models.resolve()
-        from .models import build_model
-        self.models.memory = build_model(cfg.memory.model) if cfg.memory.model else self.models.research
+        from .models import ModelSet, build_model
+        base = cfg.models.resolve()
+        base.memory = build_model(cfg.memory.model) if cfg.memory.model else base.research
+        self._default = ModelSet(None, "", base)   # `models`, `suggestions_model`, `translation_model` read it
         self._recent: dict[str, deque] = defaultdict(lambda: deque(maxlen=20))   # recent run stats per thread
         self._lang: dict[str, str] = {}        # the conversation's language per thread (see language.py)
         self._lang_sent: dict[str, str] = {}   # the language the client was last told, per thread
@@ -77,6 +92,7 @@ class FormGuide:
         from .language import Translator
         self.translator = Translator()
         self.translation_model = self.models.memory or self.models.research   # card text the form does not translate
+        self._choices = self._build_choices(cfg)   # name -> ModelSet, in the configuration's order
         from .models import missing_keys
         m = self.models
         no_key: dict[str, list[str]] = {}
@@ -165,14 +181,117 @@ class FormGuide:
     def tools_for(self, form_id: str) -> list[BaseTool]:
         return self._tools + self.skills.tools_for(form_id)
 
+    # ------------------------------------------------------------------ models (and the run's choice)
+    def _set(self):
+        name = _choice.get()
+        return self._choices.get(name, self._default) if name else self._default
+
+    @property
+    def models(self):
+        """The models of the run in progress: its choice's, or the server's own."""
+        return self._set().models
+
+    @models.setter
+    def models(self, value) -> None:
+        self._default.models = value
+
+    @property
+    def suggestions_model(self):
+        return self._set().suggestions
+
+    @suggestions_model.setter
+    def suggestions_model(self, value) -> None:
+        self._default.suggestions = value
+
+    @property
+    def translation_model(self):
+        return self._set().translation
+
+    @translation_model.setter
+    def translation_model(self, value) -> None:
+        self._default.translation = value
+
+    def _build_choices(self, cfg: GuideConfig) -> dict:
+        """`models.choices` -> a ModelSet each. A role a choice does not name is the choice's agent model when it
+        names one, and the server's own model for that role otherwise."""
+        from .models import ModelSet, ResolvedModels, build_model
+        d, out = self._default, {}
+        for name, spec in (cfg.model_choices or {}).items():
+            roles = {k: v for k, v in spec.items() if k != "label"}
+            if not roles:   # the server's own models under a name
+                out[name] = ModelSet(name, spec["label"], d.models, d.suggestions, d.translation)
+                continue
+            try:
+                agent = build_model(roles["agent"]) if roles.get("agent") else d.models.agent
+
+                def role(key: str, own: Any, agent: Any = agent, roles: dict = roles) -> Any:
+                    return build_model(roles[key]) if roles.get(key) else (agent if roles.get("agent") else own)
+
+                models = ResolvedModels(agent=agent, research=role("research", d.models.research),
+                                        compile=role("compile", d.models.compile),
+                                        extract=role("extract", d.models.extract))
+                models.memory = role("memory", d.models.memory)
+                suggestions = role("suggestions", d.suggestions) if d.suggestions is not None else None
+                out[name] = ModelSet(name, spec["label"], models, suggestions, models.memory or models.research)
+            except Exception as e:  # noqa: BLE001 - one choice without its key or package must not stop the server
+                logging.getLogger("formguide").warning(
+                    "the model choice %s cannot be used: %s: %s", name, type(e).__name__, str(e)[:200])
+                out[name] = ModelSet(name, spec["label"], d.models, d.suggestions, d.translation, error=type(e).__name__)
+        return out
+
+    def model_choices(self) -> list[dict[str, Any]]:
+        """[{name, label, default, usable, model}]: the choices a run may name. `usable` is false when the server
+        has no key for one of the choice's models."""
+        from .models import missing_keys
+        from .stats import model_id
+        out = []
+        for i, (name, s) in enumerate(self._choices.items()):
+            m = s.models
+            lacking = missing_keys({"agent": m.agent, "research": m.research, "extract": m.extract,
+                                    "memory": m.memory, "suggestions": s.suggestions})
+            out.append({"name": name, "label": s.label, "default": i == 0, "usable": not lacking and not s.error,
+                        "model": model_id(m.agent)})
+        return out
+
+    def thread_choice(self, thread_id: str) -> str | None:
+        """The choice a conversation started with, if it has one."""
+        e = next((x for x in self.transcripts.list(thread_id) if x["kind"] == "model"), None)
+        return e.get("choice") if e else None
+
+    def check_model(self, thread_id: str, model: str | None, bound: str | None = None) -> str | None:
+        """The choice a run of this thread uses, or a ModelChoiceError: an unknown or unusable name (422), another
+        choice than the conversation's (409). None on a server without choices. `bound`: the choice of the
+        conversation this thread belongs to (Dushes passes its site thread's)."""
+        if not self._choices:
+            if model:
+                raise ModelChoiceError("this server has no model choices: a run cannot name a model", choices=[])
+            return None
+        names = list(self._choices)
+        if model is not None and model not in self._choices:
+            raise ModelChoiceError(f"unknown model choice {str(model)[:40]!r}; one of {', '.join(names)}", choices=names)
+        bound = bound or self.thread_choice(thread_id)
+        if bound in self._choices:
+            if model and model != bound:
+                raise ModelChoiceError(f"this conversation runs on {bound}: start a new conversation to use {model}",
+                                       status=409, code="model_fixed", choice=bound)
+            return bound
+        name = model or names[0]
+        if not next(c for c in self.model_choices() if c["name"] == name)["usable"]:
+            raise ModelChoiceError(f"the model choice {name} is not available on this server", choices=names)
+        return name
+
     # ------------------------------------------------------------------ chat
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None,
                   client_tools: list[dict] | None = None, tool_results: dict[str, str] | None = None,
                   prefill: dict[str, Any] | None = None, capabilities: list[str] | None = None,
                   trace_context: dict[str, str] | None = None,
-                  reply_to: list[dict[str, Any]] | None = None) -> AsyncIterator[dict]:
+                  reply_to: list[dict[str, Any]] | None = None, model: str | None = None,
+                  model_bound: str | None = None) -> AsyncIterator[dict]:
         """One turn, as AG-UI events (plain dicts with the protocol's camelCase keys).
+
+        `model`: a name from `models.choices`; the conversation keeps the choice of its first run (a run that
+        names another raises ModelChoiceError). On a server with choices a CUSTOM `model` event follows RUN_STARTED.
 
         `reply_to` ([{message_id, quote | whole, note?}]): the user answers those parts of earlier messages; the
         agent reads each quote (and its note) before the message and the transcript keeps the list on the user's entry.
@@ -192,6 +311,10 @@ class FormGuide:
         Everything the user sees is also recorded in the thread's display transcript (see transcript.py)."""
         check_thread_id(thread_id)
         tx = self.transcripts
+        choice = self.check_model(thread_id, model, model_bound)
+        if choice and self.thread_choice(thread_id) is None:
+            tx.append(thread_id, new_entry("model", choice=choice))   # the conversation keeps it
+        _choice.set(choice)
         entries = tx.list(thread_id)
         card = pending_card(entries)
         if resume is not None:
@@ -238,6 +361,7 @@ class FormGuide:
         mode = self.config.interrupt_mode
         run_id = run_id or str(uuid.uuid4())
         stats = RunStats(run_id, thread_id)
+        stats.choice = choice
         if self.otel is not None:
             stats.span = self.otel.turn(thread_id=thread_id, run_id=run_id,
                                         form_id=(state or {}).get("form_id") or "", carrier=trace_context)
@@ -252,6 +376,11 @@ class FormGuide:
                 if stats.span is not None:
                     stop = _track_stop(ev, stats.span, stop, open_calls)
                 yield ev
+                if choice and ev.get("type") == "RUN_STARTED":   # which model answers, before its first word
+                    from .stats import model_id
+                    s = self._choices[choice]
+                    yield {"type": "CUSTOM", "name": "model",
+                           "value": {"choice": choice, "label": s.label, "model": model_id(s.models.agent)}}
         finally:
             deactivate(token)
             if stats.span is not None:

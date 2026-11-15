@@ -30,7 +30,7 @@ except ImportError as e:  # pragma: no cover
     raise ImportError(f"{e}: the HTTP layer needs: pip install 'formguide[server]'") from e
 from pydantic import BaseModel, ValidationError
 
-from .guide import FormGuide
+from .guide import FormGuide, ModelChoiceError
 
 
 MAX_JSX_CHARS = 2_000_000   # a registered layout is parsed and kept on disk; real forms are far smaller
@@ -76,6 +76,11 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
             raise HTTPException(404, "unknown layout")
         return {"jsx_hash": h}
 
+    @r.get("/models")
+    def models() -> dict:
+        """The model choices a run may name (`forwardedProps.model`); empty on a server without choices."""
+        return {"choices": guide.model_choices()}
+
     @r.post("/run")
     async def run(request: Request) -> StreamingResponse:
         try:
@@ -87,6 +92,10 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
             raise HTTPException(422, f"not an AG-UI RunAgentInput: {e}") from None
         if kw["resume"] is None and not guide.layout(kw["state"].get("jsx_hash", "")):
             raise HTTPException(409, "unknown jsx_hash: POST /layouts first")
+        try:   # before the stream starts: an unknown choice, or another model than the conversation's
+            guide.check_model(kw["thread_id"], kw.get("model"))
+        except ModelChoiceError as e:
+            raise HTTPException(e.status, e.detail) from None
         enc = agui.encoder(request.headers.get("accept"))
 
         async def events():

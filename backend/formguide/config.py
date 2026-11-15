@@ -102,6 +102,9 @@ class TracingConfig:
 @dataclass
 class GuideConfig:
     models: Models = field(default_factory=default_models)
+    # named model choices a run may pick by name (`models.choices`): {name: {label?, agent?, research?, compile?,
+    # extract?, memory?, suggestions?}}; the first is the default. Empty: a run cannot name a model.
+    model_choices: dict[str, dict] = field(default_factory=dict)
     data_dir: str | Path = "data"                   # deps maps, KB and attachments default to subfolders
     components: ComponentMap = DEFAULT_COMPONENTS
     domain_packs: DomainPackRegistry | None = None   # default: no packs (neutral persona)
@@ -167,7 +170,7 @@ def _index(spec: Any) -> SearchIndex:
 # this (tests/test_docs_config_keys.py).
 KEYS: dict[str, frozenset[str] | None] = {
     "data_dir": None, "model": None,
-    "models": frozenset({"agent", "research", "compile", "extract"}),
+    "models": frozenset({"agent", "research", "compile", "extract", "choices"}),
     "components": frozenset({"containers", "fields"}),
     "domain_packs": frozenset({"dir", "packs", "provider"}),
     "knowledge": frozenset({"dir", "index", "scopes", "chunk_chars", "chunk_overlap"}),
@@ -184,6 +187,30 @@ KEYS: dict[str, frozenset[str] | None] = {
     "transcription": None, "prompt_cache": None,
     "suggestions": frozenset({"enabled", "model", "max", "timeout"}),
 }
+
+
+CHOICE_KEYS = frozenset({"label", "agent", "research", "compile", "extract", "memory", "suggestions"})
+
+
+def parse_choices(raw: Any) -> dict[str, dict]:
+    """`models.choices` -> {name: {label, <role>: model spec}} in the file's order (the first is the default)."""
+    if raw in (None, {}):
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError("models.choices must be a mapping of name: {label, agent, ...}")
+    out: dict[str, dict] = {}
+    for name, spec in raw.items():
+        name = str(name)
+        if not name.replace("-", "").replace("_", "").isalnum() or len(name) > 40:
+            raise ValueError(f"models.choices: {name!r} is not a name (letters, digits, - and _)")
+        spec = {} if spec is None else spec
+        if not isinstance(spec, dict):
+            raise ValueError(f"models.choices.{name} must be a mapping")
+        unknown = set(spec) - CHOICE_KEYS
+        if unknown:
+            raise ValueError(f"models.choices.{name}: unknown key(s) {sorted(unknown)}; allowed: {sorted(CHOICE_KEYS)}")
+        out[name] = {"label": str(spec.get("label") or name), **{k: v for k, v in spec.items() if k != "label" and v}}
+    return out
 
 
 def check_keys(raw: dict) -> None:
@@ -228,6 +255,7 @@ def load_config(path: str | Path) -> GuideConfig:
         if not isinstance(m, dict):
             raise ValueError("models must be a model string or a mapping of roles (agent, research, compile, extract)")
         agent = m.get("agent") or raw.get("model")   # a role left out falls back; the agent's falls back to `model`
+        cfg.model_choices = parse_choices(m.get("choices"))
         if not agent:
             raise ValueError("models.agent is required (or set the top-level `model`)")
         cfg.models = Models(agent=_model(agent), research=_model(m.get("research")),

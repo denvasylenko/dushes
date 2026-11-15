@@ -7,6 +7,13 @@ models:
   research: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 4000, effort: low}
   compile: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 8000, effort: low}
   extract: {provider: anthropic, model: claude-haiku-5-5, max_tokens: 4000, effort: low}
+  # the demo's model switch: a run names a choice (forwardedProps.model). Luna needs OPENAI_API_KEY on the server;
+  # without it the choice is listed as not usable and the page hides the switch.
+  choices:
+    haiku: {label: "Haiku"}
+    luna:
+      label: "Luna (experimental)"
+      agent: {provider: openai, model: gpt-6-luna, max_tokens: 8000, effort: low}
 
 domain_packs: {dir: domain_packs}
 knowledge:

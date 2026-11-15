@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import re
 import logging
+import time
 import uuid
 from typing import Any, AsyncIterator
 
@@ -320,7 +321,7 @@ def card_key(card: dict) -> str:
 
 
 async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: list[tuple[str, str]],
-                 thread_id: str, run_id: str, shown: list[str] | None = None) -> AsyncIterator[dict]:
+                 thread_id: str, run_id: str, shown: list[str] | None = None, stats: Any = None) -> AsyncIterator[dict]:
     """One answer as AG-UI events (dicts): text first, then the cards, then the follow-ups."""
     yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
     # earlier questions help a short follow-up ("and for Azure?", "show me the config for that"); a question that
@@ -370,7 +371,9 @@ async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: l
     try:
         for _ in range(MAX_ROUNDS):
             full: AIMessageChunk | None = None
+            t_call, first = time.perf_counter(), None
             async for chunk in bound.astream(msgs):
+                first = first or time.perf_counter()
                 full = chunk if full is None else full + chunk
                 delta = _text(chunk.content)
                 if delta:
@@ -378,6 +381,10 @@ async def answer(model: BaseChatModel, corpus: Corpus, question: str, history: l
                         yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
                         started = True
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": delta}
+            if stats is not None:   # the call's tokens, for the host's budget
+                from formguide.stats import model_id
+                stats.model_call(t_call, first, dict(getattr(full, "usage_metadata", None) or {}), kind="docs",
+                                 model=model_id(model))
             calls = list(getattr(full, "tool_calls", None) or [])
             if not calls:
                 break
