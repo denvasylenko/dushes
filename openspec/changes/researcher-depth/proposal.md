@@ -18,7 +18,7 @@ Today there is one mode. `ask_documents` starts a free-running deep agent (`deep
 ## Capabilities
 
 - `document-research` (modified): depth, quick and deep modes, limits, progress, stop, citations.
-- `knowledge-base` (modified): sections for large documents, the index, ranking, the outline.
+- `knowledge-base` (modified): sections for large documents, the index, ranking, the outline. Shipped with phase 1 and already in the main spec.
 
 ## Impact
 

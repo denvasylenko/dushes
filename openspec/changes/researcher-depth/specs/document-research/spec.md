@@ -12,11 +12,15 @@
 - **THEN** the depth is deep, and the tool step names the reason "compares"
 
 ### Requirement: Quick answers from one retrieval
-In quick depth `ask_documents` SHALL make one retrieval and no model call of its own, and SHALL return the ranked passages, each with its document, heading path and page, to the calling agent, which answers with its sources. When nothing relevant is found it SHALL say the documents do not cover the question.
+In quick depth `ask_documents` SHALL make one retrieval and no model call of its own, and SHALL return the ranked passages, each with its document, heading path and page, to the calling agent, which answers with its sources. When little or nothing relevant is found, the answer SHALL say that a short look found nothing and the turn SHALL offer a "Look deeper?" suggestion, whose tap runs the same question at deep depth; quick SHALL NOT turn into deep on its own.
 
 #### Scenario: Fee question
 - **WHEN** the depth is quick and the fee is stated in one section
 - **THEN** the calling agent receives that passage with its source label and answers with the figure and the source
+
+#### Scenario: A short look finds nothing
+- **WHEN** the depth is quick and no section matches the question
+- **THEN** the answer says a short look found nothing, a "Look deeper?" chip is offered, and no deep run starts until the person taps it
 
 ### Requirement: Deep answers follow a fixed pipeline
 In deep depth the researcher SHALL plan sub-questions from the question and the documents' outlines, retrieve for each across the documents in scope, read the found passages into notes that name their passages, make at most one more round for what is still unanswered, and write one synthesis. The order of these steps SHALL be fixed in code.

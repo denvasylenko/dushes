@@ -86,7 +86,7 @@ class Corpus:
 
         vocab = getattr(self, "_vocab", None)
         if vocab is None:
-            chunks = getattr(self.index, "_by_ns", {}).get(NS, {}).values()
+            chunks = self.index.chunks(NS) if hasattr(self.index, "chunks") else []
             vocab = sorted({t for c in chunks for t in stems(f"{c.section} {c.text}")})
             self._vocab = vocab
         known = set(vocab)

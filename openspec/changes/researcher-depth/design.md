@@ -28,7 +28,7 @@ Deep when any of these holds:
 
 Quick otherwise. A host sets `depth: quick` or `deep` to switch the decision off. The decision and its reason go to the tool step shown in the chat and to `run_stats` (`depth`, `why`), so a wrong call is visible in a transcript.
 
-Not in this change: escalating from quick to deep when quick finds little. Quick says "the documents do not say"; a second, slower attempt behind the person's back would break the 2 s promise. Open question 1.
+Quick never escalates on its own: a second, slower attempt behind the person's back would break the 2 s promise. When quick finds little, the answer says that a short look found nothing and the turn carries a "Look deeper?" chip; the tap runs the question at deep depth (`why: "asked to look deeper"`).
 
 ## Quick
 
@@ -59,10 +59,10 @@ Alternative considered: return the full text to the agent. Rejected: the agent's
 ## Retrieval for large documents
 
 - **Sections**: cut on headings first, then on paragraphs to about `chunk_chars` (1200) with `chunk_overlap` (150) characters carried over; a table or a list is not split while it fits twice the size. Each section stores `path` (the heading chain, "4 Fees > 4.2 Late payment"), `page` for PDFs (from the page break, not a fake "Page N" heading), `order` in its document, and `chars`.
-- **Index**: BM25 over prebuilt postings (term -> section ids and counts), built when a document is added and kept in memory; a query touches only the postings of its terms. Stored next to `chunks.json` so a restart loads it instead of rebuilding.
+- **Index**: BM25 over prebuilt postings (term -> section ids and counts), built when a document is added and when the server starts (about 0.1 s for 500 pages), kept in memory; a query touches only the postings of its terms.
 - **Ranking**: `score = bm25(text) + w_path * bm25(path) + w_title * match(title)`, then reciprocal-rank fusion with the vector index when the host configured one (`VectorStoreIndex`), then a spread step: no more than `per_document` hits from one document while others have hits within a ratio of the top score.
 - **Numbers and codes**: tokens keep digits and separators ("4.2", "27,90", "DE89…") so an exact figure or clause number is findable.
-- **Outline**: per document, the heading paths with page ranges and sizes; built in code at upload. No model call at upload in this change (summaries per section are open question 2).
+- **Outline**: per document, the heading paths with page ranges and sizes; built in code at upload. No model call at upload in this change (summaries per section come later, behind a setting).
 - **Migration**: `chunks.json` carries a `format` number; an older one is re-chunked from the stored text on start.
 
 Expected size: 500 pages is about 1.2 M characters, about 1200 sections; the postings fit in a few MB; a query is under 50 ms on the hosting machine (a test asserts a budget on a generated corpus).
@@ -120,8 +120,10 @@ knowledge:
 - Retrieval benchmark (no model, in CI): generated documents of 100, 300 and 500 pages with planted facts; recall@6 and recall@8 of the planted section per question type (exact figure, paraphrase, cross-document). A bar is set from the first run and may not drop.
 - QA's benchmark (agent only, scripted questions, code checks): answer correctness, citation precision, honesty on unanswerable questions, depth chosen, first word and total time, cost per question.
 
-## Open questions
+## Decided (the CPO, 2026-11-15)
 
-1. Quick finds little: answer "the documents do not say" (proposed), or offer "Look deeper?" as a suggestion chip the person taps.
-2. Section summaries at upload (a model call per section, paid once) would make "summarize this 300-page document" better than outline-plus-retrieval. Proposed: later, behind `knowledge.summaries: true`.
-3. The default limits (45 s, $0.05) are guesses until QA's first numbers.
+1. Quick finds little: the answer says honestly that a short look found nothing, and the turn offers a "Look deeper?" suggestion chip; tapping it runs the same question at deep depth. Never a silent escalation.
+2. Section summaries made at upload: later, behind a setting (`knowledge.summaries`), not in this change.
+3. The deep defaults are the owner's: 45 seconds and $0.05 per answer; revisited after QA's first numbers.
+4. The deep answer is streamed as the assistant's message; the calling agent adds at most one sentence.
+5. The widget's researching status and stop control go to the widget designer under Head of Design.

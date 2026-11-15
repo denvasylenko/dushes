@@ -2,7 +2,9 @@
 
   <root>/<namespace>/originals/<doc_id>__<filename>   what the manager uploaded
   <root>/<namespace>/text/<doc_id>.md                 extracted text (the researcher's read-only filesystem)
-  <root>/<namespace>/chunks.json                      sections (source of truth for the search index)
+  <root>/<namespace>/chunks.json                      sections (source of truth for the search index):
+                                                      {"format": 2, "chunks": [...]}; an older file is a bare list
+                                                      and is cut again from text/ when it is read
   <root>/_compiled/<form_id>.json                     knowledge compiled into the domain pack
 
 Text extraction: .md / .txt as is, .pdf via pypdf.
@@ -18,7 +20,14 @@ from pathlib import Path
 from .index import Chunk
 
 SUPPORTED = {".md", ".txt", ".pdf"}
-CHUNK_CHARS = 1200
+CHUNK_CHARS = 1200      # about this many characters in a section
+CHUNK_OVERLAP = 150     # carried over from the section before, inside one heading
+FORMAT = 2              # of chunks.json: sections with path, page and order
+
+_PAGE = re.compile(r"^#+\s*Page (\d+)\s*$")
+# a numbered heading in text that has no markdown (a PDF): "4.2 Late payment"
+_NUMBERED = re.compile(r"^(\d+(?:\.\d+){0,3})\.?\s+([^\W\d_].{1,78})$", re.UNICODE)
+_LIST = re.compile(r"^\s*(?:[-*+\u2022]|\d+[.)])\s+")
 
 _SAFE = re.compile(r"[^\w.\-]+", re.UNICODE)
 _NS = re.compile(r"^[A-Za-z0-9_\-]{1,64}$")
@@ -36,32 +45,129 @@ def extract_text(filename: str, data: bytes) -> str:
     return data.decode("utf-8", errors="replace")
 
 
-def chunk_text(namespace: str, doc_id: str, text: str) -> list[Chunk]:
-    title = text.splitlines()[0].lstrip("# ").strip() if text else doc_id
-    chunks: list[Chunk] = []
-    section, buf = title, ""
+def _blocks(lines: list[str]) -> list[tuple[str, str]]:
+    """Lines of one section -> blocks (kind, text): a table, a list or a paragraph stays together."""
+    out: list[tuple[str, str]] = []
+    kind, buf = "", []
 
-    def emit() -> None:
-        nonlocal buf
-        if buf.strip():
-            chunks.append(Chunk(f"{doc_id}#{len(chunks)}", namespace, doc_id, title, section, buf.strip()))
-        buf = ""
+    def close() -> None:
+        nonlocal kind, buf
+        if buf:
+            out.append((kind, "\n".join(buf)))
+        kind, buf = "", []
 
-    for line in text.splitlines():
-        if line.startswith("#"):
-            emit()
-            section = line.lstrip("# ").strip() or section
+    for line in lines:
+        if not line.strip():
+            close()
             continue
-        if len(buf) + len(line) > CHUNK_CHARS:
+        k = "table" if line.lstrip().startswith("|") else "list" if _LIST.match(line) else "text"
+        if k == "text" and kind == "list" and line.startswith((" ", "\t")):
+            k = "list"   # a list item that goes on
+        if buf and k != kind:
+            close()
+        kind = k
+        buf.append(line)
+    close()
+    return out
+
+
+def _tail(text: str, overlap: int) -> str:
+    """The end of a section to repeat at the start of the next: whole lines or sentences, up to `overlap` chars."""
+    if overlap <= 0 or len(text) <= overlap:
+        return ""
+    cut = text[-overlap:]
+    for mark in ("\n", ". ", "; "):
+        i = cut.find(mark)
+        if 0 <= i < len(cut) - 20:
+            return cut[i + len(mark):].strip()
+    return cut.split(" ", 1)[-1].strip()
+
+
+def chunk_text(namespace: str, doc_id: str, text: str, chunk_chars: int = CHUNK_CHARS,
+               overlap: int = CHUNK_OVERLAP) -> list[Chunk]:
+    """A document's text -> sections: cut on headings, then on paragraphs to about `chunk_chars` with `overlap`
+    characters shared by neighbours under one heading. A table or a list stays whole while it fits twice the
+    size. Each section keeps its heading path, its page (a PDF's "## Page N" lines) and its order."""
+    lines = text.splitlines()
+    title = lines[0].lstrip("# ").strip() if lines else doc_id
+    paged = any(_PAGE.match(ln) for ln in lines)
+    chunks: list[Chunk] = []
+    stack: list[tuple[int, str]] = []        # (level, heading) from the document's top down
+    page: int | None = None
+    body: list[str] = []
+    body_page: int | None = None
+
+    def flush() -> None:
+        nonlocal body, body_page
+        path = " > ".join(h for _lv, h in stack)
+        section = stack[-1][1] if stack else (f"Page {body_page}" if body_page else title)
+        buf, carried = "", ""
+
+        def emit() -> None:
+            nonlocal buf, carried
+            if buf.strip() and buf.strip() != carried:
+                chunks.append(Chunk(f"{doc_id}#{len(chunks)}", namespace, doc_id, title, section, buf.strip(),
+                                    path=path or section, page=body_page, order=len(chunks)))
+            carried = _tail(buf.strip(), overlap)
+            buf = carried + "\n" if carried else ""
+
+        for kind, block in _blocks(body):
+            whole = kind in ("table", "list") and len(block) <= 2 * chunk_chars
+            parts = [block] if whole or len(block) <= chunk_chars else block.split("\n")
+            for part in parts:
+                while len(part) > 2 * chunk_chars:   # one endless line: cut it at a space
+                    cut = part.rfind(" ", 0, chunk_chars)
+                    cut = cut if cut > chunk_chars // 2 else chunk_chars
+                    if buf.strip() and buf.strip() != carried:
+                        emit()
+                    buf += part[:cut] + "\n"
+                    emit()
+                    part = part[cut:].lstrip()
+                if buf.strip() and buf.strip() != carried and len(buf) + len(part) > chunk_chars:
+                    emit()
+                buf += part + "\n"
+            if kind != "text" or len(parts) == 1:
+                buf += "\n" if not buf.endswith("\n\n") else ""
+        if buf.strip() and buf.strip() != carried:
+            carried = ""
             emit()
-        buf += line + "\n"
-    emit()
+        body, body_page = [], None
+
+    for i, line in enumerate(lines):
+        m = _PAGE.match(line)
+        if m:                                   # a page break of a PDF: not a heading of the document
+            if not stack:                       # no headings found yet: the page is the only landmark
+                flush()
+            page = int(m.group(1))
+            continue
+        level, heading = 0, ""
+        if line.startswith("#"):
+            level, heading = len(line) - len(line.lstrip("#")), line.lstrip("# ").strip()
+        elif paged:
+            n = _NUMBERED.match(line.strip())
+            if n and not line.rstrip().endswith((".", ",", ";", ":")):
+                level, heading = 1 + n.group(1).count("."), line.strip()
+        if level and heading:
+            flush()
+            if i == 0:                          # the document's own title line is not part of the path
+                continue
+            while stack and stack[-1][0] >= level:
+                stack.pop()
+            stack.append((level, heading))
+            continue
+        if not body:
+            body_page = page
+        body.append(line)
+    flush()
     return chunks
 
 
 class DocumentStore:
-    def __init__(self, root: str | Path):
+    def __init__(self, root: str | Path, chunk_chars: int = CHUNK_CHARS, chunk_overlap: int = CHUNK_OVERLAP):
         self.root = Path(root)
+        self.chunk_chars = max(200, int(chunk_chars))
+        self.chunk_overlap = max(0, min(int(chunk_overlap), self.chunk_chars // 2))
+        self.recut: dict[str, list[Chunk]] = {}   # namespace -> the sections an older chunks.json held, replaced now
 
     def ns_dir(self, namespace: str) -> Path:
         if not _NS.match(namespace):
@@ -85,7 +191,7 @@ class DocumentStore:
         (d / "originals" / f"{doc_id}__{safe}").write_bytes(data)
         full = f"# {safe}\n\n{text}"
         (self.text_dir(namespace) / f"{doc_id}.md").write_text(full)
-        new = chunk_text(namespace, doc_id, full)
+        new = chunk_text(namespace, doc_id, full, self.chunk_chars, self.chunk_overlap)
         self._save_chunks(namespace, self.chunks(namespace) + new)
         return {"doc_id": doc_id, "namespace": namespace, "filename": safe, "chars": len(text)}, new
 
@@ -123,13 +229,26 @@ class DocumentStore:
     # ------------------------------------------------------------ chunks
     def chunks(self, namespace: str) -> list[Chunk]:
         p = self.ns_dir(namespace) / "chunks.json"
-        # older files have no "namespace": it is the folder they live in
-        return [Chunk(**{"namespace": namespace, **c}) for c in json.loads(p.read_text())] if p.exists() else []
+        if not p.exists():
+            return []
+        raw = json.loads(p.read_text())
+        if isinstance(raw, dict) and raw.get("format") == FORMAT:
+            return [Chunk(**{"namespace": namespace, **c}) for c in raw.get("chunks") or []]
+        # an older file (a bare list, sections without path or page): cut every document again from its stored text
+        old = [Chunk(**{"namespace": namespace, **{k: v for k, v in c.items() if k in Chunk.__dataclass_fields__}})
+               for c in (raw if isinstance(raw, list) else raw.get("chunks") or [])]
+        new: list[Chunk] = []
+        d = self.text_dir(namespace)
+        for txt in sorted(d.glob("*.md")) if d.exists() else []:
+            new += chunk_text(namespace, txt.stem, txt.read_text(), self.chunk_chars, self.chunk_overlap)
+        self._save_chunks(namespace, new)
+        self.recut[namespace] = old
+        return new
 
     def _save_chunks(self, namespace: str, chunks: list[Chunk]) -> None:
         self.ns_dir(namespace).mkdir(parents=True, exist_ok=True)
         (self.ns_dir(namespace) / "chunks.json").write_text(
-            json.dumps([c.to_dict() for c in chunks], ensure_ascii=False))
+            json.dumps({"format": FORMAT, "chunks": [c.to_dict() for c in chunks]}, ensure_ascii=False))
 
     # ------------------------------------------------------------ compiled knowledge (per form)
     def save_compiled(self, form_id: str, data: dict) -> None:

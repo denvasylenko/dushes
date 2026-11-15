@@ -18,6 +18,11 @@ from dataclasses import asdict, dataclass
 from typing import Any, Protocol
 
 _WORD = re.compile(r"\w+", re.UNICODE)
+# figures and clause numbers as written ("4.2", "27,90", "2026-11-15"), and codes with digits in them ("DE89", "A-118")
+_FIGURE = re.compile(r"\d+(?:[.,:/\-]\d+)+|\b[^\W\d_]+[\-]?\d[\w\-]*|\b\d[\w\-]*[^\W\d_][\w\-]*", re.UNICODE)
+
+W_PATH = 1.5     # a match in a section's heading path, next to a match in its text
+W_TITLE = 0.5    # a match in the document's title
 
 
 @dataclass
@@ -28,6 +33,9 @@ class Chunk:
     title: str       # document title (file name)
     section: str     # nearest heading
     text: str
+    path: str = ""           # the heading chain, "4 Fees > 4.2 Late payment"; "" for sections cut before paths existed
+    page: int | None = None  # the PDF page the section starts on
+    order: int = 0           # its place in the document
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -35,8 +43,14 @@ class Chunk:
 
 def stems(text: str) -> list[str]:
     # normalize Cyrillic yo to ye so both spellings match
-    words = _WORD.findall(text.lower().replace("\u0451", "\u0435").replace("_", " "))
-    return [w[:5] if len(w) > 5 else w for w in words if len(w) > 1]
+    low = text.lower().replace("\u0451", "\u0435")
+    words = _WORD.findall(low.replace("_", " "))
+    out = [w[:5] if len(w) > 5 else w for w in words if len(w) > 1]
+    for f in _FIGURE.findall(low):   # also whole, so an exact figure or clause number is findable as written
+        out.append(f)
+        if "," in f:
+            out.append(f.replace(",", "."))
+    return out
 
 
 class SearchIndex(Protocol):
@@ -48,41 +62,102 @@ class SearchIndex(Protocol):
     def search(self, namespaces: list[str], query: str, k: int) -> list[tuple[float, Chunk]]: ...
 
 
+class _Postings:
+    """One namespace's sections: term -> {section id: count}, for the text and for the heading path."""
+
+    def __init__(self) -> None:
+        self.chunks: dict[str, Chunk] = {}
+        self.text: dict[str, dict[str, int]] = {}
+        self.path: dict[str, dict[str, int]] = {}
+        self.title: dict[str, set[str]] = {}       # section id -> the stems of its document's title
+        self.len_text: dict[str, int] = {}
+        self.len_path: dict[str, int] = {}
+        self.sum_text = 0
+        self.sum_path = 0
+
+    def add(self, c: Chunk) -> None:
+        if c.id in self.chunks:
+            self.remove(c.id)
+        self.chunks[c.id] = c
+        # a section without a heading path is indexed as before paths existed: its heading with its text
+        body = Counter(stems(c.text if c.path else f"{c.section} {c.text}"))
+        head = Counter(stems(c.path)) if c.path else Counter()
+        for t, n in body.items():
+            self.text.setdefault(t, {})[c.id] = n
+        for t, n in head.items():
+            self.path.setdefault(t, {})[c.id] = n
+        self.len_text[c.id], self.len_path[c.id] = sum(body.values()), sum(head.values())
+        self.sum_text += self.len_text[c.id]
+        self.sum_path += self.len_path[c.id]
+        if c.path:
+            self.title[c.id] = set(stems(c.title))
+
+    def remove(self, cid: str) -> None:
+        if self.chunks.pop(cid, None) is None:
+            return
+        for table in (self.text, self.path):
+            for t in [t for t, ids in table.items() if cid in ids]:
+                del table[t][cid]
+                if not table[t]:
+                    del table[t]
+        self.sum_text -= self.len_text.pop(cid, 0)
+        self.sum_path -= self.len_path.pop(cid, 0)
+        self.title.pop(cid, None)
+
+
 class BM25Index:
+    """Lexical search over prebuilt postings: a query reads only the entries of its own terms."""
     ephemeral = True
 
     def __init__(self) -> None:
-        self._by_ns: dict[str, dict[str, Chunk]] = {}
+        self._by_ns: dict[str, _Postings] = {}
 
     def add(self, chunks: list[Chunk]) -> None:
         for c in chunks:
-            self._by_ns.setdefault(c.namespace, {})[c.id] = c
+            self._by_ns.setdefault(c.namespace, _Postings()).add(c)
 
     def delete(self, chunks: list[Chunk]) -> None:
         for c in chunks:
-            self._by_ns.get(c.namespace, {}).pop(c.id, None)
+            if c.namespace in self._by_ns:
+                self._by_ns[c.namespace].remove(c.id)
+
+    def chunks(self, namespace: str) -> list[Chunk]:
+        """Every section of a namespace."""
+        p = self._by_ns.get(namespace)
+        return list(p.chunks.values()) if p else []
 
     def search(self, namespaces: list[str], query: str, k: int = 6) -> list[tuple[float, Chunk]]:
-        chunks = [c for ns in namespaces for c in self._by_ns.get(ns, {}).values()]
+        spaces = [self._by_ns[ns] for ns in dict.fromkeys(namespaces) if ns in self._by_ns]
         q = set(stems(query))
-        if not chunks or not q:
+        n = sum(len(p.chunks) for p in spaces)
+        if not n or not q:
             return []
-        docs = [stems(f"{c.section} {c.text}") for c in chunks]
-        avg = sum(map(len, docs)) / len(docs)
-        df = Counter(t for d in docs for t in set(d))
-        n = len(docs)
-        scored = []
-        for c, d in zip(chunks, docs):
-            tf = Counter(d)
-            s = 0.0
-            for t in q:
-                if t in tf:
-                    idf = math.log(1 + (n - df[t] + 0.5) / (df[t] + 0.5))
-                    s += idf * tf[t] * 2.2 / (tf[t] + 1.2 * (0.25 + 0.75 * len(d) / avg))
-            if s > 0:
-                scored.append((s, c))
-        scored.sort(key=lambda x: -x[0])
-        return scored[:k]
+        avg_text = sum(p.sum_text for p in spaces) / n or 1.0
+        with_path = sum(1 for p in spaces for v in p.len_path.values() if v) or 1
+        avg_path = sum(p.sum_path for p in spaces) / with_path or 1.0
+        scores: dict[tuple[int, str], float] = {}
+        for t in q:
+            for table, lens, avg, weight in (("text", "len_text", avg_text, 1.0), ("path", "len_path", avg_path, W_PATH)):
+                df = sum(len(getattr(p, table).get(t, ())) for p in spaces)
+                if not df:
+                    continue
+                idf = math.log(1 + (n - df + 0.5) / (df + 0.5))
+                for i, p in enumerate(spaces):
+                    size = getattr(p, lens)
+                    for cid, tf in getattr(p, table).get(t, {}).items():
+                        s = idf * tf * 2.2 / (tf + 1.2 * (0.25 + 0.75 * size[cid] / avg))
+                        scores[(i, cid)] = scores.get((i, cid), 0.0) + weight * s
+        out = []
+        for (i, cid), s in scores.items():
+            title = spaces[i].title.get(cid)
+            if title:
+                s += W_TITLE * len(q & title) / len(q)
+            out.append((s, spaces[i].chunks[cid]))
+        out.sort(key=lambda x: (-x[0], x[1].id))
+        return out[:k]
+
+
+_TEXT_FIELDS = ("id", "namespace", "doc_id", "title", "section", "text", "path")
 
 
 class VectorStoreIndex:
@@ -130,5 +205,6 @@ class VectorStoreIndex:
             m = doc.metadata or {}
             if m.get("namespace") not in wanted:
                 continue
-            out.append((float(score), Chunk(**{f: m.get(f, "") for f in Chunk.__dataclass_fields__})))
+            out.append((float(score), Chunk(**{f: m[f] if f in m else ("" if f in _TEXT_FIELDS else None if f == "page" else 0)
+                                               for f in Chunk.__dataclass_fields__})))
         return out[:k]
