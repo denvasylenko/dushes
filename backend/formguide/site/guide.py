@@ -692,7 +692,7 @@ def create_dushes_router(site: Dushes, host: Any = None):
             async for ev in site.run(**kw):
                 yield agui.encode(ev, enc)
 
-        return StreamingResponse(events(), media_type=enc.get_content_type(),
+        return StreamingResponse(agui.alive(events(), enc), media_type=enc.get_content_type(),
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     return r

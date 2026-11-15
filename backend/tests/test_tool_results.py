@@ -61,3 +61,38 @@ def test_a_failed_step_says_so_on_its_result():
     out = agui.encode({"type": "TOOL_CALL_RESULT", "messageId": "m", "toolCallId": "c", "content": "x", "role": "tool",
                        "error": True})
     assert '"error":true' in out.replace(" ", "")                     # the event model keeps the flag
+
+
+def test_a_silent_stream_sends_a_keep_alive_line():
+    """The widget designer, for the cabinet's watchdog (2026-11-15): a healthy run can be silent for a long time
+    (a tool at work; up to two minutes waiting for the thread's previous turn), and nothing told a client that the
+    connection was alive. A comment line now goes out after every stretch of silence."""
+    import asyncio
+
+    from formguide import agui
+
+    async def run_stream():
+        yield "data: 1\n\n"
+        await asyncio.sleep(0.16)          # a slow tool
+        yield "data: 2\n\n"
+
+    async def read(every):
+        return [c async for c in agui.alive(run_stream(), every=every)]
+
+    got = asyncio.run(read(0.05))
+    assert got[0] == "data: 1\n\n" and got[-1] == "data: 2\n\n"
+    assert 2 <= got.count(agui.KEEPALIVE) <= 4 and agui.KEEPALIVE.startswith(":")   # an SSE comment, not an event
+    assert asyncio.run(read(0)) == ["data: 1\n\n", "data: 2\n\n"]                    # switched off: untouched
+
+    async def broken():
+        yield "data: 1\n\n"
+        raise RuntimeError("the run broke")
+
+    async def read_broken():
+        return [c async for c in agui.alive(broken(), every=0.05)]
+
+    try:
+        asyncio.run(read_broken())
+        raise AssertionError("an error inside the run must reach the reader")
+    except RuntimeError as e:
+        assert "the run broke" in str(e)

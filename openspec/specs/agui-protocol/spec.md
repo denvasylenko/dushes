@@ -93,6 +93,13 @@ Every event sent as server-sent events SHALL be one `data:` line followed by an 
 - **WHEN** a text delta contains U+2028
 - **THEN** the stream carries it as an escape inside the JSON string, and a client reads the same text back
 
+### Requirement: A silent stream shows it is alive
+While a run is in progress and no event has been sent for ten seconds, the server SHALL send an SSE comment line (`: keep-alive`). It carries no event; a client MAY treat a stream with no bytes for thirty seconds as lost. A binary stream is not changed.
+
+#### Scenario: A tool takes half a minute
+- **WHEN** a tool works for thirty seconds without anything to report
+- **THEN** the stream carries comment lines in the meantime, and the events that follow are unchanged
+
 ### Requirement: A failed step says so
 A `TOOL_CALL_RESULT` of a step that failed (the tool raised, refused its arguments, or does not exist) SHALL carry `error: true`; a step that worked SHALL carry no `error`. A move the site agent refuses because the person asked a question is not a failure.
 

@@ -115,6 +115,48 @@ def one_line(sse: Any) -> Any:
     return sse.translate(_SEPARATORS) if isinstance(sse, str) else sse
 
 
+KEEPALIVE_S = 10.0          # a line goes out after this long without an event
+KEEPALIVE = ": keep-alive\n\n"   # an SSE comment: every SSE reader skips it, and it proves the connection lives
+
+
+async def alive(chunks: Any, enc: EventEncoder | None = None, every: float | None = None) -> Any:
+    """The encoded stream of a run, with a comment line after every `every` seconds of silence. A healthy run can
+    be silent for a long time (a tool at work, the previous turn of the thread still running), and a client cannot
+    tell that from a dead connection without it. Only for SSE: a binary stream is passed through."""
+    every = KEEPALIVE_S if every is None else every
+    if every <= 0 or (enc is not None and "event-stream" not in str(enc.get_content_type())):
+        async for chunk in chunks:
+            yield chunk
+        return
+    import asyncio
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def pump() -> None:   # one task runs the whole run, so what it keeps in context variables stays its own
+        try:
+            async for chunk in chunks:
+                await queue.put((chunk,))
+        except Exception as e:  # noqa: BLE001 - handed to the reader, which raises it where the stream is read
+            await queue.put(e)
+        finally:
+            await queue.put(None)
+
+    task = asyncio.create_task(pump())
+    try:
+        while True:
+            try:
+                item = await asyncio.wait_for(queue.get(), every)
+            except asyncio.TimeoutError:
+                yield KEEPALIVE
+                continue
+            if item is None:
+                break
+            if isinstance(item, BaseException):
+                raise item
+            yield item[0]
+    finally:
+        task.cancel()
+
+
 def encode(ev: dict[str, Any], enc: EventEncoder | None = None) -> str:
     """One event as SSE, validated against the AG-UI event models."""
     try:

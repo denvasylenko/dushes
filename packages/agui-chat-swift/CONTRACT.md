@@ -21,6 +21,9 @@ it: the UI agent (`/agent/run`), the site agent (`/site/run`) and the docs assis
 
 As SSE every event is one `data:` line and an empty line. The server escapes U+2028, U+2029 and U+0085 inside
 JSON strings, so no event spans lines; a client should still split the byte stream on `\n` only.
+After ten seconds without an event the server sends a comment line (`: keep-alive`); skip it as any SSE comment,
+and treat a stream with no bytes at all for thirty seconds as lost. A healthy run can be silent for longer than
+that between events (a tool at work; up to two minutes waiting for the thread's previous turn).
 
 A run is one of: a new user message (the last `messages` item, role user); a card answer (`resume`, or
 `forwardedProps.command.resume`); results of client tools (trailing `tool` messages); a prefilled start

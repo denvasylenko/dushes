@@ -316,7 +316,7 @@ def create_router(guide: Any) -> APIRouter:
             async for ev in events():
                 yield agui.encode(ev, enc)
 
-        return StreamingResponse(body(), media_type=enc.get_content_type(),
+        return StreamingResponse(agui.alive(body(), enc), media_type=enc.get_content_type(),
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     return r

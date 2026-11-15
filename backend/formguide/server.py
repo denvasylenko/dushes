@@ -103,7 +103,7 @@ def create_router(guide: FormGuide, *, debug: bool = False) -> APIRouter:
             async for ev in guide.run_detached(**kw):
                 yield agui.encode(ev, enc)
 
-        return StreamingResponse(events(), media_type=enc.get_content_type(),
+        return StreamingResponse(agui.alive(events(), enc), media_type=enc.get_content_type(),
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     @r.post("/prefill")

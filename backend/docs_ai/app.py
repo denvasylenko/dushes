@@ -243,7 +243,7 @@ def create_app(*, corpus_source: str | None = None, model: BaseChatModel | None 
                             {"id": card["id"], "label": card_label(card), "key": key, "answer": now})
                 yield agui.encode(ev, enc)
 
-        return StreamingResponse(events(), media_type=enc.get_content_type(),
+        return StreamingResponse(agui.alive(events(), enc), media_type=enc.get_content_type(),
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     return app
