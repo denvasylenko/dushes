@@ -144,8 +144,8 @@ A native client: one WebSocket. `GET <host>/voice/stream?thread_id=<the chat's t
   that card, so accept or reject the card (its own resume) and do not send the words as a message;
   `interrupted` (the person spoke over a turn in progress: the server has stopped that turn, drop what it was
   showing as in progress; the `heard` that follows is the new request);
-  `spoken {delta}` (the transcript of what the voice says), `result {text}` (the agent's answer was given to the
-  voice), `quiet {card_id}`, `echo {text}` (the voice's own words came back through the microphone and were
+  `spoken {delta}` (the transcript of what the voice says), `result {text}` (a piece of the agent's answer was given to the
+  voice: one run may send several, the first sentences while the rest is still being written), `quiet {card_id}`, `echo {text}` (the voice's own words came back through the microphone and were
   dropped: remove what `hearing` had started to show), `error {code}`, `ended {reason, cost_usd, seconds}` with
   reason `closed`, `time`, `money`, `silence`, `day` or `lost`.
 

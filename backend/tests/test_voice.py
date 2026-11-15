@@ -611,3 +611,62 @@ def test_a_card_the_person_said_yes_to_is_not_asked_twice(guide, model, monkeypa
     collect(guide, "voice-other", message="I was born on the first of July, nineteen ninety", state=state)
     model.script = [say_("", ("p4", "propose_changes", {"changes": [{"name": "birth_date", "value": "1991-07-01"}]}))]
     assert "quiet" not in card(collect(guide, "voice-other", message="Yes", state=state))
+
+
+def test_the_first_sentence_is_spoken_while_the_rest_is_still_written():
+    """The cabinet's first voice run (2026-11-16): the voice said it was checking, then waited 6.8 s for the whole
+    answer. A whole sentence goes to the voice once the next one has begun; a lead before a step (one sentence,
+    then a tool) waits, and a lead that is taken back and written again is not said twice."""
+    assert voice.ready("It costs 18.9% a year. The term") == 0                  # the next sentence has barely begun
+    assert voice.ready("It costs 18.9% a year. The term is up to seven years") == 23
+    assert voice.ready("Let me look. ") == 0                                    # a lead: nothing after it yet
+
+    async def go():
+        talks, live, _ = _talks()
+        await talks.start("anna", "o", "t1")
+        live.push(type="session.input_transcript.delta", delta="What does a car loan cost?")
+        live.push(type="session.delegation.created", delegation={"id": "item_1"})
+        events = talks.events("live_1")
+        assert [(await asyncio.wait_for(events.__anext__(), 1))["type"] for _ in range(2)] == ["hearing", "heard"]
+        said = lambda: [(m["delegation_id"], m["content"]) for m in live.sent if m["type"] == "session.commentary.append"]  # noqa: E731
+        talks.seen("t1", {"type": "RUN_STARTED"})
+        talks.seen("t1", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "lead", "delta": "Let me look. "})
+        talks.seen("t1", {"type": "CUSTOM", "name": "text_retract", "value": {"messageId": "lead"}})
+        talks.seen("t1", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "A car loan starts **from 18.9%** a year. "})
+        await asyncio.sleep(0.01)
+        assert said() == []                                                     # one sentence so far: it may be a lead
+        talks.seen("t1", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "The term is up to seven years, "})
+        await asyncio.sleep(0.01)
+        assert said() == [("item_1", "A car loan starts from 18.9% a year.")]   # said while the rest is written
+        talks.seen("t1", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "with no fee."})
+        talks.seen("t1", {"type": "RUN_FINISHED"})
+        await asyncio.sleep(0.01)
+        assert said()[1:] == [("item_1", "The term is up to seven years, with no fee.")]   # the rest, the same request
+        results = [await asyncio.wait_for(events.__anext__(), 1) for _ in range(2)]
+        assert [r["type"] for r in results] == ["result", "result"]
+        # a lead that was said, then taken back and written again: once
+        live.push(type="session.input_transcript.delta", delta="And the fee?")
+        live.push(type="session.delegation.created", delegation={"id": "item_2"})
+        await asyncio.sleep(0.01)
+        talks.seen("t1", {"type": "RUN_STARTED"})
+        talks.seen("t1", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "a", "delta": "There is no fee at all. Let me check the early repayment"})
+        talks.seen("t1", {"type": "CUSTOM", "name": "text_retract", "value": {"messageId": "a"}})
+        talks.seen("t1", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "b", "delta": "There is no fee at all. Early repayment is free."})
+        talks.seen("t1", {"type": "RUN_FINISHED"})
+        await asyncio.sleep(0.01)
+        assert said()[2:] == [("item_2", "There is no fee at all."), ("item_2", "Early repayment is free.")]
+        # everything said on the way: nothing is added at the end, and no "Done"
+        talks.seen("t1", {"type": "RUN_STARTED"})
+        talks.seen("t1", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "c", "delta": "It is on the Applicant tab. "})
+        talks.seen("t1", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "c", "delta": "                    "})
+        talks.seen("t1", {"type": "RUN_FINISHED"})
+        await asyncio.sleep(0.01)
+        assert [c for _, c in said()[4:]] == ["It is on the Applicant tab."]
+        voice.HOSTS.clear()
+    asyncio.run(go())
+
+
+def test_a_number_in_words_with_k():
+    """QA's list from the owner's voice log (2026-11-16): "two hundred k" is 200000 said aloud."""
+    assert voice.said_numbers("two hundred k") == ["200000"] and voice.said_numbers("ok, fifty k then") == ["50000"]
+    assert voice.said_numbers("plan k") == []

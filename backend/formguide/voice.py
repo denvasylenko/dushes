@@ -292,6 +292,21 @@ INSTRUCTIONS = (
 _MARKUP = re.compile(r"[*_`#>|]+|\[(.*?)\]\((.*?)\)")
 
 
+EARLY_AHEAD = 20   # a sentence is said early once this much of the next one is written (a lead before a step is not)
+_SENTENCE = re.compile(r"[.!?\u2026][\"')\]*_]*\s+")
+
+
+def ready(text: str, start: int = 0) -> int:
+    """How far an answer that is still being written can be said: the end of its last whole sentence that already
+    has EARLY_AHEAD characters after it; `start` when there is none yet."""
+    ends = [m.end() for m in _SENTENCE.finditer(text, start) if len(text) - m.end() >= EARLY_AHEAD]
+    return ends[-1] if ends else start
+
+
+def _sentences(text: str) -> list[str]:
+    return [x.strip() for x in re.split(r"(?<=[.!?\u2026])\s+", text) if x.strip()]
+
+
 def spoken(text: str) -> str:
     """An answer's text as words to say: no markup, one paragraph, cut to what one result may hold."""
     plain = _MARKUP.sub(lambda m: m.group(1) or "", text or "")
@@ -530,7 +545,7 @@ class Talks:
                                 pass
                         self._emit(state, {"type": "interrupted"})
                     state["pending"] = asked
-                    state["answer"] = []
+                    state["answer"], state["told"], state["spoke"] = [], {}, []
                     if text:
                         # a plain yes or no while a card waits is the answer to that card: the client accepts or
                         # rejects it instead of sending the words as a new message (which would close the card)
@@ -587,11 +602,26 @@ class Talks:
             return   # the rest of a turn the person spoke over: nothing of it is said
         if t in ("RUN_FINISHED", "RUN_ERROR"):
             state["running"] = False
+        if t == "RUN_STARTED":
+            state["told"], state["spoke"] = {}, []
         if t == "TEXT_MESSAGE_CONTENT":
-            state["answer"].append((ev.get("messageId"), ev.get("delta", "")))
+            mid = ev.get("messageId")
+            state["answer"].append((mid, ev.get("delta", "")))
+            # the first sentences go to the voice while the rest is still being written
+            told = state.setdefault("told", {})   # message id -> how much of it the voice already has
+            text = "".join(d for m, d in state["answer"] if m == mid)
+            cut = ready(text, told.get(mid, 0))
+            if cut > told.get(mid, 0):
+                spoke = state.setdefault("spoke", [])
+                new = [x for x in _sentences(spoken(text[told.get(mid, 0):cut])) if x not in spoke]
+                piece, told[mid] = " ".join(new), cut
+                if piece:
+                    spoke.extend(new)
+                    self._later(self._say(talk_id, piece, more=True))
         elif t == "CUSTOM" and ev.get("name") == "text_retract":
             gone = (ev.get("value") or {}).get("messageId")
             state["answer"] = [(m, d) for m, d in state["answer"] if m != gone]
+            state.setdefault("told", {}).pop(gone, None)
         elif t == "CUSTOM" and ev.get("name") == "run_stats":
             self.meter.report(talk_id, agent_usd=float((ev.get("value") or {}).get("cost_usd") or 0))
         elif t in ("RUN_FINISHED", "RUN_ERROR"):
@@ -602,18 +632,27 @@ class Talks:
             if t == "RUN_FINISHED" and isinstance(state.get("card"), dict) and not text:
                 # a quiet card: the client applies it at once and the agent's next run says what was filled
                 self._emit(state, {"type": "quiet", "card_id": state["card"].get("card_id")})
-                state["answer"], state["card"] = [], False
+                state["answer"], state["card"], state["told"], state["spoke"] = [], False, {}, []
                 return
             waits = state.get("waiting")
+            # what the voice does not have yet: the answer without the sentences it was given on the way (a lead
+            # taken back and written again is not said twice)
+            told, spoke, by_id = state.get("told") or {}, set(state.get("spoke") or []), {}
+            for m, d in state["answer"]:
+                by_id[m] = by_id.get(m, "") + d
+            rest = " ".join(x for x in _sentences(spoken(" ".join(body[told.get(m, 0):] for m, body in by_id.items())))
+                            if x not in spoke)
             if t == "RUN_ERROR":
-                text = "Tell the person that something went wrong and to try again."
+                rest = "Tell the person that something went wrong and to try again."
             elif waits:   # a card waits: the voice asks its question itself, and a spoken yes or no answers it
-                text = (text + " " if text else "") + asks(waits)
-            elif not text:
-                text = "Done. Tell the person it is done, in one short sentence."
-            state["answer"], state["card"] = [], False
-            import asyncio
-            asyncio.ensure_future(self._say(talk_id, text))
+                rest = (rest + " " if rest else "") + asks(waits)
+            elif not text and not spoke:
+                rest = "Done. Tell the person it is done, in one short sentence."
+            state["answer"], state["card"], state["told"], state["spoke"] = [], False, {}, []
+            if rest:
+                self._later(self._say(talk_id, rest))
+            else:   # everything was said on the way
+                state["pending"] = None
         elif t == "CUSTOM" and ev.get("name") == "on_interrupt":
             value = ev.get("value")
             if isinstance(value, str):
@@ -630,16 +669,27 @@ class Talks:
         elif t == "RUN_STARTED":
             state["waiting"] = None
 
-    async def _say(self, talk_id: str, text: str) -> None:
+    @staticmethod
+    def _later(coro) -> None:
+        import asyncio
+        asyncio.ensure_future(coro)
+
+    async def _say(self, talk_id: str, text: str, more: bool = False) -> None:
+        """Give the voice a piece of the answer to say. `more`: the answer is still being written, so the
+        request it belongs to stays open for the next piece."""
+        import asyncio
         state = self._live.get(talk_id)
         if not state:
             return
         self._emit(state, {"type": "result", "text": text})
         # the answer belongs to the request the voice handed over; a typed message's answer belongs to none
-        asked, state["pending"] = state["pending"], None
+        asked = state["pending"]
+        if not more:
+            state["pending"] = None
         try:
-            await state["ws"].send(_json({"type": "session.commentary.append", "event_id": f"result_{secrets.token_hex(4)}",
-                                          "delegation_id": asked, "content": text}))
+            async with state.setdefault("saying", asyncio.Lock()):   # pieces reach the voice in the order written
+                await state["ws"].send(_json({"type": "session.commentary.append", "event_id": f"result_{secrets.token_hex(4)}",
+                                              "delegation_id": asked, "content": text}))
         except Exception:  # noqa: BLE001
             await self.end(talk_id, "lost")
 
@@ -811,6 +861,8 @@ def said_numbers(text: str) -> list[str]:
         open_, last = False, ""
 
     for word in re.findall(r"[a-z]+|\d+", _short_numbers((text or "").lower())):
+        if word == "k" and open_:   # "two hundred k"
+            word = "thousand"
         if word.isdigit():
             flush()
             out.append(word)

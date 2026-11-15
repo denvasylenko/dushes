@@ -14,6 +14,13 @@ In voice mode the speech model SHALL pass what the person asked to the Dushes ag
 - **WHEN** the person asks aloud what car insurance costs
 - **THEN** the Dushes agent answers it as it would in chat (nothing opens), the steps and the answer appear in the orb view, and the voice says the answer
 
+### Requirement: The answer is spoken as it is written
+The server SHALL give the voice each whole sentence of the agent's answer once the next sentence has begun, without waiting for the turn to end, and the rest when the turn ends. A single sentence followed by a step, and a sentence taken back and written again, SHALL NOT be spoken twice.
+
+#### Scenario: An answer of three sentences
+- **WHEN** the agent has written the first sentence of its answer and begun the second
+- **THEN** the voice is given the first sentence at once, and the other two when they are written
+
 ### Requirement: No key reaches the browser
 The browser SHALL connect its audio through the host: the host creates the call with its own key and returns only the connection answer. No API key, long or short lived, SHALL be sent to the browser.
 

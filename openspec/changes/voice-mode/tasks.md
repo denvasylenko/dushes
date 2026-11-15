@@ -20,6 +20,8 @@ Nothing here starts before the owner agrees to the estimate in design.md.
 - [ ] 2.5b Silent mode: no spoken output, short text answers, kept for the conversation
 - [x] 2.6 Speaking over a turn in progress stops it and its voice (`interrupted`); a spoken yes or no answers a
       waiting card; the voice asks the card's question itself
+- [x] 2.6a The answer goes to the voice sentence by sentence while it is written (`formguide.voice.ready`); offline
+      only: how the provider speaks several pieces of one request is not checked live yet
 - [x] 2.7a The limits as logic: the day's budget, a person's own, time and money per conversation, one at once,
       silence (`formguide.voice.Meter`)
 - [x] 2.7b The limits enforced on a live session (the provider's usage events, closing the session)
