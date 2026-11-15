@@ -736,3 +736,30 @@ describe('showing what was filled', () => {
     expect(document.querySelector('[data-formguide-hint]')).toBeNull()
   })
 })
+
+describe('closing, taken over by the page', () => {
+  it('agui:before-close can be cancelled; proceed() closes for real, once', async () => {
+    const el = document.createElement('agui-chat') as AguiChatElement
+    for (const [k, v] of Object.entries({ mode: 'bubble', lang: 'en', 'persist-thread': 'off' })) el.setAttribute(k, v)
+    document.body.appendChild(el)
+    await new Promise((r) => setTimeout(r, 0))
+    const open = () => el.shadowRoot!.querySelector('.wrap')!.classList.contains('open')
+    let proceed: (() => void) | null = null, closed = 0
+    el.addEventListener('agui:close', () => { closed++ })
+    el.open()
+    el.close()
+    expect(open()).toBe(false)                                            // nobody listens: it closes as before
+    expect(closed).toBe(1)
+    el.addEventListener('agui:before-close', (e) => { e.preventDefault(); proceed = (e as CustomEvent).detail.proceed })
+    el.open()
+    ;(el.shadowRoot!.querySelector('.icon.close') as HTMLButtonElement).click()   // the widget's own close button
+    expect(open()).toBe(true)                                             // the page holds it for its transition
+    expect(closed).toBe(1)
+    proceed!()
+    expect(open()).toBe(false)
+    expect(closed).toBe(2)
+    el.close()                                                            // already closed: no event, nothing to hold
+    expect(closed).toBe(2)
+  })
+})
+
