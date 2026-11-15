@@ -61,7 +61,8 @@ const mark = (met: boolean | null) => (met === true ? 'met' : met === false ? 'n
 <p>{DOCUMENTS.lead}</p>
 <ul>{setLines().map((l) => <li>{l}</li>)}</ul>
 <p>{DOCUMENTS.why}</p>
-<p>{DOCUMENTS.traps} The <a href="../../agents/researcher/demo/">researcher demo</a> lists every document and shows the answers.</p>
+<p>{DOCUMENTS.quality}</p>
+<p>{DOCUMENTS.traps} Read every document in full: <a href="../../agents/researcher/documents/">the test documents</a>.</p>
 
 <Disclosure summary="By kind of question: required facts covered" panel>
   <div class="br br-kinds not-content" role="table" aria-label="Coverage by kind of question">

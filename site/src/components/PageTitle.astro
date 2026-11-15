@@ -10,17 +10,21 @@ const desc = entry.data.description;
 // pages with their own header: the landing (a hero) and the card gallery
 const custom = entry.id === 'frontend/card-gallery';
 const splash = entry.data.template === 'splash' || !!entry.data.hero || custom;
+// a test document of the researcher has no Markdown export of its own, so no page actions
+const testDoc = Astro.url.pathname.includes('/research-documents/');
 const isSpec = entry.id.startsWith('reference/specifications/') && entry.id !== 'reference/specifications';
 ---
 {!custom && <Default />}
 {!splash && (
   <>
     {desc && !isSpec && <p class="pt-lead">{desc}</p>}
+    {!testDoc && (
     <div class="pt-actions" data-page-actions data-pagefind-ignore>
       <CopyButton label="Copy page" auto={false} data-copy-page />
       <Button size="sm" href="https://claude.ai/new" target="_blank" rel="noopener" data-open="claude">Open in Claude</Button>
       <Button size="sm" href="https://chatgpt.com/" target="_blank" rel="noopener" data-open="chatgpt">Open in ChatGPT</Button>
     </div>
+    )}
   </>
 )}
 

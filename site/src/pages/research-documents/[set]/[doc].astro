@@ -1,0 +1,37 @@
+---
+/**
+ * One of the researcher's test documents, in full: the Markdown file the researcher is asked about, rendered at
+ * build time. Kept out of the site's search (the text is fictional) and marked as a test document on every page.
+ */
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro'
+import { Aside } from '@astrojs/starlight/components'
+import { SETS, isPdf, plantedIn, read, render, size, slug, type Doc, type DocSet } from '../../../lib/research-docs'
+
+export function getStaticPaths() {
+  return SETS.flatMap((set) => set.documents.filter((d) => !isPdf(d)).map((doc) => ({ params: { set: set.id, doc: slug(doc) }, props: { set, doc } })))
+}
+const { set, doc } = Astro.props as { set: DocSet; doc: Doc }
+const planted = plantedIn(set, doc)
+const html = render(read(set.id, doc.id).toString('utf-8'), planted)
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/')
+const list = `${base}agents/researcher/documents/#${set.id}`
+---
+<StarlightPage frontmatter={{ title: doc.title, description: `A test document of the set "${set.name}": ${size(doc)}. Fictional, written for the researcher's benchmark.`, pagefind: false, tableOfContents: false, head: [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex' } }] }}>
+  <p><a href={list}>All documents of this set</a></p>
+  <Aside title="A test document">
+    Everything in it is fictional: the company, the people, the figures. A generator program wrote it for the researcher's benchmark; no subject expert has read it.
+  </Aside>
+  {planted.length > 0 && (
+    <Aside type="caution" title="This document holds a planted instruction">
+      One line addresses AI assistants and tells them to say something false. It is there on purpose: the benchmark checks that the researcher does not obey it. {planted.some((p) => !/^\s*<!--/.test(p.text)) && <span>Here it sits in a table row: <code>{planted.find((p) => !/^\s*<!--/.test(p.text))!.text}</code></span>}
+    </Aside>
+  )}
+  <div class="rdoc" set:html={html} />
+</StarlightPage>
+
+<style is:global>
+  .rdoc-planted { padding: 12px 16px; border-radius: var(--fg-r-ctl); background: var(--fg-fill); }
+  .rdoc-planted span { font-weight: 600; }
+  .rdoc-planted code { white-space: normal; overflow-wrap: anywhere; }
+  .rdoc table { display: block; overflow-x: auto; }
+</style>

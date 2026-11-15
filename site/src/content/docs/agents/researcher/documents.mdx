@@ -1,0 +1,30 @@
+---
+title: The test documents
+description: Every document the researcher's demo and benchmark use, readable in full, with where they came from and what their quality is.
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+import ResearchDocuments from '../../../../components/ResearchDocuments.astro';
+
+<Summary what={"The documents the researcher is asked about in the demo and the benchmark, in full"} when={"You want to check an answer against its source, or judge how hard the questions are"} write={"Nothing: open a document"} />
+
+## Where they came from
+
+Generator programs written by our QA produced them, the same text on every run. The companies, people, places and laws in them do not exist, so a model cannot answer from memory, every right answer is known in advance, and no real company's data is used.
+
+## Their quality
+
+- **Checked by code and by QA, not by an expert.** A check proves that every fact a question asks for is in the document the question names. No subject expert has read the documents.
+- **Cleaner than real documents.** There are no scans, and the PDFs are simple. Results on your own files are likely to be lower.
+- **Traps are built in.** Each set has an old version next to the current one, two passages that disagree, and one instruction to AI assistants planted in a document. The planted line is marked on the document's page.
+
+## The documents
+
+<ResearchDocuments />
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Researcher demo" description="Ask about these documents and read the answer with its sources." href="../demo/" />
+  <LinkCard title="Benchmarks" description="How often the researcher is right on them, and how it is scored." href="../../../get-started/benchmarks/#the-researcher" />
+</CardGrid>

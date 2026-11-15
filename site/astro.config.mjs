@@ -172,6 +172,7 @@ export default defineConfig({
 						{ label: 'Demo', slug: 'agents/researcher/demo', badge: { text: 'live', variant: 'success' } },
 						{ label: 'Toolsets', slug: 'agents/researcher/toolsets' },
 						{ label: 'Configuration', slug: 'agents/researcher/configuration' },
+						{ label: 'The test documents', slug: 'agents/researcher/documents' },
 					] },
 					{ label: 'Server and setup', items: [
 						{ label: 'Install and serve', slug: 'agents/shared/install' },
@@ -204,7 +205,7 @@ export default defineConfig({
 					{ label: 'Design system', slug: 'reference/design-system' },
 					{ label: 'Specifications', collapsed: true, items: [{ autogenerate: { directory: 'reference/specifications' } }] },
 				] },
-			], { exclude: ['/'] })],
+			], { exclude: ['/', '/research-documents/**/*'] })],
 		}),
 	],
 });

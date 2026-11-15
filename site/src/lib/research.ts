@@ -102,8 +102,9 @@ export const SCORING = {
   tail: 'No AI grades another AI, so the same answer always gets the same score. The limit: the script checks facts, not style. It sees that a figure or a term is there, not whether the explanation around it is sound.',
 }
 export const DOCUMENTS = {
-  lead: 'QA wrote them for this benchmark. The companies, people, places and laws in them do not exist:',
+  lead: 'Generator programs written by our QA produced them for this benchmark, the same text on every run. The companies, people, places and laws in them do not exist:',
   why: 'Three reasons: the model cannot answer from memory, only from the documents; every right answer is known in advance; and no real company\'s data is used.',
+  quality: 'They are checked by code and by QA; no subject expert has read them. They are also cleaner than real documents (no scans, simple PDFs), so results on your own files are likely to be lower.',
   traps: 'Each set has traps built in: an old version next to the current one, two passages that disagree, and an instruction to AI assistants hidden in a document.',
 }
 const setLine = (s: { title: string; documents: number; pages: number }) => `${s.title}: ${s.documents} documents, ${s.pages} pages`
@@ -119,7 +120,7 @@ export function researchMarkdown(): string {
     '',
     `This is the researcher as it is today. ${t.scenarios} questions on ${t.documents} test documents written for this benchmark (fictional companies, ${t.pages} pages) in ${RESEARCH.sets.length} sets. Each question was asked ${t.passes} times: ${t.answers} answers per model. Measured on ${longDate(t.date)}. A script scored every answer; no AI graded them. The bar is the target for each check, measured on ${RESEARCH.bar_measured_on}.`,
     '', '### How it\'s scored', '', SCORING.lead, '', ...SCORING.checks.map((c) => `- ${c}`), '', `${SCORING.tail} [How the checks work](${SCORING.readme}).`,
-    '', '### The documents', '', DOCUMENTS.lead, '', ...setLines().map((l) => `- ${l}`), '', DOCUMENTS.why, '', DOCUMENTS.traps,
+    '', '### The documents', '', DOCUMENTS.lead, '', ...setLines().map((l) => `- ${l}`), '', DOCUMENTS.why, '', DOCUMENTS.quality, '', DOCUMENTS.traps,
     '', head, ...barRows().map(line), ...factRows().map(line), '',
     'Not measured yet (they come with the new researcher):', '', ...laterRows().map((r) => `- ${r.label}: ${r.bar}`),
     '', RESEARCH.note,

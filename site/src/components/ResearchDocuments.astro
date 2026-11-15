@@ -1,0 +1,29 @@
+---
+/**
+ * The researcher's test documents, set by set: every document with what it is and how long, linked to its full
+ * text (a page for Markdown, the file for a PDF). All from research-demo.json; nothing is typed here.
+ */
+import { Row, Rows } from './ui'
+import { SETS, href, plantedIn, size } from '../lib/research-docs'
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/')
+const sum = (xs: (number | undefined)[]) => xs.reduce<number>((n, x) => n + (x ?? 0), 0)
+---
+{SETS.map((set) => (
+  <section class="rdocs">
+    <h2 id={set.id}>{set.name}</h2>
+    <p>{set.about} {set.documents.length} documents, {sum(set.documents.map((d) => d.pages)).toLocaleString('en-US')} pages.</p>
+    <div class="not-content">
+      <Rows label={set.name}>
+        {set.documents.map((d) => (
+          <Row href={href(base, set, d)} caption={[size(d), plantedIn(set, d).length ? 'holds the planted instruction' : ''].filter(Boolean).join(' · ')}>
+            <b>{d.title}</b>{d.about && <span class="rdocs-about"> {d.about}</span>}
+          </Row>
+        ))}
+      </Rows>
+    </div>
+  </section>
+))}
+
+<style>
+  .rdocs-about { color: var(--fg-ink-2); font-weight: 400; }
+</style>
