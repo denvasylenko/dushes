@@ -139,7 +139,7 @@ When the client cannot show a consent row, a proposal for a consent field SHALL 
 - **THEN** no card is shown and the tool result says the field is a consent only the person gives
 
 ### Requirement: A question about a consent fills it
-A question card that asks the person to agree, accept or consent, while the form has a visible consent not yet given, SHALL be bound to that consent's field, so that the person's own yes fills it. Such a question without a field SHALL be refused, and the model is told which consent fields are open.
+A question card that asks the person to agree, accept or consent, while the form has a visible consent not yet given, SHALL be bound to that consent's field, so that the person's own yes fills it; that card SHALL carry `consent: true`, the consent's own text as `label` and its document as `doc` when it has one. Such a question without a field SHALL be refused, and the model is told which consent fields are open.
 
 #### Scenario: Asked before sending
 - **WHEN** the form has a required "I agree to the cancellation policy" checkbox and the model asks "Do you agree to the cancellation policy?" with Yes and No and no field

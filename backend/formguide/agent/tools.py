@@ -852,7 +852,11 @@ def _applying(ctx: ToolCtx, name: str, opts: list[dict]) -> dict:
             for o in opts:
                 o.pop("value", None)
             return {}
-        return {"applies": True, "label": e.label or name, **previous_of(ctx, name)}
+        extra: dict[str, Any] = {}
+        if is_consent(ctx, e.node, e):   # the card is about this one consent: its own text, and its document
+            doc = ((ctx.pack.consents.get(name) or {}).get("doc") if ctx.pack else None) or e.props.get("consent_doc")
+            extra = {"consent": True, **({"doc": doc} if isinstance(doc, dict) else {})}
+        return {"applies": True, "label": e.label or name, **extra, **previous_of(ctx, name)}
     try:
         for o in opts:
             found = vals.find_option(e.options, o["id"])

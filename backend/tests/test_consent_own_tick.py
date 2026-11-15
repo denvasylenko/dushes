@@ -69,6 +69,7 @@ def test_a_question_about_a_consent_goes_with_its_field(guide, model):
     v = interrupt_value(collect(guide, "ct3", message="send it", state=state))
     assert v["type"] == "ask" and v["field"] == "contact_messenger"       # the second, bound question is the card
     assert [o["id"] for o in v["options"]] == ["yes", "no"]
+    assert v["consent"] is True and v["label"] == "I agree to the cancellation policy"   # its own text, to show
     first = tool_result(model, "q1")
     assert "asks for a consent" in first and "contact_messenger" in first
 
