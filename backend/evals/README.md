@@ -115,3 +115,14 @@ commands as Herefront QA's `assistant_step.py`. A QA session (or its subagents, 
 after reading the answer; cards go by the scenario's rule, `--answer` types into a free-text card, `say --max-usd` is the
 spend lock, and `done --out` appends the conversation to a report that `blind_pack.py` takes as is. Stress and red-team
 scenarios are played this way; the other scenarios run on their scripted lines.
+
+## Scenario sets and their versions
+
+The owner's rule (2026-11-15): a set of scenarios is run at most 5 times; then a new version (v2, v3, ...) with new
+scenarios replaces it and the old one is archived with its results; every 5th run overall is a regression over the
+archived sets. `evals/sets/<set>-v<N>.txt` lists a set's scenarios (a scenario is in one set only) and
+`evals/sets/index.json` keeps each set's status and runs: `{n, date, commit, agent_model, kind: main | live | regression,
+repeat, passed, total, usd, report}` (`passed` / `total` count every run of every scenario; `usd` is the agent's spend).
+`scripts/evals.py --set pressure [--kind live]` runs the active version and records the run; a sixth run is refused with
+"used up", an archived set takes only `--kind regression`. Sets now: `pressure-v1` (stress and red team, played live),
+`core-v1` (scripted lines), `heldout-v1` (the held-out scenarios).

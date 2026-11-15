@@ -348,3 +348,35 @@ def test_a_live_guest_conversation_is_kept_between_steps(tmp_path, monkeypatch):
     rep = json.loads(out.read_text())
     assert rep["guest"] == "live" and rep["judged"] is False and rep["scenarios"][0]["name"] == name
     assert (tmp_path / f"eval-{name}-live-c1.txt").read_text().count("\U0001f464") == 2
+
+
+def test_a_scenario_set_is_run_five_times_at_most(tmp_path):
+    """evals/sets/index.json: --set, the five-run rule checked by the runner, every 5th run a regression."""
+    import evals
+    index = json.loads((evals.SETS / "index.json").read_text())
+    every = evals.load_all()
+    known, seen = {s.name for s in every}, set()
+    for e in index["sets"]:
+        names = evals.set_names(e)
+        assert len(names) == e["scenarios"] and set(names) <= known and not seen & set(names), e["set"]   # one set per scenario
+        seen |= set(names)
+        assert all(s.scripted for s in every if s.name in names), f"{e['set']}: a scenario has no scripted guest lines"
+    entry = {"set": "x", "version": 1, "status": "active", "file": index["sets"][0]["file"], "runs": [{"kind": "main"}] * 4 + [{"kind": "regression"}]}
+    fake = {"sets": [entry, {"set": "old", "version": 1, "status": "archived", "file": entry["file"], "runs": []}]}
+    evals.check_set(fake, entry, "main")                      # the fifth counted run is allowed (a regression is not counted)
+    entry["runs"].append({"kind": "live"})
+    with pytest.raises(evals.ScenarioError, match="used up"):
+        evals.check_set(fake, entry, "main")
+    with pytest.raises(evals.ScenarioError, match="archived"):
+        evals.check_set(fake, fake["sets"][1], "main")
+    evals.check_set(fake, fake["sets"][1], "regression")
+    assert evals.set_entry(fake, "x") is entry and evals.set_entry(fake, "old-v1")["status"] == "archived"
+    entry["runs"] = [{"kind": "main"}] * 4
+    assert evals.regression_due(fake)                         # four runs so far: the fifth overall is a regression
+    path = tmp_path / "index.json"
+    path.write_text(json.dumps({"sets": [{**entry, "runs": []}]}))
+    rep = {"at": "2026-11-15T10:00:00", "commit": "abc", "agent_model": "m", "repeat": 3, "agent_usd": 0.31,
+           "scenarios": [{"runs": [{"checks": [{"ok": True}]}, {"checks": [{"ok": False}]}, {"checks": []}]}]}
+    row = evals.record_run(path, "x", "main", rep, evals.RUNS / "evals-x.json")
+    assert row == {"n": 1, "date": "2026-11-15", "commit": "abc", "agent_model": "m", "kind": "main", "repeat": 3, "passed": 2, "total": 3,
+                   "usd": 0.31, "report": "backend/scripts/runs/evals-x.json"}

@@ -1,0 +1,32 @@
+{
+ "about": "Scenario sets and their runs. A set is run at most 5 times (kinds main and live), then a new version replaces it and it is archived with its results; every 5th run overall is a regression over the archived sets (evals.py --set / --regression).",
+ "sets": [
+  {
+   "set": "pressure",
+   "version": 1,
+   "status": "active",
+   "scenarios": 26,
+   "created": "2026-11-15",
+   "file": "backend/evals/sets/pressure-v1.txt",
+   "runs": []
+  },
+  {
+   "set": "core",
+   "version": 1,
+   "status": "active",
+   "scenarios": 10,
+   "created": "2026-11-15",
+   "file": "backend/evals/sets/core-v1.txt",
+   "runs": []
+  },
+  {
+   "set": "heldout",
+   "version": 1,
+   "status": "active",
+   "scenarios": 31,
+   "created": "2026-11-15",
+   "file": "backend/evals/sets/heldout-v1.txt",
+   "runs": []
+  }
+ ]
+}

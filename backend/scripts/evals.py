@@ -890,6 +890,56 @@ def agent_app(data_dir: Path, agent: Any, research: Any = None):
     return app
 
 
+# ===================================================================== scenario sets (versions)
+
+SETS = EVALS / "sets"
+MAX_RUNS = 5   # a set is run at most this many times, then a new version replaces it (the owner, 2026-11-15)
+
+
+def set_entry(index: dict, name: str) -> dict:
+    """The active version of a set ("pressure"), or an exact version ("pressure-v1")."""
+    for e in index["sets"]:
+        if f"{e['set']}-v{e['version']}" == name or (e["set"] == name and e["status"] == "active"):
+            return e
+    raise ScenarioError(f"no scenario set {name} in {SETS / 'index.json'}")
+
+
+def set_names(entry: dict) -> list[str]:
+    return (HERE.parent / entry["file"]).read_text().split()
+
+
+def counted(entry: dict) -> int:
+    return sum(1 for r in entry["runs"] if r.get("kind") in ("main", "live"))
+
+
+def check_set(index: dict, entry: dict, kind: str) -> None:
+    """Refuses the run the rule forbids: a sixth run of one set, or a run on an archived set that is not a regression."""
+    label = f"{entry['set']}-v{entry['version']}"
+    if kind != "regression" and entry["status"] != "active":
+        raise ScenarioError(f"{label} is archived: only a regression run goes over it")
+    if kind != "regression" and counted(entry) >= MAX_RUNS:
+        raise ScenarioError(f"{label} is used up ({MAX_RUNS} runs): write {entry['set']}-v{entry['version'] + 1} and archive this one")
+
+
+def regression_due(index: dict) -> bool:
+    """Every 5th run overall goes over the archived sets, to catch errors that came back."""
+    total = sum(len(e["runs"]) for e in index["sets"])
+    return any(e["status"] == "archived" for e in index["sets"]) and total % MAX_RUNS == MAX_RUNS - 1
+
+
+def record_run(index_path: Path, name: str, kind: str, report: dict, report_path: Path) -> dict:
+    """One line in the set's runs: every run of every scenario counted, the agent's spend, the report."""
+    index = json.loads(index_path.read_text())
+    entry = set_entry(index, name)
+    rows = [x for s in report["scenarios"] for x in (s.get("runs") or [s])]
+    row = {"n": len(entry["runs"]) + 1, "date": report["at"][:10], "commit": report.get("commit"), "agent_model": report.get("agent_model"),
+           "kind": kind, "repeat": report.get("repeat", 1), "passed": sum(all(c["ok"] for c in x.get("checks", [])) for x in rows),
+           "total": len(rows), "usd": report.get("agent_usd"), "report": str(report_path.relative_to(HERE.parent))}
+    entry["runs"].append(row)
+    index_path.write_text(json.dumps(index, indent=1) + "\n")
+    return row
+
+
 # ===================================================================== main
 
 
@@ -960,6 +1010,7 @@ def run(names: list[str] | None = None, *, model: str | None = None, offline: bo
     RUNS.mkdir(exist_ok=True)
     out = RUNS / f"evals-{datetime.now():%Y%m%d-%H%M%S}{'-offline' if offline else ''}.json"   # an offline report never looks live
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2))
+    report["_path"] = str(out)
     print("\n" + text + f"\n\nreport: {out}")
     broken = [r["name"] for r in results for x in r.get("runs", [r]) if any(c["check"] == "the scenario ran" for c in x["checks"])]
     if save_baseline and broken:
@@ -984,6 +1035,9 @@ def main(argv: list[str]) -> int:
                     'e.g. openai:gpt-5-mini, ollama:qwen3:8b or a JSON spec; the user and the judge are unchanged')
     ap.add_argument("--judge-model", help="the judge alone, e.g. anthropic:claude-opus-5-5 (default: as --model / the config)")
     ap.add_argument("--research-model", help="with --agent-model: the researcher's model (default: the agent model)")
+    ap.add_argument("--set", dest="set_name", help="a scenario set from evals/sets/index.json (\"pressure\" or \"pressure-v1\"): its "
+                    "scenarios are run and the run is recorded; a sixth run of one set is refused")
+    ap.add_argument("--kind", choices=["main", "live", "regression"], default="main", help="with --set: what the run is")
     ap.add_argument("--no-testers", action="store_true", help="no user model and no judge: scripted guest lines, cards answered "
                     "by rule, the code checks alone (the API pays for the agent only)")
     ap.add_argument("--max-usd", type=float, help="stop the run when the agent's spend, at its list price, is over this sum")
@@ -995,10 +1049,20 @@ def main(argv: list[str]) -> int:
     a = ap.parse_args(argv)
     try:
         names = (a.names or []) + (a.names_file.read_text().split() if a.names_file else [])
-        _, failed = run(names or None, model=a.model, offline=a.offline, margin=a.margin, save_baseline=a.save_baseline and not a.agent_model,
+        index_path = SETS / "index.json"
+        if a.set_name:   # a versioned set: the rule (five runs, then a new version) is checked here, not remembered
+            index = json.loads(index_path.read_text())
+            check_set(index, set_entry(index, a.set_name), a.kind)
+            if a.kind != "regression" and regression_due(index):
+                print("note: the next run overall is due as a regression over the archived sets (--kind regression)", file=sys.stderr)
+            names = set_names(set_entry(index, a.set_name))
+        report, failed = run(names or None, model=a.model, offline=a.offline, margin=a.margin, save_baseline=a.save_baseline and not a.agent_model,
                         tag=a.tag, repeat=a.repeat, agent_model=a.agent_model, research_model=a.research_model,
                         judge=a.judge_model, folder=a.folder, baseline_file=a.baseline or a.folder / "baseline.json",
                         no_testers=a.no_testers, max_usd=a.max_usd)
+        if a.set_name and not a.offline:
+            row = record_run(index_path, a.set_name, a.kind, report, Path(report["_path"]))
+            print(f"set {a.set_name}: run {row['n']} recorded, {row['passed']}/{row['total']} with every check holding")
     except ScenarioError as e:
         print(f"scenario error: {e}", file=sys.stderr)
         return 2
