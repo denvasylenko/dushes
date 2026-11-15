@@ -1503,13 +1503,13 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     return tile
   }
 
-  /** The image, large, over the chat (its code loads the first time, with the markup editor). An image still in the
-   *  composer has the pencil; its check mark puts the marked-up copy in the image's place. A sent one is only viewed. */
+  /** The image, large, over the chat (its code loads the first time, with the markup tools). While attachments are on,
+   *  the pencil marks a picture up: the copy takes a composer image's place; a sent picture's copy joins the composer. */
   private _zoom(opener: HTMLElement): void {
-    const mark = (from: HTMLElement, image: Blob, name: string): void => {
+    const mark = this.$.clip.hidden ? undefined : (from: HTMLElement, image: Blob, name: string): void => {
       const i = from.dataset.file
-      if (i === undefined || !this._files[+i]) return
-      this._replaceFile(+i, image, name)
+      if (i !== undefined && this._files[+i]) this._replaceFile(+i, image, name)
+      else void this._upload([new File([image], `${(name || 'image').replace(/\.[a-z0-9]{1,5}$/i, '')}-markup.png`, { type: 'image/png' })])
       if (finePointer()) (this.$.input as HTMLTextAreaElement).focus({ preventScroll: true })   // the next step is to say what to do with it
     }
     void loadZoom().then((open) => open({ wrap: this.$.wrap, t: this.t.bind(this), icon: (el, n) => this._icon(el, n), mark }, opener)).catch(() => {})

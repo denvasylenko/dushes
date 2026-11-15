@@ -82,17 +82,6 @@ describe('attachments in the composer', () => {
     expect(zoom.querySelector('.zoom-stage img')!.getAttribute('alt')).toBe('b.png')
   })
 
-  it('a sent image is only viewed: no pencil', async () => {
-    const el = await mount()
-    await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])
-    el.agent = { run: () => ({ subscribe: (o: { next: (e: unknown) => void; complete: () => void }) => { setTimeout(() => { o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' }); o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }); return { unsubscribe() {} } } }) } as never
-    await el.send('look')
-    await tick(5)
-    ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()
-    await viewer(el)
-    expect(el.shadowRoot!.querySelector<HTMLElement>('dialog.zoom .zoom-edit')!.style.visibility).toBe('hidden')
-  })
-
   it('pages through the images sent with one message: arrows and keys, no wrap-around', async () => {
     const el = await mount()
     await pick(el, [new File(['x'], 'a.png', { type: 'image/png' }), new File(['y'], 'b.png', { type: 'image/png' })])
@@ -114,14 +103,50 @@ describe('attachments in the composer', () => {
     expect(n.textContent).toBe('1 of 2')
   })
 
-  it('markup: x, undo and redo, one check mark; x and Esc go back to the picture and keep the drawing', async () => {
+  it('an image still in the composer: the pencil opens the tool panel; Save puts the copy in its place; close goes back to the picture', async () => {
     const el = await mount()
-    await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])
+    const names: string[] = []
+    el.options = { upload: async (f: File) => { names.push(f.name); return { id: `att_${f.name}`, filename: f.name } } }
+    HTMLCanvasElement.prototype.toBlob = function (cb: BlobCallback) { cb(new Blob(['png'], { type: 'image/png' })) }
+    const composer = () => [...el.shadowRoot!.querySelectorAll<HTMLElement>('.files .att')].map((t) => t.title)
+    await pick(el, [new File(['x'], 'shot.png', { type: 'image/png' })])
     ;(el.shadowRoot!.querySelector('.files .att-open') as HTMLButtonElement).click()
     await viewer(el)
     const zoom = el.shadowRoot!.querySelector('dialog.zoom') as HTMLDialogElement
     ;(zoom.querySelector('.zoom-edit') as HTMLButtonElement).click()
+    const bar = zoom.querySelector('.pk .pk-bar')!
+    expect([...bar.querySelectorAll('button[data-tool]')].map((b) => b.getAttribute('aria-label'))).toEqual(['Pen', 'Rectangle', 'Text'])
+    for (const label of ['Colour', 'Line width', 'Undo', 'Redo', 'Clear', 'Save', 'Close']) expect(bar.querySelector(`[aria-label="${label}"]`), label).not.toBeNull()
+    expect(zoom.querySelector('.mk')).toBeNull()                                     // not the phone-style markup
+    ;(bar.querySelector('[aria-label="Close"]') as HTMLButtonElement).click()        // back to the picture, the view stays
+    expect(zoom.querySelector('.pk')).toBeNull()
+    expect(zoom.open).toBe(true)
+    ;(zoom.querySelector('.zoom-edit') as HTMLButtonElement).click()
+    const canvas = zoom.querySelector('.pk canvas')!
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 5, clientY: 5 }))
+    canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: 9, clientY: 9 }))
+    ;(zoom.querySelector('.pk [aria-label="Save"]') as HTMLButtonElement).click()
+    await tick(20)
+    expect(el.shadowRoot!.querySelector('dialog.zoom')).toBeNull()                    // the view closes
+    expect(composer()).toEqual(['shot-markup.png'])                                   // in its place
+    expect(names).toEqual(['shot.png', 'shot-markup.png'])
+  })
+
+  it('a sent image: the pencil opens the phone-style markup (x, undo, redo, one check mark); the copy joins the composer, the sent one stays', async () => {
+    const el = await mount()
+    HTMLCanvasElement.prototype.toBlob = function (cb: BlobCallback) { cb(new Blob(['png'], { type: 'image/png' })) }
+    const composer = () => [...el.shadowRoot!.querySelectorAll<HTMLElement>('.files .att')].map((t) => t.title)
+    await pick(el, [new File(['x'], 'photo.png', { type: 'image/png' })])
+    el.agent = { run: () => ({ subscribe: (o: { next: (e: unknown) => void; complete: () => void }) => { setTimeout(() => { o.next({ type: 'RUN_STARTED', threadId: 't', runId: 'r' }); o.next({ type: 'RUN_FINISHED', threadId: 't', runId: 'r' }); o.complete() }); return { unsubscribe() {} } } }) } as never
+    await el.send('look')
+    await tick(5)
+    ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()
+    await viewer(el)
+    const zoom = el.shadowRoot!.querySelector('dialog.zoom') as HTMLDialogElement
+    expect(zoom.querySelector('.mk, .pk')).toBeNull()                                 // opened to look at: nothing is editable yet
+    ;(zoom.querySelector('.zoom-edit') as HTMLButtonElement).click()
     const mk = zoom.querySelector('.mk')!
+    expect(zoom.querySelector('.pk')).toBeNull()
     expect([...mk.querySelectorAll('.mk-top button')].map((b) => b.getAttribute('aria-label'))).toEqual(['Cancel', 'Undo', 'Redo', 'Done'])
     expect(mk.querySelector('.mk-tool')!.getAttribute('aria-label')).toBe('Pen, Colour')
     const undo = mk.querySelector<HTMLButtonElement>('[aria-label="Undo"]')!
@@ -130,36 +155,20 @@ describe('attachments in the composer', () => {
     canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 5, clientY: 5 }))
     canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: 9, clientY: 9 }))
     expect(undo.disabled).toBe(false)
-    zoom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))      // back to the picture, the view stays
+    zoom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))               // back to the picture, the view stays
     expect(zoom.querySelector('.mk')).toBeNull()
     expect(zoom.open).toBe(true)
-    ;(zoom.querySelector('.zoom-edit') as HTMLButtonElement).click()          // the drawing is still there
+    ;(zoom.querySelector('.zoom-edit') as HTMLButtonElement).click()                   // the drawing is still there
     expect(zoom.querySelector<HTMLButtonElement>('.mk [aria-label="Undo"]')!.disabled).toBe(false)
+    ;(zoom.querySelector('.mk [aria-label="Done"]') as HTMLButtonElement).click()
+    await tick(20)
+    expect(composer()).toEqual(['photo-markup.png'])                                  // a new attachment, ready to send
+    expect(el.shadowRoot!.querySelectorAll('.msg.me .att')).toHaveLength(1)           // the sent picture is untouched
+    el.options = { attach: false }                                                    // attachments off: nowhere for a copy to go, so no pencil
+    ;(el.shadowRoot!.querySelector('.msg.me .att-open') as HTMLButtonElement).click()
+    await viewer(el)
+    expect(el.shadowRoot!.querySelector<HTMLElement>('dialog.zoom .zoom-edit')!.style.visibility).toBe('hidden')
   })
-
-  it('the check mark puts the marked-up copy in place of the composer image', async () => {
-    const el = await mount()
-    const names: string[] = []
-    el.options = { upload: async (f: File) => { names.push(f.name); return { id: `att_${f.name}`, filename: f.name } } }
-    const composer = () => [...el.shadowRoot!.querySelectorAll<HTMLElement>('.files .att')].map((t) => t.title)
-    HTMLCanvasElement.prototype.toBlob = function (cb: BlobCallback) { cb(new Blob(['png'], { type: 'image/png' })) }
-    const draw = async (opener: HTMLElement) => {
-      opener.click(); await viewer(el)
-      const zoom = el.shadowRoot!.querySelector('dialog.zoom') as HTMLDialogElement
-      ;(zoom.querySelector('.zoom-edit') as HTMLButtonElement).click()
-      const canvas = zoom.querySelector('.mk canvas')!
-      canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 5, clientY: 5 }))
-      canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: 9, clientY: 9 }))
-      ;(zoom.querySelector('.mk [aria-label="Done"]') as HTMLButtonElement).click()
-      await tick(20)
-    }
-    await pick(el, [new File(['x'], 'shot.png', { type: 'image/png' })])
-    await draw(el.shadowRoot!.querySelector('.files .att-open') as HTMLElement)
-    expect(el.shadowRoot!.querySelector('dialog.zoom')).toBeNull()             // the view closes
-    expect(composer()).toEqual(['shot-markup.png'])                            // in its place
-    expect(names).toEqual(['shot.png', 'shot-markup.png'])
-  })
-
 
   it('a footnote sits under the composer; an upload writes no line that would shift it', async () => {
     const el = await mount()

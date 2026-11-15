@@ -1,18 +1,21 @@
 /**
  * The image view, like Photos and the Claude app: the picture over the chat, a bar on top with x, the file's name and
  * "1 of 2", and a pencil; the images of one message (or of the composer) page with a swipe, the arrows beside the
- * picture and the arrow keys. An image still in the composer has the pencil: markup (editor.ts), whose check mark
- * puts the marked-up copy in its place; a sent picture is only viewed. Loaded the first time an
+ * picture and the arrow keys. The pencil marks a picture up: an image still in the composer gets the tool panel
+ * (editor-panel.ts) and Save puts the copy in its place; a sent picture gets the phone-style markup (editor.ts) and
+ * its check mark adds the copy to the composer, the sent one staying as it was. Loaded the first time an
  * image is opened (agui-chat.editor.js next to the one-script build), with its own styles, so the chat stays small.
  */
 import { h } from './dom'
 import { openEditor, type Shape } from './editor'
+import { openPanel } from './editor-panel'
 
 export interface ZoomHost {
   wrap: HTMLElement
   t: (key: string, vars?: Record<string, string | number>) => string
   icon: (el: HTMLElement, name: 'close') => void
-  /** Puts a marked-up copy in place of a composer image (the opener with data-file); absent when uploads are off. */
+  /** Puts a marked-up copy in the composer: in place of a composer image (the opener with data-file), as a new
+   *  attachment for a sent one; absent when uploads are off. */
   mark?: (opener: HTMLElement, image: Blob, name: string) => void
 }
 
@@ -73,8 +76,7 @@ export function openZoom(host: ZoomHost, opener: HTMLElement, legacyEdit?: (imag
   const view = h('dialog', { class: 'zoom', part: 'zoom' },
     h('style', {}, CSS), h('div', { class: 'zoom-top' }, x, h('span', { class: 'zoom-title' }, name, count), pencil), stage) as HTMLDialogElement
 
-  // only an image not sent yet: what was sent stays as it was (Messages works the same way)
-  const canMark = (i: number): boolean => !!row[i]?.src && markable(row[i].src) && row[i].el.dataset.file !== undefined && (!!host.mark || (!!legacyEdit && row[i].el === opener))
+  const canMark = (i: number): boolean => !!row[i]?.src && markable(row[i].src) && (!!host.mark || (!!legacyEdit && row[i].el === opener))
   const go = (d: number): HTMLButtonElement => {
     const b = h('button', { class: `zoom-go ${d < 0 ? 'prev' : 'next'}`, type: 'button', 'aria-label': host.t(d < 0 ? 'prevImage' : 'nextImage') }) as HTMLButtonElement
     b.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}"/></svg>`
@@ -120,19 +122,16 @@ export function openZoom(host: ZoomHost, opener: HTMLElement, legacyEdit?: (imag
     if (!canMark(at)) return
     const i = at, item = row[i]
     marking = true; view.classList.add('marking')
-    openEditor({
-      src: item.src, name: item.name, mount: view, t: (k) => host.t(k), shapes: drawn.get(i),
-      onDone: (image) => {
-        marking = false
-        if (host.mark) host.mark(item.el, image, item.name); else legacyEdit?.(image)
-        close()
-      },
-      onCancel: (shapes) => {
-        marking = false; view.classList.remove('marking')
-        drawn.set(i, shapes)
-        pencil.focus({ preventScroll: true })
-      },
-    })
+    const back = (): void => { marking = false; view.classList.remove('marking'); pencil.focus({ preventScroll: true }) }
+    const done = (image: Blob): void => {
+      marking = false
+      if (host.mark) host.mark(item.el, image, item.name); else legacyEdit?.(image)
+      close()
+    }
+    // still in the composer: the tool panel, Save replaces it; already sent: the phone-style markup, a copy joins the composer
+    if (item.el.dataset.file !== undefined) openPanel({ src: item.src, name: item.name, mount: view, t: (k) => host.t(k), onSave: done, onClose: back })
+    else openEditor({ src: item.src, name: item.name, mount: view, t: (k) => host.t(k), shapes: drawn.get(i), onDone: done,
+      onCancel: (shapes) => { drawn.set(i, shapes); back() } })
   })
 
   host.wrap.append(view)
