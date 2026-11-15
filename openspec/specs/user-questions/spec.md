@@ -154,7 +154,7 @@ Everything a user reads on a card SHALL be in the conversation's language: for a
 - **THEN** the card's options are in Russian and the chosen value is the form's option id
 
 ### Requirement: The options are on the card only
-When a turn ends in a question card with options, the words shown before the card SHALL NOT list those options: text that names two or more of them is replaced, before the card appears, by the same text without the lines and sentences that name an option and without a line left only to introduce them. Text that names fewer than two options SHALL stay as written.
+When a turn ends in a question card with options, the words shown before the card SHALL NOT list those options: text that names two or more of them is replaced, before the card appears, by the same text without the bullet list of options (the whole list when two or more of its items name one), without a sentence that names two or more options, and without a line left only to introduce them. A label is matched as a whole word, the longest label first, and a sentence that names one option SHALL stay. Text that names fewer than two options SHALL stay as written.
 
 #### Scenario: Services listed and then shown
 - **WHEN** the model writes "Which service?" followed by a bulleted list of four services and then asks with a card of the same four

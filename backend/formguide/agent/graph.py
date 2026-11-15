@@ -58,16 +58,22 @@ _SENTENCE = re.compile(r"(?<=[.!?\u2026])\s+")
 
 
 def without_options(text: str, labels: list[str], question: str = "") -> str:
-    """The words written before a choice card, without the list of its options: the card shows them. Lines and
-    sentences that name an option go, and so does a line left only to introduce them; the text is returned as
-    it was when it names fewer than two of the options."""
-    names = [x.strip().lower() for x in labels if isinstance(x, str) and len(x.strip()) > 1]
-    low = text.lower()
-    if sum(n in low for n in dict.fromkeys(names)) < 2:
+    """The words written before a choice card, without the list of its options: the card shows them. A bullet
+    list that names options goes whole, a sentence that names two or more of them goes, and so does a line left
+    only to introduce them. A sentence that names one option is a fact about it and stays. The text is returned
+    as it was when it names fewer than two of the options."""
+    names = sorted({x.strip().lower() for x in labels if isinstance(x, str) and len(x.strip()) > 1}, key=len, reverse=True)
+    if not names:
         return text
+    # the longest label first, each found label blanked: "Kids haircut" is one option, not also "Haircut"
+    each = re.compile("|".join(rf"(?<!\w){re.escape(n)}(?:e?s)?(?!\w)" for n in names))
 
-    def names_one(part: str) -> bool:
-        return any(n in part.lower() for n in names)
+    def named(part: str) -> set[str]:
+        plain = re.sub(r"[*_`]", "", part.lower())
+        return {next(n for n in names if m.group(0).startswith(n)) for m in each.finditer(plain)}
+
+    if len(named(text)) < 2:
+        return text
 
     kept: list[str] = []
 
@@ -83,19 +89,30 @@ def without_options(text: str, labels: list[str], question: str = "") -> str:
             else:
                 del kept[i:]
 
-    for line in text.split("\n"):
+    lines = text.split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         if _BULLET.match(line):
-            if names_one(line):
+            j = i
+            while j < len(lines) and (_BULLET.match(lines[j]) or (lines[j].startswith((" ", "\t")) and lines[j].strip())):
+                j += 1
+            run = lines[i:j]
+            items = [ln for ln in run if _BULLET.match(ln)]
+            hits = sum(bool(named(ln)) for ln in items)
+            if hits >= 2:   # the list is the card's options: all of it goes, the oddly worded item too
                 drop_intro()
             else:
-                kept.append(line)
+                kept.extend(run)
+            i = j
             continue
         sentences = _SENTENCE.split(line)
-        rest = [sent for sent in sentences if not names_one(sent)]
+        rest = [sent for sent in sentences if len(named(sent)) < 2]
         if len(rest) < len(sentences) and not rest:
             drop_intro()
         if rest or not line.strip():
             kept.append(" ".join(rest))
+        i += 1
     result = re.sub(r"\n{3,}", "\n\n", "\n".join(kept)).strip()
     same = re.sub(r"\W+", " ", result).strip().lower() == re.sub(r"\W+", " ", question).strip().lower()
     return "" if same else result
