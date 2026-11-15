@@ -103,7 +103,7 @@ The first event is `started`: `{talk, contract: 1, limits: {seconds, silence_sec
 | --- | --- | --- |
 | `hearing` | `{delta}` | the person's words as they speak: grow their message |
 | `heard` | `{text}` | the request the voice hands over: send it as an ordinary user message in the same thread. That run is the normal AG-UI run |
-| `heard` with `answers` | `{card_id, type, accepted}` | a spoken yes or no while a card waits is the answer to that card: accept or reject the card with its own resume, and do not send the words as a message |
+| `heard` with `answers` | `{card_id, type, accepted}` | a spoken yes or no while a card waits is the answer to that card: accept or reject the card with its own resume, and do not send the words as a message. A client that sends the yes as an ordinary message anyway gets the same values back as a quiet card, so a card is never asked twice |
 | `interrupted` | | the person spoke over a turn: the server has stopped it. Drop what was shown as in progress; the next `heard` is the new request |
 | `spoken` | `{delta}` | the transcript of what the voice says |
 | `result` | `{text}` | the agent's answer was given to the voice |
@@ -118,11 +118,11 @@ A conversation that may not start is refused with a reason: `pass` (no valid pas
 
 In chat every proposed value is a card the person accepts. In a voice conversation a value the person just said aloud is filled at once: the `set_fields` card of that thread carries `quiet: true`. A client applies it through the form as an accepted card (the same resume), draws no card and keeps a line with Undo.
 
-A card is marked quiet only when every value on it was said by the person, the fields were empty, and none is a consent. Everything else waits as a card, as always: a consent tick, an action that cannot be undone, a value the person did not say, replacing a value typed by hand, a value the form refused, a real choice between options. The form keeps the last word: a value it refuses comes back as a card.
+Numbers count as said in the forms people shorten them to: "50k", "1.5 million", "one and a half million", "half a million". A card is marked quiet only when every value on it was said by the person, the fields were empty, and none is a consent. Everything else waits as a card, as always: a consent tick, an action that cannot be undone, a value the person did not say, replacing a value typed by hand, a value the form refused, a real choice between options. The form keeps the last word: a value it refuses comes back as a card.
 
 ## Limits and money
 
-An open conversation is billed by the second, silence included, so end it when the person stops, when the app goes to the background and when the screen closes. The server ends it by itself at the limits below, and `ended` says why and what it cost.
+An open conversation is billed by the second, silence included, so end it when the person stops, when the app goes to the background and when the screen closes. The server ends it by itself at the limits below, and `ended` says why and what it cost. Silence does not end a conversation while a card waits for an answer.
 
 ## A host that already knows its people
 
@@ -163,7 +163,7 @@ The settings are the host's environment variables, read by `VoiceConfig.from_env
 | `VOICE_SILENCE_SECONDS` | `silence_seconds` | `30` | this long without speech ends a conversation |
 | `VOICE_MODEL` | `model` | `gpt-live-1` | the voice model |
 | `VOICE_MINUTE_USD` | `minute_usd` | `0.05` | the voice provider's price of a connected minute, used to count the spend |
-| `VOICE_SECRET` | `secret` | a new one at every start | signs the passes; set it so passes survive a restart |
+| `VOICE_SECRET` | `secret` | a new one at every start | signs the passes. Without it every pass dies when the host restarts, and people enter their code again |
 
 ## Next
 
