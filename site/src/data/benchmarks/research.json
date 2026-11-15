@@ -1,6 +1,6 @@
 {
  "source": "backend/scripts/research_depth.py --site",
- "generated": "2026-11-15T17:05:26",
+ "generated": "2026-11-15T17:13:17",
  "note": "The \"before\" point: today's researcher has one mode (a research loop for every question, an answer of about 120 words). It reports neither its first word nor a chosen depth, so those two lines of the bar are empty here. \"After\" is the same 121 scenarios on the researcher with adaptive depth (quick by default, deep when the question needs it), with the first word measured on a run and each number checked against the passage it cites.",
  "scored_by": "code checks only (no model judges the answers); see backend/evals/research_depth/README.md",
  "bar_measured_on": "the control scenarios (43% of the set), three passes",

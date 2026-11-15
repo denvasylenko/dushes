@@ -165,3 +165,25 @@ def test_the_site_file_shows_totals_and_only_tuning_questions(tmp_path):
     run = d["runs"][0]
     assert run["not_in_documents"] == {"said_so": 1, "of": 1, "share": 1.0} and run["coverage"]["quick_correct"] == 1
     assert run["prices"]["model_id"] == "claude-haiku-5-5" and {s["id"] for s in d["sets"]} == set(rd.PUBLIC_SETS)
+
+
+def test_the_demo_file_holds_recorded_answers_of_published_questions_only(tmp_path):
+    import json
+    sc = _sc("hp_d_handbook_changes")                                  # a tuning scenario that is published
+    held = next(s for s in rd.load() if s.heldout and s.group == "deep")
+    res = []
+    for s, text in ((sc, "- Leave: 25 to 27 days.\n- Probation: 6 to 4 months.\n\nSources: staff_handbook_2026.md › 3.1 Annual leave"), (held, "A control answer.")):
+        res.append({"id": s.id, "pass": 1, "text": text, "sources": [{"title": "staff_handbook_2026.md", "section": "3.1 Annual leave"}, {"title": "cbde2404.md"}],
+                    "seconds": 9.5, "tokens": {"usd": 0.0021}, "check": {}})
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps({"at": "2026-11-15T15:40:26", "model": "anthropic:claude-haiku-5-5", "results": res}))
+    d = rd.demo_data([p])
+    assert d["recorded"] == "2026-11-15T15:40:26" and d["models"] == {"claude-haiku-5-5": "Claude Haiku 5.5"}
+    assert len(d["questions"]) == 1 and d["questions"][0]["question"] == sc.question and d["questions"][0]["id"].startswith("q")
+    a = d["questions"][0]["answers"]["claude-haiku-5-5"]
+    assert "Sources:" not in a["text"] and a["text"].startswith("- Leave")          # the words as given; the sources are chips
+    assert a["sources"] == [{"document": "staff_handbook_2026.md", "path": "3.1 Annual leave"}]   # a source that names no real document is dropped
+    assert a["seconds"] == 9.5 and a["cost_usd"] == 0.0021 and "depth" not in a
+    assert held.question not in json.dumps(d) and held.id not in json.dumps(d)
+    docs = {x["id"] for s in d["sets"] for x in s["documents"]}
+    assert "staff_handbook_2026.md" in docs and all(x["pages"] >= 1 for s in d["sets"] for x in s["documents"])

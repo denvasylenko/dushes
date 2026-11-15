@@ -693,6 +693,57 @@ PUBLIC_SETS = {"halden_policies": "Company policy handbook (Halden Works)", "orr
                "tessel_contract": "Services contract (Tessel / Marrow)", "veltra_manual": "Technical manual (Veltra HX)"}
 
 
+DEMO_FILE = HERE.parent / "site" / "src" / "data" / "research-demo.json"
+SET_ABOUT = {
+    "halden_policies": "The policy handbook of an invented manufacturer with twelve sites: two editions of the staff handbook, travel, procurement, security, a directive that amends three policies, a German works agreement.",
+    "orrin_catalogue": "An invented power tool maker's catalogue: about 580 products with specifications, two price lists, batteries, warranty terms, service bulletins that correct the catalogue.",
+    "tessel_contract": "An invented facility services framework: the agreement, two amendments, schedules, rate cards, 80 sites, monthly performance reports and meeting minutes.",
+    "veltra_manual": "The documentation of an invented heat pump range: installation, commissioning, parameters, fault codes, maintenance and firmware release notes.",
+}
+MODEL_NAMES = {"claude-haiku-5-5": "Claude Haiku 5.5", "gpt-6-luna": "gpt-6-luna"}
+
+
+def public_questions(scs: list[Scenario]) -> list[Scenario]:
+    """The hard questions that may be shown on a page: tuning scenarios only (never a control one), deep first."""
+    out: list[Scenario] = []
+    for c in PUBLIC_SETS:
+        pool = [s for s in scs if s.corpus == c and not s.heldout and s.kind != "injection"]
+        out += [s for s in pool if s.group == "deep"][:6] + [s for s in pool if s.group == "trap"][:2] + [s for s in pool if s.kind == "version"][:2]
+    return out
+
+
+def demo_data(reports: list[Path]) -> dict:
+    """The researcher demo page's recorded answers (site/src/data/research-demo.json): the published questions with
+    each model's first-pass answer exactly as it was given, right or wrong, its sources, seconds and cost."""
+    scs = load()
+    sets = []
+    for c, name in PUBLIC_SETS.items():
+        docs = []
+        for f in sorted(x for x in (CORPORA / c).iterdir() if x.is_file()):
+            text = doc_text(c, f.name)
+            first = next((ln.strip().lstrip("# ").strip() for ln in text.splitlines() if ln.strip()), f.name)
+            docs.append({"id": f.name, "title": first[:90], "pages": max(1, round(len(text) / 3000))})
+        sets.append({"id": c, "name": name, "about": SET_ABOUT[c], "documents": docs})
+    reps = [json.loads(p.read_text()) for p in reports]
+    models = {r["model"].split(":", 1)[-1]: MODEL_NAMES.get(r["model"].split(":", 1)[-1], r["model"]) for r in reps}
+    questions = []
+    for n, sc in enumerate(public_questions(scs), 1):
+        answers = {}
+        for rep in reps:
+            r = next((x for x in rep["results"] if x.get("id") == sc.id and x.get("pass") == 1 and "check" in x), None)
+            if not r or not (r.get("text") or "").strip():
+                continue
+            files = {f.name for f in (CORPORA / sc.corpus).iterdir()}
+            srcs = [{"document": str(x.get("title")), **({"path": str(x["section"])} if x.get("section") else {})}
+                    for x in r.get("sources") or [] if str(x.get("title")) in files]
+            answers[rep["model"].split(":", 1)[-1]] = {
+                "text": body(r["text"]).strip(), "sources": srcs, "seconds": r["seconds"], "cost_usd": round(r["tokens"]["usd"], 5),
+                **({"depth": r["depth"]} if r.get("depth") else {})}
+        if answers:
+            questions.append({"id": f"q{n:02d}", "set": sc.corpus, "question": sc.question, "kind": sc.kind, "answers": answers})
+    return {"recorded": max(r["at"] for r in reps), "models": models, "sets": sets, "questions": questions}
+
+
 def site_data(reports: list[tuple[str, Path]], note: str) -> dict:
     """What the docs page shows (site/src/data/benchmarks/research.json): totals only, never a control scenario's
     text or id. The published questions are tuning scenarios."""
@@ -744,11 +795,7 @@ def site_data(reports: list[tuple[str, Path]], note: str) -> dict:
             "bar": [{"check": what, "result": v, "bar": bar, "met": ok} for what, v, bar, ok in verdict(ctrl)],
             "prices": {"checked": json.loads(PRICES_FILE.read_text()).get("checked"), "source": json.loads(PRICES_FILE.read_text()).get("source"), "model_id": model_id},
         })
-    questions = []
-    for c in PUBLIC_SETS:   # hard questions that may be shown: tuning scenarios only, deep first
-        pool = [s for s in scs if s.corpus == c and not s.heldout and s.kind != "injection"]
-        pick = [s for s in pool if s.group == "deep"][:6] + [s for s in pool if s.group == "trap"][:2] + [s for s in pool if s.kind == "version"][:2]
-        questions += [{"set": c, "kind": s.kind, "depth": s.expects, "who": s.role, "question": s.question} for s in pick]
+    questions = [{"set": s.corpus, "kind": s.kind, "depth": s.expects, "who": s.role, "question": s.question} for s in public_questions(scs)]
     return {"source": "backend/scripts/research_depth.py --site", "generated": datetime.now().isoformat(timespec="seconds"),
             "note": note, "scored_by": "code checks only (no model judges the answers); see backend/evals/research_depth/README.md",
             "bar_measured_on": "the control scenarios (43% of the set), three passes",
@@ -814,10 +861,15 @@ def main() -> int:
     ap.add_argument("--out", type=Path, metavar="DIR")
     ap.add_argument("--retrieval-control", type=int, nargs="?", const=8, metavar="K", help="no model: the retrieval control questions (totals only; QA runs it)")
     ap.add_argument("--site", nargs="+", metavar="LABEL=REPORT.json", help="write site/src/data/benchmarks/research.json from finished reports (totals only)")
+    ap.add_argument("--demo", nargs="+", type=Path, metavar="REPORT.json", help="write site/src/data/research-demo.json: the published questions with each report's recorded answers")
     ap.add_argument("--note", default="", help="--site: the note shown with the numbers")
     ap.add_argument("--check", action="store_true", help="validate the scenarios against the corpora offline and exit")
     ap.add_argument("--report", type=Path, help="rebuild the Markdown report of an earlier run's JSON and exit")
     a = ap.parse_args()
+    if a.demo:
+        DEMO_FILE.write_text(json.dumps(demo_data(a.demo), ensure_ascii=False, indent=1) + "\n")
+        print(f"wrote {DEMO_FILE}")
+        return 0
     if a.site:
         pairs = [(x.split("=", 1)[0], Path(x.split("=", 1)[1])) for x in a.site]
         SITE_FILE.write_text(json.dumps(site_data(pairs, a.note), ensure_ascii=False, indent=1) + "\n")
