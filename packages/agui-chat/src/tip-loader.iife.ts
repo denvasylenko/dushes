@@ -28,4 +28,5 @@ export const loadTipCss = (): Promise<typeof adoptTipCss> => tip().then(() => (g
 
 import type { voice } from './voice'
 /** The experimental voice mode: agui-chat.voice.js next to this script, fetched only when the host turned voice on. */
-export const loadVoice = (): Promise<typeof voice> => loadFile('agui-chat.voice.js').then(() => (globalThis as unknown as { AguiChat: { voice: typeof voice } }).AguiChat.voice)
+let voiceFile: Promise<null> | undefined
+export const loadVoice = (): Promise<typeof voice> => (voiceFile ??= loadFile('agui-chat.voice.js')).then(() => (globalThis as unknown as { AguiChat: { voice: typeof voice } }).AguiChat.voice)

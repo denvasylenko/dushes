@@ -12,6 +12,8 @@ import { TraceLine, TracePanel, type RunStats, type Turn } from './Trace'
 import type { Config, JsxNode, RevealStep, UiDirective, UiState } from './types'
 
 // ?dictation=server tries Whisper on the server even where the browser can recognise speech (the demo's switch)
+// the experimental voice mode: only with ?voice in the address (it needs a host with the voice routes and a personal code)
+const VOICE = new URLSearchParams(location.search).has('voice')
 const DICTATION = ((): 'auto' | 'server' | 'browser' => {
   const d = new URLSearchParams(location.search).get('dictation')
   return d === 'server' || d === 'browser' ? d : 'auto'
@@ -303,6 +305,7 @@ export default function App() {
           persistThread={false}
           lang={lang}
           dictation={DICTATION}   // auto: the browser's recognition where it works, else Whisper on the server
+          voiceMode={VOICE}
           title={form.title === form.formId ? "Form assistant" : form.title}
           subtitle="formguide · AI assistant, can make mistakes"
           plugins={plugins}

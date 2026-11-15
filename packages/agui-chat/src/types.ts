@@ -282,6 +282,11 @@ export interface ChatOptions {
   /** false (`scrim="off"`): no veil of the chat's own behind the open panel, at any width; the host draws one.
    *  The focus trap and Esc stay (see `modal`). */
   scrim?: boolean
+  /** The experimental voice mode (`voice-mode`): its own on-demand file, a row in the + menu, an orb above the input.
+   *  Needs a host that serves the voice routes. Not `voice`, which is dictation. */
+  voiceMode?: boolean
+  /** Where the voice routes are (`voice-url`); by default `/voice` on the host of `url`. */
+  voiceUrl?: string
   /** Show the close button in inline and page mode too. There the chat does not hide itself: it fires
    *  `agui:before-close` and `agui:close`, and the host, which owns the container, takes it away. */
   closable?: boolean

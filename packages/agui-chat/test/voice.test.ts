@@ -279,6 +279,45 @@ describe('the experimental voice mode', () => {
     expect($(el, '.vo-dock')).toBeNull()
   })
 
+  it('fills quietly: a field-change card marked quiet is applied at once in voice mode, with no card to tap; without the mark, or out of voice, it waits', async () => {
+    const { formguide } = await import('../src/formguide/index')
+    const changes = [{ name: 'loan_amount', label: 'Amount', value: 1500000, display: '1 500 000', previous: null, previous_display: null, reveal: [] }]
+    const card = (id: string, quiet: boolean) => ({ type: 'CUSTOM', name: 'on_interrupt', value: JSON.stringify({ type: 'set_fields', card_id: id, changes, ...(quiet ? { quiet: true } : {}) }) })
+    const s = server(); fakeAudio()
+    vi.stubGlobal('fetch', s.fetch)
+    sessionStorage.setItem('agui-voice-pass', 'pass-1')
+    const el = await mount()
+    const applied: unknown[] = [], resumed: unknown[] = []
+    el.use(formguide({ getState: () => ({ config: { state: {}, props: {} }, jsx_hash: 'h', form_id: 'loan', ui: { focused: null } }), applyChanges: async (c: Record<string, unknown>) => { applied.push(c); return { state: c } } }))
+    const turns = [[card('c1', true)], [], [card('c2', false)], [card('c3', true)]]
+    el.agent = { run: (input: { forwardedProps?: { command?: { resume?: unknown } } }) => ({ subscribe: (o: Obs) => {
+      if (input.forwardedProps?.command?.resume) resumed.push(input.forwardedProps.command.resume)
+      const evs = input.forwardedProps?.command?.resume ? [] : turns.shift() ?? []
+      setTimeout(() => { o.next({ type: 'RUN_STARTED' }); for (const e of evs) o.next(e); o.next({ type: 'RUN_FINISHED' }); o.complete() }, 10)
+      return { unsubscribe() {} } } }) } as never
+    $(el, '.vo-go').click()
+    await tick(30)
+    s.push({ type: 'heard', text: 'One and a half million' })
+    await tick(120)
+    expect(applied).toEqual([{ loan_amount: 1500000 }])                         // filled through the host's form, with no tap
+    expect(resumed).toHaveLength(1)
+    expect(resumed[0]).toMatchObject({ accepted: true })                        // the same answer an accepted card gives
+    expect($$(el, '.card .btn.pri')).toHaveLength(0)                            // no card waiting
+    expect($(el, '[data-card-id="c1"] .ok-line')).not.toBeNull()                // its result line, with Undo, is in the conversation
+    s.push({ type: 'heard', text: 'and the term?' })                            // (a turn with nothing to fill)
+    await tick(60)
+    s.push({ type: 'heard', text: 'change my name to Anna' })                   // not marked quiet: a card that waits, as in chat
+    await tick(120)
+    expect($$(el, '[data-card-id="c2"] .btn.pri')).toHaveLength(1)
+    expect(applied).toHaveLength(1)
+    ;($(el, '[data-card-id="c2"] .btn.pri') as HTMLButtonElement).click()
+    await tick(60)
+    $(el, '.vo-x').click()                                                      // voice mode left: a quiet mark means nothing in the plain chat
+    await el.send('amount again')
+    await tick(120)
+    expect($$(el, '[data-card-id="c3"] .btn.pri')).toHaveLength(1)
+  })
+
   it('speaks the chat\'s language', async () => {
     vi.stubGlobal('fetch', server().fetch)
     const el = await mount({ lang: 'de' })

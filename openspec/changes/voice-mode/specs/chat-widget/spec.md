@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Voice mode is there only when the host turns it on
-A chat without the `voice-mode` attribute SHALL show no trace of voice mode and SHALL NOT fetch its file. With it, the chat SHALL load the voice mode as its own on-demand file and add the row "Experimental voice mode" to its + menu. The main file of the one-script build SHALL stay within its size budget.
+A chat without `voice-mode` (the option `voiceMode`) SHALL show no trace of voice mode and SHALL NOT fetch its file. With it, the chat SHALL load the voice mode as its own on-demand file and add the row "Experimental voice mode" to its + menu. The main file of the one-script build SHALL stay within its size budget.
 
 #### Scenario: A host without voice
 - **WHEN** a page shows `<agui-chat>` without `voice-mode`
@@ -55,3 +55,10 @@ A voice conversation SHALL end, with the microphone released, when the chat is c
 #### Scenario: A tap during the permission prompt
 - **WHEN** the person taps the microphone button while the browser asks for the microphone, then allows it
 - **THEN** no microphone stays open, no session is left running, and the button starts voice when tapped again
+
+### Requirement: Filling without a card
+In voice mode a `set_fields` card whose payload has `quiet: true` SHALL be applied through the host's form as soon as it arrives, exactly as if the person had accepted it, without a card that waits: the conversation SHALL keep its result line with Undo. A card without the mark SHALL be drawn and wait, and outside voice mode the mark SHALL change nothing.
+
+#### Scenario: A value the person said
+- **WHEN** voice mode is on and a `set_fields` card with `quiet: true` arrives for Amount
+- **THEN** the field is filled with no tap, the run is resumed as accepted, and the conversation shows the result line with Undo

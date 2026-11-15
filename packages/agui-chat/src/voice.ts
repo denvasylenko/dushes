@@ -54,7 +54,7 @@ export function voice(chat: Chat): void {
   const $ = <T extends HTMLElement>(s: string): T => root.querySelector<T>(s)!
   const panel = $('.panel'), foot = $('.foot'), box = $('.box'), input = $<HTMLTextAreaElement>('.box textarea')
   const T = (k: string): string => chat.options.i18n?.[`voice${k[0].toUpperCase()}${k.slice(1)}`] ?? VOICE_STRINGS[chat.lang]?.[k] ?? VOICE_STRINGS.en[k] ?? k
-  const base = (): string => (chat.getAttribute('voice-url') || chat.options.voiceUrl || new URL('/voice', new URL(chat.options.url || '/', location.href)).href).replace(/\/$/, '')
+  const base = (): string => (chat.options.voiceUrl || new URL('/voice', new URL(chat.options.url || '/', location.href)).href).replace(/\/$/, '')
   const call = (path: string, body: unknown, pass = ''): Promise<Response> => fetch(`${base()}${path}`, { method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(pass ? { 'X-Voice-Pass': pass } : {}) }, body: JSON.stringify(body) })
 
@@ -137,9 +137,26 @@ export function voice(chat: Chat): void {
   new MutationObserver(() => { busy = chat.hasAttribute('busy'); caption = ''; if (!busy) step.textContent = ''; paint(); if (!busy) setTimeout(typing, 0) }).observe(chat, { attributes: true, attributeFilter: ['busy'] })
   // the turn's own step, under the orb while it works (the conversation's own live line is hidden meanwhile)
   chat.addEventListener('agui:event', (e) => {
-    if (!on || (e as CustomEvent).detail?.type !== 'TOOL_CALL_START') return
-    queueMicrotask(() => { const all = root.querySelectorAll('.log .steps-t'); caption = ''; step.textContent = all[all.length - 1]?.textContent ?? '' })
+    const ev = (e as CustomEvent).detail as { type?: string; name?: string; value?: unknown } | undefined
+    if (!on || !ev) return
+    if (ev.type === 'TOOL_CALL_START') queueMicrotask(() => { const all = root.querySelectorAll('.log .steps-t'); caption = ''; step.textContent = all[all.length - 1]?.textContent ?? '' })
+    // a field-change card the server marks `quiet` (every row is a value the person said, into an empty field): in
+    // voice mode it is filled at once, with no card to tap; the conversation keeps its result line with Undo
+    if (ev.type === 'CUSTOM' && ev.name === 'on_interrupt') {
+      let v = ev.value as { type?: string; quiet?: boolean; card_id?: string } | string | null
+      if (typeof v === 'string') { try { v = JSON.parse(v) } catch { v = null } }
+      if (v && typeof v === 'object' && v.type === 'set_fields' && v.quiet && v.card_id) quiet.add(v.card_id)
+    }
   })
+  const quiet = new Set<string>()
+  // the card is drawn after the text above it has finished: when it arrives, it is accepted before it is ever painted
+  new MutationObserver((recs) => {
+    for (const r of recs) for (const n of r.addedNodes) {
+      const id = (n as HTMLElement).dataset?.cardId
+      if (!id || !quiet.delete(id) || !on) continue
+      ;(n as HTMLElement).querySelector<HTMLButtonElement>('.btn.pri')?.click()
+    }
+  }).observe($('.log'), { childList: true })
   // the orb always does something: it stops the answer being thought or spoken; otherwise it is the microphone
   orb.addEventListener('click', () => {
     if (busy) { chat.stop(); audio.muted = true; paint(); return }
