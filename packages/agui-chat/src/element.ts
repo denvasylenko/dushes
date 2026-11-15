@@ -591,7 +591,10 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       const last = pieces[pieces.length - 1], body = bodies[bodies.length - 1]
       if (!last || !body.isConnected) continue   // the log was cleared meanwhile (a new thread, a teardown): no row to add
       const text = bodies.map((b) => this._texts.get(b)).join('\n\n')
-      this._actions(body, text, last.contains(body))   // never under a card: after one the row stays put away, like an older answer's
+      // one row per turn, after everything in it: a turn that ends with a card has none (never between a text and a card,
+      // never under a card), and the answer before it is an older one now
+      if (last.contains(body)) this._actions(body, text)
+      else this.$.log.querySelectorAll('.msg.ai.last').forEach((x) => x.classList.remove('last'))
     }
     this._scroll()   // the row made the log taller: its end stays in view, above the suggestions
   }
@@ -674,6 +677,10 @@ export class AguiChatElement extends BaseElement implements ChatApi {
       if (this._jumping) { this._quickAway(); return }   // our own scroll to the end: the button stays gone on the way
       this._stick = log.scrollHeight - log.scrollTop - log.clientHeight < 120
       jump.hidden = this._stick
+      // never over a card's content (its chips, its buttons): while a card is under the button, the button is away
+      const r = jump.getBoundingClientRect(), y = r.top + r.height / 2
+      jump.classList.toggle('over', !jump.hidden && [r.left, r.left + r.width / 2, r.right].some((x) =>
+        this.root.elementsFromPoint?.(x, y).find((e) => !jump.contains(e))?.closest('.card')))
       this._quickAway()
       if (!this._winOpen()) this._closePop()   // the capsule goes; an open window moves with its text
     }, { passive: true })
@@ -1375,7 +1382,7 @@ export class AguiChatElement extends BaseElement implements ChatApi {
   }
 
   /** The actions under an answer: copy, try again, read aloud, a good or bad answer, and the host's own. */
-  private _actions(body: HTMLElement, text: string, shown = true): void {
+  private _actions(body: HTMLElement, text: string): void {
     const holder = body
     const list = this._opts.messageActions ?? []
     if (!list.length || holder.querySelector(':scope > .msg-acts')) return
@@ -1427,7 +1434,6 @@ export class AguiChatElement extends BaseElement implements ChatApi {
     this.$.log.querySelectorAll('.msg-acts .act-retry').forEach((x) => x.remove())
     this.$.log.querySelectorAll('.msg.ai.last').forEach((x) => x.classList.remove('last'))
     holder.append(bar)
-    if (!shown) return   // an older answer's row shows on hover, or after a long press on a phone
     holder.closest('.msg')?.classList.add('last')
     queueMicrotask(() => holder.closest('.msg')?.classList.add('last'))
   }

@@ -36,7 +36,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .mode-inline { height: 100%; }
 .mode-inline .panel { height: 100%; border: 1px solid var(--agui-line); border-radius: var(--agui-radius); overflow: hidden; }
 .mode-page .panel { position: fixed; inset: 0; z-index: 2147483001; }   /* above the host page's own sticky bars */
-.mode-page .log, .mode-page .foot { width: min(760px, 100%); margin: 0 auto; }
+.mode-page .foot { width: min(760px, 100%); margin: 0 auto; }
+.mode-page .log { padding-inline: max(20px, calc(50% - 360px)); scrollbar-gutter: stable both-edges; }   /* the feed is as wide as the window (its scrollbar at the window's edge), its column centred, 760 px */
 .mode-inline .log { padding-left: max(20px, calc((100% - 720px) / 2)); padding-right: max(20px, calc((100% - 720px) / 2)); }
 .mode-floating .panel { position: fixed; z-index: 2147483001; top: 0; right: 0; bottom: 0; width: min(var(--agui-panel-width), 100%);
   box-shadow: -20px 0 60px -20px var(--agui-shadow); transform: translateX(104%); transition: transform .42s var(--agui-ease); visibility: hidden; }
@@ -127,6 +128,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   border: 1px solid var(--agui-line-2); background: var(--agui-panel-bg, var(--agui-bg)); color: var(--agui-ink-2); display: grid; place-items: center; cursor: pointer;
   box-shadow: 0 4px 14px -6px var(--agui-shadow); animation: fade-up .18s var(--agui-ease) both; }
 .jump[hidden] { display: none; }
+.jump.over { visibility: hidden; animation: none; }   /* out of the tab order too */
 .jump-ico { display: grid; }
 @keyframes fade-up { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .dots { display: inline-flex; gap: 4px; padding: 8px 0; }

@@ -120,7 +120,7 @@ Every tap on an action under an answer SHALL fire `agui:message-action` `{id, me
 - **THEN** `onMessageAction("fork", {messageId, text})` is called
 
 ### Requirement: When the actions show
-The actions SHALL stay visible only under the latest text answer, and never under a card: a turn that ends with a card shows none. An older answer SHALL show its actions on hover or focus on a computer, and after a long press on a touch screen (44 px targets) until the next touch elsewhere.
+A turn SHALL get one row of actions, after everything in it and only once it has finished; the row SHALL stay visible only under the latest text answer, and never between a text and a card or under a card: a turn that ends with a card (one still waiting for an answer included) has none. An older answer SHALL show its actions on hover or focus on a computer, and after a long press on a touch screen (44 px targets) until the next touch elsewhere.
 
 #### Scenario: An older answer
 - **WHEN** the pointer rests on an earlier answer
@@ -132,7 +132,7 @@ The actions SHALL stay visible only under the latest text answer, and never unde
 
 #### Scenario: An answer that ends with a card
 - **WHEN** a turn ends with a card after its text
-- **THEN** no actions are drawn under the card
+- **THEN** no actions are drawn, neither under the card nor between the text and the card
 
 ### Requirement: A card's look
 A card SHALL be set apart from the feed by one means only: in the light scheme the feed's own background with a soft shadow and no border, in the dark scheme a fill one step lighter than the feed with no shadow. The tokens `card-bg`, `card-border` and `card-shadow` SHALL override each part.
@@ -189,6 +189,20 @@ A chip that cannot be chosen (a closed day, the chips while an action applies) S
 #### Scenario: A closed day
 - **WHEN** the day strip offers Monday, which is closed
 - **THEN** the Monday chip is grey and cannot be tapped, and it is not struck through
+
+### Requirement: The jump button never covers a card
+While a card is under the button that brings the user to the latest message, the button SHALL be away (not shown, not clickable), and it SHALL come back when no card is under it.
+
+#### Scenario: Time chips at the bottom
+- **WHEN** the user scrolls up a little and a card's chips are where the button would be
+- **THEN** the button is not shown over them
+
+### Requirement: Page mode scrolls at the window's edge
+In `mode="page"` the feed SHALL be as wide as the window, so its scrollbar sits at the window's right edge, with its messages in a centred column 760 px wide; the composer SHALL stay in that column.
+
+#### Scenario: A wide window
+- **WHEN** the chat fills a 1280 px window in page mode
+- **THEN** the scrollbar is at the window's right edge and the messages are centred
 
 ### Requirement: Back to the latest message
 A user who scrolled up SHALL stay where they read while new text arrives, and a round button over the composer SHALL bring them to the latest message; it SHALL always show its arrow and sit in one place over the field. A tap SHALL take it away at once, keep it away during its own scroll, end at the very bottom, and leave no tooltip. Sending a message SHALL bring the view down.

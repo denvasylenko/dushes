@@ -169,7 +169,7 @@ The conversation can be in another language than the page: a Russian visitor on 
 
 ## Attachments
 
-Under the latest text answer sit its actions, quiet icons. An older answer shows its own on hover on a computer and after a long press on a phone. They come once per turn, when it has finished, and never under a card: a turn that ends with a card shows none. Copy takes every text part of it, so a sentence and the card under it read as one answer. Copy is there by default; choose your own list, add your own and handle the taps:
+Under the latest text answer sit its actions, quiet icons. An older answer shows its own on hover on a computer and after a long press on a phone. They come once per turn, after everything in it and only when it has finished, never between a text and a card: a turn that ends with a card (or waits on one) has none. Copy takes every text part of it, so a sentence and the card under it read as one answer. Copy is there by default; choose your own list, add your own and handle the taps:
 
 ```js
 chat.options = {
@@ -277,7 +277,7 @@ Attributes (HTML) and the same as properties of `chat.options` (JS).
 | `url` | `url` | `/agent/run` | the AG-UI run endpoint |
 | `thread-id` | `threadId` | a new id | continue a given conversation |
 | `persist-thread` | `persistThread` | on | keep the thread id across reloads |
-| `mode` | `mode` | `floating` | `bubble` (a round launcher that grows into a chat window), `floating` (a button and a side panel), `inline` (fills its box), `page` |
+| `mode` | `mode` | `floating` | `bubble` (a round launcher that grows into a chat window), `floating` (a button and a side panel), `inline` (fills its box), `page` (fills the window: the messages in a centred column, the scrollbar at the window's edge) |
 | `bubbleSide` | `bubble-side` | `right` | bubble mode: the launcher's corner, `right` or `left` |
 | `greeting` | `greeting` | — | bubble mode: a short speech bubble next to the closed launcher, shown once per visitor until closed |
 | `greetingDelay` | `greeting-delay` | `4` | seconds before the greeting appears |
