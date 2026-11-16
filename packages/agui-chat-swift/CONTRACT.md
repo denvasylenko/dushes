@@ -153,7 +153,7 @@ The browser uses WebRTC instead (`POST /voice/session {sdp, thread_id}` gives `{
 `GET /voice/events?talk=` and `POST /voice/end {talk}`); the events are the same.
 
 Filling without a card. In a thread a voice conversation speaks for, a `set_fields` card may carry
-`quiet: true`: every value on it was said by the person, the fields were empty and none is a consent. Apply it
+`quiet: true`: every value on it was said by the person (it may replace a value already there) and none is a consent. Apply it
 through the host's form at once, as an accepted card (the same resume), draw no card, and keep a line with Undo.
 A card without the mark waits as always. A consent is never quiet.
 

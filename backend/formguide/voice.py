@@ -1022,16 +1022,15 @@ def _was_said(row: dict, said: str, numbers: list[str]) -> bool:
 
 def quiet(card: dict, said: str | None) -> bool:
     """Whether a field-change card may be applied without being shown, in a voice conversation: every row is a
-    value the person said, goes into a field that was empty, and is not a consent. Anything else is confirmed on
-    a card: a consent, a value the person did not say, a value that replaces another."""
+    value the person said (named, or picked by name among the options offered) and is not a consent, whether the
+    field was empty or held another value: the line with Undo is the way back (the owner, 2026-11-16, after
+    "porcelain" was asked again). Anything else is confirmed on a card: a consent, a value the person did not say."""
     rows = card.get("changes") if isinstance(card, dict) else None
     if not rows or card.get("type") not in (None, "set_fields") or not (said or "").strip():
         return False
     numbers = said_numbers(said or "")
     for row in rows:
         if not isinstance(row, dict) or row.get("consent") or row.get("issue"):
-            return False
-        if row.get("previous") not in (None, "", [], {}):
             return False
         if not _was_said(row, said or "", numbers):
             return False
