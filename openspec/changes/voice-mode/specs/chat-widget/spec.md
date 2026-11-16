@@ -93,7 +93,7 @@ The chat SHALL end the voice conversation on the host when the page is left (clo
 - **THEN** the host receives the end of that conversation
 
 ### Requirement: One utterance is one message
-What the person says SHALL reach the conversation as one message per utterance, however the voice's words are interleaved with theirs: `hearing` deltas SHALL only grow the faint line, and `spoken` deltas SHALL NOT turn a phrase still being said into a message, nor start a new assistant message in the middle of one. Words of the voice that follow a `result` SHALL belong to the written answer until the voice has been silent. A heard line longer than its width SHALL fade at its start, never be cut hard.
+What the person says SHALL reach the conversation as one message per utterance, however the voice's words are interleaved with theirs: `hearing` SHALL only grow the faint line, and `spoken` SHALL NOT turn a phrase still being said into a message nor start a new assistant message in the middle of one. A heard line longer than its width SHALL fade at its start, never be cut hard.
 
 #### Scenario: The voice says a word while the person speaks
 - **WHEN** `hearing` "Yeah, yeah", `spoken` "Okay.", `hearing` ". Set it" arrive in that order while an answer is read out
