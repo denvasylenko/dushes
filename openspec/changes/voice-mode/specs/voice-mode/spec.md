@@ -45,13 +45,20 @@ When the person speaks while the voice is answering, the voice SHALL stop, and t
 ### Requirement: What the person said is filled without a card
 In voice mode a value the person said aloud in this conversation SHALL be applied to its field without a card, through the host's form, and shown as a short line with Undo. A card SHALL be shown only when a confirmation is needed: a consent, an action that cannot be undone, a value the person did not say, a value that replaces one typed by hand, a value the form refused, or a choice the agent cannot make. In chat mode nothing changes.
 
-#### Scenario: A name said aloud
-- **WHEN** the person says "my first name is Anna"
-- **THEN** the field is filled, the voice says so, a line "First name: Anna" with Undo appears, and no card is shown
+#### Scenario: A term said aloud
+- **WHEN** the person says "let's try 36" for the loan term
+- **THEN** the field is filled, the voice says so, a line with Undo appears, and no card is shown
 
 #### Scenario: A value from a document
 - **WHEN** the agent reads an income figure from an uploaded document and proposes it
 - **THEN** a card asks for confirmation before the field is filled
+
+### Requirement: A name is read back, never filled quietly
+In voice mode a free-text value with letters in it (a first or last name, an e-mail, a street, a company) SHALL NOT be filled without a card, because speech recognition mishears such words. The voice SHALL read the value back as it was heard and ask whether it is right, offering to have it spelled. A number, a date and an option of a list that the person said stay quiet.
+
+#### Scenario: A surname heard wrong
+- **WHEN** the person says their last name and it is heard as "Kovalchik"
+- **THEN** the voice says "I heard Last name: Kovalchik. Is that right? If not, spell it for me", and nothing is filled until they answer
 
 ### Requirement: A waiting card is asked and answered aloud
 When a turn ends on a card that waits for the person, the voice SHALL ask the card's own question aloud and SHALL NOT send the person to the screen. A plain spoken yes or no while a card waits SHALL be the answer to that card: yes applies it, no rejects it, and the agent goes on aloud. A consent is applied the same way, by the person's explicit yes to the direct spoken question; it is never filled quietly. Silence SHALL NOT end a conversation while a card waits.

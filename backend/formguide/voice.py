@@ -831,6 +831,9 @@ def asks(card: dict) -> str:
             for r in card.get("changes") or [] if isinstance(r, dict)][:4]
     if not rows:
         return "Shall I fill that in? Say yes or no."
+    if any(isinstance(r, dict) and spelled(r) for r in card.get("changes") or []):
+        # a name or an e-mail as it was heard: read back, with a way out when it was heard wrong
+        return "I heard " + " and ".join(rows) + ". Is that right? If not, spell it for me."
     return "Shall I fill in " + " and ".join(rows) + "? Say yes or no."
 
 
@@ -854,7 +857,9 @@ def is_echo(heard: str, said: list, now: float | None = None) -> bool:
 ALOUD = ("\n\n[The person is talking to you by voice and will HEAR your answer. Answer in one or two short spoken "
          "sentences: no lists, no markup, no headings, no \"still open\" inventory. Say what you did and, at most, the "
          "one next thing. Their words reached you through speech recognition: a filler word or an odd spelling is "
-         "not part of the value. Propose only what they said or clearly named; when a field would need a guess "
+         "not part of the value. A name, a surname, an e-mail or an address may have been heard wrong: propose "
+         "it as you heard it (it is read back to them), and when they spell it letter by letter, join the letters "
+         "into the word and propose that. Propose only what they said or clearly named; when a field would need a guess "
          "(new or used, which of several options), do not propose it: ask for it in one short question.]")
 
 
@@ -971,8 +976,9 @@ def _was_said(row: dict, said: str, numbers: list[str]) -> bool:
 
 def quiet(card: dict, said: str | None) -> bool:
     """Whether a field-change card may be applied without being shown, in a voice conversation: every row is a
-    value the person said, goes into a field that was empty, and is not a consent. Anything else is confirmed on
-    a card: a consent, a value the person did not say, a value that replaces another."""
+    value the person said, goes into a field that was empty, and is neither a consent nor spelled data (a name,
+    an e-mail: see `spelled`). Anything else is confirmed on a card: a consent, a value the person did not say, a
+    value that replaces another, a name that may have been misheard."""
     rows = card.get("changes") if isinstance(card, dict) else None
     if not rows or card.get("type") not in (None, "set_fields") or not (said or "").strip():
         return False
@@ -982,9 +988,19 @@ def quiet(card: dict, said: str | None) -> bool:
             return False
         if row.get("previous") not in (None, "", [], {}):
             return False
+        if spelled(row):
+            return False
         if not _was_said(row, said or "", numbers):
             return False
     return True
+
+
+def spelled(row: dict) -> bool:
+    """Whether a row holds words the person would have to spell: a free-text value with letters in it (a name, a
+    surname, an e-mail, a street). Speech recognition gets these wrong, so they are read back and never filled
+    quietly; a number said aloud, a date and an option of a list are not spelled."""
+    value = row.get("value")
+    return row.get("kind") == "text" and isinstance(value, str) and bool(re.search(_LETTERS, value.lower()))
 
 
 def seen(thread_id: str, ev: dict) -> None:
