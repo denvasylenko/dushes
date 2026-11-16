@@ -332,6 +332,9 @@ async def open_live(key: str, model: str, sdp: str, instructions: str):
     return sid, body["transport"]["sdp"], ws
 
 
+# provider events that come many times a second: their content is recorded as our own events, or not at all
+_STREAMED = {"session.input_transcript.delta", "session.output_transcript.delta", "session.output_audio.delta",
+             "session.usage.updated"}
 STREAM_RATE = 24000   # PCM16 mono, both ways, for a conversation whose audio passes through this server
 CONTRACT = 1          # the voice routes and events as CONTRACT.md describes them; a breaking change gets a new number
 
@@ -518,6 +521,11 @@ class Talks:
             async for raw in state["ws"]:
                 ev = json.loads(raw)
                 t = ev.get("type")
+                if t not in _STREAMED:
+                    # the provider's own events, by name, in the record (not sent to the client): what it did when
+                    # a short line was not heard or a cut-in changed nothing is read here, not guessed
+                    self._record(state, {"type": "live", "event": t, "t_ms": round((time.monotonic() - state["t0"]) * 1000),
+                                         **({"code": (ev.get("error") or {}).get("code")} if t == "error" else {})})
                 if t == "session.input_transcript.delta":
                     state["heard"] += ev.get("delta", "")
                     self.meter.report(talk_id, heard=True)
@@ -721,7 +729,8 @@ def active(thread_id: str) -> bool:
     as_if = os.environ.get("VOICE_AS_IF", "")
     if as_if and thread_id.startswith(as_if):
         return True
-    return any(thread_id in talks._by_thread for talks in HOSTS)
+    # a form agent that answers inside a site conversation runs on its own thread, "<the conversation>-<form id>"
+    return any(thread_id == t or thread_id.startswith(t + "-") for talks in HOSTS for t in list(talks._by_thread))
 
 
 # a plain yes or no, in the product's seven languages (non-ASCII words as code points: the file stays ASCII)

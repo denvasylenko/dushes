@@ -724,3 +724,17 @@ def test_a_yes_to_the_assistants_question_and_a_choice_left_to_it_need_no_card(g
     assert "quiet" not in card(collect(guide, "asked-2", message="Yeah, true, true", state=state))
     model.script = [say_("", ("a3", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
     assert card(collect(guide, "left-1", message="I don't care, just select something", state=state)).get("quiet") is True
+
+
+def test_a_form_inside_a_site_conversation_is_in_the_voice_conversation_too():
+    """QA's first live pass (2026-11-16): 0 of 8 values were filled quietly through a site run, though the same
+    scenarios were quiet with VOICE_AS_IF. The form agent's thread is "<the conversation>-<form id>", and only
+    the conversation's own id counted as talking."""
+    async def go():
+        talks, live, _ = _talks()
+        voice.watch(talks)
+        await talks.start("anna", "o", "conv-1")
+        assert voice.active("conv-1") and voice.active("conv-1-loan_application")
+        assert not voice.active("conv-10") and not voice.active("other")
+        voice.HOSTS.clear()
+    asyncio.run(go())
