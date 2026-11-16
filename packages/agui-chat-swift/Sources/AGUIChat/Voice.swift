@@ -38,6 +38,10 @@ public final class VoiceController {
     public private(set) var problem: String?
     /// The person's words so far, as they speak (cleared when the phrase is handed over).
     public private(set) var hearing = ""
+    /// What the voice itself says in this talk (its transcript), the latest reply — shown when the agent gave none.
+    public private(set) var spoken = ""
+    /// How many items the chat had when the talk began: the talk shows only what was said in it, not the history.
+    public private(set) var startIndex = 0
 
     private let store: ChatStore
     private let makeEngine: @MainActor () -> VoiceEngine
@@ -57,6 +61,8 @@ public final class VoiceController {
     public func start() {
         guard state == .off else { return }
         problem = nil
+        spoken = ""
+        startIndex = store.items.count
         state = .connecting
         let e = makeEngine()
         engine = e
@@ -120,11 +126,14 @@ public final class VoiceController {
             store.interrupted()
         case .heard(let text):
             hearing = ""
+            spoken = ""
             let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !t.isEmpty else { return }
             store.send(t)
             state = .thinking
-        case .spoken:
+        case .spoken(let delta):
+            if Date() > speakingUntil.addingTimeInterval(1.5) { spoken = "" }   // a new reply after a pause
+            spoken += delta
             speakingUntil = Date().addingTimeInterval(1.2)
             if state != .thinking || !store.running { state = .speaking }
         case .level(let l):
