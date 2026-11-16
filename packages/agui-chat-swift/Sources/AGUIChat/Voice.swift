@@ -127,9 +127,17 @@ public final class VoiceController {
             hearing = ""
         case .answer(let cardId, let type, let accepted, let text):
             hearing = ""
-            if store.resolve(cardId: cardId, type: type, accepted: accepted) { state = .thinking } else {
-                let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !t.isEmpty { store.send(t); state = .thinking }
+            said = ""
+            state = .thinking
+            // a yes / no to the waiting card is its ANSWER (resume), never a new message — the site's agent does not
+            // know the form's card and would ask again. A turn still finishing: wait for it (up to 5 s).
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                for _ in 0..<50 where self.store.running { try? await Task.sleep(for: .milliseconds(100)) }
+                if !self.store.resolve(cardId: cardId, type: type, accepted: accepted) {
+                    let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !t.isEmpty { self.store.send(t) }
+                }
             }
         case .interrupted:
             store.interrupted()

@@ -117,7 +117,10 @@ public final class ChatStore {
         guard !running, let i = cardIndex(card.id) else { return }
         if case .card(var c) = items[i] { c.status = .sending; items[i] = .card(c) }
         // the card's id travels with the answer (ignored by today's server; it will refuse an answer to a card that is not the open one)
-        start(messages: [], props: ["command": ["resume": resume, "card_id": .string(card.id)]], answering: card.id)
+        // the card's id travels inside the resume too: the cabinet's form agent reads it there (Кабинет TL 16.11)
+        var r = resume
+        if case .object(var o) = resume, o["card_id"] == nil { o["card_id"] = .string(card.id); r = .object(o) }
+        start(messages: [], props: ["command": ["resume": r, "card_id": .string(card.id)]], answering: card.id)
     }
 
     public func choose(_ card: ChatCard, option id: String) {
@@ -474,7 +477,12 @@ public final class ChatStore {
     /// was resolved; false — send the words as a message (an `ask`, an unknown card, a turn in progress).
     @discardableResult
     public func resolve(cardId: String, type: String, accepted: Bool) -> Bool {
-        guard !running, let i = cardIndex(cardId), case .card(let c) = items[i], c.status == .open else { return false }
+        // the card by its id, or — when the relay names it otherwise — the one card that waits (set_fields / confirm)
+        let index = cardIndex(cardId) ?? items.lastIndex {
+            if case .card(let c) = $0, c.status == .open, c.type == "set_fields" || c.type == "confirm" { true } else { false }
+        }
+        guard !running, let i = index, case .card(let c) = items[i], c.status == .open else { return false }
+        let type = type.isEmpty ? c.type : type
         switch type {
         case "set_fields":
             if accepted {
