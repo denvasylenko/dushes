@@ -35,9 +35,13 @@ public final class AudioVoiceEngine: VoiceEngine {
 
     public func start(threadId: String) async throws {
         guard await AVAudioApplication.requestRecordPermission() else { throw VoiceEngineError.microphone }
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
-        try session.setActive(true)
+        // off the main thread: activating the session there held the app's frames for up to ~1 s while the system's
+        // own animations ran on (a host saw its screen white under the voice)
+        try await Task.detached(priority: .userInitiated) {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
+            try session.setActive(true)
+        }.value
         speakerUnlessHeadphones()
 
         try await transport.connect(threadId: threadId)
@@ -45,7 +49,9 @@ public final class AudioVoiceEngine: VoiceEngine {
         wireFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: rate, channels: 1, interleaved: true)
         playFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false)
 
-        try engine.inputNode.setVoiceProcessingEnabled(true)   // echo and noise cancelling by the system
+        // echo and noise cancelling by the system; off the main thread too (it reconfigures the audio for ~.3 s)
+        nonisolated(unsafe) let input = engine.inputNode
+        try await Task.detached(priority: .userInitiated) { try input.setVoiceProcessingEnabled(true) }.value
         engine.attach(player)
         running = true
         if let at = microphoneNotBefore, at.timeIntervalSinceNow > 0 {
