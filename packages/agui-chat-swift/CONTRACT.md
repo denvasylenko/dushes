@@ -155,8 +155,8 @@ The browser uses WebRTC instead (`POST /voice/session {sdp, thread_id}` gives `{
 Filling without a card. In a thread a voice conversation speaks for, a `set_fields` card may carry
 `quiet: true`: every value on it was said by the person, the fields were empty and none is a consent. Apply it
 through the host's form at once, as an accepted card (the same resume), draw no card, and keep a line with Undo.
-A card without the mark waits as always. A consent is never quiet, and neither is a name, an e-mail or other
-free text the person would have to spell: the voice reads it back and asks.
+A card without the mark waits as always. A consent is never quiet, and neither is a last name, a company name
+or an e-mail: the voice reads it back and asks.
 
 Outside voice mode too (from the commit that adds this line): a field-change card may carry `quiet: true` when the
 person answered the card before it with a yes in words (they typed "yes" instead of tapping, which closed that

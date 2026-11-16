@@ -53,8 +53,8 @@ In voice mode a value the person said aloud in this conversation SHALL be applie
 - **WHEN** the agent reads an income figure from an uploaded document and proposes it
 - **THEN** a card asks for confirmation before the field is filled
 
-### Requirement: A name is read back, never filled quietly
-In voice mode a free-text value with letters in it (a first or last name, an e-mail, a street, a company) SHALL NOT be filled without a card, because speech recognition mishears such words. The voice SHALL read the value back as it was heard and ask whether it is right, offering to have it spelled. A number, a date and an option of a list that the person said stay quiet.
+### Requirement: A last name is read back, never filled quietly
+In voice mode a last name, a company name and an e-mail SHALL NOT be filled without a card, because speech recognition mishears them and a mistake is costly. The voice SHALL read the value back as it was heard and ask whether it is right, offering to have it spelled. A first name, other text, a number, a date and an option of a list that the person said stay quiet.
 
 #### Scenario: A surname heard wrong
 - **WHEN** the person says their last name and it is heard as "Kovalchik"

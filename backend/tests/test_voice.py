@@ -331,18 +331,22 @@ def test_a_quiet_card_is_marked_and_not_announced(guide, model):
         return talks, live
     talks, live = asyncio.run(open_talk())
     try:
-        # a name may have been heard wrong: it is read back, never filled quietly (the CPO, 2026-11-16, after
-        # "Kovalchik" was filled for Kowalczyk in QA's first live pass)
-        model.script = [say_("", ("p0", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
-        ev = collect(guide, "quiet-thread", message="my first name is Anna", state=start(guide, LOAN))
+        # a last name may have been heard wrong: it is read back, never filled quietly (the CPO, 2026-11-16, after
+        # "Kovalchik" was filled for Kowalczyk in QA's first live pass); so are a company name and an e-mail
+        model.script = [say_("", ("p0", "propose_changes", {"changes": [{"name": "last_name", "value": "Smith"}]}))]
+        ev = collect(guide, "quiet-thread", message="my last name is Smith", state=start(guide, LOAN))
         raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
         named = json.loads(raw) if isinstance(raw, str) else raw
-        assert "quiet" not in named and voice.asks(named).startswith("I heard First name: Anna. Is that right?")
-        model.script = [say_("", ("p1", "propose_changes", {"changes": [{"name": "birth_date", "value": "1990-07-01"}]}))]
-        ev = collect(guide, "quiet-thread", message="my date of birth is 1990 07 01", state=start(guide, LOAN))
+        assert "quiet" not in named and voice.asks(named).startswith("I heard Last name: Smith. Is that right?")
+        text = lambda name, label, value: {"name": name, "label": label, "kind": "text", "value": value}  # noqa: E731
+        assert voice.spelled(text("employer", "Employer", "Aster Logistics")) and voice.spelled(text("contact", "Contact", "anna@aster.example"))
+        assert not voice.spelled(text("first_name", "First name", "Anna")) and not voice.spelled(text("city", "City", "Turin"))
+        assert not voice.spelled({"name": "last_name", "label": "Last name", "kind": "text", "value": "4434"})
+        model.script = [say_("", ("p1", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
+        ev = collect(guide, "quiet-thread", message="my first name is Anna", state=start(guide, LOAN))
         raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
         card = json.loads(raw) if isinstance(raw, str) else raw
-        assert card.get("quiet") is True and card["changes"][0]["name"] == "birth_date"
+        assert card.get("quiet") is True and card["changes"][0]["name"] == "first_name"
 
         async def bridge():
             for e in ev:

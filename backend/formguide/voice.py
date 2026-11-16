@@ -857,7 +857,7 @@ def is_echo(heard: str, said: list, now: float | None = None) -> bool:
 ALOUD = ("\n\n[The person is talking to you by voice and will HEAR your answer. Answer in one or two short spoken "
          "sentences: no lists, no markup, no headings, no \"still open\" inventory. Say what you did and, at most, the "
          "one next thing. Their words reached you through speech recognition: a filler word or an odd spelling is "
-         "not part of the value. A name, a surname, an e-mail or an address may have been heard wrong: propose "
+         "not part of the value. A last name, a company name or an e-mail may have been heard wrong: propose "
          "it as you heard it (it is read back to them), and when they spell it letter by letter, join the letters "
          "into the word and propose that. Propose only what they said or clearly named; when a field would need a guess "
          "(new or used, which of several options), do not propose it: ask for it in one short question.]")
@@ -976,8 +976,8 @@ def _was_said(row: dict, said: str, numbers: list[str]) -> bool:
 
 def quiet(card: dict, said: str | None) -> bool:
     """Whether a field-change card may be applied without being shown, in a voice conversation: every row is a
-    value the person said, goes into a field that was empty, and is neither a consent nor spelled data (a name,
-    an e-mail: see `spelled`). Anything else is confirmed on a card: a consent, a value the person did not say, a
+    value the person said, goes into a field that was empty, and is neither a consent nor spelled data (a last
+    name, a company name, an e-mail: see `spelled`). Anything else is confirmed on a card: a consent, a value the person did not say, a
     value that replaces another, a name that may have been misheard."""
     rows = card.get("changes") if isinstance(card, dict) else None
     if not rows or card.get("type") not in (None, "set_fields") or not (said or "").strip():
@@ -995,12 +995,19 @@ def quiet(card: dict, said: str | None) -> bool:
     return True
 
 
+_SPELLED = re.compile(
+    r"last[ _-]?name|surname|family[ _-]?name|company|employer|organi[sz]ation|business[ _-]?name|e-?mail|nachname|familienname|firma|arbeitgeber|apellido|empresa|nom de famille|soci\u00e9t\u00e9|entreprise|cognome|azienda|\u0444\u0430\u043c\u0438\u043b\u0438|\u043a\u043e\u043c\u043f\u0430\u043d\u0438|\u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438|\u0440\u0430\u0431\u043e\u0442\u043e\u0434\u0430\u0442\u0435\u043b|\u043f\u043e\u0447\u0442|\u043f\u0440\u0456\u0437\u0432\u0438\u0449|\u043a\u043e\u043c\u043f\u0430\u043d\u0456|\u043e\u0440\u0433\u0430\u043d\u0456\u0437\u0430\u0446\u0456|\u0440\u043e\u0431\u043e\u0442\u043e\u0434\u0430\u0432|\u043f\u043e\u0448\u0442",
+    re.IGNORECASE)
+
+
 def spelled(row: dict) -> bool:
-    """Whether a row holds words the person would have to spell: a free-text value with letters in it (a name, a
-    surname, an e-mail, a street). Speech recognition gets these wrong, so they are read back and never filled
-    quietly; a number said aloud, a date and an option of a list are not spelled."""
+    """Whether a row holds a word speech recognition gets wrong and a mistake in which is costly: a last name, a
+    company name or an e-mail (by the field's name or label, or an @ in the value). These are read back and never
+    filled quietly; a first name, a number, a date and an option of a list the person said are filled."""
     value = row.get("value")
-    return row.get("kind") == "text" and isinstance(value, str) and bool(re.search(_LETTERS, value.lower()))
+    if row.get("kind") != "text" or not isinstance(value, str) or not re.search(_LETTERS, value.lower()):
+        return False
+    return "@" in value or bool(_SPELLED.search(f"{row.get('name') or ''} {row.get('label') or ''}"))
 
 
 def seen(thread_id: str, ev: dict) -> None:
