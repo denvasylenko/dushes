@@ -39,6 +39,8 @@ public final class VoiceController {
     public private(set) var problem: String?
     /// After a barge-in: the share (0…1) of the last answer that was heard; the rest of its text fades. Nil otherwise.
     public private(set) var cut: Double?
+    /// Each phrase the relay heard (`heard` / an answer to a card), as it came: a host's log counts them.
+    public var onHeard: ((String) -> Void)?
     /// The person's words so far, as they speak (cleared when the phrase is handed over).
     public private(set) var hearing = ""
     /// What the voice itself says in this talk (its transcript), the latest reply — shown when the agent gave none.
@@ -146,6 +148,7 @@ public final class VoiceController {
         case .interrupted:
             store.interrupted()
         case .heard(let text):
+            onHeard?(text)
             cut = nil
             hearing = ""
             said = ""
