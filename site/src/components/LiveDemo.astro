@@ -67,6 +67,10 @@ const agentUrl = import.meta.env.PUBLIC_DEMO_AGENT_URL as string | undefined;
           yield* demo.transport({ ...input, state: { ...state, jsx_hash: jsxHash } }, ctx)   // the state was read before the hash came
         },
       }
+      // the experimental voice mode, where the host has it: its routes answer 403 to a call with no pass, a host without
+      // them has no such route (this is not the code check, which counts tries)
+      fetch(new URL('/voice/end', new URL(url, location.href)), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"talk":""}' })
+        .then((r) => { if (r.status === 403) chat.options = { voiceMode: true, voiceUrl: new URL('/voice', new URL(url, location.href)).href } }, () => {})
     }
     chat.use(formguide({
       getState: () => ({ ...form.state(), ...(jsxHash ? { jsx_hash: jsxHash } : {}) }),
