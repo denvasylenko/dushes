@@ -40,6 +40,12 @@ public final class VoiceController {
     public private(set) var hearing = ""
     /// What the voice itself says in this talk (its transcript), the latest reply — shown when the agent gave none.
     public private(set) var spoken = ""
+    /// The phrase the person has just finished (their speech stopped): shown as ONE message until the relay hands it
+    /// over (`heard`); the live line starts fresh. Never sent from here — `heard` sends it.
+    public private(set) var said = ""
+    private var lastHearingAt = Date.distantPast
+    /// The silence that ends a phrase on screen (--hf-voice-phrase-end).
+    public var phraseEnd: TimeInterval = 1.2
     /// How many items the chat had when the talk began: the talk shows only what was said in it, not the history.
     public private(set) var startIndex = 0
 
@@ -62,6 +68,8 @@ public final class VoiceController {
         guard state == .off else { return }
         problem = nil
         spoken = ""
+        said = ""
+        hearing = ""
         startIndex = store.items.count
         state = .connecting
         let e = makeEngine()
@@ -114,6 +122,7 @@ public final class VoiceController {
         switch event {
         case .hearing(let delta):
             hearing += delta
+            lastHearingAt = Date()
         case .echo:
             hearing = ""
         case .answer(let cardId, let type, let accepted, let text):
@@ -126,6 +135,7 @@ public final class VoiceController {
             store.interrupted()
         case .heard(let text):
             hearing = ""
+            said = ""
             spoken = ""
             let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !t.isEmpty else { return }
@@ -152,6 +162,11 @@ public final class VoiceController {
 
     private func tick() {
         guard state != .off, state != .connecting else { return }
+        // their speech stopped: the live line becomes one message and a fresh line starts — it never keeps growing
+        if !hearing.isEmpty, Date().timeIntervalSince(lastHearingAt) >= phraseEnd {
+            said = hearing.trimmingCharacters(in: .whitespacesAndNewlines)
+            hearing = ""
+        }
         if store.running { state = .thinking; return }
         if Date() < speakingUntil { state = .speaking; return }
         state = muted ? .muted : .listening

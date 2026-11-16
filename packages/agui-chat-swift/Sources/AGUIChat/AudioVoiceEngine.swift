@@ -20,6 +20,10 @@ public final class AudioVoiceEngine: VoiceEngine {
     private var observers: [NSObjectProtocol] = []
     private var muted = false
     private var running = false
+    private var played = 0
+    /// A line a second about the sound path (the route, what was scheduled, the level at the mixer): for a check on a
+    /// real device, where nobody but the person hears the speaker.
+    public var diagnostics: (@Sendable (String) -> Void)?
 
     public init(transport: VoiceTransport) {
         (events, continuation) = AsyncStream.makeStream(of: VoiceEngineEvent.self)
@@ -31,6 +35,7 @@ public final class AudioVoiceEngine: VoiceEngine {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
         try session.setActive(true)
+        speakerUnlessHeadphones()
 
         try await transport.connect(threadId: threadId)
         let rate = transport.sampleRate
@@ -39,7 +44,6 @@ public final class AudioVoiceEngine: VoiceEngine {
 
         try engine.inputNode.setVoiceProcessingEnabled(true)   // echo and noise cancelling by the system
         engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: playFormat)
         running = true
         watchSystem()                                          // before the start: voice processing reconfigures at once
         try wire()
@@ -58,13 +62,56 @@ public final class AudioVoiceEngine: VoiceEngine {
         let micFormat = input.outputFormat(forBus: 0)
         guard micFormat.sampleRate > 0, micFormat.channelCount > 0 else { return }
         converter = AVAudioConverter(from: micFormat, to: wireFormat)
+        // the whole output chain again, by hand: after voice processing switches on, the output's format is new and
+        // the connections made before it carry no sound (owner 16.11: the words showed, nothing was heard)
+        engine.disconnectNodeOutput(player)
+        engine.connect(player, to: engine.mainMixerNode, format: playFormat)
+        engine.connect(engine.mainMixerNode, to: engine.outputNode, format: engine.outputNode.inputFormat(forBus: 0))
+        engine.mainMixerNode.outputVolume = 1
+        player.volume = 1
+        watchMixer()
         input.installTap(onBus: 0, bufferSize: 2048, format: micFormat) { [weak self] buffer, _ in
             self?.captured(buffer)
         }
         engine.prepare()
         try engine.start()
         player.play()
+        speakerUnlessHeadphones()
+        report("wired mic \(Int(micFormat.sampleRate)) Hz, out \(Int(engine.outputNode.inputFormat(forBus: 0).sampleRate)) Hz × \(engine.outputNode.inputFormat(forBus: 0).channelCount), engine \(engine.isRunning), player \(player.isPlaying)")
     }
+
+    /// The loudspeaker, unless headphones or a car are connected: `.voiceChat` alone talks into the earpiece.
+    private func speakerUnlessHeadphones() {
+        let session = AVAudioSession.sharedInstance()
+        let external = session.currentRoute.outputs.contains {
+            [.headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .carAudio, .airPlay, .usbAudio].contains($0.portType)
+        }
+        if !external { try? session.overrideOutputAudioPort(.speaker) }
+        report("route " + session.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ","))
+    }
+
+    private var mixerPeak: Float = 0
+    private var mixerTapped = false
+    private func watchMixer() {
+        guard diagnostics != nil, !mixerTapped else { return }
+        mixerTapped = true
+        let mixer = engine.mainMixerNode
+        var frames = 0
+        var peak: Float = 0
+        mixer.installTap(onBus: 0, bufferSize: 4096, format: nil) { [weak self] buffer, _ in
+            if let ch = buffer.floatChannelData?[0] {
+                for i in 0..<Int(buffer.frameLength) { peak = max(peak, abs(ch[i])) }
+            }
+            frames += Int(buffer.frameLength)
+            if frames >= Int(buffer.format.sampleRate) {
+                let p = peak
+                frames = 0; peak = 0
+                Task { @MainActor [weak self] in self?.report(String(format: "mixer peak %.3f, scheduled %d", p, self?.played ?? 0)) }
+            }
+        }
+    }
+
+    private func report(_ line: String) { diagnostics?(line) }
 
     public func setMuted(_ muted: Bool) { self.muted = muted }
 
@@ -142,7 +189,9 @@ public final class AudioVoiceEngine: VoiceEngine {
             let s = raw.bindMemory(to: Int16.self)
             for i in 0..<Int(frames) { out[i] = Float(Int16(littleEndian: s[i])) / 32768 }
         }
+        if !player.isPlaying { player.play() }
         player.scheduleBuffer(buffer)
+        played += 1
     }
 
     // MARK: calls, Siri, background
