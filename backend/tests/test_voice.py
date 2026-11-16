@@ -673,3 +673,54 @@ def test_a_number_in_words_with_k():
     """QA's list from the owner's voice log (2026-11-16): "two hundred k" is 200000 said aloud."""
     assert voice.said_numbers("two hundred k") == ["200000"] and voice.said_numbers("ok, fifty k then") == ["50000"]
     assert voice.said_numbers("plan k") == []
+
+
+def test_a_yes_with_an_order_to_put_it_in():
+    """QA's card_yes_all_good_applies and voice_yes_all_good (2026-11-16, 0 of 5): "Yes, all good, put it in." is a
+    yes; a yes with a new value or another request in it is not."""
+    yes = voice.yes_or_no
+    assert yes("Yes, all good, put it in.") is True and yes("yes, put it in") is True and yes("ok then, save it") is True
+    assert yes("Yes, that is right.") is True and yes("well, yes, fill it in then please") is True
+    assert yes("put it in the other field") is None and yes("yes, but put 48 months") is None
+    assert yes("no, do not put it in") is None and yes("don't put it in") is None   # never a yes; the card waits
+
+
+def test_agreement_in_the_persons_own_words():
+    """The owner's third voice session (2026-11-15, 23:48 UTC), the CPO's list: a yes came as "true", as "do it",
+    as a complaint that it was not set yet; none was taken, and the same card was asked three times."""
+    yes = voice.yes_or_no
+    for said in ("Yep, true, true", "Yeah, yeah, correct. Yeah, yeah, do it", "Yes, set it, why didn't you set it",
+                 "Yeah, I said, set it. Set the value", "oh yes, that one", "yes of course, I already told you"):
+        assert yes(said) is True, said
+    for said in ("Yeah, set the term to five years", "yes, but what about the rate", "yeah, can you change it",
+                 "set the type to a car loan", "yes, make it forty eight", "true or not, wait"):
+        assert yes(said) is None, said
+    assert voice.delegates("Doesn't matter, just select something") and voice.delegates("I don't care, you choose")
+    assert voice.delegates("up to you") and not voice.delegates("I care about the rate") and not voice.delegates("the first one")
+    card = {"type": "set_fields", "changes": [{"name": "loan_amount", "label": "Loan amount", "value": 5000000, "previous": 30000}]}
+    assert voice.named(card, "Just to be sure: is the loan amount 5 million?")
+    assert not voice.named(card, "Is the loan amount right?")
+    assert not voice.named({"changes": [{"name": "agree", "value": True, "consent": True}]}, "Do you agree? true")
+
+
+def test_a_yes_to_the_assistants_question_and_a_choice_left_to_it_need_no_card(guide, model, monkeypatch):
+    """The same session: "is the loan amount 5 million?" - yes - and then a card asked it again; "I don't care,
+    just select something" was answered with the same question twice."""
+    from .test_agent import collect, start
+    from .test_questions import LOAN
+    state = start(guide, LOAN)
+
+    def card(ev):
+        raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+        return json.loads(raw) if isinstance(raw, str) else raw
+
+    model.script = [say_("Just to be sure: is your first name Anna?")]
+    collect(guide, "asked-1", message="my name, you know it", state=state)
+    model.script = [say_("", ("a1", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
+    assert card(collect(guide, "asked-1", message="Yeah, true, true", state=state)).get("quiet") is True
+    model.script = [say_("Is your name right?")]                    # a question that names no value: the card waits
+    collect(guide, "asked-2", message="my name, you know it", state=state)
+    model.script = [say_("", ("a2", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
+    assert "quiet" not in card(collect(guide, "asked-2", message="Yeah, true, true", state=state))
+    model.script = [say_("", ("a3", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
+    assert card(collect(guide, "left-1", message="I don't care, just select something", state=state)).get("quiet") is True

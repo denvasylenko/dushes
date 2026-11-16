@@ -480,10 +480,22 @@ class FormGuide:
                 # message closed that card): they confirmed it, so it is not asked a second time. The client
                 # applies a card marked quiet without a tap
                 before = next((e for e in reversed(past[:-1]) if e["kind"] == "card"), None)
-                again = (before is not None and before.get("status") == "dismissed" and _voice.yes_or_no(said) is True
+                yes = _voice.yes_or_no(said) is True
+                again = (before is not None and before.get("status") == "dismissed" and yes
                          and _voice.same_changes(before.get("changes"), value.get("changes")))
+                # the assistant asked about these very values in words ("is the loan amount 5 million?") and the
+                # person said yes: that was the confirmation, a card would ask a second time
+                users = [i for i, e in enumerate(past) if e["kind"] == "user"]
+                prior = next((e for e in reversed(past[:users[-1]] if users else [])
+                              if e["kind"] in ("user", "assistant") and e.get("text")), None)
+                asked = prior.get("text", "") if prior and prior["kind"] == "assistant" else ""
+                answered = yes and asked.rstrip().endswith("?") and _voice.named(value, asked)
+                # the person left the choice to the assistant ("I don't care, just select something"): it picks,
+                # the value is set and can be undone; asking again is what they refused
+                left = _voice.delegates(said) and not any(isinstance(r, dict) and (r.get("consent") or r.get("issue"))
+                                                          for r in value.get("changes") or [])
                 # in a voice conversation, what the person said is filled without a card
-                if again or (_voice.active(thread_id) and _voice.quiet(value, said)):
+                if again or answered or left or (_voice.active(thread_id) and _voice.quiet(value, said)):
                     value["quiet"] = True
                 interrupts.append(value)
                 if mode not in ("legacy", "both"):

@@ -726,7 +726,9 @@ def active(thread_id: str) -> bool:
 
 # a plain yes or no, in the product's seven languages (non-ASCII words as code points: the file stays ASCII)
 _YES_WORDS = {"yes", "yeah", "yep", "yup", "sure", "ok", "okay", "correct", "right", "confirm", "agree", "ja", "genau",
-              "fine", "good", "great", "perfect", "set", "apply", "go", "ahead", "exactly",
+              "fine", "good", "great", "perfect", "set", "apply", "go", "ahead", "exactly", "put", "fill", "save",
+              "enter", "true", "yea", "ya", "absolutely", "definitely", "indeed", _cyr(0x43f, 0x440, 0x430, 0x432, 0x434, 0x430), _cyr(0x430, 0x433, 0x430),
+              _cyr(0x445, 0x43E, 0x440, 0x43E, 0x448, 0x43E),                                # "khorosho"
               _cyr(0x447, 0x451, 0x442, 0x43A, 0x43E), _cyr(0x447, 0x435, 0x442, 0x43A, 0x43E),      # "chyotko"
               _cyr(0x441, 0x442, 0x430, 0x432, 0x44C), _cyr(0x434, 0x430, 0x432, 0x430, 0x439),      # "stav'", "davai"
               _cyr(0x442, 0x43E, 0x447, 0x43D, 0x43E), _cyr(0x43F, 0x43E, 0x434, 0x442, 0x432, 0x435, 0x440, 0x436, 0x434, 0x430, 0x44E),
@@ -740,23 +742,61 @@ _NO_WORDS = {"no", "nope", "nah", "cancel", "wrong", "nein", "non", "not",
              "".join(map(chr, (0x43D, 0x435, 0x442))), "".join(map(chr, (0x43D, 0x456))),
              "".join(map(chr, (0x43D, 0x435)))}
 _FILLERS = {"uh", "um", "please", "do", "it", "that", "is", "thanks", "thank", "you", "i", "said", "the", "bitte",
-            "but", "say", "all", "looks", "its", "s", "them", "this", "everything",
+            "but", "say", "all", "looks", "its", "s", "them", "this", "everything", "in", "then", "so", "and", "just",
+            "now", "there", "well", "oh", "one", "of", "course",
             "".join(map(chr, (0x43F, 0x43E, 0x436, 0x430, 0x43B, 0x443, 0x439, 0x441, 0x442, 0x430))),
             "".join(map(chr, (0x432, 0x441, 0x451))), "".join(map(chr, (0x432, 0x441, 0x435)))}
 
 
+# words that give an order rather than agree ("set it" is a yes; "set the term to five years" is a request), and
+# words that turn a yes into something else: a new value, another request, a question
+_ORDERS = {"set", "apply", "go", "ahead", "put", "fill", "save", "enter", "fine", "good", "great", "perfect",
+           _cyr(0x441, 0x442, 0x430, 0x432, 0x44C), _cyr(0x434, 0x430, 0x432, 0x430, 0x439)}
+_TURNS = {"to", "for", "change", "different", "another", "other", "wait", "actually", "instead", "rather", "make",
+          "except", "also", "add", "remove", "plus", "what", "how", "when", "where", "which", "who", "can", "could",
+          "maybe", "unless"}
+_DELEGATES = re.compile(
+    r"\b((do(es)?n'?t|do(es)? not) (care|matter)|whatever|up to you|you (choose|pick|decide|select)"
+    r"|(just )?(pick|select|choose|take) (something|anything|any|one|whichever)|any of (them|those)|either( one)?)\b"
+    r"|\u043a\u0430\u043a \u0445\u043e\u0447\u0435\u0448\u044c|\u0432\u044b\u0431\u0435\u0440\u0438 \u0441\u0430\u043c|\u0432\u044b\u0431\u0438\u0440\u0430\u0439 \u0441\u0430\u043c|\u0432\u0441\u0451 \u0440\u0430\u0432\u043d\u043e|\u0432\u0441\u0435 \u0440\u0430\u0432\u043d\u043e|\u0431\u0435\u0437 \u0440\u0430\u0437\u043d\u0438\u0446\u044b|\u043d\u0430 \u0442\u0432\u043e\u0439 \u0432\u044b\u0431\u043e\u0440|\u043d\u0430 \u0442\u0432\u043e\u0451 \u0443\u0441\u043c\u043e\u0442\u0440\u0435\u043d\u0438\u0435|\u043b\u044e\u0431\u043e\u0439|\u043b\u044e\u0431\u0443\u044e|\u043b\u044e\u0431\u043e\u0435|\u044f\u043a \u0445\u043e\u0447\u0435\u0448|\u043e\u0431\u0435\u0440\u0438 \u0441\u0430\u043c|\u0431\u0430\u0439\u0434\u0443\u0436\u0435|\u0431\u0443\u0434\u044c-\u044f\u043a\u0438\u0439|\u0431\u0443\u0434\u044c-\u044f\u043a\u0443",
+    re.IGNORECASE)
+
+
+def delegates(text: str | None) -> bool:
+    """Whether the person left the choice to the assistant ("I don't care, just select something", "up to you")."""
+    return bool(_DELEGATES.search(text or ""))
+
+
+def named(card: dict, asked: str | None) -> bool:
+    """Whether a text names every value of a field-change card: the assistant's own question ("Just to be sure: is
+    the loan amount 5 million?") that the person has just said yes to. A consent is never named this way."""
+    rows = card.get("changes") if isinstance(card, dict) else None
+    if not rows or card.get("type") not in (None, "set_fields") or not (asked or "").strip():
+        return False
+    numbers = said_numbers(asked or "")
+    return all(isinstance(r, dict) and not r.get("consent") and not r.get("issue") and _was_said(r, asked or "", numbers)
+               for r in rows)
+
+
 def yes_or_no(text: str) -> bool | None:
-    """True for a plain yes, False for a plain no, None for anything else. Plain means six words at most and
+    """True for a plain yes, False for a plain no, None for anything else. Plain means eight words at most and
     nothing but the yes or no and filler ("yes please", "I said yes", "no thanks"); "yes, but make it 48" is a
-    request, and both words together are neither."""
+    request, and both words together are neither. A longer utterance is a yes when it opens with agreement and
+    holds no figure, no refusal and no turn to something else."""
     words = re.findall(_LETTERS, (text or "").lower())
-    if not words or len(words) > 6 or re.search(r"\d", text or ""):   # a figure in it is a new value, not a yes
+    # a figure in it is a new value, not a yes ("oh" and "one" are not figures here: "oh yes", "this one")
+    if not words or len(words) > 14 or any(n not in ("0", "1") for n in said_numbers(text or "")):
         return None
     yes, no = any(w in _YES_WORDS for w in words), any(w in _NO_WORDS for w in words)
     rest = [w for w in words if w not in _YES_WORDS and w not in _NO_WORDS and w not in _FILLERS]
-    if rest or yes == no:
-        return None
-    return yes
+    if len(words) <= 8 and not rest and yes != no:
+        return yes
+    # an utterance that opens with agreement and turns to nothing else is a yes, whatever comes with it ("Yeah, I
+    # said, set it. Set value", "Yeah, set it, why you didn't set"): the person is repeating themselves
+    opens = next((w for w in words if w not in _FILLERS), "")
+    if opens in _YES_WORDS and opens not in _ORDERS and not no and not any(w in _TURNS for w in words):
+        return True
+    return None
 
 
 def same_changes(one: list | None, other: list | None) -> bool:

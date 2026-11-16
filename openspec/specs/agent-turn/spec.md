@@ -197,6 +197,20 @@ When the person answers a field-change card in words (a plain yes, typed or spok
 - **WHEN** the agent shows a card "Loan amount = 50000" and the person types "Yes" instead of tapping it
 - **THEN** the run's card for the same change carries `quiet: true` and the client applies it at once
 
+### Requirement: Agreement is taken in the person's own words
+A yes SHALL be recognised when the utterance opens with agreement and holds no figure, no refusal and no turn to another request ("true", "yeah, do it", "yes, I said set it"). When the assistant asked in words about the very values of a card and the person answered yes, the card SHALL be marked `quiet`: the question was the confirmation.
+
+#### Scenario: A question, a yes, no second question
+- **WHEN** the assistant asks "is the loan amount 5 million?", the person says "yeah, true", and the agent proposes that amount
+- **THEN** the card carries `quiet: true` and is applied without being asked again
+
+### Requirement: A choice left to the assistant is made
+When the person leaves a choice to the assistant ("I don't care, just select something", "up to you"), the agent SHALL pick the most usual option of that field, propose it and say what it picked; the card SHALL be marked `quiet`, so it is set at once and can be undone. The agent SHALL NOT ask the same choice again. This applies to a choice among a field's options, never to a fact about the person or a consent.
+
+#### Scenario: Any payout method
+- **WHEN** the agent asks how the money should be paid out and the person says "doesn't matter, just select something"
+- **THEN** the agent sets one option, says which, and does not ask again
+
 ### Requirement: An ambiguous answer is not settled silently
 When what the user said could mean a second field as well as the one it was given for, the agent SHALL fill the field that is certain and ask about the other in one short question. It SHALL NOT fill a dependent field because a matching option exists. The question SHALL be the agent's next step once the certain value is in the form: its reply asks it and does not move on to other fields first.
 
