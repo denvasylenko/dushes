@@ -87,6 +87,7 @@ public final class VoiceController {
                 try await e.start(threadId: store.threadId)
                 if state == .connecting { state = muted ? .muted : .listening }
             } catch {
+                guard state != .off else { return }     // closed while connecting: not a failure
                 problem = String(localized: "The voice could not start. Try again.", bundle: .module)
                 await stop()
             }

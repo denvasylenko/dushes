@@ -22,6 +22,9 @@ public final class AudioVoiceEngine: VoiceEngine {
     private var observers: [NSObjectProtocol] = []
     private var muted = false
     private var running = false
+    /// Ended before it was running (✕ while connecting): the socket opened meanwhile is closed at once — left open it
+    /// stayed a paid session with no audio until the server's timeout (owner's phone, 16.11).
+    private var cancelled = false
     private var played = 0
     /// Barge-in: the rest of an interrupted answer is dropped until the server says so (`interrupted`), his phrase
     /// is heard, or the voice's audio has paused (a new answer).
@@ -55,6 +58,7 @@ public final class AudioVoiceEngine: VoiceEngine {
         speakerUnlessHeadphones()
 
         try await transport.connect(threadId: threadId)
+        if cancelled { await transport.close(); throw CancellationError() }
         let rate = transport.sampleRate
         wireFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: rate, channels: 1, interleaved: true)
         playFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false)
@@ -62,12 +66,14 @@ public final class AudioVoiceEngine: VoiceEngine {
         // echo and noise cancelling by the system; off the main thread too (it reconfigures the audio for ~.3 s)
         nonisolated(unsafe) let input = engine.inputNode
         try await Task.detached(priority: .userInitiated) { try input.setVoiceProcessingEnabled(true) }.value
+        if cancelled { await transport.close(); throw CancellationError() }
         engine.attach(player)
         engine.attach(pace)
         running = true
         if let at = microphoneNotBefore, at.timeIntervalSinceNow > 0 {
             try? await Task.sleep(for: .seconds(at.timeIntervalSinceNow))
         }
+        guard running else { throw CancellationError() }     // ended while waiting: the end already closed all
         watchSystem()                                          // before the start: voice processing reconfigures at once
         try wire(startNow: false)
         // starting the engine takes the audio hardware (up to ~.2 s on a phone): off the main thread, like the
@@ -77,6 +83,11 @@ public final class AudioVoiceEngine: VoiceEngine {
             audio.prepare()
             try audio.start()
         }.value
+        guard running else {                                  // ended while the engine started: stop it again
+            nonisolated(unsafe) let late = engine
+            await Task.detached { late.stop() }.value
+            throw CancellationError()
+        }
         player.play()
         speakerUnlessHeadphones()
         pump = Task { [weak self] in
@@ -151,7 +162,11 @@ public final class AudioVoiceEngine: VoiceEngine {
     public func setMuted(_ muted: Bool) { self.muted = muted }
 
     public func end() async {
-        guard running else { return }
+        guard running else {
+            cancelled = true
+            await transport.close()                   // a socket that is opening or open: closed, not left to time out
+            return
+        }
         running = false
         // stopping the hardware off the main thread: in the frame of the host's closing animation it held it
         // (~.3 s on the owner's phone)
