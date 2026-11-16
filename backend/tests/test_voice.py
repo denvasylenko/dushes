@@ -302,7 +302,8 @@ def test_only_what_the_person_said_into_an_empty_field_is_quiet():
     # the owner's session: he said Luhansk and "some Piterburg" for the region; the agent chose the city itself
     city = [row("reg_city", {"id": "spb", "name": "Saint Petersburg"}, "Saint Petersburg")]
     assert not voice.quiet({"changes": city}, "okay pick some Piterburg")
-    assert not voice.quiet({"changes": [row("first_name", "Denis") | {"previous": "Den"}]}, "my name is Denis")   # replaces
+    # a value the person said replaces the old one without a second question (the owner, 2026-11-16)
+    assert voice.quiet({"changes": [row("first_name", "Denis") | {"previous": "Den"}]}, "my name is Denis")
     assert not voice.quiet({"changes": [row("agree", True, "Yes", consent=True)]}, "yes")                          # a consent
     assert not voice.quiet({"changes": [row("birth_date", "1992-07-01", "1 July 1992")]}, "first July ninety-two")  # worked out
     # the owner's second session: "let's try 36" for a term whose label is "36 months" came as a card
@@ -788,3 +789,16 @@ def test_a_hand_over_that_comes_before_the_words_waits_for_them():
         assert got[-1]["text"] == "Car loan, please."
         voice.HOSTS.clear()
     asyncio.run(go())
+
+
+def test_an_option_the_person_picked_replaces_the_old_one_quietly():
+    """Production v148 (2026-11-16): the assistant offered colours, the owner said "porcelain" and was asked to
+    confirm porcelain. A value the person named, or an option they picked by its name, is applied at once with
+    Undo even when the field held another value; a value they did not say still waits on a card."""
+    pick = {"name": "palette", "label": "Palette", "kind": "select",
+            "value": {"id": "porcellana", "name": "Porcelain"}, "previous": {"id": "sand", "name": "Sand"}}
+    assert voice.quiet({"type": "set_fields", "changes": [pick]}, "porcelain")
+    assert voice.quiet({"type": "set_fields", "changes": [pick]}, "let's take the porcelain one")
+    assert not voice.quiet({"type": "set_fields", "changes": [pick]}, "something lighter")      # not said: a card
+    consent = {"name": "agree", "label": "I agree", "kind": "bool", "value": True, "previous": False, "consent": True}
+    assert not voice.quiet({"type": "set_fields", "changes": [consent]}, "yes I agree")           # a consent: a card

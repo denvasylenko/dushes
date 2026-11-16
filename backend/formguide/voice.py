@@ -1027,17 +1027,17 @@ def _was_said(row: dict, said: str, numbers: list[str]) -> bool:
 
 def quiet(card: dict, said: str | None) -> bool:
     """Whether a field-change card may be applied without being shown, in a voice conversation: every row is a
-    value the person said, goes into a field that was empty, and is neither a consent nor spelled data (a last
-    name, a company name, an e-mail: see `spelled`). Anything else is confirmed on a card: a consent, a value the person did not say, a
-    value that replaces another, a name that may have been misheard."""
+    value the person said (named, or picked by name among the options offered), whether the field was empty or
+    held another value (the line with Undo is the way back: the owner, 2026-11-16, after "porcelain" was asked
+    again), and is neither a consent nor spelled data (a last name, a company name, an e-mail: see `spelled`).
+    Anything else is confirmed on a card: a consent, a value the person did not say, a name that may have been
+    misheard."""
     rows = card.get("changes") if isinstance(card, dict) else None
     if not rows or card.get("type") not in (None, "set_fields") or not (said or "").strip():
         return False
     numbers = said_numbers(said or "")
     for row in rows:
         if not isinstance(row, dict) or row.get("consent") or row.get("issue"):
-            return False
-        if row.get("previous") not in (None, "", [], {}):
             return False
         if spelled(row):
             return False

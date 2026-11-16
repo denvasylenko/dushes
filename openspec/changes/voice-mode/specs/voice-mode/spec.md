@@ -50,11 +50,15 @@ When the person speaks while the voice is answering, the voice SHALL stop, and t
 - **THEN** the speech stops and the turn in progress is cancelled before the new request is taken
 
 ### Requirement: What the person said is filled without a card
-In voice mode a value the person said aloud in this conversation SHALL be applied to its field without a card, through the host's form, and shown as a short line with Undo. A card SHALL be shown only when a confirmation is needed: a consent, an action that cannot be undone, a value the person did not say, a value that replaces one typed by hand, a value the form refused, or a choice the agent cannot make. In chat mode nothing changes.
+In voice mode a value the person said aloud in this conversation SHALL be applied to its field without a card, through the host's form, and shown as a short line with Undo. A card SHALL be shown only when a confirmation is needed: a consent, an action that cannot be undone, a value the person did not say, a value the form refused, or a choice the agent cannot make. In chat mode nothing changes.
 
 #### Scenario: A term said aloud
 - **WHEN** the person says "let's try 36" for the loan term
 - **THEN** the field is filled, the voice says so, a line with Undo appears, and no card is shown
+
+#### Scenario: An offered option picked by name
+- **WHEN** the assistant offers colours, the palette holds Sand, and the person says "porcelain"
+- **THEN** Porcelain replaces Sand at once, with a line and Undo, and the person is not asked to confirm it
 
 #### Scenario: A value from a document
 - **WHEN** the agent reads an income figure from an uploaded document and proposes it
