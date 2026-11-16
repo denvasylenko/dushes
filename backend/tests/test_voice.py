@@ -749,3 +749,42 @@ def test_a_form_inside_a_site_conversation_is_in_the_voice_conversation_too():
         assert not voice.active("conv-10") and not voice.active("other")
         voice.HOSTS.clear()
     asyncio.run(go())
+
+
+def test_a_hand_over_that_comes_before_the_words_waits_for_them():
+    """Production v146 (2026-11-16): the provider asked for the agent before the transcript of the phrase arrived;
+    the empty phrase was dropped, nothing reached the agent, and the voice filled the silence itself. The hand-over
+    now waits for the words; with none at all the voice says it did not catch that."""
+    async def go():
+        talks, live, _ = _talks()
+        await talks.start("anna", "o", "t-early")
+        events = talks.events("live_1")
+        live.push(type="session.delegation.created", delegation={"id": "item_1", "type": "delegation", "target": "client"})
+        await asyncio.sleep(0.3)
+        live.push(type="session.input_transcript.delta", delta="It's a ")
+        live.push(type="session.input_transcript.delta", delta="Volkswagen.")
+        got = [await asyncio.wait_for(events.__anext__(), 2) for _ in range(3)]
+        assert [e["type"] for e in got] == ["hearing", "hearing", "heard"] and got[-1]["text"] == "It's a Volkswagen."
+        assert talks._live["live_1"]["pending"] == "item_1"          # the agent's answer goes to that very request
+        talks.seen("t-early", {"type": "RUN_STARTED"})
+        talks.seen("t-early", {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "Noted: a Volkswagen."})
+        talks.seen("t-early", {"type": "RUN_FINISHED"})
+        await asyncio.sleep(0.05)
+        said = [m for m in live.sent if m["type"] == "session.commentary.append"]
+        assert [(m["delegation_id"], m["content"]) for m in said] == [("item_1", "Noted: a Volkswagen.")]
+
+        # no words at all: after the wait the voice is told to ask again, and nothing is sent as heard
+        live.push(type="session.delegation.created", delegation={"id": "item_2"})
+        await asyncio.sleep(voice.WORDS_WAIT + 0.3)
+        said = [m for m in live.sent if m["type"] == "session.commentary.append"]
+        assert said[-1]["delegation_id"] == "item_2" and said[-1]["content"] == voice.UNHEARD
+        assert talks._live["live_1"]["heard"] == ""
+
+        # the words come first, as before: handed over at once
+        live.push(type="session.input_transcript.delta", delta="Car loan, please.")
+        live.push(type="session.delegation.created", delegation={"id": "item_3"})
+        got = [await asyncio.wait_for(events.__anext__(), 1) for _ in range(3)]
+        assert [e["type"] for e in got] == ["result", "hearing", "heard"]     # the first answer's, then the new phrase
+        assert got[-1]["text"] == "Car loan, please."
+        voice.HOSTS.clear()
+    asyncio.run(go())
