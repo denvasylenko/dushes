@@ -92,6 +92,13 @@ The chat SHALL end the voice conversation on the host when the page is left (clo
 - **WHEN** the person reloads the page during a voice conversation
 - **THEN** the host receives the end of that conversation
 
+### Requirement: One utterance is one message
+What the person says SHALL reach the conversation as one message per utterance, however the voice's words are interleaved with theirs: `hearing` deltas SHALL only grow the faint line, and `spoken` deltas SHALL NOT turn a phrase still being said into a message, nor start a new assistant message in the middle of one. Words of the voice that follow a `result` SHALL belong to the written answer until the voice has been silent. A heard line longer than its width SHALL fade at its start, never be cut hard.
+
+#### Scenario: The voice says a word while the person speaks
+- **WHEN** `hearing` "Yeah, yeah", `spoken` "Okay.", `hearing` ". Set it" arrive in that order while an answer is read out
+- **THEN** the conversation gains no message from them, the faint line reads "Yeah, yeah. Set it", and `heard` then adds it as one message
+
 ### Requirement: The answer lights up as it is spoken
 While the voice speaks an answer, the written answer SHALL be dim with the words said so far bright, moving at a speaking pace and only while there is sound. When the voice is done or stopped, the answer SHALL be plain text again. Where the browser cannot paint a text range, nothing SHALL be dimmed.
 

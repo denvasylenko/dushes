@@ -180,7 +180,7 @@ export function voice(chat: Chat): void {
   let last: HTMLElement | null = null
   /** One line that says why voice ended; a new one takes the place of the last, they never pile up. */
   function note(text: string): void { last?.remove(); last = el('div', 'notice', text); add(last) }
-  let saidEl: HTMLElement | null = null, answered = false, caption = ''
+  let saidEl: HTMLElement | null = null, answered = false, caption = '', heardAt = 0, reads = 0
   /** How loud the voice is, from the sound itself (frames arrive all the time, silence included): it is speaking while there is sound. */
   let ear: { ctx: AudioContext; timers: ReturnType<typeof setInterval>[] } | null = null
   /** Watch a stream's loudness (0 to about 40): `got` hears it eight times a second. */
@@ -306,6 +306,7 @@ export function voice(chat: Chat): void {
   let liveT = 0
   function hearing(text: string): void {
     live.textContent = text; live.scrollLeft = live.scrollWidth
+    live.classList.toggle('cut', live.scrollWidth > live.clientWidth + 1)   // longer than the line: its start fades out, never a hard cut
     clearTimeout(liveT)
     if (text) liveT = setTimeout(() => { live.textContent = '' }, 6000) as unknown as number
   }
@@ -374,23 +375,33 @@ export function voice(chat: Chat): void {
         let ev: { type?: string; text?: string; delta?: string; reason?: Ended; answers?: { card_id?: string; type?: string; accepted?: boolean } }
         try { ev = JSON.parse(data) } catch { continue }
         if (ev.type === 'hearing' && ev.delta) {   // the person's words as they speak: their message, growing in the conversation
-          audio.muted = false
-          if (!live.textContent) { saidEl = null; answered = false; unread() }
+          // nothing else changes while the person speaks: the voice may still be talking (they speak over it, or it
+          // says "okay" between their words), and that must not cut their line into pieces or the answer in two
+          audio.muted = false; heardAt = Date.now()
           hearing(live.textContent + ev.delta)
         } else if (ev.type === 'heard' && ev.text) {   // the whole request: the ordinary turn, as if typed; its text, steps and cards are the chat's own
           hearing('')   // the whole phrase goes into the conversation as one message
           if (echo(ev.text)) continue   // the voice heard itself through the speakers: not the person's message
-          audio.muted = false; saidEl = null; answered = false; voiced = ''; unread()
+          audio.muted = false; saidEl = null; answered = false; reads = 0; voiced = ''; unread()
           if (ev.answers && answer(ev.answers, ev.text)) continue   // a spoken yes or no to the waiting card: the card's own answer, not a new message
           void chat.send(ev.text)
-        } else if (ev.type === 'result') { answered = true; saidEl = null; read()   // the agent's answer was handed to the voice: what it says next is that answer, already written in the conversation
+        } else if (ev.type === 'result') { answered = true; reads = 0; saidEl = null; read()   // the agent's answer was handed to the voice: what it says next is that answer, already written in the conversation
         } else if (ev.type === 'spoken' && ev.delta) {
+          const fresh = Date.now() - spokeAt > 1500   // the voice starts again after a silence: a new thing said, not the next word
           spokeAt = Date.now(); paint(); setTimeout(paint, 950)
           voiced = (voiced + ev.delta).slice(-1200)
-          if (answered) { reading && (reading.text += ev.delta); continue }   // one message for one answer: the written one, lit as it is spoken
+          if (answered && reads && fresh) answered = false   // the answer was read out a while ago: this is the voice's own talk
+          if (answered) { reads++; reading && (reading.text += ev.delta); continue }   // one message for one answer: the written one, lit as it is spoken
           if (busy) { caption = (caption + ev.delta).slice(-80); step.textContent = caption; continue }   // "Checking now": a status, under the orb
           // the voice's own words with no agent answer behind them (a greeting, small talk): the agent's message, word by word
-          if (live.textContent) { const me = el('div', 'msg me new'); me.append(el('div', 'bubble', live.textContent)); add(me); hearing('') }   // small talk: what was heard is the person's message, whole
+          if (fresh) saidEl = null   // a new thing said is a new message; the next words of the same one go on in it, whatever is heard meanwhile
+          // small talk: what was heard is the person's message, whole, once they have stopped for a moment (never a piece
+          // of a phrase still being said: that one comes whole with `heard`); it stands before the voice's reply to it
+          if (live.textContent && Date.now() - heardAt > 600) {
+            const me = el('div', 'msg me new'); me.append(el('div', 'bubble', live.textContent.trim()))
+            if (saidEl) saidEl.before(me); else add(me)
+            hearing('')
+          }
           if (!saidEl) { saidEl = el('div', 'msg ai'); saidEl.append(el('div', 'body')); add(saidEl) }
           saidEl.firstElementChild!.textContent += ev.delta
         } else if (ev.type === 'echo') { hearing('')   // the server heard the voice itself: the words that grew were not the person's

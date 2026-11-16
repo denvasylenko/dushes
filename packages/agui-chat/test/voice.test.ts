@@ -228,11 +228,38 @@ describe('the experimental voice mode', () => {
     const el = await talking(s, agent())
     s.push({ type: 'hearing', delta: 'Hello there' })
     await tick(10)
-    s.push({ type: 'spoken', delta: 'Hi! ' }); s.push({ type: 'spoken', delta: 'How can I help?' })
+    s.push({ type: 'spoken', delta: 'Hi! ' })
+    await tick(10)
+    expect($$(el, '.msg.me')).toHaveLength(0)                                   // they may still be speaking: not a message yet
+    await tick(700)
+    s.push({ type: 'spoken', delta: 'How can I help?' })
     await tick(10)
     expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['Hello there'])
     expect($(el, '.vo-dock .vo-live').textContent).toBe('')                        // it is said, no longer growing
     expect($$(el, '.msg.ai').map((m) => m.textContent)).toEqual(['Hi! How can I help?'])
+    expect([...$(el, '.log').children].map((c) => c.className.split(' ').slice(0, 2).join(' '))).toEqual(['msg me', 'msg ai'])   // their words stand before the reply
+  })
+
+  it('one utterance is one message: the voice talking while the person speaks never cuts their words, or its own, into pieces', async () => {
+    const s = server(); fakeAudio()
+    const a = agent(40)
+    const el = await talking(s, a)
+    // an answer is being read out; the person speaks over it, and the voice says a word between theirs (the owner's live run)
+    s.push({ type: 'heard', text: 'Start with the personal details' })
+    await tick(150)
+    s.push({ type: 'result', text: 'Done.' }); s.push({ type: 'spoken', delta: 'Before I continue, ' })
+    await tick(10)
+    s.push({ type: 'hearing', delta: 'Yeah, yeah' })
+    await tick(10)
+    s.push({ type: 'spoken', delta: 'should I fill in' }); s.push({ type: 'hearing', delta: '. Set' }); s.push({ type: 'spoken', delta: ' Okay.' }); s.push({ type: 'hearing', delta: ' it' })
+    await tick(30)
+    expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['Start with the personal details'])   // no «Yeah, yeah» piece
+    expect($$(el, '.msg.ai')).toHaveLength(1)                                    // no «Okay.» piece: the one written answer
+    expect($(el, '.vo-dock .vo-live').textContent).toBe('Yeah, yeah. Set it')     // his words are still one line
+    s.push({ type: 'heard', text: 'Yeah, yeah. Set it' })
+    await tick(150)
+    expect($$(el, '.msg.me').map((m) => m.textContent)).toEqual(['Start with the personal details', 'Yeah, yeah. Set it'])   // one message
+    expect($(el, '.vo-dock .vo-live').textContent).toBe('')
   })
 
   it('a press on the orb stops the answer: the turn while it thinks, the sound while it speaks', async () => {
