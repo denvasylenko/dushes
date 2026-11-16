@@ -13,6 +13,8 @@ public final class AudioVoiceEngine: VoiceEngine {
     private let transport: VoiceTransport
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
+    /// The voice slows a little as it trails off (barge-in), its pitch kept.
+    private let pace = AVAudioUnitTimePitch()
     private var converter: AVAudioConverter?
     private var wireFormat: AVAudioFormat!
     private var playFormat: AVAudioFormat!
@@ -59,6 +61,7 @@ public final class AudioVoiceEngine: VoiceEngine {
         nonisolated(unsafe) let input = engine.inputNode
         try await Task.detached(priority: .userInitiated) { try input.setVoiceProcessingEnabled(true) }.value
         engine.attach(player)
+        engine.attach(pace)
         running = true
         if let at = microphoneNotBefore, at.timeIntervalSinceNow > 0 {
             try? await Task.sleep(for: .seconds(at.timeIntervalSinceNow))
@@ -83,7 +86,9 @@ public final class AudioVoiceEngine: VoiceEngine {
         // the whole output chain again, by hand: after voice processing switches on, the output's format is new and
         // the connections made before it carry no sound (owner 16.11: the words showed, nothing was heard)
         engine.disconnectNodeOutput(player)
-        engine.connect(player, to: engine.mainMixerNode, format: playFormat)
+        engine.disconnectNodeOutput(pace)
+        engine.connect(player, to: pace, format: playFormat)
+        engine.connect(pace, to: engine.mainMixerNode, format: playFormat)
         engine.connect(engine.mainMixerNode, to: engine.outputNode, format: engine.outputNode.inputFormat(forBus: 0))
         engine.mainMixerNode.outputVolume = 1
         player.volume = 1
@@ -229,23 +234,29 @@ public final class AudioVoiceEngine: VoiceEngine {
         speakingUntil = max(Date(), speakingUntil).addingTimeInterval(Double(frames) / playFormat.sampleRate)
     }
 
-    /// The voice falls silent like a person cut off mid-word (owner 16.11, mobile designer): the volume follows
-    /// e^(−t/55 ms) for 200 ms (−32 dB at the end, no click), then the queued audio is dropped.
+    /// The voice «goes into silence» like a person cut off mid-word (owner 16.11, the mobile designer's curves): over
+    /// 350 ms the volume follows (1 − t/350)^2.5 — clearly quieter first, then a soft tail to zero, no click — and the
+    /// speech slows 1.0 → 0.9 linearly with its pitch kept; then the queued audio is dropped. The host's light and text
+    /// follow `.trailingOff` over the same 350 ms.
     private func trailOff() {
         guard fade == nil, Date() < speakingUntil || player.isPlaying else { return }
         silenced = true
         droppedAt = Date()
+        continuation.yield(.trailingOff)
         let start = Date()
         fade = Task { [weak self] in
             while let self, !Task.isCancelled {
-                let t = Date().timeIntervalSince(start)
-                if t >= 0.2 { break }
-                self.player.volume = Float(exp(-t / 0.055))
+                let t = Date().timeIntervalSince(start) / 0.35
+                if t >= 1 { break }
+                self.player.volume = Float(pow(1 - t, 2.5))
+                self.pace.rate = Float(1 - 0.1 * t)
                 try? await Task.sleep(for: .milliseconds(5))
             }
             guard let self else { return }
+            self.player.volume = 0
             self.player.stop()                         // drops everything scheduled
             self.player.volume = 1
+            self.pace.rate = 1
             if self.running { self.player.play() }
             self.speakingUntil = .distantPast
             self.fade = nil

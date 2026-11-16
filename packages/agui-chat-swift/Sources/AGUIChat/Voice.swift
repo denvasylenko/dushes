@@ -8,6 +8,7 @@ public enum VoiceEngineEvent: Equatable, Sendable {
     case echo                     // drop what `hearing` showed: it was the voice's own words
     case answer(cardId: String, type: String, accepted: Bool, text: String)   // a spoken yes or no to a waiting card
     case interrupted              // the person spoke over the turn: the server has stopped it
+    case trailingOff              // the voice is falling silent under the person's words (350 ms): listen again
     case heard(String)            // the person's words: sent as an ordinary user message in the same thread
     case spoken(String)           // a piece of what the voice says (its transcript)
     case level(Double)            // 0…1, the person's sound level (the session sends audio all the time, silence too)
@@ -154,6 +155,10 @@ public final class VoiceController {
             spoken += delta
             speakingUntil = Date().addingTimeInterval(1.2)
             if state != .thinking || !store.running { state = .speaking }
+        case .trailingOff:
+            // the light turns to «listening» with the fading voice; what was said stays, the rest is cut
+            speakingUntil = .distantPast
+            if !store.running { state = muted ? .muted : .listening }
         case .level(let l):
             level = max(0, min(1, l))
         case .error(let code):
