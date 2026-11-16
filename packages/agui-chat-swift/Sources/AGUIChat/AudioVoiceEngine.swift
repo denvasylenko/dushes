@@ -21,6 +21,12 @@ public final class AudioVoiceEngine: VoiceEngine {
     private var muted = false
     private var running = false
     private var played = 0
+    /// Barge-in: the rest of an interrupted answer is dropped until the server says so (`interrupted`), his phrase
+    /// is heard, or the voice's audio has paused (a new answer).
+    private var silenced = false
+    private var droppedAt = Date.distantPast
+    private var speakingUntil = Date.distantPast       // when the audio scheduled so far ends
+    private var fade: Task<Void, Never>?
     /// A line a second about the sound path (the route, what was scheduled, the level at the mixer): for a check on a
     /// real device, where nobody but the person hears the speaker.
     public var diagnostics: (@Sendable (String) -> Void)?
@@ -137,7 +143,10 @@ public final class AudioVoiceEngine: VoiceEngine {
         observers = []
         pump?.cancel()
         await transport.close()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // off the main thread, like the activation: it holds the frame of the host's closing animation
+        await Task.detached(priority: .userInitiated) {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }.value
         continuation.yield(.ended(reason: "closed"))
         continuation.finish()
     }
@@ -180,11 +189,19 @@ public final class AudioVoiceEngine: VoiceEngine {
     private func received(_ event: VoiceTransportEvent) {
         switch event {
         case .audio(let pcm): play(pcm)
-        case .hearing(let text): continuation.yield(.hearing(text))
+        case .hearing(let text):
+            // he speaks over the voice: it trails off at once, without waiting for the server
+            if Date() < speakingUntil { trailOff() }
+            continuation.yield(.hearing(text))
         case .echo: continuation.yield(.echo)
         case .answer(let c, let t, let a, let x): continuation.yield(.answer(cardId: c, type: t, accepted: a, text: x))
-        case .interrupted: continuation.yield(.interrupted)
-        case .heard(let text): continuation.yield(.heard(text))
+        case .interrupted:
+            trailOff()
+            silenced = false                         // what comes after it is the new answer (server v150)
+            continuation.yield(.interrupted)
+        case .heard(let text):
+            silenced = false
+            continuation.yield(.heard(text))
         case .spoken(let text): continuation.yield(.spoken(text))
         case .error(let code): continuation.yield(.error(code))
         case .ended(let reason): continuation.yield(.ended(reason: reason))
@@ -193,6 +210,11 @@ public final class AudioVoiceEngine: VoiceEngine {
 
     private func play(_ pcm: Data) {
         guard running, let playFormat else { return }
+        if silenced {
+            // the interrupted answer's tail; a pause in the stream means a new answer has started
+            if Date().timeIntervalSince(droppedAt) < 0.8 { droppedAt = Date(); return }
+            silenced = false
+        }
         let frames = AVAudioFrameCount(pcm.count / 2)
         guard frames > 0, let buffer = AVAudioPCMBuffer(pcmFormat: playFormat, frameCapacity: frames),
               let out = buffer.floatChannelData?[0] else { return }
@@ -204,6 +226,30 @@ public final class AudioVoiceEngine: VoiceEngine {
         if !player.isPlaying { player.play() }
         player.scheduleBuffer(buffer)
         played += 1
+        speakingUntil = max(Date(), speakingUntil).addingTimeInterval(Double(frames) / playFormat.sampleRate)
+    }
+
+    /// The voice falls silent like a person cut off mid-word (owner 16.11, mobile designer): the volume follows
+    /// e^(−t/55 ms) for 200 ms (−32 dB at the end, no click), then the queued audio is dropped.
+    private func trailOff() {
+        guard fade == nil, Date() < speakingUntil || player.isPlaying else { return }
+        silenced = true
+        droppedAt = Date()
+        let start = Date()
+        fade = Task { [weak self] in
+            while let self, !Task.isCancelled {
+                let t = Date().timeIntervalSince(start)
+                if t >= 0.2 { break }
+                self.player.volume = Float(exp(-t / 0.055))
+                try? await Task.sleep(for: .milliseconds(5))
+            }
+            guard let self else { return }
+            self.player.stop()                         // drops everything scheduled
+            self.player.volume = 1
+            if self.running { self.player.play() }
+            self.speakingUntil = .distantPast
+            self.fade = nil
+        }
     }
 
     // MARK: calls, Siri, background
