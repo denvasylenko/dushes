@@ -61,13 +61,17 @@ public final class MockVoiceTransport: VoiceTransport, @unchecked Sendable {
         if due { bytesUp = 0; index += 1 }
         lock.unlock()
         guard due else { return }
-        continuation.yield(.heard(phrases[i]))
-        if i < spoken.count {
-            let words = spoken[i]
-            Task { [weak self] in
-                try? await Task.sleep(for: .seconds(4))
-                self?.speak(words)
+        let phrase = phrases[i], answer = i < spoken.count ? spoken[i] : nil
+        Task { [weak self] in
+            // the words come while the person speaks (`hearing`), then the whole phrase is handed over
+            for word in phrase.split(separator: " ") {
+                self?.continuation.yield(.hearing(String(word) + " "))
+                try? await Task.sleep(for: .milliseconds(180))
             }
+            self?.continuation.yield(.heard(phrase))
+            guard let answer else { return }
+            try? await Task.sleep(for: .seconds(4))
+            self?.speak(answer)
         }
     }
 

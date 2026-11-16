@@ -290,8 +290,8 @@ final class AGUIChatTests: XCTestCase {
         try await t.connect(threadId: "x")
         t.send(audio: Data(count: Int(t.sampleRate) * 2 * 2))
         var it = t.incoming.makeAsyncIterator()
-        let first = await it.next()
-        XCTAssertEqual(first, .heard("Hello"))
+        XCTAssertEqual(await it.next(), .hearing("Hello "))      // the words while the person speaks
+        XCTAssertEqual(await it.next(), .heard("Hello"))
         await t.close()
     }
 
