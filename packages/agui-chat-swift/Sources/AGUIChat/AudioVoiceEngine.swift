@@ -69,7 +69,16 @@ public final class AudioVoiceEngine: VoiceEngine {
             try? await Task.sleep(for: .seconds(at.timeIntervalSinceNow))
         }
         watchSystem()                                          // before the start: voice processing reconfigures at once
-        try wire()
+        try wire(startNow: false)
+        // starting the engine takes the audio hardware (up to ~.2 s on a phone): off the main thread, like the
+        // session, so the host's opening animation runs on
+        nonisolated(unsafe) let audio = engine
+        try await Task.detached(priority: .userInitiated) {
+            audio.prepare()
+            try audio.start()
+        }.value
+        player.play()
+        speakerUnlessHeadphones()
         pump = Task { [weak self] in
             guard let self else { return }
             for await event in transport.incoming { self.received(event) }
@@ -79,7 +88,7 @@ public final class AudioVoiceEngine: VoiceEngine {
 
     /// The microphone tap and the converter for the input's current format, then the engine started. Called again when
     /// the system reconfigures the audio (voice processing switching on, a route change): the engine stops then.
-    private func wire() throws {
+    private func wire(startNow: Bool = true) throws {
         let input = engine.inputNode
         input.removeTap(onBus: 0)
         let micFormat = input.outputFormat(forBus: 0)
@@ -98,6 +107,7 @@ public final class AudioVoiceEngine: VoiceEngine {
         input.installTap(onBus: 0, bufferSize: 2048, format: micFormat) { [weak self] buffer, _ in
             self?.captured(buffer)
         }
+        guard startNow else { return }                       // the first start: `startEngine()`, off the main thread
         engine.prepare()
         try engine.start()
         player.play()
@@ -143,9 +153,14 @@ public final class AudioVoiceEngine: VoiceEngine {
     public func end() async {
         guard running else { return }
         running = false
-        engine.inputNode.removeTap(onBus: 0)
-        player.stop()
-        engine.stop()
+        // stopping the hardware off the main thread: in the frame of the host's closing animation it held it
+        // (~.3 s on the owner's phone)
+        nonisolated(unsafe) let audio = engine, voice = player
+        await Task.detached(priority: .userInitiated) {
+            audio.inputNode.removeTap(onBus: 0)
+            voice.stop()
+            audio.stop()
+        }.value
         for o in observers { NotificationCenter.default.removeObserver(o) }
         observers = []
         pump?.cancel()
