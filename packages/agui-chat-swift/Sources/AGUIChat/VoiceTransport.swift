@@ -40,6 +40,7 @@ public final class MockVoiceTransport: VoiceTransport, @unchecked Sendable {
     private var bytesUp = 0
     private var index = 0
     private var closed = false
+    private var lastHeard = Date.distantPast
 
     public init(phrases: [String], spoken: [String] = []) {
         (incoming, continuation) = AsyncStream.makeStream(of: VoiceTransportEvent.self)
@@ -56,9 +57,11 @@ public final class MockVoiceTransport: VoiceTransport, @unchecked Sendable {
         lock.lock()
         guard !closed else { lock.unlock(); return }
         bytesUp += audio.count
+        // the next phrase only after the answer has had its time (as a person waits for it)
         let due = bytesUp >= Int(sampleRate) * 2 * 2 && index < phrases.count
+            && Date().timeIntervalSince(lastHeard) > (index == 0 ? 0 : 12)
         let i = index
-        if due { bytesUp = 0; index += 1 }
+        if due { bytesUp = 0; index += 1; lastHeard = Date() }
         lock.unlock()
         guard due else { return }
         let phrase = phrases[i], answer = i < spoken.count ? spoken[i] : nil
