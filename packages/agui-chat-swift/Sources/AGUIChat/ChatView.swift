@@ -61,6 +61,8 @@ public struct ChatView<HostCard: View>: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
+                    .animation(.timingCurve(0.3, 0.7, 0.25, 1, duration: 0.32), value: store.items.count)
+                    .animation(.spring(duration: 0.3, bounce: 0), value: answerLength)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: revealKey) { _, _ in
@@ -108,7 +110,21 @@ public struct ChatView<HostCard: View>: View {
     }
 
     @ViewBuilder
-    private func row(_ item: ChatItem) -> some View {
+    /// A message comes in once: it rises a little from its corner and shows (his from the right, the answer from the
+    /// left, the same movement); an answer's words are then written on in place and it grows on a spring.
+    static func arrive(_ corner: UnitPoint) -> AnyTransition {
+        AnyTransition.asymmetric(
+            insertion: AnyTransition.scale(scale: 0.94, anchor: corner)
+                .combined(with: AnyTransition.offset(y: 8)).combined(with: AnyTransition.opacity),
+            removal: AnyTransition.opacity)
+    }
+
+    private var answerLength: Int {
+        if case .assistant(_, let text, _) = store.items.last { return text.count }
+        return 0
+    }
+
+    @ViewBuilder private func row(_ item: ChatItem) -> some View {
         switch item {
         case .user(_, let text):
             HStack {
@@ -123,11 +139,11 @@ public struct ChatView<HostCard: View>: View {
                     .containerRelativeFrame(.horizontal, alignment: .trailing) { w, _ in w * 0.85 }
             }
             .padding(.bottom, 20)
-            .transition(.opacity.combined(with: .move(edge: .bottom)))
+            .transition(Self.arrive(.bottomTrailing))
         case .assistant(_, let text, _):
             AnswerText(text: text)
                 .padding(.bottom, 20)
-                .transition(.opacity)
+                .transition(Self.arrive(.bottomLeading))
         case .step(_, let name, let state):
             HStack(spacing: 8) {
                 switch state {
