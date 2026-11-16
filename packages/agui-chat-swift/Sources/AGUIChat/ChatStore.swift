@@ -117,7 +117,7 @@ public final class ChatStore {
         guard !running, let i = cardIndex(card.id) else { return }
         if case .card(var c) = items[i] { c.status = .sending; items[i] = .card(c) }
         // the card's id travels with the answer (ignored by today's server; it will refuse an answer to a card that is not the open one)
-        // the card's id travels inside the resume too: the cabinet's form agent reads it there (Кабинет TL 16.11)
+        // the card's id travels inside the resume too: the cabinet's form agent reads it there (the cabinet's tech lead, 16.11)
         var r = resume
         if case .object(var o) = resume, o["card_id"] == nil { o["card_id"] = .string(card.id); r = .object(o) }
         start(messages: [], props: ["command": ["resume": r, "card_id": .string(card.id)]], answering: card.id)

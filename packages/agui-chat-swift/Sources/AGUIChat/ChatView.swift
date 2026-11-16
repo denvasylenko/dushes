@@ -16,6 +16,9 @@ public struct ChatView<HostCard: View>: View {
     var menuItems: [ChatMenuItem] = []
     /// False when the host gives the input its own way (a system search field in the tab bar): the log only.
     var showsComposer = true
+    /// Each change shows the history again from the top down: .2 s a message, 30 ms apart (a host opening the chat).
+    var revealKey: Int = 0
+    @State private var revealed = true
 
     @State private var draft = ""
     @State private var sources: [JSONValue]?
@@ -24,10 +27,11 @@ public struct ChatView<HostCard: View>: View {
     /// `voice`: the voice mode (the microphone starts it); without it the microphone calls `onMicrophone` (dictation).
     public init(store: ChatStore, placeholder: LocalizedStringKey = "Ask AI",
                 onMicrophone: (() -> Void)? = nil, voice: VoiceController? = nil, voiceTint: Color? = nil,
-                menuItems: [ChatMenuItem] = [], showsComposer: Bool = true,
+                menuItems: [ChatMenuItem] = [], showsComposer: Bool = true, revealKey: Int = 0,
                 @ViewBuilder hostCard: @escaping (String, JSONValue) -> HostCard) {
         self.menuItems = menuItems
         self.showsComposer = showsComposer
+        self.revealKey = revealKey
         self.store = store
         self.placeholder = placeholder
         self.onMicrophone = onMicrophone
@@ -41,8 +45,12 @@ public struct ChatView<HostCard: View>: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(store.items) { item in
+                        ForEach(Array(store.items.enumerated()), id: \.element.id) { i, item in
+                            // only the last dozen are on screen: they come one after another from the top
+                            let step = Double(max(0, i - (store.items.count - 12))) * 0.03
                             row(item).id(item.id)
+                                .opacity(revealed ? 1 : 0)
+                                .animation(revealed ? .easeOut(duration: 0.2).delay(step) : nil, value: revealed)
                         }
                         if store.running, !typing {
                             ThinkingDots().padding(.bottom, 8).id("thinking")
@@ -55,6 +63,10 @@ public struct ChatView<HostCard: View>: View {
                     .padding(.vertical, 12)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                .onChange(of: revealKey) { _, _ in
+                    revealed = false
+                    Task { @MainActor in revealed = true }
+                }
                 // the end of the talk stays in view: when the keyboard comes up or the chat appears, it scrolls with it
                 .defaultScrollAnchor(.bottom)
                 .onChange(of: store.items.last) { _, _ in

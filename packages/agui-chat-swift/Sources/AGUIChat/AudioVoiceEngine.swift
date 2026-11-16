@@ -25,6 +25,9 @@ public final class AudioVoiceEngine: VoiceEngine {
     /// real device, where nobody but the person hears the speaker.
     public var diagnostics: (@Sendable (String) -> Void)?
 
+    /// The microphone opens no earlier than this (a host's start sound must not go to the voice): set before `start`.
+    public var microphoneNotBefore: Date?
+
     public init(transport: VoiceTransport) {
         (events, continuation) = AsyncStream.makeStream(of: VoiceEngineEvent.self)
         self.transport = transport
@@ -45,6 +48,9 @@ public final class AudioVoiceEngine: VoiceEngine {
         try engine.inputNode.setVoiceProcessingEnabled(true)   // echo and noise cancelling by the system
         engine.attach(player)
         running = true
+        if let at = microphoneNotBefore, at.timeIntervalSinceNow > 0 {
+            try? await Task.sleep(for: .seconds(at.timeIntervalSinceNow))
+        }
         watchSystem()                                          // before the start: voice processing reconfigures at once
         try wire()
         pump = Task { [weak self] in
