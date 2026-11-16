@@ -528,39 +528,20 @@ class Talks:
                                          **({"code": (ev.get("error") or {}).get("code")} if t == "error" else {})})
                 if t == "session.input_transcript.delta":
                     state["heard"] += ev.get("delta", "")
+                    state["heard_at"] = time.monotonic()
                     self.meter.report(talk_id, heard=True)
                     self._emit(state, {"type": "hearing", "delta": ev.get("delta", "")})   # their words, as they speak
                 elif t == "session.delegation.created":   # the voice wants the agent: hand over what was said
                     text, state["heard"] = state["heard"].strip(), ""
                     asked = (ev.get("delegation") or {}).get("id")
-                    if text and is_echo(text, state.get("said", [])):
-                        # the voice's own words came back through the microphone: not a request from the person
-                        self._emit(state, {"type": "echo", "text": text})
-                        try:   # an empty note cancels the "let me check" the voice was about to say
-                            await state["ws"].send(_json({"type": "session.thinking.append", "event_id": "echo",
-                                                          "delegation_id": asked, "content": ""}))
-                        except Exception:  # noqa: BLE001
-                            pass
+                    state["early"] = None   # a hand-over still waiting for its words gives way to this one
+                    if not text:
+                        # the provider asked before the words arrived: they are waited for, never dropped
+                        state["early"] = asked
+                        import asyncio
+                        asyncio.ensure_future(self._wait_words(talk_id, asked))
                         continue
-                    if text and state.get("running"):
-                        # the person spoke over a turn in progress: that turn is stopped and its answer is not
-                        # spoken; what they said now is the request
-                        state["running"], state["skip_run"], state["waiting"] = False, True, None
-                        if self._stop is not None:
-                            try:
-                                self._stop(state["thread"])
-                            except Exception:  # noqa: BLE001 - a turn that cannot be stopped still loses its voice
-                                pass
-                        self._emit(state, {"type": "interrupted"})
-                    state["pending"] = asked
-                    state["answer"], state["told"], state["spoke"] = [], {}, []
-                    if text:
-                        # a plain yes or no while a card waits is the answer to that card: the client accepts or
-                        # rejects it instead of sending the words as a new message (which would close the card)
-                        card, said_yes = state.get("waiting"), yes_or_no(text)
-                        answers = ({"answers": {"card_id": card.get("card_id"), "type": card.get("type") or "set_fields",
-                                                "accepted": said_yes}} if card and said_yes is not None else {})
-                        self._emit(state, {"type": "heard", "text": text, **answers})
+                    await self._hand_over(talk_id, asked, text)
                 elif t == "session.output_transcript.delta":
                     self.meter.report(talk_id, heard=True)   # the conversation is alive while the voice speaks
                     said = state.setdefault("said", [])
@@ -583,6 +564,69 @@ class Talks:
         except Exception:  # noqa: BLE001 - a dropped connection ends the conversation, it does not break the host
             pass
         await self.end(talk_id, "lost")
+
+    async def _hand_over(self, talk_id: str, asked: Any, text: str) -> None:
+        """What the person said goes to the client as `heard` (unless it is the voice's own echo); the voice's
+        request `asked` is answered by the agent's run that follows."""
+        state = self._live.get(talk_id)
+        if not state:
+            return
+        if text and is_echo(text, state.get("said", [])):
+            # the voice's own words came back through the microphone: not a request from the person
+            self._emit(state, {"type": "echo", "text": text})
+            try:   # an empty note cancels the "let me check" the voice was about to say
+                await state["ws"].send(_json({"type": "session.thinking.append", "event_id": "echo",
+                                              "delegation_id": asked, "content": ""}))
+            except Exception:  # noqa: BLE001
+                pass
+            return
+        if text and state.get("running"):
+            # the person spoke over a turn in progress: that turn is stopped and its answer is not
+            # spoken; what they said now is the request
+            state["running"], state["skip_run"], state["waiting"] = False, True, None
+            if self._stop is not None:
+                try:
+                    self._stop(state["thread"])
+                except Exception:  # noqa: BLE001 - a turn that cannot be stopped still loses its voice
+                    pass
+            self._emit(state, {"type": "interrupted"})
+        state["pending"] = asked
+        state["answer"], state["told"], state["spoke"] = [], {}, []
+        if text:
+            # a plain yes or no while a card waits is the answer to that card: the client accepts or
+            # rejects it instead of sending the words as a new message (which would close the card)
+            card, said_yes = state.get("waiting"), yes_or_no(text)
+            answers = ({"answers": {"card_id": card.get("card_id"), "type": card.get("type") or "set_fields",
+                                    "accepted": said_yes}} if card and said_yes is not None else {})
+            self._emit(state, {"type": "heard", "text": text, **answers})
+
+    async def _wait_words(self, talk_id: str, asked: Any) -> None:
+        """A hand-over that came before the words: wait for them, then hand them over. No words at all: the voice
+        says it did not catch that, rather than answering a request it never heard."""
+        import asyncio
+        state = self._live.get(talk_id)
+        began = time.monotonic()
+        while True:
+            await asyncio.sleep(0.05)
+            if self._live.get(talk_id) is not state or state.get("early") != asked:
+                return   # the conversation ended, or a later hand-over took over
+            now, words = time.monotonic(), state["heard"].strip()
+            if words and (now - state.get("heard_at", now) >= WORDS_SETTLE or now - began >= WORDS_LAST):
+                break
+            if not words and now - began >= WORDS_WAIT:
+                break
+        state["early"] = None
+        text, state["heard"] = state["heard"].strip(), ""
+        self._record(state, {"type": "late_words", "waited_ms": round((time.monotonic() - began) * 1000),
+                             "t_ms": round((time.monotonic() - state["t0"]) * 1000), "found": bool(text)})
+        if text:
+            await self._hand_over(talk_id, asked, text)
+            return
+        try:
+            await state["ws"].send(_json({"type": "session.commentary.append", "event_id": f"unheard_{secrets.token_hex(4)}",
+                                          "delegation_id": asked, "content": UNHEARD}))
+        except Exception:  # noqa: BLE001
+            pass
 
     async def _watch(self, talk_id: str) -> None:
         import asyncio
@@ -833,6 +877,13 @@ def asks(card: dict) -> str:
         return "Shall I fill that in? Say yes or no."
     return "Shall I fill in " + " and ".join(rows) + "? Say yes or no."
 
+
+# The provider may ask for the agent (session.delegation.created) before the words of the phrase have arrived. Such a
+# hand-over waits for them: up to WORDS_WAIT seconds for the first word, then until no new word came for
+# WORDS_SETTLE seconds (at most WORDS_LAST seconds in all). Production v146, 2026-11-16: no phrase of the owner's
+# reached the agent, and the voice filled the silence by itself.
+WORDS_WAIT, WORDS_SETTLE, WORDS_LAST = 1.5, 0.4, 6.0
+UNHEARD = "You did not catch what the person said. Say so in a few words and ask them to say it again."
 
 ECHO_SECONDS = 15.0   # how long after the voice spoke its own words can come back
 ECHO_WORDS = 4        # a shorter text is never dropped: "Car loan" after "A car loan or a home loan?" is an answer

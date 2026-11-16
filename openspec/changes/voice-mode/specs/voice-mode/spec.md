@@ -21,6 +21,13 @@ The server SHALL give the voice each whole sentence of the agent's answer once t
 - **WHEN** the agent has written the first sentence of its answer and begun the second
 - **THEN** the voice is given the first sentence at once, and the other two when they are written
 
+### Requirement: A phrase is never dropped
+When the speech model asks for the agent before the words of the phrase have arrived, the server SHALL wait for them (up to 1.5 seconds for the first word, then until no new word comes) and hand them over then. When no words come at all, the voice SHALL be told to say it did not catch that and ask again; it SHALL NOT answer a request it never heard.
+
+#### Scenario: The request comes before the words
+- **WHEN** the speech model asks for the agent and the words "It's a Volkswagen" arrive 0.3 seconds later
+- **THEN** the client gets `heard` with "It's a Volkswagen" and the agent's answer is spoken for that request
+
 ### Requirement: No key reaches the browser
 The browser SHALL connect its audio through the host: the host creates the call with its own key and returns only the connection answer. No API key, long or short lived, SHALL be sent to the browser.
 
