@@ -14,6 +14,8 @@ public struct ChatView<HostCard: View>: View {
     var voiceTint: Color = AGUITheme.link
     /// The host's own items in the «+» menu (after «New conversation»).
     var menuItems: [ChatMenuItem] = []
+    /// False when the host gives the input its own way (a system search field in the tab bar): the log only.
+    var showsComposer = true
 
     @State private var draft = ""
     @State private var sources: [JSONValue]?
@@ -22,9 +24,10 @@ public struct ChatView<HostCard: View>: View {
     /// `voice`: the voice mode (the microphone starts it); without it the microphone calls `onMicrophone` (dictation).
     public init(store: ChatStore, placeholder: LocalizedStringKey = "Ask AI",
                 onMicrophone: (() -> Void)? = nil, voice: VoiceController? = nil, voiceTint: Color? = nil,
-                menuItems: [ChatMenuItem] = [],
+                menuItems: [ChatMenuItem] = [], showsComposer: Bool = true,
                 @ViewBuilder hostCard: @escaping (String, JSONValue) -> HostCard) {
         self.menuItems = menuItems
+        self.showsComposer = showsComposer
         self.store = store
         self.placeholder = placeholder
         self.onMicrophone = onMicrophone
@@ -68,7 +71,7 @@ public struct ChatView<HostCard: View>: View {
             if let problem = voice?.problem, voice?.active == false {
                 Text(problem).font(.footnote).foregroundStyle(AGUITheme.ink2).padding(.bottom, 6)
             }
-            composer
+            if showsComposer { composer }
         }
         .foregroundStyle(AGUITheme.ink)
         .sheet(isPresented: Binding(get: { sources != nil }, set: { if !$0 { sources = nil } })) {
