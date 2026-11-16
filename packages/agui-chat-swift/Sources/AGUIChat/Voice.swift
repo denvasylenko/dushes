@@ -8,7 +8,7 @@ public enum VoiceEngineEvent: Equatable, Sendable {
     case echo                     // drop what `hearing` showed: it was the voice's own words
     case answer(cardId: String, type: String, accepted: Bool, text: String)   // a spoken yes or no to a waiting card
     case interrupted              // the person spoke over the turn: the server has stopped it
-    case trailingOff              // the voice is falling silent under the person's words (350 ms): listen again
+    case trailingOff(said: Double) // the voice falls silent under his words (350 ms); `said`: the share of the answer heard
     case heard(String)            // the person's words: sent as an ordinary user message in the same thread
     case spoken(String)           // a piece of what the voice says (its transcript)
     case level(Double)            // 0…1, the person's sound level (the session sends audio all the time, silence too)
@@ -37,6 +37,8 @@ public final class VoiceController {
     public private(set) var state: State = .off
     public private(set) var level: Double = 0
     public private(set) var problem: String?
+    /// After a barge-in: the share (0…1) of the last answer that was heard; the rest of its text fades. Nil otherwise.
+    public private(set) var cut: Double?
     /// The person's words so far, as they speak (cleared when the phrase is handed over).
     public private(set) var hearing = ""
     /// What the voice itself says in this talk (its transcript), the latest reply — shown when the agent gave none.
@@ -143,6 +145,7 @@ public final class VoiceController {
         case .interrupted:
             store.interrupted()
         case .heard(let text):
+            cut = nil
             hearing = ""
             said = ""
             spoken = ""
@@ -151,13 +154,14 @@ public final class VoiceController {
             store.send(t)
             state = .thinking
         case .spoken(let delta):
-            if Date() > speakingUntil.addingTimeInterval(1.5) { spoken = "" }   // a new reply after a pause
+            if Date() > speakingUntil.addingTimeInterval(1.5) { spoken = ""; cut = nil }   // a new reply after a pause
             spoken += delta
             speakingUntil = Date().addingTimeInterval(1.2)
             if state != .thinking || !store.running { state = .speaking }
-        case .trailingOff:
-            // the light turns to «listening» with the fading voice; what was said stays, the rest is cut
+        case .trailingOff(let said):
+            // the light turns to «listening» with the fading voice; what was said stays, the rest is cut (`cut`)
             speakingUntil = .distantPast
+            cut = said
             if !store.running { state = muted ? .muted : .listening }
         case .level(let l):
             level = max(0, min(1, l))

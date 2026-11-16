@@ -29,6 +29,8 @@ public final class AudioVoiceEngine: VoiceEngine {
     private var droppedAt = Date.distantPast
     private var speakingUntil = Date.distantPast       // when the audio scheduled so far ends
     private var fade: Task<Void, Never>?
+    private var answerStarted = Date.distantPast       // the current answer's audio: when it began, how long it is
+    private var answerLength: TimeInterval = 0
     /// A line a second about the sound path (the route, what was scheduled, the level at the mixer): for a check on a
     /// real device, where nobody but the person hears the speaker.
     public var diagnostics: (@Sendable (String) -> Void)?
@@ -231,7 +233,10 @@ public final class AudioVoiceEngine: VoiceEngine {
         if !player.isPlaying { player.play() }
         player.scheduleBuffer(buffer)
         played += 1
-        speakingUntil = max(Date(), speakingUntil).addingTimeInterval(Double(frames) / playFormat.sampleRate)
+        let length = Double(frames) / playFormat.sampleRate
+        if Date() >= speakingUntil { answerStarted = Date(); answerLength = 0 }   // audio after a pause: a new answer
+        answerLength += length
+        speakingUntil = max(Date(), speakingUntil).addingTimeInterval(length)
     }
 
     /// The voice «goes into silence» like a person cut off mid-word (owner 16.11, the mobile designer's curves): over
@@ -242,7 +247,8 @@ public final class AudioVoiceEngine: VoiceEngine {
         guard fade == nil, Date() < speakingUntil || player.isPlaying else { return }
         silenced = true
         droppedAt = Date()
-        continuation.yield(.trailingOff)
+        let heard = answerLength > 0 ? min(1, max(0, Date().timeIntervalSince(answerStarted) / answerLength)) : 1
+        continuation.yield(.trailingOff(said: heard))
         let start = Date()
         fade = Task { [weak self] in
             while let self, !Task.isCancelled {
