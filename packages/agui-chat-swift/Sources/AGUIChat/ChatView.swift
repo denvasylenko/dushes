@@ -73,6 +73,19 @@ public struct ChatView<HostCard: View>: View {
                     withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(store.items.last?.id, anchor: .bottom) }
                 }
             }
+            // under the log, in the system's bottom bar: the log scrolls on under it, through the soft scroll edge
+            .modifier(BottomBar { bottom })
+        }
+        .foregroundStyle(AGUITheme.ink)
+        .sheet(isPresented: Binding(get: { sources != nil }, set: { if !$0 { sources = nil } })) {
+            SourcesSheet(items: sources ?? [])
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    @ViewBuilder private var bottom: some View {
+        VStack(spacing: 0) {
             if let queued = store.queued {
                 Text(queued).font(.footnote).foregroundStyle(AGUITheme.ink2).lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, 16).padding(.bottom, 4)
@@ -86,12 +99,6 @@ public struct ChatView<HostCard: View>: View {
                 Text(problem).font(.footnote).foregroundStyle(AGUITheme.ink2).padding(.bottom, 6)
             }
             if showsComposer { composer }
-        }
-        .foregroundStyle(AGUITheme.ink)
-        .sheet(isPresented: Binding(get: { sources != nil }, set: { if !$0 { sources = nil } })) {
-            SourcesSheet(items: sources ?? [])
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
         }
     }
 
@@ -646,5 +653,18 @@ struct ThinkingDots: View {
         .frame(minHeight: 26)
         .onAppear { on = true }
         .accessibilityLabel(Text("Thinking", bundle: .module))
+    }
+}
+
+/// The system's bottom bar where there is one (iOS 26: the content goes under it through the soft scroll edge), an
+/// inset before it.
+private struct BottomBar<Bar: View>: ViewModifier {
+    @ViewBuilder let bar: () -> Bar
+    func body(content: Content) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            content.safeAreaBar(edge: .bottom, spacing: 0, content: bar)
+        } else {
+            content.safeAreaInset(edge: .bottom, spacing: 0, content: bar)
+        }
     }
 }
