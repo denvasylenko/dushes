@@ -1,0 +1,16 @@
+name: card_yes_but_changes_value
+tags: [owner_session, answers_in_words]
+persona: "A person filling in a loan application who answers a card with a yes that changes the value."
+goal: "Ask for 50 000, then change it to 60 000 in the same breath as the yes."
+start: {page: /apply, form: loan_application, values: {loan_type: {id: "consumer", name: "Consumer loan"}, loan_amount: 30000}}
+knows:
+  - "First asks for 50 000, then wants 60 000"
+turns: 2
+# The other side of "a yes in words applies the waiting card": a yes with a figure is not a yes to that card.
+# The 50 000 that waited is not applied. The guest does not tap, so nothing is applied unless the server says so.
+scripted:
+  - "Change the loan amount to 50 thousand."
+  - "Yes, but make it 60 thousand."
+expect:
+  rejected_values: {loan_amount: 50000}
+min_score: 7

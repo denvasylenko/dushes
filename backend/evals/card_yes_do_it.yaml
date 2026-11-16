@@ -1,0 +1,19 @@
+name: card_yes_do_it
+tags: [owner_session, answers_in_words]
+persona: "A person filling in a loan application who agrees to a card in their own words, with filler."
+goal: "Change the loan amount to 50 000 and agree to it in words."
+start: {page: /apply, form: loan_application, values: {loan_type: {id: "consumer", name: "Consumer loan"}, loan_amount: 30000}}
+knows:
+  - "Wants the loan amount changed to 50 000"
+turns: 2
+# From the owner's own voice session (2026-11-15, the second one): his words of agreement, as they were heard, did
+# not apply the waiting card; "Shall I fill in Loan amount...?" came three times. The values here are invented, the
+# line of agreement is his. The CPO's rule: every such phrase applies the card that waits; the card is never shown
+# again. The guest does not tap: the line arrives while the card is open.
+scripted:
+  - "Change the loan amount to 50 thousand."
+  - "Yeah, yeah, true. Yeah, yeah, do it"
+expect:
+  fields: {loan_amount: 50000}
+  never_same_card_twice: true
+min_score: 7

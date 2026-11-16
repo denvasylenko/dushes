@@ -1,0 +1,18 @@
+name: card_just_select_something
+tags: [owner_session, direct_request]
+persona: "A person filling in a loan application who does not care which loan type is chosen and says so."
+goal: "Have the assistant choose the loan type itself."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Does not care which loan type; wants the assistant to pick"
+turns: 2
+# From the owner's own voice session (2026-11-15): "doesn't matter, just select something" was answered with the
+# same question three times before a card came. The CPO's rule: the assistant picks, sets and says what it picked,
+# with no further question.
+scripted:
+  - "Let's fill in the loan details."
+  - "Yeah, I said I don't care, just select something"
+expect:
+  filled: [loan_type]
+  no_question_card_on: ["just select something"]
+min_score: 7

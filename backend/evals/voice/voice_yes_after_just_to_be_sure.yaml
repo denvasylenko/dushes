@@ -1,0 +1,18 @@
+name: voice_yes_after_just_to_be_sure
+tags: [voice, card, en, answers_in_words]
+persona: "A person filling in a loan application who names an amount unclearly and confirms it when asked."
+goal: "Set the loan amount to 5 000 000; when the assistant asks whether that is the amount, say yes once."
+start: {page: /apply, form: loan_application, values: {loan_type: {id: "consumer", name: "Consumer loan"}}}
+knows:
+  - "Loan amount: 5 000 000"
+turns: 2
+# From the owner's own voice session (2026-11-15): after "Just to be sure: is the loan amount 5 million?" and his
+# yes, the assistant asked again, "Shall I fill in Loan amount 5000000?", three times. The CPO's rule: one
+# confirmation is enough; after the yes the value is applied with no second question.
+scripted:
+  - "Yeah, okay, look, uh, we need to set like loan amount five, uh, thousand, uh, millions"
+  - "Yeah, like, yeah, yeah, true, true"
+expect:
+  fields: {loan_amount: 5000000}
+  never_same_card_twice: true
+min_score: 7

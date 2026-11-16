@@ -41,7 +41,7 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted", "answers"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice",
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice", "filled", "no_question_card_on",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -95,6 +95,8 @@ class Scenario:
     stays_put_on: list[str] = field(default_factory=list)   # regexes of user messages: the reply answers and offers, and opens nothing
     asks_on: dict[str, list[str]] = field(default_factory=dict)         # {regex of a user message: words}: the reply asks a question with one of them
     never_fills_on: dict[str, list[str]] = field(default_factory=dict)  # {regex of a user message: field labels}: no change card of that reply has them
+    filled: list[str] = field(default_factory=list)         # fields that must hold some value at the end (the assistant was told to choose)
+    no_question_card_on: list[str] = field(default_factory=list)   # regexes of user messages: the reply shows no question card
     never_same_card_twice: bool = False                     # no field card repeats the one before it (a yes that was not taken)
     quiet_cards: bool = False                               # voice: every field-change card carries quiet: true (applied with no tap)
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
@@ -147,6 +149,7 @@ def load_scenario(path: Path) -> Scenario:
                     documents=raw.get("documents") is True, tags=[str(x) for x in raw.get("tags") or []],
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
                     ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")), options_once=bool(exp.get("options_once")), stays_put_on=[str(x) for x in exp.get("stays_put_on") or []], card_results=[str(x) for x in exp.get("card_results") or []],
+                    filled=[str(x) for x in exp.get("filled") or []], no_question_card_on=[str(x) for x in exp.get("no_question_card_on") or []],
                     quiet_cards=bool(exp.get("quiet_cards")), never_same_card_twice=bool(exp.get("never_same_card_twice")),
                     asks_on={str(k): [str(w) for w in v] for k, v in (exp.get("asks_on") or {}).items()},
                     never_fills_on={str(k): [str(w) for w in v] for k, v in (exp.get("never_fills_on") or {}).items()},
@@ -659,6 +662,14 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         offers = any(ch in " ".join(words) for ch in "?\uff1f\u061f") or len(said) > len(words)   # a question, or a chip under the answer
         out.append({"check": f"answers and offers the next step on the turn asking /{pattern}/", "ok": bool(words) and offers,
                     "detail": "" if words and offers else "no offer (no question and no chip) in the reply" if words else "no reply", "cap": CAP_OTHER})
+    for name in sc.filled:   # "just select something": some value is there, whichever the assistant chose
+        got = next((f.config["state"].get(name) for f in visit.forms.values() if name in f.config.get("props", {})), None)
+        out.append({"check": f"{name} is filled", "ok": got not in (None, "", [], {}), "detail": f"is {json.dumps(got, ensure_ascii=False)[:80]}", "cap": CAP_OTHER})
+    for pattern in sc.no_question_card_on:   # ... and the choice is not handed back as a question
+        asked, _cards, _text, seen = turn_after(visit.log, pattern)
+        cards = [q for q in asked if q.startswith("\u2753")]
+        out.append({"check": f"no question card on the turn saying /{pattern}/", "ok": seen and not cards,
+                    "detail": "; ".join(cards)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
     if sc.never_same_card_twice:   # the person said yes: the card is applied or explained, not shown again
         shown = [c for c in visit.cards if c.get("type") == "set_fields"]
         rows = [sorted((str(x.get("name")), json.dumps(x.get("value"), sort_keys=True, ensure_ascii=False)) for x in c.get("changes") or [])
@@ -787,7 +798,7 @@ def _play(sc: Scenario, http: httpx.Client, user: User | None, judge_model: Any,
     if sc.corpus and sc.form:   # a researcher corpus, uploaded as a manager would (no compile: the researcher reads it)
         upload_corpus(http, sc.form, sc.corpus)
     visit = Visit(http, sc.page, answer=(user.choose if user else None), site=sc.site)
-    if "voice" in sc.tags and os.environ.get("EVAL_VOICE_PREFIX"):   # a stand started with VOICE_AS_IF=<the same prefix>: the voice branch, no session
+    if ("voice" in sc.tags or os.environ.get("EVAL_VOICE_ALL")) and os.environ.get("EVAL_VOICE_PREFIX"):   # EVAL_VOICE_ALL: every scenario of the run   # a stand started with VOICE_AS_IF=<the same prefix>: the voice branch, no session
         visit.as_voice(os.environ["EVAL_VOICE_PREFIX"])
     visit.answers_in_words = "answers_in_words" in sc.tags   # a field card is not tapped: the next line is the answer
     visit.ticks = {k for k, v in sc.answers.items() if v is True}   # the consents this guest gives with their own tick
