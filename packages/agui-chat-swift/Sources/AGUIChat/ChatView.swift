@@ -55,6 +55,8 @@ public struct ChatView<HostCard: View>: View {
                     .padding(.vertical, 12)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                // the end of the talk stays in view: when the keyboard comes up or the chat appears, it scrolls with it
+                .defaultScrollAnchor(.bottom)
                 .onChange(of: store.items.last) { _, _ in
                     withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(store.items.last?.id, anchor: .bottom) }
                 }
