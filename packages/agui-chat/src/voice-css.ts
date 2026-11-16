@@ -8,7 +8,7 @@ export const VOICE_CSS = `:host { --agui-voice: var(--agui-voice-accent, var(--a
   animation: vo-in .2s var(--agui-ease) both; }
 @keyframes vo-in { from { height: 0; opacity: 0; } }
 /* what is being heard: a faint line above the orb, one line, its newest words in view; it becomes one message when said */
-.vo-live { width: 100%; box-sizing: border-box; padding: 0 10px; height: 20px; overflow: hidden; white-space: nowrap; text-align: center; font: italic 15px/20px var(--agui-font); color: var(--agui-ink-2); }
+.vo-live { width: calc(100% - 20px); height: 20px; overflow: hidden; white-space: nowrap; text-align: center; font: italic 15px/20px var(--agui-font); color: var(--agui-ink-2); }
 .vo-live.cut { text-align: left; -webkit-mask-image: linear-gradient(90deg, transparent, #000 56px); mask-image: linear-gradient(90deg, transparent, #000 56px); }
 /* a soft light from the bottom edge says the state: the voice colour while listening (stronger with the person's
    voice), warm while the voice speaks, faint while it works, none in silence */
