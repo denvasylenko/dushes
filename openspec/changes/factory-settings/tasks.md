@@ -7,10 +7,10 @@ its price went to the CPO. Nothing in step 2 or later starts before step 1 is do
 - [x] 0.1 Read Anthropic's public guidance for agents (design.md lists the pages)
 - [x] 0.2 The map: every rule of today's prompts -> the scenarios that cover it (design.md)
 - [x] 0.3 The gaps and the draft fails-first set for the five points (design.md); the scenarios themselves are the QA Lead's
-- [ ] 0.4 The QA Lead confirms or corrects the map (it was made from each scenario's name, tags, goal and checks, not from held-out scenarios)
+- [x] 0.4 The QA Lead confirms or corrects the map (it was made from each scenario's name, tags, goal and checks, not from held-out scenarios)
 
 ## 1. Before
-- [ ] 1.1 QA: the fails-first scenarios and the three new checks (questions before an action, words per reply, a claim without a tool result)
+- [x] 1.1 QA: the fails-first scenarios and the three new checks (questions before an action, words per reply, a claim without a tool result)
 - [ ] 1.2 QA: the "before" pass on today's main (the default set, the held-out set, the cabinet's owner cases), Haiku, three repeats
 
 ## 2. Dushes' system prompt

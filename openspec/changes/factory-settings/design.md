@@ -45,9 +45,11 @@ threshold.
 
 ## The map: the form agent's rules -> scenarios
 
-Made from each scenario's name, tags, goal and checks (321 scenarios; the held-out ones were not read). "Thin"
-means one scenario or an indirect check; "none" means no scenario found. The QA Lead confirms or corrects it
-(task 0.4). Line numbers are those of `prompts.CORE` at 3eface9 and later.
+Made from each scenario's name, tags, goal and checks (321 scenarios; the held-out ones were not read), then
+checked by the QA Lead against all 367 (34deffc, `backend/evals/factory-map-qa.md`; held-out scenarios are
+counted per row, never named). "Thin" means one scenario or an indirect check; "none" means no scenario found.
+Confirmed with no scenario, to be carried in substance: F5, F18, F19, F43, F50, F54, D10, D11, D13, D18 (the last
+two until the `bar-v1` set covers them). Line numbers are those of `prompts.CORE` at 3eface9 and later.
 
 | # | Rule (lines) | Covered by | Coverage |
 | --- | --- | --- | --- |
@@ -59,12 +61,12 @@ means one scenario or an indirect check; "none" means no scenario found. The QA 
 | F6 | Gather first, then one card or one action; no announced tool calls (12) | `loan_plain_value_no_search`, `loan_plain_type_no_search` | thin |
 | F7 | A question gets its answer with the concrete value, even when fields were filled (13, 74) | `midfill_question_loan`, `midfill_question_dental`, `pure_question_*` (3), `stress_pingpong` | good |
 | F8 | A clear request: act, never ask permission; an ambiguous one: one question (14) | `direct_*` (8, Dushes), `loan_plain_value_no_search`, `take_me_there_clear`, `take_me_there_unclear` | thin for the form agent |
-| F9 | A valid value the person orders is proposed, not questioned (15) | `loan_insists_region_off_list`, `loan_insists_invalid_zip` (the other side), `card_dont_care_amount` | good |
+| F9 | A valid value the person orders is proposed, not questioned (15) | `loan_insists_region_off_list`, `loan_insists_invalid_zip` (the other side), `card_dont_care_amount`, `loan_city_not_chosen` | good |
 | F10 | A choice left to the assistant is made (16) | `card_just_select_something`, `card_dont_care_amount`, `voice_just_select_something` | good |
 | F11 | One answer fills its own field; the open one is asked next (17) | `loan_city_heard_as_said`, `loan_city_not_chosen`, `voice_fill_car_no_guess` | good |
 | F12 | Page facts are a source; never say the page does not give a fact it holds (21) | `foreign_question_on_form`, `lab_*_facts` | good |
-| F13 | Hidden fields: do not send the person there; say what makes it appear (26) | `hidden_form_deputy` (another meaning of hidden), `lab_passport_application_minor_mind` | thin |
-| F14 | Disabled: do not propose; keep the data and propose when it unlocks (27) | `stress_locked_push`, `lab_mortgage_preapproval_dump` | thin |
+| F13 | Hidden fields: do not send the person there; say what makes it appear (26) | `hidden_form_deputy` (another meaning of hidden), `lab_passport_application_minor_mind`, `lab_weird_legacy_portal_inject`, 1 held-out | thin |
+| F14 | Disabled: do not propose; keep the data and propose when it unlocks (27) | `stress_locked_push`, `lab_mortgage_preapproval_dump`, `blocking_rule_keeps_helping`, `lab_car_rental_facts`, 2 held-out | good |
 | F15 | A value in a locked or computed field is real: state it (28) | `lab_tax_return_simple_facts`, `lab_building_permit_facts`, `lab_travel_insurance_facts` | good |
 | F16 | Restructuring fields early (29) | `lab_*_dump` (8) indirectly | thin |
 | F17 | Field notes over general knowledge (30) | `lab_weird_legacy_portal_facts`, `lab_contradictory_survey_facts` | good |
@@ -72,14 +74,14 @@ means one scenario or an indirect check; "none" means no scenario found. The QA 
 | F19 | Shared-away personal data is never asked again (32) | - | none |
 | F20 | A value no longer among the options, or an error after a change: say so at once (33) | `card_not_accepted_vin`, `voice_card_refused_vin` | thin |
 | F21 | A rule that blocks sending is the form's; keep helping with the rest (34) | `blocking_rule_keeps_helping`, `lab_*_rule` | good |
-| F22 | "Where is" and "take me there": focus_field, act, never only tell (37, 38) | `take_me_there_clear`, `take_me_there_unclear` | thin |
+| F22 | "Where is" and "take me there": focus_field, act, never only tell (37, 38) | `take_me_there_clear`, `take_me_there_unclear`, 2 held-out | good |
 | F23 | Several fields shown in the form, not only in text (39) | - | none |
 | F24 | Fill only with propose_changes; the card is the confirmation (42) | every `cards` check (120) | good |
 | F25 | Keep going after a card when the request covers what unlocked (43) | `lab_*_dump`, `stress_bulk_dump`, `stress_long_session` | good |
 | F26 | A rejected card is not proposed again (44) | `card_yes_but_changes_value` (`rejected_values`) | thin |
 | F27 | A yes in words applies the card (45) | `card_yes_*` (8), `voice_yes_*` (7) | good |
 | F28 | List rows: add, remove, "line N+1", say when full (46) | `lab_b2b_purchase_order_dump`, `lab_tax_return_simple_fill`, `lab_job_application_fill` | thin for remove and for "full" |
-| F29 | Until accepted, say "I propose", never "set" (47) | - (point 2 of the bar) | none |
+| F29 | Until accepted, say "I propose", never "set" (47) | `card_not_accepted_vin`, `lab_warranty_claim_rule`, `lab_gym_membership_inject`, 1 held-out | thin |
 | F30 | A value taken back: the new one and the cleared ones on one card (48) | `lab_*_mind`, `lab_*_fix` (17), `voice_fix_*` (5) | good |
 | F31 | Choices go on cards with the field's options (51) | `options_once_barber`, `lang_cards_loan_type_*` | good |
 | F32 | One value of one field: a typed card that fills it (52) | `licence_year_young_driver`, `consent_yes_on_question_car_rental` | thin |
@@ -89,7 +91,7 @@ means one scenario or an indirect check; "none" means no scenario found. The QA 
 | F36 | An attached file is read, its values proposed with their source (59) | `attachment_employment`, `redteam_image_injection` | thin |
 | F37 | A confirmation before submit, send, pay, cancel (62) | - (point 5 of the bar) | none |
 | F38 | "What is left" and before sending: review_form (63) | `voice_fill_car_no_guess` (as a side effect) | none as a goal |
-| F39 | Never claim the whole thing is done unless the last step is complete (64) | - (point 2 of the bar) | none |
+| F39 | Never claim the whole thing is done unless the last step is complete (64) | `lab_residence_permit_rule` | thin |
 | F40 | Something else on the site: hand back with no text (67) | `foreign_question_on_form`, `stress_pingpong`, the `answered_by` check (199) | good |
 | F41 | Unrelated question: brief, then back; never claim to act outside the form (68) | `lab_*_offtopic` (9), `stress_off_topic` | good |
 | F42 | Asked again for what it cannot do: one sentence and the closest thing (69) | `consent_pressure_car_rental`, `consent_third_party_car_rental` | thin (point 2) |
@@ -102,7 +104,7 @@ means one scenario or an indirect check; "none" means no scenario found. The QA 
 | F49 | Brief: 1-4 sentences, one next step, no inventory (79) | - (point 4 of the bar) | none |
 | F50 | A card never comes alone; no "let me" (80) | - | none |
 | F51 | What is said matches what is done; already set = say so, no card (81) | `fill_already_set` | thin |
-| F52 | No repeats of an earlier turn or card (82) | - | none |
+| F52 | No repeats of an earlier turn or card (82) | `never_same_card_twice` (17 scenarios) | good for cards, none for repeats in text |
 | F53 | On-screen labels, never field names (83) | `never_says` in some lab scenarios | thin |
 | F54 | One grammatical gender for itself (84) | - | none |
 | F55 | Consents are the person's own (3, tools) | `consent_*` (5), `voice_card_consent`, `voice_card_consent_ru`, `redteam_escalation` | good |
@@ -133,7 +135,7 @@ means one scenario or an indirect check; "none" means no scenario found. The QA 
 ## The gaps, as a draft fails-first set for the QA Lead
 
 Rules with no scenario are the ones a rewrite could lose without anyone seeing it, and four of the five points of
-the bar are among them. These are drafts: the scenarios, their values and their expectations are the QA Lead's.
+the bar are among them. These are drafts: the scenarios, their values and their expectations are the QA Lead's. She wrote 11 of the 12 as `evals/sets/bar-v1.txt`, with the three checks (`asks_nothing_on`, `never_claims_without`, `max_words`); `bar_tool_error_plain` waits for a form fixture with a tool that fails.
 
 | Draft | Point | Rules | The lines | Expect |
 | --- | --- | --- | --- | --- |
