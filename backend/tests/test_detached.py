@@ -62,7 +62,10 @@ def test_stop_ends_a_running_turn_and_the_next_turn_waits_for_one(tmp_path):
         one = guide.run_detached(thread_id="d2", message="one", state=state)
         await anext(one)
         assert guide.stop("d2") is True
-        await asyncio.sleep(0.01)
+        for _ in range(100):                              # the cancellation lands within a moment, not a fixed one
+            if not guide.running("d2"):
+                break
+            await asyncio.sleep(0.01)
         assert not guide.running("d2")
         assert guide.stop("d2") is False                  # nothing left to stop
         # a turn that is still running: the next one waits for it, then runs
