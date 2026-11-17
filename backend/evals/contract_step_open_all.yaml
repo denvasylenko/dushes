@@ -1,0 +1,24 @@
+name: contract_step_open_all
+tags: [owner_session]
+persona: "A person on the loan application who asks, three times, to open the 'contract' step and all its sections."
+goal: "Have the step he means opened with its sections, or be asked once which step it is."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Wants the step he calls 'contract' opened, with all its sections"
+turns: 3
+# The owner's session (CTO, 2026-11-17), his three lines word for word. The loan form has no step called "contract"
+# (Applicant, Family, Employment & income, Assets, Loan, Collateral, Documents & consents). There the layer, sure of
+# itself (Jev 270 ms), opened every section of the Applicant tab and named them; then Haiku opened the Applicant
+# sections again; on the third line it asked "Which page do you mean by contract?". Expected: the first reply asks
+# once which step he means and opens nothing else; the question about "contract" is not asked a second time.
+# Fails first. Run in a text and a voice thread.
+scripted:
+  - "In contract step open all sections"
+  - "Now I said in a contract tab open all sections"
+  - "Yeah, okay, can you open contract page and open all sections"
+expect:
+  asks_on: {"In contract step": ["contract", "which", "step", "tab"]}
+  no_moves_on: ["In contract step"]
+  never_repeat_questions: true
+  never_says: ["All sections in the Applicant tab are now open"]
+min_score: 7

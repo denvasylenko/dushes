@@ -352,3 +352,13 @@ def test_a_line_with_no_words_after_it_fails_answers_every_turn():
     assert ok("\n\U0001f464 a", "\U0001f916 yes", "\n\U0001f464 b", "\U0001f916 done") is True
     assert ok("\n\U0001f464 a", "   \U0001f0cf card", "\U0001f916 — Haiku · 1 s") is False   # only the label: silence
     assert ok("\n\U0001f464 a", "\U0001f916 ok", "\n\U0001f464 b") is False
+
+
+def test_a_move_on_an_unclear_turn_fails_no_moves_on():
+    import evals
+    sc = _bar("x", no_moves_on=["contract step"])
+    def ok(*log):
+        return next(c["ok"] for c in evals.checks(sc, _visit(["\n\U0001f464 In contract step open all sections", *log])) if c["check"].startswith("moves nothing"))
+    assert ok("\U0001f916 Which step do you mean by contract?") is True
+    assert ok("   \U0001f526 highlight acc_personal", "\U0001f916 Personal details, Passport.") is False
+    assert ok('   ⚙ focus_field({"name": "acc_personal"})') is False
