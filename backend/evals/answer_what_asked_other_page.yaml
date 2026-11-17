@@ -1,0 +1,19 @@
+name: answer_what_asked_other_page
+tags: [owner_session]
+persona: "A person on the barbershop booking page, the booking form on the screen, who asks what a loan needs."
+goal: "Be told the documents for a loan, with nothing about the booking form on the screen."
+start: {page: /book, form: barber_booking}
+knows:
+  - "Wants to know the documents for a loan"
+turns: 1
+# The owner's session (2026-11-17, via Owner TL on the CPO's yes): on the page of another form he asked "Okay, what I
+# need for loan"; the answer listed the loan documents and then remarked that the form on the screen was still open.
+# The rule to come: answer what was asked; do not describe or report on the form on the screen unless asked. Here on
+# the barber booking (the owner's own case is on the procurement form, kept held out). An offer to open the Loans page
+# or the application is fine. Fails first. The other side: answer_what_asked_form_on_screen.
+scripted:
+  - "Okay, what I need for loan"
+expect:
+  says: ["passport"]
+  never_says: ["still open", "booking is", "your booking", "the booking form", "booking form is", "haircut", "barber", "left to fill", "not filled"]
+min_score: 7
