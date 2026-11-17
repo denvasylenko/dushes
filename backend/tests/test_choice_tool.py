@@ -266,6 +266,11 @@ def test_a_path_through_the_hierarchy_is_carried_out_step_by_step(guide, model):
         d = directives(ev)
         assert len(d) == 1 and d[0]["path"] == "/loans" and d[0].get("tab") == "mortgage" and len(model.calls) == before
         assert text(ev).startswith("Mortgage.")
+    # a page whose own name holds a word that is also a tab of its form ("Apply for a loan" and the tab "Loan"):
+    # the line names the page (seen live: it opened the page and then the tab)
+    ev = run(path_site(guide), "path-p", message="open apply for a loan", state=HOME)
+    d = directives(ev)
+    assert len(d) == 1 and d[0]["path"] == "/apply" and "form_id" not in d[0] and "then the section" not in text(ev)
     # a name that is both a page and a section of a form: the page, unless the way to the section is said
     assert directives(run(path_site(guide), "path-c1", message="open contacts", state=HOME)) == [{"type": "navigate", "path": "/contacts"}]
     d = directives(run(path_site(guide), "path-c2", message="open contacts in the loan application", state=HOME))

@@ -587,12 +587,24 @@ def match_path(phrase: str, targets: list[dict[str, Any]]) -> tuple[str, str] | 
         return None
     rest = [stem(w) for w in rest]               # names are compared by their stems: cases and plurals match
     said = " " + " ".join(rest) + " "
+
+    def spans(name: list[str]) -> list[tuple[int, int]]:
+        """Where a name is said in the line, as word positions."""
+        n = len(name)
+        return [(k, k + n) for k in range(len(rest) - n + 1) if rest[k:k + n] == name] if n else []
+
     found = []
     for t in targets:
         name = name_words(t["label"])
-        if not name or " " + " ".join(name) + " " not in said:
+        own = spans(name)
+        if not own:
             continue
         ups = [name_words(u) for u in t.get("up") or []]
+        # "open apply for a loan" names the page; the form's tab "Loan" is only a word of that name. A name that
+        # is said nowhere but inside a longer name above it is not what the line names
+        above = [sp for u in ups if len(u) > len(name) for sp in spans(u)]
+        if all(any(x <= k and e <= y for x, y in above) for k, e in own):
+            continue
         known = {w[:4] for w in name} | {w[:4] for u in ups for w in u}
         if any(len(w) >= 4 and w[:4] not in known for w in rest):
             continue                              # a word of weight that is neither this name nor its way
