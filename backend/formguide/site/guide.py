@@ -487,7 +487,7 @@ class Dushes:
                 elif fast and fast.get("handled"):
                     label = f"{who} \u00b7 {fast['ms']} ms"
                 elif getattr(stats, "decided", False):
-                    label = f"in code (the step decided before) \u00b7 no model \u00b7 {RunStats.now() - stats.t0:.1f} s"
+                    label = f"{who} (the step it chose before)"
                 else:
                     name = str(_model_id(self.model or self.forms.models.agent))
                     took = RunStats.now() - stats.t0
@@ -596,145 +596,134 @@ class Dushes:
 
     # ------------------------------------------------------------ the choice layer (demo branch)
     async def _fast(self, thread_id: str, message: str, state: dict[str, Any], stats: RunStats) -> dict[str, Any] | None:
-        """Ask the choice layer about the phrase: one call, every question. A dict when it is a command the layer
-        may carry out by itself (a screen, a part of this screen, a value named outright); None for the agent."""
+        """The choice layer. The owner's decision (2026-11-17): the target of a line (a page, a tab, a section, a
+        field for a value) is always chosen by the chooser, never matched in code. It is given the whole site as
+        paths, what is on the screen, the form's structure as the form's own assistant gets it, and the last ten
+        messages; one call. Code only carries the chosen path out, checks the state, and keeps the prohibitions:
+        a date never moves the person, a consent is never an option, nothing private leaves, only an action that
+        can be undone, and only on the person's own request. None: the agent's turn."""
         from .. import intent as _intent
         from ..language import detect
         layer = self.intent
         if layer.settings.provider == "off":
-            return None   # (a talking conversation goes through the layer too: what was heard is an ordinary line)
+            return None
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
-        named = self._bare_value(thread_id, message, state, stats) or await self._named(thread_id, message, state, here, stats)
-        if named:
-            return named
-        if not layer.on or os.environ.get("INTENT_CHOOSER", "1") == "0":
-            # the measurement's fifth arm, "code": what the names said settle is carried out, and no chooser is asked
-            return {"kind": "agent", "mode": "site"} if self._titled(message, here) else None
-        context = self._context(thread_id, state, here)
-        follows = bool(context.get("offered") or context.get("opened_last")) and len(message.split()) <= 5
-        if not _intent.is_direct(message) and not follows:
-            # not a direct command (no verb of the short list at its start, or a question): the layer is not asked
-            # at all. The line is the model's, which has the choice tool; a page said by its whole title makes it
-            # the site agent's turn
-            return {"kind": "agent", "mode": "site"} if self._titled(message, here) else None
-        # the questions and the order of the decision are the QA Lead's wrapper, as it measured on her fifth set
-        qs: dict[str, Any] = {
-            "is_command": _intent.command_question(),
-            "kind": _intent.Question("choice", "turn", "What kind of line is it?", (
-                _intent.Option("go_to", "an order to go to a section or open an item"),
-                _intent.Option("show", "an order to highlight, scroll to or point at something"),
-                _intent.Option("set_value", "an order to set a value the line names outright"),
-                _intent.Option("question", "where, how, why, what, can I"),
-                _intent.Option("other", "a text to write, a judgement or a suggestion"))),
-            "needs_agent": _intent.Question("noul", "needs_agent", "Does the line name a person or a company that is not "
-                                            "on the screen, ask a question, ask for a text, or need judgement?"),
-            "section": _intent.screen_question(self.site)}
-        qs["names_part"] = _intent.Question("noul", "names_part", "Does the line name a specific part inside a page "
-                                            "(a tab, a section, a block, a field), and not only the page itself?")
-        if any(p.parts for p in self.site.pages):
-            qs["element"] = _intent.parts_question(self.site)
-        form, ov = state.get("form") or None, None
+        if os.environ.get("INTENT_CODE") == "1":
+            # only for the measurement's "code" arm: the names said are settled in code and no chooser is asked
+            named = self._bare_value(thread_id, message, state, stats) or await self._named(thread_id, message, state, here, stats)
+            return named or ({"kind": "agent", "mode": "site"} if self._titled(message, here) else None)
+        if not layer.on:
+            return None
+        # the form on the screen, as it is now
+        form, ov, lay, pack = state.get("form") or None, None, None, None
         if isinstance(form, dict) and form.get("config"):
             try:
                 from ..form.overlay import Overlay
                 lay = self.forms.layout(form.get("jsx_hash", ""))
                 pack = self.forms.packs.get(form.get("form_id"))
                 ov = Overlay(lay, form["config"], pack.pii) if lay is not None else None
-                vq = _intent.value_question(ov, set(pack.consents or {})) if ov is not None else None
-                if vq:
-                    qs["value"] = vq
-                fq = _intent.form_part_question(ov) if ov is not None else None
-                if fq:
-                    qs["form_part"] = fq
             except Exception:  # noqa: BLE001 - a form the layer cannot read is the agent's
                 ov = None
-        # in code, before anything is sent: a date is never a place to go, and a name the screen does not show is
-        # the agent's (the CPO's two rules)
-        shown = [p.title for p in self.site.pages] + [x.title for p in self.site.pages for x in p.parts]
-        for name in ("value", "form_part"):
-            if name in qs:
-                shown += [o.label for o in qs[name].options]
-        if _intent.has_date(message) or _intent.names_off_screen(message, shown):
-            return None
+        # the whole site as paths: pages, their tabs and sections, each form's tabs, steps and sections
+        targets: list[Any] = []
+        for p in self.site.pages:
+            on = bool(here and p.path == here.path)
+            if not on:
+                targets.append(_intent.Option(f"screen:{p.path}", p.title))
+            targets += [_intent.Option(f"part:{p.path}#{x.id}", f"{p.title} \u203a {x.title}") for x in p.parts]
+            if p.form:
+                try:
+                    tree = self._tree_of(form, seen_only=True) if on and ov is not None else await self._form_tree(p.form)
+                except Exception:  # noqa: BLE001
+                    tree = []
+                targets += [_intent.Option(f"form:{p.path}:{name}", " \u203a ".join([p.title, *ups, label])) for name, label, ups in tree]
+        targets = targets[:_intent.MAX_OPTIONS - 1]
+        if _intent.names_off_screen(message, [o.label for o in targets] + ([q.label for q in _intent.value_question(ov, set(pack.consents or {})).options] if ov is not None and _intent.value_question(ov, set(pack.consents or {})) else [])):
+            return None   # a person's or a company's name the screen does not show: the agent's, and never sent
+        qs: dict[str, Any] = {
+            "is_command": _intent.command_question(),
+            "kind": _intent.Question("choice", "turn", "What kind of line is it?", (
+                _intent.Option("go_to", "an order to go to a section or open an item"),
+                _intent.Option("show", "an order to highlight, scroll to or point at something"),
+                _intent.Option("set_value", "an order to set a value the line names outright, or a bare value for a field on the screen"),
+                _intent.Option("question", "where, how, why, what, can I"),
+                _intent.Option("other", "a text to write, a judgement or a suggestion"))),
+            "needs_agent": _intent.Question("noul", "needs_agent", "Does the line name a person or a company that is not "
+                                            "on the screen, ask a question, ask for a text, or need judgement?"),
+            "target": _intent.Question("choice", "target", "Which object of the site does the line ask to open or show? "
+                                       "The line may say the way to it, or only its name, or point back at what the "
+                                       "conversation just offered or opened.", tuple(targets), act="show")}
+        iso = _intent.spoken_date(message)
+        if ov is not None:
+            vq = _intent.value_question(ov, set(pack.consents or {}))
+            if vq:
+                qs["value"] = vq
+            if iso:   # a date said: which date field of the form on the screen it is for (the value itself is read in code)
+                dates = [n for n in lay.fields() if n.role == "date" and ov[n.name].editable]
+                if dates:
+                    qs["date_field"] = _intent.Question("choice", "date_field", "Which date field is this date for?", tuple(
+                        _intent.Option(n.name, " \u203a ".join([*(str(ov[x.name].label) for x in lay.ancestors(n.name)
+                                                                 if ov.get(x.name) is not None and ov[x.name].label),
+                                                               str(ov[n.name].label or n.name)])) for n in dates), act="set_field")
+        context = self._context(thread_id, state, here, ov, lay, pack)
         started = RunStats.now()
         picks = await layer.pick_many(message, detect(message) or "en", qs, here.path if here else "", context)
         ms = round((RunStats.now() - started) * 1000)
         stats.fast = {"ms": ms, "handled": False, "late": not picks and ms >= layer.settings.timeout_ms - 10}
-        # the demo's terminal shows what the layer was sure of (ids and confidences only, never the phrase)
-        log.warning("choice layer: %d ms, asked %s, sure of %s", ms, sorted(qs),
-                    {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
-        # a page of the site named by its whole title ("car insurance") is the site's business wherever the person
-        # is: inside a form too. It is never the form agent's "there is no such section here"
-        titled = self._titled(message, here)
-        to_site = {"kind": "agent", "mode": "site"} if titled else None
-        if (titled and agent.wants_to_go(message) and not ("names_part" in picks and picks["names_part"].id == "yes")
-                and not _intent.names_more(message, f"{titled.title} {' '.join(titled.keywords)}")):
-            # a direct request ("can you open car insurance") for a page said by its whole title: the package's own
-            # rule for a direct request settles it, whatever the chooser made of the polite form
-            stats.fast["handled"] = True
-            from .. import voice
-            voice.hush(thread_id)
-            return {"kind": "navigate", "args": {"path": titled.path}, "title": titled.title}
-        command, kind = picks.get("is_command"), picks.get("kind")
-        if not command or command.id != "yes" or not kind or kind.id not in ("go_to", "show", "set_value"):
-            return to_site                            # not an order, or a question: the agent; a question never jumps
-        hand_on = picks.get("needs_agent")
-        if hand_on and hand_on.id == "yes" and hand_on.confidence >= 0.6:
-            return to_site
-        page = self.site.page(picks["section"].id) if "section" in picks else None
-        if page and here and page.path == here.path:
-            page = None                               # the screen the person is on is not a place to go
-        if kind.id != "set_value" and not page:
-            page = titled                             # the chooser was torn between two pages; the title is said outright
-        ppage, part = None, None                      # a part of a page of the site
-        if "element" in picks:
-            path, _, pid = picks["element"].id.partition("#")
-            ppage = self.site.page(path)
-            part = ppage.part(pid) if ppage else None
-            if part and not _intent.said_in(part.title, message):
-                ppage, part = None, None              # the nearest part, not the one that was said
-        names_part = "names_part" in picks and picks["names_part"].id == "yes"
-        if page and not part and _intent.names_more(message, f"{page.title} {' '.join(page.keywords)}"):
-            names_part = True                         # the line says more than the page: a part of it is meant
-        value = picks.get("value") if ov is not None else None
-        form_part = picks.get("form_part") if ov is not None else None
-        if form_part and not _intent.said_in(next((o.label for o in qs["form_part"].options if o.id == form_part.id), ""), message):
-            form_part = None
+        # the demo's terminal shows what the chooser was sure of (ids and confidences only, never the phrase)
+        log.warning("choice layer: %d ms, %s input tokens, %d targets, sure of %s", ms, getattr(layer.chooser, "tokens", "?"),
+                    len(targets), {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
+        fid = str((form or {}).get("form_id") or "form")
         out: dict[str, Any] | None = None
-        if kind.id == "set_value" or (not page and not part and not form_part and value):
-            # "select the terrace" may come as an order to go: with no place named and a value named, it is a value
-            if value and not (kind.id != "set_value" and (page or part)):
-                name, _, opt = value.id.partition("=")
-                e = ov.get(name)
-                if e is not None and e.editable:
-                    is_bool = e.node.role == "bool"
-                    shown = "yes" if is_bool else next((str(o.get("name")) for o in e.options or [] if str(o.get("id")) == opt), opt)
-                    fid = str(form.get("form_id") or "form")
-                    _intent.preset(f"{thread_id}-{fid}"[:100], name, True if is_bool else opt, e.label or name, shown)
-                    out = {"kind": "value"}
-        elif part and (not page or page.path == ppage.path):
-            key = "tab" if part.kind in ("tab", "accordion") else "section"
-            out = {"kind": "show", "args": {"path": ppage.path, key: part.id}, "title": part.title}
-        elif form_part and not page:
-            # a tab or a section of the form on this screen: the form's own "show where" step, decided here
-            label = next((o.label for o in qs["form_part"].options if o.id == form_part.id), form_part.id)
-            fid = str(form.get("form_id") or "form")
-            _intent.preset_call(f"{thread_id}-{fid}"[:100], "focus_field", {"name": form_part.id}, f"{label}.")
-            out = {"kind": "focus"}
-        elif page and not part and not names_part:
-            out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title}
+        if iso and "date_field" in picks and ov is not None:
+            # a bare date is a value, with or without a verb; it never moves the person anywhere
+            name = picks["date_field"].id
+            _intent.preset(f"{thread_id}-{fid}"[:100], name, iso, ov[name].label or name, iso)
+            out = {"kind": "value"}
         else:
-            # an order to go or to show whose place the layer cannot open by itself (a part it does not know, two
-            # places that disagree, nothing sure): Dushes looks wider. Opening the page and saying its name when a
-            # part was asked for would be a false "done"
-            out = {"kind": "agent", "mode": "site"}
-        if out and out["kind"] in ("navigate", "show") and agent.directive(self.site, out["args"])[1] is None:
-            out = None                                # the place is not there (any more): the agent says so
-        if out and out["kind"] != "agent":
+            command, kind = picks.get("is_command"), picks.get("kind")
+            hand_on = picks.get("needs_agent")
+            if (not command or command.id != "yes" or not kind or kind.id not in ("go_to", "show", "set_value")
+                    or (hand_on and hand_on.id == "yes" and hand_on.confidence >= 0.6)):
+                return None                           # not the person's order, a question, or the agent is needed
+            value, target = picks.get("value") if ov is not None else None, picks.get("target")
+            if kind.id == "set_value" or (value and not target):
+                if value:
+                    name, _, opt = value.id.partition("=")
+                    e = ov.get(name)
+                    if e is not None and e.editable:
+                        is_bool = e.node.role == "bool"
+                        shown = "yes" if is_bool else next((str(o.get("name")) for o in e.options or [] if str(o.get("id")) == opt), opt)
+                        _intent.preset(f"{thread_id}-{fid}"[:100], name, True if is_bool else opt, e.label or name, shown)
+                        out = {"kind": "value"}
+            elif target and not _intent.has_date(message):
+                label = next(o.label for o in targets if o.id == target.id).split(" \u203a ")[-1]
+                kind_, _, ref = target.id.partition(":")
+                if kind_ == "form":
+                    path, _, node = ref.partition(":")
+                    page = self.site.page(path)
+                    pfid = str(page.form)
+                    # the form's own "show where" step, chosen here, carried out by the form: on another page when
+                    # that page has loaded its form, so its live state is checked there
+                    _intent.preset_call(f"{thread_id}-{pfid}"[:100], "focus_field", {"name": node}, f"{label}.")
+                    if here and page.path == here.path and ov is not None:
+                        out = {"kind": "focus"}
+                    else:
+                        self._keep_note(thread_id, pfid, f"Show {label}.", detect(message) or "")
+                        out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title, "form_id": pfid}
+                else:
+                    path, _, pid = ref.partition("#")
+                    page = self.site.page(path)
+                    part = page.part(pid) if page and pid else None
+                    args = {"path": path, **({("tab" if part.kind in ("tab", "accordion") else "section"): pid} if part else {})}
+                    if agent.directive(self.site, args)[1] is not None:   # a place that is not there is the agent's to say
+                        out = {"kind": "show" if part else "navigate", "args": args, "title": label}
+        if out:
             stats.fast["handled"] = True
             from .. import voice
             voice.hush(thread_id)   # in a talking conversation: done already, so no "let me check" before the answer
-        return out or to_site
+            return out
+        return {"kind": "agent", "mode": "site"} if picks.get("kind") and picks["kind"].id in ("go_to", "show") else None
 
     async def _form_tree(self, form_id: str) -> list[tuple[str, str, list[str]]]:
         """A form's tabs, steps and sections as the server knows them without the page: (name, label, the labels
@@ -863,7 +852,7 @@ class Dushes:
         a model turn would only make them wait."""
         from .. import intent as _intent
         off = self._offers.get(thread_id)
-        if self.intent.settings.provider == "off" or not isinstance(off, dict) or not _intent.takes_up(message):
+        if os.environ.get("INTENT_CODE") != "1" or not isinstance(off, dict) or not _intent.takes_up(message):
             return None
         args = dict(off.get("args") or {})
         if off.get("tool") == "open_form":
@@ -908,30 +897,32 @@ class Dushes:
                 and (t := plain(p.title)) and f" {t} " in text]
         return max(hits, key=lambda p: len(p.title)) if hits else None
 
-    def _context(self, thread_id: str, state: dict[str, Any], here: Any) -> dict[str, Any]:
-        """What the chooser is told beside the line (the owner: "it must know which page is active, what I see,
-        what I say"; and with the last turns it can decide "open it", "that one", "and now the passport"): the
-        screen, the open sections and the field in focus, what the last answer offered, what was opened last, and
-        the person's line before this one. Not the conversation. Filtered before it leaves (`safe_context`)."""
+    def _context(self, thread_id: str, state: dict[str, Any], here: Any, ov: Any = None, lay: Any = None,
+                 pack: Any = None) -> dict[str, Any]:
+        """What the chooser is told beside the line, about as much as the form's own assistant is told (the owner,
+        2026-11-17): the screen; the form on it, as that assistant reads it (its tabs, steps, sections and fields,
+        with their kind, their options, what is required and what is filled; personal data is "<filled>", never a
+        value); what the last answer offered and what was opened last; and the last ten messages of the
+        conversation, both sides. Every piece goes through the filter before it leaves (`safe_context`)."""
         out: dict[str, Any] = {"page": here.title if here else ""}
-        form = state.get("form") or None
-        if isinstance(form, dict) and form.get("config"):
+        if ov is not None:
             try:
-                from ..form.overlay import Overlay
-                lay = self.forms.layout(form.get("jsx_hash", ""))
-                ov = Overlay(lay, form["config"], self.forms.packs.get(form.get("form_id")).pii)
-                ui = form.get("ui") or {}
+                from ..form.render import locate, render_focus, render_outline
+                ui = (state.get("form") or {}).get("ui") or {}
+                loc = locate(ov, ui)
+                deps = self.forms.deps(lay.jsx_hash)
                 label = lambda name: (ov.get(name).label if ov.get(name) is not None else None) or ""  # noqa: E731
                 out["open_sections"] = [label(n) for n in ui.get("openAccordions") or [] if label(n)]
                 out["field_in_focus"] = label(ui.get("focused") or "")
-            except Exception:  # noqa: BLE001 - a form that cannot be read adds nothing
+                out["form"] = render_outline(ov, loc, deps, pack, 0) + "\n\n" + render_focus(ov, loc, deps, pack)
+            except Exception:  # noqa: BLE001 - a form that cannot be rendered adds nothing
                 pass
         off = self._offers.get(thread_id)
         if isinstance(off, dict):
-            out["offered"] = str(off.get("title") or "")
+            out["offered"] = [str(off.get("title") or "")]            # the target, not the assistant's sentence
         out["opened_last"] = self.__dict__.setdefault("_last", {}).get(thread_id, "")
-        said = [e.get("text", "") for e in self.forms.transcripts.list(thread_id) if e["kind"] == "user" and e.get("text")]
-        out["line_before"] = said[-1] if said else ""
+        turns = [e for e in self.forms.transcripts.list(thread_id) if e["kind"] in ("user", "assistant") and e.get("text")]
+        out["last_messages"] = [("person: " if e["kind"] == "user" else "assistant: ") + str(e["text"]) for e in turns[-10:]]
         return out
 
     async def _fast_move(self, thread_id: str, message: str, run_id: str, fast: dict[str, Any],

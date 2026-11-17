@@ -301,17 +301,30 @@ class Layer:
         return Pick(got.id, got.confidence, round((time.monotonic() - started) * 1000), self.chooser.by)
 
 
+_PRIVATE_BITS = re.compile(r"([\w.+-]+@[\w-]+\.[\w.-]+)|(\+?\d[\d\s().-]{5,}\d)")
+
+
+def scrub(layer: "Layer", text: str, limit: int = 0) -> str:
+    """A text as it may leave the process: every e-mail, phone and long run of digits, and every item of the
+    host's never-send list, replaced by "<filled>"; cut to `limit` characters when one is given."""
+    out = _PRIVATE_BITS.sub("<filled>", str(text or ""))
+    for item in layer.settings.never_send:
+        if item:
+            out = re.sub(re.escape(item), "<filled>", out, flags=re.IGNORECASE)
+    return out[:limit] if limit else out
+
+
 def safe_context(layer: "Layer", context: dict[str, Any] | None) -> dict[str, Any]:
-    """The short context a chooser may see (the screen, the last offer, what was opened last, the person's line
-    before this one), with the owner's filter applied to every piece: anything that holds a phone, an e-mail, a
-    long run of digits or a never-send item is left out, and a text is cut to a line's length."""
+    """What a chooser is told beside the line, with the owner's filter over every piece (the assistant's own words
+    included): nothing private goes out as a value, it goes as "<filled>". Empty pieces are left out."""
     out: dict[str, Any] = {}
     for key, value in (context or {}).items():
-        items = value if isinstance(value, list) else [value]
-        kept = [str(v)[:160] for v in items if v not in (None, "") and not layer.private(str(v))
-                and not re.search(r"\d[\d\s().-]{5,}\d", str(v))]
-        if kept:
-            out[key] = kept if isinstance(value, list) else kept[0]
+        if isinstance(value, list):
+            kept = [scrub(layer, v, 300) for v in value if v not in (None, "")]
+            if kept:
+                out[key] = kept
+        elif value not in (None, ""):
+            out[key] = scrub(layer, value, 6000)
     return out
 
 

@@ -61,7 +61,8 @@ class ExternalChooser:
         body = r.json()
         ms = round((time.monotonic() - started) * 1000)
         self.calls += 1
-        self.usd += int((body.get("usage") or {}).get("input_tokens") or 0) * USD_PER_INPUT_TOKEN
+        self.tokens = int((body.get("usage") or {}).get("input_tokens") or 0)   # of the last call, for the log
+        self.usd += self.tokens * USD_PER_INPUT_TOKEN
         answers = body.get("answers") or {}
         return {name: self._pick(q, answers.get(name), ms) for name, q in questions.items()}
 

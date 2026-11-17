@@ -119,7 +119,8 @@ def test_what_a_direct_command_is_in_code():
         assert not intent.is_direct(line), line
 
 
-def test_open_x_with_a_question_mark_is_a_command_and_articles_do_not_count(guide, model):
+def test_open_x_with_a_question_mark_is_a_command_and_articles_do_not_count(guide, model, monkeypatch):
+    monkeypatch.setenv("INTENT_CODE", "1")   # the measurement's code arm: names settled in code, no chooser
     """The owner at the demo (2026-11-17): "open apply for loan ?" was answered with a description and "Want me to
     open Apply for a loan?". The verb at the start makes it a command, whatever mark ends it; the title is
     matched without its articles; and the chooser's doubt does not turn an explicit request into a question."""
@@ -137,6 +138,7 @@ def test_open_x_with_a_question_mark_is_a_command_and_articles_do_not_count(guid
 
 
 def test_taking_up_an_offer_is_done_in_code(guide, model, monkeypatch):
+    monkeypatch.setenv("INTENT_CODE", "1")   # the measurement's code arm
     """"CAN YOU OPEN IT ?" after an offer took a whole model turn (3.7 s). The person agreed to exactly what was
     offered, so it is carried out at once; anything more than a yes or a pointing word is a new line for the model."""
     monkeypatch.setenv("INTENT_LABELS", "1")
@@ -198,7 +200,8 @@ OWNERS_12 = [   # the owner's 100 s of voice at the demo (2026-11-17), as the re
 ]
 
 
-def test_the_owners_twelve_spoken_commands_are_carried_out_with_no_model(guide, model):
+def test_the_owners_twelve_spoken_commands_are_carried_out_with_no_model(guide, model, monkeypatch):
+    monkeypatch.setenv("INTENT_CODE", "1")   # the measurement's code arm: names settled in code, no chooser
     """Seven of the twelve were carried out by the layer in his recording; the other five went to the model,
     though each was a command. With what stands around a name taken away, the name said word for word or heard
     nearly right at a clear margin, and tabs and sections as targets, all twelve are settled in code."""
@@ -238,7 +241,8 @@ def path_site(guide):
     return site
 
 
-def test_a_path_through_the_hierarchy_is_carried_out_step_by_step(guide, model):
+def test_a_path_through_the_hierarchy_is_carried_out_step_by_step(guide, model, monkeypatch):
+    monkeypatch.setenv("INTENT_CODE", "1")   # the measurement's code arm: names settled in code, no chooser
     """The owner (2026-11-17): "we know the hierarchy ... apply loan -> application -> personal details, the whole
     way down to what is opened". A section of a form on another page: the page opens, then, when that page has
     loaded its form, the section, by the form's own step. No model in either step."""
@@ -277,7 +281,8 @@ def test_a_path_through_the_hierarchy_is_carried_out_step_by_step(guide, model):
     assert d[0]["path"] == "/apply" and d[0].get("form_id") == "loan_application"
 
 
-def test_a_bare_date_goes_into_the_date_field_in_sight(guide, model):
+def test_a_bare_date_goes_into_the_date_field_in_sight(guide, model, monkeypatch):
+    monkeypatch.setenv("INTENT_CODE", "1")   # the measurement's code arm: names settled in code, no chooser
     """The owner said "1st July 2014" with Personal details open, and it went to the model. A date is never a place
     to go, but it is a value: with one date field in the open section it goes into that field through the form's
     own card (its checks and Undo apply). No section open, or two date fields in sight: one question from the agent."""
@@ -327,28 +332,42 @@ def test_the_matcher_takes_its_names_from_the_hosts_map_in_any_of_the_languages(
         assert intent.match_path(lines[0][0].split()[0] + " zzzqqq", targets) is None
 
 
-def test_the_chooser_is_told_the_short_context_and_never_what_must_stay(guide, model):
-    """The owner: if the chooser can see the last turns, it can decide. It is given the screen, what was offered,
-    what was opened last and the line before, not the conversation; and the owner's filter applies to each piece."""
+def test_the_chooser_is_told_what_the_forms_assistant_is_told_and_nothing_private(guide, model):
+    """The owner (2026-11-17): the chooser gets about the context the form's assistant gets: the screen, the form's
+    structure with what is filled (personal data as "<filled>"), what was offered and opened last, and the last
+    ten messages of both sides. Everything passes the filter: a phone, an e-mail or a long number never leaves."""
     from formguide.transcript import new_entry
-    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), section=("/insure", 0.9))
+    from .test_agent import start
+    from .test_questions import LOAN
+    chooser = Mock(is_command=("yes", 0.9), kind=("other", 0.9))
     site = tool_site(guide, chooser)
-    site.forms.transcripts.append("ctx-1", new_entry("user", text="my phone is +39 333 123 4567"))
+    tx = site.forms.transcripts
+    for i in range(7):
+        tx.append("ctx-1", new_entry("user", text=f"line {i}"))
+        tx.append("ctx-1", new_entry("assistant", text=f"answer {i}"))
+    tx.append("ctx-1", new_entry("user", text="my phone is +39 333 123 4567 and mail anna@aster.example"))
     site._offers["ctx-1"] = {"tool": "navigate", "args": {"path": "/insure"}, "title": "Get a car insurance quote"}
     site.__dict__.setdefault("_last", {})["ctx-1"] = "Car insurance"
+    form = {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": ["acc_personal"], "focused": "birth_date"}}
     model.script = [say("Which one?")]
-    run(site, "ctx-1", message="the other one", state={"page": {"path": "/insurance"}})     # a follow-up, no verb
-    assert chooser.seen and chooser.context.get("page") == "Car insurance"
-    assert chooser.context.get("offered") == "Get a car insurance quote" and chooser.context.get("opened_last") == "Car insurance"
-    assert "line_before" not in chooser.context                      # it held a phone number: left out
-    layer = site.intent
-    assert intent.safe_context(layer, {"a": "anna@aster.example", "b": ["Loans", "call 0301234567"], "c": ""}) == {"b": ["Loans"]}
+    run(site, "ctx-1", message="the other one", state={"page": {"path": "/apply"}, "form": form})
+    ctx = chooser.context
+    assert ctx["page"] == "Apply for a loan" and ctx["open_sections"] == ["Personal details"] and ctx["field_in_focus"] == "Date of birth"
+    assert ctx["offered"] == ["Get a car insurance quote"] and ctx["opened_last"] == "Car insurance"
+    assert len(ctx["last_messages"]) == 10 and ctx["last_messages"][-1].startswith("person: my phone is <filled>")
+    assert "anna@aster.example" not in str(ctx) and "333" not in str(ctx)
+    assert "Personal details" in ctx["form"] and "Date of birth" in ctx["form"]            # the form, as its assistant reads it
+    # the whole site goes as paths, a form's sections on other pages included
+    labels = [o.label for o in chooser.seen[-1][1]["target"].options]
+    assert "Loans" in labels and "Loans \u203a Mortgage" in labels
+    assert "Apply for a loan \u203a Applicant \u203a Personal details" in labels
+    assert intent.scrub(site.intent, "call 030 1234567 or anna@aster.example") == "call <filled> or <filled>"
 
 
 def test_the_code_only_arm_asks_no_chooser(guide, model, monkeypatch):
-    """INTENT_CHOOSER=0, the measurement's fifth arm: what the names said settle is carried out; nothing else is
-    put to the chooser."""
-    monkeypatch.setenv("INTENT_CHOOSER", "0")
+    """INTENT_CODE=1, the measurement's fifth arm: what the names said settle is carried out; nothing else is
+    put to the chooser. It is a switch for measuring, never the default."""
+    monkeypatch.setenv("INTENT_CODE", "1")
     chooser = Mock(is_command=("yes", 0.98), kind=("go_to", 0.97), section=("/loans", 0.93))
     site = tool_site(guide, chooser)
     before = len(model.calls)
