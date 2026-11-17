@@ -584,7 +584,7 @@ class Talks:
         """Words that arrived and were never handed over (VOICE_TAKE_LINE=1; a trial, off by default). The provider
         issues its hand-over when it decides to, and sometimes not at all: a short answer said into its speech sat
         in the buffer and reached nobody (the owner's sessions, 2026-11-17: "yes" three times, his last name).
-        When TAKE_AFTER seconds pass after their last word, the voice is not talking and no hand-over came, the
+        When UNHANDED_WAIT seconds pass after their last word, the voice is not talking and no hand-over came, the
         server takes the line itself: the client gets `heard` as after a hand-over, and the answer is given to the
         voice with no request to attach it to. Fillers alone and the voice's own echo are not taken."""
         import asyncio
@@ -594,15 +594,14 @@ class Talks:
                 await asyncio.sleep(0.1)
                 now = time.monotonic()
                 said = state.get("said") or []
-                # the voice still talking holds the line back, unless the person has just cut in on it: then the
-                # page has faded that speech already, and the provider may go on to the end of its sentence (the
-                # owner's session, 2026-11-17: the line waited 4 s for a voice nobody could hear)
-                talking = bool(said) and now - said[-1][0] < 1.0 and now - state.get("cut_at", -1e9) > 10.0
-                if state.get("early") or now - state.get("heard_at", now) < TAKE_AFTER or talking:
-                    continue                          # a hand-over is waiting for these words; still speaking; the voice talks
+                # the voice talking does not hold the line back: it talked over him for seconds, and the page fades it
+                # on a cut-in. What keeps the voice's own echo out is below: a word of his that the voice did not say
+                if state.get("early") or now - state.get("heard_at", now) < UNHANDED_WAIT:
+                    continue                          # a hand-over is waiting for these words, or he is still speaking
                 text = state["heard"].strip()
                 words = [w for w in re.findall(_LETTERS + r"|\d+", re.sub(r"\[[^\]]*\]", " ", text).lower()) if w not in FILLERS]
-                if not words or is_echo(text, said, now):
+                recent = set(re.findall(_LETTERS + r"|\d+", " ".join(t for at, t in said if now - at <= ECHO_SECONDS).lower()))
+                if not words or all(w in recent for w in words) or is_echo(text, said, now):
                     return                            # nothing of theirs to act on: left as it is
                 state["heard"], state["taken_at"] = "", now
                 self._record(state, {"type": "taken", "t_ms": round((now - state["t0"]) * 1000), "words": len(words)})
@@ -628,7 +627,9 @@ class Talks:
             return                                    # the voice is not talking, or this speech was cut already
         words = re.findall(_LETTERS + r"|\d+", (state.get("heard") or "").lower())
         recent = set(re.findall(_LETTERS + r"|\d+", " ".join(t for at, t in said if now - at <= ECHO_SECONDS).lower()))
-        if not words or (len(words) < 2 and words[0] in recent) or is_echo(state.get("heard") or "", said, now):
+        # the voice's own words come back through the microphone piece by piece ("A car", " loan", ...): a cut needs
+        # at least one word the voice did not say in the last seconds (the QA Lead's finding on the first trial)
+        if not words or all(w in recent for w in words) or is_echo(state.get("heard") or "", said, now):
             return
         state["cut_at"] = now
         self._emit(state, {"type": "interrupted", "by": "words"})
@@ -986,7 +987,7 @@ def asks(card: dict) -> str:
 WORDS_WAIT, WORDS_SETTLE, WORDS_LAST = 1.5, 0.4, 6.0
 UNHEARD = "You did not catch what the person said. Say so in a few words and ask them to say it again."
 
-TAKE_AFTER = 1.5      # words with no hand-over are taken by the server this long after the last one, in seconds
+UNHANDED_WAIT = 1.5      # words with no hand-over are taken by the server this long after the last one, in seconds
 TAKEN_COVERS = 10.0   # a hand-over with no words this soon after a taken line is that same line, asked late
 FILLERS = {"uh", "um", "mm", "hmm", "hm", "ah", "er", "eh", "oh", "mhm", "sigh"}
 CUT_IN_AFTER = 1.2    # the voice counts as talking while its last word is this fresh, in seconds

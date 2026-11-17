@@ -602,3 +602,20 @@ def test_the_trace_names_a_form_section_and_a_code_line_is_not_a_model_call(guid
     assert [a["label"] for a in t["applied"]] == ["Passport", "Addresses"] and "labels" not in t
     kinds = [m["kind"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "run_stats" for m in e["value"]["models"]]
     assert kinds and set(kinds) == {"code"}                                # the layer's steps: written in code, no model
+
+
+def test_the_form_assistant_alone_opens_every_section_asked_for(guide, model):
+    """The owner on the form demo (2026-11-17): "Open all sections" was answered "I can't open every section at once"
+    twice, and done on the third asking. With no layer at all: one call a section in one step opens every one, and
+    both the rule and the tool say that it can."""
+    from .test_agent import collect
+    from formguide.agent import prompts, tools
+    names = ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"]
+    model.script = [say("", *[(f"f{i}", "focus_field", {"name": n}) for i, n in enumerate(names)]),
+                    say("Personal details, Passport, Addresses, Contacts and Education are open.")]
+    ev = collect(guide, "all-form-1", message="Open all sections", state=start(guide, LOAN))
+    shown = [e["value"].get("target") for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "ui_directive"]
+    assert shown == names
+    spec = next(t for t in tools.TOOLS if t["name"] == "focus_field") if hasattr(tools, "TOOLS") else None
+    text = json.dumps(spec) if spec else open(tools.__file__).read()
+    assert "once for each of them in the same step" in text and "Never say you cannot open several at once" in open(prompts.__file__).read()

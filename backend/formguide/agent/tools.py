@@ -202,7 +202,9 @@ TOOLS: list[dict[str, Any]] = [
         "description": "Show a field or section to the user: the frontend opens the needed tabs and accordions, "
                        "scrolls and highlights the element with a hint. Works only for visible elements. To show "
                        "several fields at once (the required fields of a section, the ones still empty), pass the "
-                       "section as `name` and the fields as `fields`: all of them are highlighted together.",
+                       "section as `name` and the fields as `fields`: all of them are highlighted together. One call "
+                       "opens one section; to open several sections (\"open all the sections\"), call it once for "
+                       "each of them in the same step, and every one opens. Opening several is always possible.",
         "input_schema": {
             "type": "object",
             "properties": {

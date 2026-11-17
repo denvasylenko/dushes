@@ -847,7 +847,7 @@ def test_words_with_no_hand_over_are_taken_by_the_server(monkeypatch):
     """The owner's lost lines (2026-11-17): his words arrived as text and the provider never asked for the agent.
     With VOICE_TAKE_LINE=1 the server takes them itself a moment after his last word; a hand-over that comes late
     for the same line gets no second answer; a filler alone is not taken; without the switch nothing changes."""
-    monkeypatch.setattr(voice, "TAKE_AFTER", 0.15)
+    monkeypatch.setattr(voice, "UNHANDED_WAIT", 0.15)
 
     async def go(switch, words, late_hand_over=False):
         if switch:

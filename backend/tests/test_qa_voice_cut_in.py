@@ -83,7 +83,6 @@ def _cuts(live) -> list[dict]:
     return [m for m in live.sent if m.get("type") == "session.instructions.append"]
 
 
-@NOT_BUILT
 @pytest.mark.parametrize("words", LOST)
 def test_his_words_over_the_voice_cut_it_once(monkeypatch, words):
     monkeypatch.setenv("VOICE_CUT_IN", "1")
