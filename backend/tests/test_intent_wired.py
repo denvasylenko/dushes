@@ -813,3 +813,23 @@ def test_all_the_sections_with_no_place_said_are_those_on_the_screen(guide, mode
     shown = [e["value"].get("target") for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "ui_directive"]
     assert shown == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == before
     assert chooser.seen[0][1]["all_of"].options[0].id == "here"
+
+
+def test_on_a_gated_host_the_layer_is_asked_only_for_a_visitor_with_a_pass(guide, model, monkeypatch):
+    """The owner (2026-11-17): the decision model is an experimental feature behind an activation code. On a host
+    with a gate, a visitor without a pass sends nothing to the chooser and sees no label; with a pass the same
+    line is carried out by the layer."""
+    from formguide import experiments
+    monkeypatch.setenv("INTENT_LABELS", "1")
+    model.script = [say("The loans page has the rates.")]
+    chooser = Mock(is_command=("yes", 0.98), kind=("go_to", 0.97), target=("screen:/loans", 0.93))
+    site = site_with(guide, chooser)
+    monkeypatch.setattr(experiments, "_gated", True)
+    ev = run(site, "g1", message="open the loans page", state={"page": {"path": "/"}})
+    assert chooser.seen == [] and "Jev" not in text(ev)                       # nothing left the server
+    mark = experiments._person.set("anna")
+    try:
+        ev = run(site, "g2", message="open the loans page", state={"page": {"path": "/"}})
+    finally:
+        experiments._person.reset(mark)
+    assert len(chooser.seen) == 1 and directives(ev) == [{"type": "navigate", "path": "/loans"}] and "Jev ·" in text(ev)

@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 
+from formguide import experiments as _experiments
 from formguide.site import Dushes, SiteMap, create_dushes_router
 
 SITE_MAP = Path(__file__).with_name("site.yaml")
@@ -88,7 +89,7 @@ def front_forms(guide, site: Dushes) -> None:
                 seen["screen"].append({"name": ev["name"], "value": value})
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and getattr(stats, "fast", None):
                 asked = stats.fast
-                if os.environ.get("INTENT_LABELS") == "1":
+                if os.environ.get("INTENT_LABELS") == "1" and _experiments.allowed():
                     who = site.intent.settings.provider.capitalize()
                     name = str(model_id(guide.models.agent) or "")
                     label = (f"{who} \u00b7 {asked['ms']} ms" if asked.get("handled") else
@@ -98,7 +99,7 @@ def front_forms(guide, site: Dushes) -> None:
                     yield {"type": "TEXT_MESSAGE_START", "messageId": lid, "role": "assistant"}
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
                     yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
-                if os.environ.get("INTENT_TRACE") == "1" and getattr(stats, "trace", None):
+                if os.environ.get("INTENT_TRACE") == "1" and _experiments.allowed() and getattr(stats, "trace", None):
                     more = thread_id in site.__dict__.get("_mixed", {})
                     yield {"type": "CUSTOM", "name": "decision_trace",
                            "value": _decision_trace(stats, seen, kw.get("run_id") or "", more, site.site)}

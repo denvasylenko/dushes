@@ -97,6 +97,16 @@ from .site_app import mount as mount_site  # noqa: E402
 
 mount_site(app, guide)
 
+# Experimental features behind an activation code (EXPERIMENT_CODES): on a host that sets it, the decision model
+# runs only for a visitor who entered a code; without a pass nothing is sent to the chooser, and no label or
+# decision trace is shown. A host without the setting is not gated (a developer's machine).
+from formguide import experiments as _experiments  # noqa: E402
+
+_EXPERIMENTS = _experiments.Experiments.from_env()
+if _EXPERIMENTS.enabled:
+    _experiments.install(app, _EXPERIMENTS)
+    app.include_router(_experiments.create_experiments_router(_EXPERIMENTS), prefix="/experiments")
+
 # The Form Lab: Dushes over the QA library of forms (demo/mock_forms/lab/), for the scenario evals: /lab/run, /lab/map.
 from .lab_site import mount as mount_lab  # noqa: E402
 
