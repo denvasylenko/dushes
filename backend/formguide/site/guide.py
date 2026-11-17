@@ -733,10 +733,8 @@ class Dushes:
                 _intent.Option("other", "a text to write, a judgement or a suggestion"))),
             "needs_agent": _intent.Question("noul", "needs_agent", "Does the line name a person or a company that is not "
                                             "on the screen, ask a question, ask for a text, or need judgement?"),
-            "wants_to_go": _intent.Question("noul", "wants_to_go", "Judging by the conversation so far, does the person "
-                                            "want to be taken to the place this line names: they have just been moving "
-                                            "around the site by commands, or the assistant has just offered that place, "
-                                            "or the line answers a question where to go?"),
+            "was_offered": _intent.Question("noul", "was_offered", "Did the assistant's last message offer to open, or point "
+                                            "the person to, the place that this line names?"),
             "asks_move": _intent.Question("noul", "asks_move", "Does the line, in any part of it, order to open, go to "
                                           "or show a page, a tab or a section?"),
             "asks_more": _intent.Question("noul", "asks_more", "Beside an order to open, show or set something, does the "
@@ -984,17 +982,24 @@ class Dushes:
                 return {"kind": "value"}
             bare = bool(value and said and value.confidence >= 0.9 and not moves and not tail
                         and not (more and more.id == "yes") and not (kind and kind.id in ("question", "other")))
-            # a line that is nothing but the name of a place ("collateral", "assets and liabilities", "purchase
-            # request"): the chooser is sure of the place and the line says no more than its name. It need not sound
-            # like an order (the owner's session, 2026-11-17: four such lines went to the model for 3 to 8 s each)
-            # ... only when the conversation backs that intent up (the owner, 2026-11-17: "Jev has to orient by
-            # situation"): they have just been moving by commands, or the place was just offered. A bare word in the
-            # middle of a talk about something else is the agent's, which answers or asks
-            wants = picks.get("wants_to_go")
-            if (target and wants and wants.id == "yes" and wants.confidence >= 0.7 and not moves and not value and "?" not in message
-                    and not (kind and kind.id in ("question", "other")) and not (more and more.id == "yes")
-                    and not _intent.names_more(message, next((o.label for o in targets if o.id == target.id), ""))):
-                moves = True
+            # a line that is nothing but the name of a place ("contacts", "collateral"): it opens only when the
+            # situation backs the wish to go there (the owner, 2026-11-17: "Jev has to orient by situation"; the CPO:
+            # a bare word after a talk about prices, or as the first line, opens nothing). What backs it: that place
+            # was just offered (the server's own record, or the chooser reading the assistant's last message), or the
+            # person's previous line was a move that was carried out. Otherwise the agent answers and offers
+            tlabel = next((o.label for o in targets if target and o.id == target.id), "")
+            if target and "?" not in message and _intent.only_names(message, tlabel):
+                tpath = target.id.partition(":")[2].partition("#")[0].partition(":")[0]
+                offer = self._offers.get(thread_id)
+                offered = isinstance(offer, dict) and str((offer.get("args") or {}).get("path") or "") == tpath
+                lines = [e for e in self.forms.transcripts.list(thread_id) if e["kind"] == "user"]
+                moved = bool(lines and lines[-1].get("layer"))
+                was = picks.get("was_offered")
+                if offered or moved or (was and was.id == "yes" and was.confidence >= 0.7):
+                    moves = not value
+                else:
+                    stats.trace["why"] = "not_an_order"
+                    return None
             if not ordered and not moves and not bare:
                 stats.trace["why"] = stats.trace["why"] or "not_an_order"
                 # a question about another page of the site, asked on a form's page: the site's assistant answers it

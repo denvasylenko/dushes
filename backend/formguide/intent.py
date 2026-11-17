@@ -828,6 +828,14 @@ def bare_year(phrase: str) -> int | None:
     return int(words[0]) if len(words) == 1 and words[0].isdigit() and 1900 <= int(words[0]) <= 2100 else None
 
 
+def only_names(phrase: str, label: str) -> bool:
+    """Whether the line is nothing but the place's name, with fillers at most ("contacts", "uh, the contacts"): no
+    verb of an order, no other word. "Open contacts" is not: it says what to do."""
+    own = {w[:4] for w in re.findall(r"[\w']+", (label or "").lower())}
+    words = [w for w in re.findall(r"[\w']+", (phrase or "").lower()) if w not in _AROUND]
+    return bool(words) and all(w[:4] in own for w in words)
+
+
 def says_more(rest: str) -> bool:
     """Whether what is left of a line, beside the value read from it, still says something: a word of three
     letters or more that is not a filler or a word of an order."""

@@ -628,22 +628,31 @@ def test_a_bare_name_of_a_place_opens_it_and_okay_is_not_a_name(guide, model, mo
     monkeypatch.setenv("INTENT_LABELS", "1")
     assert intent.mask_names("Oh Okay, okay, okay. Open the apply for a loan", []) == ("Oh Okay, okay, okay. Open the apply for a loan", False)
     assert intent.mask_names("Oh Okay, call Giulia", [])[1]
-    bare = Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), target=("screen:/loans", 0.85), wants_to_go=("yes", 0.85))
+    bare = Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), target=("screen:/loans", 0.85), was_offered=("yes", 0.85))
     before = len(model.calls)
     ev = run(site_with(guide, bare), "bare-1", message="loans", state={"page": {"path": "/"}})
     assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
-    assert "wants_to_go" in bare.seen[0][1]
+    assert "was_offered" in bare.seen[0][1]
     # the same word in a conversation about something else: the chooser does not see the wish to go there
     model.script = [say("Loans start from 18.9% a year.")]
-    idle = Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), target=("screen:/loans", 0.95), wants_to_go=("no", 0.8))
+    idle = Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), target=("screen:/loans", 0.95), was_offered=("no", 0.8))
     assert directives(run(site_with(guide, idle), "bare-0", message="loans", state={"page": {"path": "/"}})) == []
-    # not when the line says more than the name, asks, or the chooser is only fairly sure
-    for line, answers in (("loans are expensive these days", dict(target=("screen:/loans", 0.85), wants_to_go=("yes", 0.9))),
-                          ("loans?", dict(target=("screen:/loans", 0.85), wants_to_go=("yes", 0.9))),
-                          ("loans", dict(target=("screen:/loans", 0.85), wants_to_go=("yes", 0.6))),
-                          ("loans", dict(target=("screen:/loans", 0.85), wants_to_go=("yes", 0.9), kind=("question", 0.8)))):
+    # a bare name that the conversation does not back, even when the chooser reads it as an order (QA's scenarios:
+    # after a talk about prices, or as the first line): nothing opens, the agent answers and offers
+    model.script = [say("The office is at 12 Main Street. Want me to open Contacts?")]
+    order = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.8), asks_more=("no", 0.9), target=("screen:/loans", 0.95), was_offered=("no", 0.8))
+    ev = run(site_with(guide, order), "bare-2", message="loans", state={"page": {"path": "/"}})
+    assert directives(ev) == [] and "Main Street" in text(ev)
+    # after a move the layer has just carried out, the next bare name is one more move
+    chain = site_with(guide, Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), target=("screen:/loans", 0.95)))
+    run(chain, "bare-3", message="open loans", state={"page": {"path": "/"}})
+    chain.intent.chooser.answers.update(target=("screen:/contacts", 0.9), was_offered=("no", 0.7), is_command=("no", 0.6), kind=("other", 0.5), asks_move=("no", 0.6))
+    assert directives(run(chain, "bare-3", message="contacts", state={"page": {"path": "/loans"}})) == [{"type": "navigate", "path": "/contacts"}]
+    assert intent.only_names("uh, the contacts", "Contacts") and not intent.only_names("open contacts", "Contacts")
+    # a name with more said, or a question, is not a bare name: the usual rules hold
+    for line in ("loans are expensive these days", "loans?"):
         model.script = [say("Here is what we have on loans.")]
-        ev = run(site_with(guide, Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), **answers)),
+        ev = run(site_with(guide, Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), target=("screen:/loans", 0.85), was_offered=("yes", 0.9))),
                  f"bare-{len(model.calls)}", message=line, state={"page": {"path": "/"}})
         assert directives(ev) == [], line
     # "Okay" is no name: the page opens and no model adds a sentence
