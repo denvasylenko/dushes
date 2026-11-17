@@ -7,7 +7,9 @@ import { Summary } from '../../../../components/ui';
 
 <Summary what={"A small, fast model that picks among what is on the screen: a page, a part of a page, a section of the form, a value of a field."} when={"A person says what they want and part of it is a plain action on the screen."} write={"Nothing yet: it is not in the package you install."} />
 
-<Aside type="caution" title="In development">
+<Aside type="caution" title="Experimental">
+Experimental. Not switched on on the public site; it runs only where the host turns it on, and then every line goes to TypeSafe after the filter. An activation code in **+** is coming, like voice mode.
+
 In development, on a demo branch, not in the package you install, and nothing a reader can turn on. No numbers are given until the QA Lead measures it. Some of what this page describes is decided but not built yet; the last section says which.
 </Aside>
 
@@ -169,6 +171,7 @@ The same as in text. After a done action the voice says one short line ("Loans."
 ## Next
 
 <CardGrid>
+  <LinkCard title="One schema for what a person wants" description="A proposal: one way to read any request, for any configuration." href="../intents/" />
   <LinkCard title="One turn" description="What the agent does with a line it gets." href="../turn/" />
   <LinkCard title="Voice mode" description="Talking to the assistant, with the same rules." href="../../shared/voice/" />
   <LinkCard title="Navigation and routing" description="How the site agent decides where a person goes." href="../../site-agent/navigation/" />
