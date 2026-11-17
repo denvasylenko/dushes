@@ -171,13 +171,17 @@ def test_the_layer_hands_back_instead_of_claiming(guide, model):
     ev = run(site_with(guide, unsure), "hb-3", message="put 18", state=state)
     assert not [e for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt"]
     assert "amount or the term" in text(ev)
-    # 2: an order with a question in it is the agent's turn. Today the agent answers and offers the page (a line
-    # that ends in a question opens nothing); "open it, then answer" is specified and not built yet
-    both = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), target=("screen:/loans", 0.9), needs_agent=("yes", 0.8))
+    # 2: an order with a question in it: the page opens at once and the agent, told so, answers the question
+    both = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), target=("screen:/loans", 0.9), asks_more=("yes", 0.8))
     before = len(model.calls)
-    model.script = [say("The car loan is at 18.9% a year. Want me to open Loans?")]
+    model.script = [say("The car loan is at 18.9% a year.")]
     ev = run(site_with(guide, both), "hb-4", message="open the loans page, what is the rate?", state={"page": {"path": "/"}})
-    assert "18.9%" in text(ev) and len(model.calls) == before + 1 and "Jev \u00b7" not in text(ev)
+    assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and "18.9%" in text(ev) and len(model.calls) == before + 1
+    # "the line asks more" below the bar is a plain order: no model
+    plain = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), target=("screen:/loans", 0.9), asks_more=("yes", 0.6))
+    before = len(model.calls)
+    ev = run(site_with(guide, plain), "hb-4b", message="can you open the loans", state={"page": {"path": "/"}})
+    assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
     # 1: a place that is not there is not "opened": the agent says so
     gone = Mock(is_command=("yes", 0.9), kind=("show", 0.9), target=("part:/nowhere#no-such-part", 0.9))
     model.script = [say("I could not find that part; the page has Services and prices.")]

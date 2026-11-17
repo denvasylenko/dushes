@@ -57,15 +57,19 @@ class ExternalChooser:
                 "state": {"line": phrase, "screen_now": screen, "language": language,
                           "today": time.strftime("%A %d %B"), **(context or {})},
                 "questions": {name: self._wire(q) for name, q in questions.items()}}
-        r = await self._http.post(URL, json=sent)
-        r.raise_for_status()
-        body = r.json()
-        ms = round((time.monotonic() - started) * 1000)
         sample = os.environ.get("INTENT_SAMPLE", "")
-        if sample:   # the demo only: the body as it left and the answer, one JSON line a call; never the key or a header
-            import json
-            with open(sample, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"request": sent, "response": body, "ms": ms}, ensure_ascii=False) + "\n")
+        body, ms = None, None
+        try:
+            r = await self._http.post(URL, json=sent)
+            r.raise_for_status()
+            body = r.json()
+            ms = round((time.monotonic() - started) * 1000)
+        finally:
+            if sample:   # the demo only: the body as it left and the answer (none when the layer stopped waiting),
+                import json   # one JSON line a call; never the key or a header
+                with open(sample, "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"request": sent, "response": body, "ms": ms,
+                                        "waited_ms": round((time.monotonic() - started) * 1000)}, ensure_ascii=False) + "\n")
         self.calls += 1
         self.tokens = int((body.get("usage") or {}).get("input_tokens") or 0)   # of the last call, for the log
         self.usd += self.tokens * USD_PER_INPUT_TOKEN

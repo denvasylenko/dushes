@@ -720,7 +720,10 @@ class Dushes:
             moves = bool(move and move.id == "yes") or (ordered and kind.id in ("go_to", "show"))
             # the owner (2026-11-17): what the chooser is sure of is applied; whatever else the line holds (a question,
             # an explanation, a text to write) is the agent's, which is told what was done already
-            tail = bool((more and more.id == "yes") or (hand_on and hand_on.id == "yes" and hand_on.confidence >= 0.75))
+            # how sure "the line asks more" must be: on the owner's recorded lines a plain "can you open X" scored 0.56
+            # and 0.61, a command with a question 0.79, a text to write 0.95. Four lines, not a calibration: the QA
+            # Lead's measurement sets it (INTENT_TAIL)
+            tail = bool(more and more.id == "yes" and more.confidence >= float(os.environ.get("INTENT_TAIL", "0.7")))
             if not ordered and not moves:
                 return None                           # not the person's order: the agent's turn
             value, target = picks.get("value") if ov is not None else None, picks.get("target")
