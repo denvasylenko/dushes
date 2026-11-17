@@ -28,11 +28,11 @@ On a page with a form, an explicit move (go to, open the ..., take me) SHALL go 
 - **THEN** the router model decides form and the UI agent proposes the loan type
 
 ### Requirement: A line that names another page goes to Dushes
-On a page with a form, a message that says the whole title of another page of the site SHALL go to Dushes, whatever else it says and whether or not it asks to move. The form agent, which does not see the site, SHALL NOT be the first to get such a line. This is decided in code, with no model call.
+On a page with a form, a message that says the whole title of another page of the site SHALL go to Dushes, whatever else it says and whether or not it asks to move. The UI agent, which does not see the site, SHALL NOT be the first to get such a line. This is decided in code, with no model call.
 
 #### Scenario: Car insurance asked from the loan form
 - **WHEN** the person on the loan form says "can you open car insurance", and Car insurance is a page of the site
-- **THEN** Dushes gets the line and opens that page; the form agent is not asked
+- **THEN** Dushes gets the line and opens that page; the UI agent is not asked
 
 #### Scenario: The person insists
 - **WHEN** the person then says "yeah, I said car insurance"
