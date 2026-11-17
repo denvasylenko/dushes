@@ -96,3 +96,43 @@ A chooser outside the process SHALL receive only the model's short name of the t
 #### Scenario: A phone number in the target
 - **WHEN** the agent calls the tool with "the request from +39 333 123 4567"
 - **THEN** the chooser is not asked and the tool answers that it is unavailable
+
+### Requirement: Every line is put to the chooser with what the agent sees
+Every line of the person SHALL be put to the chooser before a model, with the history and the state the agent of that turn would get (the screen, the form's outline, the site map as paths), after the personal-data filter. No target SHALL be matched by name in code in front of the chooser, except under the measurement's switch.
+
+#### Scenario: A line that leans on the conversation
+- **WHEN** the assistant offered the quote form and the person says "open it"
+- **THEN** the chooser is asked with that conversation in its state, and picks the form's page among the site's paths
+
+#### Scenario: A phone number said earlier
+- **WHEN** an earlier message of the person held a phone number
+- **THEN** the state sent to the chooser holds "<filled>" in its place
+
+### Requirement: What the chooser is sure of is applied and the rest goes to the agent
+When the chooser is sure of a move or a value and the line asks nothing else, the server SHALL carry it out and end the turn with one short line built in code, with no model call. When the line asks more (a question, an explanation, a text to write), the server SHALL carry out what the chooser is sure of and SHALL give the line to the agent in the same run, told what was done already; the agent SHALL NOT repeat it. What the chooser is not sure of SHALL NOT be applied.
+
+#### Scenario: A command and a question
+- **WHEN** the person says "open car insurance and tell me the cheapest level"
+- **THEN** the Car insurance page opens at once, and the agent, told that it is open, answers only about the cheapest level
+
+#### Scenario: Nothing left
+- **WHEN** the person says "open the loans page"
+- **THEN** the page opens, the reply is "Loans.", and no model is called
+
+### Requirement: Free text and explanations go to the model
+A text for a field and a request to explain SHALL go to the model, whatever verb the line begins with. The chooser SHALL set only a list option, a yes or no, or a value of an obvious type into a visible field.
+
+#### Scenario: A text to write
+- **WHEN** the person says "write that we work till late" on a form with a description field
+- **THEN** nothing is set by the layer and the form's assistant gets the line
+
+### Requirement: More context is a lookup by object, behind a switch
+With the switch on, the chooser MAY pick "more context" as a pair of a source and an object of the map. The server SHALL then read that object by its id, add it to the chooser's state and ask once more, one extra round at most. The chooser SHALL NOT supply any text of a query. With the switch off, which is the default, a line the chooser is not sure of SHALL go to the agent.
+
+#### Scenario: Help for a field
+- **WHEN** the switch is on and the chooser picks "help for the field Loan type"
+- **THEN** the server reads that field's help, asks the chooser once more with it, and applies or hands on
+
+#### Scenario: A search in free words
+- **WHEN** the person says "find what the documents say about early repayment"
+- **THEN** the chooser hands on and the model searches

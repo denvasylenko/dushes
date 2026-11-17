@@ -5,6 +5,45 @@ and D-28, D-29 (read, not edited); OpenAI's guides for the live voice model, rea
 live-conversations, the gpt-live-1 model page); the local demo on branch `demo/jev` and what the owner's own
 tests of it showed.
 
+## The chooser first (the owner's later decisions, 2026-11-17; they replace the hybrid's gate)
+
+After his own tests of the demo the owner changed the shape. Where this section and a later one disagree, this
+section holds; the tool for the model (below) stays as designed.
+
+1. **Every line goes to the chooser**, not only the direct commands. No name is matched in code in front of it
+   ("no model" answers are gone); matching in code stays only as a switch for the measurement's "code" arm.
+2. **The chooser sees what the agent sees.** The same history window, cut the same way, and the same state: the
+   screen and the focus, the form's outline as its assistant reads it (personal values as "filled" / "empty"),
+   the site map as paths ("Apply for a loan > Applicant > Personal details"), what was offered and opened last.
+   Only the owner's filter is on top: an e-mail, a phone, a run of seven or more digits and the host's never-send
+   items are replaced before anything leaves the process.
+3. **The chooser picks the target**, always: a page, a tab, a section, a list option, the visible field a value
+   of an obvious type is for (a date, a number, an option). Code only carries the pick out, checks the state, and
+   keeps the prohibitions: a date never moves the person, a consent is never an option, only on the person's own
+   request, only what can be undone.
+4. **What it is sure of is applied; the rest of the line is the agent's.** Nothing left: the turn ends with one
+   short line built in code, in the conversation's language (the name of what was opened, or the value set), and
+   no model is called. Something left (a question, an explanation, a text to write): the agent gets the line
+   with "already done: ...", does not repeat it, and answers the rest in the same run. What the chooser is not
+   sure of is not applied.
+5. **Free text and explanations are never the chooser's.** A text for a field (a description, an address), "why",
+   "how", "what does it mean" go to the model, even when the line begins with a verb of command.
+6. **"I need more context" is a structured lookup, with no text from the chooser.** An option is a pair (source,
+   object of the map): "help for the field Loan type", "site knowledge: the page Car insurance". Sure of it: the
+   server reads that object by its id (a read only), adds it to the chooser's state and asks once more, one
+   extra round at most; then it applies or hands on. A search in free words is the model's. Behind a switch,
+   off by default until the QA Lead's measurement shows the threshold holds; off, "not sure" goes to the agent.
+7. **A card may be an option**: "show card X", only for cards whose data the server builds without a model.
+8. **What the person sees in the demo**: the label under the turn names who did what, with times: the chooser
+   alone, the model alone (and that the chooser was asked first), or both ("opened X, then the model").
+
+Built on the demo branch so far: 1, 3, 5, the label of 8, and 4 for moves on the site (a page, a tab, a section).
+Not built: 2 in full (the demo sends the last ten messages, not the agent's own window), 4 for values and for a
+form's section on the screen, 6, 7.
+
+The order of work (the owner): the chooser to a measurement first, then the factory settings; each step counts as
+better only by a number against the one before.
+
 ## The hybrid (the owner's correction, 2026-11-17)
 
 The owner: keep the chooser in front for "super direct" lines ("open, close, go to, scroll"), "plain commands";
