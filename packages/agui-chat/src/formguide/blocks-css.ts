@@ -1,6 +1,7 @@
 /** The card blocks' styles: they ship with the blocks (agui-chat.blocks.js in the one-script build) and are added to
  *  each chat's shadow root the first time a card from blocks lands there, before the theme so the theme still wins. */
 export const BLOCKS_CSS = `
+:host { --agui-warn: #b25000; } :host(.dark) { --agui-warn: #ff9f0a; }   /* a threshold's mark (orange, as on iOS); a theme may set its own */
 /* cards from blocks (formguide/blocks.ts): small parts, one look; colours only from the theme and a tone */
 .bk { display: grid; gap: 12px; }
 .bk .card-q, .bk .acts { margin: 0; }
@@ -10,11 +11,12 @@ export const BLOCKS_CSS = `
 .bk-row { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 12px; }
 .bk-row + .bk-row { border-top: 1px solid var(--agui-line); }
 .bk-label { flex: 1; min-width: 0; color: var(--agui-ink-2); }
-.bk-value { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.bk-value { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; min-width: 0; max-width: 65%; overflow-wrap: anywhere; }   /* a long value wraps, never over its label */
 .bk-row.tone-ok .bk-value, .bk-row.tone-danger .bk-value, .bk-row.tone-accent .bk-value { color: inherit; } .bk-row[class*=tone-] .bk-label { color: var(--agui-ink-2); }
 .bk-img { display: block; width: 100%; object-fit: cover; border-radius: var(--agui-radius-sm); background: var(--agui-soft); }
 .bk-place { display: flex; align-items: center; gap: 12px; }
 .bk-place > img, .bk-avatar { width: 52px; height: 52px; flex: none; border-radius: 12px; object-fit: cover; background: var(--agui-soft); }
+.bk-place > img.tall { width: 39px; border-radius: 8px; box-shadow: 0 0 0 1px var(--agui-line); }   /* a page's thumbnail, 3:4 */
 .bk-avatar { display: grid; place-items: center; font-size: 20px; font-weight: 700; color: var(--agui-ink-2); }
 .bk-place-t { flex: 1; min-width: 0; }
 .bk-rating { font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -41,6 +43,29 @@ export const BLOCKS_CSS = `
 .bk-big { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .bk-stat.tone-ok .bk-big, .bk-stat.tone-danger .bk-big, .bk-stat.tone-accent .bk-big { color: inherit; } .bk-stat[class*=tone-] .muted { color: var(--agui-ink-2); }
 .bk-arrow { margin: 0 8px; color: var(--agui-ink-3); }
+.bk-diff.inline { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.3; }
+.bk-diff.inline b { font-weight: 600; }
+.bk-note.ico { display: flex; align-items: flex-start; gap: 10px; }
+.bk-note.ico > .bk-ico, .bk-diff.inline > .bk-ico { margin-top: -1px; }
+.bk-diff.inline .bk-arrow { margin: 0 4px; }
+.bk-diff .bk-ico { color: var(--agui-ink-3); }
+.bk-diff .bk-small > .bk-ico { display: inline-grid; vertical-align: -4px; margin-right: 6px; }
+.bk-diff + .bk-diff { margin-top: 8px; } .bk-diff.inline + .bk-diff.inline, .bk-note.ico + .bk-note.ico { margin-top: -4px; }
+/* tiles: two or three tall pictures side by side, a name under each and a grey line; the chosen one is ringed with a tick */
+.bk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 12px 10px; }
+.bk-tile { position: relative; display: grid; gap: 6px; align-content: start; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.bk-tile:disabled { cursor: default; }
+.bk-tile-i { position: relative; display: grid; place-items: center; width: 100%; max-height: var(--agui-tile-h, 160px); overflow: hidden; border-radius: 12px;
+  background: var(--agui-soft); color: var(--agui-ink-3); font-size: 22px; font-weight: 600; box-shadow: 0 0 0 1px var(--agui-line); transition: box-shadow .15s; }
+.bk-tile-i > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.bk-tile[aria-pressed=true] .bk-tile-i { box-shadow: 0 0 0 2px var(--agui-ink); }
+.bk-tile[aria-pressed=true] .bk-tile-i::after { content: '\\2713'; position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--agui-ink); color: var(--agui-bg); font-size: 12px; font-weight: 700; }
+@media (hover: hover) { .bk-tile:not(:disabled):hover .bk-tile-i { box-shadow: 0 0 0 2px var(--agui-line-2); } .bk-tile[aria-pressed=true]:not(:disabled):hover .bk-tile-i { box-shadow: 0 0 0 2px var(--agui-ink); } }
+.bk-tile:focus-visible { outline: none; } .bk-tile:focus-visible .bk-tile-i { box-shadow: 0 0 0 3px color-mix(in srgb, var(--agui-link) 45%, transparent); }
+.bk-tile-n { font-size: 14px; font-weight: 500; line-height: 1.25; overflow-wrap: anywhere; }
+.bk-tile-s { display: flex; gap: 4px; align-items: flex-start; font-size: 12px; line-height: 1.3; overflow-wrap: anywhere; }
+.bk-tile-s .bk-ico, .bk-tile-s .bk-ico svg { width: 14px; height: 14px; margin-top: 1px; }
 .bk-steps ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
 .bk-steps li { display: flex; align-items: center; gap: 10px; }
 .bk-steps li.done { color: var(--agui-ink-2); }
@@ -97,6 +122,24 @@ export const BLOCKS_CSS = `
 .bk-num { font-variant-numeric: tabular-nums; color: var(--agui-ink); }
 .bk-track { height: 6px; margin-top: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-soft); overflow: hidden; }
 .bk-track > i { display: block; height: 100%; border-radius: inherit; background: var(--agui-link); }
+.bk-track:has(> b) { position: relative; overflow: visible; } .bk-track > b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--agui-warn); }
+.bk-barlist.ink .bk-track > i { background: var(--agui-ink); }
+/* a timeline: a mark in a small circle, a title and a grey line, the time on the right; hairlines between */
+.bk-tl { list-style: none; margin: 0; padding: 0; }
+.bk-tl-i { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px 0; }
+.bk-tl-i + .bk-tl-i { border-top: 1px solid var(--agui-line); }
+.bk-tl-m { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--agui-soft); color: var(--agui-ink-2); font-size: 11px; font-weight: 600; }
+.bk-tl-i.tone-ok .bk-tl-m { background: color-mix(in srgb, var(--agui-ok) 20%, transparent); color: var(--agui-ok-ink, var(--agui-ink)); }
+.bk-tl-t { display: grid; gap: 1px; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+.bk-tl-t > .bk-strong { font-size: 14px; color: var(--agui-ink); }   /* the tone shows in the mark only */
+.bk-tl-ms { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bk-tl-b { display: grid; gap: 8px; margin-top: 8px; }   /* blocks under a step's line (bars, a fold) */
+/* more for a developer: a line that opens what is under it */
+.bk-details-l { display: inline-flex; gap: 6px; align-items: center; min-height: 32px; padding: 0; border: 0; background: none; color: var(--agui-ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+.bk-details-l .chev { transition: transform .2s; } .bk-details-l[aria-expanded=true] .chev { transform: rotate(90deg); }
+@media (pointer: coarse) { .bk-details-l { min-height: 44px; } }
+.bk-details-b { display: grid; gap: 12px; padding-top: 4px; }
+.bk-code { margin: 0; padding: 10px 12px; border-radius: var(--agui-radius-sm); background: var(--agui-soft); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--agui-ink); }
 .bk-stack { display: flex; gap: 2px; height: 12px; }
 .bk-stack > i { min-width: 2px; }
 .bk-stack > i:first-child { border-radius: 4px 0 0 4px; } .bk-stack > i:last-child { border-radius: 0 4px 4px 0; } .bk-stack > i:only-child { border-radius: 4px; }

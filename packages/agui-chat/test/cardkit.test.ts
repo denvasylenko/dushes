@@ -194,6 +194,19 @@ describe('card kit: questions', () => {
 })
 
 describe('card kit: field card, review, confirm', () => {
+  it('a filled card names every field that was set; four or more are counted first', async () => {
+    const row = (name: string, label: string) => ({ name, label, kind: 'text', value: 'x', display: 'x', previous: null, previous_display: null, reveal: [] })
+    for (const [rows, line] of [
+      [[row('a', 'Barber'), row('b', 'Hair wash'), row('c', 'Styling')], 'Filled in \u00b7 Barber, Hair wash, Styling'],
+      [[row('a', 'Loan term'), row('b', 'Life insurance'), row('c', 'Purpose'), row('d', 'Amount')], 'Filled in \u00b7 4 fields: Loan term, Life insurance, Purpose, Amount'],
+    ] as const) {
+      const { el } = await chatWith(run(interrupt({ type: 'set_fields', card_id: 'c', changes: [...rows] })))
+      ;($(el, '.card .btn.pri') as HTMLButtonElement).click()
+      await tick(5)
+      expect($(el, '.card .ok-line .fold-t').textContent).toBe(line)        // up to two lines, not one cut short
+      el.remove()
+    }
+  })
   it('consents start unticked and the button says what is missing', async () => {
     const { el, applyChanges } = await chatWith(run(interrupt({ type: 'set_fields', card_id: 'c', changes: [
       { name: 'c_credit', label: 'Credit check', kind: 'bool', value: true, display: 'yes', consent: true, required: true, doc: { text: 'We check your history.' } },

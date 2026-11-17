@@ -18,7 +18,7 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: true,
     lib: {
-      entry: { 'agui-chat': 'src/index.ts', formguide: 'src/formguide/index.ts', react: 'src/react.ts', 'react-hook-form': 'src/rhf.ts', highlight: 'src/highlight.ts' },
+      entry: { 'agui-chat': 'src/index.ts', formguide: 'src/formguide/index.ts', react: 'src/react.ts', 'react-hook-form': 'src/rhf.ts', highlight: 'src/highlight.ts', 'blocks-view': 'src/blocks-view.ts' },
       formats: ['es'],
     },
     rollupOptions: { external: ['react', 'react/jsx-runtime'] },

@@ -27,6 +27,13 @@ app = create_app(Path(os.environ.get("DEMO_CONFIG") or HERE / "formguide.yaml"),
                  debug=os.environ.get("DEMO_DEBUG", "1") != "0")
 guide = app.state.guide
 
+# A tool that always fails, for the QA scenarios about what the assistant says after a tool error. Only on a
+# stand that asks for it; the public demo never has it.
+if os.environ.get("DEMO_FAILING_TOOL") == "1":
+    from .skill_tools import check_promo_code  # noqa: E402
+
+    guide._tools.append(check_promo_code)
+
 # ===================================================================== mock form backend
 
 java = APIRouter(prefix="/java")

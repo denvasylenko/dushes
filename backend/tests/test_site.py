@@ -555,3 +555,26 @@ def test_a_spoken_question_gets_whole_pages_before_the_first_model_call(site, gu
     assert "Whole pages (already read for you" in system and '<page path="/faq">' in system
     assert system.count("<page path=") <= 3
     assert "will HEAR your answer" not in system and "will HEAR your answer" in model.calls[-1][-1].content
+
+
+def test_a_line_that_names_another_page_never_goes_to_the_form_agent_first(site, guide, model, monkeypatch):
+    """The owner at the local demo (2026-11-17), inside the loan form: "can you open car insurance", "now, can you
+    open car insurance tab", "yeah, I said car insurance". The form agent, which does not see the site, answered
+    three times that the form has no such section. A prompt line telling it to hand such a line back did not work
+    (the QA Lead: 0 of 3 before and after), so it is decided in code: the site's own agent gets the line."""
+    st = form_state(guide)
+    for line in ("Okay, can you open car insurance", "Now, can you open car insurance tab", "Yeah, I said car insurance"):
+        assert site.route(line, st) == "site", line
+        assert site._by_rule(line, st, "v-title") == "site", line          # and in a talking conversation
+    assert site.route("the loan amount is 900 000", st) == "form"         # the form's own business is unchanged
+    assert site.route("a car loan please", st) != "site"                  # "Car loan" is a part of a page, not a page
+    seen = []
+
+    async def form_run(thread_id, **kw):
+        seen.append(thread_id)
+        yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": "r"}
+    monkeypatch.setattr(site.forms, "run", form_run)
+    model.script = [say("", ("n1", "navigate", {"path": "/insurance"})), say("Here is Car insurance.")]
+    ev = run(site, "title-1", message="Okay, can you open car insurance", state=st)
+    assert not seen                                                        # the form agent was not asked
+    assert [e["value"]["path"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "site_directive"] == ["/insurance"]

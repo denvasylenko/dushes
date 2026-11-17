@@ -79,6 +79,7 @@ public final class AudioVoiceEngine: VoiceEngine {
         nonisolated(unsafe) let input = engine.inputNode
         let processing = voiceProcessing
         try await Task.detached(priority: .userInitiated) { try input.setVoiceProcessingEnabled(processing) }.value
+        speakerUnlessHeadphones()                             // voice processing re-routes to the earpiece
         if cancelled { link.cancel(); await transport.close(); throw CancellationError() }
         engine.attach(player)
         engine.attach(pace)
@@ -157,14 +158,18 @@ public final class AudioVoiceEngine: VoiceEngine {
         report("wired mic \(Int(micFormat.sampleRate)) Hz, out \(Int(engine.outputNode.inputFormat(forBus: 0).sampleRate)) Hz × \(engine.outputNode.inputFormat(forBus: 0).channelCount), engine \(engine.isRunning), player \(player.isPlaying)")
     }
 
-    /// The loudspeaker, unless headphones or a car are connected: `.voiceChat` alone talks into the earpiece.
-    private func speakerUnlessHeadphones() {
+    /// The loudspeaker, unless headphones or a car are connected: `.voiceChat` alone talks into the earpiece, and the
+    /// system drops the override on every route change (voice processing, a short sound's session, a call, AirPods)
+    /// — the owner 17.11: "like talking on the phone". So it is set again after each one (`watchSystem`).
+    private func speakerUnlessHeadphones(_ why: String = "") {
         let session = AVAudioSession.sharedInstance()
+        let before = session.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ",")
         let external = session.currentRoute.outputs.contains {
             [.headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .carAudio, .airPlay, .usbAudio].contains($0.portType)
         }
         if !external { try? session.overrideOutputAudioPort(.speaker) }
-        report("route " + session.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ","))
+        let after = session.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ",")
+        report("route \(before) → \(after)\(why.isEmpty ? "" : " (" + why + ")")")
     }
 
     private var mixerPeak: Float = 0
@@ -369,6 +374,17 @@ public final class AudioVoiceEngine: VoiceEngine {
         })
         observers.append(nc.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.report("end: media services reset"); await self?.end() }
+        })
+        // any route change while talking: the loudspeaker again (the override is gone after it), unless the change
+        // is our own override or headphones / Bluetooth / a car took the sound
+        observers.append(nc.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
+            let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
+            let reason = raw.flatMap(AVAudioSession.RouteChangeReason.init)
+            guard reason != .override else { return }
+            Task { @MainActor in
+                guard let self, self.running else { return }
+                self.speakerUnlessHeadphones("route change \(raw ?? 0)")
+            }
         })
         // headphones in or out, voice processing taking over: the engine stops — wire it again, the talk goes on
         observers.append(nc.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in

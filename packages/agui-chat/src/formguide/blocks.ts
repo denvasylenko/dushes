@@ -83,7 +83,15 @@ const ICON: Record<string, string> = {
   chat: 'M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z',
   check: 'M5 12.5l4.5 4.5L19 7',
   next: 'M9 5l7 7-7 7',
+  'eye-off': 'M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7-.5 1.2-1.3 2.4-2.4 3.5M6.6 6.6C4.6 7.9 3 9.9 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5.1-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2',
+  picture: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM4 16l5-5 4 4 3-3 4 4M15.5 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3',
+  palette: 'M12 21a9 9 0 1 1 9-9c0 2.2-1.8 3-3.5 3H16a2 2 0 0 0-1.5 3.3c.6.7.2 2.7-2.5 2.7zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01',
+  lock: 'M7 11V8a5 5 0 0 1 10 0v3M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z',
+  type: 'M3 18l4.5-12L12 18M4.7 14h5.6M14.5 10.6c.6-.9 1.6-1.6 2.9-1.6 1.8 0 3.1 1.3 3.1 3.2V18M20.5 14c-.9-.6-2-.9-3.1-.9-1.7 0-2.9 1-2.9 2.4S15.6 18 17 18c1.6 0 2.8-.8 3.5-2',
 }
+/** A step's time: 380 ms, 3.1 s. */
+const timeOf = (ms: number, c: RendererContext): string => !Number.isFinite(ms) ? '' : ms < 1000 ? `${Math.round(ms)} ms`
+  : `${new Intl.NumberFormat(c.chat.lang || undefined, { maximumFractionDigits: 1 }).format(ms / 1000)} s`
 const icon = (name: string): HTMLElement => {
   const s = h('span', { class: 'bk-ico', 'aria-hidden': 'true' })
   if (ICON[name]) s.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON[name]}"/></svg>`
@@ -208,7 +216,11 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
     case 'title':
       return h('div', { class: 'bk-title', part }, h('div', { class: 'card-q' }, str(b.text)), b.subtitle ? h('div', { class: 'muted' }, str(b.subtitle)) : null)
     case 'text': { const e = md(b.text, `bk-text${tone(b.tone)}`); e.setAttribute('part', part); return e }
-    case 'note': { const e = md(b.text, 'bk-note muted'); e.setAttribute('part', part); return e }
+    case 'note': {   // with `icon`: a statement with its glyph ("Photo at the top: kept"), as a line, not a key and a value
+      const e = md(b.text, `bk-note muted${b.icon ? ' ico' : ''}`); e.setAttribute('part', part)
+      if (b.icon) e.prepend(icon(str(b.icon)))
+      return e
+    }
     case 'row':
       return h('div', { class: `bk-row${tone(b.tone)}`, part }, b.icon ? icon(str(b.icon)) : null,
         h('span', { class: 'bk-label' }, str(b.label)), h('span', { class: 'bk-value' }, str(b.value)))
@@ -223,7 +235,7 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       const src = safeUrl(b.image, true)
       const rating = Number(b.rating)
       return h('div', { class: 'bk-place', part },
-        src ? h('img', { src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : h('span', { class: 'bk-avatar' }, str(b.title).slice(0, 1).toUpperCase()),
+        src ? h('img', { src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer', class: str(b.ratio) === '3:4' ? 'tall' : undefined }) : h('span', { class: 'bk-avatar' }, str(b.title).slice(0, 1).toUpperCase()),
         h('div', { class: 'bk-place-t' }, h('div', { class: 'bk-strong' }, str(b.title)),
           b.subtitle ? h('div', { class: 'muted' }, str(b.subtitle)) : null),
         Number.isFinite(rating) && rating > 0 ? h('span', { class: 'bk-rating' }, `★ ${rating.toFixed(1)}`) : null)
@@ -232,9 +244,12 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       return h('div', { class: `bk-stat${tone(b.tone)}`, part }, h('div', { class: 'bk-big' }, str(b.value)), b.label ? h('div', { class: 'muted' }, str(b.label)) : null,
         b.change ? h('div', { class: `bk-change${tone(b.changeTone ?? (String(b.change).trim().startsWith('-') ? 'danger' : 'ok'))}` }, str(b.change)) : null, sparkline(b.spark))
     case 'chart': return chartBlock(b, c)
-    case 'diff':
-      return h('div', { class: 'bk-diff', part }, b.label ? h('div', { class: 'muted bk-small' }, str(b.label)) : null,
-        h('div', null, h('s', { class: 'muted' }, str(b.from)), h('span', { class: 'bk-arrow', 'aria-hidden': 'true' }, '→'), h('b', null, str(b.to))))
+    case 'diff': {
+      const was = [h('s', { class: 'muted' }, str(b.from)), h('span', { class: 'bk-arrow', 'aria-hidden': 'true' }, '→'), h('b', null, str(b.to))]
+      // `inline`: the label and the change on one line, like a row ("Top of the site: a picture → text")
+      if (b.inline) return h('div', { class: 'bk-diff inline', part }, b.icon ? icon(str(b.icon)) : null, h('div', null, b.label ? h('span', null, `${str(b.label)}: `) : null, ...was))
+      return h('div', { class: 'bk-diff', part }, b.label ? h('div', { class: 'muted bk-small' }, b.icon ? icon(str(b.icon)) : null, str(b.label)) : null, h('div', null, ...was))
+    }
     case 'steps': {
       const items = list(b.items)
       const left = items.filter((x) => !x.done).length
@@ -404,6 +419,52 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       out?.addEventListener('click', () => void go({ id: 'none', ...none }, str(none!.label)))
       return h('div', { class: 'bk-pick', part }, h('div', { class: 'bk-pick-l', role: 'group' }, rows), out)
     }
+    case 'tiles': {   // a choice of pictures side by side (looks of a page, rooms): a tap answers; the chosen one is ringed
+      const ratio = /^\d+:\d+$/.test(str(b.ratio)) ? str(b.ratio).replace(':', ' / ') : '9 / 16'
+      const tiles = list(b.items).map((x) => {
+        const name = str(x.label ?? x.title)
+        const src = safeUrl(x.image, true)
+        const pic = h('span', { class: 'bk-tile-i', style: `aspect-ratio: ${ratio}` }, str(name).trim().slice(0, 1).toUpperCase())
+        if (src) {   // a picture that does not load leaves its place and the name's letter, never a broken image
+          const img = h('img', { src, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) as HTMLImageElement
+          img.addEventListener('error', () => img.remove())
+          pic.append(img)
+        }
+        const tile = h('button', { class: 'bk-tile', part: 'tile', type: 'button', 'aria-pressed': x.selected ? 'true' : 'false', 'aria-label': [name, str(x.note)].filter(Boolean).join(', ') },
+          pic, h('span', { class: 'bk-tile-n' }, name), x.note ? h('span', { class: 'bk-tile-s muted' }, x.noteIcon ? icon(str(x.noteIcon)) : null, str(x.note)) : null)
+        tile.addEventListener('click', async () => {
+          const id = str(x.id) || name
+          if (onAction && await onAction(id, name, { ...values })) return   // the host handled it
+          if (!answer) return void c.chat.send(name)   // a display card: the tile speaks for the user
+          for (const t of wrap.children) t.setAttribute('aria-pressed', t === tile ? 'true' : 'false')
+          tile.dataset.picked = ''
+          answer(id, name, { ...values }, x)
+        })
+        return tile
+      })
+      const wrap = h('div', { class: 'bk-tiles', part, role: 'group', 'aria-label': str(b.label) || null }, tiles)
+      return tiles.length ? wrap : null
+    }
+    case 'timeline': {   // what happened, in order: a mark (a number or a letter), a title, a grey line, the time on the right
+      const items = list(b.items)
+      return items.length ? h('ol', { class: 'bk-tl', part }, items.map((x, i) => h('li', { class: `bk-tl-i${tone(x.tone)}` },
+        h('span', { class: 'bk-tl-m', 'aria-hidden': 'true' }, str(x.mark ?? i + 1).slice(0, 2)),
+        h('span', { class: 'bk-tl-t' }, h('span', { class: 'bk-strong' }, str(x.label)), x.detail ? md(x.detail, 'muted bk-small') : null,
+          Array.isArray(x.blocks) && x.blocks.length ? blocksCard({ blocks: x.blocks }, c, answer, onAction, h('div', { class: 'bk-tl-b' })) : null),
+        x.ms != null && x.ms !== '' ? h('span', { class: 'bk-tl-ms muted bk-small' }, timeOf(Number(x.ms), c)) : null))) : null
+    }
+    case 'details': {   // more for whoever wants it (a developer's view): a line that opens the blocks under it
+      const inner = h('div', { class: 'bk-details-b', hidden: !b.open })
+      blocksCard({ blocks: b.blocks }, c, answer, onAction, inner)
+      const toggle = h('button', { class: 'bk-details-l', type: 'button', 'aria-expanded': b.open ? 'true' : 'false' }, str(b.label), h('span', { class: 'chev', 'aria-hidden': 'true' }, '\u203a'))
+      toggle.addEventListener('click', () => { inner.hidden = !inner.hidden; toggle.setAttribute('aria-expanded', String(!inner.hidden)) })
+      return h('div', { class: 'bk-details', part }, toggle, inner)
+    }
+    case 'code': {   // a short monospace text (a payload, a table of variants), as written
+      const pre = h('pre', { class: 'bk-code', part })
+      pre.textContent = typeof b.text === 'string' ? b.text : JSON.stringify(b.value ?? b.text ?? '', null, 2)
+      return pre
+    }
     case 'links': {   // a link without a value (no phone given) is left out; no links, no block
       const items = list(b.items).filter((x) => x.value != null && x.value !== '')
       return items.length ? h('div', { class: 'bk-links', part }, items.map((x) => linkEl(x, c))) : null
@@ -428,6 +489,12 @@ export function blocksRenderer(it: Interrupt, c: RendererContext, fill?: BlocksF
   const fold = (label: string): HTMLElement => {
     const head = [...body.querySelectorAll('.bk-title, .bk-place')].slice(0, 1).map((x) => x.cloneNode(true))
     // a row picked from a list stays as it was, same width, a tick in place of its chevron: the feed does not jump
+    const tiles = body.querySelector('.bk-tile[data-picked]')?.parentElement?.cloneNode(true) as HTMLElement | undefined
+    if (tiles) {
+      tiles.querySelectorAll('button').forEach((t) => { (t as HTMLButtonElement).disabled = true })
+      shell.replaceChildren(...head, tiles)
+      return tiles
+    }
     const picked = body.querySelector<HTMLButtonElement>('.bk-pick-row[data-picked]')?.cloneNode(true) as HTMLButtonElement | undefined
     if (picked) {
       picked.disabled = true

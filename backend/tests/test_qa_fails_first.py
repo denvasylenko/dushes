@@ -320,3 +320,45 @@ def test_a_reply_over_the_word_limit_fails_max_words():
     assert ok("The rate is 21.9% a year.", "Next is the term.") is True
     assert ok("The rate is 21.9% a year, and the form still needs your purpose, your term, your income and your employer.") is False
     assert ok() is False   # no reply at all is not a short reply
+
+
+def test_a_tool_called_more_than_once_after_its_error_fails_max_calls():
+    import evals
+    sc = _bar("x", max_calls={"check_promo_code": 2})
+    def ok(n):
+        v = _visit([])
+        v.tools = [("check_promo_code", {"code": "SPRING15"})] * n
+        return next(c["ok"] for c in evals.checks(sc, v) if c["check"].startswith("calls check_promo_code"))
+    assert ok(1) is True and ok(2) is True and ok(3) is False
+
+
+def test_a_page_refused_from_a_form_fails_opens_or_offers():
+    import evals
+    sc = evals.load_scenario(evals.EVALS / "insist_page_from_form.yaml")
+    def ok(path, last, chips=()):
+        v = _visit([], [("m", last)])
+        v.path, v.suggestions = path, list(chips)
+        return next(c["ok"] for c in evals.checks(sc, v) if c["check"].startswith("opens /insurance"))
+    assert ok("/insurance", "Here is car insurance.") is True
+    assert ok("/apply", "Car insurance is on another page. Want me to open it?") is True
+    assert ok("/apply", "There is no car insurance in this application.") is False
+
+
+def test_a_line_with_no_words_after_it_fails_answers_every_turn():
+    import evals
+    sc = _bar("x", answers_every_turn=True)
+    def ok(*log):
+        return next(c["ok"] for c in evals.checks(sc, _visit(list(log))) if c["check"] == "every line gets words back")
+    assert ok("\n\U0001f464 a", "\U0001f916 yes", "\n\U0001f464 b", "\U0001f916 done") is True
+    assert ok("\n\U0001f464 a", "   \U0001f0cf card", "\U0001f916 — Haiku · 1 s") is False   # only the label: silence
+    assert ok("\n\U0001f464 a", "\U0001f916 ok", "\n\U0001f464 b") is False
+
+
+def test_a_move_on_an_unclear_turn_fails_no_moves_on():
+    import evals
+    sc = _bar("x", no_moves_on=["contract step"])
+    def ok(*log):
+        return next(c["ok"] for c in evals.checks(sc, _visit(["\n\U0001f464 In contract step open all sections", *log])) if c["check"].startswith("moves nothing"))
+    assert ok("\U0001f916 Which step do you mean by contract?") is True
+    assert ok("   \U0001f526 highlight acc_personal", "\U0001f916 Personal details, Passport.") is False
+    assert ok('   ⚙ focus_field({"name": "acc_personal"})') is False

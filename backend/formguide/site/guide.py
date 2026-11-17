@@ -311,6 +311,13 @@ class Dushes:
                 return True
         return False
 
+    def _titled(self, message: str, here: Any) -> Any:
+        """The page (other than this one) whose whole title is said in the message, the longest such title."""
+        text = " " + " ".join(re.findall(r"\w+", (message or "").lower())) + " "
+        hits = [p for p in self.site.pages if not (here and p.path == here.path)
+                and (t := " ".join(re.findall(r"\w+", p.title.lower()))) and f" {t} " in text]
+        return max(hits, key=lambda p: len(p.title)) if hits else None
+
     def _with_page(self, form: dict[str, Any], state: dict[str, Any], form_id: str | None = None) -> dict[str, Any]:
         """The form's state with the facts of the page it sits on (the site map's text for that page), so the form
         agent can answer from the page too. A host's own `page` in the form state is kept."""
@@ -339,6 +346,12 @@ class Dushes:
             if _HERE.search(text) or names_a_field(message, state.get("form") or {}):
                 return "form"   # "take me there", "open the income section": a place in this form
             return "unclear"
+        if self._titled(message, here):
+            # another page of the site, said by its whole title ("can you open car insurance", "I said car
+            # insurance"): Dushes sees the site and the form agent does not, so the form agent is never the first
+            # to get such a line. Decided here, in code: told to hand such a line back, the form agent answered
+            # "there is no such section in this form" instead, and argued on a repeat (the QA Lead, 2026-11-17)
+            return "site"
         if _NAV_OTHER.search(text):
             return "unclear"   # a move in another language, or a form section: the model decides
         if _BUSINESS.search(text):

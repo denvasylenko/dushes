@@ -6,7 +6,7 @@ Cards of the host's own, composed from small blocks that look like the chat's ow
 ## Requirements
 
 ### Requirement: Cards from blocks
-The widget SHALL render a card of type `blocks` from its `blocks` list, in order. Known blocks are `title`, `text`, `note`, `row`, `image`, `place`, `stat`, `diff`, `steps`, `progress`, `swatches`, `choice`, `field`, `hours`, `preview`, `chart`, `buttons`, `links` and `divider`; consecutive `row` blocks SHALL form one grouped list. An unknown block SHALL be skipped. Colours SHALL come from the theme and a block's `tone` only.
+The widget SHALL render a card of type `blocks` from its `blocks` list, in order. Known blocks are `title`, `text`, `note`, `row`, `image`, `place`, `stat`, `diff`, `steps`, `progress`, `swatches`, `choice`, `field`, `hours`, `preview`, `chart`, `buttons`, `tiles`, `timeline`, `details`, `code`, `links` and `divider`; consecutive `row` blocks SHALL form one grouped list. An unknown block SHALL be skipped. Colours SHALL come from the theme and a block's `tone` only.
 
 #### Scenario: A venue card
 - **WHEN** a card has a `place` block and a `buttons` block with "Yes, mine" and "No"
@@ -25,6 +25,41 @@ A button with an `id` SHALL resolve the card with `{action, label, values}`, whe
 #### Scenario: Picking a palette
 - **WHEN** the user taps a swatch named `palette` and then "Use it"
 - **THEN** the card resolves with `{action: "use", label: "Use it", values: {palette: "<swatch id>"}}`
+
+### Requirement: Tiles
+A `tiles` block SHALL draw its `items` (`id`, `label`, `image?`, `note?`, `noteIcon?`, `selected?`) as pictures side by side at the block's `ratio` (default 9:16), each with its name and an optional grey line under it. A picture that is not https or does not load SHALL leave its place with the name's first letter. `selected` SHALL ring a tile with a tick. A tap SHALL resolve the card with that item's id and keep the tiles in place, the chosen one ringed.
+
+#### Scenario: Three looks of a page
+- **WHEN** the card shows three looks, the current one selected, and the user taps the third
+- **THEN** the card resolves with `{action: "<its id>", label: "<its name>"}` and the third tile is the ringed one
+
+### Requirement: A change with its icon on one line
+A `diff` block with `inline` SHALL draw its `icon?`, its `label` and the old value struck through → the new one on one line. A `place` block with `ratio: "3:4"` SHALL draw its picture as a portrait thumbnail, and a `note` with `icon` SHALL lead with that glyph. The block icons SHALL include `eye-off`, `picture`, `palette` and `type`.
+
+#### Scenario: What a new look changes
+- **WHEN** a card has a `diff` with `inline`, `icon: "picture"`, label "Top of the site"
+- **THEN** one line reads the label, the struck-through old value, an arrow and the new value, after the picture icon
+
+### Requirement: A turn explained
+A `timeline` block SHALL draw its `items` (`label`, `detail?`, `ms?`, `mark?`, `tone?`, `blocks?` drawn under the step's line) in order: a mark (the item's number unless a letter is given), the label, a grey line and the time on the right (ms under a second, seconds above), with hairlines between. A `details` block SHALL show its `label` as a line that opens and closes the `blocks` under it (`open` shows them at first). A `code` block SHALL show `text`, or `value` as indented JSON, in monospace.
+
+#### Scenario: Three steps
+- **WHEN** a timeline has Filter 4 ms, J The decision model 380 ms, A The agent 3100 ms
+- **THEN** the marks read 1, J, A and the times 4 ms, 380 ms, 3.1 s
+
+### Requirement: Bars against a threshold
+A `chart` of kind `barList` with `max` SHALL draw every bar on that fixed scale; with `threshold` it SHALL mark that value on every bar in the warning colour (`--agui-warn`); with `ink` the bars SHALL be in the ink colour.
+
+#### Scenario: Confidence against a threshold
+- **WHEN** a barList has `max: 100`, `threshold: 80` and the values 97 and 3
+- **THEN** the bars fill 97% and 3% of their track and each shows a mark at 80%
+
+### Requirement: Cards outside a chat
+The `blocks-view` module SHALL define `<agui-blocks>`, which draws its `cards` (`[{id?, blocks, selected?}]`) with the chat's own look, light or dark (`scheme`), shows `empty` while there are none, and reports a button's or a tile's tap as `agui:block-action` with `{id, label, card}`. It SHALL NOT be part of the one-script build.
+
+#### Scenario: A host's own panel
+- **WHEN** a page sets `cards` on `<agui-blocks>` and the user taps a button in one
+- **THEN** the page receives `agui:block-action` with that button's id and the card's id, and nothing waits for an answer
 
 ### Requirement: A pick list
 A `picklist` block SHALL draw its `items` (`id`, `title`, `subtitle?`, `image?`, `icon?`) as full-width rows: a tile (the image, the glyph, or the title's first letter), the title, the second line and a chevron, with no row filled or preselected. A tap on a row SHALL resolve the card with that item's id and title and leave only that row, a tick in place of its chevron. `none` SHALL add a plain text choice under the rows that resolves with the id `none`.

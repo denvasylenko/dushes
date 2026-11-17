@@ -41,3 +41,28 @@ A chooser outside the process SHALL receive only the person's phrase and the lab
 #### Scenario: A booking picked by time
 - **WHEN** the person says "open the eight o'clock booking" and the screen lists bookings with guests' names
 - **THEN** the options sent hold the bookings' times and numbers and no name
+
+### Requirement: The layer hands back instead of claiming
+The layer SHALL say that something was opened or set only after the place was found and the form applied the value without complaint. When the place is not there, the value is refused by the form or the server, the person rejects it, or the chooser is not sure which field or value is meant, the turn SHALL go to the agent, and nothing SHALL be said to be done.
+
+#### Scenario: A value the form refuses
+- **WHEN** the layer picks a time slot and the form answers that the slot is taken
+- **THEN** nothing is said to be set, and the agent explains and offers the nearest slot
+
+#### Scenario: Two fields fit
+- **WHEN** the person says "put 18" and both the hour and the number of guests could take it
+- **THEN** nothing is written and the agent asks one question
+
+### Requirement: An order with more in it keeps both parts
+When a line holds an order the layer can carry out and something only the agent can do (a question, a text to write), the order SHALL be carried out and the rest SHALL go to the agent together with what was already done. When the person says right after an action that it was not what they meant, the action SHALL be undone and the agent SHALL ask what was meant.
+
+#### Scenario: Open it and answer
+- **WHEN** the person says "open the booking for three, what did they ask for?"
+- **THEN** that booking opens and the agent answers the question about it
+
+### Requirement: A date is not a place and a name off the screen is the agent's
+A line that holds a date or a weekday SHALL NOT be carried out as a navigation: with a date field on the screen it is a value, otherwise the turn goes to the agent. A line that holds a person's or a company's name that no label on the screen has SHALL go to the agent and SHALL NOT be sent to a chooser. Both are decided in code.
+
+#### Scenario: A weekday alone
+- **WHEN** the person says "put Friday" on a screen with a date field
+- **THEN** the calendar section is not opened, and the line is handled as a value for the date

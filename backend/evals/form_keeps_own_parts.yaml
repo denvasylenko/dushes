@@ -1,0 +1,17 @@
+name: form_keeps_own_parts
+tags: [owner_session, direct_request]
+persona: "A person on the loan application who says a loan type and an amount."
+goal: "Have the loan type and the amount filled by the form assistant."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Car loan, 900 000"
+turns: 2
+# The other side of b148c9b (a message that says another page's whole title goes to Dushes): "Car loan" is a part
+# of a page, not a page's title, and an amount is a value. Both stay with the form assistant.
+scripted:
+  - "A car loan please"
+  - "The loan amount is 900 000"
+expect:
+  answered_by: [form]
+  fields: {loan_type: "auto", loan_amount: 900000}
+min_score: 7

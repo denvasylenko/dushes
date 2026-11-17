@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from . import barber, insurance, loan_rules, loan_spec
+from . import barber, insurance, loan_rules, loan_spec, procurement
 from .lab import LAB
 
 
@@ -25,6 +25,9 @@ FORMS: dict[str, MockForm] = {
     "barber_booking": MockForm("barber_booking", barber.FORM_JSX, barber.compute_config, barber.DOMAIN),
     # the held-out domain of the scenario evals (backend/evals/heldout_*.yaml): no prompt rule is tuned on it
     "car_insurance": MockForm("car_insurance", insurance.FORM_JSX, insurance.compute_config, insurance.DOMAIN),
+    # the owner's untrained domain (CTO, 2026-11-17): in no scenario set or benchmark, nothing tuned on it
+    "procurement_request": MockForm("procurement_request", procurement.FORM_JSX, procurement.compute_config,
+                                    procurement.DOMAIN),
 }
 
 # the Form Lab: the QA library of forms (demo/mock_forms/lab/), served on the Lab site at /lab (demo/lab_site.py)

@@ -126,10 +126,12 @@ export function chartBlock(b: Item, c: RendererContext): HTMLElement {
 
   if (kind === 'barList') {   // a ranking with long names: rows, each a label, its number and a bar
     const data = series[0].data
-    const max = Math.max(...data.map(Math.abs), 1)
-    box.append(h('div', { class: 'bk-barlist' }, labels.map((l, i) => h('div', { class: 'bk-bl' },
+    // `max` fixes the scale (confidence: 100); `threshold` marks a line on every bar; `ink` draws the bars in the ink colour
+    const max = num(b.max) ?? Math.max(...data.map(Math.abs), 1), mark = num(b.threshold)
+    const at = (v: number): string => `${Math.max(0, Math.min(100, (Math.abs(v) / (max || 1)) * 100))}%`
+    box.append(h('div', { class: `bk-barlist${b.ink ? ' ink' : ''}` }, labels.map((l, i) => h('div', { class: 'bk-bl' },
       h('div', { class: 'bk-bl-t' }, h('span', null, l), h('span', { class: 'bk-num' }, f(data[i]))),
-      h('div', { class: 'bk-track' }, h('i', { style: `width: ${(Math.abs(data[i]) / max) * 100}%` }))))))
+      h('div', { class: 'bk-track' }, h('i', { style: `width: ${at(data[i])}` }), mark != null ? h('b', { style: `left: ${at(mark)}`, 'aria-hidden': 'true' }) : null)))))
     return box
   }
 

@@ -1,0 +1,23 @@
+name: bare_year_fills_date
+tags: [owner_session, answers_in_words]
+persona: "A person on the loan application who gives a birthday without the year, then answers the year question with a bare year."
+goal: "Have the date of birth filled at once when the year is given."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Born on 1 July 1991"
+turns: 3
+# The owner's session (CTO, 2026-11-17, screenshot 5): "you didn't set date of birth, 1st July" got a year question
+# shown as a calendar; his answer "1991" got a card for 1 July 1991 that waited for a "yes" (11 s later in his
+# record). Expected: the month and day are known, the year is said: the date is filled at once, with no calendar
+# and no second question. The guest does not tap. Values invented. Fails first.
+scripted:
+  - "Open personal details"
+  - "I was born on the 1st of July"
+  - "1991"
+# The guest closes the year question card and says the year as a message, as the owner did; it taps no card, so the
+# date is in the field only if "1991" fills it at once.
+answers: {birth_date: null}
+expect:
+  fields: {birth_date: "1991-07-01"}
+  never_same_card_twice: true
+min_score: 7

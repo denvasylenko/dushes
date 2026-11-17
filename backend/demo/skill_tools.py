@@ -14,3 +14,12 @@ def check_gift_card(code: str) -> str:
         return f"No gift card {c}. Check the code."
     balance, expiry = _CARDS[c]
     return f"Gift card {c}: balance ${balance}, valid until {expiry}."
+
+
+@tool
+def check_promo_code(code: str) -> str:
+    """Check a promo code for a car insurance quote and return its discount."""
+    # For the QA scenarios only (DEMO_FAILING_TOOL=1 on a test stand, never on the public demo): the tool fails
+    # for every code, the way a partner's service does when it is down, so a scenario can check what the
+    # assistant says after a tool error: one more try at most, then plain words, never "the code is applied".
+    raise RuntimeError("the promo service did not answer")

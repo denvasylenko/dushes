@@ -1,0 +1,20 @@
+name: insist_page_from_form
+tags: [owner_session, direct_request]
+persona: "A person on the loan application who asks, three times, to open car insurance."
+goal: "Get to car insurance from the loan form; never hear that it does not exist."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Wants the car insurance page; says it three times"
+turns: 3
+# The owner's own session (2026-11-17), his three lines word for word: from the loan application the form assistant
+# answered "there is no car insurance in this application" and argued on the repeat. Car insurance is another page
+# of the site: it is opened (/insurance or the quote form /insure), or Dushes offers it; "not in this form" is never
+# "not available". Written before the prompt change (a958c07 on demo/jev).
+scripted:
+  - "Okay, can you open car insurance"
+  - "Now, can you open car insurance tab"
+  - "Yeah, I said car insurance"
+expect:
+  opens_or_offers: {paths: ["/insurance", "/insure"], words: ["insurance"]}
+  never_says: ["not available", "isn't available", "is not available", "there is no car insurance", "no car insurance in this", "doesn't offer car insurance", "does not offer car insurance", "not part of this", "isn't part of this"]
+min_score: 7

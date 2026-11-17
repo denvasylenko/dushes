@@ -1,0 +1,18 @@
+name: details_for_other_form_routed
+tags: [owner_session, direct_request]
+persona: "A person on the barber booking page who, by voice, gives personal details meant for the loan application."
+goal: "Have the details go to the loan application, not to the booking form."
+start: {page: /book, form: barber_booking}
+knows:
+  - "Anna Berg, born 1 July 1992, place of birth Lyon; these are for the loan application"
+turns: 1
+# The owner's voice session (2026-11-17, 18:52, demo/jev): on the booking page he said, as heard, "let's fill
+# personal details, for loan application, I'm <name>, born 1st July '92, place of birth <city>"; the booking form's
+# assistant answered "Your details tab is still locked ... pick a service first". The line names the loan application:
+# it is opened or offered; the booking form's lock is never the answer. Values invented. Run in a voice thread too.
+scripted:
+  - "Okay, let's fill personal details, for loan application, I'm Anna Berg, born 1st July '92, and my place of birth Lyon"
+expect:
+  opens_or_offers: {paths: ["/apply"], words: ["loan", "application"]}
+  never_says: ["pick a service first", "details tab is still locked", "tab is still locked", "choose a service first"]
+min_score: 7

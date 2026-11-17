@@ -1,0 +1,24 @@
+name: details_carry_to_new_form
+tags: [owner_session]
+persona: "A person who gives personal details on one page, then opens the loan application and asks to use them."
+goal: "Have the details said earlier filled into the loan application after it is opened."
+start: {page: /book, form: barber_booking}
+knows:
+  - "Anna Berg, born 1 July 1992; for the loan application"
+turns: 4
+# The owner's voice session (2026-11-17, 18:52-18:53, demo/jev): after "Yeah, open it" moved him to the loan
+# application, "Personal details and information I gave you before" got "I don't have any details from earlier in
+# this chat", and "Check the first message you have" got "I don't see any name". The stored record shows why: the
+# loan form's thread starts empty; the line with the details went to the booking form's thread. Values invented.
+scripted:
+  - "Okay, let's fill personal details, for loan application, I'm Anna Berg, born 1st July '92"
+  - "Yeah, but I meant the loan application"
+  - "Yeah, open it"
+  - "Personal details and the information I gave you before"
+# The guest answers no card: the details are filled only if the assistant uses what was said before.
+answers: {first_name: null, last_name: null, birth_date: null}
+expect:
+  reaches: "/apply"
+  fields: {first_name: "Anna", last_name: "Berg", birth_date: "1992-07-01"}
+  never_says: ["don't have any details", "I don't see any name", "no name or other data", "let's start with your name"]
+min_score: 7

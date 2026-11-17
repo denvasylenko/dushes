@@ -27,6 +27,17 @@ On a page with a form, an explicit move (go to, open the ..., take me) SHALL go 
 - **WHEN** the user on the loan form page writes "a car loan please", which is also a word of the Loans page
 - **THEN** the router model decides form and the UI agent proposes the loan type
 
+### Requirement: A line that names another page goes to Dushes
+On a page with a form, a message that says the whole title of another page of the site SHALL go to Dushes, whatever else it says and whether or not it asks to move. The UI agent, which does not see the site, SHALL NOT be the first to get such a line. This is decided in code, with no model call.
+
+#### Scenario: Car insurance asked from the loan form
+- **WHEN** the person on the loan form says "can you open car insurance", and Car insurance is a page of the site
+- **THEN** Dushes gets the line and opens that page; the UI agent is not asked
+
+#### Scenario: The person insists
+- **WHEN** the person then says "yeah, I said car insurance"
+- **THEN** Dushes gets that line too
+
 ### Requirement: A spoken unclear message is routed by a rule
 In a voice conversation an unclear message SHALL be placed with no model call. A move, a question, words about another page, or an answer to what Dushes just asked or offered SHALL go to Dushes; a message that names a field of the form, and any other statement, SHALL go to the UI agent. Whoever gets the message can still give it to the other in the same run.
 

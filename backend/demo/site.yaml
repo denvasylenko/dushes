@@ -1,4 +1,5 @@
-# The demo site's map: a portal of three local businesses, a bank, a barbershop and a car insurer. It is both the
+# The demo site's map: a portal of three local businesses, a bank, a barbershop and a car insurer, and the staff
+# purchase request of Corran Group. It is both the
 # site's content (what Dushes knows) and its navigation (the only pages, tabs, sections
 # and forms the assistant may open). The demo page (frontend/site.html) renders the same file.
 title: Main Street
@@ -100,6 +101,38 @@ pages:
       - id: how
         title: How it works
         text: Describe your car, the driver and the cover you want; the premium is calculated as you go. Cover can start today or within the next 60 days.
+
+  - path: /procurement
+    title: Purchase request
+    keywords: [purchase, purchase request, procurement, buy, order, supplier, quote, approval, cost centre]
+    description: Corran Group's internal purchase request for staff, with the purchasing policy and its FAQ.
+    form: procurement_request
+    sections:
+      - id: policy
+        title: Purchasing policy
+        text: Every purchase needs a request with a cost centre; the cost centre decides the budget owner, who approves it. Above 5,000 EUR, excluding VAT, a second approver from Finance, Operations or Procurement must approve as well. Above 25,000 EUR, excluding VAT, attach three written quotes from different suppliers. Thresholds apply to the whole request, so splitting one purchase into smaller requests is not allowed.
+      - id: suppliers
+        title: Suppliers
+        text: Buy from a supplier on our list when one offers what you need. A new supplier is checked by Procurement before the first order; give its legal name, VAT number, IBAN, bank and a contact email.
+      - id: conflict
+        title: Conflict of interest
+        text: Declare any personal or financial link between you or a close relative and the supplier, such as ownership, employment or a family tie. A declared link does not stop the request; Procurement decides how it is handled. Not declaring one is a breach of the code of conduct.
+      - id: delivery
+        title: Delivery
+        text: Deliveries go to head office or the warehouse unless you give another address. Suppliers need at least five days, so pick a date at least five days ahead.
+    accordions:
+      - id: faq-approval
+        title: How long does approval take?
+        text: The budget owner answers within two working days. A second approver adds up to two more working days.
+      - id: faq-vat
+        title: Which VAT rate do I choose?
+        text: Most goods and services are 21%. Books, food and some medical goods are 9%. Training by an accredited provider is 0%. If unsure, choose 21%; Finance corrects it on the invoice.
+      - id: faq-urgent
+        title: What if the purchase is urgent?
+        text: Make the request anyway and say why it is urgent in the justification. There is no faster route around the approvals.
+      - id: faq-card
+        title: Can I pay with a company card instead?
+        text: Only below 500 EUR, excluding VAT, and only from a known supplier. Anything else needs a purchase request.
 
   - path: /faq
     title: FAQ

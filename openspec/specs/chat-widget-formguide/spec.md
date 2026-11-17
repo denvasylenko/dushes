@@ -180,12 +180,15 @@ A deferred row SHALL show its label, the proposed option and a muted "after <fie
 - **THEN** the widget applies Make, then Model with the Camry option from the refreshed list, and resumes once
 
 ### Requirement: Folded cards
-After a field-change card is accepted or rejected, its rows SHALL fold into the result line ("✓ Filled in · Make, Year", with Undo while it lasts). Clicking the line SHALL show or hide the rows.
+After a field-change card is accepted or rejected, its rows SHALL fold into the result line ("✓ Filled in · Make, Year", with Undo while it lasts). The line SHALL name every field that was set, on up to two lines; with four or more it SHALL count them first ("Filled in · 4 fields: …"). Clicking the line SHALL show or hide the rows.
 
 #### Scenario: A short thread
 - **WHEN** the user accepts a card with three rows
 - **THEN** the card shows one line with the three labels, and the rows appear on click
 
+#### Scenario: Four fields filled from one line
+- **WHEN** a field-change card sets Loan term, Life insurance, Purpose and Amount and is applied
+- **THEN** its folded line reads "Filled in · 4 fields: Loan term, Life insurance, Purpose, Amount", wrapping to a second line instead of being cut
 ### Requirement: Readable values on cards
 Number values on cards SHALL be formatted for the chat's language with separators from five digits on (1500000 -> "1,500,000" in English), so a four-digit year never gets one, whatever its field is called; a field whose name has the word year, zip, postal, code, pin, phone, id, vin, inn or iban SHALL show any value as written. A reason equal to the value SHALL be hidden. Question text SHALL render inline markdown (bold, italics, code).
 

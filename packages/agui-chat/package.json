@@ -49,6 +49,10 @@
       "types": "./dist/types/highlight.d.ts",
       "import": "./dist/highlight.js"
     },
+    "./blocks-view": {
+      "types": "./dist/types/blocks-view.d.ts",
+      "import": "./dist/blocks-view.js"
+    },
     "./react": {
       "types": "./dist/types/react.d.ts",
       "import": "./dist/react.js"

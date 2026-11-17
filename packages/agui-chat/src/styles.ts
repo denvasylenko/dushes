@@ -334,7 +334,7 @@ input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-c
 .fold { display: flex; gap: 9px; align-items: center; min-width: 0; flex: 1; border: 0; background: none; padding: 0; color: inherit;
   font: inherit; text-align: left; cursor: pointer; }
 .fold { border-radius: var(--agui-radius-sm); }
-.fold span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fold-t { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-align: left; line-height: 1.35; }
 .fold .chev { flex: none; color: var(--agui-ink-3); transition: transform .2s; }
 .fcard.unfolded .fold .chev { transform: rotate(90deg); }
 @media (pointer: coarse) { .fold { min-height: 44px; } }   /* the line opens to every filled field: a full tap target */
