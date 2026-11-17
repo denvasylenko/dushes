@@ -45,6 +45,15 @@ _CAPITAL = re.compile("[A-Z" + chr(0xC0) + "-" + chr(0xDE) + chr(0x400) + "-" + 
 _EDGES = chr(34) + chr(39) + "(,.!?:;"   # what may stand around a word
 
 
+def said_in(label: str, phrase: str) -> bool:
+    """Whether a part's own name is said in the line: every word of it (of three letters or more), by its first
+    five letters. A chooser asked "which part?" names the nearest one even when the line names none of them; a
+    part is opened only when the person said it."""
+    words = [w for w in re.findall(r"[\w']+", (label or "").lower()) if len(w) >= 3]
+    heard = {w[:5] for w in re.findall(r"[\w']+", (phrase or "").lower())}
+    return bool(words) and all(w[:5] in heard for w in words)
+
+
 def has_date(phrase: str) -> bool:
     return bool(_DATE.search(phrase or ""))
 

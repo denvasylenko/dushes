@@ -215,6 +215,20 @@ def test_the_owners_first_tests_of_the_demo(guide, model, monkeypatch):
     ev = run(site_with(guide, named_part), "ow-1", message="open personal details in loan application", state={"page": {"path": "/"}})
     assert len(model.calls) > before and "Apply for a loan." not in text(ev)          # never the page's name as "done"
 
+    # 1a'. what the live demo did next: the chooser, asked "which part?", named the nearest part of that page
+    # ("How applying works") with confidence; a part is opened only when its name was said
+    m = SiteMap.load(SITE)
+    apply_page = m.page("/apply")
+    nearest = Mock(is_command=("yes", 0.98), kind=("go_to", 0.97), section=("/apply", 0.93), names_part=("yes", 0.9),
+                   element=(f"/apply#{apply_page.parts[0].id}", 0.8))
+    model.script = [say("", ("o2", "open_form", {"form_id": "loan_application", "note": "open Personal details"})), say("Opening it.")]
+    before = len(model.calls)
+    ev = run(site_with(guide, nearest), "ow-1b", message="open personal details in loan application", state={"page": {"path": "/"}})
+    assert len(model.calls) > before and apply_page.parts[0].title not in text(ev)
+    assert intent.said_in("Personal details", "open personal details in loan application")
+    assert not intent.said_in("How applying works", "open personal details in loan application")
+    assert intent.said_in("Passport", "open the passport section") and not intent.said_in("Cover levels", "open car insurance")
+
     # 1b. on the form's page: the part of the form is opened by the form's own step, with no model call
     on_form = Mock(is_command=("yes", 0.98), kind=("show", 0.9), form_part=("acc_personal", 0.92), names_part=("yes", 0.9))
     before = len(model.calls)

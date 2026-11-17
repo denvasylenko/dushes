@@ -668,9 +668,13 @@ class Dushes:
             path, _, pid = picks["element"].id.partition("#")
             ppage = self.site.page(path)
             part = ppage.part(pid) if ppage else None
+            if part and not _intent.said_in(part.title, message):
+                ppage, part = None, None              # the nearest part, not the one that was said
         names_part = "names_part" in picks and picks["names_part"].id == "yes"
         value = picks.get("value") if ov is not None else None
         form_part = picks.get("form_part") if ov is not None else None
+        if form_part and not _intent.said_in(next((o.label for o in qs["form_part"].options if o.id == form_part.id), ""), message):
+            form_part = None
         out: dict[str, Any] | None = None
         if kind.id == "set_value" or (not page and not part and not form_part and value):
             # "select the terrace" may come as an order to go: with no place named and a value named, it is a value
