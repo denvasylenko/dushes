@@ -1,0 +1,19 @@
+name: voice_page_by_keyword
+tags: [owner_session, direct_request]
+persona: "A person on the loan application who, by voice, asks for the insurance page by a keyword, not its title."
+goal: "Get to car insurance from the loan form by saying 'the insurance page' or 'insurance prices'."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Wants the car insurance page; names it by a keyword"
+turns: 2
+# Owner (2026-11-17): in a talking thread an unclear line is placed by a rule that asks first whether it names a
+# field of this form; "insurance" matches the loan form's own labels (Life insurance, Insurance company), so the
+# line goes to the form assistant. b148c9b makes another page's WHOLE title win; a keyword or a paraphrase still
+# loses. Run it in a voice thread (EVAL_VOICE_ALL=1 with EVAL_VOICE_PREFIX on a VOICE_AS_IF stand). Fails first.
+scripted:
+  - "open the insurance page"
+  - "I mean insurance prices, for my car"
+expect:
+  opens_or_offers: {paths: ["/insurance", "/insure"], words: ["insurance"]}
+  never_says: ["not available", "isn't available", "there is no car insurance", "there's no car insurance", "no car insurance in this", "not part of this"]
+min_score: 7
