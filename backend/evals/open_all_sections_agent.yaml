@@ -1,0 +1,21 @@
+name: open_all_sections_agent
+tags: [owner_session, answers_in_words]
+persona: "A person on the loan application, Applicant tab, every section folded, who asks three times to open all sections."
+goal: "Have every section of the tab on the screen opened at the first request."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Wants every section of the Applicant tab open"
+turns: 3
+# The owner's session (CPO via Owner TL, 2026-11-17), his three lines word for word. The agent alone (run with
+# INTENT_LAYER=0, so the choice layer does not do it) answered that it can open one section at a time. Expected: the
+# first line opens all five sections of the Applicant tab and never says it cannot. Owner TL changed the rule and the
+# focus tool's description in demo/jev 1f9388d and 6713892. Fails first on the owner's build. The form demo alone:
+# scripts/form_alone_check.py --case open_all.
+scripted:
+  - "Open all sections"
+  - "Yeah, but like all sections"
+  - "Yeah, but like I told you, in applicant, open all sections"
+expect:
+  opens_all_on: {"^\\W*Open all sections": [acc_personal, acc_passport, acc_addresses, acc_contacts, acc_education]}
+  never_says: ["can't open", "cannot open", "one at a time", "only one section", "can't expand", "cannot expand"]
+min_score: 7

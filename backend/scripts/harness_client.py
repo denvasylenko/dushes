@@ -47,6 +47,8 @@ class Session:
         self.answer: str | None = None   # how to answer a question card: an option label (or text); None = skip
         self.tools: list[tuple[str, Any]] = []
         self.ctx_tokens = 0
+        self.cost_usd = 0.0   # the runs' own cost_usd from run_stats (usage x the price list), when the route sends it
+        self.tokens_io = [0, 0]   # input / output tokens from run_stats
         self.to_attach: list[dict] = []
 
     # ------------------------------------------------------------ form backend
@@ -125,6 +127,9 @@ class Session:
                 self.ctx_tokens = e["value"]["stats"]["context_tokens"]
             elif name == "run_stats":
                 s = e["value"]
+                self.cost_usd += float(s.get("cost_usd") or 0)
+                self.tokens_io[0] += int((s.get("tokens") or {}).get("input") or 0)
+                self.tokens_io[1] += int((s.get("tokens") or {}).get("output") or 0)
                 ttft = f"{s['ttft_ms'] / 1000:.1f}s" if s.get("ttft_ms") is not None else "-"
                 self.log.append(f"   \u23f1 first token {ttft}, run {s['total_ms'] / 1000:.1f}s, "
                                 f"tools {len(s['tools'])}, tokens {s['tokens'].get('input')}/{s['tokens'].get('output')}")
