@@ -41,7 +41,7 @@ A `diff` block with `inline` SHALL draw its `icon?`, its `label` and the old val
 - **THEN** one line reads the label, the struck-through old value, an arrow and the new value, after the picture icon
 
 ### Requirement: A turn explained
-A `timeline` block SHALL draw its `items` (`label`, `detail?`, `ms?`, `mark?`, `tone?`) in order: a mark (the item's number unless a letter is given), the label, a grey line and the time on the right (ms under a second, seconds above), with hairlines between. A `details` block SHALL show its `label` as a line that opens and closes the `blocks` under it (`open` shows them at first). A `code` block SHALL show `text`, or `value` as indented JSON, in monospace.
+A `timeline` block SHALL draw its `items` (`label`, `detail?`, `ms?`, `mark?`, `tone?`, `blocks?` drawn under the step's line) in order: a mark (the item's number unless a letter is given), the label, a grey line and the time on the right (ms under a second, seconds above), with hairlines between. A `details` block SHALL show its `label` as a line that opens and closes the `blocks` under it (`open` shows them at first). A `code` block SHALL show `text`, or `value` as indented JSON, in monospace.
 
 #### Scenario: Three steps
 - **WHEN** a timeline has Filter 4 ms, J The decision model 380 ms, A The agent 3100 ms

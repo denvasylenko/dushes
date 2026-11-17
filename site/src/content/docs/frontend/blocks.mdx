@@ -45,7 +45,7 @@ Compose your own card from these in the [Playground](../playground/) (Your own c
 | `stat` | `value`, `label?`, `tone?`, `change?` ("+12%"; a leading minus turns it red), `spark?: [numbers]` | a big number or date, like a balance, with its change and a sparkline of how it got there |
 | `chart` | `kind` (`bar`, `line`, `area`, `barList`, `stacked`, `meter`), `title?`, `subtitle?`, `unit?`, `data: [{label, value}]` or `labels` + `series: [{name, data}]`, `highlight?`; a meter takes `value`, `max?`, `limit?`, `label?` | a simple chart in the theme's colours, see Charts below; a `barList` also takes `max` (a fixed scale), `threshold` (a mark on every bar) and `ink` |
 | `diff` | `label?`, `from`, `to`, `icon?`, `inline?` | the old value struck through → the new one; with `inline`, the icon, the label and the change on one line |
-| `timeline` | `items: [{label, detail?, ms?, mark?, tone?}]` | steps in order: a mark (its number, or a letter), a title, a grey line, the time on the right; hairlines between |
+| `timeline` | `items: [{label, detail?, ms?, mark?, tone?, blocks?}]` (`blocks` are drawn under the step's line) | steps in order: a mark (its number, or a letter), a title, a grey line, the time on the right; hairlines between |
 | `details` | `label`, `blocks`, `open?` | a line that opens the blocks under it (details for whoever wants them) |
 | `code` | `text`, or `value` (shown as JSON) | a short monospace text |
 | `tiles` | `items: [{id, label, image?, note?, noteIcon?, selected?}]`, `ratio?` (default `9:16`) | pictures side by side (looks of a page, rooms), a name and a grey line under each; a tap answers, the chosen one stays ringed. Use server-rendered pictures, not live pages |

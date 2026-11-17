@@ -133,7 +133,7 @@ export const BLOCKS_CSS = `
 .bk-tl-t { display: grid; gap: 1px; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
 .bk-tl-t > .bk-strong { font-size: 14px; color: var(--agui-ink); }   /* the tone shows in the mark only */
 .bk-tl-ms { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.bk-tl-i > .bk-tl-t > .bk-barlist, .bk-tl-t .bk-chart { margin-top: 6px; }
+.bk-tl-b { display: grid; gap: 8px; margin-top: 8px; }   /* blocks under a step's line (bars, a fold) */
 /* more for a developer: a line that opens what is under it */
 .bk-details-l { display: inline-flex; gap: 6px; align-items: center; min-height: 32px; padding: 0; border: 0; background: none; color: var(--agui-ink-2); font: inherit; font-size: 13px; cursor: pointer; }
 .bk-details-l .chev { transition: transform .2s; } .bk-details-l[aria-expanded=true] .chev { transform: rotate(90deg); }

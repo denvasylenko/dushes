@@ -52,7 +52,7 @@ function summary(d: Decision | undefined, s: RunStats): string {
 }
 
 /** The steps, in order. The filter and the screen have no time of their own, so they show none. */
-function steps(d: Decision | undefined, s: RunStats): Block[] {
+function steps(d: Decision | undefined, s: RunStats, jevBlocks: Block[] = []): Block[] {
   const agentMs = s.models.filter((m) => m.kind === 'agent').reduce((a, m) => a + m.ms, 0)
   if (!d) return [...s.models.map((m) => ({ mark: 'A', label: m.kind === 'agent' ? 'Agent answered' : `Model: ${m.kind}`, detail: m.model ?? undefined, ms: m.ms })),
     ...s.tools.map((x) => ({ mark: 'T', label: `Tool: ${x.name}`, detail: x.error ? 'failed' : undefined, ms: x.ms, tone: x.error ? 'danger' : undefined }))]
@@ -61,7 +61,7 @@ function steps(d: Decision | undefined, s: RunStats): Block[] {
   const jev = d.steps?.find((x) => x.who === 'jev')
   const out: Block[] = [
     { mark: '1', label: 'Filter', detail: `Hidden before sending: ${hidden.length ? hidden.join(', ') : 'nothing'}` },
-    { mark: 'J', tone: 'ok', label: 'Jev read the line', detail: 'Acts on its own only past the line', ms: jev?.ms },
+    { mark: 'J', tone: 'ok', label: 'Jev read the line', detail: 'Acts on its own only past the line', ms: jev?.ms, blocks: jevBlocks },
   ]
   if (d.applied?.length) out.push({ mark: '✓', label: 'On screen', detail: d.applied.map((a) => `${a.what === 'open' ? 'Opened' : 'Filled'} «${a.label}»`).join(' · ') + ' · Undo in the chat' })
   if (d.to_agent) out.push({ mark: '→', label: 'To the agent', detail: [d.to_agent.why ? `Why: ${WHY[d.to_agent.why] ?? d.to_agent.why}` : '',
@@ -71,8 +71,8 @@ function steps(d: Decision | undefined, s: RunStats): Block[] {
 }
 
 /** Jev's answers as bars: how sure it was, against the line; the ones it did not act on say so. */
-const bars = (qs: Question[], th: number | undefined, title?: string): Block => ({
-  type: 'chart', kind: 'barList', ink: true, unit: '%', max: 100, title, threshold: th != null ? th * 100 : undefined,
+const bars = (qs: Question[], th: number | undefined): Block => ({
+  type: 'chart', kind: 'barList', ink: true, unit: '%', max: 100, threshold: th != null ? th * 100 : undefined,
   data: qs.map((q) => ({ label: `${aboutOf(q)}: ${answerOf(q)}${q.used === false ? ' · not sure' : ''}`, value: Math.round((q.p ?? 0) * 100) })),
 })
 
@@ -85,9 +85,9 @@ export function turnCard(t: DecidedTurn, open: boolean): { id: string; blocks: B
   const shown = qs.filter((q) => q.used !== false).sort((a, b) => (b.p ?? 0) - (a.p ?? 0)).slice(0, 5)
   const rest = qs.filter((q) => !shown.includes(q))
   const how: Block[] = [
-    { type: 'timeline', items: steps(d, s) },
-    ...(shown.length ? [bars(shown, d?.threshold, 'How sure Jev was')] : []),
-    ...(rest.length ? [{ type: 'details', label: `All ${qs.length} questions`, blocks: [bars(rest, d?.threshold)] }] : []),
+    // how sure Jev was sits inside its own step, under its line (one heading fewer per card)
+    { type: 'timeline', items: steps(d, s, [...(shown.length ? [bars(shown, d?.threshold)] : []),
+      ...(rest.length ? [{ type: 'details', label: `All ${qs.length} questions`, blocks: [bars(rest, d?.threshold)] }] : [])]) },
     { type: 'details', label: 'Details for developers', blocks: [
       ...s.models.map((m) => ({ type: 'row', label: `${m.kind}${m.model ? ` · ${m.model}` : ''}`, value: `${k(m.input_tokens)} in / ${k(m.output_tokens)} out · ${sec(m.ms)}` })),
       { type: 'row', label: 'Tokens', value: `${k(s.tokens.input)} in, ${k(s.tokens.cache_read)} from cache, ${k(s.tokens.output)} out` },

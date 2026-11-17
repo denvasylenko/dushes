@@ -449,7 +449,8 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       const items = list(b.items)
       return items.length ? h('ol', { class: 'bk-tl', part }, items.map((x, i) => h('li', { class: `bk-tl-i${tone(x.tone)}` },
         h('span', { class: 'bk-tl-m', 'aria-hidden': 'true' }, str(x.mark ?? i + 1).slice(0, 2)),
-        h('span', { class: 'bk-tl-t' }, h('span', { class: 'bk-strong' }, str(x.label)), x.detail ? md(x.detail, 'muted bk-small') : null),
+        h('span', { class: 'bk-tl-t' }, h('span', { class: 'bk-strong' }, str(x.label)), x.detail ? md(x.detail, 'muted bk-small') : null,
+          Array.isArray(x.blocks) && x.blocks.length ? blocksCard({ blocks: x.blocks }, c, answer, onAction, h('div', { class: 'bk-tl-b' })) : null),
         x.ms != null && x.ms !== '' ? h('span', { class: 'bk-tl-ms muted bk-small' }, timeOf(Number(x.ms), c)) : null))) : null
     }
     case 'details': {   // more for whoever wants it (a developer's view): a line that opens the blocks under it
