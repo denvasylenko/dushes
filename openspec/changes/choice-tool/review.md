@@ -22,3 +22,11 @@ this folder are the reworked ones.
 
 Not accepted as written: none. Deferred to its own change: the tool given to the provider's own voice model
 (finding 10's second half).
+
+## Decisions
+
+| Date | Who | Decision |
+| --- | --- | --- |
+| 2026-11-17 | the owner, through the CPO | The direction: the chooser stays in front for direct commands (open, close, go to, scroll) and is a tool for the model where things are unclear. In voice exactly as in text (option A); the tool given to the provider's own voice model is a later step, only if a measurement shows it better. |
+| 2026-11-17 | the owner, through the CPO, on finding 11 (what leaves the process from the tool): "yes, with the filter" | The model may pass the chooser the target's on-screen name. The filter in code is required: a target with a phone, an e-mail, a run of seven or more digits or an item of the host's never-send list is not sent. Bookings and requests are not in this change. |
+| 2026-11-17 | the CPO | The change is accepted. The tool's code is written on the demo branch first, with tests. The QA Lead measures the arms when the code is ready; the measurement's budget waits for the owner's own yes. |
