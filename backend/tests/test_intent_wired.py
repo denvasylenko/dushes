@@ -432,7 +432,7 @@ def test_all_the_sections_of_a_tab_and_a_repeat_goes_to_the_agent(guide, model):
     tab, not the tab. And the same request said again right after the layer answered it is a miss: the agent's."""
     state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": []}}}
     answers = {"is_command": ("yes", 0.9), "kind": ("go_to", 0.9), "asks_move": ("yes", 0.9), "asks_more": ("no", 0.9),
-               "target": ("form:/apply:tab_applicant", 0.9), "all_sections": ("yes", 0.93)}
+               "target": ("form:/apply:tab_applicant", 0.9), "all_sections": ("yes", 0.93), "all_of": ("this:tab_applicant", 0.9)}
     site = site_with(guide, Mock(**answers))
     before = len(model.calls)
     ev = run(site, "all-1", message="Okay, can you please open all of the sections in the applicant tab", state=state)
@@ -461,7 +461,8 @@ def test_all_the_sections_of_a_page_and_an_honest_result_for_the_agent(guide, mo
     chooser now opens every part of the page; and the agent's own tool tells it that one call opens one part."""
     page = faq_page()
     parts = [x for x in page.parts if x.kind in ("accordion", "section")]
-    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), all_sections=("yes", 0.92))
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), all_sections=("yes", 0.92),
+                   all_of=(f"this:{page.path}", 0.9))
     before = len(model.calls)
     ev = run(site_with(guide, chooser), "faq-1", message="In frequently asked question open all sections", state={"page": {"path": page.path}})
     opened = [d.get("tab") or d.get("section") for d in directives(ev)]
@@ -520,8 +521,7 @@ def test_all_the_sections_of_a_place_the_layer_did_not_resolve_is_the_agents(gui
     """QA (2026-11-17), the owner's line: "In contract step open all sections". The form has no step of that name;
     the layer must not open the tab on the screen instead. And the agent can open several parts in one call."""
     state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": []}}}
-    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), all_sections=("yes", 0.95),
-                   other_place=("yes", 0.8))
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), all_sections=("yes", 0.95))   # whose sections: the chooser names none of the places
     model.script = [say("Which step do you mean by the contract step?")] * 3
     before = len(model.calls)
     ev = run(site_with(guide, chooser), "ctr-1", message="In contract step open all sections", state=state)

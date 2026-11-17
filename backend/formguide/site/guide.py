@@ -775,8 +775,27 @@ class Dushes:
             qs["all_sections"] = _intent.Question("noul", "all_sections", "Does the line ask to open all the sections, "
                                                   "every one of them (all the questions, all the parts), of a page?", act="show")
         if "all_sections" in qs:
-            qs["other_place"] = _intent.Question("noul", "other_place", "Does the line name a page, a tab or a step other "
-                                                 "than the one that is on the screen now?", act="show")
+            # whose sections "all the sections" are: the place on the screen, another tab of this form, another page.
+            # A yes / no "does it name another place" was answered no for a step that does not exist (QA, 2026-11-17,
+            # "In contract step open all sections": no 0.74), so the place itself is a choice with "none of these"
+            places: list[Any] = []
+            if ov is not None:
+                on_tabs = [n for n in wide.on_screen if lay.nodes[n].role in ("tab", "step")]
+                for n in lay.nodes.values():
+                    if n.role in ("tab", "step") and n.name and ov.get(n.name) is not None and ov[n.name].visible and ov[n.name].label:
+                        places.append(_intent.Option(("this:" if n.name in on_tabs else "tab:") + n.name,
+                                                     f'the "{ov[n.name].label}" {n.role}' + (" (on the screen now)" if n.name in on_tabs else "")))
+            else:
+                for pg in self.site.pages:
+                    if len([x for x in pg.parts if x.kind in ("accordion", "section")]) >= 2:
+                        mine = bool(here and pg.path == here.path)
+                        places.append(_intent.Option(("this:" if mine else "page:") + pg.path,
+                                                     f'the page "{pg.title}"' + (" (on the screen now)" if mine else ""),
+                                                     " ".join(str(pg.description or "").split())[:90]))
+            if places:
+                qs["all_of"] = _intent.Question("choice", "all_of", "If the line asks to open all the sections of a place, which "
+                                                "place does it name? A step, tab or page that is not listed here is none of these.",
+                                                tuple(places[:40]), act="show")
         context = self._context(thread_id, state, here, ov, lay, pack)
         started = RunStats.now()
         asked: list[dict[str, Any]] = []
@@ -865,15 +884,16 @@ class Dushes:
             every = picks.get("all_sections")
             # "all the sections" of a place other than the one on the screen, which the chooser could not point at:
             # the layer does not open what is on the screen instead
-            other = picks.get("other_place")
-            elsewhere = bool(other and other.id == "yes")
+            whose = picks.get("all_of")                  # the place whose sections are meant; not sure = not one of ours
+            elsewhere = not whose
             if every and every.id == "yes" and every.confidence >= 0.8 and ov is None:
                 # every part of a page of the site (all the questions of the FAQ): of the page the line names, else this one
                 t0 = picks.get("target")
-                path = t0.id.partition(":")[2].partition("#")[0] if t0 and t0.id.startswith(("screen:", "part:")) else (here.path if here else "")
-                page = self.site.page(path) or here
+                path = whose.id.partition(":")[2] if whose else ""
+                page = self.site.page(path) if path else None
                 parts = [x for x in (page.parts if page else []) if x.kind in ("accordion", "section")]
-                if elsewhere and not (t0 and t0.id.startswith(("screen:", "part:"))):
+                if elsewhere or page is None:
+                    stats.trace["why"] = "not_sure"
                     return None                       # the line names a place the layer did not resolve: the agent's
                 what = ("all", page.path if page else "")
                 if len(parts) >= 2 and not _intent.has_date(message) and not self._again(thread_id, what):
@@ -886,8 +906,7 @@ class Dushes:
                 return None                           # "all" asked and the layer cannot do all of it: the agent's turn
             if every and every.id == "yes" and every.confidence >= 0.8 and ov is not None:
                 # "all the sections of the applicant tab": every section of the tab the line names, else of the open one
-                t0 = picks.get("target")
-                tab = t0.id.rpartition(":")[2] if t0 and t0.id.startswith(f"form:{here.path if here else ''}:") else ""
+                tab = whose.id.partition(":")[2] if whose else ""
                 tab = tab if tab in lay.nodes and lay.nodes[tab].role in ("tab", "step") else ""
                 opens = [(n.name, str(ov[n.name].label)) for n in lay.nodes.values()
                          if n.role in ("accordion", "section") and n.name and ov.get(n.name) is not None and ov[n.name].visible
@@ -895,7 +914,8 @@ class Dushes:
                 # QA (2026-11-17, "In contract step open all sections"): the line names a step the layer did not
                 # resolve, and it opened the tab on the screen with confidence. Words beside "all the sections" and
                 # the tab's own name mean a place is named: the agent's turn, which asks which one
-                if elsewhere and not tab:
+                if elsewhere or not tab:
+                    stats.trace["why"] = "not_sure"
                     return None
             if every and every.id == "yes" and every.confidence >= 0.8 and len(opens) < 2:
                 return None                           # "all" asked and the layer cannot name them: the agent's turn
