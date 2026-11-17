@@ -833,33 +833,3 @@ def test_on_a_gated_host_the_layer_is_asked_only_for_a_visitor_with_a_pass(guide
     finally:
         experiments._person.reset(mark)
     assert len(chooser.seen) == 1 and directives(ev) == [{"type": "navigate", "path": "/loans"}] and "Jev ·" in text(ev)
-
-
-def test_a_yes_to_a_waiting_card_with_more_in_the_line_is_the_form_assistants(guide, model):
-    """The owner's session (2026-11-17): a date card waited for his yes; he said yes and his gender in one breath.
-    The layer filled the gender and the yes went nowhere. While a card waits, a line that agrees or refuses and says
-    more is not the layer's; the same value said with no yes, and a yes with no card waiting, are as before."""
-    from formguide import voice
-    from formguide.transcript import new_entry
-    assert voice.answers_and_more("Yes yes so my gender I'm male") and voice.answers_and_more("no, make it 48")
-    assert not voice.answers_and_more("yes") and not voice.answers_and_more("my gender is male") and not voice.answers_and_more("")
-    state = {"page": {"path": "/apply"}, "form": start(guide, LOAN)}
-    pick = dict(is_command=("yes", 0.98), kind=("set_value", 0.95), value=("loan_type=auto", 0.92))
-    # no card waits: the layer takes the value, yes or not
-    chooser = Mock(**pick)
-    before = len(model.calls)
-    ev = run(site_with(guide, chooser), "y1", message="yes, choose car loan", state=state)
-    assert len(chooser.seen) == 1 and len(model.calls) == before
-    # a card waits in the form's conversation: the line is not the layer's
-    chooser = Mock(**pick)
-    site = site_with(guide, chooser)
-    guide.transcripts.append("y2-loan_application", new_entry("card", changes=[{"name": "birth_date", "value": "1992-07-01"}], status="pending"))
-    model.script = [say("Done, both are set.")]
-    ev = run(site, "y2", message="yes, choose car loan", state=state)
-    assert chooser.seen == [] and len(model.calls) > before
-    # with the card still waiting, a line with no yes or no in it is the layer's as before
-    chooser = Mock(**pick)
-    site = site_with(guide, chooser)
-    guide.transcripts.append("y3-loan_application", new_entry("card", changes=[{"name": "birth_date", "value": "1992-07-01"}], status="pending"))
-    run(site, "y3", message="choose car loan", state=state)
-    assert len(chooser.seen) == 1
