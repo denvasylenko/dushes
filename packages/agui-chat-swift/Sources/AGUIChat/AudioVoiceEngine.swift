@@ -37,6 +37,8 @@ public final class AudioVoiceEngine: VoiceEngine {
     /// The microphone runs before the socket is up (CPO 17.11: recording ≤ 0.5 s after the tap): its audio waits here
     /// and goes up in order as soon as the transport is connected (at most 10 s of it).
     private var linked = false
+    /// The diagnostics' first 3 s of the microphone, piece by piece (its frames and level): where its first words go.
+    private var micOnAt: Date?
     private var waiting: [Data] = []
     private var waitingBytes = 0
     /// A line a second about the sound path (the route, what was scheduled, the level at the mixer): for a check on a
@@ -93,6 +95,7 @@ public final class AudioVoiceEngine: VoiceEngine {
         }
         player.play()
         speakerUnlessHeadphones()
+        micOnAt = Date()
         report("microphone on")
         // the link, then what the microphone kept, then the live audio; the server's events from then on
         do {
@@ -235,6 +238,10 @@ public final class AudioVoiceEngine: VoiceEngine {
             return buffer
         }
         guard error == nil, out.frameLength > 0, let samples = out.int16ChannelData?[0] else { return }
+        if let on = micOnAt, Date().timeIntervalSince(on) < 3 {
+            report(String(format: "mic piece in %d → out %d frames, level %.2f%@", Int(buffer.frameLength),
+                          Int(out.frameLength), level, linked ? "" : " (kept)"))
+        }
         var data = Data(bytes: samples, count: Int(out.frameLength) * 2)
         if muted { data = Data(count: data.count) }     // silence, so the talk stays open but hears nothing
         // the host's start sound is not sent (it would be heard as his words)
