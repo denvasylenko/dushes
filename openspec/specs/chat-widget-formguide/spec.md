@@ -152,11 +152,29 @@ On `CUSTOM card_result` with `status: "not_accepted"` the card named by `card_id
 - **THEN** the line shows a cross and the reason, and no Undo
 
 ### Requirement: A date of birth opens on the years
-A date question whose `max` is today (or within the last days) and that has no value yet SHALL open the calendar on the year grid, around 30 years back, so a year, a month and a day are three taps. A `max` further in the past SHALL open on that month.
+A date question with no value yet SHALL open the calendar on the year grid when its `max` is today (or within the last days), 14 or more years back (an age rule such as 18+), or the question gives `start_year`; around `start_year`, else 30 years before `max` today, else 35 years before today. A `max` a few years back (founded before 2020) SHALL open on that month.
 
 #### Scenario: Date of birth
 - **WHEN** the card asks for a date of birth with `max` today
 - **THEN** the calendar shows years, including the year 30 years ago, and year, month, day fill the field
+
+#### Scenario: An age rule
+- **WHEN** the card asks for a date of birth with `max` 18 years ago
+- **THEN** the calendar opens on the years, not on the month 18 years ago
+
+### Requirement: A year alone
+A question with `input.type: "year"`, or a date question with `known: {day, month}`, SHALL show years only: a grid of 12 a page ending at the allowed years, opening on the page of `start_year` (else the latest year), and a field to type the year (Enter answers; out of range shows the range in grey). A tap answers at once: the year, or the whole date from the known day and month.
+
+#### Scenario: Day and month known
+- **WHEN** the card asks for the year with `known: {day: 1, month: 7}` and the user taps 1991
+- **THEN** the field is filled with 1991-07-01 at once
+
+### Requirement: A replaced card shows no controls
+A card replaced by a later message SHALL keep its question, in grey, and the line "Replaced by your message"; its calendar, strip of days and other controls SHALL be hidden, so nothing reads as closed days.
+
+#### Scenario: A calendar card replaced
+- **WHEN** the user types an answer while a calendar card waits
+- **THEN** the card shows only its question in grey and the replaced line
 
 ### Requirement: A number picker pretends no value
 A number question SHALL start at the previous answer, else at `input.value`; with neither, the slider SHALL show an empty track and no number, the stepper a dash, and Set SHALL read "Choose a value" and stay disabled until the user picks (on a stepper, + starts at `min`, − at `max`). A year, a zip or another code (`input.format` `year` or `code`, a field named so, or a whole range within 1000-2999 without a unit) SHALL be shown without thousands separators.

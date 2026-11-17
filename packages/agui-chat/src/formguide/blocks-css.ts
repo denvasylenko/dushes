@@ -194,7 +194,10 @@ export const BLOCKS_CSS = `
 .cal-d:disabled { color: var(--agui-ink-3); opacity: .45; cursor: default; background: none; }
 .cal-years { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .cal-y { min-height: 40px; border: 0; border-radius: var(--agui-radius-sm); background: var(--agui-soft); color: var(--agui-ink); font: 15px/1 var(--agui-font); cursor: pointer; }
-.cal-y.on { background: var(--agui-accent); color: var(--agui-on-accent); font-weight: 600; }
+.cal-y.on { background: var(--agui-ink); color: var(--agui-bg); font-weight: 600; }   /* the chosen one in ink, as a chosen tile */
+.cal-type { margin-top: 10px; width: 100%; box-sizing: border-box; font-variant-numeric: tabular-nums; } .cal-hint:empty { display: none; } .cal-hint { margin-top: 6px; }
+/* a card replaced by a later message folds like an answered one: its question in grey, no calendar, the line why */
+.card.dismissed .cal, .card.dismissed .strip, .card.dismissed .typed-slot { display: none; } .card.dismissed .card-q { color: var(--agui-ink-2); }
 .cal-y:disabled { opacity: .4; cursor: default; }
 .range-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .range-v { font-weight: 600; }

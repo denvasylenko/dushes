@@ -111,7 +111,7 @@ export function optionsView(it: Interrupt, c: RendererContext, options: Opt[], o
 // ---------------------------------------------------------------- typed answers
 
 type Commit = (value: unknown, label: string) => void
-const TYPED = ['date', 'time', 'number', 'address']
+const TYPED = ['date', 'year', 'time', 'number', 'address']
 
 /** The richer control for a typed question (typed.ts, in the blocks script, here once a run has started), or null for
  *  the plain input. Not here yet (a card restored after a reload): an empty slot, filled when the script arrives. */

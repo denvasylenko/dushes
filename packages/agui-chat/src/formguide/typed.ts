@@ -6,7 +6,7 @@
 import { h } from '../dom'
 import type { Interrupt, RendererContext } from '../types'
 import type { Ctx } from './index'
-import { monthCalendar } from './month'
+import { monthCalendar, yearPicker } from './month'
 import { timeGrid } from './dates'
 import { isPlainNumber } from './plain'
 
@@ -14,6 +14,21 @@ import { isPlainNumber } from './plain'
 type Commit = (value: unknown, label: string) => void
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** A year alone: a lone year (`type: "year"`, the answer is the number), or the year of a date whose day and month
+ *  are known (`known: {day, month}`): one tap answers the whole date. */
+function yearOnly(it: Interrupt, c: RendererContext, commit: Commit, input: HTMLInputElement | null): HTMLElement {
+  if (input) input.hidden = true
+  const y = (v: unknown): number | undefined => { const m = /^(\d{4})/.exec(String(v ?? '')); return m ? Number(m[1]) : undefined }
+  const known = it.input?.known as { day?: number; month?: number } | undefined
+  const prev = y(it.previous)
+  return yearPicker({ min: y(it.input?.min), max: y(it.input?.max), startYear: Number(it.input?.start_year) || undefined, value: prev ?? null, t: c.t,
+    onPick: (year) => {
+      if (!known?.day || !known.month) return commit(year, String(year))
+      const d = new Date(year, known.month - 1, known.day)
+      commit(iso(d), new Intl.DateTimeFormat(c.chat.lang || undefined, { day: 'numeric', month: 'long', year: 'numeric' }).format(d))
+    } })
+}
 
 /** A strip of the next days within min..max, plus "Other date" (the plain picker). */
 function dayStrip(it: Interrupt, c: RendererContext, commit: Commit, input: HTMLInputElement | null): HTMLElement {
@@ -29,8 +44,9 @@ function dayStrip(it: Interrupt, c: RendererContext, commit: Commit, input: HTML
     days.push(d)
   }
   if (input) input.hidden = true   // no browser picker: quick days, then our own calendar
+  const startYear = Number(it.input?.start_year) || undefined
   const cal = (past = false) => monthCalendar({ lang, limits: { min: it.input?.min, max: it.input?.max }, t: c.t, value: typeof it.previous === 'string' ? it.previous : null,
-    onPick: (d, label) => commit(d, label), past })
+    onPick: (d, label) => commit(d, label), past, startYear })
   // a date in the past: the calendar right away. "Any day up to today" (a date of birth) opens on the years;
   // a limit further back (founded before 2020-03-15) opens on that month, where the answer most likely is
   if (days.length < 3) return h('div', { class: 'strip' }, cal(!!max && Date.now() - max.getTime() < 3 * 86400000))
@@ -136,7 +152,8 @@ function addressView(it: Interrupt, ctx: Ctx | undefined, commit: Commit, input:
 /** The richer control for a typed question, or null for today's plain input. */
 export function realTypedView(it: Interrupt, c: RendererContext, ctx: Ctx | undefined, commit: Commit, input: HTMLInputElement | null): HTMLElement | null {
   switch (it.input?.type) {
-    case 'date': return dayStrip(it, c, commit, input)
+    case 'date': return it.input?.known?.day && it.input?.known?.month ? yearOnly(it, c, commit, input) : dayStrip(it, c, commit, input)
+    case 'year': return yearOnly(it, c, commit, input)
     case 'time': return timeSlots(it, c, ctx, commit, input)
     case 'number': return rangeView(it, c, ctx, commit, input)
     case 'address': return addressView(it, ctx, commit, input)
