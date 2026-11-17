@@ -631,6 +631,8 @@ class Dushes:
             back = None
             if typed and reply_to:
                 kw["reply_to"] = reply_to   # the form agent reads the quote too
+            if getattr(self.forms, "_layer_front", False):
+                kw["_from_site"] = True   # the layer was asked here already: the form's own front does not ask again
             async for ev in self.forms.run(form_thread, message=message, state=form, resume=resume,
                                            run_id=run_id, **kw):
                 if ev["type"] == "CUSTOM" and ev.get("name") == "hand_back":
@@ -661,13 +663,16 @@ class Dushes:
             yield ev
 
     # ------------------------------------------------------------ the choice layer (demo branch)
-    async def _fast(self, thread_id: str, message: str, state: dict[str, Any], stats: RunStats) -> dict[str, Any] | None:
+    async def _fast(self, thread_id: str, message: str, state: dict[str, Any], stats: RunStats,
+                    form_thread: str = "") -> dict[str, Any] | None:
         """The choice layer. The owner's decision (2026-11-17): the target of a line (a page, a tab, a section, a
         field for a value) is always chosen by the chooser, never matched in code. It is given the whole site as
         paths, what is on the screen, the form's structure as the form's own assistant gets it, and the last ten
         messages; one call. Code only carries the chosen path out, checks the state, and keeps the prohibitions:
         a date never moves the person, a consent is never an option, nothing private leaves, only an action that
-        can be undone, and only on the person's own request. None: the agent's turn."""
+        can be undone, and only on the person's own request. None: the agent's turn.
+        `form_thread`: the form's own conversation when it is not this thread's "<thread>-<form>" (a page that talks
+        to the form's assistant directly, with no site assistant in front)."""
         from .. import intent as _intent
         from ..language import detect
         layer = self.intent
@@ -895,7 +900,7 @@ class Dushes:
             # and the list options or ticks the same line names ("I am a woman, born 1st July '92")
             also = [m for m in fields_named(False) if m[0] != name]
             closing = ", ".join([f"{ov[name].label or name}: {iso}", *(f"{fl}: {fs}" for _, _, fl, fs in also)])
-            _intent.preset_call(f"{thread_id}-{fid}"[:100], "propose_changes",
+            _intent.preset_call((form_thread or f"{thread_id}-{fid}"[:100]), "propose_changes",
                                 {"changes": [{"name": name, "value": iso}, *({"name": n, "value": v} for n, v, _, _ in also)]},
                                 "" if tail else closing + ".", _intent.APPLIED)
             if tail:
@@ -963,7 +968,7 @@ class Dushes:
                     return None
                 closing = ", ".join(label for _, label in opens) + "."
                 stats.trace.setdefault("labels", {}).update(dict(opens))
-                _intent.preset_calls(f"{thread_id}-{fid}"[:100], [("focus_field", {"name": n}) for n, _ in opens],
+                _intent.preset_calls((form_thread or f"{thread_id}-{fid}"[:100]), [("focus_field", {"name": n}) for n, _ in opens],
                                      "" if tail else closing)
                 stats.fast["handled"] = True
                 if tail:
@@ -989,7 +994,7 @@ class Dushes:
             many = fields_named(moves)
             if many and not (kind and kind.id in ("question", "other")):
                 closing = ", ".join(f"{fl}: {fs}" for _, _, fl, fs in many) + "."
-                _intent.preset_call(f"{thread_id}-{fid}"[:100], "propose_changes",
+                _intent.preset_call((form_thread or f"{thread_id}-{fid}"[:100]), "propose_changes",
                                     {"changes": [{"name": n, "value": v} for n, v, _, _ in many]},
                                     "" if tail else closing, _intent.APPLIED)
                 stats.fast["handled"] = True
@@ -1036,7 +1041,7 @@ class Dushes:
                     if e is not None and e.editable:
                         is_bool = e.node.role == "bool"
                         shown = "yes" if is_bool else next((str(o.get("name")) for o in e.options or [] if str(o.get("id")) == opt), opt)
-                        _intent.preset(f"{thread_id}-{fid}"[:100], name, True if is_bool else opt, e.label or name, shown)
+                        _intent.preset((form_thread or f"{thread_id}-{fid}"[:100]), name, True if is_bool else opt, e.label or name, shown)
                         out = {"kind": "value"}
             elif target and not _intent.has_date(message):
                 label = next(o.label for o in targets if o.id == target.id).split(" \u203a ")[-1]
@@ -1047,10 +1052,10 @@ class Dushes:
                     pfid = str(page.form)
                     # the form's own "show where" step, chosen here, carried out by the form: on another page when
                     # that page has loaded its form, so its live state is checked there
-                    _intent.preset_call(f"{thread_id}-{pfid}"[:100], "focus_field", {"name": node}, f"{label}.")
+                    _intent.preset_call((form_thread or f"{thread_id}-{pfid}"[:100]), "focus_field", {"name": node}, f"{label}.")
                     stats.trace.setdefault("labels", {})[node] = label
                     if tail and here and page.path == here.path:
-                        _intent.clear_preset(f"{thread_id}-{pfid}"[:100])   # with more to answer the form's assistant does both
+                        _intent.clear_preset((form_thread or f"{thread_id}-{pfid}"[:100]))   # with more to answer the form's assistant does both
                     elif here and page.path == here.path and ov is not None:
                         out = {"kind": "focus"}
                     else:
@@ -1088,6 +1093,11 @@ class Dushes:
                 voice.hush(thread_id)   # in a talking conversation: done already, so no "let me check" before the answer
             return out
         return {"kind": "agent", "mode": "site"} if picks.get("kind") and picks["kind"].id in ("go_to", "show") else None
+
+    def _marked(self, kw: dict[str, Any]) -> dict[str, Any]:
+        """The form run's arguments, marked as coming from the site assistant when the form guide has its own
+        choice layer in front (a host's wrapper): the layer was asked here, it is not asked a second time."""
+        return {**kw, "_from_site": True} if getattr(self.forms, "_layer_front", False) else kw
 
     def _said_before(self, thread_id: str, form_id: str) -> str:
         """The person's recent own lines on the site that this form has not seen (said on another page or to
@@ -1435,7 +1445,7 @@ class Dushes:
             again = None
             kw = {**form_kwargs, "capabilities": with_hand_back(form_kwargs.get("capabilities"))}   # one tool list per thread
             async for ev in self.forms.run(form_thread, message=message, state=form, run_id=run_id,
-                                           **({"reply_to": as_list(reply_to)} if reply_to else {}), **kw):
+                                           **({"reply_to": as_list(reply_to)} if reply_to else {}), **self._marked(kw)):
                 if ev["type"] == "CUSTOM" and ev.get("name") == "hand_back":
                     again = ev.get("value") or {}
                     continue
@@ -1463,7 +1473,7 @@ class Dushes:
         out = Said()
         kw = {**form_kwargs, "capabilities": with_hand_back(form_kwargs.get("capabilities"))}   # one tool list per thread
         async for ev in self.forms.run(form_thread, message=handoff_message(handed["note"], handed["language"]),
-                                       state=form, run_id=run_id, **kw):
+                                       state=form, run_id=run_id, **self._marked(kw)):
             if ev["type"] == "CUSTOM" and ev.get("name") == "hand_back":
                 continue   # just handed over: the form agent answers this one
             if ev["type"] == "RUN_STARTED":

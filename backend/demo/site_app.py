@@ -5,6 +5,8 @@
 """
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
 from formguide.site import Dushes, SiteMap, create_dushes_router
@@ -38,4 +40,66 @@ def mount(app, guide) -> Dushes:
             guide.add_document("site", doc.name, doc.read_bytes())
     app.include_router(create_dushes_router(site), prefix="/site")
     app.state.site = site
+    if os.environ.get("INTENT_PROVIDER") and os.environ.get("INTENT_FORM_PAGE", "1") != "0":
+        front_forms(guide, site)
     return site
+
+
+def front_forms(guide, site: Dushes) -> None:
+    """The choice layer in front of a form that is talked to directly (the "Form + assistant" page, /agent/run),
+    with no site assistant: the owner asked for it by name (2026-11-17). The same layer as on the site, asked
+    about the form on the screen only: values, dates, sections, "all the sections". What it is sure of becomes the
+    form assistant's decided steps (its own card, its own "show" step); anything else, and any move to another
+    page, is the form assistant's turn as before. The label and the decision trace follow the run, as on the site."""
+    import uuid
+
+    from formguide.site.guide import _decision_trace
+    from formguide.stats import RunStats, model_id
+
+    inner = guide.run
+    guide._layer_front = True
+
+    async def run(thread_id, *, message=None, state=None, resume=None, **kw):
+        from_site = kw.pop("_from_site", False)
+        stats = RunStats(kw.get("run_id") or "", thread_id)
+        fast = None
+        page = next((p for p in site.site.pages if isinstance(state, dict) and p.form == state.get("form_id")), None)
+        if message and resume is None and not from_site and page is not None and state.get("config"):
+            try:
+                fast = await site._fast(thread_id, message, {"page": {"path": page.path}, "form": state}, stats, form_thread=thread_id)
+            except Exception:  # noqa: BLE001 - the layer never breaks a turn of the form
+                fast = None
+            if fast and fast["kind"] not in ("value", "focus"):
+                # a move to another page, or "the site assistant's turn": this page has neither; the form's assistant answers
+                fast = None
+                if getattr(stats, "fast", None):
+                    stats.fast["handled"] = False
+        seen = {"screen": []}
+        async for ev in inner(thread_id, message=message, state=state, resume=resume, **kw):
+            if ev.get("type") == "CUSTOM" and ev.get("name") in ("ui_directive", "on_interrupt"):
+                value = ev.get("value")
+                if isinstance(value, str):
+                    try:
+                        value = json.loads(value)
+                    except ValueError:
+                        value = None
+                seen["screen"].append({"name": ev["name"], "value": value})
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and getattr(stats, "fast", None):
+                asked = stats.fast
+                if os.environ.get("INTENT_LABELS") == "1":
+                    who = site.intent.settings.provider.capitalize()
+                    name = str(model_id(guide.models.agent) or "")
+                    label = (f"{who} \u00b7 {asked['ms']} ms" if asked.get("handled") else
+                             f"{'Haiku' if 'haiku' in name.lower() else name} \u00b7 {RunStats.now() - stats.t0:.1f} s "
+                             f"(after {who} {asked['ms']} ms: not sure)")
+                    lid = f"label_{uuid.uuid4().hex[:10]}"
+                    yield {"type": "TEXT_MESSAGE_START", "messageId": lid, "role": "assistant"}
+                    yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
+                    yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
+                if os.environ.get("INTENT_TRACE") == "1" and getattr(stats, "trace", None):
+                    more = thread_id in site.__dict__.get("_mixed", {})
+                    yield {"type": "CUSTOM", "name": "decision_trace",
+                           "value": _decision_trace(stats, seen, kw.get("run_id") or "", more, site.site)}
+            yield ev
+
+    guide.run = run
