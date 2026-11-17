@@ -91,10 +91,12 @@ function editor(ch: Change, props: Record<string, any> | undefined, c: RendererC
 }
 
 /** "Fill in 3 fields", with the language's plural form. */
-function fillLabel(c: RendererContext, n: number): string {
+function fieldWord(c: RendererContext, n: number): string {
   const form = new Intl.PluralRules(c.chat.lang).select(n)
-  const word = c.t(`field_${form}`) !== `field_${form}` ? c.t(`field_${form}`) : c.t('field_other')
-  return c.t('fillFields', { n, fields: word })
+  return c.t(`field_${form}`) !== `field_${form}` ? c.t(`field_${form}`) : c.t('field_other')
+}
+function fillLabel(c: RendererContext, n: number): string {
+  return c.t('fillFields', { n, fields: fieldWord(c, n) })
 }
 
 /** True on a mouse or trackpad: there, focusing a new card is helpful; on a touch screen it is not. */
@@ -240,7 +242,10 @@ export function fieldCard(it: Interrupt, c: RendererContext, ctx: Ctx): HTMLElem
     const toggle = h('button', { class: 'fold', type: 'button', 'data-keep': true, 'aria-expanded': 'false', title: names || null, onclick: () => {
       const open = card.classList.toggle('unfolded')
       toggle.setAttribute('aria-expanded', String(open))
-    } }, h('i', null, ok ? '\u2713' : '\u2715'), h('span', null, ok && names ? `${word} \u00b7 ${names}` : word),
+    } }, h('i', null, ok ? '\u2713' : '\u2715'),
+      // every field that was set, on up to two lines; four or more are counted first, so the number is seen even when
+      // the names run out of room ("Filled in \u00b7 4 fields: Loan term, Life insurance, \u2026")
+      h('span', { class: 'fold-t' }, ok && names ? `${word} \u00b7 ${applied.length > 3 ? `${applied.length} ${fieldWord(c, applied.length)}: ` : ''}${names}` : word),
       h('span', { class: 'chev', 'aria-hidden': 'true' }, '\u203a'))   // the line opens to show the rows again
     const line = h('div', { class: `ok-line${ok ? '' : ' off'}` }, toggle)
     if (ok) undoButton(line, c, ctx, applied.map((x) => ({ name: x.name, label: x.label, previous: x.previous ?? null })))
