@@ -103,7 +103,8 @@ export function turnCard(t: DecidedTurn, open: boolean): { id: string; blocks: B
     id: s.run_id ?? String(t.at.getTime()),
     blocks: [
       { type: 'title', text: `«${d?.said || t.label}»`, subtitle: time(t.at) },
-      { type: 'text', text: `${summary(d, s)} · ${sec(s.total_ms)}` },
+      // a turn Jev carried out alone has no model call: its time is Jev's own step
+      { type: 'text', text: `${summary(d, s)} · ${sec(s.total_ms || d?.steps?.[0]?.ms || 0)}` },
       { type: 'details', label: 'How exactly', open, blocks: how },
     ],
   }
