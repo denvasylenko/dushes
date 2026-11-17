@@ -52,3 +52,4 @@ voice_fill_amount_term_no_search
 voice_fill_50k
 voice_cut_in_yes
 voice_yes_in_words
+voice_said_values_split

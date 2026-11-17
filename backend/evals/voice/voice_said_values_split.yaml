@@ -1,0 +1,20 @@
+name: voice_said_values_split
+tags: [voice, fill, en, answers_in_words]
+persona: "A person speaking to the assistant in voice mode. Said outright, with a last name among the values."
+goal: "The first name, gender, place and date go in at once; the last name waits on its own card, read aloud."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Lyon, born 1 July 1992; Anna Rossi, a woman"
+turns: 3
+# The CPO's choice (a), 2026-11-17, between rule 1 (said outright is applied at once) and the owner's rule of 16.11
+# (a spelled last name or e-mail is read back): in voice, the first name and the gender go in at once and the last
+# name goes on a separate card that is read aloud. The guest does not tap, so the last name stays empty here.
+# Fails on c588b62 (one card for all three waits). Values invented.
+scripted:
+  - "Open personal details"
+  - "Lyon, 1st July '92"
+  - "my name is Anna Rossi, I am a woman"
+expect:
+  fields: {birth_place: "Lyon", birth_date: "1992-07-01", first_name: "Anna", gender: "f", last_name: null}
+  answers_every_turn: true
+min_score: 7
