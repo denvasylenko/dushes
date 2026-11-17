@@ -134,15 +134,6 @@ n = await guide.purge(30, dry_run=True)   # how many are older than 30 days
 await guide.purge(30)
 ```
 
-### Voice helpers
-
-<ParamList kind="function" signature="formguide.voice.card_answer(text, entries, kinds=('card', 'confirm'))" id="card-answer">
-  <Param name="text" type="str | None" required>The line the person typed or said.</Param>
-  <Param name="entries" type="list | None" required>The thread's display transcript as it stood before this line.</Param>
-  <Param name="kinds" type="tuple" default="('card', 'confirm')">Which cards a bare yes or no may answer: a card of proposed values and a confirmation. `("card",)` for a host that confirms its own actions.</Param>
-  <Fragment slot="returns">`{card_id, type, accepted}` when the line is a bare yes or no and the card that waits is the last line of the conversation; `None` when it is an ordinary message. "Yes, show the statistics" is a request, not an answer. One rule for every host, voice and text alike.</Fragment>
-</ParamList>
-
 ### Conversations, documents and attachments
 
 | Method | Does |
@@ -163,3 +154,27 @@ await guide.purge(30)
 | `warm_up()` | load what the first request would wait for (the Whisper model) in the background; `create_app` calls it, call it yourself when you mount the router |
 
 Every key of `GuideConfig` and its YAML form: [Configuration keys](../configuration/#every-key).
+## Experimental features
+
+`formguide.experiments`: a gate that keeps experimental features off except for a person with an activation code ([Experimental features](../../agents/shared/experimental-features/)).
+
+| Name | Does |
+| --- | --- |
+| `Experiments.from_env()` | the gate from `EXPERIMENT_CODES` and `EXPERIMENT_SECRET`; the decision model is a feature only when `INTENT_PROVIDER` is not `off` |
+| `Experiments(codes=None, secret="", features=())` | the same, from values |
+| `exp.enabled` | whether the host has any code |
+| `exp.join(name, gate)` | another feature with its own codes (voice mode: `talks.gate`) joins the one code entry |
+| `exp.person(headers)` | whose pass a request carries, or `None` |
+| `install(app, exp)` | gate this process: from now on the experimental features run only for a request with a valid pass |
+| `create_experiments_router(exp)` | the routes `GET /experiments` and `POST /experiments/unlock`; mount them only when `exp.enabled` |
+| `allowed()` | whether the experimental features may run for the request being served: always without a gate, with one only for a request with a valid pass |
+
+## Voice helpers
+
+<ParamList kind="function" signature="formguide.voice.card_answer(text, entries, kinds=('card', 'confirm'))" id="card-answer">
+  <Param name="text" type="str | None" required>The line the person typed or said.</Param>
+  <Param name="entries" type="list | None" required>The thread's display transcript as it stood before this line.</Param>
+  <Param name="kinds" type="tuple" default="('card', 'confirm')">Which cards a bare yes or no may answer: a card of proposed values and a confirmation. `("card",)` for a host that confirms its own actions.</Param>
+  <Fragment slot="returns">`{card_id, type, accepted}` when the line is a bare yes or no and the card that waits is the last line of the conversation; `None` when it is an ordinary message. "Yes, show the statistics" is a request, not an answer. One rule for every host, voice and text alike.</Fragment>
+</ParamList>
+

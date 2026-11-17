@@ -8,7 +8,7 @@ import { Summary } from '../../../../components/ui';
 <Summary what={"A part of Dushes you switch on: a small model that reads every line first and does the plain ones itself."} when={"People ask for pages and values a lot, and you want those done without waiting for the large model."} write={"A few switches in the host's environment."} />
 
 <Aside type="caution" title="Experimental">
-Experimental. Not switched on on the public site; it runs only where the host turns it on, and then every line goes to TypeSafe after the filter. An activation code in **+** is coming, like voice mode.
+Experimental: it works only after you enter an activation code. On a host with activation codes, open **+** in the chat, choose **Experimental**, enter your code and turn on **Decision model**. Without a code it is off, and nothing is sent to TypeSafe. A host without codes turns it on with its own settings. More: [Experimental features](../../shared/experimental-features/).
 </Aside>
 
 Dushes answers with a large model, which takes a second or more. Many lines need no thinking at all: "open the loans page", "go to personal details", "Gender: Male". The decision model picks the answer from what the screen shows, and Dushes carries it out at once. A line that needs thinking, or that it is not sure about, goes on to Dushes exactly as it would without it. How it decides, with diagrams and a real example: [The decision model](../../how-it-works/decision-model/).
@@ -30,7 +30,7 @@ INTENT_PROVIDER=jev            # off (the default) or jev
 INTENT_API_KEY=...             # the provider's key; it stays on the server
 ```
 
-Restart the server. Every line on a page with the site map now goes to the decision model first.
+Restart the server. Every line on a page with the site map now goes to the decision model first. To keep it for a few people only, put it behind [activation codes](../../shared/experimental-features/): then it runs only for a request that carries a pass.
 
 ### Diagnostics for the operator
 

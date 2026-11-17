@@ -5,12 +5,12 @@ description: A small, fast model reads every line first. What it is sure of (ope
 import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
 import { Summary } from '../../../../components/ui';
 
-<Summary what={"A small, fast model that picks among what is on the screen: a page, a part of a page, a section of the form, a value of a field."} when={"A person says what they want and part of it is a plain action on the screen."} write={"Nothing yet: it is not in the package you install."} />
+<Summary what={"A small, fast model that picks among what is on the screen: a page, a part of a page, a section of the form, a value of a field."} when={"A person says what they want and part of it is a plain action on the screen."} write={"Nothing in code: the host switches it on."} />
 
 <Aside type="caution" title="Experimental">
-Experimental. Not switched on on the public site; it runs only where the host turns it on, and then every line goes to TypeSafe after the filter. An activation code in **+** is coming, like voice mode.
+Experimental: it works only after you enter an activation code. On a host with activation codes, open **+** in the chat, choose **Experimental**, enter your code and turn on **Decision model**. Without a code it is off, and nothing is sent to TypeSafe. A host without codes turns it on with its own settings. More: [Experimental features](../../shared/experimental-features/).
 
-In development, on a demo branch, not in the package you install, and nothing a reader can turn on. No numbers are given until the QA Lead measures it. Some of what this page describes is decided but not built yet; the last section says which.
+In the package, off by default; a host switches it on ([how](../../site-agent/decision-model/)). No numbers are given until the QA Lead measures it. Some of what this page describes is decided but not built yet; the last section says which.
 </Aside>
 
 The agent's large model is slow at one thing that people do all the time: "open personal details", "Gender: Male", "go to car insurance". These need no thinking, only a pick from what the screen already shows. The decision model is a small, fast model that makes that pick, and the server carries it out. In the demo the decision model is Jev, a small classification model by TypeSafe AI.
@@ -155,7 +155,7 @@ The same as in text. After a done action the voice says one short line ("Loans."
 
 ## Decided, and built so far
 
-| Decided | On the demo branch |
+| Decided | In the package |
 | --- | --- |
 | Every line goes to the decision model first | built |
 | It picks the target; code only carries it out and keeps the rules | built |

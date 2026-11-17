@@ -186,6 +186,7 @@ export default defineConfig({
 						{ label: 'Deploy and secure', slug: 'agents/shared/deploy' },
 						{ label: 'Speed and tracing', slug: 'agents/shared/observability' },
 						{ label: 'Voice mode', slug: 'agents/shared/voice', badge: { text: 'experimental', variant: 'caution' } },
+						{ label: 'Experimental features', slug: 'agents/shared/experimental-features', badge: { text: 'experimental', variant: 'caution' } },
 					] },
 					{ label: 'How it works', collapsed: true, items: [
 						{ label: 'System overview', slug: 'agents/how-it-works' },

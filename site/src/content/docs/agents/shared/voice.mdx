@@ -8,7 +8,7 @@ import { Summary } from '../../../../components/ui';
 <Summary what={"The server side of talking to the agent: a pass, a conversation with the voice, its events and its limits."} when={"You want people to speak to the assistant instead of typing."} write={"Three lines that mount `create_voice_router`, and `VOICE_CODES` in the host's environment."} />
 
 <Aside type="caution" title="Experimental">
-Voice contract 1. Routes, frames and events keep their meaning while the number stays 1; new events may be added, and a breaking change gets a new number. The mode is off until you give the host voice codes, and then each person needs their own activation code, entered in the chat's **+** menu. Without one, nothing is sent to the voice provider.
+Voice contract 1. Routes, frames and events keep their meaning while the number stays 1; new events may be added, and a breaking change gets a new number. The mode is off until you give the host voice codes, and then each person needs their own activation code, entered in the chat's **+** menu. Without one, nothing is sent to the voice provider. The same code entry can open the decision model too: [Experimental features](../experimental-features/).
 </Aside>
 
 A voice model listens and speaks. The agent does the work exactly as in chat: what the person said arrives as an ordinary message in the same conversation, and the answer is the agent's own answer, read aloud. In this mode the person's voice is sent to OpenAI; the server keeps the transcribed text only.

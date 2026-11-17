@@ -67,3 +67,14 @@ A separate router, `create_voice_router`, mounted by the host (the examples use 
 | `WebSocket /voice/stream?thread_id=` | | audio both ways (binary PCM16 mono, 24 kHz) and the events as text frames, for a native app |
 
 The events, the limits and the settings: [Voice mode](../../agents/shared/voice/).
+
+## Experimental features
+
+A separate router, `create_experiments_router`, mounted by the host (the examples use `/experiments`) only when it has `EXPERIMENT_CODES`.
+
+| Method and path | Body | Returns |
+| --- | --- | --- |
+| `GET /experiments` | | `{features, unlocked}`: what a code opens here, and whether this request holds a valid pass |
+| `POST /experiments/unlock` | `{code}` | `{person, pass, features, passes}`; 403 for a wrong code. `passes`: one pass per feature the code opens (`decision_model`, `voice`) |
+
+The decision model's pass goes in the `X-Experiment-Pass` header of each run. More: [Experimental features](../../agents/shared/experimental-features/).
