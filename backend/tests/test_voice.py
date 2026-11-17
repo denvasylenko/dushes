@@ -814,3 +814,30 @@ def test_an_option_the_person_picked_replaces_the_old_one_quietly():
     assert not voice.quiet({"type": "set_fields", "changes": [pick]}, "something lighter")      # not said: a card
     consent = {"name": "agree", "label": "I agree", "kind": "bool", "value": True, "previous": False, "consent": True}
     assert not voice.quiet({"type": "set_fields", "changes": [consent]}, "yes I agree")           # a consent: a card
+
+
+def test_the_person_cuts_in_on_the_voice(monkeypatch):
+    """The owner (2026-11-17): the voice went on talking over him for up to six seconds. With VOICE_CUT_IN=1 his
+    first words while the voice talks tell the client `interrupted` and send the voice an instruction to stop (the
+    one way the provider documents to interrupt speech in progress). Not on the voice's own word coming back, not
+    twice for one stretch, and not at all without the switch."""
+    async def go(switch):
+        if switch:
+            monkeypatch.setenv("VOICE_CUT_IN", "1")
+        else:
+            monkeypatch.delenv("VOICE_CUT_IN", raising=False)
+        talks, live, _ = _talks()
+        await talks.start("anna", "OFFER-SDP", "thread-cut")
+        events = talks.events("live_1")
+        live.push(type="session.output_transcript.delta", delta="A car loan starts from eighteen point nine percent ")
+        live.push(type="session.input_transcript.delta", delta="percent")            # the voice's own word, alone: an echo
+        live.push(type="session.input_transcript.delta", delta=" no wait")           # his words
+        live.push(type="session.input_transcript.delta", delta=" stop")
+        got = [await asyncio.wait_for(events.__anext__(), 1) for _ in range(4 + (1 if switch else 0))]
+        await asyncio.sleep(0.02)
+        return [e["type"] for e in got], [m for m in live.sent if m["type"] == "session.instructions.append"]
+    kinds, sent = asyncio.run(go(True))
+    assert kinds == ["spoken", "hearing", "hearing", "interrupted", "hearing"]          # cut on his words, once
+    assert len(sent) == 1 and sent[0]["delegation_id"] is None and "Stop talking" in sent[0]["content"]
+    kinds, sent = asyncio.run(go(False))
+    assert "interrupted" not in kinds and sent == []

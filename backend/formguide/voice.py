@@ -533,6 +533,7 @@ class Talks:
                     state["heard_at"] = time.monotonic()
                     self.meter.report(talk_id, heard=True)
                     self._emit(state, {"type": "hearing", "delta": ev.get("delta", "")})   # their words, as they speak
+                    await self._cut_in(state)
                 elif t == "session.delegation.created":   # the voice wants the agent: hand over what was said
                     text, state["heard"] = state["heard"].strip(), ""
                     asked = (ev.get("delegation") or {}).get("id")
@@ -566,6 +567,32 @@ class Talks:
         except Exception:  # noqa: BLE001 - a dropped connection ends the conversation, it does not break the host
             pass
         await self.end(talk_id, "lost")
+
+    async def _cut_in(self, state: dict) -> None:
+        """The person began to speak while the voice was talking (VOICE_CUT_IN=1; a trial, off by default). The
+        provider sends no "they started speaking" event and gives no setting for it (its Live guides, read
+        2026-11-17); what it documents is that an instruction appended to the session "can interrupt speech in
+        progress", and that playback is dropped at the client. So: the client is told `interrupted` (it fades the
+        sound), and the voice is told, in our own words, to stop and listen. Once per stretch of their speech, and
+        only on words that are not the voice's own coming back through the microphone: two words or more, or a
+        word the voice did not say in the last seconds."""
+        if os.environ.get("VOICE_CUT_IN") != "1":
+            return
+        now = time.monotonic()
+        said = state.get("said") or []
+        if not said or now - said[-1][0] > CUT_IN_AFTER or state.get("cut_at", 0) >= said[-1][0]:
+            return                                    # the voice is not talking, or this speech was cut already
+        words = re.findall(_LETTERS + r"|\d+", (state.get("heard") or "").lower())
+        recent = set(re.findall(_LETTERS + r"|\d+", " ".join(t for at, t in said if now - at <= ECHO_SECONDS).lower()))
+        if not words or (len(words) < 2 and words[0] in recent) or is_echo(state.get("heard") or "", said, now):
+            return
+        state["cut_at"] = now
+        self._emit(state, {"type": "interrupted", "by": "words"})
+        try:
+            await state["ws"].send(_json({"type": "session.instructions.append", "event_id": f"cut_{secrets.token_hex(4)}",
+                                          "delegation_id": None, "content": CUT_IN}))
+        except Exception:  # noqa: BLE001 - a lost cut costs an overlap, never the conversation
+            pass
 
     async def _hand_over(self, talk_id: str, asked: Any, text: str) -> None:
         """What the person said goes to the client as `heard` (unless it is the voice's own echo); the voice's
@@ -915,6 +942,8 @@ def asks(card: dict) -> str:
 WORDS_WAIT, WORDS_SETTLE, WORDS_LAST = 1.5, 0.4, 6.0
 UNHEARD = "You did not catch what the person said. Say so in a few words and ask them to say it again."
 
+CUT_IN_AFTER = 1.2    # the voice counts as talking while its last word is this fresh, in seconds
+CUT_IN = "The person has started speaking. Stop talking at once and listen to them. Do not finish or repeat your sentence."
 ECHO_SECONDS = 15.0   # how long after the voice spoke its own words can come back
 ECHO_WORDS = 4        # a shorter text is never dropped: "Car loan" after "A car loan or a home loan?" is an answer
 
