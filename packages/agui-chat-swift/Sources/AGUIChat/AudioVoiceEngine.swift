@@ -44,6 +44,11 @@ public final class AudioVoiceEngine: VoiceEngine {
     /// A line a second about the sound path (the route, what was scheduled, the level at the mixer): for a check on a
     /// real device, where nobody but the person hears the speaker.
     public var diagnostics: (@Sendable (String) -> Void)?
+    /// Apple's voice processing (echo and noise cancelling, gain) on the microphone. Off only for a measurement: the
+    /// owner's speech reached the provider at about −55 dB (the cabinet team, 17.11) — is it the processing?
+    public var voiceProcessing = true
+    /// Each piece of the person's audio as it goes up (PCM16 mono at the transport's rate): a host's measurement only.
+    public var sentAudio: ((Data) -> Void)?
 
     /// The microphone opens no earlier than this (a host's start sound must not go to the voice): set before `start`.
     public var microphoneNotBefore: Date?
@@ -72,7 +77,8 @@ public final class AudioVoiceEngine: VoiceEngine {
 
         // echo and noise cancelling by the system; off the main thread too (it reconfigures the audio for ~.3 s)
         nonisolated(unsafe) let input = engine.inputNode
-        try await Task.detached(priority: .userInitiated) { try input.setVoiceProcessingEnabled(true) }.value
+        let processing = voiceProcessing
+        try await Task.detached(priority: .userInitiated) { try input.setVoiceProcessingEnabled(processing) }.value
         if cancelled { link.cancel(); await transport.close(); throw CancellationError() }
         engine.attach(player)
         engine.attach(pace)
@@ -220,10 +226,17 @@ public final class AudioVoiceEngine: VoiceEngine {
             for i in 0..<Int(buffer.frameLength) { sum += ch[i] * ch[i] }
             level = min(1, Double(sqrt(sum / Float(max(1, buffer.frameLength)))) * 8)
         }
-        Task { @MainActor [weak self] in self?.up(buffer, level: level) }
+        var rms: Float = 0
+        if let ch = buffer.floatChannelData?[0], buffer.frameLength > 0 {
+            var sum: Float = 0
+            for i in 0..<Int(buffer.frameLength) { sum += ch[i] * ch[i] }
+            rms = sqrt(sum / Float(buffer.frameLength))
+        }
+        let db = rms > 0 ? 20 * log10(Double(rms)) : -120
+        Task { @MainActor [weak self] in self?.up(buffer, level: level, db: db) }
     }
 
-    private func up(_ buffer: AVAudioPCMBuffer, level: Double) {
+    private func up(_ buffer: AVAudioPCMBuffer, level: Double, db: Double = 0) {
         guard running, let converter, let wireFormat else { return }
         continuation.yield(.level(muted ? 0 : level))
         let ratio = wireFormat.sampleRate / buffer.format.sampleRate
@@ -239,13 +252,14 @@ public final class AudioVoiceEngine: VoiceEngine {
         }
         guard error == nil, out.frameLength > 0, let samples = out.int16ChannelData?[0] else { return }
         if let on = micOnAt, Date().timeIntervalSince(on) < 3 {
-            report(String(format: "mic piece in %d → out %d frames, level %.2f%@", Int(buffer.frameLength),
-                          Int(out.frameLength), level, linked ? "" : " (kept)"))
+            report(String(format: "mic piece in %d × %d ch → out %d frames, %.1f dB RMS%@", Int(buffer.frameLength),
+                          Int(buffer.format.channelCount), Int(out.frameLength), db, linked ? "" : " (kept)"))
         }
         var data = Data(bytes: samples, count: Int(out.frameLength) * 2)
         if muted { data = Data(count: data.count) }     // silence, so the talk stays open but hears nothing
         // the host's start sound is not sent (it would be heard as his words)
         if let at = microphoneNotBefore, Date() < at { data = Data(count: data.count) }
+        sentAudio?(data)
         guard linked else {                             // the link is not up yet: kept, in order
             waiting.append(data)
             waitingBytes += data.count
