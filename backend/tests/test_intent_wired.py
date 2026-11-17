@@ -408,3 +408,20 @@ def test_a_date_and_a_place_in_one_line(guide, model):
     card = json.loads(raw) if isinstance(raw, str) else raw
     assert [c["name"] for c in card["changes"]] == ["birth_date"] and "1992-07-01" in json.dumps(card) and card.get("quiet") is True
     assert not intent.has_preset("dp-1-loan_application")                               # the form's model goes on after the card
+
+
+def test_two_ticks_and_an_option_said_in_everyday_words(guide, model):
+    """The owner's barbershop line (2026-11-17): "hair wash and hair styling, and Alex". The ticks are labelled
+    "Add hair wash (+$10, +15 min)": said as "hair wash", they still count. The page reports no open sections."""
+    from .test_agent import BARBER
+    form = start(guide, BARBER)
+    form["config"] = BARBER.compute({"service": {"id": "haircut"}})
+    chooser = Mock(**{"kind": ("set_value", 0.8), "asks_more": ("no", 0.9), "f:barber": ("barber=alex", 1.0),
+                      "f:add_wash": ("add_wash=true", 1.0), "f:add_styling": ("add_styling=true", 1.0)})
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "bb-1", message="I want hair wash and hair styling, and Alex as the barber",
+             state={"page": {"path": "/book"}, "form": form})
+    assert {"f:barber", "f:add_wash", "f:add_styling"} <= set(chooser.seen[0][1])
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    card = json.loads(raw) if isinstance(raw, str) else raw
+    assert {c["name"] for c in card["changes"]} == {"barber", "add_wash", "add_styling"} and len(model.calls) == before

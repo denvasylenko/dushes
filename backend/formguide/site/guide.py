@@ -717,14 +717,19 @@ class Dushes:
             # a question a field for the choice fields the person has on the screen now, so one line can set several
             from ..form.render import locate
             loc = locate(ov, form.get("ui"))
-            for n in lay.fields():
-                c = lay.nearest_container(n.name)
-                if c is not None and c.name in loc.on_screen and ov[n.name].visible:
-                    shown_fields.append(n.name)
+            # the fields in open sections first, then the rest of the open tab or step: a page does not always
+            # report which sections are open, and a value said for a folded section is still a value of this tab
+            ui = form.get("ui") or {}
+            wide = locate(ov, {**ui, "openAccordions": [n.name for n in lay.nodes.values() if n.role == "accordion"]})
+            for where in (loc.on_screen, wide.on_screen):
+                for n in lay.fields():
+                    c = lay.nearest_container(n.name)
+                    if c is not None and c.name in where and ov[n.name].visible and n.name not in shown_fields:
+                        shown_fields.append(n.name)
             per_field = _intent.field_questions(ov, shown_fields, set(pack.consents or {}))
             qs.update(dict(list(per_field.items())[:16]))
             # and a yes / no a section of the open tab, so one line can open several
-            sections = [n for n in lay.nodes.values() if n.role in ("accordion", "section") and n.name and n.parent in loc.on_screen
+            sections = [n for n in lay.nodes.values() if n.role in ("accordion", "section") and n.name and n.parent in wide.on_screen
                         and ov.get(n.name) is not None and ov[n.name].visible and ov[n.name].label][:10]
             for n in sections:
                 qs[f"s:{n.name}"] = _intent.Question("noul", f"section:{n.name}",
@@ -808,7 +813,10 @@ class Dushes:
                 is_bool = fe.node.role == "bool"
                 fshown = ("yes" if opt == "true" else "no") if is_bool else next(
                     (str(o.get("name")) for o in fe.options or [] if str(o.get("id")) == opt), opt)
-                if _intent.said_in(flabel, message) or (not is_bool and _intent.says_any(fshown, message)):
+                # the line must itself say the field or the option: a word of the label without its bracketed note
+                # ("Add hair wash (+$10, +15 min)" is said as "hair wash"), or a word of the option
+                plain = re.sub(r"\(.*?\)", " ", flabel)
+                if _intent.says_any(plain, message) or (not is_bool and _intent.says_any(fshown, message)):
                     many.append((fname, (opt == "true") if is_bool else opt, flabel, fshown))
             if many and not (kind and kind.id in ("question", "other")):
                 closing = ", ".join(f"{fl}: {fs}" for _, _, fl, fs in many) + "."
