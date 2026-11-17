@@ -546,6 +546,8 @@ def preset_model(thread_id: str | None, messages: list | None = None) -> Any:
     from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 
     class Decided(BaseChatModel):
+        model: str = "code"   # in a run's stats: a step written in code, not a model call
+
         @property
         def _llm_type(self) -> str:
             return "decided"

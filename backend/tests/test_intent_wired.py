@@ -590,3 +590,15 @@ def test_an_applied_card_ends_on_one_line_written_in_code(guide, model):
     ev = collect(guide, "one-2", message="my first name is Anna, and what is the rate?", state=start(guide, LOAN))
     ev = collect(guide, "one-2", resume={"accepted": True, "config": cfg})
     assert "the rate is 18.9%" in text(ev)
+
+
+def test_the_trace_names_a_form_section_and_a_code_line_is_not_a_model_call(guide, model, monkeypatch):
+    monkeypatch.setenv("INTENT_TRACE", "1")
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": []}}}
+    chooser = Mock(**{"is_command": ("yes", 0.9), "kind": ("go_to", 0.9), "asks_move": ("yes", 0.9), "asks_more": ("no", 0.9),
+                      "s:acc_passport": ("yes", 0.95), "s:acc_addresses": ("yes", 0.9)})
+    ev = run(site_with(guide, chooser), "trl-1", message="open passport and addresses", state=state)
+    t = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "decision_trace")
+    assert [a["label"] for a in t["applied"]] == ["Passport", "Addresses"] and "labels" not in t
+    kinds = [m["kind"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "run_stats" for m in e["value"]["models"]]
+    assert kinds and set(kinds) == {"code"}                                # the layer's steps: written in code, no model

@@ -58,7 +58,7 @@ class RunStats:
                 "gen_ai.usage.input_tokens": u.get("input_tokens"), "gen_ai.usage.output_tokens": u.get("output_tokens"),
                 "formguide.usage.cache_read_tokens": details.get("cache_read")})
         self.models.append({
-            "kind": kind, "model": model, "at_ms": round((started - self.t0) * 1000), "ms": self._ms(started),
+            "kind": "code" if model == "code" else kind, "model": None if model == "code" else model, "at_ms": round((started - self.t0) * 1000), "ms": self._ms(started),
             "ttft_ms": round((first_chunk - started) * 1000) if first_chunk else None,
             "input_tokens": u.get("input_tokens"), "output_tokens": u.get("output_tokens"),
             "cache_read_tokens": details.get("cache_read"),

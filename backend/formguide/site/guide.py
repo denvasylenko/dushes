@@ -904,6 +904,7 @@ class Dushes:
                     stats.trace["why"] = "repeat"
                     return None
                 closing = ", ".join(label for _, label in opens) + "."
+                stats.trace.setdefault("labels", {}).update(dict(opens))
                 _intent.preset_calls(f"{thread_id}-{fid}"[:100], [("focus_field", {"name": n}) for n, _ in opens],
                                      "" if tail else closing)
                 stats.fast["handled"] = True
@@ -965,6 +966,7 @@ class Dushes:
                     # the form's own "show where" step, chosen here, carried out by the form: on another page when
                     # that page has loaded its form, so its live state is checked there
                     _intent.preset_call(f"{thread_id}-{pfid}"[:100], "focus_field", {"name": node}, f"{label}.")
+                    stats.trace.setdefault("labels", {})[node] = label
                     if tail and here and page.path == here.path:
                         _intent.clear_preset(f"{thread_id}-{pfid}"[:100])   # with more to answer the form's assistant does both
                     elif here and page.path == here.path and ov is not None:
@@ -1464,6 +1466,7 @@ def _decision_trace(stats: Any, seen: dict[str, Any], run_id: str, more_to_come:
     left the filter and the labels of what was applied."""
     import datetime
     fast, trace = getattr(stats, "fast", None) or {}, dict(stats.trace)
+    labels = trace.pop("labels", {})   # a form's tab or section by its name on the screen, not its id
     applied: list[dict[str, Any]] = []
     if fast.get("handled"):
         for item in seen.get("screen") or []:
@@ -1475,7 +1478,7 @@ def _decision_trace(stats: Any, seen: dict[str, Any], run_id: str, more_to_come:
                 applied.append({"what": "open", "target": f"{value.get('path')}{'#' + pid if pid else ''}",
                                 "label": " \u203a ".join(x for x in (page.title if page else "", part.title if part else "") if x)})
             elif name == "ui_directive" and value.get("type") == "focus":
-                applied.append({"what": "open", "target": str(value.get("target")), "label": str(value.get("target"))})
+                applied.append({"what": "open", "target": str(value.get("target")), "label": str(labels.get(value.get("target"), value.get("target")))})
             elif name == "on_interrupt" and value.get("quiet"):
                 applied += [{"what": "set", "target": str(r.get("name")), "label": f"{r.get('label') or r.get('name')}: {r.get('display') or r.get('value')}"}
                             for r in value.get("changes") or [] if isinstance(r, dict)]
