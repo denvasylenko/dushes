@@ -139,8 +139,8 @@ class FormGuide:
 
     def _missing_year(self, said: str, card: dict, state: dict | None) -> str:
         """One line for a date said without its year ("born on the 1st of July") when the card does not carry it:
-        the date field's own label and what is known of the date, "Date of birth: 01.07.____ ?". Written with the
-        form's label and digits only, so it reads in any language. "" when there is no such date, the card holds
+        the date field's own label and what is known of the date, as a sentence in the chat's language: "Date of
+        birth: 1 July. Which year?". "" when there is no such date, the card holds
         a date, or the form has no single date field it could be."""
         from . import intent as _intent
         part = _intent.partial_date(said or "")
@@ -160,7 +160,8 @@ class FormGuide:
         pick = born[0] if born and re.search(r"\bborn\b|birth", (said or "").lower()) else dates[0] if len(dates) == 1 else None
         if pick is None:
             return ""
-        return f"{ov[pick.name].label or pick.name}: {part[0]:02d}.{part[1]:02d}.____ ?"
+        from .language import detect
+        return _intent.ask_the_year(str(ov[pick.name].label or pick.name), part[0], part[1], detect(said))
 
     def register_form(self, jsx: str, form_id: str | None = None, domain: dict[str, Any] | None = None,
                       config: dict[str, Any] | None = None) -> dict:
@@ -545,7 +546,9 @@ class FormGuide:
                 # same reply, before any tap, in a line written here (the QA Lead's runs, 2026-11-17: the model asked
                 # for the year only on a second card queued behind this one; by voice nothing was said at all)
                 spoke = bool(entries) or any(t.strip() for t in texts.values())   # the model wrote something already
-                note = "" if spoke else self._missing_year(said, value, state)
+                # only when this card waits for the person: a card applied at once is followed straight away by the
+                # assistant's own year question card, and that card asks (Head of Design: no line when the card asks)
+                note = "" if spoke or value.get("quiet") else self._missing_year(said, value, state)
                 if note:
                     nid = f"msg_{uuid.uuid4().hex[:12]}"
                     yield {"type": "TEXT_MESSAGE_START", "messageId": nid, "role": "assistant"}

@@ -836,6 +836,28 @@ def only_names(phrase: str, label: str) -> bool:
     return bool(words) and all(w[:4] in own for w in words)
 
 
+# a day and a month as people write them, and "Which year?", in the chat's languages (Head of Design, 2026-11-17:
+# a plain sentence, the month as a word, the day without a leading zero; never a mask like "01.07.____")
+_MONTH_NAMES = {
+    "en": "January February March April May June July August September October November December".split(),
+    "ru": "\u044f\u043d\u0432\u0430\u0440\u044f \u0444\u0435\u0432\u0440\u0430\u043b\u044f \u043c\u0430\u0440\u0442\u0430 \u0430\u043f\u0440\u0435\u043b\u044f \u043c\u0430\u044f \u0438\u044e\u043d\u044f \u0438\u044e\u043b\u044f \u0430\u0432\u0433\u0443\u0441\u0442\u0430 \u0441\u0435\u043d\u0442\u044f\u0431\u0440\u044f \u043e\u043a\u0442\u044f\u0431\u0440\u044f \u043d\u043e\u044f\u0431\u0440\u044f \u0434\u0435\u043a\u0430\u0431\u0440\u044f".split(),
+    "uk": "\u0441\u0456\u0447\u043d\u044f \u043b\u044e\u0442\u043e\u0433\u043e \u0431\u0435\u0440\u0435\u0437\u043d\u044f \u043a\u0432\u0456\u0442\u043d\u044f \u0442\u0440\u0430\u0432\u043d\u044f \u0447\u0435\u0440\u0432\u043d\u044f \u043b\u0438\u043f\u043d\u044f \u0441\u0435\u0440\u043f\u043d\u044f \u0432\u0435\u0440\u0435\u0441\u043d\u044f \u0436\u043e\u0432\u0442\u043d\u044f \u043b\u0438\u0441\u0442\u043e\u043f\u0430\u0434\u0430 \u0433\u0440\u0443\u0434\u043d\u044f".split(),
+    "it": "gennaio febbraio marzo aprile maggio giugno luglio agosto settembre ottobre novembre dicembre".split(),
+    "de": "Januar Februar M\xe4rz April Mai Juni Juli August September Oktober November Dezember".split(),
+    "fr": "janvier f\xe9vrier mars avril mai juin juillet ao\xfbt septembre octobre novembre d\xe9cembre".split(),
+    "es": "enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre".split(),
+}
+_WHICH_YEAR = {"en": "Which year?", "ru": "\u041a\u0430\u043a\u043e\u0439 \u0433\u043e\u0434?", "uk": "\u042f\u043a\u0438\u0439 \u0440\u0456\u043a?", "it": "Che anno?", "de": "Welches Jahr?", "fr": "Quelle ann\xe9e ?", "es": "\xbfQu\xe9 a\xf1o?"}
+_DAY_MONTH_SHAPE = {"de": "{d}. {m}", "es": "{d} de {m}"}   # the others: "{d} {m}"
+
+
+def ask_the_year(label: str, day: int, month: int, language: str | None) -> str:
+    """"Date of birth: 1 July. Which year?" in the chat's language (English when it is not one of ours)."""
+    lang = language if language in _MONTH_NAMES else "en"
+    date = _DAY_MONTH_SHAPE.get(lang, "{d} {m}").format(d=day, m=_MONTH_NAMES[lang][month - 1])
+    return f"{label}: {date}. {_WHICH_YEAR[lang]}"
+
+
 def says_more(rest: str) -> bool:
     """Whether what is left of a line, beside the value read from it, still says something: a word of three
     letters or more that is not a filler or a word of an order."""

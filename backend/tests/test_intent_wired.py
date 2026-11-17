@@ -729,24 +729,37 @@ def test_a_date_without_its_year_and_the_year_said_after(guide, model):
     assert ask["input"]["type"] == "date" and ask["input"]["known"] == {"day": 1, "month": 7}
 
 
-def test_a_missing_year_is_named_in_the_same_reply_before_any_tap(guide, model):
-    """The QA Lead's runs (2026-11-17, missing_year_named_at_once): the model asked for the year on a second card
-    queued behind the name card, so nothing about the year was said in that reply. When the person's line holds a
-    day and a month with no year and the card carries no date, a line written in code names it before the card."""
+def test_a_missing_year_is_named_in_the_same_reply_before_any_tap(guide, model, monkeypatch):
+    """The QA Lead's runs (2026-11-17, missing_year_named_at_once) and Head of Design's wording. When the person's
+    line holds a day and a month with no year, the card of that turn carries no date and WAITS for them, a plain
+    sentence names it before the card: "Date of birth: 1 July. Which year?". No line when the card is applied at
+    once (the year question card follows it straight away and asks), nor when the model said it itself."""
+    from formguide import voice
     from .test_agent import collect
-    model.script = [say("", ("p1", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}, {"name": "last_name", "value": "Rossi"}]}))]
-    ev = collect(guide, "my-1", message="my name is Anna Rossi, I was born 1st July and my gender is female", state=start(guide, LOAN))
+    assert intent.ask_the_year("Date of birth", 1, 7, "en") == "Date of birth: 1 July. Which year?"
+    assert intent.ask_the_year("Geburtsdatum", 1, 7, "de") == "Geburtsdatum: 1. Juli. Welches Jahr?"
+    assert intent.ask_the_year("Fecha", 3, 2, "es").startswith("Fecha: 3 de febrero.") and "____" not in intent.ask_the_year("X", 1, 7, None)
+    line = "my name is Anna Rossi, I was born 1st July and my gender is female"
+    card = ("p1", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}, {"name": "last_name", "value": "Rossi"}]})
+    said = lambda ev: "".join(e.get("delta", "") for e in ev if e.get("type") == "TEXT_MESSAGE_CONTENT")  # noqa: E731
+    # the card waits (here: made to wait): the sentence comes before it
+    monkeypatch.setattr(voice, "said_outright", lambda *a, **k: False)
+    model.script = [say("", card)]
+    ev = collect(guide, "my-1", message=line, state=start(guide, LOAN))
     kinds = [(e["type"], e.get("name")) for e in ev]
-    said = "".join(e.get("delta", "") for e in ev if e.get("type") == "TEXT_MESSAGE_CONTENT")
-    assert "Date of birth: 01.07.____ ?" in said
-    assert kinds.index(("TEXT_MESSAGE_CONTENT", None)) < kinds.index(("CUSTOM", "on_interrupt"))      # before the card
+    assert "Date of birth: 1 July. Which year?" in said(ev)
+    assert kinds.index(("TEXT_MESSAGE_CONTENT", None)) < kinds.index(("CUSTOM", "on_interrupt"))
     # the model said it itself: no second line; a whole date in the line: no line
-    model.script = [say("The year of birth is missing: which year?", ("p2", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
-    ev = collect(guide, "my-2", message="my name is Anna, born 1st July", state=start(guide, LOAN))
-    assert "____" not in "".join(e.get("delta", "") for e in ev if e.get("type") == "TEXT_MESSAGE_CONTENT")
-    model.script = [say("", ("p3", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
-    ev = collect(guide, "my-3", message="my name is Anna, born 1st July 1991", state=start(guide, LOAN))
-    assert "____" not in "".join(e.get("delta", "") for e in ev if e.get("type") == "TEXT_MESSAGE_CONTENT")
+    model.script = [say("The year of birth is missing: which year?", card)]
+    assert "Which year?" not in said(collect(guide, "my-2", message=line, state=start(guide, LOAN)))
+    model.script = [say("", card)]
+    assert "Which year?" not in said(collect(guide, "my-3", message="my name is Anna Rossi, born 1st July 1991", state=start(guide, LOAN)))
+    monkeypatch.undo()
+    # the card is applied at once: no line, the year question card follows and asks
+    model.script = [say("", card)]
+    ev = collect(guide, "my-4", message=line, state=start(guide, LOAN))
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    assert (json.loads(raw) if isinstance(raw, str) else raw).get("quiet") is True and "Which year?" not in said(ev)
 
 
 def test_the_three_switches_of_the_measurement(guide, model, monkeypatch):
