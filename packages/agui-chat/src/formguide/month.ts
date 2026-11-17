@@ -19,8 +19,57 @@ function firstDay(lang: string): number {
 
 const CHEV = (d: string) => `<svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
 
+const clampYear = (y: number, min: Date | null, max: Date | null): number =>
+  Math.min(max ? max.getFullYear() : Infinity, Math.max(min ? min.getFullYear() : -Infinity, y))
+
+/** Years alone (a year of birth whose day and month are known, a car's registration year): a grid of 12 a page, the
+ *  arrows 12 years at a time, opening on `startYear`, and a field to type the year (four keys instead of paging). The
+ *  pages end at the allowed years; only a page that would be less than half full shows the years beyond, closed. */
+export function yearPicker(opts: { min?: number; max?: number; startYear?: number; value?: number | null; t: (k: string) => string;
+  onPick: (year: number) => void }): HTMLElement {
+  // the English words live here, with the year picker (in the blocks file), so the chat's main file does not grow;
+  // the language packs carry the rest
+  const w = (k: string, en: string): string => { const v = opts.t(k); return v && v !== k ? v : en }
+  const now = new Date().getFullYear()
+  const lo = opts.min ?? now - 120, hi = opts.max ?? now
+  const clamp = (y: number) => Math.min(hi, Math.max(lo, y))
+  // pages counted back from the latest year, so the last page ends on it and the first page holds what is left
+  const pageOf = (y: number) => Math.floor((hi - clamp(y)) / 12)
+  let page = pageOf(opts.value ?? opts.startYear ?? hi)
+  const last = pageOf(lo)
+  const title = h('div', { class: 'cal-title', 'aria-live': 'polite' })
+  const prev = h('button', { type: 'button', class: 'cal-nav', 'aria-label': w('prevYears', 'Earlier years') })
+  const next = h('button', { type: 'button', class: 'cal-nav', 'aria-label': w('nextYears', 'Later years') })
+  prev.innerHTML = CHEV('M7.5 3 4.5 6l3 3'); next.innerHTML = CHEV('M4.5 3l3 3-3 3')
+  const body = h('div', { class: 'cal-years' })
+  const draw = () => {
+    const top = hi - page * 12, bottom = Math.max(lo, top - 11)
+    const real = Array.from({ length: top - bottom + 1 }, (_, i) => bottom + i)
+    const pad = real.length < 6 ? Array.from({ length: 12 - real.length }, (_, i) => bottom - (12 - real.length) + i) : []
+    body.replaceChildren(...[...pad, ...real].map((y) => h('button', { type: 'button', class: `cal-y${y === opts.value ? ' on' : ''}`,
+      disabled: y < lo || y > hi, 'aria-pressed': y === opts.value ? 'true' : null, onclick: () => opts.onPick(y) }, String(y))))
+    title.textContent = `${pad[0] ?? bottom} \u2013 ${top}`
+    prev.disabled = page >= last; next.disabled = page <= 0
+  }
+  prev.addEventListener('click', () => { page = Math.min(last, page + 1); draw() })
+  next.addEventListener('click', () => { page = Math.max(0, page - 1); draw() })
+  const field = h('input', { class: 'text-in cal-type', type: 'text', inputmode: 'numeric', maxlength: '4', autocomplete: 'off',
+    placeholder: w('typeYear', 'Or type the year'), 'aria-label': w('typeYear', 'Or type the year') }) as HTMLInputElement
+  const hint = h('div', { class: 'muted bk-small cal-hint', 'aria-live': 'polite' })
+  field.addEventListener('input', () => { field.value = field.value.replace(/\D/g, '').slice(0, 4); hint.textContent = '' })
+  field.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const y = Number(field.value)
+    if (field.value.length === 4 && y >= lo && y <= hi) opts.onPick(y)
+    else hint.textContent = `${lo} \u2013 ${hi}`   // a year outside the range: the range, quietly, not an error
+  })
+  draw()
+  return h('div', { class: 'cal cal-yearonly', role: 'group' }, h('div', { class: 'cal-head' }, title, h('span', { class: 'cal-navs' }, prev, next)), body, field, hint)
+}
+
 export function monthCalendar(opts: { lang: string; value?: string | null; limits?: DateLimits; t: (k: string) => string;
-  onPick: (iso: string, label: string) => void; past?: boolean }): HTMLElement {
+  onPick: (iso: string, label: string) => void; past?: boolean; startYear?: number }): HTMLElement {
   const lang = opts.lang || undefined
   const min = parse(opts.limits?.min), max = parse(opts.limits?.max)
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -30,11 +79,13 @@ export function monthCalendar(opts: { lang: string; value?: string | null; limit
   let year = start.getFullYear(), month = start.getMonth()
   let mode: 'days' | 'years' | 'months' = 'days'
   let yearPage = year - (year % 12)
-  // a date in the past with nothing chosen yet (a date of birth): start on the years, a page around 30 years back,
-  // like a birthday picker, instead of today's month: year, month, day in three taps
-  if (opts.past && !chosen) {
+  // a date of birth with nothing chosen yet: start on the years, like a birthday picker, instead of a month: year,
+  // month, day in three taps. That is a date up to today (`past`), or a range that ends years ago (an 18+ rule ends
+  // 18 years back; opening on that month meant paging back year by year). The question may say where to open.
+  const wide = !!max && today.getFullYear() - max.getFullYear() >= 14   // an age rule (14+, 18+), not "founded before 2020"
+  if ((opts.past || wide || opts.startYear) && !chosen) {
     mode = 'years'
-    const around = Math.max(min ? min.getFullYear() : -Infinity, start.getFullYear() - 30)
+    const around = clampYear(opts.startYear ?? (opts.past ? start.getFullYear() - 30 : today.getFullYear() - 35), min, max)
     yearPage = around - (around % 12)
     year = around
   }

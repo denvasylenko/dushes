@@ -37,11 +37,13 @@ const WHY: Record<string, string> = {
 }
 const ABOUT: Record<string, string> = {
   command: 'Is it a command', turn: 'What to do', needs_agent: 'Needs the agent', asks_more: 'Asks for more', asks_move: 'Asks to go somewhere',
-  all_sections: 'All sections', target: 'Where', value: 'Value', date_field: 'Which date',
+  all_sections: 'All sections', target: 'Where', value: 'Value', date_field: 'Which date', other_place: 'Another place',
 }
 const cap = (x: string): string => x.charAt(0).toUpperCase() + x.slice(1)
-const aboutOf = (q: Question): string => q.text || ABOUT[q.about] || cap(q.about.replace(/^(field|section):/, '').replace(/_/g, ' '))
-const answerOf = (q: Question): string => q.answer_label ?? q.answer ?? '—'
+// the question as a guest reads it: our short words; the model's own long question only in the developers' details
+const aboutOf = (q: Question): string => ABOUT[q.about] || (/^(field|section):/.test(q.about) ? cap(q.about.replace(/^(field|section):/, '').replace(/_/g, ' ')) : q.text || q.about)
+const TURN: Record<string, string> = { go_to: 'go somewhere', question: 'a question', show: 'point at something', set: 'set a value', other: 'something else' }
+const answerOf = (q: Question): string => (q.about === 'turn' && q.answer && TURN[q.answer]) || q.answer_label || q.answer || '\u2014'
 
 /** What happened to the turn, in one line. */
 function summary(d: Decision | undefined, s: RunStats): string {

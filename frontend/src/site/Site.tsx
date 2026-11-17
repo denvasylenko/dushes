@@ -5,6 +5,8 @@ import type { AguiChatElement } from '@formguide/agui-chat'
 import { FormProvider, Render } from '../Form'
 import type { UiDirective } from '../types'
 import { useDemoForm } from './useDemoForm'
+import { Decisions, type DecidedTurn, type Decision } from '../Decisions'
+import type { RunStats } from '../Trace'
 
 // ?dictation=server tries Whisper on the server even where the browser can recognise speech (the demo's switch)
 const DICTATION = ((): 'auto' | 'server' | 'browser' => {
@@ -42,6 +44,22 @@ export default function Site() {
   const [thread] = useState(threadId)
   const chatRef = useRef<AguiChatElement | null>(null)
   const pendingHandoff = useRef<string | null>(null)   // a form Dushes opened for the form agent
+  // How it decided: each turn's run_stats, with the server's decision_trace when it sent one (joined by run_id)
+  const [pane, setPane] = useState<'chat' | 'decisions'>('chat')
+  const [turns, setTurns] = useState<DecidedTurn[]>([])
+  const decided = useRef(new Map<string, Decision>())
+  const asked = useRef('')
+  useEffect(() => {
+    const el = chatRef.current
+    if (!el) return
+    const on = (e: Event) => {   // each turn is named by what it answers: the last message, or a card's answer
+      const input = (e as CustomEvent<{ messages?: { role: string; content?: unknown }[]; forwardedProps?: { command?: unknown } }>).detail
+      const last = [...(input?.messages ?? [])].reverse().find((m) => m.role === 'user')
+      asked.current = input?.forwardedProps?.command ? 'Card answer' : typeof last?.content === 'string' ? last.content.slice(0, 80) : 'Turn'
+    }
+    el.addEventListener('agui:run-start', on)
+    return () => el.removeEventListener('agui:run-start', on)
+  })
 
   useEffect(() => { fetch('/site/map').then((r) => r.json()).then(setMap) }, [])
   useEffect(() => {
@@ -115,6 +133,15 @@ export default function Site() {
     const onEvent = fg.onEvent!
     fg.onEvent = (ev, chat) => {
       if (ev.type === 'CUSTOM' && ev.name === 'site_directive') { go(ev.value as SiteDirective); return true }
+      if (ev.type === 'CUSTOM' && ev.name === 'decision_trace') {   // Jev's part of a turn, before its run_stats
+        const d = (typeof ev.value === 'string' ? JSON.parse(ev.value) : ev.value) as Decision
+        if (d?.run_id) { decided.current.set(d.run_id, d); setTurns((t) => t.map((x) => (x.stats.run_id === d.run_id ? { ...x, decision: d } : x))) }
+      }
+      if (ev.type === 'CUSTOM' && ev.name === 'run_stats') {
+        const stats = ev.value as RunStats
+        const decision = stats.run_id ? decided.current.get(stats.run_id) : undefined
+        setTurns((t) => [{ at: new Date(), label: asked.current || 'Turn', stats, decision }, ...t].slice(0, 50))
+      }
       return onEvent(ev, chat)
     }
     return [fg]
@@ -177,7 +204,12 @@ export default function Site() {
             </div>
           )}
         </main>
-        <aside className="chat-pane">
+        <aside className={`chat-pane${pane === 'decisions' ? ' pane-decisions' : ''}`}>
+          <div className="seg pane-seg" role="tablist" aria-label="Assistant panel">
+            <button role="tab" aria-selected={pane === 'chat'} className={pane === 'chat' ? 'on' : ''} onClick={() => setPane('chat')}>Chat</button>
+            <button role="tab" aria-selected={pane === 'decisions'} className={pane === 'decisions' ? 'on' : ''} onClick={() => setPane('decisions')}>How it decided</button>
+          </div>
+          {pane === 'decisions' && <Decisions turns={turns} />}
           <AguiChat
             ref={chatRef}
             className="chat-widget"

@@ -150,6 +150,43 @@ describe('card kit: questions', () => {
     expect(set.textContent).toBe('Set 1988')
   })
 
+  it('a year of birth whose day and month are known: years only, opening near the start year, one tap fills the whole date', async () => {
+    const { el, applyChanges } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Which year were you born in?', field: 'dob', label: 'Date of birth',
+      applies: true, input: { type: 'date', min: '1950-07-01', max: '2008-07-01', known: { day: 1, month: 7 }, start_year: 1991 }, allow_text: true, reveal: [] })))
+    await tick(10)
+    const years = $$(el, '.card .cal-yearonly .cal-y').map((b) => b.textContent)
+    expect(years).toContain('1991')                                             // the page holding the start year, not July 2008
+    expect($(el, '.card .cal-grid')).toBeNull()                                 // no days to page through
+    expect(Math.max(...years.map(Number))).toBeLessThanOrEqual(2008)            // pages end at the allowed years
+    ;($$(el, '.card .cal-yearonly .cal-y').find((b) => b.textContent === '1991') as HTMLButtonElement).click()
+    await tick(10)
+    expect(applyChanges).toHaveBeenCalledWith({ dob: '1991-07-01' })
+  })
+
+  it('typing the year: four digits and Enter; a year out of range shows the range, quietly', async () => {
+    const { el, applyChanges } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Registration year?', field: 'reg', label: 'Registration year',
+      applies: true, input: { type: 'year', min: '1990', max: '2026' }, allow_text: true, reveal: [] })))
+    await tick(10)
+    expect($$(el, '.card .cal-y').map((b) => b.textContent).at(-1)).toBe('2026')   // a lone year opens on the recent years
+    const field = $(el, '.card .cal-type') as HTMLInputElement
+    expect(field.getAttribute('inputmode')).toBe('numeric')
+    field.value = '1965'; field.dispatchEvent(new Event('input'))
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+    expect($(el, '.card .cal-hint').textContent).toBe('1990 \u2013 2026')
+    expect(applyChanges).not.toHaveBeenCalled()
+    field.value = '2015'; field.dispatchEvent(new Event('input'))
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+    await tick(10)
+    expect(applyChanges).toHaveBeenCalledWith({ reg: 2015 })
+  })
+
+  it('a whole date of birth with an 18+ limit opens on the years, not on the month 18 years back', async () => {
+    const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'When were you born?', field: 'dob', label: 'Date of birth',
+      applies: true, input: { type: 'date', min: '1950-07-01', max: '2008-07-01' }, allow_text: true, reveal: [] })))
+    await tick(10)
+    expect($(el, '.card .cal')!.getAttribute('data-mode')).toBe('years')
+  })
+
   it('a stepper with no value starts at the lowest on +', async () => {
     const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Doors?', field: 'doors', label: 'Doors',
       applies: true, input: { type: 'number', min: 2, max: 5, step: 1 }, allow_text: true, reveal: [] })))
@@ -391,11 +428,12 @@ describe('our own date and time pickers', () => {
     expect(applyChanges).toHaveBeenCalledWith({ birth_date: `${back}-05-12` })   // three taps
   })
 
-  it('the title switches to years, then months', async () => {
+  it('a date of birth under an age rule opens on the years, then months', async () => {
     const { el } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Born?', input: { type: 'date', max: '2008-01-01' }, allow_text: true })))
-    ;($(el, '.cal-title') as HTMLButtonElement).click()
-    expect($(el, '.cal-title').textContent).toBe('2004 – 2015')
-    ;($$(el, '.cal-nav')[0] as HTMLButtonElement).click()                 // the previous 12 years
+    const around = new Date().getFullYear() - 35, page = around - (around % 12)
+    expect($(el, '.cal-title').textContent).toBe(`${page} \u2013 ${page + 11}`)   // not January 2008: years of paging back
+    for (let p = page; p + 11 < 1999; p += 12) ($$(el, '.cal-nav')[1] as HTMLButtonElement).click()   // to the page with 1999
+    for (let p = page; p > 1999; p -= 12) ($$(el, '.cal-nav')[0] as HTMLButtonElement).click()
     ;($$(el, '.cal-y').find((b) => b.textContent === '1999') as HTMLButtonElement).click()
     ;($$(el, '.cal-y')[4] as HTMLButtonElement).click()                  // May
     expect($(el, '.cal-title').textContent).toContain('May 1999')
