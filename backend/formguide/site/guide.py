@@ -36,6 +36,7 @@ import uuid
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
+from .. import experiments as _experiments
 from ..reply import as_list
 from ..stats import RunStats, model_id
 from ..transcript import check_thread_id, new_entry
@@ -505,7 +506,7 @@ class Dushes:
                 yield {"type": "CUSTOM", "name": "model",
                        "value": {"choice": choice, "label": s.label, "model": _model_id(self.model or s.models.agent)}}
                 continue
-            if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1":
+            if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1" and _experiments.allowed():
                 fast = getattr(stats, "fast", None)
                 who = self.intent.settings.provider.capitalize()
                 if fast and fast.get("handled") and fast.get("by"):
@@ -543,10 +544,10 @@ class Dushes:
                     seen["label"] = label
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
                     yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
-            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_SCORES") == "1" and getattr(stats, "fast", None):
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_SCORES") == "1" and _experiments.allowed() and getattr(stats, "fast", None):
                 yield {"type": "CUSTOM", "name": "choice_scores", "value": {
                     k: stats.fast.get(k) for k in ("ms", "tokens", "targets", "sure", "handled", "late") if k in stats.fast}}
-            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_TRACE") == "1" and getattr(stats, "trace", None):
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_TRACE") == "1" and _experiments.allowed() and getattr(stats, "trace", None):
                 yield {"type": "CUSTOM", "name": "decision_trace", "value": _decision_trace(
                     stats, seen, run_id, thread_id in self.__dict__.get("_mixed", {}), self.site)}
                 if not stats.models:
@@ -676,7 +677,8 @@ class Dushes:
         from .. import intent as _intent
         from ..language import detect
         layer = self.intent
-        if layer.settings.provider == "off":
+        # a gated host (formguide.experiments): the layer is not asked for a visitor without a pass
+        if layer.settings.provider == "off" or not _experiments.allowed():
             return None
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
         if os.environ.get("INTENT_CODE") == "1":
@@ -1252,7 +1254,8 @@ class Dushes:
         a model turn would only make them wait."""
         from .. import intent as _intent
         off = self._offers.get(thread_id)
-        if os.environ.get("INTENT_CODE") != "1" or not isinstance(off, dict) or not _intent.takes_up(message):
+        if (os.environ.get("INTENT_CODE") != "1" or not _experiments.allowed() or not isinstance(off, dict)
+                or not _intent.takes_up(message)):
             return None
         args = dict(off.get("args") or {})
         if off.get("tool") == "open_form":
@@ -1408,6 +1411,7 @@ class Dushes:
         from .. import intent as _intent_mod
         from .. import voice
         aloud = voice.active(thread_id)   # a voice conversation speaks this thread's answers: short, and no chips
+        layer_on = self.intent.on and _experiments.allowed()   # a gated host: only for a visitor with a pass
         async for ev in agent.answer(self.model or self.forms.models.agent, self.site, voice.heard_as(quoted(message, heard) or "", aloud) or "", history, page,
                                      thread_id, run_id, keep, doc_passages=self.doc_passages(message or "") if has_docs else "",
                                      ask_docs=self._ask_documents if has_docs else None, live=live,
@@ -1415,11 +1419,11 @@ class Dushes:
                                      suggestions=self.suggestions and not aloud, finish=False,
                                      stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats,
                                      asked=message, offered=self._offers.pop(thread_id, False), upfront=aloud,
-                                     chooser=self._chooser(message or "", page) if self.intent.on and os.environ.get("INTENT_TOOL", "1") == "1" else None,
+                                     chooser=self._chooser(message or "", page) if layer_on and os.environ.get("INTENT_TOOL", "1") == "1" else None,
                                      # a direct command or a plain request that the model carries out with its own
                                      # tool ends there: one short line, no description and no question back
                                      end_on_move=os.environ.get("INTENT_END_ON_MOVE") == "1" or (
-                                         self.intent.on and bool(message) and (
+                                         layer_on and bool(message) and (
                                              _intent_mod.is_direct(message) or _intent_mod.asks_for(message))
                                          and not message.rstrip().endswith("?"))):
             if ev["type"] == "CUSTOM" and ev.get("name") == "site_offer":

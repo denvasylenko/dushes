@@ -97,6 +97,16 @@ from .site_app import mount as mount_site  # noqa: E402
 
 mount_site(app, guide)
 
+# Experimental features behind an activation code (EXPERIMENT_CODES): on a host that sets it, the decision model
+# runs only for a visitor who entered a code; without a pass nothing is sent to the chooser, and no label or
+# decision trace is shown. A host without the setting is not gated (a developer's machine).
+from formguide import experiments as _experiments  # noqa: E402
+
+_EXPERIMENTS = _experiments.Experiments.from_env()
+if _EXPERIMENTS.enabled:
+    _experiments.install(app, _EXPERIMENTS)
+    app.include_router(_experiments.create_experiments_router(_EXPERIMENTS), prefix="/experiments")
+
 # The Form Lab: Dushes over the QA library of forms (demo/mock_forms/lab/), for the scenario evals: /lab/run, /lab/map.
 from .lab_site import mount as mount_lab  # noqa: E402
 
@@ -121,6 +131,7 @@ if os.environ.get("DEMO_OUR_VOICE") == "1" and (_DIST / "site.html").exists():
                               log_dir=Path(guide.data_dir) / "voice", stop=guide.stop)
         if _VOICE.config.enabled:
             app.include_router(_voice.create_voice_router(_voice.watch(_VOICE)), prefix="/voice")
+            _EXPERIMENTS.join("voice", _VOICE.gate)     # one code field opens both
             _TALK = "if(c&&!c.hasAttribute('voice-mode'))c.setAttribute('voice-mode','true');"
 
     _NO_FILES = ("<script>customElements.whenDefined('agui-chat').then(()=>{const set=()=>{const c="
