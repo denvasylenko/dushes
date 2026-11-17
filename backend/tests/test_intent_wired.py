@@ -514,3 +514,21 @@ def test_a_date_and_an_option_in_one_line_are_both_set(guide, model):
     raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
     card = json.loads(raw) if isinstance(raw, str) else raw
     assert [c["name"] for c in card["changes"]] == ["birth_date", "gender"] and card.get("quiet") is True
+
+
+def test_all_the_sections_of_a_place_the_layer_did_not_resolve_is_the_agents(guide, model):
+    """QA (2026-11-17), the owner's line: "In contract step open all sections". The form has no step of that name;
+    the layer must not open the tab on the screen instead. And the agent can open several parts in one call."""
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": []}}}
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), all_sections=("yes", 0.95),
+                   other_place=("yes", 0.8))
+    model.script = [say("Which step do you mean by the contract step?")] * 3
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "ctr-1", message="In contract step open all sections", state=state)
+    assert not [e for e in ev if e.get("type") == "CUSTOM" and e.get("name") in ("ui_directive", "site_directive")]
+    assert len(model.calls) > before
+    from formguide.site import agent as site_agent
+    page = faq_page()
+    ids = [x.id for x in page.parts if x.kind in ("accordion", "section")]
+    told, ds = site_agent.directives_for(SiteMap.load(SITE), {"path": page.path, "parts": ids + ["no-such"]})
+    assert [d.get("tab") or d.get("section") for d in ds] == ids and "No such part: no-such" in told and f"{len(ids)} of its" in told

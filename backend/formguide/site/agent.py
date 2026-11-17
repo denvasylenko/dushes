@@ -240,11 +240,15 @@ SUGGEST = {"name": "suggest_next", "description": "Two or three short next reque
 TOOLS: list[dict[str, Any]] = [
     {"name": "search_site", "description": "Search the site's pages again with other words.",
      "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
-    {"name": "navigate", "description": "Open a page of the site, optionally a tab, accordion or section on it.",
+    {"name": "navigate", "description": "Open a page of the site, optionally a tab, accordion or section on it. To open "
+                                 "several parts of one page at once (\"open all the questions\"), list their ids in "
+                                 "`parts`: every one listed is opened and none is closed.",
      "parameters": {"type": "object", "properties": {
          "path": {"type": "string", "description": "a page path from the site contents, e.g. /pricing"},
          "tab": {"type": "string", "description": "a tab or accordion id on that page"},
-         "section": {"type": "string", "description": "a section id on that page"}},
+         "section": {"type": "string", "description": "a section id on that page"},
+         "parts": {"type": "array", "items": {"type": "string"},
+                   "description": "ids of several accordions or sections of that page to open together"}},
          "required": ["path"]}},
     {"name": "read_page", "description": "Read what a page, or one tab, accordion or section of it, says, without "
                                   "opening it: the person stays where they are. Use it to answer a question "
@@ -295,6 +299,30 @@ def directive(site: SiteMap, args: dict[str, Any]) -> tuple[str, dict | None]:
             "was. To open another, call navigate again for it; say that parts are open only for the ones you opened."
             if opened and len(page.parts) > 1 else "")
     return f"Opened {page.title}." + only + (" It shows: " + " | ".join(shown) if shown else ""), d
+
+
+def directives_for(site: SiteMap, args: dict[str, Any]) -> tuple[str, list[dict]]:
+    """navigate with `parts`: one directive a part that exists, and a result that names exactly what was opened."""
+    page = site.page(str(args.get("path") or ""))
+    ids = [str(x).strip() for x in (args.get("parts") or []) if str(x).strip()]
+    if not page or not ids:
+        result, d = directive(site, args)
+        return result, [d] if d else []
+    out, opened, missing = [], [], []
+    for pid in ids:
+        part = page.part(pid)
+        if not part:
+            missing.append(pid)
+            continue
+        out.append({"type": "navigate", "path": page.path, ("tab" if part.kind in ("tab", "accordion") else "section"): part.id})
+        opened.append(part.title)
+    if not out:
+        return f"The page {page.path} has none of these parts: {', '.join(missing)}.", []
+    left = [x.title for x in page.parts if x.title not in opened]
+    return (f"Opened on {page.title}, {len(opened)} of its {len(page.parts)} parts: {', '.join(opened)}."
+            + (f" Not opened: {', '.join(left)}." if left else " That is every part of the page.")
+            + (f" No such part: {', '.join(missing)}." if missing else "")
+            + " Say that parts are open only for the ones named here."), out
 
 
 def _text(content: Any) -> str:
@@ -450,6 +478,9 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                         result = "Too many options to pick from: name the page as well (\"Loans: Rate discounts\") and call again."
                     else:
                         result = "The quick pick is not available now. Use navigate with a path from the site contents instead."
+                elif name == "navigate" and args.get("parts") and may_go:
+                    result, several = directives_for(site, args)
+                    directives.extend(several)
                 elif name == "navigate":
                     result, d = directive(site, args)
                     if d and not may_go:   # a question: the answer first, the page as an offer
