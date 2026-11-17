@@ -52,12 +52,15 @@ EXPERIMENT_SECRET=...                                                 # signs th
 
 The decision model is offered as a feature only where the host has one to ask (`INTENT_PROVIDER` is not `off`). A host that installs no gate is not gated at all: its own settings alone decide, as on a developer's machine or a test stand.
 
+- **The routes exist only with `EXPERIMENT_CODES`.** A host with voice codes alone has no `/experiments`: there the widget's own "Experimental voice mode" row and `/voice/unlock` are the code entry.
+- **What the gate covers in the package:** the decision model in front of the site assistant (`formguide.site`). The demo host also puts it in front of a form that is talked to directly, behind the same gate; on your own host that part is yours to add.
+
 ## The routes
 
 | Route | Body | Answer |
 | --- | --- | --- |
 | `GET /experiments` | | `{features, unlocked}`: what a code opens on this host, and whether this request already holds a valid pass |
-| `POST /experiments/unlock` | `{code}` | `{person, pass, features, passes}`; 403 for a wrong code. `passes` holds one pass per feature the code opens: `{decision_model?, voice?}`. `pass` is the one for `X-Experiment-Pass`, empty when the code opens only another feature |
+| `POST /experiments/unlock` | `{code}` | `{person, pass, features, passes}`; 403 for a wrong code. Wrong codes count against the same daily limit per address as voice mode's. `passes` holds one pass per feature the code opens: `{decision_model?, voice?}`. `pass` is the one for `X-Experiment-Pass`, empty when the code opens only another feature |
 
 The chat sends the decision model's pass in the `X-Experiment-Pass` header of each run, never in an address. The voice pass is the one voice mode uses for its own routes.
 
