@@ -229,6 +229,17 @@ def test_the_owners_first_tests_of_the_demo(guide, model, monkeypatch):
     assert not intent.said_in("How applying works", "open personal details in loan application")
     assert intent.said_in("Passport", "open the passport section") and not intent.said_in("Cover levels", "open car insurance")
 
+    # 1a''. and in his own session the chooser answered "no" to "does it name a part": code decides that too
+    said_no = Mock(is_command=("yes", 0.96), kind=("go_to", 1.0), section=("/apply", 0.86), names_part=("no", 0.89),
+                   element=(f"/apply#{apply_page.parts[0].id}", 0.85))
+    model.script = [say("", ("o3", "open_form", {"form_id": "loan_application", "note": "open Personal details"})), say("Opening it.")]
+    before = len(model.calls)
+    ev = run(site_with(guide, said_no), "ow-1c", message="open personal details in loan application", state={"page": {"path": "/"}})
+    assert len(model.calls) > before and "Apply for a loan." not in text(ev) and apply_page.parts[0].title not in text(ev)
+    assert intent.names_more("open personal details in loan application", "Apply for a loan")
+    assert not intent.names_more("take me to the apply for a loan page", "Apply for a loan")
+    assert not intent.names_more("Okay, can you open car insurance", "Car insurance") and not intent.names_more("open the loans page", "Loans")
+
     # 1b. on the form's page: the part of the form is opened by the form's own step, with no model call
     on_form = Mock(is_command=("yes", 0.98), kind=("show", 0.9), form_part=("acc_personal", 0.92), names_part=("yes", 0.9))
     before = len(model.calls)

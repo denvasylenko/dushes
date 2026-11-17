@@ -647,7 +647,8 @@ class Dushes:
         # is: inside a form too. It is never the form agent's "there is no such section here"
         titled = self._titled(message, here)
         to_site = {"kind": "agent", "mode": "site"} if titled else None
-        if titled and agent.wants_to_go(message) and not ("names_part" in picks and picks["names_part"].id == "yes"):
+        if (titled and agent.wants_to_go(message) and not ("names_part" in picks and picks["names_part"].id == "yes")
+                and not _intent.names_more(message, f"{titled.title} {' '.join(titled.keywords)}")):
             # a direct request ("can you open car insurance") for a page said by its whole title: the package's own
             # rule for a direct request settles it, whatever the chooser made of the polite form
             stats.fast["handled"] = True
@@ -671,6 +672,8 @@ class Dushes:
             if part and not _intent.said_in(part.title, message):
                 ppage, part = None, None              # the nearest part, not the one that was said
         names_part = "names_part" in picks and picks["names_part"].id == "yes"
+        if page and not part and _intent.names_more(message, f"{page.title} {' '.join(page.keywords)}"):
+            names_part = True                         # the line says more than the page: a part of it is meant
         value = picks.get("value") if ov is not None else None
         form_part = picks.get("form_part") if ov is not None else None
         if form_part and not _intent.said_in(next((o.label for o in qs["form_part"].options if o.id == form_part.id), ""), message):

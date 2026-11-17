@@ -54,6 +54,23 @@ def said_in(label: str, phrase: str) -> bool:
     return bool(words) and all(w[:5] in heard for w in words)
 
 
+_ORDER_WORDS = set("""open show go goto take bring get navigate switch move jump see view display me us my the a an to
+    into in on at of for from and or page pages screen section tab part please can could would will you now okay ok
+    yeah yes hey so then just again want need like let lets i id we""".split())
+
+
+def names_more(phrase: str, place: str) -> bool:
+    """Whether a line that orders a move says more than the place: a word of four letters or more that is neither
+    a word of the place's name nor a word of the order itself. "Open personal details in loan application" names
+    more than the page "Apply for a loan"; "can you open car insurance" does not name more than "Car insurance".
+    Decided in code: asked whether a part is named, a chooser said no to that very line."""
+    known = {w[:4] for w in re.findall(r"[\w']+", (place or "").lower())}
+    for w in re.findall(r"[\w']+", (phrase or "").lower()):
+        if len(w) >= 4 and w not in _ORDER_WORDS and w[:4] not in known:
+            return True
+    return False
+
+
 def has_date(phrase: str) -> bool:
     return bool(_DATE.search(phrase or ""))
 
