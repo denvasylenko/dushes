@@ -468,8 +468,13 @@ class Dushes:
         stats = RunStats(run_id, thread_id)
         stats.agent = "site"
         stats.choice = choice
+        seen: dict[str, Any] = {"said": [], "screen": [], "label": ""}   # for the demo's own log of the turn
         async for ev in self._run(thread_id, stats, message=message, state=state, resume=resume, run_id=run_id,
                                   handoff=handoff, host=host, reply_to=reply_to, **form_kwargs):
+            if ev.get("type") == "TEXT_MESSAGE_CONTENT":
+                seen["said"].append(str(ev.get("delta") or ""))
+            elif ev.get("type") == "CUSTOM" and ev.get("name") in ("site_directive", "card", "display"):
+                seen["screen"].append({"name": ev["name"], "value": ev.get("value")})
             if ev.get("type") == "CUSTOM" and ev.get("name") == "model":
                 continue   # the form agent's: this run already said which model answers
             if choice and not told and ev.get("type") == "RUN_STARTED":
@@ -484,6 +489,11 @@ class Dushes:
                 who = self.intent.settings.provider.capitalize()
                 if fast and fast.get("handled") and fast.get("by"):
                     label = f"in code ({fast['by']}) \u00b7 no model"
+                elif fast and fast.get("handled") and fast.get("did"):
+                    name = str(_model_id(self.model or self.forms.models.agent))
+                    rest = max(RunStats.now() - stats.t0 - fast["ms"] / 1000, 0.0)
+                    label = (f"{who} \u00b7 {fast['ms']} ms: opened {fast['did']} \u00b7 then "
+                             f"{'Haiku' if 'haiku' in name.lower() else name} \u00b7 {rest:.1f} s")
                 elif fast and fast.get("handled"):
                     label = f"{who} \u00b7 {fast['ms']} ms"
                 elif getattr(stats, "decided", False):
@@ -500,8 +510,11 @@ class Dushes:
                     self._heard = None
                 lid = f"label_{uuid.uuid4().hex[:10]}"
                 yield {"type": "TEXT_MESSAGE_START", "messageId": lid, "role": "assistant"}
+                seen["label"] = label
                 yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
                 yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR"):
+                _demo_log(thread_id, message, resume, handoff, state, stats, seen, ev["type"])
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and stats.models:
                 summary = stats.as_event()
                 stats.models = []   # once per run
@@ -528,8 +541,21 @@ class Dushes:
         if message and resume is None and not handoff and os.environ.get("INTENT_LAYER", "1") != "0":
             fast = self._taken_up(thread_id, message, stats) or await self._fast(thread_id, message, state, stats)
         if fast and fast["kind"] in ("navigate", "show"):
+            tail = bool(fast.get("tail"))
             async for ev in self._fast_move(thread_id, message, run_id, fast, reply_to):
-                yield ev
+                if not (tail and ev["type"] == "RUN_FINISHED"):
+                    yield ev
+            if not tail:
+                return
+            # the agent answers what is left of the line, on the page that is open now, and knows what was done
+            there = {**state, "page": {**(state.get("page") or {}), "path": fast["args"].get("path") or "/"}}
+            done = (f'Already done for this message, before you: "{fast["title"]}" was opened and is on the screen now, '
+                    f'and the person was told "{fast["title"]}." Do not open it again and do not announce it. Answer '
+                    "only what is left of the message, shortly.")
+            async for ev in self._site_turn(thread_id, message, there, run_id, host, form_kwargs, recorded=True,
+                                            reply_to=reply_to, stats=stats, done=done):
+                if ev["type"] != "RUN_STARTED":       # one run
+                    yield ev
             return
         if fast and fast["kind"] in ("value", "focus"):
             mode = "form"
@@ -650,6 +676,11 @@ class Dushes:
                 _intent.Option("other", "a text to write, a judgement or a suggestion"))),
             "needs_agent": _intent.Question("noul", "needs_agent", "Does the line name a person or a company that is not "
                                             "on the screen, ask a question, ask for a text, or need judgement?"),
+            "asks_move": _intent.Question("noul", "asks_move", "Does the line, in any part of it, order to open, go to "
+                                          "or show a page, a tab or a section?"),
+            "asks_more": _intent.Question("noul", "asks_more", "Beside an order to open, show or set something, does the "
+                                          "line ask anything else: a question, an explanation, a text to write, "
+                                          "an opinion?"),
             "target": _intent.Question("choice", "target", "Which object of the site does the line ask to open or show? "
                                        "The line may say the way to it, or only its name, or point back at what the "
                                        "conversation just offered or opened.", tuple(targets), act="show")}
@@ -671,6 +702,8 @@ class Dushes:
         ms = round((RunStats.now() - started) * 1000)
         stats.fast = {"ms": ms, "handled": False, "late": not picks and ms >= layer.settings.timeout_ms - 10}
         # the demo's terminal shows what the chooser was sure of (ids and confidences only, never the phrase)
+        stats.fast.update(tokens=getattr(layer.chooser, "tokens", None), targets=len(targets),
+                          sure={k: [v.id, round(v.confidence, 2)] for k, v in picks.items()})
         log.warning("choice layer: %d ms, %s input tokens, %d targets, sure of %s", ms, getattr(layer.chooser, "tokens", "?"),
                     len(targets), {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
         fid = str((form or {}).get("form_id") or "form")
@@ -682,13 +715,17 @@ class Dushes:
             out = {"kind": "value"}
         else:
             command, kind = picks.get("is_command"), picks.get("kind")
-            hand_on = picks.get("needs_agent")
-            if (not command or command.id != "yes" or not kind or kind.id not in ("go_to", "show", "set_value")
-                    or (hand_on and hand_on.id == "yes" and hand_on.confidence >= 0.6)):
-                return None                           # not the person's order, a question, or the agent is needed
+            hand_on, move, more = picks.get("needs_agent"), picks.get("asks_move"), picks.get("asks_more")
+            ordered = bool(command and command.id == "yes" and kind and kind.id in ("go_to", "show", "set_value"))
+            moves = bool(move and move.id == "yes") or (ordered and kind.id in ("go_to", "show"))
+            # the owner (2026-11-17): what the chooser is sure of is applied; whatever else the line holds (a question,
+            # an explanation, a text to write) is the agent's, which is told what was done already
+            tail = bool((more and more.id == "yes") or (hand_on and hand_on.id == "yes" and hand_on.confidence >= 0.75))
+            if not ordered and not moves:
+                return None                           # not the person's order: the agent's turn
             value, target = picks.get("value") if ov is not None else None, picks.get("target")
-            if kind.id == "set_value" or (value and not target):
-                if value:
+            if ordered and (kind.id == "set_value" or (value and not target)):
+                if value and not tail:                # a value with more to answer: the form's assistant does both
                     name, _, opt = value.id.partition("=")
                     e = ov.get(name)
                     if e is not None and e.editable:
@@ -706,7 +743,9 @@ class Dushes:
                     # the form's own "show where" step, chosen here, carried out by the form: on another page when
                     # that page has loaded its form, so its live state is checked there
                     _intent.preset_call(f"{thread_id}-{pfid}"[:100], "focus_field", {"name": node}, f"{label}.")
-                    if here and page.path == here.path and ov is not None:
+                    if tail and here and page.path == here.path:
+                        _intent.clear_preset(f"{thread_id}-{pfid}"[:100])   # with more to answer the form's assistant does both
+                    elif here and page.path == here.path and ov is not None:
                         out = {"kind": "focus"}
                     else:
                         self._keep_note(thread_id, pfid, f"Show {label}.", detect(message) or "")
@@ -720,8 +759,12 @@ class Dushes:
                         out = {"kind": "show" if part else "navigate", "args": args, "title": label}
         if out:
             stats.fast["handled"] = True
-            from .. import voice
-            voice.hush(thread_id)   # in a talking conversation: done already, so no "let me check" before the answer
+            if tail and out["kind"] in ("navigate", "show"):
+                out["tail"] = True                    # the rest of the line goes on to the agent, in the same run
+                stats.fast["did"] = out["title"]
+            else:
+                from .. import voice
+                voice.hush(thread_id)   # in a talking conversation: done already, so no "let me check" before the answer
             return out
         return {"kind": "agent", "mode": "site"} if picks.get("kind") and picks["kind"].id in ("go_to", "show") else None
 
@@ -947,12 +990,15 @@ class Dushes:
     async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
                          host: Any, form_kwargs: dict[str, Any], recorded: bool = False,
                          reply_to: list[dict[str, Any]] | None = None,
-                         stats: RunStats | None = None) -> AsyncIterator[dict]:
-        """Dushes' turn (and a same-run hand-off to a form). `recorded`: the user's message is already in
+                         stats: RunStats | None = None, done: str = "") -> AsyncIterator[dict]:
+        """Dushes' turn (and a same-run hand-off to a form). `done`: what the choice layer carried out for this
+        message already (its line is the last in the transcript). `recorded`: the user's message is already in
         the transcript (the form agent gave it back)."""
         tx = self.forms.transcripts
         history = [("user" if e["kind"] == "card_result" else e["kind"], e.get("text", "")) for e in tx.list(thread_id)
                    if e["kind"] in ("user", "assistant", "card_result")][-self.history:] if self.history > 0 else []
+        if done and len(history) >= 2 and history[-1][0] == "assistant" and history[-2][0] == "user":
+            history = history[:-2]   # the message and the layer's line: the message goes last, the line is in `done`
         if recorded and history and history[-1][0] == "user":
             history = history[:-1]   # the message itself goes last, not twice
         if message and not recorded:
@@ -968,6 +1014,8 @@ class Dushes:
                 live = str(await maybe_await(self.context(ctx)) or "")
             except Exception:  # noqa: BLE001 — the turn goes on without the host's facts
                 log.exception("site context failed")
+        if done:
+            live = f"{live}\n{done}".strip()
         handed: dict[str, Any] = {}
 
         async def keep(form_id: str, note: str, language: str = "") -> bool:
@@ -1145,3 +1193,34 @@ def create_dushes_router(site: Dushes, host: Any = None):
 # the names before Dushes, kept so existing hosts keep working
 SiteGuide = Dushes
 create_site_router = create_dushes_router
+
+
+def _demo_log(thread_id: str, message: str | None, resume: Any, handoff: bool, state: dict[str, Any] | None,
+              stats: Any, seen: dict[str, Any], ended: str) -> None:
+    """The local demo's record of a turn (DEMO_RUNS_DIR set; never in the package's own runs): one JSON line a
+    turn in a file a day, on this machine only. Who typed: threads listed in `mine.txt` of that folder, or with
+    a script's prefix, are the team's; every other thread is the owner's."""
+    folder = os.environ.get("DEMO_RUNS_DIR", "")
+    if not folder:
+        return
+    try:
+        import datetime
+        import pathlib
+        d = pathlib.Path(folder)
+        d.mkdir(parents=True, exist_ok=True)
+        mine = d / "mine.txt"
+        ours = set(mine.read_text().split()) if mine.exists() else set()
+        team = thread_id in ours or thread_id.startswith(("replay-", "qa-", "eval-", "tl-"))
+        now = datetime.datetime.now()
+        fast = getattr(stats, "fast", None) or {}
+        row = {"time": now.isoformat(timespec="seconds"), "thread": thread_id, "by": "team" if team else "owner",
+               "page": ((state or {}).get("page") or {}).get("path"),
+               "line": message, "kind": "card answer" if resume is not None else "page loaded" if handoff and not message else "line",
+               "handled": seen.get("label") or "", "chooser": {k: fast.get(k) for k in ("ms", "tokens", "targets", "sure", "handled", "late", "did") if k in fast},
+               "screen": seen.get("screen") or [],
+               "reply": "".join(x for x in seen.get("said") or [] if not x.startswith("\u2014 ")),
+               "seconds": round(RunStats.now() - stats.t0, 2), "ended": ended}
+        with open(d / f"{now:%Y-%m-%d}.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+    except Exception:  # noqa: BLE001 - the record never breaks a turn
+        log.exception("demo log failed")

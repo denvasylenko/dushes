@@ -133,3 +133,19 @@ def test_the_rules_chooser_is_for_tests_only():
     assert ask(layer, "open requests please", SCREENS).id == "/guests"
     assert ask(layer, "show me something", SCREENS) is None
     assert ask(layer, "yes please", intent.Question("noul", "field:high_chair", "On?", act="set_field")).id == "yes"
+
+
+def test_a_month_or_a_weekday_is_not_a_name_off_the_screen():
+    from formguide import intent
+    assert not intent.names_off_screen("1st July 2014", ["Date of birth"])
+    assert not intent.names_off_screen("book it for Friday", ["Book a visit"])
+    assert intent.names_off_screen("the request from Anna", ["Requests"])
+
+
+def test_the_filter_takes_numbers_out_and_leaves_an_outline_whole():
+    from formguide import intent
+    layer = intent.Layer(intent.Settings(provider="off"))
+    assert intent.scrub(layer, "call +39 333 123 4567 or 030 1234567, id 12345678") == "call <filled> or <filled>, id <filled>"
+    outline = "1.1.2 [Accordion a] req 0/3\n    1.1.3 [Accordion b] req 0/10\n      (+1 nested)\n    1.1.4 [Tab c] req 2/7"
+    assert intent.scrub(layer, outline) == outline
+    assert intent.scrub(layer, "born 2014-07-01") == "born <filled>"       # a date written in digits is a value: it stays in

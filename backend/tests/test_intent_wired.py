@@ -71,7 +71,6 @@ def test_a_question_or_an_unsure_pick_goes_to_the_agent(guide, model, monkeypatc
     for answers in (dict(is_command=("no", 0.95), kind=("question", 0.9), target=("screen:/loans", 0.9)),   # a question
                     dict(is_command=("yes", 0.95), kind=("go_to", 0.9), target=("screen:/loans", 0.4)),      # not sure where
                     dict(is_command=("yes", 0.9), kind=("question", 0.9), target=("screen:/loans", 0.9)),    # a question never jumps
-                    dict(is_command=("yes", 0.9), kind=("go_to", 0.9), target=("screen:/loans", 0.9), needs_agent=("yes", 0.7)),
                     dict(is_command=("yes", 0.95), kind=("other", 0.9))):
         chooser = Mock(**answers)
         model.script = [say("The rates are in the Loans section.")]
@@ -132,7 +131,8 @@ def test_an_order_to_go_that_names_a_value_and_no_place_is_a_value(guide, model)
 
 
 def test_a_date_is_never_a_place_to_go_and_a_name_off_the_screen_is_the_agents(guide, model):
-    """The CPO's two rules, in code: neither line is even put to the chooser."""
+    """The CPO's two rules, in code: a date moves nobody whatever the chooser picks (a weekday is not a name, so the
+    line may be put to it); a name the screen does not show is not even put to the chooser."""
     assert intent.has_date("put Friday") and intent.has_date("mets vendredi") and intent.has_date("book 25.11")
     assert not intent.has_date("open the loans page") and not intent.has_date("set the loan type to Car loan")
     screen = ["Loans", "Apply for a loan", "Loan type: Car loan"]
@@ -142,8 +142,9 @@ def test_a_date_is_never_a_place_to_go_and_a_name_off_the_screen_is_the_agents(g
     site = site_with(guide, chooser)
     for line in ("open Friday", "open the request of Giulia"):
         model.script = [say("I can help with that on the right page.")]
+        asked = len(chooser.seen)
         ev = run(site, f"w7-{len(model.calls)}", message=line, state={"page": {"path": "/"}})
-        assert directives(ev) == [] and not chooser.seen
+        assert directives(ev) == [] and ("Giulia" not in line or len(chooser.seen) == asked)
 
 
 def test_the_layer_hands_back_instead_of_claiming(guide, model):
@@ -242,3 +243,36 @@ def test_a_direct_command_by_voice_gets_one_short_line_and_no_let_me_check(guide
         assert "say exactly those words and nothing else" in voice.INSTRUCTIONS
         voice.HOSTS.clear()
     asyncio.run(go())
+
+
+def test_what_the_chooser_is_sure_of_is_done_and_the_rest_of_the_line_goes_to_the_agent(guide, model, monkeypatch):
+    """The owner (2026-11-17): the chooser does all it can; when something is left of the line (a question, an
+    explanation, a text to write) the agent answers that, told what was done already. The label shows both."""
+    monkeypatch.setenv("INTENT_LABELS", "1")
+    chooser = Mock(is_command=("yes", 0.9), kind=("question", 0.8), asks_move=("yes", 0.9), asks_more=("yes", 0.9),
+                   target=("screen:/loans", 0.95))
+    site = site_with(guide, chooser)
+    model.script = [say("The car loan is the cheapest.")]
+    before = len(model.calls)
+    ev = run(site, "mix-1", message="open loans and tell me the cheapest one", state={"page": {"path": "/"}})
+    assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before + 1
+    assert [e["type"] for e in ev].count("RUN_STARTED") == 1 and [e["type"] for e in ev].count("RUN_FINISHED") == 1
+    said = text(ev)
+    assert said.index("Loans.") < said.index("The car loan is the cheapest.")
+    assert "Jev \u00b7" in said and ": opened Loans \u00b7 then " in said
+    system = str(model.calls[-1][0].content)                               # the agent is told what was done
+    assert 'Already done for this message' in system and '"Loans" was opened' in system
+    asked = [m for m in model.calls[-1] if getattr(m, "type", "") == "human"]
+    assert len(asked) == 1                                                 # the message once, not twice
+    # nothing left over: no model, the chooser's label alone
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9),
+                   target=("screen:/loans", 0.95))
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "mix-2", message="open loans", state={"page": {"path": "/"}})
+    assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before and "then" not in text(ev)
+    # free text or an explanation with no sure order: nothing is applied, the agent's turn
+    chooser = Mock(is_command=("yes", 0.9), kind=("other", 0.9), asks_move=("no", 0.9), asks_more=("yes", 0.9),
+                   target=("screen:/loans", 0.95))
+    model.script = [say("Here is a text.")]
+    ev = run(site_with(guide, chooser), "mix-3", message="write that we are open till late", state={"page": {"path": "/"}})
+    assert directives(ev) == [] and "Here is a text." in text(ev)

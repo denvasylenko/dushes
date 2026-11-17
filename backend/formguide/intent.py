@@ -90,6 +90,7 @@ def names_off_screen(phrase: str, on_screen: Any) -> bool:
     """Whether the line holds a capitalised word, after its first word, that no label on the screen has: most
     likely a person or a company the chooser was never shown. `on_screen`: the labels the screen shows."""
     known = {w.lower() for label in on_screen for w in re.findall(r"[\w'-]+", str(label))}
+    known |= set(_MONTHS) | set(_DAYS)          # "1st July 2014", "on Friday": a month or a weekday is nobody's name
     words = (phrase or "").split()
     for word in words[1:]:
         m = _CAPITAL.match(word.strip(_EDGES))
@@ -301,7 +302,7 @@ class Layer:
         return Pick(got.id, got.confidence, round((time.monotonic() - started) * 1000), self.chooser.by)
 
 
-_PRIVATE_BITS = re.compile(r"([\w.+-]+@[\w-]+\.[\w.-]+)|(\+?\d[\d\s().-]{5,}\d)")
+_PRIVATE_BITS = re.compile(r"([\w.+-]+@[\w-]+\.[\w.-]+)|((?<![\w/.])\+?(?:\d[ \t().-]{0,2}){6,}\d(?![\w/]))")
 
 
 def scrub(layer: "Layer", text: str, limit: int = 0) -> str:
