@@ -82,6 +82,19 @@ def names_more(phrase: str, place: str) -> bool:
     return False
 
 
+def mask_names(phrase: str, on_screen: Any) -> tuple[str, bool]:
+    """The line as it may go to a chooser: a capitalised word, after the first, that no label of the screen has
+    (most likely a person or a company) is replaced by "<name>". Returns the line and whether anything was."""
+    known = {w.lower() for label in on_screen for w in re.findall(r"[\w'-]+", str(label))} | set(_MONTHS) | set(_DAYS)
+    words, found = (phrase or "").split(), False
+    for i, word in enumerate(words[1:], 1):
+        m = _CAPITAL.match(word.strip(_EDGES))
+        if m and len(m.group(0)) > 1 and m.group(0).lower().rstrip("'s") not in known and m.group(0).lower() not in known:
+            words[i] = word.replace(m.group(0), "<name>")
+            found = True
+    return " ".join(words), found
+
+
 def has_date(phrase: str) -> bool:
     return bool(_DATE.search(phrase or ""))
 
@@ -420,6 +433,16 @@ _PRESETS: dict[str, dict] = {}   # the form thread -> {"script": what the form a
 APPLIED = "The user confirmed; changes applied"   # how the form agent's tool result starts when a card was applied
 
 
+def preset_calls(thread_id: str, calls: list[tuple[str, dict]], closing: str, needs: str = "") -> None:
+    """As preset_call, with several calls of the form agent's tools in one step (several sections to open)."""
+    from langchain_core.messages import AIMessage
+    stamp = int(time.time() * 1000)
+    _PRESETS[thread_id] = {"needs": needs, "tail": not closing, "script": [
+        AIMessage(content="", tool_calls=[{"name": tool, "id": f"fast_{stamp}_{i}", "args": args}
+                                          for i, (tool, args) in enumerate(calls)]),
+        *([AIMessage(content=closing)] if closing else [])]}
+
+
 def preset_call(thread_id: str, tool: str, args: dict, closing: str, needs: str = "") -> None:
     """The layer decided the form agent's next two steps on this thread: call this tool, then say this line. So
     the form's own tool, checks and Undo apply and no model is called. `needs`: how the tool's result must start
@@ -427,7 +450,7 @@ def preset_call(thread_id: str, tool: str, args: dict, closing: str, needs: str 
     from langchain_core.messages import AIMessage
     # no closing line: the line holds more than the layer did, so after the tool the form's own model goes on (it
     # sees the call and its result in the conversation, so it knows what is done already)
-    _PRESETS[thread_id] = {"needs": needs, "script": [
+    _PRESETS[thread_id] = {"needs": needs, "tail": not closing, "script": [
         AIMessage(content="", tool_calls=[{"name": tool, "id": f"fast_{int(time.time() * 1000)}", "args": args}]),
         *([AIMessage(content=closing)] if closing else [])]}
 
@@ -446,8 +469,17 @@ def has_preset(thread_id: str) -> bool:
 
 
 def is_fill(thread_id: str) -> bool:
-    """Whether what is decided for this thread is a value for a field (its card is applied at once)."""
-    return has_preset(thread_id) and _PRESETS[thread_id]["needs"] == APPLIED
+    """Whether what is decided for this thread is a value for a field (its card is applied at once). Also true
+    for the card of a line with more in it: its steps are said already, the form's own model goes on after it."""
+    entry = _PRESETS.get(thread_id) or {}
+    return entry.get("needs") == APPLIED and bool(entry.get("script") or entry.get("tail"))
+
+
+def used_fill(thread_id: str) -> None:
+    """The decided card was made: when nothing else is decided, nothing is left over for the next card."""
+    entry = _PRESETS.get(thread_id)
+    if entry is not None and not entry.get("script"):
+        _PRESETS.pop(thread_id, None)
 
 
 def preset_model(thread_id: str | None, messages: list | None = None) -> Any:
@@ -481,8 +513,8 @@ def preset_model(thread_id: str | None, messages: list | None = None) -> Any:
 
         def _next(self):
             msg = script.pop(0)
-            if not script:
-                _PRESETS.pop(thread_id or "", None)
+            if not script and not (entry.get("tail") and entry.get("needs") == APPLIED):
+                _PRESETS.pop(thread_id or "", None)   # (a card with more to answer keeps its mark until it is made)
             return msg
 
         def _generate(self, messages, stop=None, run_manager=None, **kwargs):

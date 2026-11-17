@@ -501,6 +501,7 @@ class FormGuide:
                 if picked and not any(isinstance(r, dict) and r.get("consent") for r in value.get("changes") or []):
                     _FAST.add(value.get("card_id"))
                     value["quiet"] = True
+                    _intent.used_fill(thread_id)
                 if again or answered or left or (_voice.active(thread_id) and _voice.quiet(value, said)):
                     value["quiet"] = True
                 interrupts.append(value)

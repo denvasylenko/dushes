@@ -155,11 +155,15 @@ def test_a_date_is_never_a_place_to_go_and_a_name_off_the_screen_is_the_agents(g
     assert not intent.names_off_screen("open the Loans page", screen) and not intent.names_off_screen("Set the loan type to Car loan", screen)
     chooser = Mock(is_command=("yes", 0.98), kind=("go_to", 0.97), target=("screen:/loans", 0.93))
     site = site_with(guide, chooser)
-    for line in ("open Friday", "open the request of Giulia"):
-        model.script = [say("I can help with that on the right page.")]
-        asked = len(chooser.seen)
-        ev = run(site, f"w7-{len(model.calls)}", message=line, state={"page": {"path": "/"}})
-        assert directives(ev) == [] and ("Giulia" not in line or len(chooser.seen) == asked)
+    model.script = [say("I can help with that on the right page.")]
+    ev = run(site, "w7-a", message="open Friday", state={"page": {"path": "/"}})
+    assert directives(ev) == []                                            # a date moves nobody
+    # a name the screen does not show never leaves the process: the chooser gets "<name>" in its place, and the
+    # line always goes on to the agent, which has the name
+    none = Mock(is_command=("yes", 0.9), kind=("other", 0.9))
+    model.script = [say("Here is Giulia's request.")]
+    ev = run(site_with(guide, none), "w7-b", message="open the request of Giulia", state={"page": {"path": "/"}})
+    assert none.seen[0][0] == "open the request of <name>" and "Giulia's request" in text(ev)
 
 
 def test_the_layer_hands_back_instead_of_claiming(guide, model):
@@ -357,3 +361,33 @@ def test_several_values_in_one_line_are_set_together(guide, model, monkeypatch):
     assert next(e for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
     form_thread = "many-2-loan_application"
     assert not _i.has_preset(form_thread)                                  # nothing decided is left: the model answers next
+
+
+def test_several_sections_in_one_line_are_all_opened(guide, model):
+    """The owner's line, word for word (2026-11-17): four sections of the tab on the screen. Each section gets a
+    yes / no, so the chooser answers for each; all it is sure of are opened by the form's own "show" step, and the
+    reply names them. No model."""
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": ["acc_personal"]}}}
+    chooser = Mock(**{"is_command": ("yes", 0.9), "kind": ("go_to", 0.9), "asks_move": ("yes", 0.9), "asks_more": ("no", 0.9),
+                      "target": ("form:/apply:acc_passport", 0.6), "s:acc_passport": ("yes", 0.95), "s:acc_addresses": ("yes", 0.9),
+                      "s:acc_contacts": ("yes", 0.92), "s:acc_education": ("yes", 0.88), "s:acc_personal": ("no", 0.9)})
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "sec-1", message="Okay, open passport addresses, contacts and education sections", state=state)
+    shown = [e["value"].get("target") for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "ui_directive"
+             and e["value"].get("type") == "focus"]
+    assert shown == ["acc_passport", "acc_addresses", "acc_contacts", "acc_education"], [e for e in ev if e.get("type") == "CUSTOM"]
+    assert "Passport, Addresses, Contacts, Education." in text(ev) and len(model.calls) == before
+
+
+def test_a_value_and_a_name_in_one_line(guide, model):
+    """"my first name <a name>, gender man": the name never leaves and is the form assistant's to write; the
+    option is the chooser's. The card is applied at once and the form's own model goes on after it."""
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": ["acc_personal"]}}}
+    chooser = Mock(**{"is_command": ("no", 0.6), "kind": ("set_value", 0.8), "asks_more": ("no", 0.6), "f:gender": ("gender=m", 0.95)})
+    model.script = [say("I have also put Anna as the first name.")]
+    ev = run(site_with(guide, chooser), "nm-1", message="my first name Anna Rossi, gender male", state=state)
+    assert chooser.seen[0][0] == "my first name <name> <name>, gender male"
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    card = json.loads(raw) if isinstance(raw, str) else raw
+    assert [c["name"] for c in card["changes"]] == ["gender"] and card.get("quiet") is True
+    assert "Gender: Male." not in text(ev)                                 # no closing line: the model goes on

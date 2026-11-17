@@ -471,6 +471,8 @@ class Dushes:
         seen: dict[str, Any] = {"said": [], "screen": [], "label": ""}   # for the demo's own log of the turn
         async for ev in self._run(thread_id, stats, message=message, state=state, resume=resume, run_id=run_id,
                                   handoff=handoff, host=host, reply_to=reply_to, **form_kwargs):
+            if ev.get("type") == "TEXT_MESSAGE_START" and seen["said"]:
+                seen["said"].append("\n")
             if ev.get("type") == "TEXT_MESSAGE_CONTENT":
                 seen["said"].append(str(ev.get("delta") or ""))
             elif ev.get("type") == "CUSTOM" and ev.get("name") in ("site_directive", "card", "display"):
@@ -505,6 +507,12 @@ class Dushes:
                     asked = f" (after {who} {fast['ms']} ms: {why})" if fast else ""
                     label = f"{'Haiku' if 'haiku' in name.lower() else name} \u00b7 {took:.1f} s{asked}"
                 heard = getattr(self, "_heard", None)
+                mixed = self.__dict__.get("_mixed", {})
+                if fast and fast.get("handled") and thread_id in mixed and not fast.get("did"):
+                    mixed[thread_id] = f"{label}: {mixed[thread_id]}"       # said with the model's part, in the next run
+                    label = ""
+                elif label and thread_id in mixed and not fast:
+                    label = f"{mixed.pop(thread_id)} \u00b7 then {label}"
                 if label and heard and RunStats.now() - heard[0] < 30:   # this line was dictated: how long the speech took to read
                     label = f"heard in {heard[1]} ms \u00b7 {label}"
                     self._heard = None
@@ -514,6 +522,9 @@ class Dushes:
                     seen["label"] = label
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
                     yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_SCORES") == "1" and getattr(stats, "fast", None):
+                yield {"type": "CUSTOM", "name": "choice_scores", "value": {
+                    k: stats.fast.get(k) for k in ("ms", "tokens", "targets", "sure", "handled", "late") if k in stats.fast}}
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR"):
                 _demo_log(thread_id, message, resume, handoff, state, stats, seen, ev["type"])
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and stats.models:
@@ -665,8 +676,10 @@ class Dushes:
                     tree = []
                 targets += [_intent.Option(f"form:{p.path}:{name}", " \u203a ".join([p.title, *ups, label])) for name, label, ups in tree]
         targets = targets[:_intent.MAX_OPTIONS - 1]
-        if _intent.names_off_screen(message, [o.label for o in targets] + ([q.label for q in _intent.value_question(ov, set(pack.consents or {})).options] if ov is not None and _intent.value_question(ov, set(pack.consents or {})) else [])):
-            return None   # a person's or a company's name the screen does not show: the agent's, and never sent
+        # a person's or a company's name the screen does not show never leaves: it goes as "<name>", and the line
+        # then always has more in it for the agent (a name is a text for a field, never the chooser's)
+        vq0 = _intent.value_question(ov, set(pack.consents or {})) if ov is not None else None
+        sent, named = _intent.mask_names(message, [o.label for o in targets] + ([q.label for q in vq0.options] if vq0 else []))
         qs: dict[str, Any] = {
             "is_command": _intent.command_question(),
             "kind": _intent.Question("choice", "turn", "What kind of line is it?", (
@@ -708,9 +721,15 @@ class Dushes:
                     shown_fields.append(n.name)
             per_field = _intent.field_questions(ov, shown_fields, set(pack.consents or {}))
             qs.update(dict(list(per_field.items())[:16]))
+            # and a yes / no a section of the open tab, so one line can open several
+            sections = [n for n in lay.nodes.values() if n.role in ("accordion", "section") and n.name and n.parent in loc.on_screen
+                        and ov.get(n.name) is not None and ov[n.name].visible and ov[n.name].label][:10]
+            for n in sections:
+                qs[f"s:{n.name}"] = _intent.Question("noul", f"section:{n.name}",
+                                                     f'Does the line ask to open or show the section "{ov[n.name].label}"?', act="show")
         context = self._context(thread_id, state, here, ov, lay, pack)
         started = RunStats.now()
-        picks = await layer.pick_many(message, detect(message) or "en", qs, here.path if here else "", context)
+        picks = await layer.pick_many(sent, detect(message) or "en", qs, here.path if here else "", context)
         ms = round((RunStats.now() - started) * 1000)
         stats.fast = {"ms": ms, "handled": False, "late": not picks and ms >= layer.settings.timeout_ms - 10}
         # the demo's terminal shows what the chooser was sure of (ids and confidences only, never the phrase)
@@ -736,7 +755,22 @@ class Dushes:
             # how sure "the line asks more" must be: on the owner's recorded lines a plain "can you open X" scored 0.56
             # and 0.61, a command with a question 0.79, a text to write 0.95. Four lines, not a calibration: the QA
             # Lead's measurement sets it (INTENT_TAIL)
-            tail = bool(more and more.id == "yes" and more.confidence >= float(os.environ.get("INTENT_TAIL", "0.7")))
+            tail = bool(more and more.id == "yes" and more.confidence >= float(os.environ.get("INTENT_TAIL", "0.7"))) or named
+            # several sections of the form on the screen in one line: all of them opened, one line naming them
+            opens = [(k[2:], str(ov[k[2:]].label)) for k, p in picks.items()
+                     if k.startswith("s:") and ov is not None and p.id == "yes" and p.confidence >= 0.8
+                     and _intent.said_in(str(ov[k[2:]].label), message)]
+            if len(opens) >= 2 and not _intent.has_date(message):
+                closing = ", ".join(label for _, label in opens) + "."
+                _intent.preset_calls(f"{thread_id}-{fid}"[:100], [("focus_field", {"name": n}) for n, _ in opens],
+                                     "" if tail else closing)
+                stats.fast["handled"] = True
+                if tail:
+                    self.__dict__.setdefault("_mixed", {})[thread_id] = f"opened {closing[:-1]}"
+                else:
+                    from .. import voice
+                    voice.hush(thread_id)
+                return {"kind": "focus"}
             value, target = picks.get("value") if ov is not None else None, picks.get("target")
             # a line that is nothing but a value of the form on the screen ("Gender: Male", "male"): the chooser is
             # very sure of the option and the line asks nothing else. It need not sound like a command
@@ -772,6 +806,8 @@ class Dushes:
                                     "" if tail else closing, _intent.APPLIED)
                 stats.fast["handled"] = True
                 stats.fast["set"] = closing
+                if tail:
+                    self.__dict__.setdefault("_mixed", {})[thread_id] = f"set {closing[:-1]}"
                 if not tail:
                     from .. import voice
                     voice.hush(thread_id)
@@ -815,6 +851,9 @@ class Dushes:
                         out = {"kind": "show" if part else "navigate", "args": args, "title": label}
         if out:
             stats.fast["handled"] = True
+            if tail and out["kind"] in ("navigate", "show") and not named and not _intent.names_more(message, " ".join(
+                    o.label for o in targets if o.id == (picks["target"].id if picks.get("target") else ""))):
+                tail = False                          # nothing is said beside the place and the order itself
             if tail and out["kind"] in ("navigate", "show"):
                 out["tail"] = True                    # the rest of the line goes on to the agent, in the same run
                 stats.fast["did"] = out["title"]
