@@ -964,6 +964,13 @@ class Dushes:
                 return {"kind": "value"}
             bare = bool(value and said and value.confidence >= 0.9 and not moves and not tail
                         and not (more and more.id == "yes") and not (kind and kind.id in ("question", "other")))
+            # a line that is nothing but the name of a place ("collateral", "assets and liabilities", "purchase
+            # request"): the chooser is sure of the place and the line says no more than its name. It need not sound
+            # like an order (the owner's session, 2026-11-17: four such lines went to the model for 3 to 8 s each)
+            if (target and target.confidence >= 0.8 and not moves and not value and "?" not in message
+                    and not (kind and kind.id in ("question", "other")) and not (more and more.id == "yes")
+                    and not _intent.names_more(message, next((o.label for o in targets if o.id == target.id), ""))):
+                moves = True
             if not ordered and not moves and not bare:
                 stats.trace["why"] = stats.trace["why"] or "not_an_order"
                 return None                           # not the person's order: the agent's turn

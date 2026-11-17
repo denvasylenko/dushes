@@ -619,3 +619,30 @@ def test_the_form_assistant_alone_opens_every_section_asked_for(guide, model):
     spec = next(t for t in tools.TOOLS if t["name"] == "focus_field") if hasattr(tools, "TOOLS") else None
     text = json.dumps(spec) if spec else open(tools.__file__).read()
     assert "once for each of them in the same step" in text and "Never say you cannot open several at once" in open(prompts.__file__).read()
+
+
+def test_a_bare_name_of_a_place_opens_it_and_okay_is_not_a_name(guide, model, monkeypatch):
+    """The owner's session (2026-11-17). "collateral", "purchase request": the name alone is enough when the chooser
+    is sure of the place. And "Oh Okay, okay, okay. Open the apply for a loan" got a sentence from the model after
+    the page opened, because "Okay" was taken for a person's name and such a line always goes on to the agent."""
+    monkeypatch.setenv("INTENT_LABELS", "1")
+    assert intent.mask_names("Oh Okay, okay, okay. Open the apply for a loan", []) == ("Oh Okay, okay, okay. Open the apply for a loan", False)
+    assert intent.mask_names("Oh Okay, call Giulia", [])[1]
+    bare = Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), target=("screen:/loans", 0.85))
+    before = len(model.calls)
+    ev = run(site_with(guide, bare), "bare-1", message="loans", state={"page": {"path": "/"}})
+    assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
+    # not when the line says more than the name, asks, or the chooser is only fairly sure
+    for line, answers in (("loans are expensive these days", dict(target=("screen:/loans", 0.85))),
+                          ("loans?", dict(target=("screen:/loans", 0.85))),
+                          ("loans", dict(target=("screen:/loans", 0.7))),
+                          ("loans", dict(target=("screen:/loans", 0.85), kind=("question", 0.8)))):
+        model.script = [say("Here is what we have on loans.")]
+        ev = run(site_with(guide, Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), **answers)),
+                 f"bare-{len(model.calls)}", message=line, state={"page": {"path": "/"}})
+        assert directives(ev) == [], line
+    # "Okay" is no name: the page opens and no model adds a sentence
+    ok = Mock(is_command=("yes", 0.9), kind=("go_to", 0.83), asks_move=("yes", 0.83), asks_more=("no", 0.72), target=("screen:/loans", 0.92))
+    before = len(model.calls)
+    ev = run(site_with(guide, ok), "ok-1", message="Oh Okay, okay, okay. Open the loans", state={"page": {"path": "/"}})
+    assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before and "then" not in text(ev)

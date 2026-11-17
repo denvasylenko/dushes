@@ -88,8 +88,9 @@ def mask_names(phrase: str, on_screen: Any) -> tuple[str, bool]:
     known = {w.lower() for label in on_screen for w in re.findall(r"[\w'-]+", str(label))} | set(_MONTHS) | set(_DAYS)
     words, found = (phrase or "").split(), False
     for i, word in enumerate(words[1:], 1):
-        if words[i - 1].rstrip("\"')").endswith((".", "?", "!", ":")) and word.strip(_EDGES).lower() in _STARTERS:
-            continue                                  # an everyday word that opens a sentence is capital anyway
+        if word.strip(_EDGES).lower() in _STARTERS:
+            continue                                  # an everyday word, capital because it opens a sentence or a clause
+                                                      # ("Oh Okay, okay. Open ..."): nobody's name wherever it stands
         m = _CAPITAL.match(word.strip(_EDGES))
         if m and len(m.group(0)) > 1 and m.group(0).lower().rstrip("'s") not in known and m.group(0).lower() not in known:
             words[i] = word.replace(m.group(0), "<name>")
@@ -114,8 +115,9 @@ def names_off_screen(phrase: str, on_screen: Any) -> bool:
     known |= set(_MONTHS) | set(_DAYS)          # "1st July 2014", "on Friday": a month or a weekday is nobody's name
     words = (phrase or "").split()
     for i, word in enumerate(words[1:], 1):
-        if words[i - 1].rstrip("\"')").endswith((".", "?", "!", ":")) and word.strip(_EDGES).lower() in _STARTERS:
-            continue                                  # an everyday word that opens a sentence is capital anyway
+        if word.strip(_EDGES).lower() in _STARTERS:
+            continue                                  # an everyday word, capital because it opens a sentence or a clause
+                                                      # ("Oh Okay, okay. Open ..."): nobody's name wherever it stands
         m = _CAPITAL.match(word.strip(_EDGES))
         if m and len(m.group(0)) > 1 and m.group(0).lower().rstrip("'s") not in known and m.group(0).lower() not in known:
             return True
