@@ -22,6 +22,22 @@ const CHEV = (d: string) => `<svg viewBox="0 0 12 12" width="12" height="12" fil
 const clampYear = (y: number, min: Date | null, max: Date | null): number =>
   Math.min(max ? max.getFullYear() : Infinity, Math.max(min ? min.getFullYear() : -Infinity, y))
 
+/** "Or type the year": four digits and Enter (four keys instead of paging back); a year out of range shows the range,
+ *  quietly, not as an error. */
+function typeYear(t: (k: string) => string, lo: number, hi: number, onYear: (y: number) => void): { field: HTMLInputElement; hint: HTMLElement } {
+  const v = t('typeYear'), label = v && v !== 'typeYear' ? v : 'Or type the year'
+  const field = h('input', { class: 'text-in cal-type', type: 'text', inputmode: 'numeric', maxlength: '4', autocomplete: 'off', placeholder: label, 'aria-label': label }) as HTMLInputElement
+  const hint = h('div', { class: 'muted bk-small cal-hint', 'aria-live': 'polite' })
+  field.addEventListener('input', () => { field.value = field.value.replace(/\D/g, '').slice(0, 4); hint.textContent = '' })
+  field.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const y = Number(field.value)
+    if (field.value.length === 4 && y >= lo && y <= hi) onYear(y); else hint.textContent = `${lo} \u2013 ${hi}`
+  })
+  return { field, hint }
+}
+
 /** Years alone (a year of birth whose day and month are known, a car's registration year): a grid of 12 a page, the
  *  arrows 12 years at a time, opening on `startYear`, and a field to type the year (four keys instead of paging). The
  *  pages end at the allowed years; only a page that would be less than half full shows the years beyond, closed. */
@@ -53,17 +69,7 @@ export function yearPicker(opts: { min?: number; max?: number; startYear?: numbe
   }
   prev.addEventListener('click', () => { page = Math.min(last, page + 1); draw() })
   next.addEventListener('click', () => { page = Math.max(0, page - 1); draw() })
-  const field = h('input', { class: 'text-in cal-type', type: 'text', inputmode: 'numeric', maxlength: '4', autocomplete: 'off',
-    placeholder: w('typeYear', 'Or type the year'), 'aria-label': w('typeYear', 'Or type the year') }) as HTMLInputElement
-  const hint = h('div', { class: 'muted bk-small cal-hint', 'aria-live': 'polite' })
-  field.addEventListener('input', () => { field.value = field.value.replace(/\D/g, '').slice(0, 4); hint.textContent = '' })
-  field.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return
-    e.preventDefault()
-    const y = Number(field.value)
-    if (field.value.length === 4 && y >= lo && y <= hi) opts.onPick(y)
-    else hint.textContent = `${lo} \u2013 ${hi}`   // a year outside the range: the range, quietly, not an error
-  })
+  const { field, hint } = typeYear(opts.t, lo, hi, opts.onPick)
   draw()
   return h('div', { class: 'cal cal-yearonly', role: 'group' }, h('div', { class: 'cal-head' }, title, h('span', { class: 'cal-navs' }, prev, next)), body, field, hint)
 }
@@ -96,7 +102,9 @@ export function monthCalendar(opts: { lang: string; value?: string | null; limit
   const next = h('button', { type: 'button', class: 'cal-nav', 'aria-label': opts.t('nextMonth') })
   prev.innerHTML = CHEV('M7.5 3 4.5 6l3 3'); next.innerHTML = CHEV('M4.5 3l3 3-3 3')
   const body = h('div', { class: 'cal-body' })
-  const root = h('div', { class: 'cal', role: 'group' }, h('div', { class: 'cal-head' }, title, h('span', { class: 'cal-navs' }, prev, next)), body)
+  const typed = typeYear(opts.t, min ? min.getFullYear() : today.getFullYear() - 120, max ? max.getFullYear() : today.getFullYear() + 10,
+    (y) => { year = y; mode = 'months'; typed.field.value = ''; draw() })
+  const root = h('div', { class: 'cal', role: 'group' }, h('div', { class: 'cal-head' }, title, h('span', { class: 'cal-navs' }, prev, next)), body, typed.field, typed.hint)
 
   const days = () => {
     const fd = firstDay(opts.lang)
@@ -122,7 +130,7 @@ export function monthCalendar(opts: { lang: string; value?: string | null; limit
   }
   const years = () => {
     const cells = Array.from({ length: 12 }, (_, i) => yearPage + i).map((y) => h('button', { type: 'button',
-      class: `cal-y${y === year ? ' on' : ''}`, disabled: !!((min && y < min.getFullYear()) || (max && y > max.getFullYear())),
+      class: `cal-y${chosen && y === chosen.getFullYear() ? ' on' : ''}`, disabled: !!((min && y < min.getFullYear()) || (max && y > max.getFullYear())),
       onclick: () => { year = y; mode = 'months'; draw() } }, String(y)))
     body.replaceChildren(h('div', { class: 'cal-years' }, cells))
     title.textContent = `${yearPage} – ${yearPage + 11}`
@@ -140,6 +148,7 @@ export function monthCalendar(opts: { lang: string; value?: string | null; limit
   }
   const draw = () => {
     root.dataset.mode = mode
+    typed.field.hidden = mode !== 'years'; if (mode !== 'years') typed.hint.textContent = ''   // typing a year: only while the years show
     if (mode === 'days') days(); else if (mode === 'years') years(); else months()
   }
   const step = (dir: 1 | -1) => {

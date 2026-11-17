@@ -185,6 +185,13 @@ describe('card kit: questions', () => {
       applies: true, input: { type: 'date', min: '1950-07-01', max: '2008-07-01' }, allow_text: true, reveal: [] })))
     await tick(10)
     expect($(el, '.card .cal')!.getAttribute('data-mode')).toBe('years')
+    const field = $(el, '.card .cal .cal-type') as HTMLInputElement   // born in 1965: four keys, not three pages back
+    expect(field.hidden).toBe(false)
+    field.value = '1965'; field.dispatchEvent(new Event('input'))
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+    expect($(el, '.card .cal')!.getAttribute('data-mode')).toBe('months')
+    expect($(el, '.card .cal-title').textContent).toBe('1965')
+    expect(field.hidden).toBe(true)                                              // the field is for the years only
   })
 
   it('a stepper with no value starts at the lowest on +', async () => {

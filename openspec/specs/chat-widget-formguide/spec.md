@@ -152,7 +152,7 @@ On `CUSTOM card_result` with `status: "not_accepted"` the card named by `card_id
 - **THEN** the line shows a cross and the reason, and no Undo
 
 ### Requirement: A date of birth opens on the years
-A date question with no value yet SHALL open the calendar on the year grid when its `max` is today (or within the last days), 14 or more years back (an age rule such as 18+), or the question gives `start_year`; around `start_year`, else 30 years before `max` today, else 35 years before today. A `max` a few years back (founded before 2020) SHALL open on that month.
+A date question with no value yet SHALL open the calendar on the year grid when its `max` is today (or within the last days), 14 or more years back (an age rule such as 18+), or the question gives `start_year`; around `start_year`, else 30 years before `max` today, else 35 years before today. While it shows the years, a field SHALL take a typed year (Enter opens its months). A `max` a few years back (founded before 2020) SHALL open on that month.
 
 #### Scenario: Date of birth
 - **WHEN** the card asks for a date of birth with `max` today
