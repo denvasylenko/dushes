@@ -594,7 +594,11 @@ class Talks:
                 await asyncio.sleep(0.1)
                 now = time.monotonic()
                 said = state.get("said") or []
-                if state.get("early") or now - state.get("heard_at", now) < TAKE_AFTER or (said and now - said[-1][0] < 1.0):
+                # the voice still talking holds the line back, unless the person has just cut in on it: then the
+                # page has faded that speech already, and the provider may go on to the end of its sentence (the
+                # owner's session, 2026-11-17: the line waited 4 s for a voice nobody could hear)
+                talking = bool(said) and now - said[-1][0] < 1.0 and now - state.get("cut_at", -1e9) > 10.0
+                if state.get("early") or now - state.get("heard_at", now) < TAKE_AFTER or talking:
                     continue                          # a hand-over is waiting for these words; still speaking; the voice talks
                 text = state["heard"].strip()
                 words = [w for w in re.findall(_LETTERS + r"|\d+", re.sub(r"\[[^\]]*\]", " ", text).lower()) if w not in FILLERS]
