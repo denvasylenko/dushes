@@ -140,7 +140,7 @@ class FormGuide:
     def _missing_year(self, said: str, card: dict, state: dict | None) -> str:
         """One line for a date said without its year ("born on the 1st of July") when the card does not carry it:
         the date field's own label and what is known of the date, as a sentence in the chat's language: "Date of
-        birth: 1 July. Which year?". "" when there is no such date, the card holds
+        birth: July 1. Which year?". "" when there is no such date, the card holds
         a date, or the form has no single date field it could be."""
         from . import intent as _intent
         part = _intent.partial_date(said or "")

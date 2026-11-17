@@ -732,11 +732,11 @@ def test_a_date_without_its_year_and_the_year_said_after(guide, model):
 def test_a_missing_year_is_named_in_the_same_reply_before_any_tap(guide, model, monkeypatch):
     """The QA Lead's runs (2026-11-17, missing_year_named_at_once) and Head of Design's wording. When the person's
     line holds a day and a month with no year, the card of that turn carries no date and WAITS for them, a plain
-    sentence names it before the card: "Date of birth: 1 July. Which year?". No line when the card is applied at
+    sentence names it before the card: "Date of birth: July 1. Which year?". No line when the card is applied at
     once (the year question card follows it straight away and asks), nor when the model said it itself."""
     from formguide import voice
     from .test_agent import collect
-    assert intent.ask_the_year("Date of birth", 1, 7, "en") == "Date of birth: 1 July. Which year?"
+    assert intent.ask_the_year("Date of birth", 1, 7, "en") == "Date of birth: July 1. Which year?"
     assert intent.ask_the_year("Geburtsdatum", 1, 7, "de") == "Geburtsdatum: 1. Juli. Welches Jahr?"
     assert intent.ask_the_year("Fecha", 3, 2, "es").startswith("Fecha: 3 de febrero.") and "____" not in intent.ask_the_year("X", 1, 7, None)
     line = "my name is Anna Rossi, I was born 1st July and my gender is female"
@@ -747,7 +747,7 @@ def test_a_missing_year_is_named_in_the_same_reply_before_any_tap(guide, model, 
     model.script = [say("", card)]
     ev = collect(guide, "my-1", message=line, state=start(guide, LOAN))
     kinds = [(e["type"], e.get("name")) for e in ev]
-    assert "Date of birth: 1 July. Which year?" in said(ev)
+    assert "Date of birth: July 1. Which year?" in said(ev)
     assert kinds.index(("TEXT_MESSAGE_CONTENT", None)) < kinds.index(("CUSTOM", "on_interrupt"))
     # the model said it itself: no second line; a whole date in the line: no line
     model.script = [say("The year of birth is missing: which year?", card)]

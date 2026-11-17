@@ -848,7 +848,7 @@ _MONTH_NAMES = {
     "es": "enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre".split(),
 }
 _WHICH_YEAR = {"en": "Which year?", "ru": "\u041a\u0430\u043a\u043e\u0439 \u0433\u043e\u0434?", "uk": "\u042f\u043a\u0438\u0439 \u0440\u0456\u043a?", "it": "Che anno?", "de": "Welches Jahr?", "fr": "Quelle ann\xe9e ?", "es": "\xbfQu\xe9 a\xf1o?"}
-_DAY_MONTH_SHAPE = {"de": "{d}. {m}", "es": "{d} de {m}"}   # the others: "{d} {m}"
+_DAY_MONTH_SHAPE = {"en": "{m} {d}", "de": "{d}. {m}", "es": "{d} de {m}"}   # the others: "{d} {m}"
 
 
 def ask_the_year(label: str, day: int, month: int, language: str | None) -> str:
