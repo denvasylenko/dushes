@@ -1,0 +1,18 @@
+name: closing_line_form_objects
+tags: [owner_session, answers_in_words]
+persona: "A person on the loan application whose date of birth breaks the form's age rule, and who asks a question with a value."
+goal: "Hear why the form refuses the date, and get the question answered."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Born 1 July 2014 (under 18); middle name Maria; wants to know the rate"
+turns: 3
+# The other side of the closing line in code (4e7a6d0): the model still speaks when the form objects (the 18 to 75
+# rule) or when the line holds a question. Never a bare "Date of birth: 2014-07-01." for a date the form refuses.
+scripted:
+  - "Open personal details"
+  - "I was born on the 1st of July 2014"
+  - "my middle name is Maria, and what is the rate?"
+expect:
+  says: [["18", "eighteen", "age"], ["rate", "%", "loan type"]]
+  never_says: ["Date of birth: 2014-07-01."]
+min_score: 7

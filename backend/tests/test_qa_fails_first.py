@@ -362,3 +362,16 @@ def test_a_move_on_an_unclear_turn_fails_no_moves_on():
     assert ok("\U0001f916 Which step do you mean by contract?") is True
     assert ok("   \U0001f526 highlight acc_personal", "\U0001f916 Personal details, Passport.") is False
     assert ok('   ⚙ focus_field({"name": "acc_personal"})') is False
+
+
+def test_two_model_calls_or_two_texts_after_a_card_fail_the_closing_line_checks():
+    import evals
+    sc = _bar("x", max_model_calls_on={"middle name": 1}, closing_line_on={"middle name": ["Maria", "Turin"]})
+    def got(*log):
+        return {c["check"][:14]: c["ok"] for c in evals.checks(sc, _visit(["\n\U0001f464 my middle name is Maria", *log]))
+                if c["check"].startswith(("at most", "one closing"))}
+    one = got("   ⏱ model calls: agent (form)", "   \U0001f0cf card shown and accepted by the user (the form now has these values): Middle name = Maria",
+              "\U0001f916 Middle name: Maria, Place of birth: Turin.")
+    two = got("   ⏱ model calls: agent (form)", "   \U0001f0cf card shown and accepted by the user (the form now has these values): Middle name = Maria",
+              "   ⏱ model calls: agent (form)", "\U0001f916 I've set your middle name to Maria and Turin. Next is your passport.", "\U0001f916 Anything else?")
+    assert all(one.values()) and not any(two.values())
