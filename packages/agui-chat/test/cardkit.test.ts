@@ -171,6 +171,7 @@ describe('card kit: questions', () => {
     const years = $$(el, '.card .cal-yearonly .cal-y').map((b) => Number(b.textContent))
     expect(years).toContain(around)
     expect(Math.max(...years)).toBeLessThan(new Date().getFullYear() - 20)
+    expect($(el, '.card .cal-known').textContent).toBe('Date of birth: July 1')   // what is known, under the question (en-US: July 1)
     ;($$(el, '.card .cal-yearonly .cal-y').find((b) => b.textContent === String(around)) as HTMLButtonElement).click()
     await tick(10)
     expect(applyChanges).toHaveBeenCalledWith({ dob: `${around}-07-01` })
