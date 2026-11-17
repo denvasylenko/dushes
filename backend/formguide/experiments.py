@@ -11,7 +11,11 @@ visitor writes leaves the server for the chooser's supplier, and no label or dec
         app.include_router(create_experiments_router(exp), prefix="/experiments")
 
     GET  /experiments            -> {"features": [...], "unlocked": bool}      what a code would open here
-    POST /experiments/unlock     {code} -> {"person", "pass", "features"}      403 for a wrong code
+    POST /experiments/unlock     {code} -> {"person", "pass", "features", "passes": {feature: pass}}   403 wrong code
+
+One entry field for the person: a host joins its other code-gated features (`exp.join("voice", talks.gate)`), and
+the answer says what this code opens, with a pass for each; each feature keeps its own list of codes and its own
+switch, so a voice code alone never turns the decision model on.
 
 The pass travels in the X-Experiment-Pass header of a run request, never in an address. A host that installs no
 gate is not gated: its own settings alone decide (a developer's machine, a test stand).
@@ -51,6 +55,12 @@ class Experiments:
     def __init__(self, codes: dict[str, str] | None = None, secret: str = "", features: tuple[str, ...] = ()):
         self.gate = _voice.Gate(_Codes(dict(codes or {}), secret))   # type: ignore[arg-type]
         self.features = tuple(features)
+        self.also: dict[str, Any] = {}           # other code-gated features of the host: name -> its own gate
+
+    def join(self, name: str, gate: Any) -> None:
+        """Another feature with its own codes (the voice mode) joins the one entry field: a code posted to
+        /experiments/unlock is tried against its list too, and a pass for it comes back beside ours."""
+        self.also[name] = gate
 
     @classmethod
     def from_env(cls) -> "Experiments":
@@ -120,13 +130,21 @@ def create_experiments_router(experiments: Experiments):
     @r.get("")
     @r.get("/")
     def features(request: Request) -> dict:
-        return {"features": list(experiments.features), "unlocked": experiments.person(request.headers) is not None}
+        return {"features": [*experiments.features, *experiments.also],
+                "unlocked": experiments.person(request.headers) is not None}
 
     @r.post("/unlock")
     def unlock(body: UnlockIn, request: Request) -> dict:
-        got = experiments.gate.unlock(body.code, request.client.host if request.client else "?")
-        if not got:
+        address = request.client.host if request.client else "?"
+        got = experiments.gate.unlock(body.code, address)
+        person, passes = (got[0] if got else ""), ({f: got[1] for f in experiments.features} if got else {})
+        for name, gate in experiments.also.items():      # one entry field: what else this code opens on this host
+            other = gate.unlock(body.code, address)
+            if other:
+                person, passes[name] = person or other[0], other[1]
+        if not passes:
             raise HTTPException(403, "That code does not open the experimental features.")
-        return {"person": got[0], "pass": got[1], "features": list(experiments.features)}
+        # `pass` is the one for X-Experiment-Pass (empty when the code opens only another feature)
+        return {"person": person, "pass": got[1] if got else "", "features": list(passes), "passes": passes}
 
     return r

@@ -131,6 +131,7 @@ if os.environ.get("DEMO_OUR_VOICE") == "1" and (_DIST / "site.html").exists():
                               log_dir=Path(guide.data_dir) / "voice", stop=guide.stop)
         if _VOICE.config.enabled:
             app.include_router(_voice.create_voice_router(_voice.watch(_VOICE)), prefix="/voice")
+            _EXPERIMENTS.join("voice", _VOICE.gate)     # one code field opens both
             _TALK = "if(c&&!c.hasAttribute('voice-mode'))c.setAttribute('voice-mode','true');"
 
     _NO_FILES = ("<script>customElements.whenDefined('agui-chat').then(()=>{const set=()=>{const c="

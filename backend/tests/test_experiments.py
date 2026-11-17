@@ -62,3 +62,22 @@ def test_codes_are_a_separate_list(monkeypatch):
     assert exp.enabled and exp.features == ()             # no chooser on this host: nothing to open
     monkeypatch.setenv("INTENT_PROVIDER", "jev")
     assert experiments.Experiments.from_env().features == ("decision_model",)
+
+
+def test_one_entry_field_opens_what_the_code_is_listed_for():
+    """The owner (2026-11-17): "has to be two in one under one option in menu": one code entry, two switches. The
+    code is tried against the voice list too; a person only on the voice list gets no pass for the decision model."""
+    from formguide import voice
+    exp = experiments.Experiments({"anna": CODE}, "s" * 32, (experiments.DECISION_MODEL,))
+    talk = voice.Gate(experiments._Codes({"anna": CODE, "ben": "voice-only-77"}, "v" * 32))
+    exp.join("voice", talk)
+    app = FastAPI()
+    app.include_router(experiments.create_experiments_router(exp), prefix="/experiments")
+    client = TestClient(app)
+    assert client.get("/experiments").json()["features"] == ["decision_model", "voice"]
+    both = client.post("/experiments/unlock", json={"code": CODE}).json()
+    assert both["features"] == ["decision_model", "voice"] and both["pass"] == both["passes"]["decision_model"]
+    assert talk.person(both["passes"]["voice"]) == "anna" and exp.gate.person(both["pass"]) == "anna"
+    only = client.post("/experiments/unlock", json={"code": "voice-only-77"}).json()
+    assert only["features"] == ["voice"] and only["pass"] == "" and talk.person(only["passes"]["voice"]) == "ben"
+    assert client.post("/experiments/unlock", json={"code": "nobody-here-00"}).status_code == 403

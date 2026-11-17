@@ -449,6 +449,8 @@ if VOICE.config.enabled:
     from fastapi.responses import HTMLResponse  # noqa: E402
 
     app.include_router(_voice.create_voice_router(_voice.watch(VOICE)), prefix="/voice")
+    from demo.app import _EXPERIMENTS  # noqa: E402
+    _EXPERIMENTS.join("voice", VOICE.gate)   # one code field in "+" opens what the code is listed for
 
     _CLIPS = os.environ.get("VOICE_LAB_CLIPS")   # recorded clips for tests without a microphone (the lab's ?clip=)
     if _CLIPS and Path(_CLIPS).is_dir():

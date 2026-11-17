@@ -26,3 +26,14 @@ On a gated host the choice layer SHALL run only for a request that carries a val
 #### Scenario: A person with a pass
 - **WHEN** the same line arrives with a valid pass
 - **THEN** the layer may carry it out, and the label and the trace follow the host's switches
+
+### Requirement: One code entry for every experimental feature
+A host MAY join its other code-gated features (the voice mode) to the gate. `POST /experiments/unlock` SHALL then try the code against each feature's own list and answer with the features it opens and a pass for each (`passes`). A code that is only on another feature's list SHALL NOT give a pass for the decision model.
+
+#### Scenario: A code on both lists
+- **WHEN** a person whose code is on the voice list and on the experiments list enters it once
+- **THEN** the answer holds a pass for voice and a pass for the decision model
+
+#### Scenario: A code on the voice list only
+- **WHEN** a person whose code is only on the voice list enters it
+- **THEN** the answer holds a pass for voice only, and the decision model stays off for them
