@@ -14,6 +14,8 @@ const DICTATION = ((): 'auto' | 'server' | 'browser' => {
   const d = new URLSearchParams(location.search).get('dictation')
   return d === 'server' || d === 'browser' ? d : 'auto'
 })()
+// the experimental voice mode, as on the form page: on wherever the host has the voice routes; ?voice forces it
+const VOICE = new URLSearchParams(location.search).has('voice')
 
 /** The demo site: a portal of two businesses (demo/site.yaml), one chat across every page.
  * Dushes (/site/run) answers about the site and moves around it; on a page with a form
@@ -44,13 +46,20 @@ export default function Site() {
   const [ring, setRing] = useState<string | null>(null)
   const [thread] = useState(threadId)
   const chatRef = useRef<AguiChatElement | null>(null)
+  // does this host have a voice? Its routes answer 403 to a call with no pass (as the form page asks)
+  const [voice, setVoice] = useState(VOICE)
+  useEffect(() => {
+    if (VOICE) return
+    fetch('/voice/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"talk":""}' })
+      .then((r) => { if (r.status === 403) setVoice(true) }, () => {})
+  }, [])
   // one "Experimental" item in the "+" menu: one access code, a switch for the voice mode and one for Jev
   const jevOff = useRef<null | (() => void)>(null)
   useEffect(() => {
     const el = chatRef.current
     const host = el?.closest('.chat-pane') as HTMLElement | null
     if (!el || !host || jevOff.current) return
-    jevOff.current = experimental(el, host, false)
+    jevOff.current = experimental(el, host, voice)
   })
   const pendingHandoff = useRef<string | null>(null)   // a form Dushes opened for the form agent
   // How it decided: each turn's run_stats, with the server's decision_trace when it sent one (joined by run_id)
@@ -230,6 +239,7 @@ export default function Site() {
             threadId={thread}
             persistThread={false}
             dictation={DICTATION}   // auto: the browser's recognition where it works, else Whisper on the server
+            voiceMode={voice}
             title={`${map.title} assistant`}
             subtitle="Ask about any page, or say what you want to do"
             starters={STARTERS}
