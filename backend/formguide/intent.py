@@ -301,8 +301,22 @@ class Layer:
         return Pick(got.id, got.confidence, round((time.monotonic() - started) * 1000), self.chooser.by)
 
 
+def safe_context(layer: "Layer", context: dict[str, Any] | None) -> dict[str, Any]:
+    """The short context a chooser may see (the screen, the last offer, what was opened last, the person's line
+    before this one), with the owner's filter applied to every piece: anything that holds a phone, an e-mail, a
+    long run of digits or a never-send item is left out, and a text is cut to a line's length."""
+    out: dict[str, Any] = {}
+    for key, value in (context or {}).items():
+        items = value if isinstance(value, list) else [value]
+        kept = [str(v)[:160] for v in items if v not in (None, "") and not layer.private(str(v))
+                and not re.search(r"\d[\d\s().-]{5,}\d", str(v))]
+        if kept:
+            out[key] = kept if isinstance(value, list) else kept[0]
+    return out
+
+
 async def _many(layer: "Layer", phrase: str, language: str, questions: dict[str, Question],
-                screen: str = "") -> dict[str, Pick]:
+                screen: str = "", context: dict[str, Any] | None = None) -> dict[str, Pick]:
     """Every question about one phrase in one call, under one deadline. The result holds only the picks that may
     be used (in time, confident, an id among the options sent); a missing name means "no pick". A chooser without
     `choose_many` is asked one question at a time."""
@@ -317,7 +331,10 @@ async def _many(layer: "Layer", phrase: str, language: str, questions: dict[str,
     started = time.monotonic()
     try:
         if hasattr(layer.chooser, "choose_many"):
-            got = await asyncio.wait_for(layer.chooser.choose_many(phrase, language, asked, screen), s.timeout_ms / 1000)
+            ctx = safe_context(layer, context)
+            call = (layer.chooser.choose_many(phrase, language, asked, screen, ctx) if ctx
+                    else layer.chooser.choose_many(phrase, language, asked, screen))
+            got = await asyncio.wait_for(call, s.timeout_ms / 1000)
         else:
             got = {}
             for name, q in asked.items():
@@ -462,7 +479,7 @@ def form_part_question(overlay: Any) -> Question | None:
 # line begins, after a greeting or a polite opening, with a verb of this short list. A verb is added when a
 # measured phrase needs it, never by guess.
 _LEAD = r"(?:(?:ok|okay|hey|so|now|well|please|yeah|yes|and|then|just|can you|could you|would you|will you|bitte|kannst du|k\u00f6nnen sie|s'il te pla\u00eet|s'il vous pla\u00eet|peux-tu|pouvez-vous|por favor|puedes|per favore|puoi|\u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430|\u043c\u043e\u0436\u0435\u0448\u044c|\u043c\u043e\u0436\u0435\u0442\u0435|\u0430|\u043d\u0443|\u0442\u0435\u043f\u0435\u0440\u044c|\u0442\u0430\u043a|\u0431\u0443\u0434\u044c \u043b\u0430\u0441\u043a\u0430|\u043c\u043e\u0436\u0435\u0448|\u043c\u043e\u0436\u0435\u0442\u0435|\u0442\u0435\u043f\u0435\u0440)[\s,.!]+)*"
-_DIRECT = re.compile(r"^[\s,.!]*" + _LEAD + r"(open|close|show|hide|go|take|bring|navigate|switch|scroll|jump|move|set|choose|select|pick|tick|untick|check|uncheck|translate|expand|collapse|\u00f6ffne|schlie\u00dfe|zeig|zeige|geh|gehe|w\u00e4hle|setze|scrolle|wechsle|ouvre|ouvrez|ferme|fermez|montre|montrez|va|allez|choisis|choisissez|mets|abre|cierra|muestra|ve|elige|selecciona|pon|apri|chiudi|mostra|vai|scegli|seleziona|metti|imposta|\u043e\u0442\u043a\u0440\u043e\u0439|\u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435|\u0437\u0430\u043a\u0440\u043e\u0439|\u0437\u0430\u043a\u0440\u043e\u0439\u0442\u0435|\u043f\u043e\u043a\u0430\u0436\u0438|\u043f\u043e\u043a\u0430\u0436\u0438\u0442\u0435|\u043f\u0435\u0440\u0435\u0439\u0434\u0438|\u043f\u0435\u0440\u0435\u0439\u0434\u0438\u0442\u0435|\u0432\u044b\u0431\u0435\u0440\u0438|\u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435|\u043f\u043e\u0441\u0442\u0430\u0432\u044c|\u043f\u043e\u0441\u0442\u0430\u0432\u044c\u0442\u0435|\u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0438|\u043f\u0440\u043e\u043a\u0440\u0443\u0442\u0438|\u043f\u0440\u043e\u043b\u0438\u0441\u0442\u0430\u0439|\u043f\u0435\u0440\u0435\u0432\u0435\u0434\u0438|\u0432\u0456\u0434\u043a\u0440\u0438\u0439|\u0432\u0456\u0434\u043a\u0440\u0438\u0439\u0442\u0435|\u0437\u0430\u043a\u0440\u0438\u0439|\u0437\u0430\u043a\u0440\u0438\u0439\u0442\u0435|\u043f\u043e\u043a\u0430\u0436\u0438|\u043f\u043e\u043a\u0430\u0436\u0456\u0442\u044c|\u043f\u0435\u0440\u0435\u0439\u0434\u0438|\u043f\u0435\u0440\u0435\u0439\u0434\u0456\u0442\u044c|\u043e\u0431\u0435\u0440\u0438|\u043e\u0431\u0435\u0440\u0456\u0442\u044c|\u0432\u0438\u0431\u0435\u0440\u0438|\u043f\u043e\u0441\u0442\u0430\u0432|\u043f\u0435\u0440\u0435\u043c\u043a\u043d\u0438|\u043f\u0440\u043e\u043a\u0440\u0443\u0442\u0438|\u043f\u0435\u0440\u0435\u043a\u043b\u0430\u0434\u0438)(?![\w'])", re.IGNORECASE)
+_DIRECT = re.compile(r"^[\s,.!]*" + _LEAD + r"(\u043e\u0442\u043a\u0440\u044b\u0442\u044c|\u043f\u043e\u043a\u0430\u0437\u0430\u0442\u044c|\u043f\u0435\u0440\u0435\u0439\u0442\u0438|\u0437\u0430\u043a\u0440\u044b\u0442\u044c|\u0432\u0456\u0434\u043a\u0440\u0438\u0442\u0438|\u043f\u043e\u043a\u0430\u0437\u0430\u0442\u0438|aprire|mostrare|chiudere|\u00f6ffnen|zeigen|schlie\u00dfen|ouvrir|montrer|fermer|abrir|mostrar|cerrar|open|close|show|hide|go|take|bring|navigate|switch|scroll|jump|move|set|choose|select|pick|tick|untick|check|uncheck|translate|expand|collapse|\u00f6ffne|schlie\u00dfe|zeig|zeige|geh|gehe|w\u00e4hle|setze|scrolle|wechsle|ouvre|ouvrez|ferme|fermez|montre|montrez|va|allez|choisis|choisissez|mets|abre|cierra|muestra|ve|elige|selecciona|pon|apri|chiudi|mostra|vai|scegli|seleziona|metti|imposta|\u043e\u0442\u043a\u0440\u043e\u0439|\u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435|\u0437\u0430\u043a\u0440\u043e\u0439|\u0437\u0430\u043a\u0440\u043e\u0439\u0442\u0435|\u043f\u043e\u043a\u0430\u0436\u0438|\u043f\u043e\u043a\u0430\u0436\u0438\u0442\u0435|\u043f\u0435\u0440\u0435\u0439\u0434\u0438|\u043f\u0435\u0440\u0435\u0439\u0434\u0438\u0442\u0435|\u0432\u044b\u0431\u0435\u0440\u0438|\u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435|\u043f\u043e\u0441\u0442\u0430\u0432\u044c|\u043f\u043e\u0441\u0442\u0430\u0432\u044c\u0442\u0435|\u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0438|\u043f\u0440\u043e\u043a\u0440\u0443\u0442\u0438|\u043f\u0440\u043e\u043b\u0438\u0441\u0442\u0430\u0439|\u043f\u0435\u0440\u0435\u0432\u0435\u0434\u0438|\u0432\u0456\u0434\u043a\u0440\u0438\u0439|\u0432\u0456\u0434\u043a\u0440\u0438\u0439\u0442\u0435|\u0437\u0430\u043a\u0440\u0438\u0439|\u0437\u0430\u043a\u0440\u0438\u0439\u0442\u0435|\u043f\u043e\u043a\u0430\u0436\u0438|\u043f\u043e\u043a\u0430\u0436\u0456\u0442\u044c|\u043f\u0435\u0440\u0435\u0439\u0434\u0438|\u043f\u0435\u0440\u0435\u0439\u0434\u0456\u0442\u044c|\u043e\u0431\u0435\u0440\u0438|\u043e\u0431\u0435\u0440\u0456\u0442\u044c|\u0432\u0438\u0431\u0435\u0440\u0438|\u043f\u043e\u0441\u0442\u0430\u0432|\u043f\u0435\u0440\u0435\u043c\u043a\u043d\u0438|\u043f\u0440\u043e\u043a\u0440\u0443\u0442\u0438|\u043f\u0435\u0440\u0435\u043a\u043b\u0430\u0434\u0438)(?![\w'])", re.IGNORECASE)
 
 
 def is_direct(phrase: str) -> bool:
@@ -475,12 +492,14 @@ def is_direct(phrase: str) -> bool:
 
 # What is said around a name and is not part of it: fillers, politeness, articles, and the word for the kind of
 # place. A spoken line is matched to the screen's names without them ("Okay, can you open uh the loans page").
-_AROUND = set("""ok okay uh um er eh hmm so well now hey yeah yes and then just again please can could would will you
-    help me with us my i want need like to a an the""".split())
-_KINDS = {"page": "page", "pages": "page", "screen": "page", "tab": "part", "tabs": "part", "section": "part",
-          "sections": "part", "part": "part", "block": "part", "accordion": "part"}
-_GO_VERBS = set("open show go goto take bring navigate switch scroll jump move see view display expand".split())
-_REQUEST = re.compile(r"^[\W]*(?:(?:ok|okay|hey|so|now|well|yeah|yes)[\s,.!]+)*(please|can you|could you|would you|will you)\b",
+# In the seven languages the product ships (non-ASCII letters as escapes: the repository is English-only). These are
+# words of a language, never words of a site: every name comes from the host's own map.
+_AROUND = set("""ok okay uh um er eh hmm so well now hey yeah yes and then just again please can could would will you help me with us my i want need like to a an the \u043d\u0443 \u0430 \u0438 \u0442\u0430\u043a \u0432\u043e\u0442 \u0442\u0435\u043f\u0435\u0440\u044c \u0435\u0449\u0435 \u0435\u0449\u0451 \u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430 \u043c\u043e\u0436\u0435\u0448\u044c \u043c\u043e\u0436\u0435\u0442\u0435 \u043c\u043e\u0433\u0443 \u043c\u043d\u0435 \u043d\u0430\u043c \u043c\u043e\u0439 \u043c\u043e\u044f \u043c\u043e\u044e \u043c\u043e\u0435 \u043c\u043e\u0451 \u0445\u043e\u0447\u0443 \u043d\u0443\u0436\u043d\u043e \u043d\u0430\u0434\u043e \u0431\u044b \u0431\u0443\u0434\u044c \u043b\u0430\u0441\u043a\u0430 \u043c\u043e\u0436\u0435\u0448 \u043c\u0435\u043d\u0456 \u043d\u0430\u043c \u043c\u0456\u0439 \u043c\u043e\u044f \u0445\u043e\u0447\u0443 \u0442\u0440\u0435\u0431\u0430 \u0449\u0435 \u0442\u0435\u043f\u0435\u0440 ok allora ora poi ancora per favore puoi potresti pu\u00f2 mi ci il lo la i gli le un uno una del della dei delle vorrei voglio also nun jetzt dann noch bitte kannst kann k\u00f6nntest k\u00f6nnen du sie mir mich uns der die das den dem ein eine einen ich m\u00f6chte will alors maintenant puis encore s'il te vous pla\u00eet peux pouvez tu me nous le la les un une des du je veux voudrais bueno ahora luego otra vez por favor puedes puede podr\u00edas me nos el la los las un una unos unas quiero""".split())
+_KINDS = {w: kind for kind, words in {"page": "page pages screen screens \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0430 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u044b \u044d\u043a\u0440\u0430\u043d \u0441\u0442\u043e\u0440\u0456\u043d\u043a\u0430 \u0441\u0442\u043e\u0440\u0456\u043d\u043a\u0443 \u0435\u043a\u0440\u0430\u043d pagina schermata seite bildschirm \u00e9cran p\u00e1gina pantalla",
+                                     "part": "tab tabs section sections part block accordion \u0432\u043a\u043b\u0430\u0434\u043a\u0430 \u0432\u043a\u043b\u0430\u0434\u043a\u0443 \u0440\u0430\u0437\u0434\u0435\u043b \u0441\u0435\u043a\u0446\u0438\u044f \u0441\u0435\u043a\u0446\u0438\u044e \u0431\u043b\u043e\u043a \u0432\u043a\u043b\u0430\u0434\u043a\u0430 \u0440\u043e\u0437\u0434\u0456\u043b scheda sezione reiter abschnitt bereich onglet partie pesta\u00f1a secci\u00f3n"}.items() for w in words.split()}
+_GO_VERBS = set("""open show go goto take bring navigate switch scroll jump move see view display expand \u043e\u0442\u043a\u0440\u043e\u0439 \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u043a\u0430\u0436\u0438 \u043f\u043e\u043a\u0430\u0436\u0438\u0442\u0435 \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u043f\u0435\u0440\u0435\u0439\u0434\u0438 \u043f\u0435\u0440\u0435\u0439\u0434\u0438\u0442\u0435 \u043f\u0435\u0440\u0435\u0439\u0442\u0438 \u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0438 \u0440\u0430\u0437\u0432\u0435\u0440\u043d\u0438 \u0432\u0456\u0434\u043a\u0440\u0438\u0439 \u0432\u0456\u0434\u043a\u0440\u0438\u0439\u0442\u0435 \u0432\u0456\u0434\u043a\u0440\u0438\u0442\u0438 \u043f\u043e\u043a\u0430\u0436\u0438 \u043f\u043e\u043a\u0430\u0436\u0456\u0442\u044c \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u0438 \u043f\u0435\u0440\u0435\u0439\u0434\u0438 \u043f\u0435\u0440\u0435\u0439\u0434\u0456\u0442\u044c \u043f\u0435\u0440\u0435\u0439\u0442\u0438 apri aprire mostra mostrare vai andare porta portami \u00f6ffne \u00f6ffnen zeig zeige zeigen geh gehe gehen wechsle ouvre ouvrez ouvrir montre montrez montrer va allez aller abre abrir muestra mostrar ve ir lleva ll\u00e9vame""".split())
+_REQUEST = re.compile(r"^[\W]*(?:(?:ok|okay|hey|so|now|well|yeah|yes|\u043d\u0443|\u0430|\u0442\u0430\u043a|allora|also|alors|bueno)[\s,.!]+)*("
+                      r"please|can you|could you|would you|will you|\u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430|\u043c\u043e\u0436\u0435\u0448\u044c|\u043c\u043e\u0436\u0435\u0442\u0435|\u0431\u0443\u0434\u044c \u043b\u0430\u0441\u043a\u0430|\u043c\u043e\u0436\u0435\u0448|per favore|puoi|potresti|bitte|kannst du|k\u00f6nnen sie|s'il te pla\u00eet|s'il vous pla\u00eet|peux-tu|pouvez-vous|por favor|puedes|podr\u00edas)(?![\w'])",
                       re.IGNORECASE)
 
 
@@ -489,9 +508,18 @@ def asks_for(phrase: str) -> bool:
     return bool(_REQUEST.match(phrase or ""))
 
 
+_ARTICLES = set("a an the il lo la i gli le un uno una der die das den dem ein eine el los las unos unas les des du".split())
+
+
+def stem(word: str) -> str:
+    """A word without its ending, so a case or a plural still matches: "loans" and "loan", and the forms a name
+    takes in Russian, Italian or German. Short words are kept whole."""
+    return word if len(word) < 5 else word[:max(4, len(word) - 2)]
+
+
 def name_words(text: str) -> list[str]:
     """A name as its words, without articles, punctuation and case: "Apply for a loan" -> apply, for, loan."""
-    return [w for w in re.findall(r"[\w']+", (text or "").lower()) if w not in ("a", "an", "the")]
+    return [stem(w) for w in re.findall(r"[\w']+", (text or "").lower()) if w not in _ARTICLES]
 
 
 def match_name(phrase: str, targets: list[tuple[str, str, str]]) -> tuple[str, str, bool] | None:
@@ -509,6 +537,9 @@ def match_name(phrase: str, targets: list[tuple[str, str, str]]) -> tuple[str, s
         rest = rest[1:]
     if not rest:
         return None
+    heard = " ".join(rest)                       # as it was heard, for a misheard name (spelling, not stems)
+    rest = [stem(w) for w in rest]               # names are compared by their stems: cases and plurals match
+    spelled = {i: " ".join(w for w in re.findall(r"[\w']+", label.lower()) if w not in _ARTICLES) for i, label, _k in targets}
     pool = [(i, name_words(label), kind) for i, label, kind in targets if name_words(label)]
     if kinds:
         narrowed = [t for t in pool if ("page" if t[2] == "page" else "part") in kinds]
@@ -523,14 +554,17 @@ def match_name(phrase: str, targets: list[tuple[str, str, str]]) -> tuple[str, s
         i, w = best[0]
         left = [x for x in rest if x not in w and len(x) >= 4]
         return i, "said", bool(left)
-    q = " ".join(rest)
-    scored = sorted(((max(difflib.SequenceMatcher(None, q, " ".join(w)).ratio(),
-                          difflib.SequenceMatcher(None, q.replace(" ", ""), "".join(w)).ratio()), i) for i, w, _k in pool),
-                    reverse=True)
+    q = heard
+    scored = sorted(((max(difflib.SequenceMatcher(None, q, spelled[i]).ratio(),
+                          difflib.SequenceMatcher(None, q.replace(" ", ""), spelled[i].replace(" ", "")).ratio()), i)
+                     for i, _w, _k in pool), reverse=True)
     if not scored:
         return None
     top, second = scored[0], (scored[1][0] if len(scored) > 1 else 0.0)
-    near, clear = (0.55, 0.2) if kinds else (0.85, 0.25)   # "the ... page" narrows the field, so less is needed
+    # one bar, and a high one: a looser one for lines that say "page" or "tab" was tried and taken out again, because
+    # it had been set to let one recorded line through ("we quick visit page" for Book a visit), which is fitting,
+    # not measuring. These two numbers are placeholders for the QA Lead's measurement to set
+    near, clear = 0.85, 0.25
     if top[0] >= near and top[0] - second >= clear:
         return top[1], "near", False
     return None
@@ -551,6 +585,7 @@ def match_path(phrase: str, targets: list[dict[str, Any]]) -> tuple[str, str] | 
         rest = rest[1:]
     if not rest:
         return None
+    rest = [stem(w) for w in rest]               # names are compared by their stems: cases and plurals match
     said = " " + " ".join(rest) + " "
     found = []
     for t in targets:

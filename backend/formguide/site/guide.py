@@ -601,13 +601,18 @@ class Dushes:
         from .. import intent as _intent
         from ..language import detect
         layer = self.intent
-        if not layer.on:
+        if layer.settings.provider == "off":
             return None   # (a talking conversation goes through the layer too: what was heard is an ordinary line)
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
         named = self._bare_value(thread_id, message, state, stats) or await self._named(thread_id, message, state, here, stats)
         if named:
             return named
-        if not _intent.is_direct(message):
+        if not layer.on or os.environ.get("INTENT_CHOOSER", "1") == "0":
+            # the measurement's fifth arm, "code": what the names said settle is carried out, and no chooser is asked
+            return {"kind": "agent", "mode": "site"} if self._titled(message, here) else None
+        context = self._context(thread_id, state, here)
+        follows = bool(context.get("offered") or context.get("opened_last")) and len(message.split()) <= 5
+        if not _intent.is_direct(message) and not follows:
             # not a direct command (no verb of the short list at its start, or a question): the layer is not asked
             # at all. The line is the model's, which has the choice tool; a page said by its whole title makes it
             # the site agent's turn
@@ -652,7 +657,7 @@ class Dushes:
         if _intent.has_date(message) or _intent.names_off_screen(message, shown):
             return None
         started = RunStats.now()
-        picks = await layer.pick_many(message, detect(message) or "en", qs, here.path if here else "")
+        picks = await layer.pick_many(message, detect(message) or "en", qs, here.path if here else "", context)
         ms = round((RunStats.now() - started) * 1000)
         stats.fast = {"ms": ms, "handled": False, "late": not picks and ms >= layer.settings.timeout_ms - 10}
         # the demo's terminal shows what the layer was sure of (ids and confidences only, never the phrase)
@@ -858,7 +863,7 @@ class Dushes:
         a model turn would only make them wait."""
         from .. import intent as _intent
         off = self._offers.get(thread_id)
-        if not self.intent.on or not isinstance(off, dict) or not _intent.takes_up(message):
+        if self.intent.settings.provider == "off" or not isinstance(off, dict) or not _intent.takes_up(message):
             return None
         args = dict(off.get("args") or {})
         if off.get("tool") == "open_form":
@@ -903,6 +908,32 @@ class Dushes:
                 and (t := plain(p.title)) and f" {t} " in text]
         return max(hits, key=lambda p: len(p.title)) if hits else None
 
+    def _context(self, thread_id: str, state: dict[str, Any], here: Any) -> dict[str, Any]:
+        """What the chooser is told beside the line (the owner: "it must know which page is active, what I see,
+        what I say"; and with the last turns it can decide "open it", "that one", "and now the passport"): the
+        screen, the open sections and the field in focus, what the last answer offered, what was opened last, and
+        the person's line before this one. Not the conversation. Filtered before it leaves (`safe_context`)."""
+        out: dict[str, Any] = {"page": here.title if here else ""}
+        form = state.get("form") or None
+        if isinstance(form, dict) and form.get("config"):
+            try:
+                from ..form.overlay import Overlay
+                lay = self.forms.layout(form.get("jsx_hash", ""))
+                ov = Overlay(lay, form["config"], self.forms.packs.get(form.get("form_id")).pii)
+                ui = form.get("ui") or {}
+                label = lambda name: (ov.get(name).label if ov.get(name) is not None else None) or ""  # noqa: E731
+                out["open_sections"] = [label(n) for n in ui.get("openAccordions") or [] if label(n)]
+                out["field_in_focus"] = label(ui.get("focused") or "")
+            except Exception:  # noqa: BLE001 - a form that cannot be read adds nothing
+                pass
+        off = self._offers.get(thread_id)
+        if isinstance(off, dict):
+            out["offered"] = str(off.get("title") or "")
+        out["opened_last"] = self.__dict__.setdefault("_last", {}).get(thread_id, "")
+        said = [e.get("text", "") for e in self.forms.transcripts.list(thread_id) if e["kind"] == "user" and e.get("text")]
+        out["line_before"] = said[-1] if said else ""
+        return out
+
     async def _fast_move(self, thread_id: str, message: str, run_id: str, fast: dict[str, Any],
                          reply_to: list[dict[str, Any]] | None) -> AsyncIterator[dict]:
         """A move the layer picked, as the run Dushes would have made: the same directive, one line of text."""
@@ -912,6 +943,7 @@ class Dushes:
         tx = self.forms.transcripts
         tx.append(thread_id, new_entry("user", text=message, **({"reply_to": as_list(reply_to)} if reply_to else {})))
         yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
+        self.__dict__.setdefault("_last", {})[thread_id] = fast["title"]   # for "and now ..." on the next line
         mid, text = f"msg_{uuid.uuid4().hex[:12]}", f"{fast['title']}."
         yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
         yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": text}

@@ -50,11 +50,12 @@ class ExternalChooser:
         choice = a.get("choice")
         return Pick(None if choice in (None, NONE) else str(choice), float(a.get("confidence") or 0.0), ms, "external")
 
-    async def choose_many(self, phrase: str, language: str, questions: dict[str, Question], screen: str) -> dict[str, Pick]:
+    async def choose_many(self, phrase: str, language: str, questions: dict[str, Question], screen: str,
+                          context: dict[str, Any] | None = None) -> dict[str, Pick]:
         started = time.monotonic()
         r = await self._http.post(URL, json={"model": MODEL,
                                              "state": {"line": phrase, "screen_now": screen, "language": language,
-                                                       "today": time.strftime("%A %d %B")},
+                                                       "today": time.strftime("%A %d %B"), **(context or {})},
                                              "questions": {name: self._wire(q) for name, q in questions.items()}})
         r.raise_for_status()
         body = r.json()

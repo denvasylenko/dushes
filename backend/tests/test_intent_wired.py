@@ -22,7 +22,8 @@ class Mock:
     def __init__(self, **answers):
         self.answers, self.seen = answers, []
 
-    async def choose_many(self, phrase, language, questions, screen):
+    async def choose_many(self, phrase, language, questions, screen, context=None):
+        self.context = context or {}
         self.seen.append((phrase, questions, screen))
         return {name: intent.Pick(*self.answers[name]) for name in questions if name in self.answers}
 
