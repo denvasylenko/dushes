@@ -126,6 +126,8 @@ def names_off_screen(phrase: str, on_screen: Any) -> bool:
 class Option:
     id: str
     label: str            # what the person would say; never a guest's name or phone
+    hint: str = ""        # what is there, in the host's own words (a page's description, its keywords): only a
+    #                       chooser reads it, beside the label; never shown or said
 
 
 @dataclass(frozen=True)

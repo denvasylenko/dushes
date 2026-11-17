@@ -38,7 +38,8 @@ class ExternalChooser:
         if q.kind == "noul":
             return {"type": "noul", "instructions": q.text}
         return {"type": "choice", "instructions": q.text,
-                "criteria": {**{o.id: o.label for o in q.options}, NONE: "nothing of these is named"}}
+                "criteria": {**{o.id: (f"{o.label} \u2014 {o.hint}" if o.hint else o.label) for o in q.options},
+                             NONE: "nothing of these is named"}}
 
     @staticmethod
     def _pick(q: Question, a: dict[str, Any] | None, ms: int) -> Pick:

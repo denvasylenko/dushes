@@ -666,9 +666,15 @@ class Dushes:
         targets: list[Any] = []
         for p in self.site.pages:
             on = bool(here and p.path == here.path)
+            # the owner (2026-11-17): a place asked for by what is there ("where I can book a haircut") or with a slip
+            # of the tongue is the chooser's too, so each option carries the host's own description and keywords
+            describe = os.environ.get("INTENT_DESCRIBE", "1") != "0"
+            short = lambda t, n: " ".join(str(t or "").split())[:n]   # noqa: E731
             if not on:
-                targets.append(_intent.Option(f"screen:{p.path}", p.title))
-            targets += [_intent.Option(f"part:{p.path}#{x.id}", f"{p.title} \u203a {x.title}") for x in p.parts]
+                targets.append(_intent.Option(f"screen:{p.path}", p.title, "; ".join(
+                    x for x in (short(p.description, 90), ", ".join(p.keywords[:6])) if x) if describe else ""))
+            targets += [_intent.Option(f"part:{p.path}#{x.id}", f"{p.title} \u203a {x.title}", short(x.text, 70) if describe else "")
+                        for x in p.parts]
             if p.form:
                 try:
                     tree = self._tree_of(form, seen_only=True) if on and ov is not None else await self._form_tree(p.form)
