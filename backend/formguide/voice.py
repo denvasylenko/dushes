@@ -534,10 +534,22 @@ class Talks:
                     self.meter.report(talk_id, heard=True)
                     self._emit(state, {"type": "hearing", "delta": ev.get("delta", "")})   # their words, as they speak
                     await self._cut_in(state)
+                    if os.environ.get("VOICE_TAKE_LINE") == "1" and not state.get("taker"):
+                        import asyncio
+                        state["taker"] = asyncio.ensure_future(self._take_line(talk_id))
                 elif t == "session.delegation.created":   # the voice wants the agent: hand over what was said
                     text, state["heard"] = state["heard"].strip(), ""
                     asked = (ev.get("delegation") or {}).get("id")
                     state["early"] = None   # a hand-over still waiting for its words gives way to this one
+                    if not text and time.monotonic() - state.get("taken_at", -1e9) < TAKEN_COVERS:
+                        # the provider asks for the line the server already took by itself: it is being answered, so
+                        # this request gets no second answer, only an empty note that cancels its "let me check"
+                        try:
+                            await state["ws"].send(_json({"type": "session.thinking.append", "event_id": f"taken_{secrets.token_hex(4)}",
+                                                          "delegation_id": asked, "content": ""}))
+                        except Exception:  # noqa: BLE001
+                            pass
+                        continue
                     if not text:
                         # the provider asked before the words arrived: they are waited for, never dropped
                         state["early"] = asked
@@ -567,6 +579,34 @@ class Talks:
         except Exception:  # noqa: BLE001 - a dropped connection ends the conversation, it does not break the host
             pass
         await self.end(talk_id, "lost")
+
+    async def _take_line(self, talk_id: str) -> None:
+        """Words that arrived and were never handed over (VOICE_TAKE_LINE=1; a trial, off by default). The provider
+        issues its hand-over when it decides to, and sometimes not at all: a short answer said into its speech sat
+        in the buffer and reached nobody (the owner's sessions, 2026-11-17: "yes" three times, his last name).
+        When TAKE_AFTER seconds pass after their last word, the voice is not talking and no hand-over came, the
+        server takes the line itself: the client gets `heard` as after a hand-over, and the answer is given to the
+        voice with no request to attach it to. Fillers alone and the voice's own echo are not taken."""
+        import asyncio
+        state = self._live.get(talk_id)
+        try:
+            while self._live.get(talk_id) is state and state["heard"].strip():
+                await asyncio.sleep(0.1)
+                now = time.monotonic()
+                said = state.get("said") or []
+                if state.get("early") or now - state.get("heard_at", now) < TAKE_AFTER or (said and now - said[-1][0] < 1.0):
+                    continue                          # a hand-over is waiting for these words; still speaking; the voice talks
+                text = state["heard"].strip()
+                words = [w for w in re.findall(_LETTERS + r"|\d+", re.sub(r"\[[^\]]*\]", " ", text).lower()) if w not in FILLERS]
+                if not words or is_echo(text, said, now):
+                    return                            # nothing of theirs to act on: left as it is
+                state["heard"], state["taken_at"] = "", now
+                self._record(state, {"type": "taken", "t_ms": round((now - state["t0"]) * 1000), "words": len(words)})
+                await self._hand_over(talk_id, None, text)
+                return
+        finally:
+            if state is not None:
+                state["taker"] = None
 
     async def _cut_in(self, state: dict) -> None:
         """The person began to speak while the voice was talking (VOICE_CUT_IN=1; a trial, off by default). The
@@ -942,6 +982,9 @@ def asks(card: dict) -> str:
 WORDS_WAIT, WORDS_SETTLE, WORDS_LAST = 1.5, 0.4, 6.0
 UNHEARD = "You did not catch what the person said. Say so in a few words and ask them to say it again."
 
+TAKE_AFTER = 1.5      # words with no hand-over are taken by the server this long after the last one, in seconds
+TAKEN_COVERS = 10.0   # a hand-over with no words this soon after a taken line is that same line, asked late
+FILLERS = {"uh", "um", "mm", "hmm", "hm", "ah", "er", "eh", "oh", "mhm", "sigh"}
 CUT_IN_AFTER = 1.2    # the voice counts as talking while its last word is this fresh, in seconds
 CUT_IN = "The person has started speaking. Stop talking at once and listen to them. Do not finish or repeat your sentence."
 ECHO_SECONDS = 15.0   # how long after the voice spoke its own words can come back

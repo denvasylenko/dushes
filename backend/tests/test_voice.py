@@ -841,3 +841,43 @@ def test_the_person_cuts_in_on_the_voice(monkeypatch):
     assert len(sent) == 1 and sent[0]["delegation_id"] is None and "Stop talking" in sent[0]["content"]
     kinds, sent = asyncio.run(go(False))
     assert "interrupted" not in kinds and sent == []
+
+
+def test_words_with_no_hand_over_are_taken_by_the_server(monkeypatch):
+    """The owner's lost lines (2026-11-17): his words arrived as text and the provider never asked for the agent.
+    With VOICE_TAKE_LINE=1 the server takes them itself a moment after his last word; a hand-over that comes late
+    for the same line gets no second answer; a filler alone is not taken; without the switch nothing changes."""
+    monkeypatch.setattr(voice, "TAKE_AFTER", 0.15)
+
+    async def go(switch, words, late_hand_over=False):
+        if switch:
+            monkeypatch.setenv("VOICE_TAKE_LINE", "1")
+        else:
+            monkeypatch.delenv("VOICE_TAKE_LINE", raising=False)
+        talks, live, _ = _talks()
+        await talks.start("anna", "OFFER-SDP", "thread-take")
+        got = []
+
+        async def reader():
+            async for e in talks.events("live_1"):
+                got.append(e)
+        task = asyncio.ensure_future(reader())
+        for w in words:
+            live.push(type="session.input_transcript.delta", delta=w)
+        await asyncio.sleep(0.6)
+        if late_hand_over:
+            live.push(type="session.delegation.created", delegation={"id": "item_late", "type": "delegation", "target": "client"})
+            await asyncio.sleep(0.4)
+        task.cancel()
+        return [(e["type"], e.get("text")) for e in got if e["type"] != "hearing"], live.sent
+    got, _ = asyncio.run(go(True, ["Yes"]))
+    assert got == [("heard", "Yes")]                                                    # a bare yes lands
+    got, sent = asyncio.run(go(True, ["open the ", "loans page"], late_hand_over=True))
+    assert got == [("heard", "open the loans page")]                                    # once, though the provider asked late
+    notes = [m for m in sent if m["type"] == "session.thinking.append" and m.get("delegation_id") == "item_late"]
+    assert len(notes) == 1 and notes[0]["content"] == ""
+    assert not [m for m in sent if m["type"] == "session.commentary.append"]            # and no "did not catch that"
+    got, _ = asyncio.run(go(True, ["Uh", " [sigh]"]))
+    assert got == []                                                                    # a filler is nobody's request
+    got, _ = asyncio.run(go(False, ["Yes"]))
+    assert got == []                                                                    # off: as before
