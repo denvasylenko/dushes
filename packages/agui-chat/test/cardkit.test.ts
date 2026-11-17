@@ -163,6 +163,19 @@ describe('card kit: questions', () => {
     expect(applyChanges).toHaveBeenCalledWith({ dob: '1991-07-01' })
   })
 
+  it('the server\'s real card (max today, day and month known, no start year) opens on the years about 35 back, not on the last decade', async () => {
+    const today = new Date().toISOString().slice(0, 10), around = new Date().getFullYear() - 35
+    const { el, applyChanges } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Which year were you born in?', field: 'dob', label: 'Date of birth',
+      applies: true, input: { type: 'date', max: today, known: { day: 1, month: 7 } }, allow_text: true, reveal: [] })))
+    await tick(10)
+    const years = $$(el, '.card .cal-yearonly .cal-y').map((b) => Number(b.textContent))
+    expect(years).toContain(around)
+    expect(Math.max(...years)).toBeLessThan(new Date().getFullYear() - 20)
+    ;($$(el, '.card .cal-yearonly .cal-y').find((b) => b.textContent === String(around)) as HTMLButtonElement).click()
+    await tick(10)
+    expect(applyChanges).toHaveBeenCalledWith({ dob: `${around}-07-01` })
+  })
+
   it('typing the year: four digits and Enter; a year out of range shows the range, quietly', async () => {
     const { el, applyChanges } = await chatWith(run(interrupt({ type: 'ask', card_id: 'q', question: 'Registration year?', field: 'reg', label: 'Registration year',
       applies: true, input: { type: 'year', min: '1990', max: '2026' }, allow_text: true, reveal: [] })))

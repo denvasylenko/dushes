@@ -1,0 +1,18 @@
+name: bare_place_after_offer
+tags: [bare_place]
+persona: "A person on the bank's site who asks how to reach the bank, then says only 'contacts'."
+goal: "Have the contacts page opened by the bare word that follows the question."
+start: {page: /}
+knows:
+  - "Says: how can I reach the bank?"
+  - "Says: contacts"
+turns: 2
+# Owner TL, from the owner (2026-11-17): a bare name of a place opens only when the conversation backs it (the
+# chooser's "wants_to_go" with the history, 0.7+). One of four: the bare word after a question it answers (the
+# assistant usually offers the contacts page here). Expected: opened. The family: bare_place_*.
+scripted:
+  - "how can I reach the bank?"
+  - "contacts"
+expect:
+  reaches: "/contacts"
+min_score: 7

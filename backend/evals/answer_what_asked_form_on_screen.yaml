@@ -1,0 +1,16 @@
+name: answer_what_asked_form_on_screen
+tags: [owner_session]
+persona: "A person on the barbershop booking page who asks what is left to fill in there."
+goal: "Be told what is still missing in the booking form on the screen."
+start: {page: /book, form: barber_booking, values: {service: {id: "haircut", name: "Haircut"}}}
+knows:
+  - "Wants to know what is left to fill in the booking form"
+turns: 1
+# The guard for answer_what_asked_other_page: "answer what was asked" must not stop the assistant from talking about
+# the form on the screen when that is what was asked. Passes before and must pass after.
+scripted:
+  - "What is left to fill in here?"
+expect:
+  says: ["barber"]   # the booking goes step by step: on the first step the barber is what is left
+  never_says: ["passport", "loan"]
+min_score: 7

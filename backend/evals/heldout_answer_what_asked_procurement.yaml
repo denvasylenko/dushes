@@ -1,0 +1,17 @@
+name: heldout_answer_what_asked_procurement
+tags: [owner_session, heldout]
+persona: "A person on the purchase request page, its form on the screen, who asks what a loan needs."
+goal: "Be told the documents for a loan, with nothing about the purchase request on the screen."
+start: {page: /procurement, form: procurement_request}
+knows:
+  - "Wants to know the documents for a loan"
+turns: 1
+# HELD OUT: the owner's own line and page (2026-11-17, 20:24). The procurement form is the owner's untrained exam
+# domain: this scenario is measured, never tuned on, and its misses are not shown to whoever changes the rule. Written
+# without reading the form's file. The tuned twin is answer_what_asked_other_page.
+scripted:
+  - "Okay, what I need for loan"
+expect:
+  says: ["passport"]
+  never_says: ["still open", "purchase request is", "your purchase request", "the purchase request form", "left to fill", "not filled"]
+min_score: 7
