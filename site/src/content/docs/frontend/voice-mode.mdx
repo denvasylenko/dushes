@@ -7,8 +7,8 @@ import { Summary } from '../../../components/ui';
 
 <Summary what={"Talking to the assistant: it listens, answers aloud and fills the form from what you say."} when={"Typing is slow or your hands are busy."} write={"`voice-mode` on `<agui-chat>`, on a host that has the voice routes."} />
 
-<Aside type="caution" title="Experimental, and behind a personal code">
-It is a trial and can mishear. Each person needs their own access code from whoever runs the site. In this mode your voice is sent to OpenAI; the site keeps the transcribed text only.
+<Aside type="caution" title="Experimental: only with an activation code">
+Voice mode works only after you enter your personal activation code: tap **+** in the message field, choose "Experimental voice mode" and enter the code you got from whoever runs the site. Without a code it is off, and nothing is sent to the voice provider. It is a trial and can mishear. Once it is on, your voice is sent to OpenAI; the site keeps the transcribed text only.
 </Aside>
 
 This is not dictation. [Dictation](../what-the-chat-can-do/#voice) turns speech into text in the message field, and you still send it. In voice mode you have a conversation: you speak, the assistant answers aloud, and the chat shows the same messages it would show if you had typed.
