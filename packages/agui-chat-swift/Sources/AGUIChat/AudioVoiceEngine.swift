@@ -236,7 +236,10 @@ public final class AudioVoiceEngine: VoiceEngine {
         case .answer(let c, let t, let a, let x): continuation.yield(.answer(cardId: c, type: t, accepted: a, text: x))
         case .interrupted:
             trailOff()
-            silenced = false                         // what comes after it is the new answer (server v150)
+            // the provider is not cancelled: the old answer's tail can still come — dropped until a pause of 0.8 s
+            // (the new answer), as the relay does too (Кабинет TL 17.11)
+            silenced = true
+            droppedAt = Date()
             continuation.yield(.interrupted)
         case .heard(let text):
             silenced = false
