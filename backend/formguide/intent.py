@@ -386,6 +386,34 @@ def value_question(overlay: Any, consents: Any = ()) -> Question | None:
                     tuple(opts[:MAX_OPTIONS - 1]), act="set_field") if opts else None
 
 
+def field_questions(overlay: Any, names: list[str], consents: Any = ()) -> dict[str, Question]:
+    """One question a field, for the choice fields and checkboxes among `names` (the fields on the screen), so a
+    line that names several values gets an answer for each: "f:<field>" -> its options as "field: option" (a
+    checkbox is "field: yes"). A consent is never asked about."""
+    out: dict[str, Question] = {}
+    for name in names:
+        e = overlay.get(name)
+        if e is None or not e.editable or name in consents:
+            continue
+        label = e.label or name
+        if e.node.role in ("select", "radio") and e.options:
+            opts = tuple(Option(f"{name}={o.get('id')}", f"{label}: {o.get('name') or o.get('id')}")
+                         for o in e.options if o.get("id") is not None)[:MAX_OPTIONS - 1]
+        elif e.node.role == "bool":
+            opts = (Option(f"{name}=true", f"{label}: yes"), Option(f"{name}=false", f"{label}: no"))
+        else:
+            continue
+        out[f"f:{name}"] = Question("choice", f"field:{name}", f'Does the line give a value for "{label}"? Which one?',
+                                    opts, act="set_field")
+    return out
+
+
+def says_any(label: str, phrase: str) -> bool:
+    """Whether the line says at least one word of the label (four letters or more, by its first five)."""
+    heard = {w[:5] for w in re.findall(r"[\w']+", (phrase or "").lower())}
+    return any(w[:5] in heard for w in re.findall(r"[\w']+", (label or "").lower()) if len(w) >= 4)
+
+
 # ---------------------------------------------------------------- a picked value goes through the form's own card
 
 _PRESETS: dict[str, dict] = {}   # the form thread -> {"script": what the form agent's model would have said, "needs": ...}
@@ -397,9 +425,11 @@ def preset_call(thread_id: str, tool: str, args: dict, closing: str, needs: str 
     the form's own tool, checks and Undo apply and no model is called. `needs`: how the tool's result must start
     for the closing line to be said."""
     from langchain_core.messages import AIMessage
+    # no closing line: the line holds more than the layer did, so after the tool the form's own model goes on (it
+    # sees the call and its result in the conversation, so it knows what is done already)
     _PRESETS[thread_id] = {"needs": needs, "script": [
         AIMessage(content="", tool_calls=[{"name": tool, "id": f"fast_{int(time.time() * 1000)}", "args": args}]),
-        AIMessage(content=closing)]}
+        *([AIMessage(content=closing)] if closing else [])]}
 
 
 def preset(thread_id: str, name: str, value: Any, label: str, shown: str) -> None:
@@ -429,7 +459,7 @@ def preset_model(thread_id: str | None, messages: list | None = None) -> Any:
     script = (entry or {}).get("script")
     if not script:
         return None
-    if len(script) == 1 and messages is not None:
+    if len(script) == 1 and script[0].content and messages is not None:
         last = messages[-1] if messages else None
         said = str(getattr(last, "content", "") or "")
         fine = (type(last).__name__ == "ToolMessage" and getattr(last, "status", "success") != "error"

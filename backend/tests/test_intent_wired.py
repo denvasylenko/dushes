@@ -308,3 +308,52 @@ def test_a_bare_date_is_put_into_the_field_the_chooser_names(guide, model):
     card = json.loads(raw) if isinstance(raw, str) else raw
     assert card["changes"][0]["name"] == "birth_date" and "2014-07-01" in json.dumps(card) and len(model.calls) == before
     assert "date_field" in chooser.seen[0][1]
+
+
+OWNERS_LINE = ("Okay, loan term is uh, ten years uh, an extra life insurance, uh, yes and SMS notification yes. "
+               "And payment method uh, with uh, card bank")
+
+
+def loan_tab_on_screen(guide):
+    """The loan form with the sections of the owner's four fields open, as on his screen."""
+    form = start(guide, LOAN)
+    form["config"] = LOAN.compute({"loan_type": {"id": "mortgage"}})              # the term opens once the loan type is chosen
+    lay = guide.layout(form["jsx_hash"])
+    tabs, opened = {}, set()
+    for name in ("loan_term", "opt_life_insurance", "opt_sms", "payout_method"):
+        for a in lay.ancestors(name):
+            if a.role == "accordion":
+                opened.add(a.name)
+            if a.role == "tab":
+                tabs[lay.nodes[a.name].parent] = a.name
+    return {**form, "ui": {"activeTabs": tabs, "openAccordions": sorted(opened)}}
+
+
+def test_several_values_in_one_line_are_set_together(guide, model, monkeypatch):
+    """The owner's spoken line, word for word (2026-11-17): the term, two ticks and the payout method in one
+    line. Each field on the screen gets its own question, so the chooser answers for each; all it is sure of go
+    on one card of the form, applied with Undo, and no model is called."""
+    monkeypatch.setenv("INTENT_LABELS", "1")
+    state = {"page": {"path": "/apply"}, "form": loan_tab_on_screen(guide)}
+    answers = {"is_command": ("yes", 0.7), "kind": ("set_value", 0.7), "asks_more": ("no", 0.9), "value": ("loan_term=120", 0.51),
+               "f:loan_term": ("loan_term=120", 0.93), "f:opt_life_insurance": ("opt_life_insurance=true", 0.9),
+               "f:opt_sms": ("opt_sms=true", 0.88), "f:payout_method": ("payout_method=card", 0.86),
+               "f:loan_type": ("loan_type=auto", 0.55)}                    # not sure, and not said: left alone
+    chooser = Mock(**answers)
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "many-1", message=OWNERS_LINE, state=state)
+    asked = chooser.seen[0][1]
+    assert {"f:loan_term", "f:opt_life_insurance", "f:opt_sms", "f:payout_method"} <= set(asked)
+    assert not any("consent" in k for k in asked)                          # a consent is never asked about
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    card = json.loads(raw) if isinstance(raw, str) else raw
+    assert {c["name"] for c in card["changes"]} == {"loan_term", "opt_life_insurance", "opt_sms", "payout_method"}
+    assert card.get("quiet") is True and len(model.calls) == before
+    assert "the step it chose before" not in text(ev)
+    # the line asks more: the same card, and after it the form's own model goes on instead of a closing line
+    from formguide import intent as _i
+    more = Mock(**{**answers, "asks_more": ("yes", 0.9)})
+    ev = run(site_with(guide, more), "many-2", message=OWNERS_LINE + " and what is the rate?", state=state)
+    assert next(e for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    form_thread = "many-2-loan_application"
+    assert not _i.has_preset(form_thread)                                  # nothing decided is left: the model answers next

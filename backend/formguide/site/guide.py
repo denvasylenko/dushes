@@ -497,7 +497,7 @@ class Dushes:
                 elif fast and fast.get("handled"):
                     label = f"{who} \u00b7 {fast['ms']} ms"
                 elif getattr(stats, "decided", False):
-                    label = f"{who} (the step it chose before)"
+                    label = ""
                 else:
                     name = str(_model_id(self.model or self.forms.models.agent))
                     took = RunStats.now() - stats.t0
@@ -505,14 +505,15 @@ class Dushes:
                     asked = f" (after {who} {fast['ms']} ms: {why})" if fast else ""
                     label = f"{'Haiku' if 'haiku' in name.lower() else name} \u00b7 {took:.1f} s{asked}"
                 heard = getattr(self, "_heard", None)
-                if heard and RunStats.now() - heard[0] < 30:   # this line was dictated: how long the speech took to read
+                if label and heard and RunStats.now() - heard[0] < 30:   # this line was dictated: how long the speech took to read
                     label = f"heard in {heard[1]} ms \u00b7 {label}"
                     self._heard = None
-                lid = f"label_{uuid.uuid4().hex[:10]}"
-                yield {"type": "TEXT_MESSAGE_START", "messageId": lid, "role": "assistant"}
-                seen["label"] = label
-                yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
-                yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
+                if label:
+                    lid = f"label_{uuid.uuid4().hex[:10]}"
+                    yield {"type": "TEXT_MESSAGE_START", "messageId": lid, "role": "assistant"}
+                    seen["label"] = label
+                    yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
+                    yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR"):
                 _demo_log(thread_id, message, resume, handoff, state, stats, seen, ev["type"])
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and stats.models:
@@ -696,6 +697,17 @@ class Dushes:
                         _intent.Option(n.name, " \u203a ".join([*(str(ov[x.name].label) for x in lay.ancestors(n.name)
                                                                  if ov.get(x.name) is not None and ov[x.name].label),
                                                                str(ov[n.name].label or n.name)])) for n in dates), act="set_field")
+        shown_fields: list[str] = []
+        if ov is not None:
+            # a question a field for the choice fields the person has on the screen now, so one line can set several
+            from ..form.render import locate
+            loc = locate(ov, form.get("ui"))
+            for n in lay.fields():
+                c = lay.nearest_container(n.name)
+                if c is not None and c.name in loc.on_screen and ov[n.name].visible:
+                    shown_fields.append(n.name)
+            per_field = _intent.field_questions(ov, shown_fields, set(pack.consents or {}))
+            qs.update(dict(list(per_field.items())[:16]))
         context = self._context(thread_id, state, here, ov, lay, pack)
         started = RunStats.now()
         picks = await layer.pick_many(message, detect(message) or "en", qs, here.path if here else "", context)
@@ -736,6 +748,34 @@ class Dushes:
                 opt0 = value.id.partition("=")[2]
                 shown0 = next((str(o.get("name")) for o in (e0.options or []) if str(o.get("id")) == opt0), "") if e0 is not None else ""
                 said = bool(shown0) and _intent.said_in(shown0, message)
+            # several values in one line: every field of the screen the chooser is sure of (0.8), whose field or
+            # option the line itself says; all of them on one card of the form, applied with Undo. When the line
+            # asks more, the form's own model goes on after the card and knows what is done
+            many: list[tuple[str, Any, str, str]] = []
+            for key, p in picks.items():
+                if not key.startswith("f:") or ov is None or moves or p.confidence < 0.8:
+                    continue
+                fname, _, opt = p.id.partition("=")
+                fe = ov.get(fname)
+                if fe is None or not fe.editable:
+                    continue
+                flabel = str(fe.label or fname)
+                is_bool = fe.node.role == "bool"
+                fshown = ("yes" if opt == "true" else "no") if is_bool else next(
+                    (str(o.get("name")) for o in fe.options or [] if str(o.get("id")) == opt), opt)
+                if _intent.said_in(flabel, message) or (not is_bool and _intent.says_any(fshown, message)):
+                    many.append((fname, (opt == "true") if is_bool else opt, flabel, fshown))
+            if many and not (kind and kind.id in ("question", "other")):
+                closing = ", ".join(f"{fl}: {fs}" for _, _, fl, fs in many) + "."
+                _intent.preset_call(f"{thread_id}-{fid}"[:100], "propose_changes",
+                                    {"changes": [{"name": n, "value": v} for n, v, _, _ in many]},
+                                    "" if tail else closing, _intent.APPLIED)
+                stats.fast["handled"] = True
+                stats.fast["set"] = closing
+                if not tail:
+                    from .. import voice
+                    voice.hush(thread_id)
+                return {"kind": "value"}
             bare = bool(value and said and value.confidence >= 0.9 and not moves and not tail
                         and not (more and more.id == "yes") and not (kind and kind.id in ("question", "other")))
             if not ordered and not moves and not bare:
