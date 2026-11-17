@@ -149,3 +149,10 @@ def test_the_filter_takes_numbers_out_and_leaves_an_outline_whole():
     outline = "1.1.2 [Accordion a] req 0/3\n    1.1.3 [Accordion b] req 0/10\n      (+1 nested)\n    1.1.4 [Tab c] req 2/7"
     assert intent.scrub(layer, outline) == outline
     assert intent.scrub(layer, "born 2014-07-01") == "born <filled>"       # a date written in digits is a value: it stays in
+
+
+def test_the_first_word_of_a_sentence_is_not_a_name():
+    from formguide import intent
+    line = "Uh, whom you can suggest? So, and options like hair wash and add styling. Then Alex"
+    assert intent.mask_names(line, ["Barber: Alex"]) == (line, False)
+    assert intent.mask_names("book it. Then call Giulia", [])[0] == "book it. Then call <name>"

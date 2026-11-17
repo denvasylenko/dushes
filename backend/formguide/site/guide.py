@@ -794,7 +794,11 @@ class Dushes:
             # asks more, the form's own model goes on after the card and knows what is done
             many: list[tuple[str, Any, str, str]] = []
             for key, p in picks.items():
-                if not key.startswith("f:") or ov is None or moves or p.confidence < 0.8:
+                # the CPO (2026-11-17): for a field on the screen "is it a command" does not matter; the value
+                # counts at 0.8, or at 0.7 when it is 0.2 clear of the second option, and its field or option is
+                # said in the line. The QA Lead calibrates both numbers
+                clear = getattr(layer.chooser, "margins", {}).get(key, 0.0) >= 0.2
+                if not key.startswith("f:") or ov is None or moves or not (p.confidence >= 0.8 or (p.confidence >= 0.7 and clear)):
                     continue
                 fname, _, opt = p.id.partition("=")
                 fe = ov.get(fname)

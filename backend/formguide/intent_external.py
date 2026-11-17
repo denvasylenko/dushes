@@ -74,6 +74,12 @@ class ExternalChooser:
         self.tokens = int((body.get("usage") or {}).get("input_tokens") or 0)   # of the last call, for the log
         self.usd += self.tokens * USD_PER_INPUT_TOKEN
         answers = body.get("answers") or {}
+        # how far the first option of each choice is ahead of the second (for a bar with a margin)
+        self.margins = {}
+        for name, a in answers.items():
+            probs = sorted((float(v) for k, v in ((a or {}).get("probabilities") or {}).items()), reverse=True)
+            if len(probs) >= 2:
+                self.margins[name] = probs[0] - probs[1]
         return {name: self._pick(q, answers.get(name), ms) for name, q in questions.items()}
 
     async def rank(self, phrase: str, language: str, question: Question, screen: str) -> list[tuple[str, float]]:

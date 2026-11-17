@@ -88,6 +88,8 @@ def mask_names(phrase: str, on_screen: Any) -> tuple[str, bool]:
     known = {w.lower() for label in on_screen for w in re.findall(r"[\w'-]+", str(label))} | set(_MONTHS) | set(_DAYS)
     words, found = (phrase or "").split(), False
     for i, word in enumerate(words[1:], 1):
+        if words[i - 1].rstrip("\"')").endswith((".", "?", "!", ":")) and word.strip(_EDGES).lower() in _STARTERS:
+            continue                                  # an everyday word that opens a sentence is capital anyway
         m = _CAPITAL.match(word.strip(_EDGES))
         if m and len(m.group(0)) > 1 and m.group(0).lower().rstrip("'s") not in known and m.group(0).lower() not in known:
             words[i] = word.replace(m.group(0), "<name>")
@@ -99,13 +101,21 @@ def has_date(phrase: str) -> bool:
     return bool(_DATE.search(phrase or ""))
 
 
+# everyday words a sentence opens with: capital there, and nobody's name (anything else capital may be one)
+_STARTERS = set("""so then and but or okay ok yes yeah no well also now please can could would will what which how where
+    when why who whom i i'm i'd i'll my me we our the a an it it's is are do does did set open show go put add make
+    let let's that this these those there here if just thanks thank hello hi hey uh um oh""".split())
+
+
 def names_off_screen(phrase: str, on_screen: Any) -> bool:
     """Whether the line holds a capitalised word, after its first word, that no label on the screen has: most
     likely a person or a company the chooser was never shown. `on_screen`: the labels the screen shows."""
     known = {w.lower() for label in on_screen for w in re.findall(r"[\w'-]+", str(label))}
     known |= set(_MONTHS) | set(_DAYS)          # "1st July 2014", "on Friday": a month or a weekday is nobody's name
     words = (phrase or "").split()
-    for word in words[1:]:
+    for i, word in enumerate(words[1:], 1):
+        if words[i - 1].rstrip("\"')").endswith((".", "?", "!", ":")) and word.strip(_EDGES).lower() in _STARTERS:
+            continue                                  # an everyday word that opens a sentence is capital anyway
         m = _CAPITAL.match(word.strip(_EDGES))
         if m and len(m.group(0)) > 1 and m.group(0).lower().rstrip("'s") not in known and m.group(0).lower() not in known:
             return True
