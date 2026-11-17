@@ -14,7 +14,10 @@ scripted:
   - "Open personal details"
   - "I was born on the 1st of July"
   - "1991"
+# The guest closes the year question card and says the year as a message, as the owner did; it taps no card, so the
+# date is in the field only if "1991" fills it at once.
+answers: {birth_date: null}
 expect:
   fields: {birth_date: "1991-07-01"}
-  no_question_card_on: {"^\\W*1991": []}
+  never_same_card_twice: true
 min_score: 7
