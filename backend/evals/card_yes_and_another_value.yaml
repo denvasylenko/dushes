@@ -1,0 +1,20 @@
+name: card_yes_and_another_value
+tags: [owner_session, answers_in_words]
+persona: "A person on the loan application who gets a card for the date of birth and answers it with yes and the gender in one breath."
+goal: "Have both applied: the date of birth on the waiting card, and the gender said with the yes."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Born on 1 July 1991, male"
+turns: 3
+# The owner's session (2026-11-17, 22:2x, the form and the assistant, Jev on), via the CPO: a card for the date of
+# birth waited ("Shall I fill in Date of birth...? Say yes or no"), he said yes and his gender in the same breath; the
+# gender was filled and the yes for the card went nowhere. Expected: both applied, text and voice. The guest answers
+# in words, never taps. Values invented. Fails first.
+scripted:
+  - "Open personal details"
+  - "my date of birth is the first of July, ninety-one"
+  - "yes, and I'm male"
+expect:
+  fields: {birth_date: "1991-07-01", gender: "m"}
+  never_same_card_twice: true
+min_score: 7
