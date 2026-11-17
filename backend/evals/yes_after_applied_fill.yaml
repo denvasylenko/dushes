@@ -14,7 +14,7 @@ scripted:
   - "yeah, it's right"
 expect:
   fields: {birth_date: "1992-07-01"}
-  no_cards_on_turns: ["it's right"]
+  never_fills_on: {"it's right": ["Date of birth"]}   # no card for the value again; a question about the next field is fine
   never_same_card_twice: true
   max_words: 60
   answers_every_turn: true   # fix 4: in voice, never silence after a card
