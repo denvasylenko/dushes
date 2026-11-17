@@ -402,7 +402,7 @@ def preset_model(thread_id: str | None, messages: list | None = None) -> Any:
         last = messages[-1] if messages else None
         said = str(getattr(last, "content", "") or "")
         fine = (type(last).__name__ == "ToolMessage" and getattr(last, "status", "success") != "error"
-                and said.startswith(entry["needs"]) and not any(x in said.lower() for x in ("error", "not accepted", "\u26a0")))
+                and said.startswith(entry["needs"]) and not any(x in said.lower() for x in ("error", "not accepted", "\u26a0", "hidden", "disabled", "locked", "cannot")))
         if not fine:
             _PRESETS.pop(thread_id or "", None)
             return None
@@ -534,6 +534,74 @@ def match_name(phrase: str, targets: list[tuple[str, str, str]]) -> tuple[str, s
     if top[0] >= near and top[0] - second >= clear:
         return top[1], "near", False
     return None
+
+
+def match_path(phrase: str, targets: list[dict[str, Any]]) -> tuple[str, str] | None:
+    """The object a line names, with the hierarchy taken into account: (id, how) or None.
+    `targets`: {"id", "label", "kind": "page" | "part" | "form", "up": names above it (the page's title and
+    keywords, the tab it sits in), "here": it is on the screen now}. The owner's line "open apply for loan,
+    application, personal details" names a page, its form and a section: the section is the object, the other
+    names are the way to it. A target is taken when its whole name is said and every other word of weight in the
+    line belongs to a name above it. Among several, the one with the most of its way said wins; then what is on
+    the screen now; then a page. Two different objects left at the top: not decided here. Failing a said name,
+    a misheard one is taken as `match_name` takes it."""
+    words = re.findall(r"[\w']+", (phrase or "").lower())
+    rest = [w for w in words if w not in _AROUND and w not in _KINDS]
+    while rest and rest[0] in _GO_VERBS:
+        rest = rest[1:]
+    if not rest:
+        return None
+    said = " " + " ".join(rest) + " "
+    found = []
+    for t in targets:
+        name = name_words(t["label"])
+        if not name or " " + " ".join(name) + " " not in said:
+            continue
+        ups = [name_words(u) for u in t.get("up") or []]
+        known = {w[:4] for w in name} | {w[:4] for u in ups for w in u}
+        if any(len(w) >= 4 and w[:4] not in known for w in rest):
+            continue                              # a word of weight that is neither this name nor its way
+        way = sum(1 for u in ups if u and " " + " ".join(u) + " " in said)
+        found.append((way, 1 if t.get("here") else 0, 1 if t["kind"] == "page" else 0, len(name), t["id"]))
+    if found:
+        found.sort(reverse=True)
+        top = [f for f in found if f[:4] == found[0][:4]]
+        return (found[0][4], "said") if len({f[4] for f in top}) == 1 else None
+    hit = match_name(phrase, [(t["id"], t["label"], t["kind"]) for t in targets])
+    return (hit[0], "near") if hit and not hit[2] else None
+
+
+_MONTHS = {m: i + 1 for i, m in enumerate("january february march april may june july august september october november december".split())}
+_MONTHS.update({m[:3]: i for m, i in list(_MONTHS.items())})
+
+
+def spoken_date(phrase: str) -> str | None:
+    """A whole date said or typed with nothing else of weight around it, as YYYY-MM-DD: "1st July 2014", "July 1,
+    2014", "the first of July 2014" is not read (a day in words is the agent's), "01.07.2014", "2014-07-01".
+    None when the line is not a bare date."""
+    text = (phrase or "").lower().strip()
+    m = re.fullmatch(r"\W*(\d{4})-(\d{1,2})-(\d{1,2})\W*", text)
+    if m:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    else:
+        m = re.fullmatch(r"\W*(\d{1,2})[./](\d{1,2})[./](\d{4})\W*", text)
+        if m:
+            d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        else:
+            words = [w for w in re.findall(r"[a-z]+|\d+", re.sub(r"(\d)(st|nd|rd|th)\b", r"\1", text))
+                     if w not in _AROUND and w not in ("of", "on", "it's", "its", "is", "born", "date")]
+            nums = [int(w) for w in words if w.isdigit()]
+            months = [_MONTHS[w] for w in words if w in _MONTHS]
+            if len(words) != 3 or len(nums) != 2 or len(months) != 1:
+                return None
+            y = next((n for n in nums if n > 31), 0)
+            d = next((n for n in nums if n <= 31), 0)
+            mo = months[0]
+    import datetime
+    try:
+        return datetime.date(y, mo, d).isoformat() if y >= 1900 else None
+    except ValueError:
+        return None
 
 
 _LONG_DIGITS = re.compile(r"\d[\d\s().-]{5,}\d")

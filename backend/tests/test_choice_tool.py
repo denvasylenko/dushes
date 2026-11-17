@@ -226,3 +226,81 @@ def test_the_owners_twelve_spoken_commands_are_carried_out_with_no_model(guide, 
         before = len(model.calls)
         run(tool_site(guide, unsure), f"own-x-{len(line)}", message=line, state=HOME)
         assert len(model.calls) == before + 1, line
+
+
+def path_site(guide):
+    """A site whose host can give a form's structure without the page (as the demo's does)."""
+    from .test_agent import start
+    from .test_questions import LOAN
+    site = tool_site(guide, Mock(is_command=("no", 0.6), kind=("other", 0.6)))
+    site.form_for = lambda form_id, ctx: {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": [], "focused": None}} \
+        if form_id == "loan_application" else None
+    return site
+
+
+def test_a_path_through_the_hierarchy_is_carried_out_step_by_step(guide, model):
+    """The owner (2026-11-17): "we know the hierarchy ... apply loan -> application -> personal details, the whole
+    way down to what is opened". A section of a form on another page: the page opens, then, when that page has
+    loaded its form, the section, by the form's own step. No model in either step."""
+    import json
+    from .test_agent import start
+    from .test_questions import LOAN
+    for n, line in enumerate(("open apply for loan, application, personal details", "open passport in loan application")):
+        site, thread = path_site(guide), f"path-{n}"
+        before = len(model.calls)
+        ev = run(site, thread, message=line, state=HOME)
+        d = directives(ev)
+        assert len(d) == 1 and d[0]["path"] == "/apply" and d[0]["form_id"] == "loan_application", line
+        assert len(model.calls) == before and text(ev).startswith("Apply for a loan."), line
+        # the page has loaded its form: the browser's hand-off run opens the section
+        ev = run(site, thread, handoff=True, state={"page": {"path": "/apply"}, "form": start(guide, LOAN)})
+        args = [json.loads(e["delta"]) for e in ev if e.get("type") == "TOOL_CALL_ARGS"]
+        want = "acc_personal" if n == 0 else "acc_passport"
+        assert [e.get("toolCallName") for e in ev if e.get("type") == "TOOL_CALL_START"] == ["focus_field"], line
+        assert args[0]["name"] == want and len(model.calls) == before, line
+        assert text(ev).startswith("Personal details." if n == 0 else "Passport."), line
+    # a tab of another page, from any page
+    for page in ("/", "/barbershop", "/apply"):
+        before = len(model.calls)
+        ev = run(path_site(guide), f"path-m-{len(page)}", message="open the mortgage", state={"page": {"path": page}})
+        d = directives(ev)
+        assert len(d) == 1 and d[0]["path"] == "/loans" and d[0].get("tab") == "mortgage" and len(model.calls) == before
+        assert text(ev).startswith("Mortgage.")
+    # a name that is both a page and a section of a form: the page, unless the way to the section is said
+    assert directives(run(path_site(guide), "path-c1", message="open contacts", state=HOME)) == [{"type": "navigate", "path": "/contacts"}]
+    d = directives(run(path_site(guide), "path-c2", message="open contacts in the loan application", state=HOME))
+    assert d[0]["path"] == "/apply" and d[0].get("form_id") == "loan_application"
+
+
+def test_a_bare_date_goes_into_the_date_field_in_sight(guide, model):
+    """The owner said "1st July 2014" with Personal details open, and it went to the model. A date is never a place
+    to go, but it is a value: with one date field in the open section it goes into that field through the form's
+    own card (its checks and Undo apply). No section open, or two date fields in sight: one question from the agent."""
+    import json
+    from .test_agent import start
+    from .test_questions import LOAN
+
+    def state(opened, focused=None):
+        return {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": opened, "focused": focused}}}
+
+    def card(ev):
+        raw = next((e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt"), None)
+        return (json.loads(raw) if isinstance(raw, str) else raw) if raw else None
+
+    site = path_site(guide)
+    before = len(model.calls)
+    c = card(run(site, "date-1", message="1st July 2014", state=state(["acc_personal"])))
+    assert c and c["changes"][0]["name"] == "birth_date" and str(c["changes"][0]["value"]).startswith("2014-07-01")
+    assert c.get("quiet") is True and len(model.calls) == before
+    # the field that has the focus decides between two
+    c = card(run(site, "date-2", message="01.07.2014", state=state(["acc_personal", "acc_passport"], "passport_issued_date")))
+    assert c and c["changes"][0]["name"] == "passport_issued_date"
+    # nothing open, or two date fields in sight and none focused: the agent's line
+    for opened in ([], ["acc_personal", "acc_passport"]):
+        model.script = [say("Is that your date of birth or the passport's date of issue?")]
+        before = len(model.calls)
+        ev = run(site, f"date-3-{len(opened)}", message="1st July 2014", state=state(opened))
+        assert card(ev) is None and len(model.calls) == before + 1
+    # a date in a line never moves the person
+    model.script = [say("Which day do you want to book?")]
+    assert directives(run(site, "date-4", message="open 1st July 2014", state=HOME)) == []

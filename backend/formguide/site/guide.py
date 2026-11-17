@@ -603,7 +603,7 @@ class Dushes:
         if not layer.on:
             return None   # (a talking conversation goes through the layer too: what was heard is an ordinary line)
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
-        named = self._named(thread_id, message, state, here, stats)
+        named = self._bare_value(thread_id, message, state, stats) or await self._named(thread_id, message, state, here, stats)
         if named:
             return named
         if not _intent.is_direct(message):
@@ -730,35 +730,82 @@ class Dushes:
             voice.hush(thread_id)   # in a talking conversation: done already, so no "let me check" before the answer
         return out or to_site
 
-    def _named(self, thread_id: str, message: str, state: dict[str, Any], here: Any, stats: RunStats) -> dict[str, Any] | None:
-        """A direct command or a request that names a page, a part of a page or a part of the form on the screen:
-        decided in code, before any chooser, from the line with its fillers and politeness taken away. The whole
-        name said word for word, or a misheard one that is near a single name and well clear of the next. Nothing
-        more may be said in the line than the name; otherwise it is not all that was asked."""
+    async def _form_tree(self, form_id: str) -> list[tuple[str, str, list[str]]]:
+        """A form's tabs, steps and sections as the server knows them without the page: (name, label, the labels
+        above it). From the host's `form_for`, so the starting state; kept once per form."""
+        cache = self.__dict__.setdefault("_trees", {})
+        if form_id not in cache:
+            tree: list[tuple[str, str, list[str]]] = []
+            try:
+                form = await maybe_await(self.form_for(form_id, None)) if self.form_for else None
+                lay = self.forms.layout((form or {}).get("jsx_hash", "")) if form else None
+                tree = self._tree_of(form) if form else []
+            except Exception:  # noqa: BLE001 - a form the server cannot read has no parts to name
+                tree = []
+            cache[form_id] = tree
+        return cache[form_id]
+
+    def _tree_of(self, form: dict[str, Any], seen_only: bool = False) -> list[tuple[str, str, list[str]]]:
+        """(name, label, the labels above it) for a form state's tabs, steps and sections. `seen_only`: the form
+        on the screen, where a part the person cannot see is not something to open."""
+        from ..form.overlay import Overlay
+        lay = self.forms.layout(form.get("jsx_hash", ""))
+        if lay is None:
+            return []
+        ov = Overlay(lay, form["config"], self.forms.packs.get(form.get("form_id")).pii)
+        tree = []
+        for node in lay.nodes.values():
+            e = ov.get(node.name)
+            label = (e.label if e is not None else None) or node.text
+            if node.role in ("tab", "accordion", "section") and node.name and label and not (seen_only and e is not None and not e.visible):
+                ups = [str(ov[x.name].label) for x in lay.ancestors(node.name) if ov.get(x.name) is not None and ov[x.name].label]
+                tree.append((node.name, str(label), ups))
+        return tree
+
+    async def _named(self, thread_id: str, message: str, state: dict[str, Any], here: Any, stats: RunStats) -> dict[str, Any] | None:
+        """A direct command or a request that names an object of the site by its place in the hierarchy (the
+        owner, 2026-11-17: "we know the hierarchy ... the whole way down to what is opened"): a page; a tab or a
+        section of any page; a tab, a step or a section of a form, on this page or on another. Decided in code
+        from the names said; the way to the object may be said too ("apply for loan, application, personal
+        details"). Carried out step by step: the page, then the part."""
         from .. import intent as _intent
         if not (_intent.is_direct(message) or _intent.asks_for(message)) or _intent.has_date(message):
             return None
-        targets = [(p.path, p.title, "page") for p in self.site.pages if not (here and p.path == here.path)]
-        targets += [(f"{p.path}#{x.id}", x.title, "part") for p in self.site.pages for x in p.parts]
-        form, labels = state.get("form") or None, {}
-        if isinstance(form, dict) and form.get("config"):
-            try:
-                from ..form.overlay import Overlay
-                lay = self.forms.layout(form.get("jsx_hash", ""))
-                pack = self.forms.packs.get(form.get("form_id"))
-                fq = _intent.form_part_question(Overlay(lay, form["config"], pack.pii)) if lay is not None else None
-                labels = {f"form:{o.id}": o.label for o in (fq.options if fq else ())}
-                targets += [(i, label, "form") for i, label in labels.items()]
-            except Exception:  # noqa: BLE001 - a form that cannot be read has no parts to name
-                labels = {}
-        hit = _intent.match_name(message, targets)
-        if not hit or hit[2]:
-            return None                               # no single name, or more was said than the name
-        tid, how, _more = hit
+        targets: list[dict[str, Any]] = []
+        for p in self.site.pages:
+            on = bool(here and p.path == here.path)
+            way = [p.title, *p.keywords]
+            if not on:
+                targets.append({"id": p.path, "label": p.title, "kind": "page", "up": list(p.keywords)})
+            targets += [{"id": f"{p.path}#{x.id}", "label": x.title, "kind": "part", "up": way, "here": on} for x in p.parts]
+            if p.form:
+                live = state.get("form") if on and isinstance(state.get("form"), dict) and (state.get("form") or {}).get("config") else None
+                try:   # the form on the screen as it is now; any other form as the server knows it from the start
+                    tree = self._tree_of(live, seen_only=True) if live else await self._form_tree(p.form)
+                except Exception:  # noqa: BLE001
+                    tree = []
+                targets += [{"id": f"form:{p.path}:{name}", "label": label, "kind": "form", "up": [*ups, *way], "here": on}
+                            for name, label, ups in tree]
+        hit = _intent.match_path(message, targets)
+        if not hit:
+            return None
+        tid, how = hit
+        label = next(t["label"] for t in targets if t["id"] == tid)
+        by = "the name said" if how == "said" else "a name heard nearly right"
         if tid.startswith("form:"):
-            fid = str(form.get("form_id") or "form")
-            _intent.preset_call(f"{thread_id}-{fid}"[:100], "focus_field", {"name": tid[5:]}, f"{labels[tid]}.")
-            out: dict[str, Any] = {"kind": "focus"}
+            _f, path, node = tid.split(":", 2)
+            page = self.site.page(path)
+            fid = str(page.form)
+            # the form's own "show where" step, decided here: no model. On another page it runs when that page
+            # has loaded its form (the hand-off run), so the live state is checked there, not guessed here
+            _intent.preset_call(f"{thread_id}-{fid}"[:100], "focus_field", {"name": node}, f"{label}.")
+            if here and page.path == here.path and state.get("form"):
+                out: dict[str, Any] = {"kind": "focus"}
+            else:
+                from ..language import detect
+                self._keep_note(thread_id, fid, f"Show {label}.", detect(message) or "")
+                out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title, "form_id": fid}
+                by += ": the page, then the section"
         else:
             path, _, pid = tid.partition("#")
             page = self.site.page(path)
@@ -767,10 +814,42 @@ class Dushes:
             if agent.directive(self.site, args)[1] is None:
                 return None
             out = {"kind": "show" if part else "navigate", "args": args, "title": part.title if part else page.title}
-        stats.fast = {"ms": 0, "handled": True, "by": "the name said" if how == "said" else "a name heard nearly right"}
+        stats.fast = {"ms": 0, "handled": True, "by": by}
         from .. import voice
         voice.hush(thread_id)
         return out
+
+    def _bare_value(self, thread_id: str, message: str, state: dict[str, Any], stats: RunStats) -> dict[str, Any] | None:
+        """A value said with no verb, where what is on the screen says which field it is for (the owner: the layer
+        "must know which page is active, what I see, what I say"). A whole date, with the date field that has the
+        focus, or the only date field of the section that is open: it goes into that field through the form's own
+        card, so the form's checks and Undo apply. Two date fields in sight, none, or no form: the agent's line."""
+        from .. import intent as _intent
+        iso = _intent.spoken_date(message)
+        form = state.get("form") or None
+        if not iso or not isinstance(form, dict) or not form.get("config"):
+            return None
+        try:
+            from ..form.overlay import Overlay
+            lay = self.forms.layout(form.get("jsx_hash", ""))
+            ov = Overlay(lay, form["config"], self.forms.packs.get(form.get("form_id")).pii)
+        except Exception:  # noqa: BLE001
+            return None
+        ui = form.get("ui") or {}
+        dates = [n for n in lay.fields() if n.role == "date" and ov[n.name].editable]
+        focused = next((n for n in dates if n.name == ui.get("focused")), None)
+        opened = set(ui.get("openAccordions") or [])
+        in_sight = [n for n in dates if any(x.name in opened for x in lay.ancestors(n.name))]
+        field = focused or (in_sight[0] if len(in_sight) == 1 else None)
+        if field is None:
+            return None
+        fid = str(form.get("form_id") or "form")
+        label = ov[field.name].label or field.name
+        _intent.preset(f"{thread_id}-{fid}"[:100], field.name, iso, label, iso)
+        stats.fast = {"ms": 0, "handled": True, "by": "a date for the date field in sight"}
+        from .. import voice
+        voice.hush(thread_id)
+        return {"kind": "value"}
 
     def _taken_up(self, thread_id: str, message: str, stats: RunStats) -> dict[str, Any] | None:
         """The last answer offered to open a page or start a form, and this line only takes that up ("open it",
