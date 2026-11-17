@@ -487,7 +487,7 @@ class Dushes:
                 elif fast and fast.get("handled"):
                     label = f"{who} \u00b7 {fast['ms']} ms"
                 elif getattr(stats, "decided", False):
-                    label = who
+                    label = f"in code (the step decided before) \u00b7 no model \u00b7 {RunStats.now() - stats.t0:.1f} s"
                 else:
                     name = str(_model_id(self.model or self.forms.models.agent))
                     took = RunStats.now() - stats.t0
@@ -517,8 +517,9 @@ class Dushes:
         fid0 = str((state.get("form") or {}).get("form_id") or "form")
         form_thread0 = f"{thread_id}-{fid0}"[:100]
         from .. import intent as _intent
-        if resume is not None and _intent.has_preset(form_thread0):
-            stats.decided = True                     # the closing line of a value the layer picked
+        if (resume is not None or handoff) and _intent.has_preset(form_thread0):
+            stats.decided = True                     # a step the layer decided before: the closing line of a value,
+            #                                          or the section of a path, opened once its page has loaded
         elif message:
             _intent.clear_preset(form_thread0)        # a new message: nothing decided is left over
         fast = None
