@@ -64,7 +64,9 @@ def front_forms(guide, site: Dushes) -> None:
         stats = RunStats(kw.get("run_id") or "", thread_id)
         fast = None
         page = next((p for p in site.site.pages if isinstance(state, dict) and p.form == state.get("form_id")), None)
-        if message and resume is None and not from_site and page is not None and state.get("config"):
+        # INTENT_LAYER=0 (the "agent alone" arm) turns the layer off here as on the site
+        if (message and resume is None and not from_site and page is not None and state.get("config")
+                and os.environ.get("INTENT_LAYER", "1") != "0"):
             try:
                 fast = await site._fast(thread_id, message, {"page": {"path": page.path}, "form": state}, stats, form_thread=thread_id)
             except Exception:  # noqa: BLE001 - the layer never breaks a turn of the form
