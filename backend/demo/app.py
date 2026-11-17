@@ -105,9 +105,20 @@ if os.environ.get("DEMO_OUR_VOICE") == "1" and (_DIST / "site.html").exists():
     from fastapi.responses import HTMLResponse as _HTML
     from fastapi.responses import RedirectResponse as _Redirect
 
+    # the talking mode (the same one as on the form demo) when this host has voice codes: its routes, and the
+    # widget's voice mode switched on for the site page's chat
+    _TALK = ""
+    if os.environ.get("VOICE_CODES"):
+        from formguide import voice as _voice
+        _VOICE = _voice.Talks(_voice.VoiceConfig.from_env(), title="the Main Street demo",
+                              log_dir=Path(guide.data_dir) / "voice", stop=guide.stop)
+        if _VOICE.config.enabled:
+            app.include_router(_voice.create_voice_router(_voice.watch(_VOICE)), prefix="/voice")
+            _TALK = "if(c&&!c.hasAttribute('voice-mode'))c.setAttribute('voice-mode','true');"
+
     _NO_FILES = ("<script>customElements.whenDefined('agui-chat').then(()=>{const set=()=>{const c="
                  "document.querySelector('agui-chat');if(c&&c.getAttribute('attach')!=='false')"
-                 "c.setAttribute('attach','false')};set();new MutationObserver(set).observe("
+                 "c.setAttribute('attach','false');" + _TALK + "};set();new MutationObserver(set).observe("
                  "document.documentElement,{childList:true,subtree:true})})</script>")
 
     @app.get(os.environ.get("DEMO_PATH", "/").rstrip("/") + "/site.html", include_in_schema=False)

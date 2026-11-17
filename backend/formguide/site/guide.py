@@ -479,7 +479,7 @@ class Dushes:
                 yield {"type": "CUSTOM", "name": "model",
                        "value": {"choice": choice, "label": s.label, "model": _model_id(self.model or s.models.agent)}}
                 continue
-            if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1" and not _voice_on(thread_id):
+            if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1":
                 fast = getattr(stats, "fast", None)
                 who = self.intent.settings.provider.capitalize()
                 if fast and fast.get("handled"):
@@ -589,8 +589,8 @@ class Dushes:
         from .. import intent as _intent
         from ..language import detect
         layer = self.intent
-        if not layer.on or _voice_on(thread_id):
-            return None
+        if not layer.on:
+            return None   # (a talking conversation goes through the layer too: what was heard is an ordinary line)
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
         # the questions and the order of the decision are the QA Lead's wrapper, as it measured on her fifth set
         qs: dict[str, Any] = {

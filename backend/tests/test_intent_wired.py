@@ -174,3 +174,29 @@ def test_the_layer_hands_back_instead_of_claiming(guide, model):
     page = next(p for p in SiteMap.load(SITE).pages if p.parts)
     ev = run(site_with(guide, gone), "hb-5", message="show me the gift cards", state={"page": {"path": page.path}})
     assert directives(ev) == [] and "could not find" in text(ev)
+
+
+def test_in_a_talking_conversation_the_heard_line_goes_through_the_layer_and_the_label_is_not_said(guide, model, monkeypatch):
+    """The owner's demo with the talking mode: what was heard is an ordinary line, so the layer acts on it; the
+    voice says the answer ("Loans.") and never the line about who handled it."""
+    from formguide import voice
+    from .test_voice import _talks
+
+    async def go():
+        talks, live, _ = _talks()
+        voice.watch(talks)
+        await talks.start("anna", "o", "talk-1")
+        monkeypatch.setenv("INTENT_LABELS", "1")
+        chooser = Mock(is_command=("yes", 0.98), kind=("go_to", 0.97), section=("/loans", 0.93))
+        site = site_with(guide, chooser)
+        before = len(model.calls)
+        ev = [e async for e in site.run("talk-1", message="open the loans page", state={"page": {"path": "/"}})]
+        assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
+        assert "Jev \u00b7" in text(ev)                              # the label is on the screen
+        for e in ev:
+            voice.seen("talk-1", e)
+        await asyncio.sleep(0.05)
+        said = [m["content"] for m in live.sent if m["type"] == "session.commentary.append"]
+        assert said == ["Loans."]                                    # and only the answer is said
+        voice.HOSTS.clear()
+    asyncio.run(go())

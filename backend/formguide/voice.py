@@ -656,6 +656,8 @@ class Talks:
             state["running"] = False
         if t == "RUN_STARTED":
             state["told"], state["spoke"] = {}, []
+        if t == "TEXT_MESSAGE_CONTENT" and str(ev.get("messageId") or "").startswith("label_"):
+            return   # the demo's "who handled it" line is read, never said
         if t == "TEXT_MESSAGE_CONTENT":
             mid = ev.get("messageId")
             state["answer"].append((mid, ev.get("delta", "")))
