@@ -9,3 +9,4 @@ bar_show_required
 bar_file_already_attached
 bar_site_never_claims_applied
 bar_general_concept
+bar_tool_error_plain

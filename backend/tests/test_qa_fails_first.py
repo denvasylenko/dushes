@@ -320,3 +320,13 @@ def test_a_reply_over_the_word_limit_fails_max_words():
     assert ok("The rate is 21.9% a year.", "Next is the term.") is True
     assert ok("The rate is 21.9% a year, and the form still needs your purpose, your term, your income and your employer.") is False
     assert ok() is False   # no reply at all is not a short reply
+
+
+def test_a_tool_called_more_than_once_after_its_error_fails_max_calls():
+    import evals
+    sc = _bar("x", max_calls={"check_promo_code": 2})
+    def ok(n):
+        v = _visit([])
+        v.tools = [("check_promo_code", {"code": "SPRING15"})] * n
+        return next(c["ok"] for c in evals.checks(sc, v) if c["check"].startswith("calls check_promo_code"))
+    assert ok(1) is True and ok(2) is True and ok(3) is False
