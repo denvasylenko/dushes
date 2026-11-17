@@ -596,7 +596,7 @@ class Talks:
                 said = state.get("said") or []
                 # the voice talking does not hold the line back: it talked over him for seconds, and the page fades it
                 # on a cut-in. What keeps the voice's own echo out is below: a word of his that the voice did not say
-                if state.get("early") or now - state.get("heard_at", now) < TAKE_AFTER:
+                if state.get("early") or now - state.get("heard_at", now) < min(TAKE_AFTER, UNHANDED_WAIT):
                     continue                          # a hand-over is waiting for these words, or he is still speaking
                 text = state["heard"].strip()
                 words = [w for w in re.findall(_LETTERS + r"|\d+", re.sub(r"\[[^\]]*\]", " ", text).lower()) if w not in FILLERS]
@@ -988,6 +988,7 @@ WORDS_WAIT, WORDS_SETTLE, WORDS_LAST = 1.5, 0.4, 6.0
 UNHEARD = "You did not catch what the person said. Say so in a few words and ask them to say it again."
 
 TAKE_AFTER = 1.5      # words with no hand-over are taken by the server this long after the last one, in seconds
+UNHANDED_WAIT = TAKE_AFTER   # the same wait under the name the QA Lead's tests use; the shorter of the two counts
 TAKEN_COVERS = 10.0   # a hand-over with no words this soon after a taken line is that same line, asked late
 FILLERS = {"uh", "um", "mm", "hmm", "hm", "ah", "er", "eh", "oh", "mhm", "sigh"}
 CUT_IN_AFTER = 1.2    # the voice counts as talking while its last word is this fresh, in seconds
