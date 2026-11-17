@@ -477,7 +477,8 @@ class FormGuide:
                                                        **src))
                 value = {**ev["value"], "card_id": entry["id"]}
                 past = tx.list(thread_id)
-                said = next((e.get("text", "") for e in reversed(past) if e["kind"] == "user"), "")
+                lines = [e.get("text", "") for e in past if e["kind"] == "user"]
+                said, earlier = (lines[-1] if lines else ""), (lines[-2] if len(lines) > 1 else "")
                 # the same values as the card the person has just answered yes to in words, spoken or typed (the
                 # message closed that card): they confirmed it, so it is not asked a second time. The client
                 # applies a card marked quiet without a tap
@@ -503,10 +504,12 @@ class FormGuide:
                     _FAST.add(value.get("card_id"))
                     value["quiet"] = True
                     _intent.used_fill(thread_id)
-                if again or answered or left or (_voice.quiet(value, said) if _voice.active(thread_id) else _voice.said_outright(value, said)):
+                if again or answered or left or (_voice.quiet(value, said, earlier) if _voice.active(thread_id) else _voice.said_outright(value, said, earlier)):
                     value["quiet"] = True
                     rows = [r for r in value.get("changes") or [] if isinstance(r, dict)]
-                    if not picked and rows and "?" not in said and os.environ.get("FORM_CLOSING_IN_CODE", "1") != "0":
+                    # (a date said without its year in that line: the model goes on after the card and asks for it)
+                    if (not picked and rows and "?" not in said and not _intent.partial_date(said)
+                            and os.environ.get("FORM_CLOSING_IN_CODE", "1") != "0"):
                         # applied at once: if the form takes it with no complaint the turn ends on one line written
                         # here, with no second model call (the CPO, 2026-11-17, the owner's "done, one short line")
                         shown = lambda r: r.get("display") or (r["value"].get("name") if isinstance(r.get("value"), dict) else r.get("value"))  # noqa: E731

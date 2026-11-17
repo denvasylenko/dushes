@@ -748,6 +748,13 @@ class Dushes:
         iso, beside = _intent.spoken_date(message), ""
         if not iso:
             iso, beside = _intent.date_in(message)   # a date inside a longer line ("Lugansk, 1st July '92")
+        if not iso and _intent.bare_year(message):
+            # a bare year after a day and a month said without one ("the 1st of July" ... "1991"): the date is whole
+            for line in reversed([e.get("text", "") for e in self.forms.transcripts.list(thread_id) if e["kind"] == "user"][-3:]):
+                part = _intent.partial_date(line)
+                if part:
+                    iso, beside = f"{_intent.bare_year(message):04d}-{part[1]:02d}-{part[0]:02d}", ""
+                    break
         if ov is not None:
             vq = _intent.value_question(ov, set(pack.consents or {}))
             if vq:

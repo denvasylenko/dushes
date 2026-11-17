@@ -685,3 +685,36 @@ def test_a_question_about_another_page_asked_on_a_form_goes_to_the_site_assistan
     from formguide.agent import prompts
     from formguide.site import agent as site_agent
     assert "Answer what was asked" in open(prompts.__file__).read() and "Answer what was asked" in site_agent.SYSTEM
+
+
+def test_a_date_without_its_year_and_the_year_said_after(guide, model):
+    """The owner's session (2026-11-17), the QA Lead's two scenarios. "I was born on the 1st of July", then "1991":
+    the date is whole and is filled at once, by the layer and by the form's assistant alike; and the question card
+    for the year knows the day and the month already."""
+    from formguide import voice
+    from formguide.transcript import new_entry
+    from .test_agent import collect
+    assert intent.partial_date("I was born on the 1st of July") == (1, 7) and intent.partial_date("born July 1") == (1, 7)
+    assert intent.partial_date("born 1st July 1991") is None and intent.partial_date("open the loans page") is None
+    assert intent.bare_year("1991") == 1991 and intent.bare_year("uh, 1991.") == 1991 and intent.bare_year("in 1991 I moved") is None
+    # the layer: the year completes the date said before
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": ["acc_personal"]}}}
+    chooser = Mock(kind=("set_value", 0.8), date_field=("birth_date", 0.9))
+    site = site_with(guide, chooser)
+    site.forms.transcripts.append("yr-1", new_entry("user", text="I was born on the 1st of July", form_id="loan_application"))
+    before = len(model.calls)
+    ev = run(site, "yr-1", message="1991", state=state)
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    card = json.loads(raw) if isinstance(raw, str) else raw
+    assert card["changes"][0]["name"] == "birth_date" and "1991-07-01" in json.dumps(card) and card.get("quiet") is True
+    assert len(model.calls) == before
+    # the form's assistant alone: its card for the whole date is applied at once, since both halves were said
+    row = {"name": "birth_date", "label": "Date of birth", "value": "1991-07-01"}
+    assert voice.said_outright({"type": "set_fields", "changes": [row]}, "1991", "I was born on the 1st of July")
+    assert not voice.said_outright({"type": "set_fields", "changes": [row]}, "1991", "I was born in the summer")
+    # the question card for a date knows the day and month already said
+    model.script = [say("Which year were you born?", ("q1", "ask_user", {"question": "Which year were you born?", "field": "birth_date"}))]
+    ev = collect(guide, "yr-2", message="I was born on the 1st of July", state=start(guide, LOAN))
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    ask = json.loads(raw) if isinstance(raw, str) else raw
+    assert ask["input"]["type"] == "date" and ask["input"]["known"] == {"day": 1, "month": 7}

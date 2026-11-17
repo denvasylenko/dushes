@@ -748,6 +748,12 @@ def _t_ask_user(a: dict, ctx: ToolCtx) -> str:
             if n.role == "date" and _PAST_DATE.search(n.name) and not (a["input"] or {}).get("max"):
                 # a date of birth or an issue date is in the past: the picker opens on the years, not on today
                 a = {**a, "input": {**a["input"], "max": date.today().isoformat()}}
+            if n.role == "date" and not (a["input"] or {}).get("known"):
+                # the day and the month were said already ("born on the 1st of July"): the card asks for the year
+                # alone, and one tap answers the whole date
+                known = _known_day_month(ctx)
+                if known:
+                    a = {**a, "input": {**a["input"], "known": {"day": known[0], "month": known[1]}}}
         elif n.role == "text" and not raw:   # a typed answer fills the text field (one tap, no second card)
             a = {**a, "input": a.get("input") or {"type": "text"}}
         elif n.role == "bool":   # yes / no: the first option means yes; the model's labels are kept (its language)
@@ -877,6 +883,20 @@ def _applying(ctx: ToolCtx, name: str, opts: list[dict]) -> dict:
 INPUT_TYPES = ("text", "number", "date", "time", "datetime", "address")
 
 
+def _known_day_month(ctx: "ToolCtx") -> tuple[int, int] | None:
+    """The day and month of a date the person said without its year, in one of their last three lines."""
+    from .. import intent as _intent
+    try:
+        lines = [e.get("text", "") for e in ctx.guide.transcripts.list(ctx.thread_id) if e["kind"] == "user"][-3:]
+    except Exception:  # noqa: BLE001 - no transcript, nothing known
+        return None
+    for line in reversed(lines):
+        got = _intent.partial_date(line)
+        if got:
+            return got
+    return None
+
+
 def _details(x: Any) -> dict:
     """description / attrs the model gave an option (trimmed)."""
     if not isinstance(x, dict):
@@ -966,6 +986,16 @@ def _question_input(raw: Any) -> dict | None:
         out[k] = raw[k]
     if "min" in out and "max" in out and _num_or_text(out["type"], out["min"]) > _num_or_text(out["type"], out["max"]):
         raise ToolError(f"input.min {out['min']!r} is after input.max {out['max']!r}: no answer fits; tell the user why")
+    known = raw.get("known")
+    if out["type"] == "date" and isinstance(known, dict):   # the day and month already said: the card asks for the year
+        try:
+            day, month = int(known.get("day")), int(known.get("month"))
+            if 1 <= day <= 31 and 1 <= month <= 12:
+                out["known"] = {"day": day, "month": month}
+        except (TypeError, ValueError):
+            pass
+    if isinstance(raw.get("start_year"), int) and out["type"] in ("date", "number"):
+        out["start_year"] = raw["start_year"]            # where a grid of years opens
     return out
 
 

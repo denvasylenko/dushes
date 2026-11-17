@@ -1134,7 +1134,7 @@ def _was_said(row: dict, said: str, numbers: list[str]) -> bool:
 _SAME = {"male": {"man", "male", "boy", "guy", "gentleman"}, "female": {"woman", "female", "girl", "lady"}}
 
 
-def _said(row: dict, said: str, numbers: list[str]) -> bool:
+def _said(row: dict, said: str, numbers: list[str], earlier: str = "") -> bool:
     """`_was_said`, and two more ways of saying a value outright: a date in any wording ("1st July '92" for
     1992-07-01), and an everyday word for an option ("I am a woman" for Female)."""
     if _was_said(row, said, numbers):
@@ -1143,13 +1143,17 @@ def _said(row: dict, said: str, numbers: list[str]) -> bool:
     shown = str(row.get("display") or (value.get("name") if isinstance(value, dict) else value) or "")
     from . import intent as _intent
     iso = _intent.spoken_date(said) or _intent.date_in(said)[0]
+    if not iso and earlier and _intent.bare_year(said) and _intent.partial_date(earlier):
+        # the day and the month in their line before, the year now ("the 1st of July" ... "1991"): the date is said
+        day, month = _intent.partial_date(earlier)
+        iso = f"{_intent.bare_year(said):04d}-{month:02d}-{day:02d}"
     if iso and iso in (str(value), shown):
         return True
     words = set(re.findall(_LETTERS, (said or "").lower()))
     return bool(_SAME.get(shown.strip().lower(), set()) & words)
 
 
-def said_outright(card: dict, said: str | None) -> bool:
+def said_outright(card: dict, said: str | None, earlier: str = "") -> bool:
     """In a typed conversation: whether every row of a field-change card is a value the person wrote outright, so
     it is applied at once with Undo and no card asks (the owner, 2026-11-16 and 17: a clear statement is applied;
     a card only for a guess or two readings). A consent and a row with an issue are always shown. Typed words are
@@ -1158,10 +1162,10 @@ def said_outright(card: dict, said: str | None) -> bool:
     if not rows or card.get("type") not in (None, "set_fields") or not (said or "").strip():
         return False
     numbers = said_numbers(said or "")
-    return all(isinstance(r, dict) and not r.get("consent") and not r.get("issue") and _said(r, said or "", numbers) for r in rows)
+    return all(isinstance(r, dict) and not r.get("consent") and not r.get("issue") and _said(r, said or "", numbers, earlier) for r in rows)
 
 
-def quiet(card: dict, said: str | None) -> bool:
+def quiet(card: dict, said: str | None, earlier: str = "") -> bool:
     """Whether a field-change card may be applied without being shown, in a voice conversation: every row is a
     value the person said (named, or picked by name among the options offered), whether the field was empty or
     held another value (the line with Undo is the way back: the owner, 2026-11-16, after "porcelain" was asked
@@ -1177,7 +1181,7 @@ def quiet(card: dict, said: str | None) -> bool:
             return False
         if spelled(row):
             return False
-        if not _said(row, said or "", numbers):
+        if not _said(row, said or "", numbers, earlier):
             return False
     return True
 

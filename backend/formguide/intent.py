@@ -804,6 +804,30 @@ def date_in(phrase: str) -> tuple[str | None, str]:
     return None, text
 
 
+_DAY_THEN_MONTH = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([a-z]{3,9})\b")
+_MONTH_THEN_DAY = re.compile(r"\b([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b")
+
+
+def partial_date(phrase: str) -> tuple[int, int] | None:
+    """(day, month) of a date said without its year ("born on the 1st of July"), or None: no day and month in the
+    line, or the line holds a whole date."""
+    if date_in(phrase)[0] or spoken_date(phrase):
+        return None
+    low = (phrase or "").lower()
+    found = [(m.group(1), m.group(2)) for m in _DAY_THEN_MONTH.finditer(low)] + [(m.group(2), m.group(1)) for m in _MONTH_THEN_DAY.finditer(low)]
+    for d, mo in found:
+        month = _MONTHS.get(mo) or (_MONTHS.get(mo[:3]) if len(mo) == 3 else None)
+        if month and 1 <= int(d) <= 31:
+            return int(d), month
+    return None
+
+
+def bare_year(phrase: str) -> int | None:
+    """The year when the line is nothing but a year ("1991", "uh, 1991."), else None."""
+    words = [w for w in re.findall(r"[a-z]+|\d+", (phrase or "").lower()) if w not in _AROUND and w not in ("in", "year", "the", "it", "was", "its")]
+    return int(words[0]) if len(words) == 1 and words[0].isdigit() and 1900 <= int(words[0]) <= 2100 else None
+
+
 def says_more(rest: str) -> bool:
     """Whether what is left of a line, beside the value read from it, still says something: a word of three
     letters or more that is not a filler or a word of an order."""
