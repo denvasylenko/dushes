@@ -1,7 +1,28 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "\u00ab%@\u00bb": {},
+    "\u00ab%@\u00bb": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u201e%@\u201c"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u00ab %@ \u00bb"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u00ab%@\u00bb"
+          }
+        }
+      }
+    },
     "Accept": {
       "localizations": {
         "it": {
@@ -14,6 +35,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u041f\u0440\u0438\u043d\u044f\u0442\u044c"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annehmen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accepter"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041f\u0440\u0438\u0439\u043d\u044f\u0442\u0438"
           }
         }
       }
@@ -31,6 +70,24 @@
             "state": "translated",
             "value": "\u0421\u043f\u0440\u043e\u0441\u0438\u0442\u044c AI"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KI fragen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demander \u00e0 l'IA"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0417\u0430\u043f\u0438\u0442\u0430\u0442\u0438 AI"
+          }
         }
       }
     },
@@ -46,6 +103,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u041e\u0442\u043c\u0435\u043d\u0438\u0442\u044c"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbrechen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0421\u043a\u0430\u0441\u0443\u0432\u0430\u0442\u0438"
           }
         }
       }
@@ -63,6 +138,24 @@
             "state": "translated",
             "value": "\u0421\u043c\u043e\u0442\u0440\u044e \u043f\u043e\u0441\u0435\u0449\u0435\u043d\u0438\u044f"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich sehe mir die Besuche an"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je regarde les visites"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0414\u0438\u0432\u043b\u044e\u0441\u044f \u0432\u0456\u0434\u0432\u0456\u0434\u0443\u0432\u0430\u043d\u043d\u044f"
+          }
         }
       }
     },
@@ -78,6 +171,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Best\u00e4tigen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmer"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041f\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438"
           }
         }
       }
@@ -95,6 +206,24 @@
             "state": "translated",
             "value": "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0430\u044e\u0441\u044c\u2026"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinde\u2026"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion\u2026"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041f\u0456\u0434\u043a\u043b\u044e\u0447\u0430\u044e\u0441\u044f\u2026"
+          }
         }
       }
     },
@@ -110,6 +239,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u041d\u0430\u0434\u0438\u043a\u0442\u043e\u0432\u0430\u0442\u044c"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diktieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dicter"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0414\u0438\u043a\u0442\u0443\u0432\u0430\u0442\u0438"
           }
         }
       }
@@ -127,6 +274,24 @@
             "state": "translated",
             "value": "\u0417\u0430\u043a\u043e\u043d\u0447\u0438\u0442\u044c \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gespr\u00e4ch beenden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer la conversation"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u0438 \u0440\u043e\u0437\u043c\u043e\u0432\u0443"
+          }
         }
       }
     },
@@ -142,6 +307,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u0421\u043b\u0443\u0448\u0430\u044e"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich h\u00f6re zu"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "J'\u00e9coute"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0421\u043b\u0443\u0445\u0430\u044e"
           }
         }
       }
@@ -159,6 +342,24 @@
             "state": "translated",
             "value": "\u0421\u043c\u043e\u0442\u0440\u044e \u0441\u0430\u0439\u0442"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich sehe mir die Website an"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je regarde le site"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0414\u0438\u0432\u043b\u044e\u0441\u044f \u0441\u0430\u0439\u0442"
+          }
         }
       }
     },
@@ -174,6 +375,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u041c\u0438\u043a\u0440\u043e\u0444\u043e\u043d \u0432\u044b\u043a\u043b\u044e\u0447\u0435\u043d"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon aus"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Micro coup\u00e9"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041c\u0456\u043a\u0440\u043e\u0444\u043e\u043d \u0432\u0438\u043c\u043a\u043d\u0435\u043d\u043e"
           }
         }
       }
@@ -191,6 +410,24 @@
             "state": "translated",
             "value": "\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043c\u0438\u043a\u0440\u043e\u0444\u043e\u043d"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon einschalten"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activer le micro"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0423\u0432\u0456\u043c\u043a\u043d\u0443\u0442\u0438 \u043c\u0456\u043a\u0440\u043e\u0444\u043e\u043d"
+          }
         }
       }
     },
@@ -206,6 +443,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u0415\u0449\u0451"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mehr"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0429\u0435"
           }
         }
       }
@@ -223,6 +478,24 @@
             "state": "translated",
             "value": "\u041d\u043e\u0432\u044b\u0439 \u0440\u0430\u0437\u0433\u043e\u0432\u043e\u0440"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neues Gespr\u00e4ch"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelle conversation"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041d\u043e\u0432\u0430 \u0440\u043e\u0437\u043c\u043e\u0432\u0430"
+          }
         }
       }
     },
@@ -238,6 +511,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u041d\u0435\u0442 \u0441\u0432\u044f\u0437\u0438. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Verbindung. Versuch es noch mal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas de connexion. R\u00e9essayez."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041d\u0435\u043c\u0430\u0454 \u0437\u0432\u2019\u044f\u0437\u043a\u0443. \u0421\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0449\u0435 \u0440\u0430\u0437."
           }
         }
       }
@@ -255,6 +546,24 @@
             "state": "translated",
             "value": "\u041d\u0435 \u043f\u0440\u0438\u043d\u044f\u0442\u043e"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht angenommen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non accept\u00e9"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041d\u0435 \u043f\u0440\u0438\u0439\u043d\u044f\u0442\u043e"
+          }
         }
       }
     },
@@ -271,6 +580,24 @@
             "state": "translated",
             "value": "\u041d\u0435 \u0441\u0435\u0439\u0447\u0430\u0441"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht jetzt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus tard"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041d\u0435 \u0437\u0430\u0440\u0430\u0437"
+          }
         }
       }
     },
@@ -283,6 +610,24 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0427\u0438\u0442\u0430\u044e \u0437\u0430\u044f\u0432\u043a\u0438"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich lese die Anfragen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je lis les demandes"
+          }
+        },
+        "uk": {
           "stringUnit": {
             "state": "translated",
             "value": "\u0427\u0438\u0442\u0430\u044e \u0437\u0430\u044f\u0432\u043a\u0438"
@@ -303,6 +648,24 @@
             "state": "translated",
             "value": "\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envoyer"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041d\u0430\u0434\u0456\u0441\u043b\u0430\u0442\u0438"
+          }
         }
       }
     },
@@ -318,6 +681,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u0427\u0442\u043e-\u0442\u043e \u043f\u043e\u0448\u043b\u043e \u043d\u0435 \u0442\u0430\u043a."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas ist schiefgelaufen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un probl\u00e8me est survenu."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0429\u043e\u0441\u044c \u043f\u0456\u0448\u043b\u043e \u043d\u0435 \u0442\u0430\u043a."
           }
         }
       }
@@ -335,6 +716,24 @@
             "state": "translated",
             "value": "\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a\u0438"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quellen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sources"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0414\u0436\u0435\u0440\u0435\u043b\u0430"
+          }
         }
       }
     },
@@ -347,6 +746,24 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0413\u043e\u0432\u043e\u0440\u044e"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich spreche"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je parle"
+          }
+        },
+        "uk": {
           "stringUnit": {
             "state": "translated",
             "value": "\u0413\u043e\u0432\u043e\u0440\u044e"
@@ -367,6 +784,24 @@
             "state": "translated",
             "value": "\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stoppen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arr\u00eater"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0417\u0443\u043f\u0438\u043d\u0438\u0442\u0438"
+          }
         }
       }
     },
@@ -382,6 +817,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u041e\u0442\u0432\u0435\u0442 \u043e\u0431\u043e\u0440\u0432\u0430\u043b\u0441\u044f."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Antwort wurde abgebrochen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La r\u00e9ponse a \u00e9t\u00e9 coup\u00e9e."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0412\u0456\u0434\u043f\u043e\u0432\u0456\u0434\u044c \u043e\u0431\u0456\u0440\u0432\u0430\u043b\u0430\u0441\u044f."
           }
         }
       }
@@ -399,6 +852,24 @@
             "state": "translated",
             "value": "\u0420\u0430\u0437\u0433\u043e\u0432\u043e\u0440 \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u043b\u0441\u044f \u043f\u043e\u0441\u043b\u0435 \u0442\u0438\u0448\u0438\u043d\u044b."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Gespr\u00e4ch endete nach einer Pause."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conversation s'est termin\u00e9e apr\u00e8s un silence."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0420\u043e\u0437\u043c\u043e\u0432\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u0430\u0441\u044f \u043f\u0456\u0441\u043b\u044f \u0442\u0438\u0448\u0456."
+          }
         }
       }
     },
@@ -414,6 +885,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u0420\u0430\u0437\u0433\u043e\u0432\u043e\u0440 \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u043b\u0441\u044f."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Gespr\u00e4ch ist beendet."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conversation est termin\u00e9e."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0420\u043e\u0437\u043c\u043e\u0432\u0443 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e."
           }
         }
       }
@@ -431,6 +920,24 @@
             "state": "translated",
             "value": "\u0413\u043e\u043b\u043e\u0441 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u043b\u0441\u044f. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprache lie\u00df sich nicht starten. Versuch es noch mal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La voix n'a pas d\u00e9marr\u00e9. R\u00e9essayez."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0413\u043e\u043b\u043e\u0441 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0432\u0441\u044f. \u0421\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0449\u0435 \u0440\u0430\u0437."
+          }
         }
       }
     },
@@ -439,10 +946,28 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sto pensando"
+            "value": "Ci penso"
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0414\u0443\u043c\u0430\u044e"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich \u00fcberlege"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je r\u00e9fl\u00e9chis"
+          }
+        },
+        "uk": {
           "stringUnit": {
             "state": "translated",
             "value": "\u0414\u0443\u043c\u0430\u044e"
@@ -455,10 +980,28 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Penso\u2026"
+            "value": "Ci penso\u2026"
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0414\u0443\u043c\u0430\u044e\u2026"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich \u00fcberlege\u2026"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je r\u00e9fl\u00e9chis\u2026"
+          }
+        },
+        "uk": {
           "stringUnit": {
             "state": "translated",
             "value": "\u0414\u0443\u043c\u0430\u044e\u2026"
@@ -479,6 +1022,24 @@
             "state": "translated",
             "value": "\u042d\u0442\u043e\u0442 \u0448\u0430\u0433 \u043f\u043e\u043a\u0430 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u043d\u0430 \u0441\u0430\u0439\u0442\u0435."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Schritt \u00f6ffnet sich vorerst im Web."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour l'instant, cette \u00e9tape s'ouvre sur le web."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0426\u0435\u0439 \u043a\u0440\u043e\u043a \u043f\u043e\u043a\u0438 \u0432\u0456\u0434\u043a\u0440\u0438\u0432\u0430\u0454\u0442\u044c\u0441\u044f \u043d\u0430 \u0441\u0430\u0439\u0442\u0456."
+          }
         }
       }
     },
@@ -494,6 +1055,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u042d\u0442\u043e \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435 \u043d\u0435 \u043f\u043e\u0434\u043e\u0448\u043b\u043e. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0434\u0440\u0443\u0433\u043e\u0435."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Wert passt nicht. Versuch einen anderen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette valeur ne convient pas. Essayez-en une autre."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0426\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u043d\u044f \u043d\u0435 \u043f\u0456\u0434\u0456\u0439\u0448\u043b\u043e. \u0421\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0456\u043d\u0448\u0435."
           }
         }
       }
@@ -511,6 +1090,24 @@
             "state": "translated",
             "value": "\u0421\u043b\u0438\u0448\u043a\u043e\u043c \u043c\u043d\u043e\u0433\u043e \u0432\u043e\u043f\u0440\u043e\u0441\u043e\u0432. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u043e\u0437\u0436\u0435."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerade zu viele Fragen. Versuch es sp\u00e4ter noch mal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trop de questions pour l'instant. R\u00e9essayez plus tard."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0417\u0430\u0431\u0430\u0433\u0430\u0442\u043e \u043f\u0438\u0442\u0430\u043d\u044c. \u0421\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u043f\u0456\u0437\u043d\u0456\u0448\u0435."
+          }
         }
       }
     },
@@ -527,6 +1124,24 @@
             "state": "translated",
             "value": "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "R\u00e9essayer"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0438"
+          }
         }
       }
     },
@@ -539,6 +1154,24 @@
           }
         },
         "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u0413\u043e\u043b\u043e\u0441"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprache"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voix"
+          }
+        },
+        "uk": {
           "stringUnit": {
             "state": "translated",
             "value": "\u0413\u043e\u043b\u043e\u0441"
@@ -558,6 +1191,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "\u0420\u0430\u0431\u043e\u0442\u0430\u044e"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich arbeite daran"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "J'y travaille"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\u041f\u0440\u0430\u0446\u044e\u044e"
           }
         }
       }
