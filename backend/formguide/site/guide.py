@@ -587,13 +587,17 @@ class Dushes:
         if not layer.on or _voice_on(thread_id):
             return None
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
+        # the questions and the order of the decision are the QA Lead's wrapper, as it measured on her fifth set
         qs: dict[str, Any] = {
             "is_command": _intent.command_question(),
             "kind": _intent.Question("choice", "turn", "What kind of line is it?", (
-                _intent.Option("navigate", "go to a section or open a page"),
-                _intent.Option("show", "highlight, scroll to or show a part of this page"),
-                _intent.Option("explicit_value", "set a value it names outright, as written on the screen"),
-                _intent.Option("other", "anything else: a question, a text, a choice that needs judgement"))),
+                _intent.Option("go_to", "an order to go to a section or open an item"),
+                _intent.Option("show", "an order to highlight, scroll to or point at something"),
+                _intent.Option("set_value", "an order to set a value the line names outright"),
+                _intent.Option("question", "where, how, why, what, can I"),
+                _intent.Option("other", "a text to write, a judgement or a suggestion"))),
+            "needs_agent": _intent.Question("noul", "needs_agent", "Does the line name a person or a company that is not "
+                                            "on the screen, ask a question, ask for a text, or need judgement?"),
             "section": _intent.screen_question(self.site)}
         if here and here.parts:
             qs["element"] = _intent.element_question(here)
@@ -609,6 +613,13 @@ class Dushes:
                     qs["value"] = vq
             except Exception:  # noqa: BLE001 - a form the layer cannot read is the agent's
                 ov = None
+        # in code, before anything is sent: a date is never a place to go, and a name the screen does not show is
+        # the agent's (the CPO's two rules)
+        shown = [p.title for p in self.site.pages] + [x.title for x in (here.parts if here else [])]
+        if "value" in qs:
+            shown += [o.label for o in qs["value"].options]
+        if _intent.has_date(message) or _intent.names_off_screen(message, shown):
+            return None
         started = RunStats.now()
         picks = await layer.pick_many(message, detect(message) or "en", qs, here.path if here else "")
         ms = round((RunStats.now() - started) * 1000)
@@ -617,27 +628,35 @@ class Dushes:
         log.warning("choice layer: %d ms, asked %s, sure of %s", ms, sorted(qs),
                     {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
         command, kind = picks.get("is_command"), picks.get("kind")
-        if not command or command.id != "yes" or not kind:
-            return None                               # not a command, or not sure what kind: the agent
+        if not command or command.id != "yes" or not kind or kind.id not in ("go_to", "show", "set_value"):
+            return None                               # not an order, or a question: the agent; a question never jumps
+        hand_on = picks.get("needs_agent")
+        if hand_on and hand_on.id == "yes" and hand_on.confidence >= 0.6:
+            return None
+        page = self.site.page(picks["section"].id) if "section" in picks else None
+        if page and here and page.path == here.path:
+            page = None                               # the screen the person is on is not a place to go
+        part = here.part(picks["element"].id) if "element" in picks and here else None
+        value = picks.get("value") if ov is not None else None
         out: dict[str, Any] | None = None
-        if kind.id == "navigate" and "section" in picks:
-            page = self.site.page(picks["section"].id)
-            if page and not (here and page.path == here.path):
-                out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title}
-        elif kind.id == "show" and "element" in picks and here:
-            part = here.part(picks["element"].id)
-            if part:
-                key = "tab" if part.kind in ("tab", "accordion") else "section"
-                out = {"kind": "show", "args": {"path": here.path, key: part.id}, "title": part.title}
-        elif kind.id == "explicit_value" and "value" in picks and ov is not None:
-            name, _, opt = picks["value"].id.partition("=")
-            e = ov.get(name)
-            if e is not None and e.editable:
-                is_bool = e.node.role == "bool"
-                shown = "yes" if is_bool else next((str(o.get("name")) for o in e.options or [] if str(o.get("id")) == opt), opt)
-                fid = str(form.get("form_id") or "form")
-                _intent.preset(f"{thread_id}-{fid}"[:100], name, True if is_bool else opt, e.label or name, shown)
-                out = {"kind": "value"}
+        if kind.id == "set_value" or (not page and not part and value):
+            # "select the terrace" may come as an order to go: with no place named and a value named, it is a value
+            if value and not (kind.id != "set_value" and (page or part)):
+                name, _, opt = value.id.partition("=")
+                e = ov.get(name)
+                if e is not None and e.editable:
+                    is_bool = e.node.role == "bool"
+                    shown = "yes" if is_bool else next((str(o.get("name")) for o in e.options or [] if str(o.get("id")) == opt), opt)
+                    fid = str(form.get("form_id") or "form")
+                    _intent.preset(f"{thread_id}-{fid}"[:100], name, True if is_bool else opt, e.label or name, shown)
+                    out = {"kind": "value"}
+        elif page and part:
+            out = None                                # two places that disagree: the agent
+        elif page:
+            out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title}
+        elif part:
+            key = "tab" if part.kind in ("tab", "accordion") else "section"
+            out = {"kind": "show", "args": {"path": here.path, key: part.id}, "title": part.title}
         if out:
             stats.fast["handled"] = True
         return out

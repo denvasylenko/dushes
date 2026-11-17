@@ -53,7 +53,8 @@ class ExternalChooser:
     async def choose_many(self, phrase: str, language: str, questions: dict[str, Question], screen: str) -> dict[str, Pick]:
         started = time.monotonic()
         r = await self._http.post(URL, json={"model": MODEL,
-                                             "state": {"line": phrase, "screen_now": screen, "language": language},
+                                             "state": {"line": phrase, "screen_now": screen, "language": language,
+                                                       "today": time.strftime("%A %d %B")},
                                              "questions": {name: self._wire(q) for name, q in questions.items()}})
         r.raise_for_status()
         body = r.json()

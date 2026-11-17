@@ -32,6 +32,35 @@ PROVIDERS = ("jev", "haiku", "rules", "off")
 _PRIVATE = re.compile(r"(\+?\d[\d\s().-]{6,}\d)|([\w.+-]+@[\w-]+\.[\w.-]+)")
 
 
+# The CPO's two rules for the layer, in code, no model involved (2026-11-17, after the QA Lead's five sets):
+# 1. a date is never a navigation: a line with a date or a weekday is not put to the chooser as a place to go;
+# 2. a person's name that is not on the screen always goes to the agent (and is never sent out).
+_DATE = re.compile(
+    r"(?<!\w)(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tonight|yesterday|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|heute|morgen|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|demain|aujourd'hui|luned\u00ec|marted\u00ec|mercoled\u00ec|gioved\u00ec|venerd\u00ec|sabato|domenica|oggi|domani|lunes|martes|mi\u00e9rcoles|jueves|viernes|s\u00e1bado|domingo|hoy|ma\u00f1ana|\u043f\u043e\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0438\u043a|\u0432\u0442\u043e\u0440\u043d\u0438\u043a|\u0441\u0440\u0435\u0434[\u0430\u0443\u0435]|\u0447\u0435\u0442\u0432\u0435\u0440\u0433|\u043f\u044f\u0442\u043d\u0438\u0446|\u0441\u0443\u0431\u0431\u043e\u0442|\u0432\u043e\u0441\u043a\u0440\u0435\u0441\u0435\u043d\u044c|\u0441\u0435\u0433\u043e\u0434\u043d\u044f|\u0437\u0430\u0432\u0442\u0440\u0430|\u043f\u043e\u0441\u043b\u0435\u0437\u0430\u0432\u0442\u0440\u0430|\u0432\u0447\u0435\u0440\u0430|\u043f\u043e\u043d\u0435\u0434\u0456\u043b|\u0432\u0456\u0432\u0442\u043e\u0440|\u0441\u0435\u0440\u0435\u0434[\u0430\u0443\u0438]|\u0447\u0435\u0442\u0432\u0435\u0440|\u043f'\u044f\u0442\u043d\u0438\u0446|\u0441\u0443\u0431\u043e\u0442|\u043d\u0435\u0434\u0456\u043b|\u0441\u044c\u043e\u0433\u043e\u0434\u043d\u0456|\u043f\u0456\u0441\u043b\u044f\u0437\u0430\u0432\u0442\u0440\u0430|\u0432\u0447\u043e\u0440\u0430)"
+    r"|\b\d{1,2}[./-]\d{1,2}([./-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)\b",
+    re.IGNORECASE)
+_CAPITAL = re.compile("[A-Z" + chr(0xC0) + "-" + chr(0xDE) + chr(0x400) + "-" + chr(0x42F) + r"][\w'-]+")
+
+
+_EDGES = chr(34) + chr(39) + "(,.!?:;"   # what may stand around a word
+
+
+def has_date(phrase: str) -> bool:
+    return bool(_DATE.search(phrase or ""))
+
+
+def names_off_screen(phrase: str, on_screen: Any) -> bool:
+    """Whether the line holds a capitalised word, after its first word, that no label on the screen has: most
+    likely a person or a company the chooser was never shown. `on_screen`: the labels the screen shows."""
+    known = {w.lower() for label in on_screen for w in re.findall(r"[\w'-]+", str(label))}
+    words = (phrase or "").split()
+    for word in words[1:]:
+        m = _CAPITAL.match(word.strip(_EDGES))
+        if m and len(m.group(0)) > 1 and m.group(0).lower().rstrip("'s") not in known and m.group(0).lower() not in known:
+            return True
+    return False
+
+
 @dataclass(frozen=True)
 class Option:
     id: str

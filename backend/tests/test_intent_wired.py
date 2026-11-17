@@ -29,7 +29,7 @@ class Mock:
 
 def site_with(guide, chooser):
     s = Dushes(guide, SiteMap.load(SITE))
-    s.intent = intent.Layer(intent.Settings(provider="jev", threshold=0.8, timeout_ms=200), chooser)
+    s.intent = intent.Layer(intent.Settings(provider="jev", threshold=0.5, timeout_ms=200), chooser)
     return s
 
 
@@ -49,7 +49,7 @@ def text(ev):
 
 def test_a_command_to_go_is_carried_out_without_the_agent(guide, model, monkeypatch):
     monkeypatch.setenv("INTENT_LABELS", "1")
-    chooser = Mock(is_command=("yes", 0.98), kind=("navigate", 0.97), section=("/loans", 0.93))
+    chooser = Mock(is_command=("yes", 0.98), kind=("go_to", 0.97), section=("/loans", 0.93))
     site = site_with(guide, chooser)
     before = len(model.calls)
     ev = run(site, "w1", message="open the loans page", state={"page": {"path": "/"}})
@@ -64,8 +64,9 @@ def test_a_command_to_go_is_carried_out_without_the_agent(guide, model, monkeypa
 def test_a_question_or_an_unsure_pick_goes_to_the_agent(guide, model, monkeypatch):
     monkeypatch.setenv("INTENT_LABELS", "1")
     for answers in (dict(is_command=("no", 0.95), kind=("other", 0.9)),                          # not a command
-                    dict(is_command=("yes", 0.95), kind=("navigate", 0.9), section=("/loans", 0.4)),   # not sure where
-                    dict(is_command=("yes", 0.5), kind=("navigate", 0.9), section=("/loans", 0.9)),    # not sure it is one
+                    dict(is_command=("yes", 0.95), kind=("go_to", 0.9), section=("/loans", 0.4)),   # not sure where
+                    dict(is_command=("yes", 0.9), kind=("question", 0.9), section=("/loans", 0.9)),    # a question never jumps
+                    dict(is_command=("yes", 0.9), kind=("go_to", 0.9), section=("/loans", 0.9), needs_agent=("yes", 0.7)),
                     dict(is_command=("yes", 0.95), kind=("other", 0.9))):
         site = site_with(guide, Mock(**answers))
         model.script = [say("The car loan starts from 18.9% a year.")]
@@ -86,7 +87,7 @@ def test_a_part_of_this_page_is_shown(guide, model):
 
 def test_a_value_named_outright_goes_through_the_forms_own_card_with_no_model_call(guide, model):
     state = {"page": {"path": "/apply"}, "form": start(guide, LOAN)}
-    chooser = Mock(is_command=("yes", 0.98), kind=("explicit_value", 0.95), value=("loan_type=auto", 0.92))
+    chooser = Mock(is_command=("yes", 0.98), kind=("set_value", 0.95), value=("loan_type=auto", 0.92))
     site = site_with(guide, chooser)
     before = len(model.calls)
     ev = run(site, "w4", message="choose car loan", state=state)
@@ -106,3 +107,31 @@ def test_with_the_layer_off_nothing_changes(guide, model):
     model.script = [say("", ("n1", "navigate", {"path": "/loans"})), say("Here is Loans.")]
     ev = run(site, "w5", message="open the loans page", state={"page": {"path": "/"}})
     assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and "— " not in text(ev)
+
+
+def test_an_order_to_go_that_names_a_value_and_no_place_is_a_value(guide, model):
+    """The QA Lead's fix from her fifth set: "choose car loan" may come as an order to go; with no place named and
+    a value named, it is that value."""
+    state = {"page": {"path": "/apply"}, "form": start(guide, LOAN)}
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.7), value=("loan_type=auto", 0.9), section=("/apply", 0.9))
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "w6", message="choose car loan", state=state)
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    card = json.loads(raw) if isinstance(raw, str) else raw
+    assert card["changes"][0]["name"] == "loan_type" and card.get("quiet") is True and len(model.calls) == before
+    assert directives(ev) == []
+
+
+def test_a_date_is_never_a_place_to_go_and_a_name_off_the_screen_is_the_agents(guide, model):
+    """The CPO's two rules, in code: neither line is even put to the chooser."""
+    assert intent.has_date("put Friday") and intent.has_date("mets vendredi") and intent.has_date("book 25.11")
+    assert not intent.has_date("open the loans page") and not intent.has_date("set the loan type to Car loan")
+    screen = ["Loans", "Apply for a loan", "Loan type: Car loan"]
+    assert intent.names_off_screen("open the table of Giulia", screen) and intent.names_off_screen("call Aster Logistics", screen)
+    assert not intent.names_off_screen("open the Loans page", screen) and not intent.names_off_screen("Set the loan type to Car loan", screen)
+    chooser = Mock(is_command=("yes", 0.98), kind=("go_to", 0.97), section=("/loans", 0.93))
+    site = site_with(guide, chooser)
+    for line in ("open Friday", "open the request of Giulia"):
+        model.script = [say("I can help with that on the right page.")]
+        ev = run(site, f"w7-{len(model.calls)}", message=line, state={"page": {"path": "/"}})
+        assert directives(ev) == [] and not chooser.seen
