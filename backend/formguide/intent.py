@@ -71,6 +71,14 @@ class Settings:
     never_send: tuple[str, ...] = ()            # a host's own list: its guests' names and phones
     testing: bool = False                       # "rules" is for tests only (13% confident errors on new phrasings)
 
+    @classmethod
+    def from_env(cls) -> "Settings":
+        import os
+        return cls(provider=os.environ.get("INTENT_PROVIDER", "off"),
+                   threshold=float(os.environ.get("INTENT_THRESHOLD", "0.8")),
+                   timeout_ms=int(os.environ.get("INTENT_TIMEOUT_MS", "300")),
+                   never_send=tuple(x for x in os.environ.get("INTENT_NEVER_SEND", "").split("|") if x))
+
     def __post_init__(self) -> None:
         if self.provider not in PROVIDERS:
             raise ValueError(f"unknown provider {self.provider!r}: one of {', '.join(PROVIDERS)}")
@@ -224,6 +232,121 @@ class Layer:
         return Pick(got.id, got.confidence, round((time.monotonic() - started) * 1000), self.chooser.by)
 
 
+async def _many(layer: "Layer", phrase: str, language: str, questions: dict[str, Question],
+                screen: str = "") -> dict[str, Pick]:
+    """Every question about one phrase in one call, under one deadline. The result holds only the picks that may
+    be used (in time, confident, an id among the options sent); a missing name means "no pick". A chooser without
+    `choose_many` is asked one question at a time."""
+    s = layer.settings
+    if not layer.on or not (phrase or "").strip() or layer.private(phrase):
+        return {}
+    asked = {name: layer.cleaned(q) for name, q in questions.items()
+             if q.act == "understand" or q.act in s.acts}
+    asked = {name: q for name, q in asked.items() if q.kind == "noul" or q.options}
+    if not asked:
+        return {}
+    started = time.monotonic()
+    try:
+        if hasattr(layer.chooser, "choose_many"):
+            got = await asyncio.wait_for(layer.chooser.choose_many(phrase, language, asked, screen), s.timeout_ms / 1000)
+        else:
+            got = {}
+            for name, q in asked.items():
+                left = s.timeout_ms / 1000 - (time.monotonic() - started)
+                got[name] = await asyncio.wait_for(layer.chooser.choose(phrase, language, q, screen), max(left, 0.001))
+    except Exception:  # noqa: BLE001 - late, failed or unreachable: the agent takes the turn
+        return {}
+    ms, out = round((time.monotonic() - started) * 1000), {}
+    for name, q in asked.items():
+        p = got.get(name)
+        allowed = {"yes", "no"} if q.kind == "noul" else {o.id for o in q.options}
+        if isinstance(p, Pick) and p.id in allowed and p.confidence >= s.threshold:
+            out[name] = Pick(p.id, p.confidence, ms, layer.chooser.by)
+    return out
+
+
+Layer.pick_many = _many   # type: ignore[attr-defined]
+
+
+def value_question(overlay: Any, consents: Any = ()) -> Question | None:
+    """Group 3 in one question: every value of every choice field the person can edit, as "field: option". A
+    checkbox is "field: yes". A consent is never an option: only the person gives it."""
+    opts: list[Option] = []
+    for node in overlay.layout.fields():
+        e = overlay.get(node.name)
+        if e is None or not e.editable or node.name in consents:
+            continue
+        label = e.label or node.name
+        if node.role in ("select", "radio") and e.options:
+            opts += [Option(f"{node.name}={o.get('id')}", f"{label}: {o.get('name') or o.get('id')}")
+                     for o in e.options if o.get("id") is not None]
+        elif node.role == "bool":
+            opts.append(Option(f"{node.name}=true", f"{label}: yes"))
+    return Question("choice", "value", "Which value does the line name outright, as it is written on the screen?",
+                    tuple(opts[:MAX_OPTIONS - 1]), act="set_field") if opts else None
+
+
+# ---------------------------------------------------------------- a picked value goes through the form's own card
+
+_PRESETS: dict[str, list] = {}   # the form thread -> what the form agent's model would have said, already decided
+
+
+def preset(thread_id: str, name: str, value: Any, label: str, shown: str) -> None:
+    """The layer picked a value for a field: the form agent's next two steps on this thread are decided (propose
+    that change; then say it in one line), so the form's own card, checks and Undo apply and no model is called."""
+    from langchain_core.messages import AIMessage
+    _PRESETS[thread_id] = [
+        AIMessage(content="", tool_calls=[{"name": "propose_changes", "id": f"fast_{int(time.time() * 1000)}",
+                                           "args": {"changes": [{"name": name, "value": value}]}}]),
+        AIMessage(content=f"{label}: {shown}.")]
+
+
+def clear_preset(thread_id: str) -> None:
+    _PRESETS.pop(thread_id, None)
+
+
+def has_preset(thread_id: str) -> bool:
+    return bool(_PRESETS.get(thread_id))
+
+
+def preset_model(thread_id: str | None) -> Any:
+    """A model that says the decided steps, or None when nothing is decided for this thread."""
+    script = _PRESETS.get(thread_id or "")
+    if not script:
+        return None
+    from langchain_core.language_models import BaseChatModel
+    from langchain_core.messages import AIMessageChunk
+    from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
+
+    class Decided(BaseChatModel):
+        @property
+        def _llm_type(self) -> str:
+            return "decided"
+
+        def bind_tools(self, tools, **kwargs):  # type: ignore[override]
+            return self
+
+        def _next(self):
+            msg = script.pop(0)
+            if not script:
+                _PRESETS.pop(thread_id or "", None)
+            return msg
+
+        def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+            return ChatResult(generations=[ChatGeneration(message=self._next())])
+
+        def _stream(self, messages, stop=None, run_manager=None, **kwargs):
+            import json
+            msg = self._next()
+            if msg.content:
+                yield ChatGenerationChunk(message=AIMessageChunk(content=msg.content))
+            for i, tc in enumerate(msg.tool_calls):
+                yield ChatGenerationChunk(message=AIMessageChunk(content="", tool_call_chunks=[
+                    {"name": tc["name"], "args": json.dumps(tc["args"], ensure_ascii=False), "id": tc["id"], "index": i}]))
+
+    return Decided()
+
+
 def chooser_for(settings: Settings) -> Chooser | None:
     """The chooser a provider setting stands for. The one place a supplier's client is named.
     "jev" and "haiku" have no client yet (the QA Lead's measurement and the owner's yes come first): they give no
@@ -232,6 +355,9 @@ def chooser_for(settings: Settings) -> Chooser | None:
         if not settings.testing:
             raise ValueError("the rules chooser is for tests only: set testing=True")
         return RulesChooser()
+    if settings.provider == "jev":   # demo branch: the client exists here; without a key the layer is off
+        from .intent_external import from_env
+        return from_env()
     return None
 
 

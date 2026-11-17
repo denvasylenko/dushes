@@ -368,7 +368,8 @@ def build_graph(guide: FormGuide):
     async def llm(state: AgentState) -> dict:
         w = get_stream_writer()
         pack = guide.packs.get(state.get("form_id"))
-        base = guide.models.agent
+        from .. import intent as _intent
+        base = _intent.preset_model(state.get("thread_id")) or guide.models.agent   # a value the choice layer picked
         server = guide.tools_for(pack.form_id)
         actions = actions_of(state)
         model = base.bind_tools(tool_schemas(server, actions, frozenset(guide.config.confirm_tools or ()))

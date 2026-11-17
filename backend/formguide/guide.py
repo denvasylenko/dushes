@@ -62,6 +62,7 @@ def _loads(s: str) -> Any:
 
 # the model choice of the run in progress (a name from `models.choices`), read by FormGuide.models
 _choice: ContextVar[str | None] = ContextVar("formguide_model_choice", default=None)
+_FAST: set = set()   # cards made from a value the choice layer picked (demo branch)
 
 
 CARD_GONE = "This question is no longer open."
@@ -495,6 +496,11 @@ class FormGuide:
                 left = _voice.delegates(said) and not any(isinstance(r, dict) and (r.get("consent") or r.get("issue"))
                                                           for r in value.get("changes") or [])
                 # in a voice conversation, what the person said is filled without a card
+                from . import intent as _intent
+                picked = _intent.has_preset(thread_id) or value.get("card_id") in _FAST   # named outright: no question
+                if picked and not any(isinstance(r, dict) and r.get("consent") for r in value.get("changes") or []):
+                    _FAST.add(value.get("card_id"))
+                    value["quiet"] = True
                 if again or answered or left or (_voice.active(thread_id) and _voice.quiet(value, said)):
                     value["quiet"] = True
                 interrupts.append(value)

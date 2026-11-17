@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import uuid
 from collections.abc import AsyncIterator
@@ -217,6 +218,11 @@ class Said:
 stats_log = logging.getLogger("formguide.stats")
 
 
+def _voice_on(thread_id: str) -> bool:
+    from .. import voice
+    return voice.active(thread_id)
+
+
 class Dushes:
     def __init__(self, form_guide: FormGuide, site: SiteMap, model: Any = None,
                  knowledge_namespaces: list[str] | None = None, router_model: Any = None, *,
@@ -233,6 +239,8 @@ class Dushes:
         self.form_for = form_for          # (form_id, ctx) -> form state | None: the same-run hand-off
         self._offers: dict[str, bool] = {}   # conversations whose last answer offered to open a page or a form
         self.stay_on_forms = stay_on_forms   # on a form page, answer in place while the user fills the form in
+        from .. import intent as _intent
+        self.intent = _intent.Layer(_intent.Settings.from_env())   # the choice layer; off unless the launcher sets it
         self.site = site
         self.model = model   # Dushes' model; default: the form guide's agent model
         self._router_model = router_model   # a cheap model for unclear messages; default: the run's memory model
@@ -471,6 +479,22 @@ class Dushes:
                 yield {"type": "CUSTOM", "name": "model",
                        "value": {"choice": choice, "label": s.label, "model": _model_id(self.model or s.models.agent)}}
                 continue
+            if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1" and not _voice_on(thread_id):
+                fast = getattr(stats, "fast", None)
+                who = self.intent.settings.provider.capitalize()
+                if fast and fast.get("handled"):
+                    label = f"{who} \u00b7 {fast['ms']} ms"
+                elif getattr(stats, "decided", False):
+                    label = who
+                else:
+                    name = str(_model_id(self.model or self.forms.models.agent))
+                    took = RunStats.now() - stats.t0
+                    asked = f" (after {who} {fast['ms']} ms: not sure)" if fast else ""
+                    label = f"{'Haiku' if 'haiku' in name.lower() else name} \u00b7 {took:.1f} s{asked}"
+                lid = f"label_{uuid.uuid4().hex[:10]}"
+                yield {"type": "TEXT_MESSAGE_START", "messageId": lid, "role": "assistant"}
+                yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
+                yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and stats.models:
                 summary = stats.as_event()
                 stats.models = []   # once per run
@@ -483,7 +507,19 @@ class Dushes:
                    reply_to: list[dict[str, Any]] | None, **form_kwargs: Any) -> AsyncIterator[dict]:
         check_thread_id(thread_id)
         state = state or {}
-        mode = self.route(message, state, resume, handoff, thread_id)
+        fid0 = str((state.get("form") or {}).get("form_id") or "form")
+        form_thread0 = f"{thread_id}-{fid0}"[:100]
+        from .. import intent as _intent
+        if resume is not None and _intent.has_preset(form_thread0):
+            stats.decided = True                     # the closing line of a value the layer picked
+        elif message:
+            _intent.clear_preset(form_thread0)        # a new message: nothing decided is left over
+        fast = await self._fast(thread_id, message, state, stats) if message and resume is None and not handoff else None
+        if fast and fast["kind"] in ("navigate", "show"):
+            async for ev in self._fast_move(thread_id, message, run_id, fast, reply_to):
+                yield ev
+            return
+        mode = "form" if fast and fast["kind"] == "value" else self.route(message, state, resume, handoff, thread_id)
         if mode == "unclear":
             from .. import voice
             # a spoken message is not held for the router model: a rule places it, and whoever gets it can give
@@ -540,6 +576,87 @@ class Dushes:
         async for ev in self._site_turn(thread_id, message, state, run_id, host, form_kwargs, reply_to=reply_to,
                                         stats=stats):
             yield ev
+
+    # ------------------------------------------------------------ the choice layer (demo branch)
+    async def _fast(self, thread_id: str, message: str, state: dict[str, Any], stats: RunStats) -> dict[str, Any] | None:
+        """Ask the choice layer about the phrase: one call, every question. A dict when it is a command the layer
+        may carry out by itself (a screen, a part of this screen, a value named outright); None for the agent."""
+        from .. import intent as _intent
+        from ..language import detect
+        layer = self.intent
+        if not layer.on or _voice_on(thread_id):
+            return None
+        here = self.site.page(((state.get("page") or {}).get("path")) or "")
+        qs: dict[str, Any] = {
+            "is_command": _intent.command_question(),
+            "kind": _intent.Question("choice", "turn", "What kind of line is it?", (
+                _intent.Option("navigate", "go to a section or open a page"),
+                _intent.Option("show", "highlight, scroll to or show a part of this page"),
+                _intent.Option("explicit_value", "set a value it names outright, as written on the screen"),
+                _intent.Option("other", "anything else: a question, a text, a choice that needs judgement"))),
+            "section": _intent.screen_question(self.site)}
+        if here and here.parts:
+            qs["element"] = _intent.element_question(here)
+        form, ov = state.get("form") or None, None
+        if isinstance(form, dict) and form.get("config"):
+            try:
+                from ..form.overlay import Overlay
+                lay = self.forms.layout(form.get("jsx_hash", ""))
+                pack = self.forms.packs.get(form.get("form_id"))
+                ov = Overlay(lay, form["config"], pack.pii) if lay is not None else None
+                vq = _intent.value_question(ov, set(pack.consents or {})) if ov is not None else None
+                if vq:
+                    qs["value"] = vq
+            except Exception:  # noqa: BLE001 - a form the layer cannot read is the agent's
+                ov = None
+        started = RunStats.now()
+        picks = await layer.pick_many(message, detect(message) or "en", qs, here.path if here else "")
+        ms = round((RunStats.now() - started) * 1000)
+        stats.fast = {"ms": ms, "handled": False}
+        # the demo's terminal shows what the layer was sure of (ids and confidences only, never the phrase)
+        log.warning("choice layer: %d ms, asked %s, sure of %s", ms, sorted(qs),
+                    {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
+        command, kind = picks.get("is_command"), picks.get("kind")
+        if not command or command.id != "yes" or not kind:
+            return None                               # not a command, or not sure what kind: the agent
+        out: dict[str, Any] | None = None
+        if kind.id == "navigate" and "section" in picks:
+            page = self.site.page(picks["section"].id)
+            if page and not (here and page.path == here.path):
+                out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title}
+        elif kind.id == "show" and "element" in picks and here:
+            part = here.part(picks["element"].id)
+            if part:
+                key = "tab" if part.kind in ("tab", "accordion") else "section"
+                out = {"kind": "show", "args": {"path": here.path, key: part.id}, "title": part.title}
+        elif kind.id == "explicit_value" and "value" in picks and ov is not None:
+            name, _, opt = picks["value"].id.partition("=")
+            e = ov.get(name)
+            if e is not None and e.editable:
+                is_bool = e.node.role == "bool"
+                shown = "yes" if is_bool else next((str(o.get("name")) for o in e.options or [] if str(o.get("id")) == opt), opt)
+                fid = str(form.get("form_id") or "form")
+                _intent.preset(f"{thread_id}-{fid}"[:100], name, True if is_bool else opt, e.label or name, shown)
+                out = {"kind": "value"}
+        if out:
+            stats.fast["handled"] = True
+        return out
+
+    async def _fast_move(self, thread_id: str, message: str, run_id: str, fast: dict[str, Any],
+                         reply_to: list[dict[str, Any]] | None) -> AsyncIterator[dict]:
+        """A move the layer picked, as the run Dushes would have made: the same directive, one line of text."""
+        result, d = agent.directive(self.site, fast["args"])
+        tx = self.forms.transcripts
+        tx.append(thread_id, new_entry("user", text=message, **({"reply_to": as_list(reply_to)} if reply_to else {})))
+        yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
+        mid, text = f"msg_{uuid.uuid4().hex[:12]}", f"{fast['title']}."
+        yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
+        yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": text}
+        yield {"type": "TEXT_MESSAGE_END", "messageId": mid}
+        tx.append(thread_id, new_entry("assistant", text=text, message_id=mid))
+        if d:
+            yield {"type": "CUSTOM", "name": "site_directive", "value": d}
+        yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
 
     async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
                          host: Any, form_kwargs: dict[str, Any], recorded: bool = False,
