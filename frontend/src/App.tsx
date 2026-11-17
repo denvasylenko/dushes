@@ -85,6 +85,9 @@ export default function App() {
   const [showCtx, setShowCtx] = useState(false)
   const [turns, setTurns] = useState<DecidedTurn[]>([])   // this conversation's turns, newest first (the How it decided tab)
   const [pane, setPane] = useState<'chat' | 'decisions'>('chat')   // the chat, or how each turn was decided
+  // the tab is the owner's tool: it shows only once this page has received a decision_trace (the server sends one
+  // only where the host turns it on, his localhost); a public visitor never sees it
+  const [traced, setTraced] = useState(false)
   const decided = useRef(new Map<string, Decision>())   // decision_trace waits here for its run_stats (joined by run_id)
   const asked = useRef('')   // what the running turn answers: the user's message, or a card's answer
   const [busy, setBusy] = useState(false)
@@ -216,7 +219,7 @@ export default function App() {
       const decision = stats.run_id ? decided.current.get(stats.run_id) : undefined
       setTurns((t) => [{ at: new Date(), label: asked.current || 'Turn', stats, decision }, ...t].slice(0, 50))
     }
-    if (e.type === 'CUSTOM' && e.name === 'decision_trace') {   // the decision model's part of a turn: before or after its run_stats
+    if (e.type === 'CUSTOM' && e.name === 'decision_trace') { setTraced(true);   // the decision model's part of a turn: before or after its run_stats
       const d = (typeof e.value === 'string' ? JSON.parse(e.value) : e.value) as Decision
       if (d?.run_id) { decided.current.set(d.run_id, d); setTurns((t) => t.map((x) => (x.stats.run_id === d.run_id ? { ...x, decision: d } : x))) }
     }
@@ -296,11 +299,11 @@ export default function App() {
           <Render node={form.tree} />
         </FormProvider>
       </main>
-      <aside className={`chat-pane${pane === 'decisions' ? ' pane-decisions' : ''}`}>
-        <div className="seg pane-seg" role="tablist" aria-label="Assistant panel">
+      <aside className={`chat-pane${traced && pane === 'decisions' ? ' pane-decisions' : ''}`}>
+        {traced && (<div className="seg pane-seg" role="tablist" aria-label="Assistant panel">
           <button role="tab" aria-selected={pane === 'chat'} className={pane === 'chat' ? 'on' : ''} onClick={() => setPane('chat')}>Chat</button>
           <button role="tab" aria-selected={pane === 'decisions'} className={pane === 'decisions' ? 'on' : ''} onClick={() => setPane('decisions')}>How it decided</button>
-        </div>
+        </div>)}
         <div className="chat-tools">
           <button className="link" onClick={() => setShowCtx((s) => !s)} disabled={!agentCtx}>
             {showCtx ? 'Hide' : 'What the agent sees'}
@@ -311,7 +314,7 @@ export default function App() {
             {LANGS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
         </div>
-        {pane === 'decisions' && <Decisions turns={turns} />}
+        {traced && pane === 'decisions' && <Decisions turns={turns} />}
         {showCtx && agentCtx && <pre className="ctx">{agentCtx.text}</pre>}
         <AguiChat
           ref={chatRef}
