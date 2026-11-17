@@ -11,7 +11,8 @@ turns: 3
 # itself (Jev 270 ms), opened every section of the Applicant tab and named them; then Haiku opened the Applicant
 # sections again; on the third line it asked "Which page do you mean by contract?". Expected: the first reply asks
 # once which step he means and opens nothing else; the question about "contract" is not asked a second time.
-# Fails first. Run in a text and a voice thread.
+# Fails first. Run in a text and a voice thread. In a voice thread the options of a waiting question card must be
+# said (formguide.voice.asks adds them after the question), whatever the card's own question holds.
 scripted:
   - "In contract step open all sections"
   - "Now I said in a contract tab open all sections"
@@ -20,5 +21,6 @@ expect:
   asks_on: {"In contract step": ["contract", "which", "step", "tab"]}
   no_moves_on: ["In contract step"]
   never_repeat_questions: true
+  voice_says_options: true
   never_says: ["All sections in the Applicant tab are now open"]
 min_score: 7

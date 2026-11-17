@@ -43,7 +43,7 @@ KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_sco
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
 EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice", "filled", "no_question_card_on", "asks_nothing_on", "never_claims_without", "max_words", "max_calls", "opens_or_offers", "answers_every_turn", "no_moves_on", "max_model_calls_on", "closing_line_on",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
-               "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
+               "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds", "voice_says_options"}
 CAP_NEVER, CAP_OTHER = 3, 5
 from formguide.judge import RUBRIC, RUBRIC_VERSION  # noqa: E402  (the package's rubric: the same text judges the nightly conversation review)
 
@@ -122,6 +122,7 @@ class Scenario:
     never_ask_words: list[str] = field(default_factory=list)    # words no question card may show (question, option labels)
     never_fill_words: list[str] = field(default_factory=list)   # words no field-change card may show (labels, displays)
     never_model_kinds: list[str] = field(default_factory=list)   # model calls that must not happen (translate in English)
+    voice_says_options: bool = False   # in a voice thread, what the voice is given for a waiting question card names every option
     cards_in_language: bool = False                        # no card shows the form's own English labels or English notes
     plain_numbers: list[str] = field(default_factory=list)       # fields whose value a card shows without a thousands separator
     never_tools: list[str] = field(default_factory=list)    # tools it must not call (no researcher when the site knows)
@@ -182,6 +183,7 @@ def load_scenario(path: Path) -> Scenario:
                     never_ask_words=[str(x) for x in exp.get("never_ask_words") or []],
                     never_fill_words=[str(x) for x in exp.get("never_fill_words") or []],
                     never_model_kinds=[str(x) for x in exp.get("never_model_kinds") or []],
+                    voice_says_options=bool(exp.get("voice_says_options")),
                     cards_in_language=bool(exp.get("cards_in_language")), plain_numbers=[str(x) for x in exp.get("plain_numbers") or []], sources=[str(x) for x in exp.get("sources") or []],
                     corpus=raw["documents"] if isinstance(raw.get("documents"), str) else None, gold=str(raw.get("gold") or "").strip(), quote=_quote(path, raw.get("quote")))
 
@@ -657,6 +659,19 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         for w in words:   # the card's own payload, in the user's language: no English label left (a card is not prose)
             hit = next((t for t in texts if _says(t, w)), None)
             out.append({"check": f"no {kind} card shows {w}", "ok": hit is None, "detail": (hit or "")[:160], "cap": CAP_OTHER})
+    prefix = os.environ.get("EVAL_VOICE_PREFIX", "")
+    if sc.voice_says_options and prefix and str(getattr(visit, "thread", "")).startswith(prefix):
+        # the voice says a waiting card through formguide.voice.asks() (the bridge's own text for it); every option
+        # label must be in it, whatever the card's question says. No sound: the text the voice is given is checked
+        from formguide.voice import asks
+        missing = []
+        for c in visit.cards:
+            labels = [str(o.get("label") or o.get("id")) if isinstance(o, dict) else str(o) for o in c.get("options") or []]
+            if c.get("type") == "ask" and len(labels) >= 2:
+                said = asks(c)
+                missing += [f"{c.get('question')!r}: {x}" for x in labels if x not in said]
+        out.append({"check": "the voice names every option of a waiting question card", "ok": not missing,
+                    "detail": " | ".join(missing)[:300], "cap": CAP_OTHER})
     kinds = [k for st in getattr(visit, "stats", []) for k in st.get("kinds") or []]
     for k in sc.never_model_kinds:
         out.append({"check": f"no {k} model call", "ok": k not in kinds, "detail": f"{kinds.count(k)} call(s)", "cap": CAP_OTHER})

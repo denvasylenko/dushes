@@ -375,3 +375,19 @@ def test_two_model_calls_or_two_texts_after_a_card_fail_the_closing_line_checks(
     two = got("   ⏱ model calls: agent (form)", "   \U0001f0cf card shown and accepted by the user (the form now has these values): Middle name = Maria",
               "   ⏱ model calls: agent (form)", "\U0001f916 I've set your middle name to Maria and Turin. Next is your passport.", "\U0001f916 Anything else?")
     assert all(one.values()) and not any(two.values())
+
+
+def test_the_voice_must_name_every_option_of_a_waiting_question_card(monkeypatch):
+    import evals
+    monkeypatch.setenv("EVAL_VOICE_PREFIX", "voiceqa-")
+    sc = _bar("x", voice_says_options=True)
+    def got(thread, options):
+        v = _visit(["\n\U0001f464 In contract step open all sections"])
+        v.thread = thread
+        v.cards = [{"type": "ask", "question": "Which part did you mean?", "options": options}]
+        return [c["ok"] for c in evals.checks(sc, v) if c["check"].startswith("the voice names")]
+    three = [{"id": "a", "label": "Loan"}, {"id": "b", "label": "Documents & consents"}, {"id": "c", "label": "Assets & liabilities"}]
+    assert got("voiceqa-t1", three) == [True]                      # the question names none: the voice adds them
+    six = [{"id": str(i), "label": f"Part {i}"} for i in range(6)]
+    assert got("voiceqa-t1", six) == [False]                       # the voice says five: the sixth is never heard
+    assert got("t1", three) == []                                  # a typed thread: no such check
