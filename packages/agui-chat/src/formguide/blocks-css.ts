@@ -1,7 +1,7 @@
 /** The card blocks' styles: they ship with the blocks (agui-chat.blocks.js in the one-script build) and are added to
  *  each chat's shadow root the first time a card from blocks lands there, before the theme so the theme still wins. */
 export const BLOCKS_CSS = `
-:host { --agui-warn: #c93400; } :host(.dark) { --agui-warn: #ff9f0a; }   /* a threshold's mark (orange, as on iOS); a theme may set its own */
+:host { --agui-warn: #b25000; } :host(.dark) { --agui-warn: #ff9f0a; }   /* a threshold's mark (orange, as on iOS); a theme may set its own */
 /* cards from blocks (formguide/blocks.ts): small parts, one look; colours only from the theme and a tone */
 .bk { display: grid; gap: 12px; }
 .bk .card-q, .bk .acts { margin: 0; }
