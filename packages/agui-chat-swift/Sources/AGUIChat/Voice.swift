@@ -140,7 +140,9 @@ public final class VoiceController {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 for _ in 0..<50 where self.store.running { try? await Task.sleep(for: .milliseconds(100)) }
-                if !self.store.resolve(cardId: cardId, type: type, accepted: accepted) {
+                if self.store.resolve(cardId: cardId, type: type, accepted: accepted) {
+                    self.store.showSaid(text)             // his «yes» stays on screen as his message
+                } else {
                     let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !t.isEmpty { self.store.send(t) }
                 }

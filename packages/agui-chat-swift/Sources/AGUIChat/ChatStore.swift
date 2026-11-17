@@ -113,6 +113,14 @@ public final class ChatStore {
     }
 
     /// The answer of a card goes as the next run's `resume` (legacy mode: `forwardedProps.command.resume`).
+    /// His spoken words that answered a card (a voice «yes»): shown as his message, not sent — the card's answer is
+    /// the resume (the owner 17.11: «the message I say disappears at once»).
+    public func showSaid(_ text: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        items.append(.user(id: UUID().uuidString, text: t))
+    }
+
     public func answer(_ card: ChatCard, with resume: JSONValue) {
         guard !running, let i = cardIndex(card.id) else { return }
         if case .card(var c) = items[i] { c.status = .sending; items[i] = .card(c) }
