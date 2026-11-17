@@ -12,6 +12,10 @@ turns: 2
 scripted:
   - "how much is a haircut with Maria?"
   - "contacts"
+# The CPO (2026-11-17): no to both questions; the page does not open by itself, the reply gives the contacts of
+# the shop briefly (phone, address, hours) and offers to open the contacts page.
 expect:
   no_moves_on: ["^\\W*contacts\\W*$"]
+  stays_put_on: ["^\\W*contacts\\W*$"]
+  says: ["Main Street"]
 min_score: 7

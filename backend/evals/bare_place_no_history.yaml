@@ -7,10 +7,14 @@ knows:
   - "Says: contacts"
 turns: 1
 # One of four (bare_place_*): no history. Owner TL's sends: 0.69-0.71 against a bar of 0.7, so it flips between runs.
-# Expected, by the rule as stated ("only when the conversation backs it"): no move. This is the CPO's call: if a bare
+# Expected, by the rule as stated ("only when the conversation backs it"): no move; confirmed by the CPO below. If a bare
 # place name as the very first line should open it, this scenario turns into reaches: /contacts. Measured either way.
 scripted:
   - "contacts"
+# The CPO (2026-11-17): no to both questions; the page does not open by itself, the reply gives the contacts of
+# the bank briefly (phone, address, hours) and offers to open the contacts page.
 expect:
   no_moves_on: ["^\\W*contacts\\W*$"]
+  stays_put_on: ["^\\W*contacts\\W*$"]
+  says: ["Main Street"]
 min_score: 7
