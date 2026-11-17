@@ -18,7 +18,7 @@ from typing import Any
 from .intent import Pick, Question
 
 URL = "https://api.typesafe.ai/v1/systemone"
-MODEL = "jev-latest"
+MODEL = os.environ.get("INTENT_MODEL", "jev-latest")   # pin a version (jev-1.14.0) once the bars are measured
 USD_PER_INPUT_TOKEN = 0.042 / 1e6
 NONE = "none"   # the option added to every choice: nothing named
 
@@ -37,9 +37,13 @@ class ExternalChooser:
     def _wire(q: Question) -> dict[str, Any]:
         if q.kind == "noul":
             return {"type": "noul", "instructions": q.text}
+        # the supplier's own advice: a "none of these" option competes with the real ones for probability; a
+        # companion yes / no beside the choice works better (INTENT_COMPANION=1: the layer asks that companion and
+        # reads the choice only on its yes, so "none" is left out of the questions that have one)
+        companion = os.environ.get("INTENT_COMPANION") == "1" and (q.about in ("target", "value") or q.about.startswith("field:"))
         return {"type": "choice", "instructions": q.text,
                 "criteria": {**{o.id: (f"{o.label} \u2014 {o.hint}" if o.hint else o.label) for o in q.options},
-                             NONE: "nothing of these is named"}}
+                             **({} if companion else {NONE: "nothing of these is named"})}}
 
     @staticmethod
     def _pick(q: Question, a: dict[str, Any] | None, ms: int) -> Pick:
@@ -76,13 +80,14 @@ class ExternalChooser:
         self.usd += self.tokens * USD_PER_INPUT_TOKEN
         answers = body.get("answers") or {}
         # how far the first option of each choice is ahead of the second (for a bar with a margin)
-        self.margins = {}
+        self.margins, self.ratios = {}, {}
         self.probs = {name: {str(k): float(v) for k, v in ((a or {}).get("probabilities") or {}).items() if k != NONE}
                       for name, a in answers.items()}
         for name, a in answers.items():
             probs = sorted((float(v) for k, v in ((a or {}).get("probabilities") or {}).items()), reverse=True)
             if len(probs) >= 2:
                 self.margins[name] = probs[0] - probs[1]
+                self.ratios[name] = probs[0] / probs[1] if probs[1] > 0 else float("inf")
         return {name: self._pick(q, answers.get(name), ms) for name, q in questions.items()}
 
     async def rank(self, phrase: str, language: str, question: Question, screen: str) -> list[tuple[str, float]]:

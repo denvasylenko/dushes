@@ -814,6 +814,24 @@ class Dushes:
                 qs["all_of"] = _intent.Question("choice", "all_of", "If the line asks to open all the sections of a place, which "
                                                 "place does it name? A step, tab or page that is not listed here is none of these.",
                                                 tuple(places[:40]), act="show")
+        # three changes from the supplier's own guidance, each behind its switch so one build serves the arms of a
+        # measurement (the CPO's order, 2026-11-17): B a companion yes / no instead of "none of these"; C one
+        # judgment a question instead of several joined by "or"; D bands of 0.7 / 0.3 for a yes / no and the top
+        # option's probability for a choice
+        env = os.environ.get
+        if env("INTENT_COMPANION") == "1":
+            qs["names_place"] = _intent.Question("noul", "names_place", "Does the line name a page, a tab or a section?")
+            if "value" in qs:
+                qs["gives_value"] = _intent.Question("noul", "gives_value", "Does the line give a value for a field of the form?")
+            for key in [k for k in qs if k.startswith("f:")]:
+                label = str(ov[key[2:]].label or key[2:]) if ov is not None else key[2:]
+                qs[f"g:{key[2:]}"] = _intent.Question("noul", f"gives:{key[2:]}", f'Does the line give a value for "{label}"?')
+        if env("INTENT_SPLIT") == "1":
+            qs.pop("needs_agent", None)
+            qs.pop("asks_more", None)
+            qs["asks_question"] = _intent.Question("noul", "asks_question", "Does the line ask a question?")
+            qs["asks_explain"] = _intent.Question("noul", "asks_explain", "Does the line ask to explain something?")
+            qs["asks_text"] = _intent.Question("noul", "asks_text", "Does the line ask to write a text?")
         context = self._context(thread_id, state, here, ov, lay, pack)
         started = RunStats.now()
         asked: list[dict[str, Any]] = []
@@ -833,6 +851,7 @@ class Dushes:
                           sure={k: [v.id, round(v.confidence, 2)] for k, v in picks.items()})
         log.warning("choice layer: %d ms, %s input tokens, %d targets, sure of %s", ms, getattr(layer.chooser, "tokens", "?"),
                     len(targets), {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
+        picks = _refined(picks, layer)
         fid = str((form or {}).get("form_id") or "form")
         def fields_named(moving: bool) -> list[tuple[str, Any, str, str]]:
             """Every choice field or tick of the screen the chooser is sure of and the line names: (field, value,
@@ -1523,6 +1542,44 @@ def create_dushes_router(site: Dushes, host: Any = None):
 # the names before Dushes, kept so existing hosts keep working
 SiteGuide = Dushes
 create_site_router = create_dushes_router
+
+
+def _refined(picks: dict[str, Any], layer: Any) -> dict[str, Any]:
+    """The chooser's answers after the switches of the measurement (off: unchanged).
+    INTENT_SPLIT: "asks more" is the surest yes of its three single questions. INTENT_BANDS: a yes / no under 0.7
+    is unknown and left out; a choice is read by its top option's probability, which must be 0.5 or more and twice
+    the second. INTENT_COMPANION: a target, a value or a field's value is read only on its companion's yes."""
+    from .. import intent as _intent
+    env = os.environ.get
+    out = dict(picks)
+    if env("INTENT_SPLIT") == "1":
+        parts = [out[k] for k in ("asks_question", "asks_explain", "asks_text") if k in out]
+        if parts:
+            yes = max((p.confidence if p.id == "yes" else 1 - p.confidence) for p in parts)
+            out["asks_more"] = _intent.Pick("yes" if yes >= 0.5 else "no", yes if yes >= 0.5 else 1 - yes, parts[0].ms, parts[0].by)
+    if env("INTENT_BANDS") == "1":
+        probs, ratios = getattr(layer.chooser, "probs", {}) or {}, getattr(layer.chooser, "ratios", {}) or {}
+        for key, p in list(out.items()):
+            if p.id in ("yes", "no"):
+                if p.confidence < 0.7:
+                    out.pop(key)                      # the middle band: not known either way
+            elif key in probs and p.id in probs[key]:
+                top = probs[key][p.id]
+                if top < 0.5 or ratios.get(key, float("inf")) < 2.0:
+                    out.pop(key)
+                else:
+                    out[key] = _intent.Pick(p.id, top, p.ms, p.by)
+    if env("INTENT_COMPANION") == "1":
+        def yes(k: str) -> bool:
+            return k in out and out[k].id == "yes"
+        if not yes("names_place"):
+            out.pop("target", None)
+        if not yes("gives_value"):
+            out.pop("value", None)
+        for key in [k for k in out if k.startswith("f:")]:
+            if not yes(f"g:{key[2:]}"):
+                out.pop(key)
+    return out
 
 
 def _decision_trace(stats: Any, seen: dict[str, Any], run_id: str, more_to_come: bool, site: Any) -> dict[str, Any]:

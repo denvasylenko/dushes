@@ -747,3 +747,41 @@ def test_a_missing_year_is_named_in_the_same_reply_before_any_tap(guide, model):
     model.script = [say("", ("p3", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]}))]
     ev = collect(guide, "my-3", message="my name is Anna, born 1st July 1991", state=start(guide, LOAN))
     assert "____" not in "".join(e.get("delta", "") for e in ev if e.get("type") == "TEXT_MESSAGE_CONTENT")
+
+
+def test_the_three_switches_of_the_measurement(guide, model, monkeypatch):
+    """B, C, D from the supplier's guidance (the CPO's order, 2026-11-17), each off by default.
+    B: a target is read only on its companion's yes. C: "asks more" is the surest of three single questions.
+    D: a yes / no under 0.7 is unknown."""
+    from formguide.site import guide as site_guide
+    from formguide.intent_external import ExternalChooser
+    P = intent.Pick
+    layer = intent.Layer(intent.Settings(provider="jev"), Mock())
+    raw = {"target": P("screen:/loans", 0.9), "names_place": P("no", 0.8), "is_command": P("yes", 0.6),
+           "asks_question": P("no", 0.9), "asks_text": P("yes", 0.8), "asks_explain": P("no", 0.7)}
+    assert site_guide._refined(raw, layer) == raw                                      # all off: untouched
+    q = intent.Question("choice", "target", "Which?", (intent.Option("a", "A"),))
+    assert "none" in ExternalChooser._wire(q)["criteria"]
+    monkeypatch.setenv("INTENT_COMPANION", "1")
+    assert "target" not in site_guide._refined(raw, layer)
+    assert "target" in site_guide._refined({**raw, "names_place": P("yes", 0.8)}, layer)
+    assert "none" not in ExternalChooser._wire(q)["criteria"]                         # no "none of these" with a companion
+    assert "none" in ExternalChooser._wire(intent.Question("choice", "all_of", "Which?", (intent.Option("a", "A"),)))["criteria"]
+    monkeypatch.delenv("INTENT_COMPANION")
+    monkeypatch.setenv("INTENT_SPLIT", "1")
+    more = site_guide._refined(raw, layer)["asks_more"]
+    assert more.id == "yes" and more.confidence == 0.8
+    monkeypatch.delenv("INTENT_SPLIT")
+    monkeypatch.setenv("INTENT_BANDS", "1")
+    kept = site_guide._refined(raw, layer)
+    assert "is_command" not in kept and kept["names_place"].id == "no" and "target" in kept
+    # and a whole turn with all three on: a plain order still opens the page with no model
+    for k in ("INTENT_COMPANION", "INTENT_SPLIT"):
+        monkeypatch.setenv(k, "1")
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), names_place=("yes", 0.9), target=("screen:/loans", 0.95),
+                   asks_question=("no", 0.9), asks_explain=("no", 0.9), asks_text=("no", 0.9))
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "sw-1", message="open loans", state={"page": {"path": "/"}})
+    assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
+    asked = chooser.seen[0][1]
+    assert {"names_place", "asks_question", "asks_explain", "asks_text"} <= set(asked) and "asks_more" not in asked and "needs_agent" not in asked
