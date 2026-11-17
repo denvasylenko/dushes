@@ -492,6 +492,10 @@ class Dushes:
                     why = f"no answer within {self.intent.settings.timeout_ms} ms" if fast and fast.get("late") else "not sure"
                     asked = f" (after {who} {fast['ms']} ms: {why})" if fast else ""
                     label = f"{'Haiku' if 'haiku' in name.lower() else name} \u00b7 {took:.1f} s{asked}"
+                heard = getattr(self, "_heard", None)
+                if heard and RunStats.now() - heard[0] < 30:   # this line was dictated: how long the speech took to read
+                    label = f"heard in {heard[1]} ms \u00b7 {label}"
+                    self._heard = None
                 lid = f"label_{uuid.uuid4().hex[:10]}"
                 yield {"type": "TEXT_MESSAGE_START", "messageId": lid, "role": "assistant"}
                 yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
@@ -831,7 +835,10 @@ def create_dushes_router(site: Dushes, host: Any = None):
     async def transcribe(file: UploadFile = File(...), language: str | None = Form(None)) -> dict:
         """Dictation for the site chat: the form guide's transcription."""
         from ..server import transcribe_upload
-        return await transcribe_upload(site.forms, file, language)
+        started = RunStats.now()
+        out = await transcribe_upload(site.forms, file, language)
+        site._heard = (RunStats.now(), round((RunStats.now() - started) * 1000))   # for the demo's label
+        return out
 
     @r.post("/run")
     async def run(request: Request) -> StreamingResponse:
