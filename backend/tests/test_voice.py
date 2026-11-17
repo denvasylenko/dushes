@@ -881,3 +881,115 @@ def test_words_with_no_hand_over_are_taken_by_the_server(monkeypatch):
     assert got == []                                                                    # a filler is nobody's request
     got, _ = asyncio.run(go(False, ["Yes"]))
     assert got == []                                                                    # off: as before
+def _hours_card():
+    days = [("mo", "Monday"), ("tu", "Tuesday"), ("we", "Wednesday"), ("th", "Thursday"), ("fr", "Friday"), ("sa", "Saturday"), ("su", "Sunday")]
+    rows = []
+    for key, label in days:
+        opens, closes = ("09:00", "17:00") if key == "su" else ("07:00", "17:00")
+        rows += [{"name": f"{key}_from", "label": f"{label}: from", "value": opens}, {"name": f"{key}_to", "label": f"{label}: to", "value": closes}]
+    rows.append({"name": "palette", "label": "Palette", "value": {"id": "nero", "name": "Black minimal"}})
+    rows.append({"name": "note", "label": "Note", "value": ""})
+    return {"type": "set_fields", "card_id": "c1", "changes": rows}
+
+
+def test_the_voice_names_everything_on_a_waiting_card():
+    """QA Herefront (2026-11-17): a card with opening hours and a palette was asked as its first four rows (Monday
+    and Tuesday), and "yes" accepted Sunday and the palette unheard. Every row with a value is named; a time range
+    is one item and equal neighbours are joined; an empty value is not read; with more than the voice can name, a
+    spoken yes accepts nothing."""
+    said = voice.asks(_hours_card())
+    assert said == ("Shall I fill in Monday\u2013Saturday 07:00\u201317:00, Sunday 09:00\u201317:00 and Palette: Black minimal? "
+                    "Say yes or no.")
+    assert "Note" not in said and voice.covers(_hours_card())
+    many = {"type": "set_fields", "changes": [{"name": f"f{i}", "label": f"Field {i}", "value": str(i)} for i in range(15)]}
+    assert "3 more fields" in voice.asks(many) and "Say yes" not in voice.asks(many) and not voice.covers(many)
+    # a card is answered only by a bare yes or no
+    assert voice.yes_or_no("yes", strict=True) is True and voice.yes_or_no("no thanks", strict=True) is False
+    assert voice.yes_or_no("yes, show the statistics", strict=True) is None      # a request that opens with a yes
+    assert voice.yes_or_no("yes, show the statistics") is True                   # (the soft reading, kept for other uses)
+
+
+def test_a_reply_that_already_asks_the_cards_question_is_said_once():
+    """The CPO (2026-11-17, for the cabinet): when the reply's own text ends in a question to the waiting card ("I
+    will set the hours and the dark background. Accept?"), the voice says that, and the card's question is not
+    added after it."""
+    async def go(text):
+        talks, live, _ = _talks()
+        await talks.start("anna", "OFFER-SDP", "thread-ask")
+        live.push(type="session.input_transcript.delta", delta="set the hours and a dark background")
+        live.push(type="session.delegation.created", delegation={"id": "d1", "type": "delegation", "target": "client"})
+        events = talks.events("live_1")
+        while (await asyncio.wait_for(events.__anext__(), 1))["type"] != "heard":
+            pass
+        for ev in ({"type": "RUN_STARTED"}, {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": text},
+                   {"type": "CUSTOM", "name": "on_interrupt", "value": _hours_card()}, {"type": "RUN_FINISHED"}):
+            talks.seen("thread-ask", ev)
+        await asyncio.sleep(0.05)
+        return " ".join(str(m.get("content") or "") for m in live.sent if m["type"] == "session.commentary.append")
+    asked = asyncio.run(go("I will set the hours Monday to Saturday 7 to 17, Sunday 9 to 17, and the dark background. Accept?"))
+    assert "Accept?" in asked and "Shall I fill in" not in asked
+    plain = asyncio.run(go("Here are the hours and the dark background."))
+    assert "Shall I fill in Monday\u2013Saturday" in plain and "Sunday 09:00" in plain
+
+
+def test_a_days_open_tick_is_part_of_its_hours_and_a_card_waits_only_until_the_next_run():
+    """The cabinet's real card (its Tech Lead, 2026-11-17): a tick "open" a day beside the hours. On, it is not
+    said by itself; off, it is. And a card waits only until the next run starts: after any reply that follows it, a
+    spoken yes is not an answer to that card."""
+    card = _hours_card()
+    ticks = [{"name": f"{d}_open", "label": f"{label}: open", "value": True, "display": "yes"}
+             for d, label in (("mo", "Monday"), ("tu", "Tuesday"), ("we", "Wednesday"), ("th", "Thursday"), ("fr", "Friday"), ("sa", "Saturday"), ("su", "Sunday"))]
+    card["changes"] = [x for pair in zip(ticks, card["changes"][0:14:2], card["changes"][1:14:2]) for x in pair] + card["changes"][14:]
+    assert voice.asks(card) == ("Shall I fill in Monday\u2013Saturday 07:00\u201317:00, Sunday 09:00\u201317:00 and Palette: Black minimal? "
+                                "Say yes or no.") and voice.covers(card)
+    card["changes"][0] = {**card["changes"][0], "value": False, "display": "no"}       # Monday closed: that is said
+    assert "Monday: open: no" in voice.asks(card)
+
+    async def go():
+        talks, live, _ = _talks()
+        await talks.start("anna", "OFFER-SDP", "thread-last")
+        for ev in ({"type": "RUN_STARTED"}, {"type": "CUSTOM", "name": "on_interrupt", "value": _hours_card()}, {"type": "RUN_FINISHED"}):
+            talks.seen("thread-last", ev)
+        events = talks.events("live_1")
+        live.push(type="session.input_transcript.delta", delta="yes")
+        live.push(type="session.delegation.created", delegation={"id": "d1", "type": "delegation", "target": "client"})
+        while (first := await asyncio.wait_for(events.__anext__(), 1))["type"] != "heard":
+            pass
+        # a reply came after the card (another run): the card is no longer the last line
+        for ev in ({"type": "RUN_STARTED"}, {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "Here are your statistics."}, {"type": "RUN_FINISHED"}):
+            talks.seen("thread-last", ev)
+        live.push(type="session.input_transcript.delta", delta="yes")
+        live.push(type="session.delegation.created", delegation={"id": "d2", "type": "delegation", "target": "client"})
+        while (second := await asyncio.wait_for(events.__anext__(), 1))["type"] != "heard":
+            pass
+        return first, second
+    first, second = asyncio.run(go())
+    assert first["answers"]["accepted"] is True and first["answers"]["card_id"] == "c1"
+    assert "answers" not in second
+
+
+def test_a_bare_yes_answers_the_card_only_when_it_is_the_last_line():
+    """The owner (2026-11-17): one rule for a bare yes on a card, in the package, for every host (the cabinet had
+    its own copy). A bare yes or no answers the card that waits when the card is the last line; anything longer,
+    a card further up, a card already answered or a question with options is an ordinary message."""
+    answer = voice.card_answer
+    da = "".join(map(chr, (0x434, 0x430)))   # a Russian yes
+    card = {"id": "c1", "kind": "card", "status": "pending", "changes": [{"name": "term", "value": 36}]}
+    talk = [{"id": "u1", "kind": "user", "text": "36 months"}, {"id": "a1", "kind": "assistant", "text": "Set it?"}, card]
+    assert answer("Yes", talk) == {"card_id": "c1", "type": "set_fields", "accepted": True}
+    assert answer(da, talk) == {"card_id": "c1", "type": "set_fields", "accepted": True}
+    assert answer("no", talk) == {"card_id": "c1", "type": "set_fields", "accepted": False}
+    # the line already stored after the card does not hide the card
+    assert answer("Yes", [*talk, {"id": "u2", "kind": "user", "text": "Yes"}])["card_id"] == "c1"
+    assert answer("yes, show the statistics", talk) is None and answer("48", talk) is None and answer("", talk) is None
+    # something came after the card, the card was answered, or nothing waits
+    assert answer("yes", [*talk, {"id": "a2", "kind": "assistant", "text": "Anything else?"}]) is None
+    assert answer("yes", [*talk[:2], {**card, "status": "accepted"}]) is None
+    assert answer("yes", talk[:2]) is None and answer("yes", []) is None and answer("yes", None) is None
+    confirm = {"id": "k1", "kind": "confirm", "status": "pending", "title": "Submit?"}
+    assert answer("no", [confirm]) == {"card_id": "k1", "type": "confirm", "accepted": False}
+    question = {"id": "q1", "kind": "question", "status": "pending", "question": "Which one?", "options": []}
+    assert answer("yes", [question]) is None
+    # a host that confirms its own actions takes only cards of values; a kind that is not a yes or no never counts
+    assert answer("no", [confirm], kinds=("card",)) is None and answer("yes", talk, kinds=("card",))["card_id"] == "c1"
+    assert answer("yes", [question], kinds=("question",)) is None

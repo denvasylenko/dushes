@@ -60,6 +60,10 @@ In voice mode a value the person said aloud in this conversation SHALL be applie
 - **WHEN** the assistant offers colours, the palette holds Sand, and the person says "porcelain"
 - **THEN** Porcelain replaces Sand at once, with a line and Undo, and the person is not asked to confirm it
 
+#### Scenario: An offered option picked by name
+- **WHEN** the assistant offers colours, the palette holds Sand, and the person says "porcelain"
+- **THEN** Porcelain replaces Sand at once, with a line and Undo, and the person is not asked to confirm it
+
 #### Scenario: A value from a document
 - **WHEN** the agent reads an income figure from an uploaded document and proposes it
 - **THEN** a card asks for confirmation before the field is filled

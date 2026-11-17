@@ -674,7 +674,11 @@ class Talks:
                 self.hush(state["thread"])
             # a plain yes or no while a card waits is the answer to that card: the client accepts or
             # rejects it instead of sending the words as a new message (which would close the card)
-            card, said_yes = state.get("waiting"), yes_or_no(text)
+            # a waiting card is answered only by a bare yes or no, and by a yes only when the voice named
+            # everything on it (the CPO, 2026-11-17)
+            card, said_yes = state.get("waiting"), yes_or_no(text, strict=True)
+            if said_yes and not covers(card):
+                said_yes = None
             answers = ({"answers": {"card_id": card.get("card_id"), "type": card.get("type") or "set_fields",
                                     "accepted": said_yes}} if card and said_yes is not None else {})
             self._emit(state, {"type": "heard", "text": text, **answers})
@@ -777,6 +781,8 @@ class Talks:
                             if x not in spoke)
             if t == "RUN_ERROR":
                 rest = "Tell the person that something went wrong and to try again."
+            elif waits and "?" in " ".join(by_id.values()):
+                pass   # the reply already asks the card's question in its own words (a host's line): said once
             elif waits:   # a card waits: the voice asks its question itself, and a spoken yes or no answers it
                 rest = (rest + " " if rest else "") + asks(waits)
             elif not text and not spoke:
@@ -930,7 +936,7 @@ def named(card: dict, asked: str | None) -> bool:
                for r in rows)
 
 
-def yes_or_no(text: str) -> bool | None:
+def yes_or_no(text: str, strict: bool = False) -> bool | None:
     """True for a plain yes, False for a plain no, None for anything else. Plain means eight words at most and
     nothing but the yes or no and filler ("yes please", "I said yes", "no thanks"); "yes, but make it 48" is a
     request, and both words together are neither. A longer utterance is a yes when it opens with agreement and
@@ -943,12 +949,37 @@ def yes_or_no(text: str) -> bool | None:
     rest = [w for w in words if w not in _YES_WORDS and w not in _NO_WORDS and w not in _FILLERS]
     if len(words) <= 8 and not rest and yes != no:
         return yes
+    if strict:
+        return None   # for answering a card: only a bare yes or no ("yes, show the statistics" is a request)
     # an utterance that opens with agreement and turns to nothing else is a yes, whatever comes with it ("Yeah, I
     # said, set it. Set value", "Yeah, set it, why you didn't set"): the person is repeating themselves
     opens = next((w for w in words if w not in _FILLERS), "")
     if opens in _YES_WORDS and opens not in _ORDERS and not no and not any(w in _TURNS for w in words):
         return True
     return None
+
+
+def card_answer(text: str | None, entries: list | None, kinds: tuple = ("card", "confirm")) -> dict | None:
+    """Whether a typed or spoken line is the answer to the card that waits, decided in one place for every host.
+
+    `entries` is the thread's display transcript as it stood before this line. The line answers the card only when
+    it is a bare yes or no (`yes_or_no(text, strict=True)`: "yes, show the statistics" is a request) and the card
+    is the last line of the conversation and still waits; a card further up was passed over, and a line after it
+    is about something else. Only a card of proposed values and a confirmation are answered this way: a question
+    with options, an upload and a review are not a yes or no; `kinds` narrows it further (`("card",)` for a host that
+    confirms its own actions). Returns `{"card_id", "type", "accepted"}`, or None
+    when the line is an ordinary message. A host that speaks the card also checks `covers(card)` before taking a
+    yes: on the screen the person sees every row, by ear only what was named."""
+    said = yes_or_no(text or "", strict=True)
+    rows = [e for e in entries or [] if isinstance(e, dict)]
+    # the line itself may already be stored as the last entry: it is not what stands between the person and the card
+    if rows and rows[-1].get("kind") == "user" and (rows[-1].get("text") or "").strip() == (text or "").strip():
+        rows = rows[:-1]
+    last = rows[-1] if rows else None
+    if said is None or not last or last.get("kind") not in ("card", "confirm") or last["kind"] not in kinds or last.get("status") != "pending":
+        return None
+    return {"card_id": last.get("id"), "type": "confirm" if last["kind"] == "confirm" else "set_fields",
+            "accepted": said}
 
 
 def same_changes(one: list | None, other: list | None) -> bool:
@@ -970,14 +1001,80 @@ def asks(card: dict) -> str:
         return f"{card.get('question') or 'Which one?'}" + (f" The choices are: {', '.join(options)}." if options else "")
     if kind == "confirm":
         return f"{card.get('title') or card.get('message') or 'Shall I go ahead?'} Say yes or no."
-    rows = [f"{r.get('label') or r.get('name')}: {r.get('display') or r.get('value')}"
-            for r in card.get("changes") or [] if isinstance(r, dict)][:4]
+    rows, more = said_rows(card)
     if not rows:
         return "Shall I fill that in? Say yes or no."
     if any(isinstance(r, dict) and spelled(r) for r in card.get("changes") or []):
         # a name or an e-mail as it was heard: read back, with a way out when it was heard wrong
         return "I heard " + " and ".join(rows) + ". Is that right? If not, spell it for me."
-    return "Shall I fill in " + " and ".join(rows) + "? Say yes or no."
+    if more:   # too many to say: a yes then accepts nothing (`covers`), they are looked at on the screen
+        return ("Tell them you would fill in " + ", ".join(rows) + f" and {more} more fields, that all of them are on the "
+                "screen, and ask them to look and accept there.")
+    return "Shall I fill in " + (", ".join(rows[:-1]) + " and " + rows[-1] if len(rows) > 1 else rows[0]) + "? Say yes or no."
+
+
+SAID_ROWS = 12   # how many items of a card the voice names; with more, a spoken yes does not accept the card
+_RANGE_END = re.compile(r"^(?P<key>.+?)[_.-]?(?P<end>from|to|start|end|open|close|since|until)$", re.IGNORECASE)
+_CLOCK = re.compile(r"^\d{1,2}:\d{2}$")
+
+
+def said_rows(card: dict) -> tuple[list[str], int]:
+    """What the voice names of a field-change card, and how many items it leaves out. Every row with a value is
+    named, never only the first few: the person agrees to what they heard (QA Herefront, 2026-11-17: a card with
+    opening hours and a palette was asked as its first four rows, and "yes" accepted the rest unheard). A pair of
+    rows that is a time range ("mo_from", "mo_to") is one item, and neighbours with the same range are joined:
+    "Monday\u2013Saturday 07:00\u201317:00, Sunday 09:00\u201317:00". An empty value is not named."""
+    def shown(r: dict) -> str:
+        v = r.get("display")
+        if v in (None, "", [], {}):
+            v = r.get("value")
+            v = v.get("name") if isinstance(v, dict) and v.get("name") else v
+        return "" if v in (None, "", [], {}) else str(v)
+
+    rows = [r for r in card.get("changes") or [] if isinstance(r, dict)]
+    items: list[tuple[str, str, str]] = []      # (kind, label, value): kind "range" for a joined time range
+    used: set[int] = set()
+    # a day's "open" tick that is on, beside that day's hours, is part of the hours and is not said by itself (the
+    # cabinet's card has one a day: with them said, seven days became fourteen items); a tick that is off is said
+    timed = {m.group("key") for r in rows if (m := _RANGE_END.match(str(r.get("name") or ""))) and _CLOCK.match(shown(r))}
+    for i, r in enumerate(rows):
+        m = _RANGE_END.match(str(r.get("name") or ""))
+        if m and m.group("end").lower() == "open" and m.group("key") in timed and r.get("value") is True:
+            used.add(i)
+    for i, r in enumerate(rows):
+        if i in used:
+            continue
+        m = _RANGE_END.match(str(r.get("name") or ""))
+        if m and _CLOCK.match(shown(r)):
+            j = next((k for k in range(i + 1, len(rows)) if k not in used and (mm := _RANGE_END.match(str(rows[k].get("name") or "")))
+                      and mm.group("key") == m.group("key") and _CLOCK.match(shown(rows[k]))), None)
+            if j is not None:
+                used.update((i, j))
+                label = re.split(r"\s*[:\u2014-]\s*", str(r.get("label") or m.group("key")))[0].strip() or m.group("key")
+                items.append(("range", label, f"{shown(r)}\u2013{shown(rows[j])}"))
+                continue
+        used.add(i)
+        if shown(r):
+            items.append(("row", str(r.get("label") or r.get("name")), shown(r)))
+    said: list[str] = []
+    k = 0
+    while k < len(items):
+        kind, label, value = items[k]
+        if kind == "range":
+            n = k
+            while n + 1 < len(items) and items[n + 1][0] == "range" and items[n + 1][2] == value:
+                n += 1
+            said.append(f"{label}\u2013{items[n][1]} {value}" if n > k else f"{label} {value}")
+            k = n + 1
+        else:
+            said.append(f"{label}: {value}")
+            k += 1
+    return said[:SAID_ROWS], max(0, len(said) - SAID_ROWS)
+
+
+def covers(card: dict | None) -> bool:
+    """Whether the voice's question for this waiting card names everything on it, so a spoken yes may accept it."""
+    return not card or (card.get("type") or "set_fields") != "set_fields" or said_rows(card)[1] == 0
 
 
 # The provider may ask for the agent (session.delegation.created) before the words of the phrase have arrived. Such a
