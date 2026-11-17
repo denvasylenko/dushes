@@ -41,6 +41,7 @@ const ABOUT: Record<string, string> = {
 }
 const cap = (x: string): string => x.charAt(0).toUpperCase() + x.slice(1)
 // the question as a guest reads it: our short words; the model's own long question only in the developers' details
+const DROVE = ['command', 'turn', 'asks_move', 'target', 'value', 'date_field', 'needs_agent', 'asks_more']
 const aboutOf = (q: Question): string => ABOUT[q.about] || (/^(field|section):/.test(q.about) ? cap(q.about.replace(/^(field|section):/, '').replace(/_/g, ' ')) : q.text || q.about)
 const TURN: Record<string, string> = { go_to: 'go somewhere', question: 'a question', show: 'point at something', set: 'set a value', other: 'something else' }
 const answerOf = (q: Question): string => (q.about === 'turn' && q.answer && TURN[q.answer]) || q.answer_label || q.answer || '\u2014'
@@ -84,7 +85,10 @@ export function turnCard(t: DecidedTurn, open: boolean): { id: string; blocks: B
   const d = t.decision, s = t.stats
   const qs = d?.questions ?? []
   // a form page asks Jev 10 to 30 things: the ones that decided something first, the rest folded
-  const shown = qs.filter((q) => q.used !== false).sort((a, b) => (b.p ?? 0) - (a.p ?? 0)).slice(0, 5)
+  // the answers that led to the action first, in the order a guest reads "why it did this" (a command, what kind,
+  // where, the value), then the rest by how sure Jev was; a "no" that changed nothing never leads
+  const rank = (q: Question): number => { const i = DROVE.indexOf(q.about); return i >= 0 ? i : /^field:/.test(q.about) && q.answer !== 'no' ? DROVE.length : 99 }
+  const shown = qs.filter((q) => q.used !== false).sort((a, b) => rank(a) - rank(b) || (b.p ?? 0) - (a.p ?? 0)).slice(0, 5)
   const rest = qs.filter((q) => !shown.includes(q))
   const how: Block[] = [
     // how sure Jev was sits inside its own step, under its line (one heading fewer per card)
@@ -103,7 +107,8 @@ export function turnCard(t: DecidedTurn, open: boolean): { id: string; blocks: B
     id: s.run_id ?? String(t.at.getTime()),
     blocks: [
       { type: 'title', text: `«${d?.said || t.label}»`, subtitle: time(t.at) },
-      { type: 'text', text: `${summary(d, s)} · ${sec(s.total_ms)}` },
+      // a turn Jev carried out alone has no model call: its time is Jev's own step
+      { type: 'text', text: `${summary(d, s)} · ${sec(s.total_ms || d?.steps?.[0]?.ms || 0)}` },
       { type: 'details', label: 'How exactly', open, blocks: how },
     ],
   }

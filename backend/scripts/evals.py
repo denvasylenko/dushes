@@ -947,7 +947,9 @@ def _play(sc: Scenario, http: httpx.Client, user: User | None, judge_model: Any,
     visit = Visit(http, sc.page, answer=(user.choose if user else None), site=sc.site)
     if ("voice" in sc.tags or os.environ.get("EVAL_VOICE_ALL")) and os.environ.get("EVAL_VOICE_PREFIX"):   # EVAL_VOICE_ALL: every scenario of the run   # a stand started with VOICE_AS_IF=<the same prefix>: the voice branch, no session
         visit.as_voice(os.environ["EVAL_VOICE_PREFIX"])
-    visit.answers_in_words = "answers_in_words" in sc.tags   # a field card is not tapped: the next line is the answer
+    visit.answers_in_words = "answers_in_words" in sc.tags or bool(os.environ.get("EVAL_NO_TAP"))   # a field card is not tapped: the next line is the answer
+    if os.environ.get("EVAL_NO_TAP"):   # the guest who neither taps nor answers cards: a defect between a card and the next line shows
+        visit.answer = lambda q: None
     visit.ticks = {k for k, v in sc.answers.items() if v is True}   # the consents this guest gives with their own tick
     if sc.ui and visit.form:       # e.g. form_visible: false, as a page that shows only the chat sends it
         visit.form.ui.update(sc.ui)
