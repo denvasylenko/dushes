@@ -860,14 +860,15 @@ def yes_or_no(text: str, strict: bool = False) -> bool | None:
     return None
 
 
-def card_answer(text: str | None, entries: list | None) -> dict | None:
+def card_answer(text: str | None, entries: list | None, kinds: tuple = ("card", "confirm")) -> dict | None:
     """Whether a typed or spoken line is the answer to the card that waits, decided in one place for every host.
 
     `entries` is the thread's display transcript as it stood before this line. The line answers the card only when
     it is a bare yes or no (`yes_or_no(text, strict=True)`: "yes, show the statistics" is a request) and the card
     is the last line of the conversation and still waits; a card further up was passed over, and a line after it
     is about something else. Only a card of proposed values and a confirmation are answered this way: a question
-    with options, an upload and a review are not a yes or no. Returns `{"card_id", "type", "accepted"}`, or None
+    with options, an upload and a review are not a yes or no; `kinds` narrows it further (`("card",)` for a host that
+    confirms its own actions). Returns `{"card_id", "type", "accepted"}`, or None
     when the line is an ordinary message. A host that speaks the card also checks `covers(card)` before taking a
     yes: on the screen the person sees every row, by ear only what was named."""
     said = yes_or_no(text or "", strict=True)
@@ -876,7 +877,7 @@ def card_answer(text: str | None, entries: list | None) -> dict | None:
     if rows and rows[-1].get("kind") == "user" and (rows[-1].get("text") or "").strip() == (text or "").strip():
         rows = rows[:-1]
     last = rows[-1] if rows else None
-    if said is None or not last or last.get("kind") not in ("card", "confirm") or last.get("status") != "pending":
+    if said is None or not last or last.get("kind") not in ("card", "confirm") or last["kind"] not in kinds or last.get("status") != "pending":
         return None
     return {"card_id": last.get("id"), "type": "confirm" if last["kind"] == "confirm" else "set_fields",
             "accepted": said}

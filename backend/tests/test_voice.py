@@ -902,3 +902,6 @@ def test_a_bare_yes_answers_the_card_only_when_it_is_the_last_line():
     assert answer("no", [confirm]) == {"card_id": "k1", "type": "confirm", "accepted": False}
     question = {"id": "q1", "kind": "question", "status": "pending", "question": "Which one?", "options": []}
     assert answer("yes", [question]) is None
+    # a host that confirms its own actions takes only cards of values; a kind that is not a yes or no never counts
+    assert answer("no", [confirm], kinds=("card",)) is None and answer("yes", talk, kinds=("card",))["card_id"] == "c1"
+    assert answer("yes", [question], kinds=("question",)) is None

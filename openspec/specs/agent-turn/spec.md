@@ -198,7 +198,7 @@ When the person answers a field-change card in words (a plain yes, typed or spok
 - **THEN** the run's card for the same change carries `quiet: true` and the client applies it at once
 
 ### Requirement: One rule for a bare yes on a waiting card
-The package SHALL offer one function, `formguide.voice.card_answer(text, entries)`, that decides whether a line answers the card that waits, so a host does not keep its own copy of the rule. It SHALL return the card's id, its type and `accepted` only when the line is a bare yes or no and the card (proposed values or a confirmation) is the last line of the conversation and still pending; otherwise it SHALL return nothing and the line is an ordinary message.
+The package SHALL offer one function, `formguide.voice.card_answer(text, entries)`, that decides whether a line answers the card that waits. It SHALL return the card's id, type and `accepted` only when the line is a bare yes or no and the card (proposed values or a confirmation) is the last line and still pending; otherwise nothing. A host MAY narrow the kinds it answers (`kinds=("card",)`).
 
 #### Scenario: The card is the last line
 - **WHEN** the conversation ends on a pending card of proposed values and the person types "yes"
