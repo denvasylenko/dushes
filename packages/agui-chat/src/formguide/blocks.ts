@@ -86,8 +86,12 @@ const ICON: Record<string, string> = {
   'eye-off': 'M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7-.5 1.2-1.3 2.4-2.4 3.5M6.6 6.6C4.6 7.9 3 9.9 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5.1-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2',
   picture: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM4 16l5-5 4 4 3-3 4 4M15.5 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3',
   palette: 'M12 21a9 9 0 1 1 9-9c0 2.2-1.8 3-3.5 3H16a2 2 0 0 0-1.5 3.3c.6.7.2 2.7-2.5 2.7zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01',
+  lock: 'M7 11V8a5 5 0 0 1 10 0v3M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1z',
   type: 'M3 18l4.5-12L12 18M4.7 14h5.6M14.5 10.6c.6-.9 1.6-1.6 2.9-1.6 1.8 0 3.1 1.3 3.1 3.2V18M20.5 14c-.9-.6-2-.9-3.1-.9-1.7 0-2.9 1-2.9 2.4S15.6 18 17 18c1.6 0 2.8-.8 3.5-2',
 }
+/** A step's time: 380 ms, 3.1 s. */
+const timeOf = (ms: number, c: RendererContext): string => !Number.isFinite(ms) ? '' : ms < 1000 ? `${Math.round(ms)} ms`
+  : `${new Intl.NumberFormat(c.chat.lang || undefined, { maximumFractionDigits: 1 }).format(ms / 1000)} s`
 const icon = (name: string): HTMLElement => {
   const s = h('span', { class: 'bk-ico', 'aria-hidden': 'true' })
   if (ICON[name]) s.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON[name]}"/></svg>`
@@ -440,6 +444,25 @@ function block(b: Block, c: RendererContext, values: Record<string, unknown>, an
       })
       const wrap = h('div', { class: 'bk-tiles', part, role: 'group', 'aria-label': str(b.label) || null }, tiles)
       return tiles.length ? wrap : null
+    }
+    case 'timeline': {   // what happened, in order: a mark (a number or a letter), a title, a grey line, the time on the right
+      const items = list(b.items)
+      return items.length ? h('ol', { class: 'bk-tl', part }, items.map((x, i) => h('li', { class: `bk-tl-i${tone(x.tone)}` },
+        h('span', { class: 'bk-tl-m', 'aria-hidden': 'true' }, str(x.mark ?? i + 1).slice(0, 2)),
+        h('span', { class: 'bk-tl-t' }, h('span', { class: 'bk-strong' }, str(x.label)), x.detail ? md(x.detail, 'muted bk-small') : null),
+        x.ms != null && x.ms !== '' ? h('span', { class: 'bk-tl-ms muted bk-small' }, timeOf(Number(x.ms), c)) : null))) : null
+    }
+    case 'details': {   // more for whoever wants it (a developer's view): a line that opens the blocks under it
+      const inner = h('div', { class: 'bk-details-b', hidden: !b.open })
+      blocksCard({ blocks: b.blocks }, c, answer, onAction, inner)
+      const toggle = h('button', { class: 'bk-details-l', type: 'button', 'aria-expanded': b.open ? 'true' : 'false' }, str(b.label), h('span', { class: 'chev', 'aria-hidden': 'true' }, '\u203a'))
+      toggle.addEventListener('click', () => { inner.hidden = !inner.hidden; toggle.setAttribute('aria-expanded', String(!inner.hidden)) })
+      return h('div', { class: 'bk-details', part }, toggle, inner)
+    }
+    case 'code': {   // a short monospace text (a payload, a table of variants), as written
+      const pre = h('pre', { class: 'bk-code', part })
+      pre.textContent = typeof b.text === 'string' ? b.text : JSON.stringify(b.value ?? b.text ?? '', null, 2)
+      return pre
     }
     case 'links': {   // a link without a value (no phone given) is left out; no links, no block
       const items = list(b.items).filter((x) => x.value != null && x.value !== '')

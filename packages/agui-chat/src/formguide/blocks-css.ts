@@ -1,6 +1,7 @@
 /** The card blocks' styles: they ship with the blocks (agui-chat.blocks.js in the one-script build) and are added to
  *  each chat's shadow root the first time a card from blocks lands there, before the theme so the theme still wins. */
 export const BLOCKS_CSS = `
+:host { --agui-warn: #c93400; } :host(.dark) { --agui-warn: #ff9f0a; }   /* a threshold's mark (orange, as on iOS); a theme may set its own */
 /* cards from blocks (formguide/blocks.ts): small parts, one look; colours only from the theme and a tone */
 .bk { display: grid; gap: 12px; }
 .bk .card-q, .bk .acts { margin: 0; }
@@ -10,7 +11,7 @@ export const BLOCKS_CSS = `
 .bk-row { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 12px; }
 .bk-row + .bk-row { border-top: 1px solid var(--agui-line); }
 .bk-label { flex: 1; min-width: 0; color: var(--agui-ink-2); }
-.bk-value { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.bk-value { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; min-width: 0; max-width: 65%; overflow-wrap: anywhere; }   /* a long value wraps, never over its label */
 .bk-row.tone-ok .bk-value, .bk-row.tone-danger .bk-value, .bk-row.tone-accent .bk-value { color: inherit; } .bk-row[class*=tone-] .bk-label { color: var(--agui-ink-2); }
 .bk-img { display: block; width: 100%; object-fit: cover; border-radius: var(--agui-radius-sm); background: var(--agui-soft); }
 .bk-place { display: flex; align-items: center; gap: 12px; }
@@ -121,6 +122,24 @@ export const BLOCKS_CSS = `
 .bk-num { font-variant-numeric: tabular-nums; color: var(--agui-ink); }
 .bk-track { height: 6px; margin-top: 4px; border-radius: var(--agui-radius-pill); background: var(--agui-soft); overflow: hidden; }
 .bk-track > i { display: block; height: 100%; border-radius: inherit; background: var(--agui-link); }
+.bk-track:has(> b) { position: relative; overflow: visible; } .bk-track > b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--agui-warn); }
+.bk-barlist.ink .bk-track > i { background: var(--agui-ink); }
+/* a timeline: a mark in a small circle, a title and a grey line, the time on the right; hairlines between */
+.bk-tl { list-style: none; margin: 0; padding: 0; }
+.bk-tl-i { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px 0; }
+.bk-tl-i + .bk-tl-i { border-top: 1px solid var(--agui-line); }
+.bk-tl-m { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--agui-soft); color: var(--agui-ink-2); font-size: 11px; font-weight: 600; }
+.bk-tl-i.tone-ok .bk-tl-m { background: color-mix(in srgb, var(--agui-ok) 20%, transparent); color: var(--agui-ok-ink, var(--agui-ink)); }
+.bk-tl-t { display: grid; gap: 1px; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+.bk-tl-t > .bk-strong { font-size: 14px; color: var(--agui-ink); }   /* the tone shows in the mark only */
+.bk-tl-ms { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bk-tl-i > .bk-tl-t > .bk-barlist, .bk-tl-t .bk-chart { margin-top: 6px; }
+/* more for a developer: a line that opens what is under it */
+.bk-details-l { display: inline-flex; gap: 6px; align-items: center; min-height: 32px; padding: 0; border: 0; background: none; color: var(--agui-ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+.bk-details-l .chev { transition: transform .2s; } .bk-details-l[aria-expanded=true] .chev { transform: rotate(90deg); }
+@media (pointer: coarse) { .bk-details-l { min-height: 44px; } }
+.bk-details-b { display: grid; gap: 12px; padding-top: 4px; }
+.bk-code { margin: 0; padding: 10px 12px; border-radius: var(--agui-radius-sm); background: var(--agui-soft); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--agui-ink); }
 .bk-stack { display: flex; gap: 2px; height: 12px; }
 .bk-stack > i { min-width: 2px; }
 .bk-stack > i:first-child { border-radius: 4px 0 0 4px; } .bk-stack > i:last-child { border-radius: 0 4px 4px 0; } .bk-stack > i:only-child { border-radius: 4px; }

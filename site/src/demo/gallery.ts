@@ -397,6 +397,11 @@ export const CATALOG: Specimen[] = [
     { type: 'note', text: 'Will not be shown' },
     { type: 'note', icon: 'eye-off', text: 'Photo at the top: kept, comes back with another look' },
     { type: 'buttons', items: [{ id: 'looks', label: 'Choose another', style: 'secondary' }] }]),
+  block('timeline', 'Timeline', '`items: [{label, detail?, ms?, mark?, tone?}]`, with a `barList` against a `threshold` and a `details` fold.', [
+    { type: 'title', text: '\u00abOpen car insurance\u00bb', subtitle: '14:02' },
+    { type: 'timeline', items: [{ label: 'Filter', detail: 'hidden before sending: nothing', ms: 4 }, { mark: 'J', label: 'The decision model read the line', detail: 'acts on its own only above the line', ms: 380, tone: 'ok' }] },
+    { type: 'chart', kind: 'barList', ink: true, unit: '%', max: 100, threshold: 80, data: [{ label: 'A command: yes', value: 97 }, { label: 'What to open: Car insurance', value: 91 }, { label: 'Names a gender: no', value: 3 }] },
+    { type: 'details', label: 'Developer details', blocks: [{ type: 'code', value: { threshold: 0.8, applied: ['opened screen:/insurance'] } }] }]),
   block('tiles', 'Tiles', '`items: [{id, label, image?, note?, noteIcon?, selected?}]`, `ratio?`: a tap answers; the chosen one stays ringed.', [{ type: 'title', text: 'Simpler looks' },
     { type: 'tiles', items: [{ id: 'contrast', label: 'Contrast', image: SITE_THUMB, selected: true }, { id: 'journal', label: 'Journal', image: SITE_THUMB },
       { id: 'minimum', label: 'Minimum', note: 'No photo at the top', noteIcon: 'eye-off' }] }]),

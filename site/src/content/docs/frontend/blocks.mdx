@@ -43,8 +43,11 @@ Compose your own card from these in the [Playground](../playground/) (Your own c
 | `place` | `title`, `subtitle?`, `image?`, `rating?`, `ratio?` (`3:4` for a page's thumbnail) | a person or a place: a photo or an initial, a name, a line, ★ 4.9 |
 | `picklist` | `items: [{id, title, subtitle?, image?, icon?}]`, `none?` (a label, or `{id, label}`) | a choice as full-width rows: a tile (photo, glyph or the first letter), the name, a second line, a chevron. A tap answers with `{action: id, label: title}` and the card keeps that row with a tick. No row is highlighted, so nothing reads as recommended; `none` adds a plain "None of these" under the rows |
 | `stat` | `value`, `label?`, `tone?`, `change?` ("+12%"; a leading minus turns it red), `spark?: [numbers]` | a big number or date, like a balance, with its change and a sparkline of how it got there |
-| `chart` | `kind` (`bar`, `line`, `area`, `barList`, `stacked`, `meter`), `title?`, `subtitle?`, `unit?`, `data: [{label, value}]` or `labels` + `series: [{name, data}]`, `highlight?`; a meter takes `value`, `max?`, `limit?`, `label?` | a simple chart in the theme's colours, see Charts below |
+| `chart` | `kind` (`bar`, `line`, `area`, `barList`, `stacked`, `meter`), `title?`, `subtitle?`, `unit?`, `data: [{label, value}]` or `labels` + `series: [{name, data}]`, `highlight?`; a meter takes `value`, `max?`, `limit?`, `label?` | a simple chart in the theme's colours, see Charts below; a `barList` also takes `max` (a fixed scale), `threshold` (a mark on every bar) and `ink` |
 | `diff` | `label?`, `from`, `to`, `icon?`, `inline?` | the old value struck through → the new one; with `inline`, the icon, the label and the change on one line |
+| `timeline` | `items: [{label, detail?, ms?, mark?, tone?}]` | steps in order: a mark (its number, or a letter), a title, a grey line, the time on the right; hairlines between |
+| `details` | `label`, `blocks`, `open?` | a line that opens the blocks under it (details for whoever wants them) |
+| `code` | `text`, or `value` (shown as JSON) | a short monospace text |
 | `tiles` | `items: [{id, label, image?, note?, noteIcon?, selected?}]`, `ratio?` (default `9:16`) | pictures side by side (looks of a page, rooms), a name and a grey line under each; a tap answers, the chosen one stays ringed. Use server-rendered pictures, not live pages |
 | `steps` | `title?` (`{left}` counts open steps), `items: [{label, done?}]` | a checklist with round ticks |
 | `progress` | `value`, `max?` (100), `label?` | a thin bar |
@@ -56,6 +59,17 @@ Compose your own card from these in the [Playground](../playground/) (Your own c
 | `buttons` | `items: [{id, label, style?, fills?}]`, styles `primary`, `secondary`, `plain`, `danger`; `need?` | the card's actions; one primary. `fills: {field: value}` fills form fields on the tap, with Undo. While a `required` choice or field (or `hours`) is empty, the primary waits and the line under it says what is missing (`need`, `Choose: {x}` by default) |
 | `links` | `items: [{kind, label, value}]` | actions that work at once, see below |
 | `divider` | | a hairline |
+
+### Cards outside the chat
+
+A page can draw the same cards in its own panel, with the chat's look, light and dark: `<agui-blocks>` from `@formguide/agui-chat/blocks-view` (a module of its own, not in the one-script build). Nothing waits for an answer; a tap is reported to the page.
+
+```js
+import '@formguide/agui-chat/blocks-view'
+const view = document.querySelector('agui-blocks')   // <agui-blocks empty="Nothing yet"></agui-blocks>
+view.cards = [{ id: 'turn-1', blocks: [{ type: 'title', text: 'Open car insurance' }, { type: 'timeline', items: [{ label: 'Filter', ms: 4 }] }] }]
+view.addEventListener('agui:block-action', (e) => console.log(e.detail))   // {id, label, card}
+```
 
 An unknown block is skipped, so a newer server never breaks an older chat.
 

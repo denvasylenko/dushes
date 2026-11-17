@@ -8,7 +8,8 @@ import { javaEvent, javaForm, javaForms, registerLayout, FRONTEND_TOOLS, type Fo
 import { FormProvider, Render } from './Form'
 import { parseJsx } from './jsx'
 import Manager from './Manager'
-import { TraceLine, TracePanel, type RunStats, type Turn } from './Trace'
+import { TraceLine, type RunStats } from './Trace'
+import { Decisions, type DecidedTurn, type Decision } from './Decisions'
 import type { Config, JsxNode, RevealStep, UiDirective, UiState } from './types'
 
 // ?dictation=server tries Whisper on the server even where the browser can recognise speech (the demo's switch)
@@ -82,8 +83,9 @@ export default function App() {
   const [ui, setUi] = useState<UiState>(EMPTY_UI)
   const [agentCtx, setAgentCtx] = useState<AgentCtx>(null)
   const [showCtx, setShowCtx] = useState(false)
-  const [turns, setTurns] = useState<Turn[]>([])   // this conversation's run_stats, newest first (the trace)
-  const [showTrace, setShowTrace] = useState(false)
+  const [turns, setTurns] = useState<DecidedTurn[]>([])   // this conversation's turns, newest first (the How it decided tab)
+  const [pane, setPane] = useState<'chat' | 'decisions'>('chat')   // the chat, or how each turn was decided
+  const decided = useRef(new Map<string, Decision>())   // decision_trace waits here for its run_stats (joined by run_id)
   const asked = useRef('')   // what the running turn answers: the user's message, or a card's answer
   const [busy, setBusy] = useState(false)
   const [thread, setThread] = useState('')
@@ -211,7 +213,12 @@ export default function App() {
     if (e.type === 'CUSTOM' && e.name === 'agent_context') setAgentCtx(e.value as AgentCtx)
     if (e.type === 'CUSTOM' && e.name === 'run_stats') {
       const stats = e.value as RunStats
-      setTurns((t) => [{ at: new Date(), label: asked.current || 'Turn', stats }, ...t].slice(0, 50))
+      const decision = stats.run_id ? decided.current.get(stats.run_id) : undefined
+      setTurns((t) => [{ at: new Date(), label: asked.current || 'Turn', stats, decision }, ...t].slice(0, 50))
+    }
+    if (e.type === 'CUSTOM' && e.name === 'decision_trace') {   // the decision model's part of a turn: before or after its run_stats
+      const d = (typeof e.value === 'string' ? JSON.parse(e.value) : e.value) as Decision
+      if (d?.run_id) { decided.current.set(d.run_id, d); setTurns((t) => t.map((x) => (x.stats.run_id === d.run_id ? { ...x, decision: d } : x))) }
     }
   }, [])
 
@@ -289,13 +296,14 @@ export default function App() {
           <Render node={form.tree} />
         </FormProvider>
       </main>
-      <aside className="chat-pane">
+      <aside className={`chat-pane${pane === 'decisions' ? ' pane-decisions' : ''}`}>
+        <div className="seg pane-seg" role="tablist" aria-label="Assistant panel">
+          <button role="tab" aria-selected={pane === 'chat'} className={pane === 'chat' ? 'on' : ''} onClick={() => setPane('chat')}>Chat</button>
+          <button role="tab" aria-selected={pane === 'decisions'} className={pane === 'decisions' ? 'on' : ''} onClick={() => setPane('decisions')}>How it decided</button>
+        </div>
         <div className="chat-tools">
           <button className="link" onClick={() => setShowCtx((s) => !s)} disabled={!agentCtx}>
             {showCtx ? 'Hide' : 'What the agent sees'}
-          </button>
-          <button className="link" onClick={() => setShowTrace((s) => !s)} aria-expanded={showTrace}>
-            {showTrace ? 'Hide trace' : `Trace${turns.length ? ` (${turns.length})` : ''}`}
           </button>
           <button className="link" onClick={prefill} disabled={busy || !PROFILES[form.formId]}
             title="Start from data the app already has (AG-UI forwardedProps.prefill)">Prefill from profile</button>
@@ -303,7 +311,7 @@ export default function App() {
             {LANGS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
         </div>
-        {showTrace && <TracePanel turns={turns} />}
+        {pane === 'decisions' && <Decisions turns={turns} />}
         {showCtx && agentCtx && <pre className="ctx">{agentCtx.text}</pre>}
         <AguiChat
           ref={chatRef}
