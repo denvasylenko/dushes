@@ -391,3 +391,13 @@ def test_the_voice_must_name_every_option_of_a_waiting_question_card(monkeypatch
     six = [{"id": str(i), "label": f"Part {i}"} for i in range(6)]
     assert got("voiceqa-t1", six) == [False]                       # the voice says five: the sixth is never heard
     assert got("t1", three) == []                                  # a typed thread: no such check
+
+
+def test_open_all_on_needs_every_part_opened_in_that_reply():
+    import evals
+    sc = _bar("x", opens_all_on={r"^\W*Open all sections": ["acc_personal", "acc_passport"]})
+    def ok(*log):
+        return next(c["ok"] for c in evals.checks(sc, _visit(["\n\U0001f464 Open all sections", *log])) if c["check"].startswith("opens every"))
+    assert ok('   ⚙ focus_field({"name": "acc_personal"})', "   \U0001f526 highlight acc_passport") is True
+    assert ok('   ⚙ focus_field({"name": "tab_applicant"})', "\U0001f916 I can open one section at a time.") is False
+    assert ok('   ⚙ focus_field({"name": "acc_personal"})') is False
