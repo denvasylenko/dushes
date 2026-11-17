@@ -646,3 +646,21 @@ def test_a_bare_name_of_a_place_opens_it_and_okay_is_not_a_name(guide, model, mo
     before = len(model.calls)
     ev = run(site_with(guide, ok), "ok-1", message="Oh Okay, okay, okay. Open the loans", state={"page": {"path": "/"}})
     assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before and "then" not in text(ev)
+
+
+def test_the_chooser_is_told_which_page_was_open_before(guide, model):
+    """The QA Lead's probe (2026-11-17): after Barbershop then Contacts, "open the previous one" opened a part of
+    Contacts with the old page's name; the chooser had no way to know where the person had been. The page open
+    just before this one is now marked among the options, and the trail is in its state."""
+    pages = [p for p in SiteMap.load(SITE).pages][:3]
+    a, b = pages[1], pages[2]
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), target=(f"screen:{b.path}", 0.9))
+    site = site_with(guide, chooser)
+    run(site, "back-1", message=f"open {b.title}", state={"page": {"path": a.path}})
+    chooser.answers["target"] = (f"screen:{a.path}", 0.9)
+    ev = run(site, "back-1", message="open the previous one", state={"page": {"path": b.path}})
+    options = {o.id: o for o in chooser.seen[-1][1]["target"].options}
+    assert "just before this one" in options[f"screen:{a.path}"].hint
+    assert not any("just before this one" in o.hint for i, o in options.items() if i != f"screen:{a.path}")
+    assert chooser.context["pages_visited"] == [a.title, b.title]
+    assert directives(ev) == [{"type": "navigate", "path": a.path}]

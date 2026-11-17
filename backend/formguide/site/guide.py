@@ -690,6 +690,13 @@ class Dushes:
                 ov = Overlay(lay, form["config"], pack.pii) if lay is not None else None
             except Exception:  # noqa: BLE001 - a form the layer cannot read is the agent's
                 ov = None
+        # where the person has been: "back", "the previous one" point at the page open before this one, and the
+        # chooser cannot know it from the screen (the QA Lead's probe, 2026-11-17: 24 of its 33 wrong moves)
+        visits = self.__dict__.setdefault("_visits", {}).setdefault(thread_id, [])
+        if here and (not visits or visits[-1] != here.path):
+            visits.append(here.path)
+            del visits[:-6]
+        before = visits[-2] if len(visits) >= 2 else ""
         # the whole site as paths: pages, their tabs and sections, each form's tabs, steps and sections
         targets: list[Any] = []
         for p in self.site.pages:
@@ -699,8 +706,10 @@ class Dushes:
             describe = os.environ.get("INTENT_DESCRIBE", "1") != "0"
             short = lambda t, n: " ".join(str(t or "").split())[:n]   # noqa: E731
             if not on:
+                was = ("the page that was open just before this one: what \"back\", \"go back\", \"the previous one\" mean"
+                       if p.path == before else "")
                 targets.append(_intent.Option(f"screen:{p.path}", p.title, "; ".join(
-                    x for x in (short(p.description, 90), ", ".join(p.keywords[:6])) if x) if describe else ""))
+                    x for x in (was, short(p.description, 90) if describe else "", ", ".join(p.keywords[:6]) if describe else "") if x)))
             targets += [_intent.Option(f"part:{p.path}#{x.id}", f"{p.title} \u203a {x.title}", short(x.text, 70) if describe else "")
                         for x in p.parts]
             if p.form:
@@ -1252,6 +1261,9 @@ class Dushes:
         if isinstance(off, dict):
             out["offered"] = [str(off.get("title") or "")]            # the target, not the assistant's sentence
         out["opened_last"] = self.__dict__.setdefault("_last", {}).get(thread_id, "")
+        trail = [self.site.page(x).title for x in self.__dict__.get("_visits", {}).get(thread_id, []) if self.site.page(x)]
+        if len(trail) >= 2:
+            out["pages_visited"] = trail              # oldest first; the last is the page on the screen
         turns = [e for e in self.forms.transcripts.list(thread_id) if e["kind"] in ("user", "assistant") and e.get("text")]
         out["last_messages"] = [("person: " if e["kind"] == "user" else "assistant: ") + str(e["text"]) for e in turns[-10:]]
         return out
