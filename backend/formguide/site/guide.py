@@ -511,6 +511,8 @@ class Dushes:
                 if fast and fast.get("handled") and thread_id in mixed and not fast.get("did"):
                     mixed[thread_id] = f"{label}: {mixed[thread_id]}"       # said with the model's part, in the next run
                     label = ""
+                elif label and thread_id in mixed and not fast and not stats.models:
+                    label = ""                                              # a run with no model in it: said with the next one
                 elif label and thread_id in mixed and not fast:
                     label = f"{mixed.pop(thread_id)} \u00b7 then {label}"
                 if label and heard and RunStats.now() - heard[0] < 30:   # this line was dictated: how long the speech took to read
@@ -757,6 +759,37 @@ class Dushes:
         log.warning("choice layer: %d ms, %s input tokens, %d targets, sure of %s", ms, getattr(layer.chooser, "tokens", "?"),
                     len(targets), {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
         fid = str((form or {}).get("form_id") or "form")
+        def fields_named(moving: bool) -> list[tuple[str, Any, str, str]]:
+            """Every choice field or tick of the screen the chooser is sure of and the line names: (field, value,
+            the field's label, the option as shown)."""
+            many: list[tuple[str, Any, str, str]] = []
+            same = ov is None or (detect(message) or "en") == (detect(" ".join(
+                str(ov[n.name].label or "") for n in lay.nodes.values() if ov.get(n.name) is not None)[:600]) or "en")
+            for key, p in picks.items():
+                # the CPO (2026-11-17): for a field on the screen "is it a command" does not matter; the value
+                # counts at 0.8, or at 0.7 when it is 0.2 clear of the second option, and its field or option is
+                # said in the line. The QA Lead calibrates both numbers
+                clear = getattr(layer.chooser, "margins", {}).get(key, 0.0) >= 0.2
+                if not key.startswith("f:") or ov is None or moving or not (p.confidence >= 0.8 or (p.confidence >= 0.7 and clear)):
+                    continue
+                fname, _, opt = p.id.partition("=")
+                fe = ov.get(fname)
+                if fe is None or not fe.editable:
+                    continue
+                flabel = str(fe.label or fname)
+                is_bool = fe.node.role == "bool"
+                fshown = ("yes" if opt == "true" else "no") if is_bool else next(
+                    (str(o.get("name")) for o in fe.options or [] if str(o.get("id")) == opt), opt)
+                # the line must itself say the field or the option: a word of the label without its bracketed note
+                # ("Add hair wash (+$10, +15 min)" is said as "hair wash"), or a word of the option
+                plain = re.sub(r"\(.*?\)", " ", flabel)
+                from .. import voice as _voice
+                everyday = bool(_voice._SAME.get(fshown.strip().lower(), set()) & set(re.findall(r"[\w']+", message.lower())))
+                if (_intent.says_any(plain, message) or (not is_bool and _intent.says_any(fshown, message)) or everyday
+                        or (not same and p.confidence >= 0.9)):   # "a woman" says Female
+                    many.append((fname, (opt == "true") if is_bool else opt, flabel, fshown))
+            return many
+
         out: dict[str, Any] | None = None
         tail = False
         if iso and "date_field" in picks and ov is not None:
@@ -764,10 +797,14 @@ class Dushes:
             name = picks["date_field"].id
             # what else the line says (a place, a name) is the form assistant's, which goes on after the card
             tail = bool(named or _intent.says_more(beside))
-            _intent.preset_call(f"{thread_id}-{fid}"[:100], "propose_changes", {"changes": [{"name": name, "value": iso}]},
-                                "" if tail else f"{ov[name].label or name}: {iso}.", _intent.APPLIED)
+            # and the list options or ticks the same line names ("I am a woman, born 1st July '92")
+            also = [m for m in fields_named(False) if m[0] != name]
+            closing = ", ".join([f"{ov[name].label or name}: {iso}", *(f"{fl}: {fs}" for _, _, fl, fs in also)])
+            _intent.preset_call(f"{thread_id}-{fid}"[:100], "propose_changes",
+                                {"changes": [{"name": name, "value": iso}, *({"name": n, "value": v} for n, v, _, _ in also)]},
+                                "" if tail else closing + ".", _intent.APPLIED)
             if tail:
-                self.__dict__.setdefault("_mixed", {})[thread_id] = f"set {ov[name].label or name}: {iso}"
+                self.__dict__.setdefault("_mixed", {})[thread_id] = f"set {closing}"
             out = {"kind": "value"}
         else:
             command, kind = picks.get("is_command"), picks.get("kind")
@@ -840,28 +877,7 @@ class Dushes:
             # several values in one line: every field of the screen the chooser is sure of (0.8), whose field or
             # option the line itself says; all of them on one card of the form, applied with Undo. When the line
             # asks more, the form's own model goes on after the card and knows what is done
-            many: list[tuple[str, Any, str, str]] = []
-            for key, p in picks.items():
-                # the CPO (2026-11-17): for a field on the screen "is it a command" does not matter; the value
-                # counts at 0.8, or at 0.7 when it is 0.2 clear of the second option, and its field or option is
-                # said in the line. The QA Lead calibrates both numbers
-                clear = getattr(layer.chooser, "margins", {}).get(key, 0.0) >= 0.2
-                if not key.startswith("f:") or ov is None or moves or not (p.confidence >= 0.8 or (p.confidence >= 0.7 and clear)):
-                    continue
-                fname, _, opt = p.id.partition("=")
-                fe = ov.get(fname)
-                if fe is None or not fe.editable:
-                    continue
-                flabel = str(fe.label or fname)
-                is_bool = fe.node.role == "bool"
-                fshown = ("yes" if opt == "true" else "no") if is_bool else next(
-                    (str(o.get("name")) for o in fe.options or [] if str(o.get("id")) == opt), opt)
-                # the line must itself say the field or the option: a word of the label without its bracketed note
-                # ("Add hair wash (+$10, +15 min)" is said as "hair wash"), or a word of the option
-                plain = re.sub(r"\(.*?\)", " ", flabel)
-                if (_intent.says_any(plain, message) or (not is_bool and _intent.says_any(fshown, message))
-                        or (not same_tongue and p.confidence >= 0.9)):
-                    many.append((fname, (opt == "true") if is_bool else opt, flabel, fshown))
+            many = fields_named(moves)
             if many and not (kind and kind.id in ("question", "other")):
                 closing = ", ".join(f"{fl}: {fs}" for _, _, fl, fs in many) + "."
                 _intent.preset_call(f"{thread_id}-{fid}"[:100], "propose_changes",
@@ -903,7 +919,7 @@ class Dushes:
                     elif here and page.path == here.path and ov is not None:
                         out = {"kind": "focus"}
                     else:
-                        self._keep_note(thread_id, pfid, f"Show {label}.", detect(message) or "")
+                        self._keep_note(thread_id, pfid, f"Show {label}. " + self._said_before(thread_id, pfid), detect(message) or "")
                         out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title, "form_id": pfid}
                         # the section opens in the page's own run: the label is said there, with the model's part if any
                         self.__dict__.setdefault("_mixed", {})[thread_id] = f"opened {page.title} \u203a {label}"
@@ -914,6 +930,12 @@ class Dushes:
                     args = {"path": path, **({("tab" if part.kind in ("tab", "accordion") else "section"): pid} if part else {})}
                     if agent.directive(self.site, args)[1] is not None:   # a place that is not there is the agent's to say
                         out = {"kind": "show" if part else "navigate", "args": args, "title": label}
+                        before = self._said_before(thread_id, str(page.form)) if page and page.form and not (here and here.path == page.path) else ""
+                        if before:
+                            # what the person said elsewhere goes with them to this page's form, as the agent's own
+                            # move would have noted it (QA, 2026-11-17: after a move by the layer the form knew nothing)
+                            self._keep_note(thread_id, str(page.form), before, detect(message) or "")
+                            out["form_id"] = str(page.form)
         if out and out["kind"] in ("navigate", "show", "focus") and self._again(
                 thread_id, (out["kind"], json.dumps(out.get("args"), sort_keys=True), picks["target"].id if picks.get("target") else "")):
             return None
@@ -930,6 +952,18 @@ class Dushes:
                 voice.hush(thread_id)   # in a talking conversation: done already, so no "let me check" before the answer
             return out
         return {"kind": "agent", "mode": "site"} if picks.get("kind") and picks["kind"].id in ("go_to", "show") else None
+
+    def _said_before(self, thread_id: str, form_id: str) -> str:
+        """The person's recent own lines on the site that this form has not seen (said on another page or to
+        another form), for the hand-over note; "" when there are none. Lines the layer itself carried out as a
+        move are left out: they were orders to go somewhere, not something to fill in."""
+        lines = [str(e.get("text") or "").strip() for e in self.forms.transcripts.list(thread_id)
+                 if e["kind"] == "user" and not e.get("layer") and e.get("form_id") != form_id and str(e.get("text") or "").strip()][-4:]
+        if not lines:
+            return ""
+        said = " | ".join(f'"{x[:300]}"' for x in lines)
+        return ("Before coming here the person said, in their own words (some of it may be meant for this form: use what "
+                f"fits its fields, leave the rest, and do not ask again for what is said here): {said}")
 
     def _again(self, thread_id: str, what: Any) -> bool:
         """Whether the layer did this very thing for the person's previous line, a moment ago. Asked again, the
@@ -1148,7 +1182,7 @@ class Dushes:
         if d and fast.get("form_id"):
             d = {**d, "form_id": fast["form_id"]}   # a form's page: the client starts the hand-off there
         tx = self.forms.transcripts
-        tx.append(thread_id, new_entry("user", text=message, **({"reply_to": as_list(reply_to)} if reply_to else {})))
+        tx.append(thread_id, new_entry("user", text=message, layer=True, **({"reply_to": as_list(reply_to)} if reply_to else {})))
         yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
         self.__dict__.setdefault("_last", {})[thread_id] = fast["title"]   # for "and now ..." on the next line
         mid, text = f"msg_{uuid.uuid4().hex[:12]}", f"{fast['title']}."

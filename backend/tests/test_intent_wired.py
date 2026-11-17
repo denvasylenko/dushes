@@ -483,3 +483,34 @@ def test_several_sections_named_in_another_language(guide, model):
         ev = run(site_with(guide, Mock(**answers)), f"lang-{n}", message=line, state=state)
         shown = [e["value"].get("target") for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "ui_directive"]
         assert shown == ["acc_passport", "acc_addresses", "acc_contacts"], (line, shown)
+
+
+def test_what_was_said_elsewhere_goes_with_a_move_by_the_layer(guide, model):
+    """QA's finding (2026-11-17, details_carry_to_new_form): after the layer moved the person to a form's page,
+    that form knew nothing of what they had said. The move now leaves a hand-over note with their recent lines,
+    as the agent's own move does; an order the layer carried out is not one of them."""
+    from formguide.transcript import new_entry
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), target=("screen:/apply", 0.95))
+    site = site_with(guide, chooser)
+    tx = site.forms.transcripts
+    tx.append("carry-1", new_entry("user", text="for the loan application, I'm Anna Berg, born 1st July '92", form_id="barber_booking"))
+    tx.append("carry-1", new_entry("user", text="open the barbershop", layer=True))
+    ev = run(site, "carry-1", message="Yeah, open it", state={"page": {"path": "/book"}})
+    d = directives(ev)[0]
+    assert d["path"] == "/apply" and d.get("form_id") == "loan_application"
+    note = next(e for e in reversed(tx.list("carry-1")) if e["kind"] == "handoff")
+    assert "Anna Berg" in note["note"] and "1st July" in note["note"] and "open the barbershop" not in note["note"]
+    # nothing said before: a plain move, no hand-over run
+    ev = run(site_with(guide, chooser), "carry-2", message="open apply for a loan", state={"page": {"path": "/"}})
+    assert "form_id" not in directives(ev)[0]
+
+
+def test_a_date_and_an_option_in_one_line_are_both_set(guide, model):
+    """"I am a woman, born on 1st July '92": the date and the list option are both the chooser's, on one card."""
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": ["acc_personal"]}}}
+    chooser = Mock(**{"kind": ("set_value", 0.8), "date_field": ("birth_date", 0.92), "f:gender": ("gender=f", 1.0)})
+    model.script = [say("Done.")]
+    ev = run(site_with(guide, chooser), "dg-1", message="I am a woman, born on 1st July '92", state=state)
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    card = json.loads(raw) if isinstance(raw, str) else raw
+    assert [c["name"] for c in card["changes"]] == ["birth_date", "gender"] and card.get("quiet") is True
