@@ -27,12 +27,16 @@ function yearOnly(it: Interrupt, c: RendererContext, commit: Commit, input: HTML
   // latest allowed year (a registration year, a founding year)
   const max = y(it.input?.max), now = new Date().getFullYear()
   const start = Number(it.input?.start_year) || (known?.day && known.month && (max ?? now) >= now - 1 ? now - 35 : undefined)
-  return yearPicker({ min: y(it.input?.min), max, startYear: start, value: prev ?? null, t: c.t,
+  const picker = yearPicker({ min: y(it.input?.min), max, startYear: start, value: prev ?? null, t: c.t,
     onPick: (year) => {
       if (!known?.day || !known.month) return commit(year, String(year))
       const d = new Date(year, known.month - 1, known.day)
       commit(iso(d), new Intl.DateTimeFormat(c.chat.lang || undefined, { day: 'numeric', month: 'long', year: 'numeric' }).format(d))
     } })
+  if (!known?.day || !known.month) return picker
+  // what is already known, under the question: "Date of birth: 1 July", the month as a word in the chat's language
+  const day = new Intl.DateTimeFormat(c.chat.lang || undefined, { day: 'numeric', month: 'long' }).format(new Date(2000, known.month - 1, known.day))
+  return h('div', null, h('div', { class: 'muted bk-small cal-known' }, it.label ? `${it.label}: ${day}` : day), picker)
 }
 
 /** A strip of the next days within min..max, plus "Other date" (the plain picker). */

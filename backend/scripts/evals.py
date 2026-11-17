@@ -43,7 +43,7 @@ KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_sco
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
 EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice", "filled", "no_question_card_on", "asks_nothing_on", "never_claims_without", "max_words", "max_calls", "opens_or_offers", "answers_every_turn", "no_moves_on", "max_model_calls_on", "closing_line_on",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
-               "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds", "voice_says_options", "opens_all_on"}
+               "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds", "voice_says_options", "opens_all_on", "says_on"}
 CAP_NEVER, CAP_OTHER = 3, 5
 from formguide.judge import RUBRIC, RUBRIC_VERSION  # noqa: E402  (the package's rubric: the same text judges the nightly conversation review)
 
@@ -99,6 +99,7 @@ class Scenario:
     never_claims_without: bool = False                      # "I've set / sent / booked" only after the step that did it
     max_model_calls_on: dict[str, int] = field(default_factory=dict)   # {regex of a user message: n}: agent model calls in that turn (all its runs)
     closing_line_on: dict[str, list[str]] = field(default_factory=dict)  # {regex: words}: after the card of that turn, one text, naming the words
+    says_on: dict[str, list[str]] = field(default_factory=dict)   # {regex of a user message: words}: that turn's own text (not a card) holds one
     opens_all_on: dict[str, list[str]] = field(default_factory=dict)   # {regex of a user message: [part names]}: that reply opens every one
     no_moves_on: list[str] = field(default_factory=list)    # regexes of user messages: that reply opens, scrolls to or highlights nothing
     answers_every_turn: bool = False                         # every line of the person gets words back (voice: never silence after a card)
@@ -164,6 +165,7 @@ def load_scenario(path: Path) -> Scenario:
                     never_claims_without=bool(exp.get("never_claims_without")), max_words=int(exp.get("max_words") or 0),
                     opens_or_offers=dict(exp.get("opens_or_offers") or {}), answers_every_turn=bool(exp.get("answers_every_turn")),
                     no_moves_on=[str(x) for x in exp.get("no_moves_on") or []],
+                    says_on={str(k): [str(x) for x in v] for k, v in (exp.get("says_on") or {}).items()},
                     opens_all_on={str(k): [str(x) for x in v] for k, v in (exp.get("opens_all_on") or {}).items()},
                     max_model_calls_on={str(k): int(v) for k, v in (exp.get("max_model_calls_on") or {}).items()},
                     closing_line_on={str(k): [str(w) for w in v] for k, v in (exp.get("closing_line_on") or {}).items()},
@@ -797,6 +799,19 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
                     moved.append(t[:90])
         out.append({"check": f"moves nothing on the turn saying /{pattern}/", "ok": seen and not moved,
                     "detail": "; ".join(moved)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
+    for pattern, words in sc.says_on.items():   # named in words in that very turn, not only on a card that may wait
+        import re
+        said, seen, on = [], False, False
+        for entry in visit.log:
+            for line in str(entry).splitlines():
+                t = line.strip()
+                if t.startswith("\U0001f464"):
+                    on = bool(re.search(pattern, t, re.I)); seen = seen or on
+                elif on and t.startswith("\U0001f916") and not t[1:].strip().startswith("\u2014"):
+                    said.append(t[1:].strip())
+        hit = any(w.lower() in x.lower() for x in said for w in words)
+        out.append({"check": f"says one of {', '.join(words)} in words on the turn saying /{pattern}/", "ok": seen and hit,
+                    "detail": (" | ".join(said)[:200] or "no words in that turn") if seen else "the user never sent such a message", "cap": CAP_OTHER})
     for pattern, names in sc.opens_all_on.items():   # "open all sections": every one of them opened in that very reply
         import re
         moves, seen, on = [], False, False

@@ -401,3 +401,13 @@ def test_open_all_on_needs_every_part_opened_in_that_reply():
     assert ok('   ⚙ focus_field({"name": "acc_personal"})', "   \U0001f526 highlight acc_passport") is True
     assert ok('   ⚙ focus_field({"name": "tab_applicant"})', "\U0001f916 I can open one section at a time.") is False
     assert ok('   ⚙ focus_field({"name": "acc_personal"})') is False
+
+
+def test_says_on_needs_the_words_in_that_turns_text_not_on_a_card():
+    import evals
+    sc = _bar("x", says_on={"born 1st July": ["year", "____"]})
+    def ok(*log):
+        return next(c["ok"] for c in evals.checks(sc, _visit(["\n\U0001f464 I was born 1st July", *log])) if c["check"].startswith("says one of"))
+    assert ok("\U0001f916 Date of birth: 01.07.____ ?") is True
+    assert ok("\U0001f916 The year of birth is missing.") is True
+    assert ok('   ⚙ ask_user({"question": "Which year were you born in?"})', "\U0001f916 — Haiku · 2 s") is False
