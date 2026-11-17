@@ -107,6 +107,17 @@ def test_a_value_named_outright_goes_through_the_forms_own_card_with_no_model_ca
     assert any(label.endswith(": Car loan") for label in labels)
     # a consent is never an option, so it can never be picked
     assert not any("consent" in o.id for o in chooser.seen[0][1]["value"].options)
+    # a line that is only the value ("Loan type: Car loan") need not sound like a command: a very sure option is set
+    bare = Mock(is_command=("no", 0.52), value=("loan_type=auto", 0.98), asks_more=("no", 0.9), asks_move=("no", 0.9))
+    before = len(model.calls)
+    ev = run(site_with(guide, bare), "w4b", message="Loan type: Car loan", state=state)
+    assert [e for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt"] and len(model.calls) == before
+    # but not when the line asks about it, or the option is only likely
+    for answers in (dict(value=("loan_type=auto", 0.98), kind=("question", 0.8)), dict(value=("loan_type=auto", 0.7)),
+                    dict(value=("loan_type=auto", 0.98), asks_more=("yes", 0.6))):
+        model.script = [say("A car loan is for buying a car.")]
+        ev = run(site_with(guide, Mock(**answers)), f"w4c-{len(model.calls)}", message="what is a car loan", state=state)
+        assert not [e for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt"]
 
 
 def test_with_the_layer_off_nothing_changes(guide, model):

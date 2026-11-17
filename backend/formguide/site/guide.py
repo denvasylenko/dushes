@@ -724,10 +724,14 @@ class Dushes:
             # and 0.61, a command with a question 0.79, a text to write 0.95. Four lines, not a calibration: the QA
             # Lead's measurement sets it (INTENT_TAIL)
             tail = bool(more and more.id == "yes" and more.confidence >= float(os.environ.get("INTENT_TAIL", "0.7")))
-            if not ordered and not moves:
-                return None                           # not the person's order: the agent's turn
             value, target = picks.get("value") if ov is not None else None, picks.get("target")
-            if ordered and (kind.id == "set_value" or (value and not target)):
+            # a line that is nothing but a value of the form on the screen ("Gender: Male", "male"): the chooser is
+            # very sure of the option and the line asks nothing else. It need not sound like a command
+            bare = bool(value and value.confidence >= 0.9 and not moves and not tail
+                        and not (more and more.id == "yes") and not (kind and kind.id in ("question", "other")))
+            if not ordered and not moves and not bare:
+                return None                           # not the person's order: the agent's turn
+            if bare or (ordered and (kind.id == "set_value" or (value and not target))):
                 if value and not tail:                # a value with more to answer: the form's assistant does both
                     name, _, opt = value.id.partition("=")
                     e = ov.get(name)
