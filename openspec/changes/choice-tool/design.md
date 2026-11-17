@@ -32,6 +32,18 @@ model does not start from nothing.
 
 The verb list is short on purpose. A new verb is added when a measured phrase needs it, never by guess.
 
+### What the owner's own tests added (2026-11-17)
+
+- "Open apply for loan ?" and "can you open car insurance?" are commands in a spoken or polite form: the verb at
+  the start decides, a question mark at the end does not undo it, and a title is matched without its articles.
+  An explicit request is never answered with "want me to open it?".
+- "Open it" right after an offer is not a line for a model at all: the person agreed to exactly what was
+  offered, so the server carries the offer out in code. This is the fastest road for the commonest
+  context-dependent line, and it needs neither the chooser nor the tool.
+- By voice, after a direct command: one short line and silence (the owner's standard: "Open Telegram" opens it
+  and the voice says "done"). The voice model's own acknowledgement comes 0.8 s after the person stops; when the
+  action is done before that, the server cancels it with an empty note and then gives the one line.
+
 ## The tool
 
 ```

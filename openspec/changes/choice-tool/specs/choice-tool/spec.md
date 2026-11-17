@@ -22,6 +22,27 @@ In code, a direct command SHALL be a line that begins with a verb of the short l
 - **WHEN** the person says "can you open car insurance" and Car insurance is a page of the site
 - **THEN** it is a direct command and the page opens at once
 
+### Requirement: The verb at the start decides, not the mark at the end
+A line that begins with a verb of the short list SHALL be a direct command whether or not it ends with a question mark, and a page's title SHALL be matched without its articles. An explicit request to open a page SHALL open it; the assistant SHALL NOT answer it with an offer to open.
+
+#### Scenario: A spoken form of a command
+- **WHEN** the person writes "open apply for loan ?" and the site has a page "Apply for a loan"
+- **THEN** that page opens and the reply is one short line
+
+### Requirement: Taking up an offer is carried out at once
+When the previous answer offered to open a page or start a form and the person's line only takes that up ("open it", "yes please", "that one"), the server SHALL carry the offer out in code, with no model turn. A line that holds more than the order, a yes and a pointing word SHALL go to the model.
+
+#### Scenario: Open it
+- **WHEN** the assistant ended with "Want me to open Contacts?" and the person writes "can you open it?"
+- **THEN** Contacts opens at once and no model is called
+
+### Requirement: After a direct command the voice says one short line
+In a talking conversation, when a direct command was carried out by the layer or by a taken-up offer, the voice SHALL be given exactly one short line (the target's name, or one word for "done" in the person's language) and SHALL say nothing more. The voice model's own acknowledgement SHALL be cancelled when the action is already done.
+
+#### Scenario: Open the loans page, said aloud
+- **WHEN** the person says "open the loans page" and the layer opens it before the voice's acknowledgement is due
+- **THEN** the acknowledgement is cancelled, the voice says "Loans." and nothing else, and asks nothing
+
 ### Requirement: An agent picks among the screen's options with one tool
 An agent SHALL be able to call a tool with the target by its on-screen name and the sets of options to pick from. The server SHALL build the options from the site map and the form as they are now; the model SHALL NOT supply them. The tool SHALL NOT be offered to the model when the layer is off.
 
