@@ -1,0 +1,18 @@
+name: bar_open_it_site
+tags: [bar]
+persona: "A person on the bank's site who asks about car insurance, then says only 'open it'."
+goal: "Hear what car insurance covers, then have the form opened by 'open it' with nothing asked."
+start: {page: /}
+knows:
+  - "Says: what does car insurance cover?"
+  - "Says: open it"
+turns: 2
+# The factory-settings bar (openspec/changes/factory-settings), point 3: holds context. Covers rules D18, D5 of the map.
+scripted:
+  - "what does car insurance cover?"
+  - "open it"
+expect:
+  stays_put_on: ["what does car insurance cover"]
+  reaches: "/insure"
+  asks_nothing_on: ["^\\W*open it"]
+min_score: 7

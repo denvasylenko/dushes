@@ -1,0 +1,19 @@
+name: bar_short_answer
+tags: [bar]
+persona: "A person filling in a loan application who asks one short question in the middle."
+goal: "Get the rate in one or two sentences, with no list of what is still left."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Says: I want a consumer loan of 500 thousand."
+  - "Says: For 36 months."
+  - "Says: What's the rate?"
+turns: 3
+# The factory-settings bar (openspec/changes/factory-settings), point 4: short. Covers rules F49, F52, D11 of the map.
+scripted:
+  - "I want a consumer loan of 500 thousand."
+  - "For 36 months."
+  - "What's the rate?"
+expect:
+  says: [["21.9", "21,9"]]
+  max_words: 50
+min_score: 7

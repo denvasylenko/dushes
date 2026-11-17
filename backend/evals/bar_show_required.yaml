@@ -1,0 +1,14 @@
+name: bar_show_required
+tags: [bar]
+persona: "A person on an empty loan application who wants to see what is required."
+goal: "Have the required fields shown in the form, not only listed in the chat."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Says: Show me what is still required."
+turns: 1
+# The factory-settings bar (openspec/changes/factory-settings), point 5: acts with tools. Covers rules F23, F38 of the map.
+scripted:
+  - "Show me what is still required."
+expect:
+  tools: [focus_field]
+min_score: 7

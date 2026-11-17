@@ -41,7 +41,7 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted", "answers"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice", "filled", "no_question_card_on",
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice", "filled", "no_question_card_on", "asks_nothing_on", "never_claims_without", "max_words",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -95,8 +95,11 @@ class Scenario:
     stays_put_on: list[str] = field(default_factory=list)   # regexes of user messages: the reply answers and offers, and opens nothing
     asks_on: dict[str, list[str]] = field(default_factory=dict)         # {regex of a user message: words}: the reply asks a question with one of them
     never_fills_on: dict[str, list[str]] = field(default_factory=dict)  # {regex of a user message: field labels}: no change card of that reply has them
+    asks_nothing_on: list[str] = field(default_factory=list)    # regexes of user messages: a clear request, the reply asks nothing
+    never_claims_without: bool = False                      # "I've set / sent / booked" only after the step that did it
+    max_words: int = 0                                      # no reply longer than this many words (0: no limit)
     filled: list[str] = field(default_factory=list)         # fields that must hold some value at the end (the assistant was told to choose)
-    no_question_card_on: list[str] = field(default_factory=list)   # regexes of user messages: the reply shows no question card
+    no_question_card_on: dict[str, list[str]] = field(default_factory=dict)   # {regex of a user message: words}: no question card of that reply shows them ([]: no question card at all)
     never_same_card_twice: bool = False                     # no field card repeats the one before it (a yes that was not taken)
     quiet_cards: bool = False                               # voice: every field-change card carries quiet: true (applied with no tap)
     fields: dict[str, Any] = field(default_factory=dict)   # the form's final values: {name: id, value or label}
@@ -149,7 +152,10 @@ def load_scenario(path: Path) -> Scenario:
                     documents=raw.get("documents") is True, tags=[str(x) for x in raw.get("tags") or []],
                     red_team=bool(raw.get("red_team")), values=dict(start.get("values") or {}),
                     ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")), options_once=bool(exp.get("options_once")), stays_put_on=[str(x) for x in exp.get("stays_put_on") or []], card_results=[str(x) for x in exp.get("card_results") or []],
-                    filled=[str(x) for x in exp.get("filled") or []], no_question_card_on=[str(x) for x in exp.get("no_question_card_on") or []],
+                    asks_nothing_on=[str(x) for x in exp.get("asks_nothing_on") or []],
+                    never_claims_without=bool(exp.get("never_claims_without")), max_words=int(exp.get("max_words") or 0),
+                    filled=[str(x) for x in exp.get("filled") or []], no_question_card_on=({str(k): [str(w) for w in (v or [])] for k, v in exp["no_question_card_on"].items()} if isinstance(exp.get("no_question_card_on"), dict)
+                                         else {str(x): [] for x in exp.get("no_question_card_on") or []}),
                     quiet_cards=bool(exp.get("quiet_cards")), never_same_card_twice=bool(exp.get("never_same_card_twice")),
                     asks_on={str(k): [str(w) for w in v] for k, v in (exp.get("asks_on") or {}).items()},
                     never_fills_on={str(k): [str(w) for w in v] for k, v in (exp.get("never_fills_on") or {}).items()},
@@ -392,6 +398,36 @@ def turn_after(log: list[str], pattern: str) -> tuple[list[str], list[str], list
         parts = re.findall(r"[^.!?\uff1f]*[.!?\uff1f]+", r)
         asked += [" ".join(parts[max(0, i - 2):i + 1]).strip() for i, x in enumerate(parts) if x.rstrip().endswith(("?", "\uff1f"))]
     return asked, cards, text, seen
+
+
+# "I've set", "is now booked", "has been sent": a claim that something was done. "is already set" and "I propose"
+# are not claims; neither is a sentence about the future ("I'll set").
+CLAIM = (r"\b(?:i(?:'ve| have)|we(?:'ve| have))\s+(?:now\s+|also\s+|just\s+)?(?:set|filled(?: in)?|entered|put|sent|submitted|booked|"
+         r"applied|changed|updated|ticked|opened|added|saved|reserved)\b"
+         r"|\b(?:is|are)\s+now\s+(?:set|filled|entered|booked|sent|submitted|in the form)\b"
+         r"|\b(?:has|have)\s+been\s+(?:set|filled|entered|sent|submitted|booked|applied|saved)\b")
+# what makes such a claim true in the log: a card accepted, an answer that filled a field, a page opened, a
+# confirmation or review the person confirmed
+DONE = ("\U0001f0cf card shown and accepted", "\u270f\ufe0f the answer filled", "\U0001f9ed on", "\U0001f4cb")
+
+
+def claims_without(log: list[str]) -> list[str]:
+    """Replies that call something done before anything was done in that turn or before it ("I've set the
+    amount" while the card still waits). Reads the log in order: text written before a card is logged before it."""
+    import re
+    bad, done_ever, done_turn = [], False, False
+    for entry in log:
+        for line in str(entry).splitlines():
+            t = line.strip()
+            if t.startswith("\U0001f464"):
+                done_ever, done_turn = done_ever or done_turn, False
+            elif t.startswith(DONE):
+                done_turn = True
+            elif t.startswith("\U0001f916") and not (done_turn or done_ever):
+                hit = re.search(CLAIM, t.lower())
+                if hit:
+                    bad.append(t[:120])
+    return bad
 
 
 def options_twice(leads: list[dict]) -> list[str]:
@@ -662,13 +698,27 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         offers = any(ch in " ".join(words) for ch in "?\uff1f\u061f") or len(said) > len(words)   # a question, or a chip under the answer
         out.append({"check": f"answers and offers the next step on the turn asking /{pattern}/", "ok": bool(words) and offers,
                     "detail": "" if words and offers else "no offer (no question and no chip) in the reply" if words else "no reply", "cap": CAP_OTHER})
+    for pattern in sc.asks_nothing_on:   # the bar's point 1: a clear request is carried out, not asked about
+        asked, _cards, _text, seen = turn_after(visit.log, pattern)
+        out.append({"check": f"asks nothing on the turn saying /{pattern}/", "ok": seen and not asked,
+                    "detail": " | ".join(asked)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
+    if sc.never_claims_without:   # the bar's point 2: a thing is called done only after the step that did it
+        bad = claims_without(visit.log)
+        out.append({"check": "claims nothing before the step that does it", "ok": not bad, "detail": " | ".join(bad)[:300], "cap": CAP_OTHER})
+    if sc.max_words:   # the bar's point 4: short
+        counts = [len(str(t).split()) for _mid, t in getattr(visit, "replies", [])]
+        long_ = [n for n in counts if n > sc.max_words]
+        out.append({"check": f"no reply over {sc.max_words} words", "ok": bool(counts) and not long_,
+                    "detail": (f"words per reply: {counts}" if counts else "no reply")[:300], "cap": CAP_OTHER})
     for name in sc.filled:   # "just select something": some value is there, whichever the assistant chose
         got = next((f.config["state"].get(name) for f in visit.forms.values() if name in f.config.get("props", {})), None)
         out.append({"check": f"{name} is filled", "ok": got not in (None, "", [], {}), "detail": f"is {json.dumps(got, ensure_ascii=False)[:80]}", "cap": CAP_OTHER})
-    for pattern in sc.no_question_card_on:   # ... and the choice is not handed back as a question
+    for pattern, words in sc.no_question_card_on.items():   # ... and the choice is not handed back as a question
         asked, _cards, _text, seen = turn_after(visit.log, pattern)
-        cards = [q for q in asked if q.startswith("\u2753")]
-        out.append({"check": f"no question card on the turn saying /{pattern}/", "ok": seen and not cards,
+        # the words are looked for among the card's options (the [..] of the log line), not in its question text
+        opts = lambda q: q.rsplit("[", 1)[-1].split("]", 1)[0] if "[" in q else ""
+        cards = [q for q in asked if q.startswith("\u2753") and (not words or any(_says(opts(q), w) for w in words))]
+        out.append({"check": f"no question card{' with ' + ' / '.join(words) if words else ''} on the turn saying /{pattern}/", "ok": seen and not cards,
                     "detail": "; ".join(cards)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
     if sc.never_same_card_twice:   # the person said yes: the card is applied or explained, not shown again
         shown = [c for c in visit.cards if c.get("type") == "set_fields"]

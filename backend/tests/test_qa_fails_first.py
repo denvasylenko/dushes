@@ -262,3 +262,58 @@ def test_a_field_card_shown_again_after_a_yes_fails_the_check():
     assert run(card, {**card, "quiet": True}) is True          # the yes was taken: the same values, applied with no tap
     assert run(card, {**card, "quiet": True}, card) is False   # ... and asked once more after that is the loop again
 
+
+
+
+def _visit(log, replies=()):
+    from types import SimpleNamespace as NS
+
+    class Empty(NS):
+        def __getattr__(self, name):
+            return []
+    return Empty(log=log, forms={}, form=None, replies=list(replies))
+
+
+def _bar(name, **expect):
+    import evals
+    sc = evals.load_scenario(evals.EVALS / "loan_form_fill.yaml")
+    for k, v in expect.items():
+        setattr(sc, k, v)
+    return sc
+
+
+def test_a_clear_request_that_is_asked_about_fails_asks_nothing_on():
+    import evals
+    sc = _bar("x", asks_nothing_on=["put my phone"])
+    def ok(*reply):
+        log = ["\n\U0001f464 put my phone as +49 30 1234567", *reply]
+        return next(c["ok"] for c in evals.checks(sc, _visit(log)) if c["check"].startswith("asks nothing"))
+    assert ok("   \U0001f0cf card shown and accepted by the user (the form now has these values): Phone = +49 30 1234567",
+              "\U0001f916 Your phone is in.") is True
+    assert ok("\U0001f916 Shall I put it in the Phone field?") is False
+    assert ok("   \u2753 question card: Which phone field? [Mobile, Home]") is False
+
+
+def test_a_thing_called_done_before_its_card_was_accepted_fails():
+    import evals
+    sc = _bar("x", never_claims_without=True)
+    def ok(*lines):
+        return next(c["ok"] for c in evals.checks(sc, _visit(["\n\U0001f464 book me for Friday at 10", *lines])) if c["check"].startswith("claims nothing"))
+    waits = "   \U0001f0cf card left open (the person answers in words): Date = Friday"
+    accepted = "   \U0001f0cf card shown and accepted by the user (the form now has these values): Date = Friday"
+    assert ok("\U0001f916 I've set Friday at 10 for you.", waits) is False
+    assert ok(waits, "\U0001f916 I've booked you in.") is False
+    assert ok("\U0001f916 I propose Friday at 10; please check the card.", waits) is True
+    assert ok(accepted, "\U0001f916 I've set Friday at 10.") is True
+    assert ok("\U0001f916 The date is already set to Friday.") is True
+    assert ok("\U0001f916 I'll set Friday once you confirm.", waits) is True
+
+
+def test_a_reply_over_the_word_limit_fails_max_words():
+    import evals
+    sc = _bar("x", max_words=12)
+    def ok(*texts):
+        return next(c["ok"] for c in evals.checks(sc, _visit([], [("m", t) for t in texts])) if c["check"].startswith("no reply over"))
+    assert ok("The rate is 21.9% a year.", "Next is the term.") is True
+    assert ok("The rate is 21.9% a year, and the form still needs your purpose, your term, your income and your employer.") is False
+    assert ok() is False   # no reply at all is not a short reply

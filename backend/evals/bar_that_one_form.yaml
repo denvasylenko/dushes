@@ -1,0 +1,18 @@
+name: bar_that_one_form
+tags: [bar]
+persona: "A person filling in a loan application who asks which terms there are and then picks one by its place in the list."
+goal: "Set the term by saying 'the second one' after the terms were named."
+start: {page: /apply, form: loan_application, values: {loan_type: {id: "consumer", name: "Consumer loan"}, loan_amount: 300000}}
+knows:
+  - "Says: Which loan terms can I choose from?"
+  - "Says: The second one."
+turns: 2
+# The factory-settings bar (openspec/changes/factory-settings), point 3: holds context. Covers rules F8, F31 of the map.
+# The terms of a consumer loan are 12, 24, 36 and 60 months, in that order on the form; the second is 24.
+scripted:
+  - "Which loan terms can I choose from?"
+  - "The second one."
+expect:
+  fields: {loan_term: "24"}
+  asks_nothing_on: ["second one"]
+min_score: 7

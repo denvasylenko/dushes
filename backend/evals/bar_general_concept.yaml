@@ -1,0 +1,16 @@
+name: bar_general_concept
+tags: [bar]
+persona: "A person on the loans page who asks what a word means."
+goal: "Get a brief, general explanation and a way back to the bank's own terms."
+start: {page: /loans}
+knows:
+  - "Says: What is a co-borrower?"
+turns: 1
+# The factory-settings bar (openspec/changes/factory-settings), point 4: short, and marked as general knowledge. Covers rules D4 of the map.
+scripted:
+  - "What is a co-borrower?"
+expect:
+  stays_put_on: ["co-borrower"]
+  says: [["general", "generally", "usually", "typically", "in most banks"]]
+  max_words: 70
+min_score: 7

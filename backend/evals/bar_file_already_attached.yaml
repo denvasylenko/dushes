@@ -1,0 +1,17 @@
+name: bar_file_already_attached
+tags: [bar]
+persona: "An employee who has attached his employment letter and asks for his job details from it."
+goal: "Have the employment details proposed from the attached letter, with no request to upload it again."
+start: {page: /apply, form: loan_application}
+attach: [employment_letter.png]
+knows:
+  - "Says: Fill in my employer and my income from the letter I attached."
+turns: 1
+# The factory-settings bar (openspec/changes/factory-settings), point 1: understood the first time. Covers rules F35, F36 of the map.
+scripted:
+  - "Fill in my employer and my income from the letter I attached."
+expect:
+  cards: [set_fields]
+  never_tools: [request_file]
+  never_says: ["please attach", "upload the", "attach the letter", "send me the letter"]
+min_score: 7

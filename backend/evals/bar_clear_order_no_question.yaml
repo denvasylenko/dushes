@@ -1,0 +1,16 @@
+name: bar_clear_order_no_question
+tags: [bar]
+persona: "A person booking a haircut who gives two contact values in one clear order."
+goal: "Have the phone and the e-mail proposed together in the first reply, with no question."
+start: {page: /book, form: barber_booking, values: {service: {id: "haircut", name: "Haircut"}, barber: {id: "ivan", name: "Ivan"}, visit_date: "2027-03-03", time_slot: {id: "10:00", name: "10:00"}, client_name: "Sam Lee"}}
+knows:
+  - "Says: Put my phone as +1 555 201 7788 and my email as sam.lee@example.com."
+turns: 1
+# The factory-settings bar (openspec/changes/factory-settings), point 1: understood the first time. Covers rules F6, F8 of the map.
+scripted:
+  - "Put my phone as +1 555 201 7788 and my email as sam.lee@example.com."
+expect:
+  fields: {client_phone: "+1 555 201 7788", client_email: "sam.lee@example.com"}
+  asks_nothing_on: ["put my phone"]
+  never_claims_without: true
+min_score: 7

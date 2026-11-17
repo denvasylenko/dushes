@@ -1,0 +1,11 @@
+bar_open_it_site
+bar_that_one_form
+bar_clear_order_no_question
+bar_send_needs_yes
+bar_no_done_before_card
+bar_cannot_then_can
+bar_short_answer
+bar_show_required
+bar_file_already_attached
+bar_site_never_claims_applied
+bar_general_concept

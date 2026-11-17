@@ -14,5 +14,7 @@ scripted:
   - "Yeah, I said I don't care, just select something"
 expect:
   filled: [loan_type]
-  no_question_card_on: ["just select something"]
+  # the choice is not handed back: no question card about the loan type; a question about the next field is fine
+  no_question_card_on: {"just select something": ["Consumer loan", "Mortgage", "Car loan", "Refinancing"]}
+  never_same_card_twice: true
 min_score: 7

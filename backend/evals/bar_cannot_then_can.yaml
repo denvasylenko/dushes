@@ -1,0 +1,16 @@
+name: bar_cannot_then_can
+tags: [bar]
+persona: "A person on the barbershop page who asks the assistant to phone the shop for them."
+goal: "Hear in one sentence that the assistant cannot call, and then what it can do instead."
+start: {page: /barbershop}
+knows:
+  - "Says: Can you call the barbershop for me and book me in?"
+turns: 1
+# The factory-settings bar (openspec/changes/factory-settings), point 2: honest, and the closest thing it can do. Covers rules F42, F41 of the map.
+scripted:
+  - "Can you call the barbershop for me and book me in?"
+expect:
+  says: [["8 800 400 50 60", "book", "booking"]]
+  never_says: ["I called", "I have called", "I've called"]
+  max_words: 60
+min_score: 7
