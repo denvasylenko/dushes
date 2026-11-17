@@ -842,3 +842,39 @@ def test_a_reply_that_already_asks_the_cards_question_is_said_once():
     assert "Accept?" in asked and "Shall I fill in" not in asked
     plain = asyncio.run(go("Here are the hours and the dark background."))
     assert "Shall I fill in Monday\u2013Saturday" in plain and "Sunday 09:00" in plain
+
+
+def test_a_days_open_tick_is_part_of_its_hours_and_a_card_waits_only_until_the_next_run():
+    """The cabinet's real card (its Tech Lead, 2026-11-17): a tick "open" a day beside the hours. On, it is not
+    said by itself; off, it is. And a card waits only until the next run starts: after any reply that follows it, a
+    spoken yes is not an answer to that card."""
+    card = _hours_card()
+    ticks = [{"name": f"{d}_open", "label": f"{label}: open", "value": True, "display": "yes"}
+             for d, label in (("mo", "Monday"), ("tu", "Tuesday"), ("we", "Wednesday"), ("th", "Thursday"), ("fr", "Friday"), ("sa", "Saturday"), ("su", "Sunday"))]
+    card["changes"] = [x for pair in zip(ticks, card["changes"][0:14:2], card["changes"][1:14:2]) for x in pair] + card["changes"][14:]
+    assert voice.asks(card) == ("Shall I fill in Monday\u2013Saturday 07:00\u201317:00, Sunday 09:00\u201317:00 and Palette: Black minimal? "
+                                "Say yes or no.") and voice.covers(card)
+    card["changes"][0] = {**card["changes"][0], "value": False, "display": "no"}       # Monday closed: that is said
+    assert "Monday: open: no" in voice.asks(card)
+
+    async def go():
+        talks, live, _ = _talks()
+        await talks.start("anna", "OFFER-SDP", "thread-last")
+        for ev in ({"type": "RUN_STARTED"}, {"type": "CUSTOM", "name": "on_interrupt", "value": _hours_card()}, {"type": "RUN_FINISHED"}):
+            talks.seen("thread-last", ev)
+        events = talks.events("live_1")
+        live.push(type="session.input_transcript.delta", delta="yes")
+        live.push(type="session.delegation.created", delegation={"id": "d1", "type": "delegation", "target": "client"})
+        while (first := await asyncio.wait_for(events.__anext__(), 1))["type"] != "heard":
+            pass
+        # a reply came after the card (another run): the card is no longer the last line
+        for ev in ({"type": "RUN_STARTED"}, {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": "Here are your statistics."}, {"type": "RUN_FINISHED"}):
+            talks.seen("thread-last", ev)
+        live.push(type="session.input_transcript.delta", delta="yes")
+        live.push(type="session.delegation.created", delegation={"id": "d2", "type": "delegation", "target": "client"})
+        while (second := await asyncio.wait_for(events.__anext__(), 1))["type"] != "heard":
+            pass
+        return first, second
+    first, second = asyncio.run(go())
+    assert first["answers"]["accepted"] is True and first["answers"]["card_id"] == "c1"
+    assert "answers" not in second

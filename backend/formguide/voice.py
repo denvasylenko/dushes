@@ -909,6 +909,13 @@ def said_rows(card: dict) -> tuple[list[str], int]:
     rows = [r for r in card.get("changes") or [] if isinstance(r, dict)]
     items: list[tuple[str, str, str]] = []      # (kind, label, value): kind "range" for a joined time range
     used: set[int] = set()
+    # a day's "open" tick that is on, beside that day's hours, is part of the hours and is not said by itself (the
+    # cabinet's card has one a day: with them said, seven days became fourteen items); a tick that is off is said
+    timed = {m.group("key") for r in rows if (m := _RANGE_END.match(str(r.get("name") or ""))) and _CLOCK.match(shown(r))}
+    for i, r in enumerate(rows):
+        m = _RANGE_END.match(str(r.get("name") or ""))
+        if m and m.group("end").lower() == "open" and m.group("key") in timed and r.get("value") is True:
+            used.add(i)
     for i, r in enumerate(rows):
         if i in used:
             continue
