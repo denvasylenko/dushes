@@ -647,6 +647,11 @@ class Dushes:
         # is: inside a form too. It is never the form agent's "there is no such section here"
         titled = self._titled(message, here)
         to_site = {"kind": "agent", "mode": "site"} if titled else None
+        if titled and agent.wants_to_go(message) and not ("names_part" in picks and picks["names_part"].id == "yes"):
+            # a direct request ("can you open car insurance") for a page said by its whole title: the package's own
+            # rule for a direct request settles it, whatever the chooser made of the polite form
+            stats.fast["handled"] = True
+            return {"kind": "navigate", "args": {"path": titled.path}, "title": titled.title}
         command, kind = picks.get("is_command"), picks.get("kind")
         if not command or command.id != "yes" or not kind or kind.id not in ("go_to", "show", "set_value"):
             return to_site                            # not an order, or a question: the agent; a question never jumps

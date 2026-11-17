@@ -228,6 +228,13 @@ def test_the_owners_first_tests_of_the_demo(guide, model, monkeypatch):
     ev = run(site_with(guide, torn), "ow-3", message="Okay, can you open car insurance", state=state)
     assert directives(ev) == [{"type": "navigate", "path": "/insurance"}] and len(model.calls) == before
 
+    # 2a'. the polite form, which the chooser read as "not a command" in his session: the title and the direct
+    # request settle it in code
+    polite = Mock(is_command=("no", 0.8), kind=("other", 0.8), section=("/insurance", 0.7))
+    before = len(model.calls)
+    ev = run(site_with(guide, polite), "ow-3b", message="Okay, can you open car insurance", state=state)
+    assert directives(ev) == [{"type": "navigate", "path": "/insurance"}] and len(model.calls) == before
+
     # 2b. the person insists and it is not an order: Dushes (who sees the site) answers, never the form agent
     seen = []
 
