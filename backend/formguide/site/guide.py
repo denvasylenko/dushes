@@ -383,7 +383,7 @@ class Dushes:
             mode = "site"   # Dushes asked something, or offered: this answers it
         else:
             mode = "form"
-        log.info("site route by rule: %r -> %s", message[:60], mode)
+        log.info("site route by rule: %d characters -> %s", len(message), mode)   # never the person's words
         return mode
 
     async def classify(self, message: str, state: dict[str, Any], thread_id: str | None = None,
@@ -415,7 +415,7 @@ class Dushes:
             stats.model_call(t_call, None, dict(getattr(out, "usage_metadata", None) or {}), kind="router",
                              model=model_id(self.router_model))
         word = _text_of(out).strip().lower()
-        log.info("site router: %r -> %s", message[:60], word[:20])
+        log.info("site router: %d characters -> %s", len(message), word[:20])   # never the person's words
         return "site" if word.startswith("site") else "form"
 
     def _filling(self, thread_id: str, state: dict[str, Any]) -> bool:
