@@ -697,6 +697,18 @@ class Dushes:
                 ov = Overlay(lay, form["config"], pack.pii) if lay is not None else None
             except Exception:  # noqa: BLE001 - a form the layer cannot read is the agent's
                 ov = None
+        if isinstance(form, dict) and form.get("form_id"):
+            # a card of the form waits for a yes or no, and the line agrees or refuses and says more ("yes, and I am
+            # male"): the yes belongs to that card, so the whole line is the form assistant's. Taken here, the value
+            # was filled and the yes went nowhere (the owner's session, 2026-11-17: "why you didn't select my birthday")
+            from ..transcript import pending_card
+            from ..voice import answers_and_more
+            try:
+                waits = pending_card(self.forms.transcripts.list(form_thread or f"{thread_id}-{form['form_id']}"[:100]))
+            except Exception:  # noqa: BLE001 - no conversation with the form yet
+                waits = None
+            if waits and waits.get("kind") in ("card", "confirm") and answers_and_more(message):
+                return None
         # where the person has been: "back", "the previous one" point at the page open before this one, and the
         # chooser cannot know it from the screen (the QA Lead's probe, 2026-11-17: 24 of its 33 wrong moves)
         visits = self.__dict__.setdefault("_visits", {}).setdefault(thread_id, [])

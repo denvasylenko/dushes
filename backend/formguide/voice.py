@@ -959,6 +959,16 @@ def yes_or_no(text: str, strict: bool = False) -> bool | None:
     return None
 
 
+def answers_and_more(text: str | None) -> bool:
+    """Whether a line opens with a yes or a no and goes on to say something else ("yes, and my gender is male",
+    "no, make it 48"): an answer to the card that waits, plus a request. A bare yes or no is not this (that is
+    `card_answer`), and neither is a line with no yes or no in its first words."""
+    words = re.findall(_LETTERS, (text or "").lower())
+    opening = [w for w in words if w not in _FILLERS][:2]
+    return (bool(opening) and (opening[0] in _YES_WORDS or opening[0] in _NO_WORDS)
+            and yes_or_no(text or "", strict=True) is None)
+
+
 def card_answer(text: str | None, entries: list | None, kinds: tuple = ("card", "confirm")) -> dict | None:
     """Whether a typed or spoken line is the answer to the card that waits, decided in one place for every host.
 
