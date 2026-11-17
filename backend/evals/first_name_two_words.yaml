@@ -1,0 +1,17 @@
+name: first_name_two_words
+tags: [owner_session, answers_in_words]
+persona: "A person on the loan application who says two words after 'first name'."
+goal: "Have the first and the last name filled, or be asked one short question which is which."
+start: {page: /apply, form: loan_application}
+knows:
+  - "First name Anna, last name Rossi"
+turns: 2
+# The CPO's rule 3: "my first name Anna Rossi" fills the first name and the last name (or one short question which
+# is which), never a question card for both fields as if nothing was said. Fails first.
+scripted:
+  - "Open personal details"
+  - "my first name Anna Rossi"
+expect:
+  fields: {first_name: "Anna"}
+  no_question_card_on: {"first name Anna": ["First name", "Last name"]}
+min_score: 7

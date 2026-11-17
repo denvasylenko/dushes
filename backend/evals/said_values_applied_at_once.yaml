@@ -1,0 +1,20 @@
+name: said_values_applied_at_once
+tags: [owner_session, answers_in_words]
+persona: "A person on the loan application who says a place and a date of birth, then a name and a gender, outright."
+goal: "Have what was said filled at once, with Undo, and no card asking to confirm it."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Lyon, born 1 July 1992; Anna Rossi, a woman"
+turns: 3
+# The owner's session (2026-11-17) and the CPO's rule 1: what the person says outright is applied at once with Undo;
+# a card only where the assistant guessed or the line has two readings. Today a card asks "Fill in these fields?".
+# The guest does not tap: a card that waits shows as not quiet. Run with the layer on and with INTENT_LAYER=0, in a
+# text and a voice thread. Values invented. Fails first.
+scripted:
+  - "Open personal details"
+  - "Lyon, 1st July '92"
+  - "my name is Anna Rossi, I am a woman"
+expect:
+  quiet_cards: true
+  fields: {birth_place: "Lyon", birth_date: "1992-07-01", first_name: "Anna", last_name: "Rossi", gender: "f"}
+min_score: 7

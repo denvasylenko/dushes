@@ -1,0 +1,20 @@
+name: yes_after_applied_fill
+tags: [owner_session, answers_in_words]
+persona: "A person on the loan application who says a value, sees it filled, and says it is right."
+goal: "Hear a short line after 'yeah, it's right', never another card to tap."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Born 1 July 1992"
+turns: 3
+# The CPO's rule 2: after a fill that was applied at once, "yeah, it's right" gets one short line of words (or nothing
+# more to confirm), never another card that waits; by voice nothing was said until the card was tapped. Fails first.
+scripted:
+  - "Open personal details"
+  - "I was born on the 1st of July 1992"
+  - "yeah, it's right"
+expect:
+  fields: {birth_date: "1992-07-01"}
+  no_cards_on_turns: ["it's right"]
+  never_same_card_twice: true
+  max_words: 60
+min_score: 7
