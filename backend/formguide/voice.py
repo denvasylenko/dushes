@@ -287,7 +287,9 @@ INSTRUCTIONS = (
     "You are the voice of the assistant of {title}. Speak the language the person speaks, in short sentences. "
     "You know nothing about this business and can do nothing yourself: every request, question or piece of "
     "information the person gives goes to the backend, and you say its result briefly. Never invent a fact, a "
-    "price or a confirmation. Do not greet twice and do not repeat what was already said.")
+    "price or a confirmation. Do not greet twice and do not repeat what was already said. When the backend's "
+    "result is one or two words (\"Done.\", \"Loans.\"), say exactly those words and nothing else: no question, no "
+    "offer, no comment.")
 
 _MARKUP = re.compile(r"[*_`#>|]+|\[(.*?)\]\((.*?)\)")
 
@@ -728,6 +730,23 @@ class Talks:
         import asyncio
         asyncio.ensure_future(coro)
 
+    def hush(self, thread_id: str) -> None:
+        """The request the voice handed over is already carried out (a direct command the layer did): the voice's
+        own "let me check" must not come before the answer. An empty note cancels it; the answer follows."""
+        talk_id = self._by_thread.get(thread_id)
+        state = self._live.get(talk_id) if talk_id else None
+        if not state or not state.get("pending"):
+            return
+
+        async def cancel() -> None:
+            try:
+                async with state.setdefault("saying", __import__("asyncio").Lock()):
+                    await state["ws"].send(_json({"type": "session.thinking.append", "event_id": f"hush_{secrets.token_hex(4)}",
+                                                  "delegation_id": state["pending"], "content": ""}))
+            except Exception:  # noqa: BLE001 - a lost cancel costs a "let me check", never the answer
+                pass
+        self._later(cancel())
+
     async def _say(self, talk_id: str, text: str, more: bool = False) -> None:
         """Give the voice a piece of the answer to say. `more`: the answer is still being written, so the
         request it belongs to stays open for the next piece."""
@@ -1061,6 +1080,12 @@ def spelled(row: dict) -> bool:
     if row.get("kind") != "text" or not isinstance(value, str) or not re.search(_LETTERS, value.lower()):
         return False
     return "@" in value or bool(_SPELLED.search(f"{row.get('name') or ''} {row.get('label') or ''}"))
+
+
+def hush(thread_id: str) -> None:
+    """A direct command of this thread was carried out before the voice spoke: cancel its "let me check"."""
+    for talks in HOSTS:
+        talks.hush(thread_id)
 
 
 def seen(thread_id: str, ev: dict) -> None:

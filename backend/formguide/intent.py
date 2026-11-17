@@ -59,6 +59,17 @@ _ORDER_WORDS = set("""open show go goto take bring get navigate switch move jump
     yeah yes hey so then just again want need like let lets i id we""".split())
 
 
+_TAKES = set("it this that one them there here yes yeah yep sure ok okay first second third please do".split())
+
+
+def takes_up(phrase: str) -> bool:
+    """Whether the line only takes up what was just offered ("open it", "yes please", "can you open it?", "that
+    one"): nothing in it but the order, a yes and a pointing word. Anything more ("yes, but what does it cost?")
+    is a new line for the model."""
+    words = re.findall(r"[\w']+", (phrase or "").lower())
+    return bool(words) and len(words) <= 6 and all(w in _ORDER_WORDS or w in _TAKES for w in words)
+
+
 def names_more(phrase: str, place: str) -> bool:
     """Whether a line that orders a move says more than the place: a word of four letters or more that is neither
     a word of the place's name nor a word of the order itself. "Open personal details in loan application" names
@@ -455,10 +466,11 @@ _DIRECT = re.compile(r"^[\s,.!]*" + _LEAD + r"(open|close|show|hide|go|take|brin
 
 
 def is_direct(phrase: str) -> bool:
-    """Whether the line begins with a verb of the short list and holds no question. The other half of "direct"
+    """Whether the line begins with a verb of the short list. The other half of "direct"
     (it says no more than the place or value it names, and the chooser is sure) is decided where the options are."""
-    text = (phrase or "").strip()
-    return bool(text) and not text.endswith("?") and bool(_DIRECT.match(text))
+    # "open apply for loan ?" and "can you open car insurance?" are commands in a spoken or polite form: the verb
+    # at the start decides, not the mark at the end (a real question starts with what, how, when...)
+    return bool(_DIRECT.match((phrase or "").strip()))
 
 
 _LONG_DIGITS = re.compile(r"\d[\d\s().-]{5,}\d")

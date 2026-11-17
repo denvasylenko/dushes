@@ -114,6 +114,57 @@ def test_what_a_direct_command_is_in_code():
     for line in ("open the loans page", "Okay, can you open car insurance", "open it", "set the loan type to Car loan",
                  "please show me the prices", "now scroll down", "take me to contacts"):
         assert intent.is_direct(line), line
-    for line in ("what does it cost?", "I was thinking about a loan", "Yeah, I said car insurance", "can you open it?",
+    for line in ("what does it cost?", "I was thinking about a loan", "Yeah, I said car insurance",
                  "opening hours on sunday", ""):
         assert not intent.is_direct(line), line
+
+
+def test_open_x_with_a_question_mark_is_a_command_and_articles_do_not_count(guide, model):
+    """The owner at the demo (2026-11-17): "open apply for loan ?" was answered with a description and "Want me to
+    open Apply for a loan?". The verb at the start makes it a command, whatever mark ends it; the title is
+    matched without its articles; and the chooser's doubt does not turn an explicit request into a question."""
+    from formguide.site.agent import wants_to_go
+    for line in ("open apply for loan ?", "open apply for loan", "can you open car insurance?", "CAN YOU OPEN IT ?"):
+        assert intent.is_direct(line) and wants_to_go(line), line
+    assert not wants_to_go("what does it cost to open an account?")
+    unsure = Mock(is_command=("yes", 0.6), kind=("question", 0.7), section=("/apply", 0.4))    # the chooser doubts
+    for page, line, path in (("/", "open apply for loan ?", "/apply"), ("/book", "open apply for loan", "/apply"),
+                             ("/apply", "can you open car insurance?", "/insurance")):
+        before = len(model.calls)
+        ev = run(tool_site(guide, unsure), f"q-{len(model.calls)}-{len(line)}", message=line, state={"page": {"path": page}})
+        assert directives(ev) == [{"type": "navigate", "path": path}], line
+        assert len(model.calls) == before and len(text(ev).split()) <= 5, line                 # one short line, no model
+
+
+def test_taking_up_an_offer_is_done_in_code(guide, model, monkeypatch):
+    """"CAN YOU OPEN IT ?" after an offer took a whole model turn (3.7 s). The person agreed to exactly what was
+    offered, so it is carried out at once; anything more than a yes or a pointing word is a new line for the model."""
+    monkeypatch.setenv("INTENT_LABELS", "1")
+    for line in ("open it", "CAN YOU OPEN IT ?", "yes please", "that one", "ok"):
+        assert intent.takes_up(line), line
+    for line in ("yes, but what does it cost?", "open the other one with the prices", "no", ""):
+        assert not intent.takes_up(line) or line == "no", line
+    site = tool_site(guide, Mock())
+    model.script = [say("", ("n1", "navigate", {"path": "/contacts"})),
+                    say("The office is open 9:00 to 13:00 on Saturday. Want me to open Contacts?")]
+    ev = run(site, "tu-1", message="when is the bank open on Saturday?", state=HOME)
+    assert directives(ev) == []                                              # a question: offered, not opened
+    before = len(model.calls)
+    ev = run(site, "tu-1", message="CAN YOU OPEN IT ?", state=HOME)
+    assert directives(ev) == [{"type": "navigate", "path": "/contacts"}] and len(model.calls) == before
+    assert "no model" in text(ev)
+    # an offered form: its page opens at once and the form's assistant takes over there
+    model.script = [say("", ("o1", "open_form", {"form_id": "loan_application", "note": "a car loan"})),
+                    say("You apply online in about ten minutes. Want me to open the loan application?")]
+    run(site, "tu-2", message="how can I get a car loan?", state=HOME)
+    before = len(model.calls)
+    ev = run(site, "tu-2", message="yes please", state=HOME)
+    d = directives(ev)
+    assert len(d) == 1 and d[0]["path"] == "/apply" and d[0]["form_id"] == "loan_application" and len(model.calls) == before
+    # more than a yes: the model's line
+    model.script = [say("", ("n2", "navigate", {"path": "/contacts"})), say("Saturday 9:00 to 13:00. Want me to open Contacts?")]
+    run(site, "tu-3", message="when is the bank open on Saturday?", state=HOME)
+    model.script = [say("Sunday it is closed.")]
+    before = len(model.calls)
+    ev = run(site, "tu-3", message="yes, but what about Sunday?", state=HOME)
+    assert directives(ev) == [] and len(model.calls) == before + 1

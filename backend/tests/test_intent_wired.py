@@ -279,3 +279,36 @@ def test_the_owners_first_tests_of_the_demo(guide, model, monkeypatch):
     assert not seen and "its own page" in text(ev)
     # and by the rule that routes a spoken line, the same
     assert site._by_rule("Yeah, I said car insurance", state, "ow-5") == "site"
+
+
+def test_a_direct_command_by_voice_gets_one_short_line_and_no_let_me_check(guide, model, monkeypatch):
+    """The owner's standard after Siri (2026-11-17): "Open Telegram" opens it and the voice says "done", nothing
+    more. A direct command the layer carried out: the voice's own acknowledgement is cancelled before it comes,
+    and exactly one short line is given to the voice."""
+    from formguide import voice
+    from .test_voice import _talks
+
+    async def go():
+        talks, live, _ = _talks()
+        voice.watch(talks)
+        await talks.start("anna", "o", "talk-2")
+        events = talks.events("live_1")
+        live.push(type="session.input_transcript.delta", delta="Open the loans page.")
+        live.push(type="session.delegation.created", delegation={"id": "item_7", "type": "delegation", "target": "client"})
+        heard = [await asyncio.wait_for(events.__anext__(), 1) for _ in range(2)][-1]
+        assert heard["type"] == "heard"
+        chooser = Mock(is_command=("yes", 0.98), kind=("go_to", 0.97), section=("/loans", 0.93))
+        site = site_with(guide, chooser)
+        before = len(model.calls)
+        ev = [e async for e in site.run("talk-2", message=heard["text"], state={"page": {"path": "/"}})]
+        for e in ev:
+            voice.seen("talk-2", e)
+        await asyncio.sleep(0.05)
+        assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
+        sent = [(m["type"], m.get("delegation_id"), m.get("content")) for m in live.sent
+                if m["type"] in ("session.thinking.append", "session.commentary.append")]
+        assert sent == [("session.thinking.append", "item_7", ""),          # the "let me check" is cancelled first
+                        ("session.commentary.append", "item_7", "Loans.")]  # then one short line, and nothing else
+        assert "say exactly those words and nothing else" in voice.INSTRUCTIONS
+        voice.HOSTS.clear()
+    asyncio.run(go())

@@ -482,7 +482,9 @@ class Dushes:
             if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1":
                 fast = getattr(stats, "fast", None)
                 who = self.intent.settings.provider.capitalize()
-                if fast and fast.get("handled"):
+                if fast and fast.get("handled") and fast.get("by"):
+                    label = f"in code ({fast['by']} taken up) \u00b7 no model"
+                elif fast and fast.get("handled"):
                     label = f"{who} \u00b7 {fast['ms']} ms"
                 elif getattr(stats, "decided", False):
                     label = who
@@ -519,7 +521,9 @@ class Dushes:
             stats.decided = True                     # the closing line of a value the layer picked
         elif message:
             _intent.clear_preset(form_thread0)        # a new message: nothing decided is left over
-        fast = await self._fast(thread_id, message, state, stats) if message and resume is None and not handoff else None
+        fast = None
+        if message and resume is None and not handoff:
+            fast = self._taken_up(thread_id, message, stats) or await self._fast(thread_id, message, state, stats)
         if fast and fast["kind"] in ("navigate", "show"):
             async for ev in self._fast_move(thread_id, message, run_id, fast, reply_to):
                 yield ev
@@ -657,6 +661,8 @@ class Dushes:
             # a direct request ("can you open car insurance") for a page said by its whole title: the package's own
             # rule for a direct request settles it, whatever the chooser made of the polite form
             stats.fast["handled"] = True
+            from .. import voice
+            voice.hush(thread_id)
             return {"kind": "navigate", "args": {"path": titled.path}, "title": titled.title}
         command, kind = picks.get("is_command"), picks.get("kind")
         if not command or command.id != "yes" or not kind or kind.id not in ("go_to", "show", "set_value"):
@@ -715,7 +721,36 @@ class Dushes:
             out = None                                # the place is not there (any more): the agent says so
         if out and out["kind"] != "agent":
             stats.fast["handled"] = True
+            from .. import voice
+            voice.hush(thread_id)   # in a talking conversation: done already, so no "let me check" before the answer
         return out or to_site
+
+    def _taken_up(self, thread_id: str, message: str, stats: RunStats) -> dict[str, Any] | None:
+        """The last answer offered to open a page or start a form, and this line only takes that up ("open it",
+        "yes please", "that one"): carried out in code, at once. The person agreed to exactly what was offered;
+        a model turn would only make them wait."""
+        from .. import intent as _intent
+        off = self._offers.get(thread_id)
+        if not self.intent.on or not isinstance(off, dict) or not _intent.takes_up(message):
+            return None
+        args = dict(off.get("args") or {})
+        if off.get("tool") == "open_form":
+            page = self.site.form_page(str(args.get("form_id") or ""))
+            if not page:
+                return None
+            # the form's page opens now; the form's assistant takes over there, as after any hand-off
+            self._keep_note(thread_id, page.form or "", str(args.get("note") or "").strip()[:600],
+                            str(args.get("language") or "").strip()[:40])
+            out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title, "form_id": page.form}
+        else:
+            if agent.directive(self.site, args)[1] is None:
+                return None
+            out = {"kind": "navigate", "args": args, "title": str(off.get("title") or "")}
+        self._offers.pop(thread_id, None)
+        stats.fast = {"ms": 0, "handled": True, "by": "the offer"}
+        from .. import voice
+        voice.hush(thread_id)
+        return out
 
     def _chooser(self, message: str, page: str):
         """The choice tool's server half for Dushes: the options are built here, from the site map as it is."""
@@ -732,16 +767,21 @@ class Dushes:
         return choose
 
     def _titled(self, message: str, here: Any) -> Any:
-        """The page (other than this one) whose whole title is said in the message, the longest such title."""
-        text = " " + " ".join(re.findall(r"\w+", (message or "").lower())) + " "
+        """The page (other than this one) whose whole title is said in the message, the longest such title. Articles
+        do not count: "apply for loan" names "Apply for a loan"."""
+        def plain(text: str) -> str:
+            return " ".join(w for w in re.findall(r"\w+", (text or "").lower()) if w not in ("a", "an", "the"))
+        text = f" {plain(message)} "
         hits = [p for p in self.site.pages if not (here and p.path == here.path)
-                and (t := " ".join(re.findall(r"\w+", p.title.lower()))) and f" {t} " in text]
+                and (t := plain(p.title)) and f" {t} " in text]
         return max(hits, key=lambda p: len(p.title)) if hits else None
 
     async def _fast_move(self, thread_id: str, message: str, run_id: str, fast: dict[str, Any],
                          reply_to: list[dict[str, Any]] | None) -> AsyncIterator[dict]:
         """A move the layer picked, as the run Dushes would have made: the same directive, one line of text."""
         result, d = agent.directive(self.site, fast["args"])
+        if d and fast.get("form_id"):
+            d = {**d, "form_id": fast["form_id"]}   # a form's page: the client starts the hand-off there
         tx = self.forms.transcripts
         tx.append(thread_id, new_entry("user", text=message, **({"reply_to": as_list(reply_to)} if reply_to else {})))
         yield {"type": "RUN_STARTED", "threadId": thread_id, "runId": run_id}
@@ -817,7 +857,7 @@ class Dushes:
             if ev["type"] == "CUSTOM" and ev.get("name") == "site_offer":
                 while len(self._offers) >= 5000:
                     self._offers.pop(next(iter(self._offers)))
-                self._offers[thread_id] = True   # the next message may be a plain yes to it
+                self._offers[thread_id] = dict(ev.get("value") or {}) or True   # the next message may take it up
             if ev["type"] == "TEXT_MESSAGE_CONTENT":
                 said.append(ev["delta"])
                 first_mid = first_mid or ev.get("messageId")
@@ -827,7 +867,8 @@ class Dushes:
         if not failed and "".join(said).rstrip().endswith("?"):   # an offer made in words alone ("Want me to open it?")
             while len(self._offers) >= 5000:
                 self._offers.pop(next(iter(self._offers)))
-            self._offers[thread_id] = True   # a plain yes to the closing question may open what it names
+            self._offers.setdefault(thread_id, True)   # a plain yes to the closing question may open what it names
+            # (an offer the server recorded with its target, a moment ago in this turn, is kept as it is)
         if said:
             tx.append(thread_id, new_entry("assistant", text="".join(said), **({"message_id": first_mid} if first_mid else {})))
         if failed:

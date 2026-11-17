@@ -111,6 +111,9 @@ def wants_to_go(message: str, offered: bool = False) -> bool:
         return True
     if not _GO.search(text):
         return False
+    from ..intent import is_direct
+    if is_direct(text) and re.match(r"^\W*(?:\w+\W+){0,3}(open|show|take|bring|go|navigate|switch)\b", text, re.IGNORECASE):
+        return True   # "open apply for loan ?": the order is at the start; the mark at the end does not undo it
     return bool(_POLITE.match(text)) or not _ASKS.search(text)
 
 
@@ -552,7 +555,8 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
         from ..language import detect
         tap = f"{_OPEN.get(detect(asked or question) or 'en', 'Open')} {offer['title']}"[:60]
         suggested = [tap, *[x for x in suggested if x != tap]][:3]   # the offer is one tap away
-        yield {"type": "CUSTOM", "name": "site_offer", "value": {"tool": offer["tool"], "title": offer["title"]}}
+        yield {"type": "CUSTOM", "name": "site_offer", "value": {"tool": offer["tool"], "title": offer["title"],
+                                                                 "args": offer.get("args") or {}}}
     if suggested and not handed:
         yield {"type": "CUSTOM", "name": "suggestions", "value": {"items": suggested}}
     if finish:
