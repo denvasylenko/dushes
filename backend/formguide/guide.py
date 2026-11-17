@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -135,6 +136,31 @@ class FormGuide:
         create_app calls it at startup; call it yourself when you mount the router on your own app."""
         if self.transcriber:
             self.transcriber.warm_up()
+
+    def _missing_year(self, said: str, card: dict, state: dict | None) -> str:
+        """One line for a date said without its year ("born on the 1st of July") when the card does not carry it:
+        the date field's own label and what is known of the date, "Date of birth: 01.07.____ ?". Written with the
+        form's label and digits only, so it reads in any language. "" when there is no such date, the card holds
+        a date, or the form has no single date field it could be."""
+        from . import intent as _intent
+        part = _intent.partial_date(said or "")
+        rows = [r for r in (card.get("changes") or []) if isinstance(r, dict)]
+        if not part or not rows or not isinstance(state, dict) or not state.get("config"):
+            return ""
+        try:
+            from .form.overlay import Overlay
+            lay = self.layout(state.get("jsx_hash", ""))
+            ov = Overlay(lay, state["config"], self.packs.get(state.get("form_id")).pii)
+            dates = [n for n in lay.fields() if n.role == "date" and ov[n.name].visible and ov[n.name].editable]
+        except Exception:  # noqa: BLE001 - a form that cannot be read gets no line
+            return ""
+        if any(r.get("name") in {n.name for n in dates} for r in rows):
+            return ""
+        born = [n for n in dates if "birth" in n.name or "born" in n.name]
+        pick = born[0] if born and re.search(r"\bborn\b|birth", (said or "").lower()) else dates[0] if len(dates) == 1 else None
+        if pick is None:
+            return ""
+        return f"{ov[pick.name].label or pick.name}: {part[0]:02d}.{part[1]:02d}.____ ?"
 
     def register_form(self, jsx: str, form_id: str | None = None, domain: dict[str, Any] | None = None,
                       config: dict[str, Any] | None = None) -> dict:
@@ -515,6 +541,17 @@ class FormGuide:
                         shown = lambda r: r.get("display") or (r["value"].get("name") if isinstance(r.get("value"), dict) else r.get("value"))  # noqa: E731
                         _intent.preset_closing(thread_id, ", ".join(f"{r.get('label') or r.get('name')}: {shown(r)}" for r in rows) + ".",
                                                [str(r.get("name")) for r in rows])
+                # a date said without its year in that line, and no date on this card: the person hears so in this
+                # same reply, before any tap, in a line written here (the QA Lead's runs, 2026-11-17: the model asked
+                # for the year only on a second card queued behind this one; by voice nothing was said at all)
+                spoke = bool(entries) or any(t.strip() for t in texts.values())   # the model wrote something already
+                note = "" if spoke else self._missing_year(said, value, state)
+                if note:
+                    nid = f"msg_{uuid.uuid4().hex[:12]}"
+                    yield {"type": "TEXT_MESSAGE_START", "messageId": nid, "role": "assistant"}
+                    yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": nid, "delta": note}
+                    yield {"type": "TEXT_MESSAGE_END", "messageId": nid}
+                    tx.append(thread_id, new_entry("assistant", text=note, message_id=nid))
                 interrupts.append(value)
                 if mode not in ("legacy", "both"):
                     continue
