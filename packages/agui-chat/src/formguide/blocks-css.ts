@@ -124,6 +124,7 @@ export const BLOCKS_CSS = `
 .bk-track > i { display: block; height: 100%; border-radius: inherit; background: var(--agui-link); }
 .bk-track:has(> b) { position: relative; overflow: visible; } .bk-track > b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--agui-warn); }
 .bk-barlist.ink .bk-track > i { background: var(--agui-ink); }
+.bk-bl-t > .bk-num { flex: none; white-space: nowrap; }   /* the number keeps its line, a long label wraps */
 /* a timeline: a mark in a small circle, a title and a grey line, the time on the right; hairlines between */
 .bk-tl { list-style: none; margin: 0; padding: 0; }
 .bk-tl-i { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 8px 0; }
