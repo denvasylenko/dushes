@@ -63,16 +63,22 @@ def test_a_command_to_go_is_carried_out_without_the_agent(guide, model, monkeypa
 
 def test_a_question_or_an_unsure_pick_goes_to_the_agent(guide, model, monkeypatch):
     monkeypatch.setenv("INTENT_LABELS", "1")
-    for answers in (dict(is_command=("no", 0.95), kind=("other", 0.9)),                          # not a command
+    # a question is not a direct command: the layer is not even asked
+    chooser = Mock(is_command=("yes", 0.95), kind=("go_to", 0.9), section=("/loans", 0.9))
+    model.script = [say("The car loan starts from 18.9% a year.")]
+    ev = run(site_with(guide, chooser), "w2-q", message="what does a car loan cost?", state={"page": {"path": "/"}})
+    assert directives(ev) == [] and "18.9%" in text(ev) and not chooser.seen and "after Jev" not in text(ev)
+    # a direct command the chooser is not sure about: asked, then the agent
+    for answers in (dict(is_command=("no", 0.95), kind=("other", 0.9)),                           # not an order after all
                     dict(is_command=("yes", 0.95), kind=("go_to", 0.9), section=("/loans", 0.4)),   # not sure where
-                    dict(is_command=("yes", 0.9), kind=("question", 0.9), section=("/loans", 0.9)),    # a question never jumps
+                    dict(is_command=("yes", 0.9), kind=("question", 0.9), section=("/loans", 0.9)),  # a question never jumps
                     dict(is_command=("yes", 0.9), kind=("go_to", 0.9), section=("/loans", 0.9), needs_agent=("yes", 0.7)),
                     dict(is_command=("yes", 0.95), kind=("other", 0.9))):
-        site = site_with(guide, Mock(**answers))
-        model.script = [say("The car loan starts from 18.9% a year.")]
-        ev = run(site, f"w2-{len(model.calls)}", message="what does a car loan cost?", state={"page": {"path": "/"}})
-        assert directives(ev) == [] and "18.9%" in text(ev) and "Haiku" not in text(ev).split("18.9%")[0]
-        assert "— " in text(ev) and "not sure" in text(ev)                                  # the agent's label
+        chooser = Mock(**answers)
+        model.script = [say("The rates are in the Loans section.")]
+        ev = run(site_with(guide, chooser), f"w2-{len(model.calls)}", message="show the rates", state={"page": {"path": "/"}})
+        assert directives(ev) == [] and "Loans section" in text(ev) and chooser.seen
+        assert "\u2014 " in text(ev) and "not sure" in text(ev)                                  # the agent's label
 
 
 def test_a_part_of_this_page_is_shown(guide, model):

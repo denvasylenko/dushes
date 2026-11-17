@@ -597,6 +597,11 @@ class Dushes:
         if not layer.on:
             return None   # (a talking conversation goes through the layer too: what was heard is an ordinary line)
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
+        if not _intent.is_direct(message):
+            # not a direct command (no verb of the short list at its start, or a question): the layer is not asked
+            # at all. The line is the model's, which has the choice tool; a page said by its whole title makes it
+            # the site agent's turn
+            return {"kind": "agent", "mode": "site"} if self._titled(message, here) else None
         # the questions and the order of the decision are the QA Lead's wrapper, as it measured on her fifth set
         qs: dict[str, Any] = {
             "is_command": _intent.command_question(),
@@ -712,6 +717,20 @@ class Dushes:
             stats.fast["handled"] = True
         return out or to_site
 
+    def _chooser(self, message: str, page: str):
+        """The choice tool's server half for Dushes: the options are built here, from the site map as it is."""
+        from .. import intent as _intent
+        from ..language import detect
+
+        async def choose(what: str, sets: list[str]) -> dict[str, Any]:
+            options = []
+            if "screens" in sets:
+                options += [_intent.Option(f"screen:{p.path}", p.title) for p in self.site.pages]
+            if "parts" in sets:
+                options += [_intent.Option(f"part:{p.path}#{x.id}", f"{p.title}: {x.title}") for p in self.site.pages for x in p.parts]
+            return await _intent.choose_on_screen(self.intent, what, options, detect(message) or "en", page)
+        return choose
+
     def _titled(self, message: str, here: Any) -> Any:
         """The page (other than this one) whose whole title is said in the message, the longest such title."""
         text = " " + " ".join(re.findall(r"\w+", (message or "").lower())) + " "
@@ -792,7 +811,9 @@ class Dushes:
                                      instructions=self.instructions, style=self.style, tools=self.tools, ctx=ctx,
                                      suggestions=self.suggestions and not aloud, finish=False,
                                      stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats,
-                                     asked=message, offered=self._offers.pop(thread_id, False), upfront=aloud):
+                                     asked=message, offered=self._offers.pop(thread_id, False), upfront=aloud,
+                                     chooser=self._chooser(message or "", page) if self.intent.on and os.environ.get("INTENT_TOOL", "1") == "1" else None,
+                                     end_on_move=os.environ.get("INTENT_END_ON_MOVE") == "1"):
             if ev["type"] == "CUSTOM" and ev.get("name") == "site_offer":
                 while len(self._offers) >= 5000:
                     self._offers.pop(next(iter(self._offers)))

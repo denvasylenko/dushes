@@ -218,6 +218,17 @@ TO_FORM = {"name": "to_form", "description": "Give the message to this page's fo
            "parameters": {"type": "object", "properties": {"reason": {"type": "string", "description": "a few words"}},
                           "required": ["reason"]}}
 
+CHOOSE = {"name": "choose_on_screen",
+          "description": "Find a page or a part of a page by its name and open it when the person asked to go there. "
+                         "Use it when the person refers to something from the conversation (\"open it\", \"that one\", "
+                         "\"the second\") or names it loosely: pass the name as the site contents write it, with the "
+                         "conversation resolved (\"Car insurance\", \"Loans: Rate discounts\"). When it opens "
+                         "something, the turn ends there: write nothing before or after it.",
+          "parameters": {"type": "object", "properties": {
+              "what": {"type": "string", "description": "the on-screen name of the page or the part, and nothing else"},
+              "among": {"type": "array", "items": {"type": "string", "enum": ["screens", "parts"]}}},
+              "required": ["what"]}}
+
 SUGGEST = {"name": "suggest_next", "description": "Two or three short next requests the user is likely to make, "
            "shown as buttons under your answer (in the user's language, written as they would type them).",
            "parameters": {"type": "object", "properties": {"options": {"type": "array", "items": {"type": "string"},
@@ -291,7 +302,8 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                  style: str | None = None, tools: list[SiteTool] | None = None, ctx: SiteRunCtx | None = None,
                  suggestions: bool = False, finish: bool = True, stay_on_form: bool = False,
                  to_form: Callable[[str], None] | None = None, stats: RunStats | None = None,
-                 asked: str | None = None, offered: bool = False, upfront: bool = False) -> AsyncIterator[dict]:
+                 asked: str | None = None, offered: bool = False, upfront: bool = False,
+                 chooser: Callable[..., Awaitable[dict]] | None = None, end_on_move: bool = False) -> AsyncIterator[dict]:
     """One site turn as AG-UI events.
 
     `on_handoff(form_id, note, language)` keeps the note; when it returns True the form agent answers right after
@@ -343,6 +355,10 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
     host_tools = {t.name: t for t in tools or []}
     schemas = [t for t in TOOLS if ask_docs or t["name"] != "ask_documents"]
     schemas += [t.schema() for t in host_tools.values()] + ([SUGGEST] if suggestions else []) + ([TO_FORM] if to_form else [])
+    if chooser:   # the choice tool exists only where the layer is on; its name is the package's own
+        schemas = [t for t in schemas if t.get("name") != CHOOSE["name"]] + [CHOOSE]
+    chose = 0                # calls of the choice tool this turn: one retry at most
+    ended: str | None = None   # the turn ended on a move the server carried out: the line it wrote
     try:
         bound = model.bind_tools(schemas)
     except NotImplementedError:
@@ -392,6 +408,39 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                     target = site.page(str(args.get("path") or ""))
                     result = (reads(target, args).strip() or f"{target.title} has no text of its own." if target
                               else f"There is no page {args.get('path')!r}. Use a path from the site contents.")
+                elif name == CHOOSE["name"] and chooser:
+                    chose += 1
+                    sets = [x for x in (args.get("among") or ["screens", "parts"]) if x in ("screens", "parts")] or ["screens", "parts"]
+                    got = ({"status": "unavailable"} if chose > 2 else
+                           await chooser(str(args.get("what") or ""), sets))
+                    status = got.get("status")
+                    if status == "pick":
+                        kind, _, ref = str(got["id"]).partition(":")
+                        path, _, pid = ref.partition("#")
+                        target = site.page(path)
+                        part = target.part(pid) if target and pid else None
+                        nav = {"path": path, **({("tab" if part.kind in ("tab", "accordion") else "section"): pid} if part else {})}
+                        _res, d = directive(site, nav)
+                        title = part.title if part else (target.title if target else path)
+                        if not d:
+                            result = "That place is not on the site. Say so and offer what exists."
+                        elif may_go:
+                            # the person asked to go: the line first, then the move, and the turn ends here
+                            ended = f"{title}."
+                            directives.append(d)
+                            result = f"Done: opened {title}. The turn has ended; say nothing."
+                        else:   # the model wants a move the person did not ask for: the answer first, then the offer
+                            offer = {"tool": "navigate", "args": nav, "title": title}
+                            result = NOT_ASKED.format(title=title) + reads(target, nav)
+                    elif status == "candidates":
+                        result = ("Several fit: " + "; ".join(got.get("options") or []) + ". Ask the person which one in one "
+                                  "short question, or call once more with the exact name.")
+                    elif status == "not_found":
+                        result = "Nothing on the site has that name. Say so and offer the closest page from the site contents."
+                    elif status == "too_many":
+                        result = "Too many options to pick from: name the page as well (\"Loans: Rate discounts\") and call again."
+                    else:
+                        result = "The quick pick is not available now. Use navigate with a path from the site contents instead."
                 elif name == "navigate":
                     result, d = directive(site, args)
                     if d and not may_go:   # a question: the answer first, the page as an offer
@@ -400,6 +449,13 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                         result = NOT_ASKED.format(title=offer["title"]) + reads(target, args)
                     elif d:
                         directives.append(d)
+                        if end_on_move and not said:
+                            # the measurement's fourth arm: the agent's own tool, the turn ended by a line the
+                            # server writes, no second model call and no chooser
+                            target = site.page(d["path"])
+                            pid = d.get("tab") or d.get("section")
+                            part = target.part(pid) if target and pid else None
+                            ended = f"{part.title if part else (target.title if target else d['path'])}."
                 elif name == "ask_documents" and ask_docs:
                     try:
                         if stats is None:
@@ -454,6 +510,13 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                 yield {"type": "TOOL_CALL_RESULT", "toolCallId": cid, "messageId": f"tool_{uuid.uuid4().hex[:12]}",
                        "content": result[:200], "role": "tool", **({"error": True} if bad else {})}
             if handed:   # the form agent answers next, in this run
+                break
+            if ended:    # a move the server carried out: its one line is the answer, the model is not called again
+                yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}
+                yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": ended}
+                started = said = True
+                if stats is not None:
+                    stats.first_token()
                 break
             if said and all(tc.get("name") in ("suggest_next", "navigate") for tc in calls):
                 break   # the answer is out and only a move or the buttons came with it: another round repeats it

@@ -125,6 +125,8 @@ class Settings:
     acts: tuple[str, ...] = ACTS                # the kinds the layer may carry out by itself
     never_send: tuple[str, ...] = ()            # a host's own list: its guests' names and phones
     testing: bool = False                       # "rules" is for tests only (13% confident errors on new phrasings)
+    act: float = 0.8                            # the tool acts at or above it (a placeholder until the measurement)
+    margin: float = 0.2                         # ... and only when the first option is this clear of the second
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -132,7 +134,8 @@ class Settings:
         return cls(provider=os.environ.get("INTENT_PROVIDER", "off"),
                    threshold=float(os.environ.get("INTENT_THRESHOLD", "0.8")),
                    timeout_ms=int(os.environ.get("INTENT_TIMEOUT_MS", "300")),
-                   never_send=tuple(x for x in os.environ.get("INTENT_NEVER_SEND", "").split("|") if x))
+                   never_send=tuple(x for x in os.environ.get("INTENT_NEVER_SEND", "").split("|") if x),
+                   act=float(os.environ.get("INTENT_ACT", "0.8")), margin=float(os.environ.get("INTENT_MARGIN", "0.2")))
 
     def __post_init__(self) -> None:
         if self.provider not in PROVIDERS:
@@ -442,6 +445,58 @@ def form_part_question(overlay: Any) -> Question | None:
                 opts.append(Option(node.name, str(label)))
     return Question("choice", "form_part", "Which part of the form on this screen does the line name?",
                     tuple(opts[:MAX_OPTIONS - 1]), act="show") if opts else None
+
+
+# A direct command, as code sees it (the owner, 2026-11-17: "open, close, go to, scroll, plain commands"): the
+# line begins, after a greeting or a polite opening, with a verb of this short list. A verb is added when a
+# measured phrase needs it, never by guess.
+_LEAD = r"(?:(?:ok|okay|hey|so|now|well|please|yeah|yes|and|then|just|can you|could you|would you|will you|bitte|kannst du|k\u00f6nnen sie|s'il te pla\u00eet|s'il vous pla\u00eet|peux-tu|pouvez-vous|por favor|puedes|per favore|puoi|\u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430|\u043c\u043e\u0436\u0435\u0448\u044c|\u043c\u043e\u0436\u0435\u0442\u0435|\u0430|\u043d\u0443|\u0442\u0435\u043f\u0435\u0440\u044c|\u0442\u0430\u043a|\u0431\u0443\u0434\u044c \u043b\u0430\u0441\u043a\u0430|\u043c\u043e\u0436\u0435\u0448|\u043c\u043e\u0436\u0435\u0442\u0435|\u0442\u0435\u043f\u0435\u0440)[\s,.!]+)*"
+_DIRECT = re.compile(r"^[\s,.!]*" + _LEAD + r"(open|close|show|hide|go|take|bring|navigate|switch|scroll|jump|move|set|choose|select|pick|tick|untick|check|uncheck|translate|expand|collapse|\u00f6ffne|schlie\u00dfe|zeig|zeige|geh|gehe|w\u00e4hle|setze|scrolle|wechsle|ouvre|ouvrez|ferme|fermez|montre|montrez|va|allez|choisis|choisissez|mets|abre|cierra|muestra|ve|elige|selecciona|pon|apri|chiudi|mostra|vai|scegli|seleziona|metti|imposta|\u043e\u0442\u043a\u0440\u043e\u0439|\u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435|\u0437\u0430\u043a\u0440\u043e\u0439|\u0437\u0430\u043a\u0440\u043e\u0439\u0442\u0435|\u043f\u043e\u043a\u0430\u0436\u0438|\u043f\u043e\u043a\u0430\u0436\u0438\u0442\u0435|\u043f\u0435\u0440\u0435\u0439\u0434\u0438|\u043f\u0435\u0440\u0435\u0439\u0434\u0438\u0442\u0435|\u0432\u044b\u0431\u0435\u0440\u0438|\u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435|\u043f\u043e\u0441\u0442\u0430\u0432\u044c|\u043f\u043e\u0441\u0442\u0430\u0432\u044c\u0442\u0435|\u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0438|\u043f\u0440\u043e\u043a\u0440\u0443\u0442\u0438|\u043f\u0440\u043e\u043b\u0438\u0441\u0442\u0430\u0439|\u043f\u0435\u0440\u0435\u0432\u0435\u0434\u0438|\u0432\u0456\u0434\u043a\u0440\u0438\u0439|\u0432\u0456\u0434\u043a\u0440\u0438\u0439\u0442\u0435|\u0437\u0430\u043a\u0440\u0438\u0439|\u0437\u0430\u043a\u0440\u0438\u0439\u0442\u0435|\u043f\u043e\u043a\u0430\u0436\u0438|\u043f\u043e\u043a\u0430\u0436\u0456\u0442\u044c|\u043f\u0435\u0440\u0435\u0439\u0434\u0438|\u043f\u0435\u0440\u0435\u0439\u0434\u0456\u0442\u044c|\u043e\u0431\u0435\u0440\u0438|\u043e\u0431\u0435\u0440\u0456\u0442\u044c|\u0432\u0438\u0431\u0435\u0440\u0438|\u043f\u043e\u0441\u0442\u0430\u0432|\u043f\u0435\u0440\u0435\u043c\u043a\u043d\u0438|\u043f\u0440\u043e\u043a\u0440\u0443\u0442\u0438|\u043f\u0435\u0440\u0435\u043a\u043b\u0430\u0434\u0438)(?![\w'])", re.IGNORECASE)
+
+
+def is_direct(phrase: str) -> bool:
+    """Whether the line begins with a verb of the short list and holds no question. The other half of "direct"
+    (it says no more than the place or value it names, and the chooser is sure) is decided where the options are."""
+    text = (phrase or "").strip()
+    return bool(text) and not text.endswith("?") and bool(_DIRECT.match(text))
+
+
+_LONG_DIGITS = re.compile(r"\d[\d\s().-]{5,}\d")
+
+
+async def choose_on_screen(layer: "Layer", what: str, options: list[Option], language: str = "en",
+                           screen: str = "") -> dict[str, Any]:
+    """The tool an agent calls: rank the screen's options for a target the model named, and say what may be done
+    with the answer. Never acts; the caller acts on "pick" when the person's own line allows it.
+        {"status": "pick", "id", "label", "confidence"}           the first option, sure and clear of the second
+        {"status": "candidates", "options": [labels, 5 at most]}   two fit, or one fits without being sure
+        {"status": "not_found"} | {"status": "too_many"} | {"status": "unavailable", "why"}
+    """
+    s = layer.settings
+    what = (what or "").strip()
+    if not layer.on:
+        return {"status": "unavailable", "why": "off"}
+    if not what or layer.private(what) or _LONG_DIGITS.search(what):
+        return {"status": "unavailable", "why": "private"}      # a phone, an e-mail, a long number: it stays here
+    options = [o for o in options if not layer.private(o.label)]
+    if not options:
+        return {"status": "not_found"}
+    if len(options) > MAX_OPTIONS - 1:
+        return {"status": "too_many"}
+    question = Question("choice", "target", "Which of these is the one the line names?", tuple(options), act="show")
+    try:
+        ranked = await asyncio.wait_for(layer.chooser.rank(what, language, question, screen), s.timeout_ms / 1000)
+    except Exception:  # noqa: BLE001 - late, failed, or a chooser that cannot rank
+        return {"status": "unavailable", "why": "late"}
+    by_id = {o.id: o for o in options}
+    ranked = sorted(((i, float(p)) for i, p in (ranked or []) if i in by_id), key=lambda x: -x[1])
+    if not ranked or ranked[0][1] < s.threshold:
+        return {"status": "not_found"}
+    (top, p1), p2 = ranked[0], (ranked[1][1] if len(ranked) > 1 else 0.0)
+    if p1 >= s.act and p1 - p2 >= s.margin:
+        return {"status": "pick", "id": top, "label": by_id[top].label, "confidence": p1}
+    fit = [by_id[i].label for i, p in ranked if p >= min(s.threshold, p1 / 2)][:5]
+    return {"status": "candidates", "options": fit or [by_id[top].label]}
 
 
 def chooser_for(settings: Settings) -> Chooser | None:

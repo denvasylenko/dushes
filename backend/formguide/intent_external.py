@@ -64,6 +64,18 @@ class ExternalChooser:
         answers = body.get("answers") or {}
         return {name: self._pick(q, answers.get(name), ms) for name, q in questions.items()}
 
+    async def rank(self, phrase: str, language: str, question: Question, screen: str) -> list[tuple[str, float]]:
+        """The options of one choice in order, with the supplier's probability of each (its "none" left out)."""
+        r = await self._http.post(URL, json={"model": MODEL,
+                                             "state": {"line": phrase, "screen_now": screen, "language": language},
+                                             "questions": {"q": self._wire(question)}})
+        r.raise_for_status()
+        body = r.json()
+        self.calls += 1
+        self.usd += int((body.get("usage") or {}).get("input_tokens") or 0) * USD_PER_INPUT_TOKEN
+        probs = ((body.get("answers") or {}).get("q") or {}).get("probabilities") or {}
+        return sorted(((str(i), float(p)) for i, p in probs.items() if i != NONE), key=lambda t: -t[1])
+
     async def choose(self, phrase: str, language: str, question: Question, screen: str) -> Pick:
         return (await self.choose_many(phrase, language, {"q": question}, screen))["q"]
 
