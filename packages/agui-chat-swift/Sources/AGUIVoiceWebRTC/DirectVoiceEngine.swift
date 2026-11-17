@@ -64,6 +64,7 @@ public final class DirectVoiceEngine: NSObject, VoiceEngine {
     private var levels: Task<Void, Never>?
     private var lastSpoken = Date.distantPast
     private var cutUntilNewAnswer = false
+    private var routeWatch: NSObjectProtocol?
     public var diagnostics: ((String) -> Void)?
 
     public init(link: DirectVoiceLink) {
@@ -79,6 +80,15 @@ public final class DirectVoiceEngine: NSObject, VoiceEngine {
         try? audio.setCategory(.playAndRecord, with: [.defaultToSpeaker, .allowBluetoothHFP])
         try? audio.setMode(.voiceChat)
         audio.unlockForConfiguration()
+        speakerUnlessHeadphones()
+        // the system drops the speaker override on every route change (WebRTC's own audio unit starting, a call,
+        // AirPods): set it again after each one — the owner 17.11, "like talking on the phone"
+        routeWatch = NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification,
+                                                            object: nil, queue: .main) { [weak self] note in
+            let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
+            guard raw.flatMap(AVAudioSession.RouteChangeReason.init) != .override else { return }
+            Task { @MainActor in self?.speakerUnlessHeadphones("route change \(raw ?? 0)") }
+        }
 
         let config = RTCConfiguration()
         config.sdpSemantics = .unifiedPlan
@@ -172,7 +182,26 @@ public final class DirectVoiceEngine: NSObject, VoiceEngine {
 
     public func setMuted(_ muted: Bool) { mic?.isEnabled = !muted }
 
+    /// The loudspeaker unless headphones, Bluetooth, a car or AirPlay take the sound (`.voiceChat` alone is the earpiece).
+    private func speakerUnlessHeadphones(_ why: String = "") {
+        let session = AVAudioSession.sharedInstance()
+        let before = session.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ",")
+        let external = session.currentRoute.outputs.contains {
+            [.headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .carAudio, .airPlay, .usbAudio].contains($0.portType)
+        }
+        if !external {
+            let audio = RTCAudioSession.sharedInstance()
+            audio.lockForConfiguration()
+            try? audio.overrideOutputAudioPort(.speaker)
+            audio.unlockForConfiguration()
+        }
+        let after = session.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ",")
+        diagnostics?("direct: route \(before) → \(after)\(why.isEmpty ? "" : " (" + why + ")")")
+    }
+
     public func end() async {
+        if let routeWatch { NotificationCenter.default.removeObserver(routeWatch) }
+        routeWatch = nil
         sse?.cancel(); sse = nil
         levels?.cancel(); levels = nil
         pc?.close(); pc = nil
