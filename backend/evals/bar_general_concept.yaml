@@ -4,13 +4,14 @@ persona: "A person on the loans page who asks what a word means."
 goal: "Get a brief, general explanation and a way back to the bank's own terms."
 start: {page: /loans}
 knows:
-  - "Says: What is a co-borrower?"
+  - "Says: What does amortization mean?"
 turns: 1
+# A word the site does not define ("co-borrower" was in the site's glossary, so it was not general knowledge).
 # The factory-settings bar (openspec/changes/factory-settings), point 4: short, and marked as general knowledge. Covers rules D4 of the map.
 scripted:
-  - "What is a co-borrower?"
+  - "What does amortization mean?"
 expect:
-  stays_put_on: ["co-borrower"]
+  stays_put_on: ["amortization"]
   says: [["general", "generally", "usually", "typically", "in most banks"]]
   max_words: 70
 min_score: 7

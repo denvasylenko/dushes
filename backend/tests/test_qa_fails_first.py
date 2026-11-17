@@ -292,6 +292,9 @@ def test_a_clear_request_that_is_asked_about_fails_asks_nothing_on():
               "\U0001f916 Your phone is in.") is True
     assert ok("\U0001f916 Shall I put it in the Phone field?") is False
     assert ok("   \u2753 question card: Which phone field? [Mobile, Home]") is False
+    # carried out first, then a question about the next step: not asking instead of acting
+    assert ok("   \U0001f0cf card shown and accepted by the user (the form now has these values): Phone = +49 30 1234567",
+              "\U0001f916 Phone is in. Want me to check the booking?") is True
 
 
 def test_a_thing_called_done_before_its_card_was_accepted_fails():

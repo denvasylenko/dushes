@@ -375,6 +375,29 @@ def moves_after(log: list[str], pattern: str) -> tuple[list[str], list[str], boo
     return moves, said, seen
 
 
+def asked_before_acting(log: list[str], pattern: str) -> tuple[list[str], bool]:
+    """In the reply to each user message matching `pattern`: the questions asked before anything was done in that
+    turn (a card shown, a field filled, a page opened). A question about the next field after the request was carried
+    out is not asking instead of acting."""
+    import re
+    asked, seen, on, acted = [], False, False, False
+    for entry in log:
+        for line in str(entry).splitlines():
+            t = line.strip()
+            if t.startswith("\U0001f464"):
+                on, acted = bool(re.search(pattern, t, re.I)), False
+                seen = seen or on
+            elif not on or acted:
+                continue
+            elif t.startswith(("\U0001f0cf", "\u270f\ufe0f", "\U0001f9ed", "\U0001f4cb")):
+                acted = True
+            elif t.startswith("\u2753"):
+                asked.append(t[:160])
+            elif t.startswith("\U0001f916"):
+                asked += [q.strip() for q in re.findall(r"[^.!?\n]*[?\uff1f]", t[1:])]
+    return asked, seen
+
+
 def turn_after(log: list[str], pattern: str) -> tuple[list[str], list[str], list[str], bool]:
     """In the reply to each user message matching `pattern`: the questions asked (a sentence of the text that ends in a
     question mark with the two before it, and question cards), the change cards shown, and whether such a message was sent at all."""
@@ -699,8 +722,8 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
         out.append({"check": f"answers and offers the next step on the turn asking /{pattern}/", "ok": bool(words) and offers,
                     "detail": "" if words and offers else "no offer (no question and no chip) in the reply" if words else "no reply", "cap": CAP_OTHER})
     for pattern in sc.asks_nothing_on:   # the bar's point 1: a clear request is carried out, not asked about
-        asked, _cards, _text, seen = turn_after(visit.log, pattern)
-        out.append({"check": f"asks nothing on the turn saying /{pattern}/", "ok": seen and not asked,
+        asked, seen = asked_before_acting(visit.log, pattern)
+        out.append({"check": f"asks nothing before acting on the turn saying /{pattern}/", "ok": seen and not asked,
                     "detail": " | ".join(asked)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
     if sc.never_claims_without:   # the bar's point 2: a thing is called done only after the step that did it
         bad = claims_without(visit.log)
