@@ -698,7 +698,9 @@ class Dushes:
             "target": _intent.Question("choice", "target", "Which object of the site does the line ask to open or show? "
                                        "The line may say the way to it, or only its name, or point back at what the "
                                        "conversation just offered or opened.", tuple(targets), act="show")}
-        iso = _intent.spoken_date(message)
+        iso, beside = _intent.spoken_date(message), ""
+        if not iso:
+            iso, beside = _intent.date_in(message)   # a date inside a longer line ("Lugansk, 1st July '92")
         if ov is not None:
             vq = _intent.value_question(ov, set(pack.consents or {}))
             if vq:
@@ -743,7 +745,12 @@ class Dushes:
         if iso and "date_field" in picks and ov is not None:
             # a bare date is a value, with or without a verb; it never moves the person anywhere
             name = picks["date_field"].id
-            _intent.preset(f"{thread_id}-{fid}"[:100], name, iso, ov[name].label or name, iso)
+            # what else the line says (a place, a name) is the form assistant's, which goes on after the card
+            tail = bool(named or _intent.says_more(beside))
+            _intent.preset_call(f"{thread_id}-{fid}"[:100], "propose_changes", {"changes": [{"name": name, "value": iso}]},
+                                "" if tail else f"{ov[name].label or name}: {iso}.", _intent.APPLIED)
+            if tail:
+                self.__dict__.setdefault("_mixed", {})[thread_id] = f"set {ov[name].label or name}: {iso}"
             out = {"kind": "value"}
         else:
             command, kind = picks.get("is_command"), picks.get("kind")

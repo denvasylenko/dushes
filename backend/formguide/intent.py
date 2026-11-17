@@ -727,6 +727,44 @@ def spoken_date(phrase: str) -> str | None:
         return None
 
 
+_DATE_IN = re.compile(
+    r"\b(?P<d>\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(?P<m>[a-z]{3,9})\.?,?\s+(?P<y>\d{4}|['\u2019]?\d{2})\b"
+    r"|\b(?P<m2>[a-z]{3,9})\.?\s+(?P<d2>\d{1,2})(?:st|nd|rd|th)?,?\s+(?P<y2>\d{4}|['\u2019]?\d{2})\b"
+    r"|\b(?P<d3>\d{1,2})[./](?P<m3>\d{1,2})[./](?P<y3>\d{4})\b|\b(?P<y4>\d{4})-(?P<m4>\d{1,2})-(?P<d4>\d{1,2})\b")
+
+
+def date_in(phrase: str) -> tuple[str | None, str]:
+    """A whole date said inside a line, as YYYY-MM-DD, and the line without it: "Lugansk, 1st July '92" ->
+    ("1992-07-01", "Lugansk, "). A year of two digits is this century when it is not ahead of now, else the last
+    one. (None, the line) when the line holds no whole date."""
+    import datetime
+    text = phrase or ""
+    for m in _DATE_IN.finditer(text.lower()):
+        g = m.groupdict()
+        d, mo, y = (g["d"] or g["d2"] or g["d3"] or g["d4"]), (g["m"] or g["m2"] or g["m3"] or g["m4"]), (g["y"] or g["y2"] or g["y3"] or g["y4"])
+        month = int(mo) if mo.isdigit() else _MONTHS.get(mo) or _MONTHS.get(mo[:3])
+        if not month:
+            continue
+        y = y.lstrip("'\u2019")
+        year = int(y)
+        if len(y) == 2:
+            year += 2000 if year <= datetime.date.today().year % 100 else 1900
+        try:
+            iso = datetime.date(year, month, int(d)).isoformat() if year >= 1900 else None
+        except ValueError:
+            iso = None
+        if iso:
+            return iso, text[:m.start()] + " " + text[m.end():]
+    return None, text
+
+
+def says_more(rest: str) -> bool:
+    """Whether what is left of a line, beside the value read from it, still says something: a word of three
+    letters or more that is not a filler or a word of an order."""
+    return any(len(w) >= 3 and w not in _AROUND and w not in _ORDER_WORDS and w not in ("born", "date", "birth", "its", "was")
+               for w in re.findall(r"[a-z\u00c0-\u024f\u0400-\u04ff']+", (rest or "").lower()))
+
+
 _LONG_DIGITS = re.compile(r"\d[\d\s().-]{5,}\d")
 
 

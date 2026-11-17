@@ -391,3 +391,20 @@ def test_a_value_and_a_name_in_one_line(guide, model):
     card = json.loads(raw) if isinstance(raw, str) else raw
     assert [c["name"] for c in card["changes"]] == ["gender"] and card.get("quiet") is True
     assert "Gender: Male." not in text(ev)                                 # no closing line: the model goes on
+
+
+def test_a_date_and_a_place_in_one_line(guide, model):
+    """The owner's spoken line (2026-11-17): "Uh. Lugansk, uh, 1st July '92". The date is the chooser's (a year
+    of two digits is read), the place is a text for the form's assistant, which goes on after the card."""
+    assert intent.date_in("Uh. Lugansk, uh, 1st July '92")[0] == "1992-07-01"
+    assert intent.date_in("born July 1, 1992 in Rome")[0] == "1992-07-01" and intent.date_in("open the loans page")[0] is None
+    assert intent.says_more(intent.date_in("Uh. Lugansk, uh, 1st July '92")[1]) and not intent.says_more(intent.date_in("uh, 1st July 1992")[1])
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": ["acc_personal"]}}}
+    chooser = Mock(is_command=("no", 0.6), kind=("set_value", 0.8), date_field=("birth_date", 0.9))
+    model.script = [say("And Lugansk as the place of birth.")]
+    ev = run(site_with(guide, chooser), "dp-1", message="Uh. Lugansk, uh, 1st July '92", state=state)
+    assert "Lugansk" not in chooser.seen[0][0] and "<name>" in chooser.seen[0][0]      # the place does not leave
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    card = json.loads(raw) if isinstance(raw, str) else raw
+    assert [c["name"] for c in card["changes"]] == ["birth_date"] and "1992-07-01" in json.dumps(card) and card.get("quiet") is True
+    assert not intent.has_preset("dp-1-loan_application")                               # the form's model goes on after the card
