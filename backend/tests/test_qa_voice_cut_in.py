@@ -9,7 +9,7 @@ own stop of a running turn never applied. The CPO said yes to two fixes, in orde
    session.instructions.append (delegation_id None, our own sentence, never his words) and `interrupted` (by: words)
    to the client; once per stretch; not for one word the voice itself said lately, not for an echo of 4+ words.
 2. Words with no hand-over (VOICE_TAKE_LINE=1, a trial): his words arrived, no hand-over came, N seconds passed after
-   his last word (N = voice.TAKE_AFTER, 1.5 s; the tests shorten it) -> the server emits `heard` with the text,
+   his last word (N = voice.UNHANDED_WAIT, 1.5 s; the tests shorten it), whether or not the voice still talks -> the server emits `heard` with the text,
    and the run's answer is given to the voice with no delegation id. Never "I did not catch that". Guards: a late
    hand-over gets an empty thinking note and no second `heard`; a new word resets the clock; an echo and a filler-only
    stretch are never handed over.
@@ -28,11 +28,10 @@ from formguide import voice
 from .test_voice import _talks
 
 MARGIN = 0.5
-QUIET_VOICE = 1.0   # the server takes a line only once the voice has been quiet this long (voice._take_line)
 # xfail(strict) while the commit under test does not have the fix; it turns into an ordinary test by itself once the fix
 # is merged (the mark's condition is the fix's own constant), and a fix that is there but fails the test fails the run
 CUT_NOT_BUILT = pytest.mark.xfail(not hasattr(voice, "CUT_IN"), strict=True, reason="QA fails-first: no cut-in on this commit")
-TAKE_NOT_BUILT = pytest.mark.xfail(not hasattr(voice, "TAKE_AFTER"), strict=True, reason="QA fails-first: no line taking on this commit")
+TAKE_NOT_BUILT = pytest.mark.xfail(not hasattr(voice, "UNHANDED_WAIT"), strict=True, reason="QA fails-first: no line taking on this commit")
 LOST = [["Wait,", " that is", " not what", " I", " asked", " you", " about", " just", " now"], ["yes"], [" No,", " the", " other", " one"]]
 
 
@@ -148,8 +147,8 @@ def test_the_voices_own_words_coming_back_word_by_word_do_not_cut_it(monkeypatch
 def quick(monkeypatch):
     """The switch on (VOICE_TAKE_LINE=1) and the wait shortened from 1.5 s."""
     monkeypatch.setenv("VOICE_TAKE_LINE", "1")
-    monkeypatch.setattr(voice, "TAKE_AFTER", 0.3, raising=False)
-    return voice.TAKE_AFTER
+    monkeypatch.setattr(voice, "UNHANDED_WAIT", 0.3, raising=False)
+    return voice.UNHANDED_WAIT
 
 
 @TAKE_NOT_BUILT
@@ -160,7 +159,7 @@ def test_words_with_no_hand_over_reach_the_agent_and_are_answered(quick, words):
         drain = await _speaking(live, talks, "unhanded")
         for w in words:
             live.push(type="session.input_transcript.delta", delta=w)
-        got = await drain(quick + QUIET_VOICE + MARGIN)
+        got = await drain(quick + MARGIN)
         heard = [e for e in got if e["type"] == "heard"]
         assert [e["text"] for e in heard] == ["".join(words).strip()], f"the line never reached the agent: {[e['type'] for e in got]}"
         _answer(talks, "unhanded", "A mortgage starts from 16.5%.")
@@ -178,7 +177,7 @@ def test_a_late_hand_over_after_the_server_took_the_line_gets_an_empty_note_and_
         talks, live, _ = _talks()
         drain = await _speaking(live, talks, "unhanded-late")
         live.push(type="session.input_transcript.delta", delta="No, the other one")
-        got = await drain(quick + QUIET_VOICE + MARGIN)                           # the server took it
+        got = await drain(quick + MARGIN)                           # the server took it
         live.push(type="session.delegation.created", delegation={"id": "d2", "type": "delegation", "target": "client"})
         got += await drain(0.3)                                     # then the provider's own hand-over comes
         assert [e["text"] for e in got if e["type"] == "heard"] == ["No, the other one"]
@@ -201,7 +200,7 @@ def test_a_new_word_resets_the_clock(quick):
         live.push(type="session.input_transcript.delta", delta=" other one")
         got += await drain(quick * 0.6)
         assert not [e for e in got if e["type"] == "heard"]          # still speaking: nothing yet
-        got += await drain(quick + QUIET_VOICE + MARGIN)
+        got += await drain(quick + MARGIN)
         assert [e["text"] for e in got if e["type"] == "heard"] == ["No, the other one"]
         await talks.end("live_1")
     asyncio.run(go())
@@ -215,7 +214,7 @@ def test_an_echo_or_a_filler_is_never_handed_over(quick, words):
         drain = await _speaking(live, talks, "unhanded-noise")
         for w in words:
             live.push(type="session.input_transcript.delta", delta=w)
-        got = await drain(quick + QUIET_VOICE + MARGIN)
+        got = await drain(quick + MARGIN)
         assert not [e for e in got if e["type"] == "heard"], [e.get("text") for e in got if e["type"] == "heard"]
         await talks.end("live_1")
     asyncio.run(go())
@@ -228,7 +227,7 @@ def test_words_that_the_provider_hands_over_at_once_are_handed_over_once(quick):
         drain = await _speaking(live, talks, "handed")
         live.push(type="session.input_transcript.delta", delta="No, the other one")
         live.push(type="session.delegation.created", delegation={"id": "d2", "type": "delegation", "target": "client"})
-        got = await drain(quick + QUIET_VOICE + MARGIN)
+        got = await drain(quick + MARGIN)
         assert [e["text"] for e in got if e["type"] == "heard"] == ["No, the other one"]
         _answer(talks, "handed", "A mortgage starts from 16.5%.")
         await drain(0.1)
@@ -240,13 +239,13 @@ def test_words_that_the_provider_hands_over_at_once_are_handed_over_once(quick):
 def test_with_the_switch_off_nothing_is_taken(monkeypatch):
     """Guard: VOICE_TAKE_LINE off (the default) keeps today's way: words with no hand-over are not taken."""
     monkeypatch.delenv("VOICE_TAKE_LINE", raising=False)
-    monkeypatch.setattr(voice, "TAKE_AFTER", 0.3, raising=False)
+    monkeypatch.setattr(voice, "UNHANDED_WAIT", 0.3, raising=False)
 
     async def go():
         talks, live, _ = _talks()
         drain = await _speaking(live, talks, "take-off")
         live.push(type="session.input_transcript.delta", delta="No, the other one")
-        got = await drain(0.3 + QUIET_VOICE + MARGIN)
+        got = await drain(0.3 + MARGIN)
         assert not [e for e in got if e["type"] in ("heard", "taken")]
         await talks.end("live_1")
     asyncio.run(go())
