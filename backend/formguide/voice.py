@@ -584,7 +584,7 @@ class Talks:
         """Words that arrived and were never handed over (VOICE_TAKE_LINE=1; a trial, off by default). The provider
         issues its hand-over when it decides to, and sometimes not at all: a short answer said into its speech sat
         in the buffer and reached nobody (the owner's sessions, 2026-11-17: "yes" three times, his last name).
-        When UNHANDED_WAIT seconds pass after their last word, the voice is not talking and no hand-over came, the
+        When TAKE_AFTER seconds pass after their last word, the voice is not talking and no hand-over came, the
         server takes the line itself: the client gets `heard` as after a hand-over, and the answer is given to the
         voice with no request to attach it to. Fillers alone and the voice's own echo are not taken."""
         import asyncio
@@ -596,7 +596,7 @@ class Talks:
                 said = state.get("said") or []
                 # the voice talking does not hold the line back: it talked over him for seconds, and the page fades it
                 # on a cut-in. What keeps the voice's own echo out is below: a word of his that the voice did not say
-                if state.get("early") or now - state.get("heard_at", now) < UNHANDED_WAIT:
+                if state.get("early") or now - state.get("heard_at", now) < TAKE_AFTER:
                     continue                          # a hand-over is waiting for these words, or he is still speaking
                 text = state["heard"].strip()
                 words = [w for w in re.findall(_LETTERS + r"|\d+", re.sub(r"\[[^\]]*\]", " ", text).lower()) if w not in FILLERS]
@@ -987,7 +987,7 @@ def asks(card: dict) -> str:
 WORDS_WAIT, WORDS_SETTLE, WORDS_LAST = 1.5, 0.4, 6.0
 UNHEARD = "You did not catch what the person said. Say so in a few words and ask them to say it again."
 
-UNHANDED_WAIT = 1.5      # words with no hand-over are taken by the server this long after the last one, in seconds
+TAKE_AFTER = 1.5      # words with no hand-over are taken by the server this long after the last one, in seconds
 TAKEN_COVERS = 10.0   # a hand-over with no words this soon after a taken line is that same line, asked late
 FILLERS = {"uh", "um", "mm", "hmm", "hm", "ah", "er", "eh", "oh", "mhm", "sigh"}
 CUT_IN_AFTER = 1.2    # the voice counts as talking while its last word is this fresh, in seconds
