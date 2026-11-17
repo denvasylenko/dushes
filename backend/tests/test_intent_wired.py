@@ -79,7 +79,7 @@ def test_a_part_of_this_page_is_shown(guide, model):
     m = SiteMap.load(SITE)
     page = next(p for p in m.pages if p.parts)
     part = page.parts[0]
-    chooser = Mock(is_command=("yes", 0.98), kind=("show", 0.95), element=(part.id, 0.9))
+    chooser = Mock(is_command=("yes", 0.98), kind=("show", 0.95), element=(f"{page.path}#{part.id}", 0.9))
     ev = run(site_with(guide, chooser), "w3", message=f"show me {part.title}", state={"page": {"path": page.path}})
     d = directives(ev)
     assert len(d) == 1 and d[0]["path"] == page.path and part.id in d[0].values()
@@ -146,11 +146,11 @@ def test_the_layer_hands_back_instead_of_claiming(guide, model):
                    "propose_changes failed: the slot is taken"):
         intent.preset("hb-1", "loan_type", "auto", "Loan type", "Car loan")
         assert intent.preset_model("hb-1", [AIMessage(content="")]) is not None          # the first step: propose it
-        intent._PRESETS["hb-1"].pop(0)
+        intent._PRESETS["hb-1"]["script"].pop(0)
         assert intent.preset_model("hb-1", [ToolMessage(content=result, tool_call_id="x")]) is None
         assert not intent.has_preset("hb-1")
     intent.preset("hb-2", "loan_type", "auto", "Loan type", "Car loan")
-    intent._PRESETS["hb-2"].pop(0)
+    intent._PRESETS["hb-2"]["script"].pop(0)
     applied = ToolMessage(content="The user confirmed; changes applied.", tool_call_id="x")
     assert intent.preset_model("hb-2", [applied]) is not None                            # applied cleanly: one line
     intent.clear_preset("hb-2")
@@ -200,3 +200,44 @@ def test_in_a_talking_conversation_the_heard_line_goes_through_the_layer_and_the
         assert said == ["Loans."]                                    # and only the answer is said
         voice.HOSTS.clear()
     asyncio.run(go())
+
+
+def test_the_owners_first_tests_of_the_demo(guide, model, monkeypatch):
+    """2026-11-17, the owner at the local demo. (1) "open personal details in loan application" opened the page and
+    said its name: a false "done", he asked for a part. (2) "can you open car insurance" inside the loan form:
+    the chooser was torn between two pages and the form agent answered "there is no such section", three times."""
+    state = {"page": {"path": "/apply"}, "form": start(guide, LOAN)}
+
+    # 1a. from another page: the page is sure, a part is named, the layer cannot open that part: Dushes takes it
+    named_part = Mock(is_command=("yes", 0.98), kind=("go_to", 0.97), section=("/apply", 0.93), names_part=("yes", 0.9))
+    model.script = [say("", ("o1", "open_form", {"form_id": "loan_application", "note": "open Personal details"})), say("Opening it.")]
+    before = len(model.calls)
+    ev = run(site_with(guide, named_part), "ow-1", message="open personal details in loan application", state={"page": {"path": "/"}})
+    assert len(model.calls) > before and "Apply for a loan." not in text(ev)          # never the page's name as "done"
+
+    # 1b. on the form's page: the part of the form is opened by the form's own step, with no model call
+    on_form = Mock(is_command=("yes", 0.98), kind=("show", 0.9), form_part=("acc_personal", 0.92), names_part=("yes", 0.9))
+    before = len(model.calls)
+    ev = run(site_with(guide, on_form), "ow-2", message="open personal details", state=state)
+    called = [e.get("toolCallName") for e in ev if e.get("type") == "TOOL_CALL_START"]
+    assert called == ["focus_field"] and len(model.calls) == before and "Personal details." in text(ev)
+
+    # 2a. inside the form, a page of the site named by its whole title: opened, though the chooser was torn
+    torn = Mock(is_command=("yes", 0.95), kind=("go_to", 0.9), section=("/insurance", 0.41))
+    before = len(model.calls)
+    ev = run(site_with(guide, torn), "ow-3", message="Okay, can you open car insurance", state=state)
+    assert directives(ev) == [{"type": "navigate", "path": "/insurance"}] and len(model.calls) == before
+
+    # 2b. the person insists and it is not an order: Dushes (who sees the site) answers, never the form agent
+    seen = []
+
+    async def form_run(thread_id, **kw):
+        seen.append(thread_id)
+        yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": "r"}
+    site = site_with(guide, Mock(is_command=("no", 0.8), kind=("other", 0.7)))
+    monkeypatch.setattr(site.forms, "run", form_run)
+    model.script = [say("Car insurance is its own page. Want me to open it?")]
+    ev = run(site, "ow-4", message="Yeah, I said car insurance", state=state)
+    assert not seen and "its own page" in text(ev)
+    # and by the rule that routes a spoken line, the same
+    assert site._by_rule("Yeah, I said car insurance", state, "ow-5") == "site"

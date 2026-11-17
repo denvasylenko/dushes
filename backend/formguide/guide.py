@@ -497,7 +497,7 @@ class FormGuide:
                                                           for r in value.get("changes") or [])
                 # in a voice conversation, what the person said is filled without a card
                 from . import intent as _intent
-                picked = _intent.has_preset(thread_id) or value.get("card_id") in _FAST   # named outright: no question
+                picked = _intent.is_fill(thread_id) or value.get("card_id") in _FAST   # named outright: no question
                 if picked and not any(isinstance(r, dict) and r.get("consent") for r in value.get("changes") or []):
                     _FAST.add(value.get("card_id"))
                     value["quiet"] = True

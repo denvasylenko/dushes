@@ -359,7 +359,7 @@ class Dushes:
         from ..voice import yes_or_no
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
         text = message.lower()
-        if _NAV.search(text) or _NAV_OTHER.search(text) or _BUSINESS.search(text):
+        if _NAV.search(text) or _NAV_OTHER.search(text) or _BUSINESS.search(text) or self._titled(message, here):
             mode = "site"
         elif names_a_field(message, state.get("form") or {}):
             mode = "form"
@@ -524,7 +524,12 @@ class Dushes:
             async for ev in self._fast_move(thread_id, message, run_id, fast, reply_to):
                 yield ev
             return
-        mode = "form" if fast and fast["kind"] == "value" else self.route(message, state, resume, handoff, thread_id)
+        if fast and fast["kind"] in ("value", "focus"):
+            mode = "form"
+        elif fast and fast["kind"] == "agent":
+            mode = fast["mode"]                       # the layer could not act, and knows whose turn it is
+        else:
+            mode = self.route(message, state, resume, handoff, thread_id)
         if mode == "unclear":
             from .. import voice
             # a spoken message is not held for the router model: a rule places it, and whoever gets it can give
@@ -604,8 +609,10 @@ class Dushes:
             "needs_agent": _intent.Question("noul", "needs_agent", "Does the line name a person or a company that is not "
                                             "on the screen, ask a question, ask for a text, or need judgement?"),
             "section": _intent.screen_question(self.site)}
-        if here and here.parts:
-            qs["element"] = _intent.element_question(here)
+        qs["names_part"] = _intent.Question("noul", "names_part", "Does the line name a specific part inside a page "
+                                            "(a tab, a section, a block, a field), and not only the page itself?")
+        if any(p.parts for p in self.site.pages):
+            qs["element"] = _intent.parts_question(self.site)
         form, ov = state.get("form") or None, None
         if isinstance(form, dict) and form.get("config"):
             try:
@@ -616,13 +623,17 @@ class Dushes:
                 vq = _intent.value_question(ov, set(pack.consents or {})) if ov is not None else None
                 if vq:
                     qs["value"] = vq
+                fq = _intent.form_part_question(ov) if ov is not None else None
+                if fq:
+                    qs["form_part"] = fq
             except Exception:  # noqa: BLE001 - a form the layer cannot read is the agent's
                 ov = None
         # in code, before anything is sent: a date is never a place to go, and a name the screen does not show is
         # the agent's (the CPO's two rules)
-        shown = [p.title for p in self.site.pages] + [x.title for x in (here.parts if here else [])]
-        if "value" in qs:
-            shown += [o.label for o in qs["value"].options]
+        shown = [p.title for p in self.site.pages] + [x.title for p in self.site.pages for x in p.parts]
+        for name in ("value", "form_part"):
+            if name in qs:
+                shown += [o.label for o in qs[name].options]
         if _intent.has_date(message) or _intent.names_off_screen(message, shown):
             return None
         started = RunStats.now()
@@ -632,19 +643,31 @@ class Dushes:
         # the demo's terminal shows what the layer was sure of (ids and confidences only, never the phrase)
         log.warning("choice layer: %d ms, asked %s, sure of %s", ms, sorted(qs),
                     {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
+        # a page of the site named by its whole title ("car insurance") is the site's business wherever the person
+        # is: inside a form too. It is never the form agent's "there is no such section here"
+        titled = self._titled(message, here)
+        to_site = {"kind": "agent", "mode": "site"} if titled else None
         command, kind = picks.get("is_command"), picks.get("kind")
         if not command or command.id != "yes" or not kind or kind.id not in ("go_to", "show", "set_value"):
-            return None                               # not an order, or a question: the agent; a question never jumps
+            return to_site                            # not an order, or a question: the agent; a question never jumps
         hand_on = picks.get("needs_agent")
         if hand_on and hand_on.id == "yes" and hand_on.confidence >= 0.6:
-            return None
+            return to_site
         page = self.site.page(picks["section"].id) if "section" in picks else None
         if page and here and page.path == here.path:
             page = None                               # the screen the person is on is not a place to go
-        part = here.part(picks["element"].id) if "element" in picks and here else None
+        if kind.id != "set_value" and not page:
+            page = titled                             # the chooser was torn between two pages; the title is said outright
+        ppage, part = None, None                      # a part of a page of the site
+        if "element" in picks:
+            path, _, pid = picks["element"].id.partition("#")
+            ppage = self.site.page(path)
+            part = ppage.part(pid) if ppage else None
+        names_part = "names_part" in picks and picks["names_part"].id == "yes"
         value = picks.get("value") if ov is not None else None
+        form_part = picks.get("form_part") if ov is not None else None
         out: dict[str, Any] | None = None
-        if kind.id == "set_value" or (not page and not part and value):
+        if kind.id == "set_value" or (not page and not part and not form_part and value):
             # "select the terrace" may come as an order to go: with no place named and a value named, it is a value
             if value and not (kind.id != "set_value" and (page or part)):
                 name, _, opt = value.id.partition("=")
@@ -655,18 +678,34 @@ class Dushes:
                     fid = str(form.get("form_id") or "form")
                     _intent.preset(f"{thread_id}-{fid}"[:100], name, True if is_bool else opt, e.label or name, shown)
                     out = {"kind": "value"}
-        elif page and part:
-            out = None                                # two places that disagree: the agent
-        elif page:
-            out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title}
-        elif part:
+        elif part and (not page or page.path == ppage.path):
             key = "tab" if part.kind in ("tab", "accordion") else "section"
-            out = {"kind": "show", "args": {"path": here.path, key: part.id}, "title": part.title}
+            out = {"kind": "show", "args": {"path": ppage.path, key: part.id}, "title": part.title}
+        elif form_part and not page:
+            # a tab or a section of the form on this screen: the form's own "show where" step, decided here
+            label = next((o.label for o in qs["form_part"].options if o.id == form_part.id), form_part.id)
+            fid = str(form.get("form_id") or "form")
+            _intent.preset_call(f"{thread_id}-{fid}"[:100], "focus_field", {"name": form_part.id}, f"{label}.")
+            out = {"kind": "focus"}
+        elif page and not part and not names_part:
+            out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title}
+        else:
+            # an order to go or to show whose place the layer cannot open by itself (a part it does not know, two
+            # places that disagree, nothing sure): Dushes looks wider. Opening the page and saying its name when a
+            # part was asked for would be a false "done"
+            out = {"kind": "agent", "mode": "site"}
         if out and out["kind"] in ("navigate", "show") and agent.directive(self.site, out["args"])[1] is None:
             out = None                                # the place is not there (any more): the agent says so
-        if out:
+        if out and out["kind"] != "agent":
             stats.fast["handled"] = True
-        return out
+        return out or to_site
+
+    def _titled(self, message: str, here: Any) -> Any:
+        """The page (other than this one) whose whole title is said in the message, the longest such title."""
+        text = " " + " ".join(re.findall(r"\w+", (message or "").lower())) + " "
+        hits = [p for p in self.site.pages if not (here and p.path == here.path)
+                and (t := " ".join(re.findall(r"\w+", p.title.lower()))) and f" {t} " in text]
+        return max(hits, key=lambda p: len(p.title)) if hits else None
 
     async def _fast_move(self, thread_id: str, message: str, run_id: str, fast: dict[str, Any],
                          reply_to: list[dict[str, Any]] | None) -> AsyncIterator[dict]:

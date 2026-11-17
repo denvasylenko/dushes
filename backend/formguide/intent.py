@@ -317,17 +317,23 @@ def value_question(overlay: Any, consents: Any = ()) -> Question | None:
 
 # ---------------------------------------------------------------- a picked value goes through the form's own card
 
-_PRESETS: dict[str, list] = {}   # the form thread -> what the form agent's model would have said, already decided
+_PRESETS: dict[str, dict] = {}   # the form thread -> {"script": what the form agent's model would have said, "needs": ...}
+APPLIED = "The user confirmed; changes applied"   # how the form agent's tool result starts when a card was applied
+
+
+def preset_call(thread_id: str, tool: str, args: dict, closing: str, needs: str = "") -> None:
+    """The layer decided the form agent's next two steps on this thread: call this tool, then say this line. So
+    the form's own tool, checks and Undo apply and no model is called. `needs`: how the tool's result must start
+    for the closing line to be said."""
+    from langchain_core.messages import AIMessage
+    _PRESETS[thread_id] = {"needs": needs, "script": [
+        AIMessage(content="", tool_calls=[{"name": tool, "id": f"fast_{int(time.time() * 1000)}", "args": args}]),
+        AIMessage(content=closing)]}
 
 
 def preset(thread_id: str, name: str, value: Any, label: str, shown: str) -> None:
-    """The layer picked a value for a field: the form agent's next two steps on this thread are decided (propose
-    that change; then say it in one line), so the form's own card, checks and Undo apply and no model is called."""
-    from langchain_core.messages import AIMessage
-    _PRESETS[thread_id] = [
-        AIMessage(content="", tool_calls=[{"name": "propose_changes", "id": f"fast_{int(time.time() * 1000)}",
-                                           "args": {"changes": [{"name": name, "value": value}]}}]),
-        AIMessage(content=f"{label}: {shown}.")]
+    """A value the layer picked for a field: proposed on the form's own card, then said in one line."""
+    preset_call(thread_id, "propose_changes", {"changes": [{"name": name, "value": value}]}, f"{label}: {shown}.", APPLIED)
 
 
 def clear_preset(thread_id: str) -> None:
@@ -335,25 +341,28 @@ def clear_preset(thread_id: str) -> None:
 
 
 def has_preset(thread_id: str) -> bool:
-    return bool(_PRESETS.get(thread_id))
+    return bool((_PRESETS.get(thread_id) or {}).get("script"))
 
 
-APPLIED = "The user confirmed; changes applied"   # how the form agent's tool result starts when a card was applied
+def is_fill(thread_id: str) -> bool:
+    """Whether what is decided for this thread is a value for a field (its card is applied at once)."""
+    return has_preset(thread_id) and _PRESETS[thread_id]["needs"] == APPLIED
 
 
 def preset_model(thread_id: str | None, messages: list | None = None) -> Any:
     """A model that says the decided steps, or None when nothing is decided for this thread. The closing line
-    ("Loan type: Car loan.") is said only when the form applied the value with no complaint: a value the form or
-    the server refused, a card the person rejected, an error after the change are handed back to the agent, which
-    explains and offers what is possible. The layer never says a thing is set that is not."""
-    script = _PRESETS.get(thread_id or "")
+    ("Loan type: Car loan.") is said only when the tool did what was decided with no complaint: a value the form
+    or the server refused, a card the person rejected, an error after the change are handed back to the agent,
+    which explains and offers what is possible. The layer never says a thing is done that is not."""
+    entry = _PRESETS.get(thread_id or "")
+    script = (entry or {}).get("script")
     if not script:
         return None
     if len(script) == 1 and messages is not None:
         last = messages[-1] if messages else None
         said = str(getattr(last, "content", "") or "")
         fine = (type(last).__name__ == "ToolMessage" and getattr(last, "status", "success") != "error"
-                and said.startswith(APPLIED) and not any(x in said.lower() for x in ("error", "not accepted", "\u26a0")))
+                and said.startswith(entry["needs"]) and not any(x in said.lower() for x in ("error", "not accepted", "\u26a0")))
         if not fine:
             _PRESETS.pop(thread_id or "", None)
             return None
@@ -388,6 +397,25 @@ def preset_model(thread_id: str | None, messages: list | None = None) -> Any:
                     {"name": tc["name"], "args": json.dumps(tc["args"], ensure_ascii=False), "id": tc["id"], "index": i}]))
 
     return Decided()
+
+
+def parts_question(site: Any) -> Question:
+    """Group 2: a part of any page (a tab, an accordion, a section), as "page: part". Its id is "path#part"."""
+    opts = [Option(f"{p.path}#{x.id}", f"{p.title}: {x.title}") for p in site.pages for x in p.parts]
+    return Question("choice", "element", "Which part of a page does the line name?", tuple(opts[:MAX_OPTIONS - 1]), act="show")
+
+
+def form_part_question(overlay: Any) -> Question | None:
+    """Group 2: a tab, an accordion or a section of the form on this screen (the person sees them by their labels)."""
+    opts = []
+    for node in overlay.layout.nodes.values():
+        if node.role in ("tab", "accordion", "section") and node.name:
+            e = overlay.get(node.name)
+            label = (e.label if e is not None else None) or node.text
+            if label and (e is None or e.visible):
+                opts.append(Option(node.name, str(label)))
+    return Question("choice", "form_part", "Which part of the form on this screen does the line name?",
+                    tuple(opts[:MAX_OPTIONS - 1]), act="show") if opts else None
 
 
 def chooser_for(settings: Settings) -> Chooser | None:
