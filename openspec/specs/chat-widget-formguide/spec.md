@@ -163,7 +163,7 @@ A date question with no value yet SHALL open the calendar on the year grid when 
 - **THEN** the calendar opens on the years, not on the month 18 years ago
 
 ### Requirement: A year alone
-A question with `input.type: "year"`, or a date question with `known: {day, month}`, SHALL show years only: a grid of 12 a page ending at the allowed years, opening on the page of `start_year` (else the latest year), and a field to type the year (Enter answers; out of range shows the range in grey). A tap answers at once: the year, or the whole date from the known day and month.
+A question with `input.type: "year"`, or a date question with `known: {day, month}`, SHALL show years only: a grid of 12 a page ending at the allowed years, opening on the page of `start_year` (else about 35 years back for a date up to today, else the latest year), and a field to type the year (Enter answers; out of range shows the range in grey). A tap answers at once: the year, or the whole date from the known day and month.
 
 #### Scenario: Day and month known
 - **WHEN** the card asks for the year with `known: {day: 1, month: 7}` and the user taps 1991

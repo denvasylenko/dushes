@@ -22,7 +22,12 @@ function yearOnly(it: Interrupt, c: RendererContext, commit: Commit, input: HTML
   const y = (v: unknown): number | undefined => { const m = /^(\d{4})/.exec(String(v ?? '')); return m ? Number(m[1]) : undefined }
   const known = it.input?.known as { day?: number; month?: number } | undefined
   const prev = y(it.previous)
-  return yearPicker({ min: y(it.input?.min), max: y(it.input?.max), startYear: Number(it.input?.start_year) || undefined, value: prev ?? null, t: c.t,
+  // where the grid opens: the question's start year; else, for a date whose day and month are known and whose last
+  // allowed day is about today (a date of birth), about 35 years back, where such a year most likely is; else the
+  // latest allowed year (a registration year, a founding year)
+  const max = y(it.input?.max), now = new Date().getFullYear()
+  const start = Number(it.input?.start_year) || (known?.day && known.month && (max ?? now) >= now - 1 ? now - 35 : undefined)
+  return yearPicker({ min: y(it.input?.min), max, startYear: start, value: prev ?? null, t: c.t,
     onPick: (year) => {
       if (!known?.day || !known.month) return commit(year, String(year))
       const d = new Date(year, known.month - 1, known.day)
