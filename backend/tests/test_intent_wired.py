@@ -135,3 +135,42 @@ def test_a_date_is_never_a_place_to_go_and_a_name_off_the_screen_is_the_agents(g
         model.script = [say("I can help with that on the right page.")]
         ev = run(site, f"w7-{len(model.calls)}", message=line, state={"page": {"path": "/"}})
         assert directives(ev) == [] and not chooser.seen
+
+
+def test_the_layer_hands_back_instead_of_claiming(guide, model):
+    """The CPO's hand-back cases the wiring can show today (2026-11-17): the code acts by itself only when it is
+    sure and the action can be undone; everything else is the agent's."""
+    from langchain_core.messages import AIMessage, ToolMessage
+    # 4, 6: a value the form or the server did not take: the closing line is not said, the agent explains
+    for result in ("The user rejected the changes.", "The user confirmed; changes applied. \u26a0 Loan type: not accepted",
+                   "propose_changes failed: the slot is taken"):
+        intent.preset("hb-1", "loan_type", "auto", "Loan type", "Car loan")
+        assert intent.preset_model("hb-1", [AIMessage(content="")]) is not None          # the first step: propose it
+        intent._PRESETS["hb-1"].pop(0)
+        assert intent.preset_model("hb-1", [ToolMessage(content=result, tool_call_id="x")]) is None
+        assert not intent.has_preset("hb-1")
+    intent.preset("hb-2", "loan_type", "auto", "Loan type", "Car loan")
+    intent._PRESETS["hb-2"].pop(0)
+    applied = ToolMessage(content="The user confirmed; changes applied.", tool_call_id="x")
+    assert intent.preset_model("hb-2", [applied]) is not None                            # applied cleanly: one line
+    intent.clear_preset("hb-2")
+    # 5: two fields fit, or the chooser is not sure which value: one question from the agent, nothing written
+    state = {"page": {"path": "/apply"}, "form": start(guide, LOAN)}
+    unsure = Mock(is_command=("yes", 0.9), kind=("set_value", 0.9), value=("loan_type=auto", 0.3))
+    model.script = [say("Do you mean the amount or the term?")]
+    ev = run(site_with(guide, unsure), "hb-3", message="put 18", state=state)
+    assert not [e for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt"]
+    assert "amount or the term" in text(ev)
+    # 2: an order with a question in it is the agent's turn. Today the agent answers and offers the page (a line
+    # that ends in a question opens nothing); "open it, then answer" is specified and not built yet
+    both = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), section=("/loans", 0.9), needs_agent=("yes", 0.8))
+    before = len(model.calls)
+    model.script = [say("The car loan is at 18.9% a year. Want me to open Loans?")]
+    ev = run(site_with(guide, both), "hb-4", message="open the loans page, what is the rate?", state={"page": {"path": "/"}})
+    assert "18.9%" in text(ev) and len(model.calls) == before + 1 and "Jev \u00b7" not in text(ev)
+    # 1: a place that is not there is not "opened": the agent says so
+    gone = Mock(is_command=("yes", 0.9), kind=("show", 0.9), element=("no-such-part", 0.9))
+    model.script = [say("I could not find that part; the page has Services and prices.")]
+    page = next(p for p in SiteMap.load(SITE).pages if p.parts)
+    ev = run(site_with(guide, gone), "hb-5", message="show me the gift cards", state={"page": {"path": page.path}})
+    assert directives(ev) == [] and "could not find" in text(ev)

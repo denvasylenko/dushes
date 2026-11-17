@@ -338,11 +338,25 @@ def has_preset(thread_id: str) -> bool:
     return bool(_PRESETS.get(thread_id))
 
 
-def preset_model(thread_id: str | None) -> Any:
-    """A model that says the decided steps, or None when nothing is decided for this thread."""
+APPLIED = "The user confirmed; changes applied"   # how the form agent's tool result starts when a card was applied
+
+
+def preset_model(thread_id: str | None, messages: list | None = None) -> Any:
+    """A model that says the decided steps, or None when nothing is decided for this thread. The closing line
+    ("Loan type: Car loan.") is said only when the form applied the value with no complaint: a value the form or
+    the server refused, a card the person rejected, an error after the change are handed back to the agent, which
+    explains and offers what is possible. The layer never says a thing is set that is not."""
     script = _PRESETS.get(thread_id or "")
     if not script:
         return None
+    if len(script) == 1 and messages is not None:
+        last = messages[-1] if messages else None
+        said = str(getattr(last, "content", "") or "")
+        fine = (type(last).__name__ == "ToolMessage" and getattr(last, "status", "success") != "error"
+                and said.startswith(APPLIED) and not any(x in said.lower() for x in ("error", "not accepted", "\u26a0")))
+        if not fine:
+            _PRESETS.pop(thread_id or "", None)
+            return None
     from langchain_core.language_models import BaseChatModel
     from langchain_core.messages import AIMessageChunk
     from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult

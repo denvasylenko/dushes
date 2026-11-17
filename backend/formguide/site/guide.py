@@ -658,6 +658,8 @@ class Dushes:
         elif part:
             key = "tab" if part.kind in ("tab", "accordion") else "section"
             out = {"kind": "show", "args": {"path": here.path, key: part.id}, "title": part.title}
+        if out and out["kind"] in ("navigate", "show") and agent.directive(self.site, out["args"])[1] is None:
+            out = None                                # the place is not there (any more): the agent says so
         if out:
             stats.fast["handled"] = True
         return out
