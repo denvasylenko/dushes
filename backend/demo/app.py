@@ -97,5 +97,25 @@ mount_lab(app, guide)
 
 # The demo page at "/" (DEMO_PATH moves it, e.g. "/demo" on the docs host, built with `vite build --base /demo/`).
 _DIST = HERE.parents[1] / "frontend" / "dist"
+
+# The owner's local demo of the choice layer (demo branch, DEMO_OUR_VOICE=1): the microphone is our own Whisper in
+# every browser (the page's ?dictation=server switch, set by a redirect), and the chat has no "add files" button.
+if os.environ.get("DEMO_OUR_VOICE") == "1" and (_DIST / "site.html").exists():
+    from fastapi import Request as _Request
+    from fastapi.responses import HTMLResponse as _HTML
+    from fastapi.responses import RedirectResponse as _Redirect
+
+    _NO_FILES = ("<script>customElements.whenDefined('agui-chat').then(()=>{const set=()=>{const c="
+                 "document.querySelector('agui-chat');if(c&&c.getAttribute('attach')!=='false')"
+                 "c.setAttribute('attach','false')};set();new MutationObserver(set).observe("
+                 "document.documentElement,{childList:true,subtree:true})})</script>")
+
+    @app.get(os.environ.get("DEMO_PATH", "/").rstrip("/") + "/site.html", include_in_schema=False)
+    def _site_page(request: _Request):
+        if request.query_params.get("dictation") != "server":
+            return _Redirect(str(request.url.include_query_params(dictation="server")))
+        page = (_DIST / "site.html").read_text(encoding="utf-8")
+        return _HTML(page.replace("</body>", _NO_FILES + "</body>"), headers={"Cache-Control": "no-store"})
+
 if _DIST.exists():
     app.mount(os.environ.get("DEMO_PATH", "/"), StaticFiles(directory=_DIST, html=True), name="frontend")
