@@ -483,7 +483,7 @@ class Dushes:
                 fast = getattr(stats, "fast", None)
                 who = self.intent.settings.provider.capitalize()
                 if fast and fast.get("handled") and fast.get("by"):
-                    label = f"in code ({fast['by']} taken up) \u00b7 no model"
+                    label = f"in code ({fast['by']}) \u00b7 no model"
                 elif fast and fast.get("handled"):
                     label = f"{who} \u00b7 {fast['ms']} ms"
                 elif getattr(stats, "decided", False):
@@ -603,6 +603,9 @@ class Dushes:
         if not layer.on:
             return None   # (a talking conversation goes through the layer too: what was heard is an ordinary line)
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
+        named = self._named(thread_id, message, state, here, stats)
+        if named:
+            return named
         if not _intent.is_direct(message):
             # not a direct command (no verb of the short list at its start, or a question): the layer is not asked
             # at all. The line is the model's, which has the choice tool; a page said by its whole title makes it
@@ -727,6 +730,48 @@ class Dushes:
             voice.hush(thread_id)   # in a talking conversation: done already, so no "let me check" before the answer
         return out or to_site
 
+    def _named(self, thread_id: str, message: str, state: dict[str, Any], here: Any, stats: RunStats) -> dict[str, Any] | None:
+        """A direct command or a request that names a page, a part of a page or a part of the form on the screen:
+        decided in code, before any chooser, from the line with its fillers and politeness taken away. The whole
+        name said word for word, or a misheard one that is near a single name and well clear of the next. Nothing
+        more may be said in the line than the name; otherwise it is not all that was asked."""
+        from .. import intent as _intent
+        if not (_intent.is_direct(message) or _intent.asks_for(message)) or _intent.has_date(message):
+            return None
+        targets = [(p.path, p.title, "page") for p in self.site.pages if not (here and p.path == here.path)]
+        targets += [(f"{p.path}#{x.id}", x.title, "part") for p in self.site.pages for x in p.parts]
+        form, labels = state.get("form") or None, {}
+        if isinstance(form, dict) and form.get("config"):
+            try:
+                from ..form.overlay import Overlay
+                lay = self.forms.layout(form.get("jsx_hash", ""))
+                pack = self.forms.packs.get(form.get("form_id"))
+                fq = _intent.form_part_question(Overlay(lay, form["config"], pack.pii)) if lay is not None else None
+                labels = {f"form:{o.id}": o.label for o in (fq.options if fq else ())}
+                targets += [(i, label, "form") for i, label in labels.items()]
+            except Exception:  # noqa: BLE001 - a form that cannot be read has no parts to name
+                labels = {}
+        hit = _intent.match_name(message, targets)
+        if not hit or hit[2]:
+            return None                               # no single name, or more was said than the name
+        tid, how, _more = hit
+        if tid.startswith("form:"):
+            fid = str(form.get("form_id") or "form")
+            _intent.preset_call(f"{thread_id}-{fid}"[:100], "focus_field", {"name": tid[5:]}, f"{labels[tid]}.")
+            out: dict[str, Any] = {"kind": "focus"}
+        else:
+            path, _, pid = tid.partition("#")
+            page = self.site.page(path)
+            part = page.part(pid) if page and pid else None
+            args = {"path": path, **({("tab" if part.kind in ("tab", "accordion") else "section"): pid} if part else {})}
+            if agent.directive(self.site, args)[1] is None:
+                return None
+            out = {"kind": "show" if part else "navigate", "args": args, "title": part.title if part else page.title}
+        stats.fast = {"ms": 0, "handled": True, "by": "the name said" if how == "said" else "a name heard nearly right"}
+        from .. import voice
+        voice.hush(thread_id)
+        return out
+
     def _taken_up(self, thread_id: str, message: str, stats: RunStats) -> dict[str, Any] | None:
         """The last answer offered to open a page or start a form, and this line only takes that up ("open it",
         "yes please", "that one"): carried out in code, at once. The person agreed to exactly what was offered;
@@ -749,7 +794,7 @@ class Dushes:
                 return None
             out = {"kind": "navigate", "args": args, "title": str(off.get("title") or "")}
         self._offers.pop(thread_id, None)
-        stats.fast = {"ms": 0, "handled": True, "by": "the offer"}
+        stats.fast = {"ms": 0, "handled": True, "by": "the offer taken up"}
         from .. import voice
         voice.hush(thread_id)
         return out
@@ -845,6 +890,7 @@ class Dushes:
         has_docs = bool(self.forms.knowledge.documents_for(SCOPE))
         failed = False
         first_mid = None
+        from .. import intent as _intent_mod
         from .. import voice
         aloud = voice.active(thread_id)   # a voice conversation speaks this thread's answers: short, and no chips
         async for ev in agent.answer(self.model or self.forms.models.agent, self.site, voice.heard_as(quoted(message, heard) or "", aloud) or "", history, page,
@@ -855,7 +901,12 @@ class Dushes:
                                      stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats,
                                      asked=message, offered=self._offers.pop(thread_id, False), upfront=aloud,
                                      chooser=self._chooser(message or "", page) if self.intent.on and os.environ.get("INTENT_TOOL", "1") == "1" else None,
-                                     end_on_move=os.environ.get("INTENT_END_ON_MOVE") == "1"):
+                                     # a direct command or a plain request that the model carries out with its own
+                                     # tool ends there: one short line, no description and no question back
+                                     end_on_move=os.environ.get("INTENT_END_ON_MOVE") == "1" or (
+                                         self.intent.on and bool(message) and (
+                                             _intent_mod.is_direct(message) or _intent_mod.asks_for(message))
+                                         and not message.rstrip().endswith("?"))):
             if ev["type"] == "CUSTOM" and ev.get("name") == "site_offer":
                 while len(self._offers) >= 5000:
                     self._offers.pop(next(iter(self._offers)))

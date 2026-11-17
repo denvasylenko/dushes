@@ -182,3 +182,47 @@ def test_the_tool_only_arm_puts_every_line_to_the_model(guide, model, monkeypatc
     assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and text(ev).startswith("Loans.")
     names = {(t.get("function") or t)["name"] if isinstance(t, dict) else t.name for t in model.bound}
     assert "choose_on_screen" in names
+
+
+OWNERS_12 = [   # the owner's 100 s of voice at the demo (2026-11-17), as the recogniser heard them
+    ("/", "open a barbershop", "/barbershop"),
+    ("/barbershop", "open car insurance", "/insurance"),
+    ("/insurance", "open uh get a car insurance quote", "/insure"),
+    ("/insure", "open apply for a loan", "/apply"),
+    ("/", "open apply for a loan", "/apply"),
+    ("/apply", "open barbershop", "/barbershop"),
+    ("/barbershop", "open loans", "/loans"),
+    ("/", "Okay, can you help me loans", "/loans"),
+    ("/", "Okay, can you open we quick visit page", "/book"),
+    ("/", "Okay, can you open the loans", "/loans"),
+    ("/", "Can you open the mortga-the-ges", "/loans"),
+]
+
+
+def test_the_owners_twelve_spoken_commands_are_carried_out_with_no_model(guide, model):
+    """Seven of the twelve were carried out by the layer in his recording; the other five went to the model,
+    though each was a command. With what stands around a name taken away, the name said word for word or heard
+    nearly right at a clear margin, and tabs and sections as targets, all twelve are settled in code."""
+    from .test_agent import start
+    from .test_questions import LOAN
+    unsure = Mock(is_command=("no", 0.6), kind=("other", 0.6))                  # the chooser is of no help here
+    for page, line, path in OWNERS_12:
+        before = len(model.calls)
+        ev = run(tool_site(guide, unsure), f"own-{len(line)}-{before}", message=line, state={"page": {"path": page}})
+        d = directives(ev)
+        assert len(d) == 1 and d[0]["path"] == path and len(model.calls) == before, line
+        assert len(text(ev).split()) <= 5, line                                    # one short line
+    assert directives(run(tool_site(guide, unsure), "own-m", message="Can you open the mortga-the-ges",
+                          state=HOME))[0].get("tab") == "mortgage"
+    # the twelfth: a section of the form on the screen
+    before = len(model.calls)
+    ev = run(tool_site(guide, unsure), "own-12", message="Can you open personal details",
+             state={"page": {"path": "/apply"}, "form": start(guide, LOAN)})
+    assert [e.get("toolCallName") for e in ev if e.get("type") == "TOOL_CALL_START"] == ["focus_field"]
+    assert len(model.calls) == before and text(ev).startswith("Personal details.")
+    # what is not settled in code: a word that fits two names, and a place that is not named
+    for line in ("open insurance", "open the prices"):
+        model.script = [say("Which one do you mean?")]
+        before = len(model.calls)
+        run(tool_site(guide, unsure), f"own-x-{len(line)}", message=line, state=HOME)
+        assert len(model.calls) == before + 1, line

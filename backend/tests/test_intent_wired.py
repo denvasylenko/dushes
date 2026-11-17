@@ -54,11 +54,15 @@ def test_a_command_to_go_is_carried_out_without_the_agent(guide, model, monkeypa
     before = len(model.calls)
     ev = run(site, "w1", message="open the loans page", state={"page": {"path": "/"}})
     assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
-    assert "Loans." in text(ev) and "Jev ·" in text(ev) and " ms" in text(ev)       # the label of who handled it
+    # the page's whole name was said: code settles it before the chooser is asked, and the label says so
+    assert "Loans." in text(ev) and "in code (the name said)" in text(ev) and not chooser.seen
     assert ev[0]["type"] == "RUN_STARTED" and ev[-1]["type"] == "RUN_FINISHED"
-    # only the phrase, the screen and the labels went out
+    # a place said by a keyword of the page, not by its name, is the chooser's: its label carries its time, and only the phrase,
+    # the screen and the labels went out
+    ev = run(site, "w1b", message="show the interest rate", state={"page": {"path": "/"}})
+    assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and " ms" in text(ev) and "in code" not in text(ev)
     phrase, questions, screen = chooser.seen[0]
-    assert phrase == "open the loans page" and screen == "/" and "Loans" in {o.label for o in questions["section"].options}
+    assert phrase == "show the interest rate" and screen == "/" and "Loans" in {o.label for o in questions["section"].options}
 
 
 def test_a_question_or_an_unsure_pick_goes_to_the_agent(guide, model, monkeypatch):
@@ -198,7 +202,7 @@ def test_in_a_talking_conversation_the_heard_line_goes_through_the_layer_and_the
         before = len(model.calls)
         ev = [e async for e in site.run("talk-1", message="open the loans page", state={"page": {"path": "/"}})]
         assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
-        assert "Jev \u00b7" in text(ev)                              # the label is on the screen
+        assert "in code (the name said)" in text(ev)                 # the label is on the screen
         for e in ev:
             voice.seen("talk-1", e)
         await asyncio.sleep(0.05)

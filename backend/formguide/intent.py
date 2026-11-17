@@ -473,6 +473,69 @@ def is_direct(phrase: str) -> bool:
     return bool(_DIRECT.match((phrase or "").strip()))
 
 
+# What is said around a name and is not part of it: fillers, politeness, articles, and the word for the kind of
+# place. A spoken line is matched to the screen's names without them ("Okay, can you open uh the loans page").
+_AROUND = set("""ok okay uh um er eh hmm so well now hey yeah yes and then just again please can could would will you
+    help me with us my i want need like to a an the""".split())
+_KINDS = {"page": "page", "pages": "page", "screen": "page", "tab": "part", "tabs": "part", "section": "part",
+          "sections": "part", "part": "part", "block": "part", "accordion": "part"}
+_GO_VERBS = set("open show go goto take bring navigate switch scroll jump move see view display expand".split())
+_REQUEST = re.compile(r"^[\W]*(?:(?:ok|okay|hey|so|now|well|yeah|yes)[\s,.!]+)*(please|can you|could you|would you|will you)\b",
+                      re.IGNORECASE)
+
+
+def asks_for(phrase: str) -> bool:
+    """Whether the line opens as a request ("can you ...", "please ..."), with or without a verb of the list."""
+    return bool(_REQUEST.match(phrase or ""))
+
+
+def name_words(text: str) -> list[str]:
+    """A name as its words, without articles, punctuation and case: "Apply for a loan" -> apply, for, loan."""
+    return [w for w in re.findall(r"[\w']+", (text or "").lower()) if w not in ("a", "an", "the")]
+
+
+def match_name(phrase: str, targets: list[tuple[str, str, str]]) -> tuple[str, str, bool] | None:
+    """The target a spoken or typed line names, decided in code: (id, how, more_said), or None.
+    `targets`: (id, label, kind) with kind "page", "part" or "form". The line is stripped of what stands around a
+    name; then, in this order: the whole name said word for word (the longest wins); then the nearest name by
+    spelling, for a misheard word ("mortga-the-ges" for Mortgage), only when it is close and well clear of the
+    second. A word for the kind ("page", "tab") narrows the targets to that kind. `more_said`: the line holds
+    words beyond the name, so the name alone is not all that was asked."""
+    import difflib
+    words = [w for w in re.findall(r"[\w']+", (phrase or "").lower())]
+    kinds = {_KINDS[w] for w in words if w in _KINDS}
+    rest = [w for w in words if w not in _AROUND and w not in _KINDS]
+    while rest and rest[0] in _GO_VERBS:
+        rest = rest[1:]
+    if not rest:
+        return None
+    pool = [(i, name_words(label), kind) for i, label, kind in targets if name_words(label)]
+    if kinds:
+        narrowed = [t for t in pool if ("page" if t[2] == "page" else "part") in kinds]
+        pool = narrowed or pool
+    said = " " + " ".join(rest) + " "
+    exact = [(i, w) for i, w, _k in pool if " " + " ".join(w) + " " in said]
+    if exact:
+        longest = max(len(w) for _i, w in exact)
+        best = [(i, w) for i, w in exact if len(w) == longest]
+        if len({" ".join(w) for _i, w in best}) > 1:
+            return None                          # two different names of the same length: not decided here
+        i, w = best[0]
+        left = [x for x in rest if x not in w and len(x) >= 4]
+        return i, "said", bool(left)
+    q = " ".join(rest)
+    scored = sorted(((max(difflib.SequenceMatcher(None, q, " ".join(w)).ratio(),
+                          difflib.SequenceMatcher(None, q.replace(" ", ""), "".join(w)).ratio()), i) for i, w, _k in pool),
+                    reverse=True)
+    if not scored:
+        return None
+    top, second = scored[0], (scored[1][0] if len(scored) > 1 else 0.0)
+    near, clear = (0.55, 0.2) if kinds else (0.85, 0.25)   # "the ... page" narrows the field, so less is needed
+    if top[0] >= near and top[0] - second >= clear:
+        return top[1], "near", False
+    return None
+
+
 _LONG_DIGITS = re.compile(r"\d[\d\s().-]{5,}\d")
 
 

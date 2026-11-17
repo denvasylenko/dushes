@@ -595,6 +595,11 @@ class Talks:
         state["pending"] = asked
         state["answer"], state["told"], state["spoke"] = [], {}, []
         if text:
+            from . import intent as _intent
+            if _intent.is_direct(text) or _intent.asks_for(text):
+                # a command: the answer is the action and one short word; the voice's own "sure, let me check"
+                # is cancelled before it comes (the owner's standard: it opens, and the voice says "done")
+                self.hush(state["thread"])
             # a plain yes or no while a card waits is the answer to that card: the client accepts or
             # rejects it instead of sending the words as a new message (which would close the card)
             card, said_yes = state.get("waiting"), yes_or_no(text)
@@ -735,8 +740,9 @@ class Talks:
         own "let me check" must not come before the answer. An empty note cancels it; the answer follows."""
         talk_id = self._by_thread.get(thread_id)
         state = self._live.get(talk_id) if talk_id else None
-        if not state or not state.get("pending"):
-            return
+        if not state or not state.get("pending") or state.get("hushed") == state["pending"]:
+            return   # nothing handed over, or its acknowledgement is cancelled already
+        state["hushed"] = state["pending"]
 
         async def cancel() -> None:
             try:
