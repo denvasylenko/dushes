@@ -549,6 +549,10 @@ class Dushes:
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_TRACE") == "1" and getattr(stats, "trace", None):
                 yield {"type": "CUSTOM", "name": "decision_trace", "value": _decision_trace(
                     stats, seen, run_id, thread_id in self.__dict__.get("_mixed", {}), self.site)}
+                if not stats.models:
+                    # a turn the layer carried out alone has no model call, so no run_stats of its own; a host that
+                    # lists turns by run_stats still gets one, with no models in it
+                    yield {"type": "CUSTOM", "name": "run_stats", "value": stats.as_event()}
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR"):
                 _demo_log(thread_id, message, resume, handoff, state, stats, seen, ev["type"])
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and stats.models:

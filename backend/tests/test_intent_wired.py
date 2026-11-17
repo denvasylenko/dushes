@@ -548,6 +548,8 @@ def test_the_decision_trace_of_a_turn(guide, model, monkeypatch):
     t = trace(ev)
     assert t["outcome"] == "jev" and t["applied"] == [{"what": "open", "target": "/loans", "label": "Loans"}] and t["to_agent"] is None
     assert t["said"] == "open loans" and t["threshold"] == 0.5 and t["bars"]["tail"] == 0.7 and t["run_id"]
+    stats = [e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "run_stats"]
+    assert len(stats) == 1 and stats[0]["run_id"] == t["run_id"] and stats[0]["models"] == []   # a turn with no model still shows
     by_about = {q["about"]: q for q in t["questions"]}
     assert by_about["target"]["answer"] == "screen:/loans" and by_about["target"]["answer_label"] == "Loans" and by_about["target"]["used"]
     assert by_about["needs_agent"]["used"] is False and by_about["needs_agent"]["p"] == 0.3     # asked, answered, not used
