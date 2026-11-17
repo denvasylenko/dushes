@@ -52,14 +52,15 @@ class Chooser(Protocol):
 
 | Name | What | Cost | In this change |
 | --- | --- | --- | --- |
-| `rules` | exact and normalised matches of the phrase against option labels and their synonyms, the number and date words the voice module already reads, yes / no words | none | yes |
-| `embed` | nearest option by embedding | none per call; a new dependency | no: the dependency needs the owner's yes |
+| `rules` | an option whose label is in the phrase word for word, yes / no words | none | yes, for tests only |
+| `embed` | nearest option by embedding | none per call; a new dependency | no, and not planned: see the measurement |
 | `external` | a chooser service behind the same contract | per call | no: after the measurement and the owner's yes to the supplier |
 | the agent | Haiku, as today | per turn | it is the fallback, not a `Chooser` |
 
 A setting picks one: `jev | haiku | rules | off`. `jev` and `haiku` are names of settings values only; the code
 that talks to a supplier is one module behind `Chooser`, swapped with one line. Until that module exists, `jev`
-behaves as `rules`.
+and `haiku` give no chooser and the layer behaves as `off`. `rules` is for tests only and refuses to start
+outside them.
 
 ## The questions are generated, not written
 
@@ -129,10 +130,25 @@ data as a list); the layer does not handle the confirmation of those at all.
 The QA Lead (D-23): confident wrong picks at most 1%, at least 60% of choice turns covered, p95 at most 300 ms
 from `fra`. If rules and embeddings pass it, no external supplier is needed.
 
-## Open, to settle before code
+## The first measurement (the QA Lead, 2026-11-17, synthetic phrases)
+
+Nobody passes the bar yet: the external chooser 1.2% confidently wrong, 43% covered, 281 ms; Haiku 0% wrong but
+11% covered on new phrasings, 1.1 s; rules 13% confidently wrong on new phrasings; embeddings 10% wrong. So (the
+CPO): the frame is built with the provider off; rules are never a product's provider; embeddings are not worth
+the dependency; the threshold comes from the next measurement, after the questions are adjusted ("a booking for
+N" against "N guests").
+
+## What is built (the frame)
+
+`backend/formguide/intent.py`: the contract, the generated questions for groups 1 to 4, the settings, and
+`Layer.pick`, which returns a pick only when the layer is on, the kind may act by itself, nothing private is in
+the phrase, the chooser answered within the deadline with an id among the options sent and a confidence at or
+above the threshold. Everything else is None, which means the agent takes the turn. It is not wired into a run:
+no host and no agent calls it yet, so behaviour is unchanged.
+
+## Open, to settle before the layer is wired in
 
 - A wrong confident pick is worse than a slow right one, so the threshold starts high and only the measurement
   lowers it.
 - In voice, the layer answers before the voice's "let me check" would be said; whether that acknowledgement is
   then cancelled is decided with the first measurement.
-- `embed` needs a dependency (and a multilingual model download) the package does not have: the owner's yes.
