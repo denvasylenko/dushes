@@ -355,7 +355,7 @@ def safe_context(layer: "Layer", context: dict[str, Any] | None) -> dict[str, An
 
 
 async def _many(layer: "Layer", phrase: str, language: str, questions: dict[str, Question],
-                screen: str = "", context: dict[str, Any] | None = None) -> dict[str, Pick]:
+                screen: str = "", context: dict[str, Any] | None = None, trace: list | None = None) -> dict[str, Pick]:
     """Every question about one phrase in one call, under one deadline. The result holds only the picks that may
     be used (in time, confident, an id among the options sent); a missing name means "no pick". A chooser without
     `choose_many` is asked one question at a time."""
@@ -382,11 +382,21 @@ async def _many(layer: "Layer", phrase: str, language: str, questions: dict[str,
     except Exception:  # noqa: BLE001 - late, failed or unreachable: the agent takes the turn
         return {}
     ms, out = round((time.monotonic() - started) * 1000), {}
+    probs = getattr(layer.chooser, "probs", {}) or {}
     for name, q in asked.items():
         p = got.get(name)
         allowed = {"yes", "no"} if q.kind == "noul" else {o.id for o in q.options}
-        if isinstance(p, Pick) and p.id in allowed and p.confidence >= s.threshold:
+        used = isinstance(p, Pick) and p.id in allowed and p.confidence >= s.threshold
+        if used:
             out[name] = Pick(p.id, p.confidence, ms, layer.chooser.by)
+        if trace is not None:   # every question and its answer, used or not, for a host that shows how a turn was decided
+            labels = {o.id: o.label for o in q.options}
+            top = sorted(((i, v) for i, v in (probs.get(name) or {}).items() if i in labels), key=lambda t: -t[1])[:3]
+            trace.append({"about": q.about, "text": q.text, "kind": q.kind,
+                          "answer": p.id if isinstance(p, Pick) else None,
+                          "answer_label": labels.get(p.id) if isinstance(p, Pick) and p.id else (p.id if isinstance(p, Pick) else None),
+                          "p": round(p.confidence, 3) if isinstance(p, Pick) else None, "used": bool(used),
+                          **({"options": [{"id": i, "label": labels[i], "p": round(v, 3)} for i, v in top]} if q.kind == "choice" and top else {})})
     return out
 
 

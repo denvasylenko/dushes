@@ -475,8 +475,14 @@ class Dushes:
                 seen["said"].append("\n")
             if ev.get("type") == "TEXT_MESSAGE_CONTENT":
                 seen["said"].append(str(ev.get("delta") or ""))
-            elif ev.get("type") == "CUSTOM" and ev.get("name") in ("site_directive", "card", "display"):
-                seen["screen"].append({"name": ev["name"], "value": ev.get("value")})
+            elif ev.get("type") == "CUSTOM" and ev.get("name") in ("site_directive", "card", "display", "ui_directive", "on_interrupt"):
+                value = ev.get("value")
+                if ev["name"] == "on_interrupt" and isinstance(value, str):
+                    try:
+                        value = json.loads(value)
+                    except ValueError:
+                        value = None
+                seen["screen"].append({"name": ev["name"], "value": value})
             if ev.get("type") == "CUSTOM" and ev.get("name") == "model":
                 continue   # the form agent's: this run already said which model answers
             if choice and not told and ev.get("type") == "RUN_STARTED":
@@ -527,6 +533,9 @@ class Dushes:
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_SCORES") == "1" and getattr(stats, "fast", None):
                 yield {"type": "CUSTOM", "name": "choice_scores", "value": {
                     k: stats.fast.get(k) for k in ("ms", "tokens", "targets", "sure", "handled", "late") if k in stats.fast}}
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_TRACE") == "1" and getattr(stats, "trace", None):
+                yield {"type": "CUSTOM", "name": "decision_trace", "value": _decision_trace(
+                    stats, seen, run_id, thread_id in self.__dict__.get("_mixed", {}), self.site)}
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR"):
                 _demo_log(thread_id, message, resume, handoff, state, stats, seen, ev["type"])
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and stats.models:
@@ -753,9 +762,18 @@ class Dushes:
                                                  "than the one that is on the screen now?", act="show")
         context = self._context(thread_id, state, here, ov, lay, pack)
         started = RunStats.now()
-        picks = await layer.pick_many(sent, detect(message) or "en", qs, here.path if here else "", context)
+        asked: list[dict[str, Any]] = []
+        picks = await layer.pick_many(sent, detect(message) or "en", qs, here.path if here else "", context, asked)
         ms = round((RunStats.now() - started) * 1000)
         stats.fast = {"ms": ms, "handled": False, "late": not picks and ms >= layer.settings.timeout_ms - 10}
+        # how the turn was decided, for a host that shows it to the person themself (CUSTOM decision_trace): the
+        # line as it left the filter, every question with its answer, the bars; what was applied is added at the end
+        stats.trace = {"said": _intent.scrub(layer, sent), "questions": asked, "threshold": layer.settings.threshold,
+                       "bars": {"field": 0.8, "section": 0.8, "bare_value": 0.9, "tail": float(os.environ.get("INTENT_TAIL", "0.7"))},
+                       "filtered": {"names": sent.count("<name>"),
+                                    "emails": sum(1 for m in _intent._PRIVATE_BITS.finditer(message) if m.group(1)),
+                                    "phones_or_digits": sum(1 for m in _intent._PRIVATE_BITS.finditer(message) if m.group(2))},
+                       "chooser_by": getattr(layer.chooser, "by", ""), "why": "name_masked" if named else ""}
         # the demo's terminal shows what the chooser was sure of (ids and confidences only, never the phrase)
         stats.fast.update(tokens=getattr(layer.chooser, "tokens", None), targets=len(targets),
                           sure={k: [v.id, round(v.confidence, 2)] for k, v in picks.items()})
@@ -866,6 +884,7 @@ class Dushes:
                 return None                           # "all" asked and the layer cannot name them: the agent's turn
             if len(opens) >= 2 and not _intent.has_date(message):
                 if self._again(thread_id, ("open", tuple(n for n, _ in opens))):
+                    stats.trace["why"] = "repeat"
                     return None
                 closing = ", ".join(label for _, label in opens) + "."
                 _intent.preset_calls(f"{thread_id}-{fid}"[:100], [("focus_field", {"name": n}) for n, _ in opens],
@@ -908,6 +927,7 @@ class Dushes:
             bare = bool(value and said and value.confidence >= 0.9 and not moves and not tail
                         and not (more and more.id == "yes") and not (kind and kind.id in ("question", "other")))
             if not ordered and not moves and not bare:
+                stats.trace["why"] = stats.trace["why"] or "not_an_order"
                 return None                           # not the person's order: the agent's turn
             if bare or (ordered and (kind.id == "set_value" or (value and not target))):
                 if value and not tail:                # a value with more to answer: the form's assistant does both
@@ -952,6 +972,7 @@ class Dushes:
                             out["form_id"] = str(page.form)
         if out and out["kind"] in ("navigate", "show", "focus") and self._again(
                 thread_id, (out["kind"], json.dumps(out.get("args"), sort_keys=True), picks["target"].id if picks.get("target") else "")):
+            stats.trace["why"] = "repeat"
             return None
         if out:
             stats.fast["handled"] = True
@@ -1418,6 +1439,41 @@ def create_dushes_router(site: Dushes, host: Any = None):
 # the names before Dushes, kept so existing hosts keep working
 SiteGuide = Dushes
 create_site_router = create_dushes_router
+
+
+def _decision_trace(stats: Any, seen: dict[str, Any], run_id: str, more_to_come: bool, site: Any) -> dict[str, Any]:
+    """The CUSTOM `decision_trace` event of a run in which the choice layer was asked: how the turn was decided,
+    for the person's own conversation only (a host turns it on). No value of theirs is in it beyond the line as it
+    left the filter and the labels of what was applied."""
+    import datetime
+    fast, trace = getattr(stats, "fast", None) or {}, dict(stats.trace)
+    applied: list[dict[str, Any]] = []
+    if fast.get("handled"):
+        for item in seen.get("screen") or []:
+            name, value = item.get("name"), item.get("value") or {}
+            if name == "site_directive":
+                page = site.page(str(value.get("path") or ""))
+                pid = value.get("tab") or value.get("section")
+                part = page.part(pid) if page and pid else None
+                applied.append({"what": "open", "target": f"{value.get('path')}{'#' + pid if pid else ''}",
+                                "label": " \u203a ".join(x for x in (page.title if page else "", part.title if part else "") if x)})
+            elif name == "ui_directive" and value.get("type") == "focus":
+                applied.append({"what": "open", "target": str(value.get("target")), "label": str(value.get("target"))})
+            elif name == "on_interrupt" and value.get("quiet"):
+                applied += [{"what": "set", "target": str(r.get("name")), "label": f"{r.get('label') or r.get('name')}: {r.get('display') or r.get('value')}"}
+                            for r in value.get("changes") or [] if isinstance(r, dict)]
+    tail = bool(fast.get("did")) or (bool(fast.get("handled")) and more_to_come)
+    why = trace.pop("why", "")
+    if not fast.get("handled"):
+        to_agent: dict[str, Any] | None = {"why": "late" if fast.get("late") else why or "not_sure", "already_done": []}
+    elif tail:
+        to_agent = {"why": why or "asks_more", "already_done": [a["label"] for a in applied]}
+    else:
+        to_agent = None
+    return {"run_id": run_id, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"), **trace,
+            "outcome": "agent" if not fast.get("handled") else "partly" if tail else "jev",
+            "steps": [{"who": "jev", "title": "The choice model", "ms": fast.get("ms"), "tokens": fast.get("tokens")}],
+            "applied": applied, "to_agent": to_agent}
 
 
 def _demo_log(thread_id: str, message: str | None, resume: Any, handoff: bool, state: dict[str, Any] | None,

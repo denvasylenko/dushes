@@ -77,6 +77,8 @@ class ExternalChooser:
         answers = body.get("answers") or {}
         # how far the first option of each choice is ahead of the second (for a bar with a margin)
         self.margins = {}
+        self.probs = {name: {str(k): float(v) for k, v in ((a or {}).get("probabilities") or {}).items() if k != NONE}
+                      for name, a in answers.items()}
         for name, a in answers.items():
             probs = sorted((float(v) for k, v in ((a or {}).get("probabilities") or {}).items()), reverse=True)
             if len(probs) >= 2:

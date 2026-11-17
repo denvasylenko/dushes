@@ -532,3 +532,32 @@ def test_all_the_sections_of_a_place_the_layer_did_not_resolve_is_the_agents(gui
     ids = [x.id for x in page.parts if x.kind in ("accordion", "section")]
     told, ds = site_agent.directives_for(SiteMap.load(SITE), {"path": page.path, "parts": ids + ["no-such"]})
     assert [d.get("tab") or d.get("section") for d in ds] == ids and "No such part: no-such" in told and f"{len(ids)} of its" in told
+
+
+def test_the_decision_trace_of_a_turn(guide, model, monkeypatch):
+    """A host that turns it on (INTENT_TRACE=1) gets CUSTOM decision_trace before the run ends: the line as it left
+    the filter, every question with its answer (used or not), what was applied, and why the agent was brought in."""
+    def trace(ev):
+        return next((e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "decision_trace"), None)
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), target=("screen:/loans", 0.95),
+                   needs_agent=("no", 0.3))
+    ev = run(site_with(guide, chooser), "tr-0", message="open loans", state={"page": {"path": "/"}})
+    assert trace(ev) is None                                               # off unless the host asks
+    monkeypatch.setenv("INTENT_TRACE", "1")
+    ev = run(site_with(guide, chooser), "tr-1", message="open loans", state={"page": {"path": "/"}})
+    t = trace(ev)
+    assert t["outcome"] == "jev" and t["applied"] == [{"what": "open", "target": "/loans", "label": "Loans"}] and t["to_agent"] is None
+    assert t["said"] == "open loans" and t["threshold"] == 0.5 and t["bars"]["tail"] == 0.7 and t["run_id"]
+    by_about = {q["about"]: q for q in t["questions"]}
+    assert by_about["target"]["answer"] == "screen:/loans" and by_about["target"]["answer_label"] == "Loans" and by_about["target"]["used"]
+    assert by_about["needs_agent"]["used"] is False and by_about["needs_agent"]["p"] == 0.3     # asked, answered, not used
+    # a phone in the line: the chooser is not asked at all, and what is shown back is masked
+    model.script = [say("Noted.")]
+    t = trace(run(site_with(guide, chooser), "tr-1b", message="open loans, my phone is +39 333 123 4567", state={"page": {"path": "/"}}))
+    assert t["filtered"]["phones_or_digits"] == 1 and "333" not in json.dumps(t) and t["outcome"] == "agent"
+    # a name is masked in what is shown back, and the turn goes on to the agent
+    none = Mock(is_command=("yes", 0.9), kind=("other", 0.9))
+    model.script = [say("Here it is.")]
+    t = trace(run(site_with(guide, none), "tr-2", message="open the request of Giulia", state={"page": {"path": "/"}}))
+    assert t["said"] == "open the request of <name>" and t["outcome"] == "agent" and t["to_agent"]["why"] == "name_masked"
+    assert t["filtered"]["names"] == 1 and "Giulia" not in json.dumps(t)
