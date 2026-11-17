@@ -134,6 +134,15 @@ n = await guide.purge(30, dry_run=True)   # how many are older than 30 days
 await guide.purge(30)
 ```
 
+### Voice helpers
+
+<ParamList kind="function" signature="formguide.voice.card_answer(text, entries, kinds=('card', 'confirm'))" id="card-answer">
+  <Param name="text" type="str | None" required>The line the person typed or said.</Param>
+  <Param name="entries" type="list | None" required>The thread's display transcript as it stood before this line.</Param>
+  <Param name="kinds" type="tuple" default="('card', 'confirm')">Which cards a bare yes or no may answer: a card of proposed values and a confirmation. `("card",)` for a host that confirms its own actions.</Param>
+  <Fragment slot="returns">`{card_id, type, accepted}` when the line is a bare yes or no and the card that waits is the last line of the conversation; `None` when it is an ordinary message. "Yes, show the statistics" is a request, not an answer. One rule for every host, voice and text alike.</Fragment>
+</ParamList>
+
 ### Conversations, documents and attachments
 
 | Method | Does |

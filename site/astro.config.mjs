@@ -153,6 +153,7 @@ export default defineConfig({
 						{ label: 'Site map', slug: 'agents/site-agent/site-map' },
 						{ label: 'Navigation and routing', slug: 'agents/site-agent/navigation' },
 						{ label: 'Hand-off to the UI agent', slug: 'agents/site-agent/hand-off' },
+						{ label: 'The decision model', slug: 'agents/site-agent/decision-model', badge: { text: 'experimental', variant: 'caution' } },
 					] },
 					{ label: 'UI agent (FormGuide)', items: [
 						{ label: 'Overview', slug: 'agents/ui-agent' },
