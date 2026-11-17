@@ -1,0 +1,16 @@
+name: bare_place_no_history
+tags: [bare_place]
+persona: "A person who opens the bank's site and says only 'contacts'."
+goal: "One stable outcome for a bare word with no conversation before it."
+start: {page: /}
+knows:
+  - "Says: contacts"
+turns: 1
+# One of four (bare_place_*): no history. Owner TL's sends: 0.69-0.71 against a bar of 0.7, so it flips between runs.
+# Expected, by the rule as stated ("only when the conversation backs it"): no move. This is the CPO's call: if a bare
+# place name as the very first line should open it, this scenario turns into reaches: /contacts. Measured either way.
+scripted:
+  - "contacts"
+expect:
+  no_moves_on: ["^\\W*contacts\\W*$"]
+min_score: 7

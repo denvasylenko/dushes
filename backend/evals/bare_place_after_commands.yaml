@@ -1,0 +1,19 @@
+name: bare_place_after_commands
+tags: [bare_place]
+persona: "A person who gives two orders to open pages, then says only 'contacts'."
+goal: "Have the contacts page opened: two orders before it back the bare word as a third."
+start: {page: /}
+knows:
+  - "Says: open loans"
+  - "Says: open car insurance"
+  - "Says: contacts"
+turns: 3
+# One of four (bare_place_*): after two commands. Owner TL's sends: the yes / no says no (0.62-0.67), yet the line is
+# carried out as an order. Expected: opened (whoever opens it).
+scripted:
+  - "open loans"
+  - "open car insurance"
+  - "contacts"
+expect:
+  reaches: "/contacts"
+min_score: 7
