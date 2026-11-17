@@ -60,8 +60,14 @@ export function voice(chat: Chat): void {
 
   let pass = store.get()
   // ------------------------------------------------------------------ the way in: a row in the + menu, then the code
-  const row = (): void => { chat.options = { menu: [...(chat.options.menu ?? []).filter((m) => m.id !== 'agui-voice'), { id: 'agui-voice', label: T('menu'), hint: pass ? undefined : T('needsCode'), icon: MIC }] } }
+  // a host that groups its experimental features under one item of its own (data-voice-menu="off") gets no voice row;
+  // it hands the pass over instead (sessionStorage + agui:voice-pass)
+  const row = (): void => {
+    const own = chat.getAttribute('data-voice-menu') !== 'off'
+    chat.options = { menu: [...(chat.options.menu ?? []).filter((m) => m.id !== 'agui-voice'), ...(own ? [{ id: 'agui-voice', label: T('menu'), hint: pass ? undefined : T('needsCode'), icon: MIC }] : [])] }
+  }
   row()
+  chat.addEventListener('agui:voice-pass', () => { pass = store.get(); if (!pass && on) leave(false); ready() })
   chat.addEventListener('agui:menu-action', (e) => {
     if ((e as CustomEvent).detail?.id !== 'agui-voice') return
     e.preventDefault()

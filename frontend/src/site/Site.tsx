@@ -6,7 +6,7 @@ import { FormProvider, Render } from '../Form'
 import type { UiDirective } from '../types'
 import { useDemoForm } from './useDemoForm'
 import { Decisions, type DecidedTurn, type Decision } from '../Decisions'
-import { jevSwitch } from '../jev'
+import { experimental } from '../experimental'
 import type { RunStats } from '../Trace'
 
 // ?dictation=server tries Whisper on the server even where the browser can recognise speech (the demo's switch)
@@ -44,13 +44,13 @@ export default function Site() {
   const [ring, setRing] = useState<string | null>(null)
   const [thread] = useState(threadId)
   const chatRef = useRef<AguiChatElement | null>(null)
-  // the "+" row for the decision model (Jev), behind an access code like the voice mode
+  // one "Experimental" item in the "+" menu: one access code, a switch for the voice mode and one for Jev
   const jevOff = useRef<null | (() => void)>(null)
   useEffect(() => {
     const el = chatRef.current
     const host = el?.closest('.chat-pane') as HTMLElement | null
     if (!el || !host || jevOff.current) return
-    jevOff.current = jevSwitch(el, host)
+    jevOff.current = experimental(el, host, false)
   })
   const pendingHandoff = useRef<string | null>(null)   // a form Dushes opened for the form agent
   // How it decided: each turn's run_stats, with the server's decision_trace when it sent one (joined by run_id)

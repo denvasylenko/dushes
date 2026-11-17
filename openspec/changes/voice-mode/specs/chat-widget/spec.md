@@ -92,6 +92,13 @@ The chat SHALL end the voice conversation on the host when the page is left (clo
 - **WHEN** the person reloads the page during a voice conversation
 - **THEN** the host receives the end of that conversation
 
+### Requirement: A host's own experimental item
+With `data-voice-menu="off"` on the element the voice mode SHALL add no row to the + menu. On `agui:voice-pass` it SHALL read its pass again from `sessionStorage` (`agui-voice-pass`): a pass makes voice ready, none leaves voice mode.
+
+#### Scenario: One Experimental item
+- **WHEN** the host sets `data-voice-menu="off"` and later stores a voice pass and dispatches `agui:voice-pass`
+- **THEN** the + menu has no voice row and the small orb to start voice appears
+
 ### Requirement: Speaking over the voice
 On an `interrupted` event the chat SHALL fade the voice's sound out in about 150 ms and then mute it, drop the rest of that answer (neither written nor lit), and show the orb listening. The next `heard` or `result`, or 3 s without the person's words, SHALL unmute the voice, so it is never left muted.
 
