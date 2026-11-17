@@ -311,6 +311,26 @@ describe('the experimental voice mode', () => {
     expect(player.volume).toBe(1)
   })
 
+  it('a cut-in with no request after it (a cough) never leaves the voice muted: 3 s of quiet, or our next answer, bring it back', async () => {
+    const s = server(); fakeAudio()
+    const el = await talking(s, agent())
+    const player = $<HTMLAudioElement>(el, '.vo-dock audio')
+    s.push({ type: 'spoken', delta: 'Hello there' }); s.push({ type: 'interrupted' })
+    await tick(250)
+    expect(player.muted).toBe(true)
+    s.push({ type: 'hearing', delta: 'ehm' })                                   // still speaking: stays quiet
+    await tick(2000)
+    expect(player.muted).toBe(true)
+    await tick(1200)                                                            // 3 s after their last word
+    expect(player.muted).toBe(false)
+    s.push({ type: 'spoken', delta: 'Go on.' }); s.push({ type: 'interrupted' })
+    await tick(250)
+    expect(player.muted).toBe(true)
+    s.push({ type: 'result', text: 'Here is the answer.' })                     // an answer of ours handed to the voice
+    await tick(20)
+    expect(player.muted).toBe(false)
+  })
+
   it('never leaves a microphone on: a tap during the permission prompt, a closed chat, a new chat', async () => {
     // the microphone button is tapped while the browser still asks for the microphone
     let allow!: () => void

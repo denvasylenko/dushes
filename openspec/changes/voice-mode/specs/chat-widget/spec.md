@@ -93,7 +93,7 @@ The chat SHALL end the voice conversation on the host when the page is left (clo
 - **THEN** the host receives the end of that conversation
 
 ### Requirement: Speaking over the voice
-On an `interrupted` event the chat SHALL fade the voice's sound out in about 150 ms and then mute it, drop the rest of that answer (neither written nor lit), and show the orb listening. The next `heard` SHALL unmute the voice.
+On an `interrupted` event the chat SHALL fade the voice's sound out in about 150 ms and then mute it, drop the rest of that answer (neither written nor lit), and show the orb listening. The next `heard` or `result`, or 3 s without the person's words, SHALL unmute the voice, so it is never left muted.
 
 #### Scenario: The person cuts in
 - **WHEN** the voice is speaking and `interrupted` arrives
