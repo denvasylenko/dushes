@@ -1,5 +1,5 @@
 name: contract_step_open_all
-tags: [owner_session]
+tags: [owner_session, answers_in_words]
 persona: "A person on the loan application who asks, three times, to open the 'contract' step and all its sections."
 goal: "Have the step he means opened with its sections, or be asked once which step it is."
 start: {page: /apply, form: loan_application}
