@@ -37,14 +37,15 @@ Compose your own card from these in the [Playground](../playground/) (Your own c
 | --- | --- | --- |
 | `title` | `text`, `subtitle?` | the card's question and a grey line |
 | `text` | `text` (inline markdown), `tone?` | a paragraph |
-| `note` | `text` | a small grey line |
-| `row` | `label`, `value`, `icon?`, `tone?` | a row of an iOS grouped list; rows next to each other form one list |
+| `note` | `text`, `icon?` | a small grey line; with `icon`, a statement with its glyph ("Photo at the top: kept") |
+| `row` | `label`, `value`, `icon?` (`call`, `route`, `web`, `calendar`, `share`, `copy`, `chat`, `check`, `next`, `eye-off`, `picture`, `palette`, `type`), `tone?` | a row of an iOS grouped list; rows next to each other form one list |
 | `image` | `src` (https or data:image), `alt?`, `ratio?` (`16:9`, `4:3`, `1:1`) | a photo with rounded corners |
-| `place` | `title`, `subtitle?`, `image?`, `rating?` | a person or a place: a photo or an initial, a name, a line, ★ 4.9 |
+| `place` | `title`, `subtitle?`, `image?`, `rating?`, `ratio?` (`3:4` for a page's thumbnail) | a person or a place: a photo or an initial, a name, a line, ★ 4.9 |
 | `picklist` | `items: [{id, title, subtitle?, image?, icon?}]`, `none?` (a label, or `{id, label}`) | a choice as full-width rows: a tile (photo, glyph or the first letter), the name, a second line, a chevron. A tap answers with `{action: id, label: title}` and the card keeps that row with a tick. No row is highlighted, so nothing reads as recommended; `none` adds a plain "None of these" under the rows |
 | `stat` | `value`, `label?`, `tone?`, `change?` ("+12%"; a leading minus turns it red), `spark?: [numbers]` | a big number or date, like a balance, with its change and a sparkline of how it got there |
 | `chart` | `kind` (`bar`, `line`, `area`, `barList`, `stacked`, `meter`), `title?`, `subtitle?`, `unit?`, `data: [{label, value}]` or `labels` + `series: [{name, data}]`, `highlight?`; a meter takes `value`, `max?`, `limit?`, `label?` | a simple chart in the theme's colours, see Charts below |
-| `diff` | `label?`, `from`, `to` | the old value struck through → the new one |
+| `diff` | `label?`, `from`, `to`, `icon?`, `inline?` | the old value struck through → the new one; with `inline`, the icon, the label and the change on one line |
+| `tiles` | `items: [{id, label, image?, note?, noteIcon?, selected?}]`, `ratio?` (default `9:16`) | pictures side by side (looks of a page, rooms), a name and a grey line under each; a tap answers, the chosen one stays ringed. Use server-rendered pictures, not live pages |
 | `steps` | `title?` (`{left}` counts open steps), `items: [{label, done?}]` | a checklist with round ticks |
 | `progress` | `value`, `max?` (100), `label?` | a thin bar |
 | `swatches` | `name`, `items: [{id, label?, colors: [hex]}]`, `multiple?` | palettes to pick |

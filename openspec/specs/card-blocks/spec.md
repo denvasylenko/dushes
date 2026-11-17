@@ -6,7 +6,7 @@ Cards of the host's own, composed from small blocks that look like the chat's ow
 ## Requirements
 
 ### Requirement: Cards from blocks
-The widget SHALL render a card of type `blocks` from its `blocks` list, in order. Known blocks are `title`, `text`, `note`, `row`, `image`, `place`, `stat`, `diff`, `steps`, `progress`, `swatches`, `choice`, `field`, `hours`, `preview`, `chart`, `buttons`, `links` and `divider`; consecutive `row` blocks SHALL form one grouped list. An unknown block SHALL be skipped. Colours SHALL come from the theme and a block's `tone` only.
+The widget SHALL render a card of type `blocks` from its `blocks` list, in order. Known blocks are `title`, `text`, `note`, `row`, `image`, `place`, `stat`, `diff`, `steps`, `progress`, `swatches`, `choice`, `field`, `hours`, `preview`, `chart`, `buttons`, `tiles`, `links` and `divider`; consecutive `row` blocks SHALL form one grouped list. An unknown block SHALL be skipped. Colours SHALL come from the theme and a block's `tone` only.
 
 #### Scenario: A venue card
 - **WHEN** a card has a `place` block and a `buttons` block with "Yes, mine" and "No"
@@ -25,6 +25,20 @@ A button with an `id` SHALL resolve the card with `{action, label, values}`, whe
 #### Scenario: Picking a palette
 - **WHEN** the user taps a swatch named `palette` and then "Use it"
 - **THEN** the card resolves with `{action: "use", label: "Use it", values: {palette: "<swatch id>"}}`
+
+### Requirement: Tiles
+A `tiles` block SHALL draw its `items` (`id`, `label`, `image?`, `note?`, `noteIcon?`, `selected?`) as pictures side by side at the block's `ratio` (default 9:16), each with its name and an optional grey line under it. A picture that is not https or does not load SHALL leave its place with the name's first letter. `selected` SHALL ring a tile with a tick. A tap SHALL resolve the card with that item's id and keep the tiles in place, the chosen one ringed.
+
+#### Scenario: Three looks of a page
+- **WHEN** the card shows three looks, the current one selected, and the user taps the third
+- **THEN** the card resolves with `{action: "<its id>", label: "<its name>"}` and the third tile is the ringed one
+
+### Requirement: A change with its icon on one line
+A `diff` block with `inline` SHALL draw its `icon?`, its `label` and the old value struck through → the new one on one line. A `place` block with `ratio: "3:4"` SHALL draw its picture as a portrait thumbnail, and a `note` with `icon` SHALL lead with that glyph. The block icons SHALL include `eye-off`, `picture`, `palette` and `type`.
+
+#### Scenario: What a new look changes
+- **WHEN** a card has a `diff` with `inline`, `icon: "picture"`, label "Top of the site"
+- **THEN** one line reads the label, the struck-through old value, an arrow and the new value, after the picture icon
 
 ### Requirement: A pick list
 A `picklist` block SHALL draw its `items` (`id`, `title`, `subtitle?`, `image?`, `icon?`) as full-width rows: a tile (the image, the glyph, or the title's first letter), the title, the second line and a chevron, with no row filled or preselected. A tap on a row SHALL resolve the card with that item's id and title and leave only that row, a tick in place of its chevron. `none` SHALL add a plain text choice under the rows that resolves with the id `none`.

@@ -89,6 +89,47 @@ describe('cards from blocks', () => {
     expect($(el, '.card .btn')).toBeNull()
   })
 
+  it('tiles: tall pictures side by side with a name and a grey line; a tap answers and the chosen one stays ringed', async () => {
+    const el = await mount()
+    const LOOKS = { type: 'blocks', name: 'look', blocks: [{ type: 'title', text: 'Simpler looks' },
+      { type: 'tiles', ratio: '9:16', items: [{ id: 'contrast', label: 'Contrast', image: 'https://x.test/c.png', selected: true }, { id: 'journal', label: 'Journal' },
+        { id: 'minimum', label: 'Minimum', image: 'javascript:alert(1)', note: 'No photo at the top', noteIcon: 'eye-off' }] }] }
+    const answer = el.showCard(structuredClone(LOOKS))
+    await tick()
+    const tiles = $$(el, '.card .bk-tile')
+    expect(tiles.map((t) => t.querySelector('.bk-tile-n')!.textContent)).toEqual(['Contrast', 'Journal', 'Minimum'])
+    expect(tiles.map((t) => t.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false'])   // the current look is ringed
+    expect($$(el, '.card img')).toHaveLength(1)                                     // an unsafe picture is never drawn: its letter instead
+    expect(tiles[2].querySelector('.bk-tile-s')!.textContent).toBe('No photo at the top')
+    expect(tiles[2].querySelector('.bk-tile-s svg')).not.toBeNull()                 // with its eye-slash
+    expect((tiles[0].querySelector('.bk-tile-i') as HTMLElement).style.aspectRatio).toBe('9 / 16')
+    tiles[2].click()
+    expect(await answer).toMatchObject({ action: 'minimum', label: 'Minimum' })
+    await tick()
+    const kept = $$(el, '.card .bk-tile')                                            // the card keeps its tiles in place, the chosen one ringed
+    expect(kept.map((t) => t.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true'])
+    expect(kept.every((t) => (t as HTMLButtonElement).disabled)).toBe(true)
+  })
+
+  it('what will change: a portrait thumbnail, a was -> now on one line with an icon, rows with the new icons', async () => {
+    const el = await mount()
+    el.showCard({ type: 'blocks', name: 'change', blocks: [
+      { type: 'place', title: 'New look: Minimum', subtitle: 'In the draft', image: 'https://x.test/m.png', ratio: '3:4' },
+      { type: 'note', text: 'Changes' },
+      { type: 'diff', inline: true, icon: 'picture', label: 'Top of the site', from: 'a picture under the text', to: 'text and the address' },
+      { type: 'note', icon: 'eye-off', text: 'Photo at the top: kept, comes back with another look' },
+      { type: 'row', icon: 'palette', label: 'Colours', value: 'powder pink' }, { type: 'row', icon: 'type', label: 'Font', value: 'plain' }] })
+    await tick()
+    expect($(el, '.card .bk-place img')!.classList.contains('tall')).toBe(true)
+    const d = $(el, '.card .bk-diff.inline')!
+    expect(d.textContent).toBe('Top of the site: a picture under the text\u2192text and the address')
+    expect(d.querySelector('s')!.textContent).toBe('a picture under the text')
+    expect(d.querySelector('.bk-ico svg')).not.toBeNull()
+    expect($$(el, '.card .bk-row .bk-ico svg')).toHaveLength(2)                     // palette, type are drawn
+    expect($(el, '.card .bk-note.ico')!.textContent).toBe('Photo at the top: kept, comes back with another look')   // a statement with its glyph, as a line
+    expect($(el, '.card .bk-note.ico svg')).not.toBeNull()
+  })
+
   it('a pick list: rows with a tile, a name and a second line; a tap answers and the card keeps the chosen row with a tick', async () => {
     const el = await mount()
     const PICK = { type: 'blocks', name: 'place', blocks: [{ type: 'title', text: 'Which one is yours?' },

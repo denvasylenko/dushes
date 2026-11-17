@@ -368,6 +368,11 @@ const block = (id: string, title: string, blurb: string, blocks: Record<string, 
   id: `block-${id}`, group: 'catalog', tag: `block · ${id}`, title, blurb, user: `Show the ${id} block`,
   event: { name: 'on_interrupt', value: { type: 'blocks', card_id: `bk-${id}`, name: id, blocks } },
 })
+// a page's thumbnail for the look specimens: drawn here, so the gallery needs no server
+const SITE_THUMB = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 160"><rect width="90" height="160" fill="#f6ece4"/>'
+  + '<text x="45" y="30" font-family="Georgia" font-size="12" text-anchor="middle" fill="#2a1d17">Gelato,</text><text x="45" y="45" font-family="Georgia" font-style="italic" font-size="12" text-anchor="middle" fill="#b4472f">every day.</text>'
+  + '<rect x="28" y="56" width="34" height="9" rx="4.5" fill="#c8553d"/><rect x="10" y="76" width="70" height="36" rx="6" fill="#e9c6b0"/>'
+  + '<rect x="10" y="120" width="70" height="8" rx="3" fill="#ece0d6"/><rect x="10" y="133" width="70" height="8" rx="3" fill="#ece0d6"/></svg>')
 const done = { type: 'buttons', items: [{ id: 'ok', label: 'Done', style: 'primary' }] }
 export const CATALOG: Specimen[] = [
   block('title', 'Title', '`text`, `subtitle?`: the card’s question.', [{ type: 'title', text: 'Is this your barber?', subtitle: 'From your last visit' }, done]),
@@ -383,6 +388,18 @@ export const CATALOG: Specimen[] = [
   block('image', 'Image', '`src` (https), `alt?`, `ratio?`.', [{ type: 'image', src: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800', alt: 'A barbershop chair', ratio: '16:9' }, done]),
   block('stat', 'Big number', '`value`, `label?`, `tone?`, `change?`, `spark?`.', [{ type: 'stat', value: '1 240 €', label: 'This month', change: '+12% vs October', spark: [700, 820, 780, 960, 1010, 1180, 1240] }, done]),
   block('diff', 'Was → now', '`label?`, `from`, `to`.', [{ type: 'diff', label: 'Moved', from: 'Thu, 12:00', to: 'Fri, 16:30' }, done]),
+  block('diff-inline', 'What will change', 'A `place` with `ratio: 3:4`, `diff` with `icon` and `inline`, `row` with the page icons.', [
+    { type: 'place', title: 'New look: Minimum', subtitle: 'In the draft · guests still see the old one · texts, menu, prices, photos and hours stay as they are', image: SITE_THUMB, ratio: '3:4' },
+    { type: 'note', text: 'Changes' },
+    { type: 'diff', inline: true, icon: 'picture', label: 'Top of the site', from: 'a picture under the text', to: 'text and the address' },
+    { type: 'diff', inline: true, icon: 'palette', label: 'Colours', from: 'cobalt', to: 'powder pink' },
+    { type: 'diff', inline: true, icon: 'type', label: 'Font', from: 'journal', to: 'plain' },
+    { type: 'note', text: 'Will not be shown' },
+    { type: 'note', icon: 'eye-off', text: 'Photo at the top: kept, comes back with another look' },
+    { type: 'buttons', items: [{ id: 'looks', label: 'Choose another', style: 'secondary' }] }]),
+  block('tiles', 'Tiles', '`items: [{id, label, image?, note?, noteIcon?, selected?}]`, `ratio?`: a tap answers; the chosen one stays ringed.', [{ type: 'title', text: 'Simpler looks' },
+    { type: 'tiles', items: [{ id: 'contrast', label: 'Contrast', image: SITE_THUMB, selected: true }, { id: 'journal', label: 'Journal', image: SITE_THUMB },
+      { id: 'minimum', label: 'Minimum', note: 'No photo at the top', noteIcon: 'eye-off' }] }]),
   block('steps', 'Steps', '`title?` ({left} counts open steps), `items: [{label, done?}]`.', [{ type: 'steps', title: '{left} steps left', items: [{ label: 'Phone number', done: true }, { label: 'Opening hours' }, { label: 'Address' }] }, done]),
   block('chart', 'Chart: columns', '`kind: bar`, `data: [{label, value}]`, `highlight?`: comparing a few amounts.', [{ type: 'chart', kind: 'bar', title: 'Visits by day', highlight: 'Sat',
     data: [['Mon', 12], ['Tue', 30], ['Wed', 18], ['Thu', 41], ['Fri', 26], ['Sat', 52], ['Sun', 9]].map(([label, value]) => ({ label, value })) }, done]),
