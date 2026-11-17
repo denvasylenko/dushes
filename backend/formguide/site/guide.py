@@ -993,7 +993,7 @@ class Dushes:
                 # a question about another page of the site, asked on a form's page: the site's assistant answers it
                 # (the form's own assistant refused it: "I can't help with a loan here", QA 2026-11-17). The chooser
                 # says which page the line is about; nobody is moved
-                if (target and target.confidence >= 0.6 and state.get("form") and target.id.startswith(("screen:", "part:"))
+                if (target and state.get("form") and target.id.startswith(("screen:", "part:"))
                         and not (here and target.id.partition(":")[2].partition("#")[0] == here.path)):
                     return {"kind": "agent", "mode": "site"}
                 return None                           # not the person's order: the agent's turn
