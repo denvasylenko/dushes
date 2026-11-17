@@ -791,7 +791,9 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
                 t = line.strip()
                 if t.startswith("\U0001f464"):
                     on = bool(re.search(pattern, t, re.I)); seen = seen or on
-                elif on and (t.startswith(("\U0001f526", "\U0001f9ed")) or re.match(r"\u2699\ufe0f? ?(focus_field|navigate|open_form)\(", t)):
+                elif on and (t.startswith(("\U0001f526", "\U0001f9ed")) or re.match(r"\u2699\ufe0f? ?focus_field\(", t)):
+                    # a page change, a highlight or a focus on the page; a navigate / open_form call the server
+                    # refused moved nobody (as in stays_put_on), so the call alone is not a move
                     moved.append(t[:90])
         out.append({"check": f"moves nothing on the turn saying /{pattern}/", "ok": seen and not moved,
                     "detail": "; ".join(moved)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
