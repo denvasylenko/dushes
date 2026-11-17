@@ -1,0 +1,19 @@
+name: closing_line_in_code
+tags: [owner_session, answers_in_words]
+persona: "A person on the loan application who says two values outright."
+goal: "Have them filled at once and hear one short line naming them, with no second model call."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Middle name Maria, place of birth Turin"
+turns: 2
+# The owner's word ("done, one short line", 2026-11-17) and the Tech Lead's rule (demo/jev 4e7a6d0): a card applied
+# at once that the form takes with nothing to explain ends the turn with ONE line written in code, and no second model
+# call. Before (up to 08e5c54, or FORM_CLOSING_IN_CODE=0) the model is called again after the card. Fails first.
+scripted:
+  - "Open personal details"
+  - "my middle name is Maria and my place of birth is Turin"
+expect:
+  fields: {middle_name: "Maria", birth_place: "Turin"}
+  max_model_calls_on: {"middle name is Maria": 1}
+  closing_line_on: {"middle name is Maria": ["Maria", "Turin"]}
+min_score: 7

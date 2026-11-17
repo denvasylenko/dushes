@@ -408,6 +408,8 @@ class Visit:
                         if k in self.tokens and isinstance(n, (int, float)):
                             self.tokens[k] += n
                     # a run can carry two run_stats: the site assistant's (agent: "site") and the form agent's; both are summed
+                    self.log.append("   \u23f1 model calls: " + (", ".join(str(m.get("kind")) for m in v.get("models") or []) or "none")
+                                    + f" ({v.get('agent') or 'form'})")
                     self.stats.append({"agent": v.get("agent") or "form", "ttft_ms": v.get("ttft_ms"), "total_ms": v.get("total_ms"),
                                        "tools": len(v.get("tools") or []),
                                        "tool_errors": sum(1 for t in v.get("tools") or [] if t.get("error")),

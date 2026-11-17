@@ -41,7 +41,7 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted", "answers"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice", "filled", "no_question_card_on", "asks_nothing_on", "never_claims_without", "max_words", "max_calls", "opens_or_offers", "answers_every_turn", "no_moves_on",
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice", "filled", "no_question_card_on", "asks_nothing_on", "never_claims_without", "max_words", "max_calls", "opens_or_offers", "answers_every_turn", "no_moves_on", "max_model_calls_on", "closing_line_on",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -97,6 +97,8 @@ class Scenario:
     never_fills_on: dict[str, list[str]] = field(default_factory=dict)  # {regex of a user message: field labels}: no change card of that reply has them
     asks_nothing_on: list[str] = field(default_factory=list)    # regexes of user messages: a clear request, the reply asks nothing
     never_claims_without: bool = False                      # "I've set / sent / booked" only after the step that did it
+    max_model_calls_on: dict[str, int] = field(default_factory=dict)   # {regex of a user message: n}: agent model calls in that turn (all its runs)
+    closing_line_on: dict[str, list[str]] = field(default_factory=dict)  # {regex: words}: after the card of that turn, one text, naming the words
     no_moves_on: list[str] = field(default_factory=list)    # regexes of user messages: that reply opens, scrolls to or highlights nothing
     answers_every_turn: bool = False                         # every line of the person gets words back (voice: never silence after a card)
     opens_or_offers: dict[str, Any] = field(default_factory=dict)   # {paths: [...], words: [...]}: the visit ends on one of the paths, or the last reply offers it (names a word and asks)
@@ -160,6 +162,8 @@ def load_scenario(path: Path) -> Scenario:
                     never_claims_without=bool(exp.get("never_claims_without")), max_words=int(exp.get("max_words") or 0),
                     opens_or_offers=dict(exp.get("opens_or_offers") or {}), answers_every_turn=bool(exp.get("answers_every_turn")),
                     no_moves_on=[str(x) for x in exp.get("no_moves_on") or []],
+                    max_model_calls_on={str(k): int(v) for k, v in (exp.get("max_model_calls_on") or {}).items()},
+                    closing_line_on={str(k): [str(w) for w in v] for k, v in (exp.get("closing_line_on") or {}).items()},
                     max_calls={str(k): int(v) for k, v in (exp.get("max_calls") or {}).items()},
                     filled=[str(x) for x in exp.get("filled") or []], no_question_card_on=({str(k): [str(w) for w in (v or [])] for k, v in exp["no_question_card_on"].items()} if isinstance(exp.get("no_question_card_on"), dict)
                                          else {str(x): [] for x in exp.get("no_question_card_on") or []}),
@@ -735,6 +739,33 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
     if sc.never_claims_without:   # the bar's point 2: a thing is called done only after the step that did it
         bad = claims_without(visit.log)
         out.append({"check": "claims nothing before the step that does it", "ok": not bad, "detail": " | ".join(bad)[:300], "cap": CAP_OTHER})
+    for pattern, most in sc.max_model_calls_on.items():   # a card applied with nothing to explain: no second model call
+        import re
+        n, seen, on = 0, False, False
+        for entry in visit.log:
+            for line in str(entry).splitlines():
+                t = line.strip()
+                if t.startswith("\U0001f464"):
+                    on = bool(re.search(pattern, t, re.I)); seen = seen or on
+                elif on and t.startswith("\u23f1 model calls:"):
+                    n += sum(1 for k in t.split(":", 1)[1].split("(")[0].split(",") if k.strip() == "agent")
+        out.append({"check": f"at most {most} agent model call(s) on the turn saying /{pattern}/", "ok": seen and n <= most,
+                    "detail": f"{n} agent call(s)" if seen else "the user never sent such a message", "cap": CAP_OTHER})
+    for pattern, words in sc.closing_line_on.items():   # after the card: exactly one line of words, naming the values
+        import re
+        after, seen, on, carded = [], False, False, False
+        for entry in visit.log:
+            for line in str(entry).splitlines():
+                t = line.strip()
+                if t.startswith("\U0001f464"):
+                    on, carded = bool(re.search(pattern, t, re.I)), False; seen = seen or on
+                elif on and t.startswith("\U0001f0cf"):
+                    carded = True
+                elif on and carded and t.startswith("\U0001f916") and not t[1:].strip().startswith("\u2014"):
+                    after.append(t[1:].strip())
+        ok = seen and len(after) == 1 and all(w.lower() in after[0].lower() for w in words)
+        out.append({"check": f"one closing line naming {' / '.join(words)} on the turn saying /{pattern}/", "ok": ok,
+                    "detail": " | ".join(after)[:300] if seen else "the user never sent such a message", "cap": CAP_OTHER})
     for pattern in sc.no_moves_on:   # a word with no such place on the screen: ask, do not open something else
         import re
         moved, seen, on = [], False, False
