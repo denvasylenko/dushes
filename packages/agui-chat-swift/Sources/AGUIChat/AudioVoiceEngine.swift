@@ -82,6 +82,9 @@ public final class AudioVoiceEngine: VoiceEngine {
         if cancelled { link.cancel(); await transport.close(); throw CancellationError() }
         engine.attach(player)
         engine.attach(pace)
+        // a time-pitch unit colours the voice even at rate 1 (a phase vocoder: «металлический, роботный» — the owner,
+        // 17.11): it is bypassed, and works only for the 350 ms of a trail-off
+        pace.bypass = true
         running = true
         watchSystem()                                          // before the start: voice processing reconfigures at once
         try wire(startNow: false)
@@ -336,6 +339,7 @@ public final class AudioVoiceEngine: VoiceEngine {
                 let t = Date().timeIntervalSince(start) / 0.35
                 if t >= 1 { break }
                 self.player.volume = Float(pow(1 - t, 2.5))
+                self.pace.bypass = false
                 self.pace.rate = Float(1 - 0.1 * t)
                 try? await Task.sleep(for: .milliseconds(5))
             }
@@ -344,6 +348,7 @@ public final class AudioVoiceEngine: VoiceEngine {
             self.player.stop()                         // drops everything scheduled
             self.player.volume = 1
             self.pace.rate = 1
+            self.pace.bypass = true
             if self.running { self.player.play() }
             self.speakingUntil = .distantPast
             self.fade = nil
