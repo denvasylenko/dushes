@@ -489,7 +489,8 @@ class Dushes:
                 else:
                     name = str(_model_id(self.model or self.forms.models.agent))
                     took = RunStats.now() - stats.t0
-                    asked = f" (after {who} {fast['ms']} ms: not sure)" if fast else ""
+                    why = f"no answer within {self.intent.settings.timeout_ms} ms" if fast and fast.get("late") else "not sure"
+                    asked = f" (after {who} {fast['ms']} ms: {why})" if fast else ""
                     label = f"{'Haiku' if 'haiku' in name.lower() else name} \u00b7 {took:.1f} s{asked}"
                 lid = f"label_{uuid.uuid4().hex[:10]}"
                 yield {"type": "TEXT_MESSAGE_START", "messageId": lid, "role": "assistant"}
@@ -623,7 +624,7 @@ class Dushes:
         started = RunStats.now()
         picks = await layer.pick_many(message, detect(message) or "en", qs, here.path if here else "")
         ms = round((RunStats.now() - started) * 1000)
-        stats.fast = {"ms": ms, "handled": False}
+        stats.fast = {"ms": ms, "handled": False, "late": not picks and ms >= layer.settings.timeout_ms - 10}
         # the demo's terminal shows what the layer was sure of (ids and confidences only, never the phrase)
         log.warning("choice layer: %d ms, asked %s, sure of %s", ms, sorted(qs),
                     {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
