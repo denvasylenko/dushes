@@ -791,3 +791,54 @@ def test_an_option_the_person_picked_replaces_the_old_one_quietly():
     assert not voice.quiet({"type": "set_fields", "changes": [pick]}, "something lighter")      # not said: a card
     consent = {"name": "agree", "label": "I agree", "kind": "bool", "value": True, "previous": False, "consent": True}
     assert not voice.quiet({"type": "set_fields", "changes": [consent]}, "yes I agree")           # a consent: a card
+
+
+def _hours_card():
+    days = [("mo", "Monday"), ("tu", "Tuesday"), ("we", "Wednesday"), ("th", "Thursday"), ("fr", "Friday"), ("sa", "Saturday"), ("su", "Sunday")]
+    rows = []
+    for key, label in days:
+        opens, closes = ("09:00", "17:00") if key == "su" else ("07:00", "17:00")
+        rows += [{"name": f"{key}_from", "label": f"{label}: from", "value": opens}, {"name": f"{key}_to", "label": f"{label}: to", "value": closes}]
+    rows.append({"name": "palette", "label": "Palette", "value": {"id": "nero", "name": "Black minimal"}})
+    rows.append({"name": "note", "label": "Note", "value": ""})
+    return {"type": "set_fields", "card_id": "c1", "changes": rows}
+
+
+def test_the_voice_names_everything_on_a_waiting_card():
+    """QA Herefront (2026-11-17): a card with opening hours and a palette was asked as its first four rows (Monday
+    and Tuesday), and "yes" accepted Sunday and the palette unheard. Every row with a value is named; a time range
+    is one item and equal neighbours are joined; an empty value is not read; with more than the voice can name, a
+    spoken yes accepts nothing."""
+    said = voice.asks(_hours_card())
+    assert said == ("Shall I fill in Monday\u2013Saturday 07:00\u201317:00, Sunday 09:00\u201317:00 and Palette: Black minimal? "
+                    "Say yes or no.")
+    assert "Note" not in said and voice.covers(_hours_card())
+    many = {"type": "set_fields", "changes": [{"name": f"f{i}", "label": f"Field {i}", "value": str(i)} for i in range(15)]}
+    assert "3 more fields" in voice.asks(many) and "Say yes" not in voice.asks(many) and not voice.covers(many)
+    # a card is answered only by a bare yes or no
+    assert voice.yes_or_no("yes", strict=True) is True and voice.yes_or_no("no thanks", strict=True) is False
+    assert voice.yes_or_no("yes, show the statistics", strict=True) is None      # a request that opens with a yes
+    assert voice.yes_or_no("yes, show the statistics") is True                   # (the soft reading, kept for other uses)
+
+
+def test_a_reply_that_already_asks_the_cards_question_is_said_once():
+    """The CPO (2026-11-17, for the cabinet): when the reply's own text ends in a question to the waiting card ("I
+    will set the hours and the dark background. Accept?"), the voice says that, and the card's question is not
+    added after it."""
+    async def go(text):
+        talks, live, _ = _talks()
+        await talks.start("anna", "OFFER-SDP", "thread-ask")
+        live.push(type="session.input_transcript.delta", delta="set the hours and a dark background")
+        live.push(type="session.delegation.created", delegation={"id": "d1", "type": "delegation", "target": "client"})
+        events = talks.events("live_1")
+        while (await asyncio.wait_for(events.__anext__(), 1))["type"] != "heard":
+            pass
+        for ev in ({"type": "RUN_STARTED"}, {"type": "TEXT_MESSAGE_CONTENT", "messageId": "m", "delta": text},
+                   {"type": "CUSTOM", "name": "on_interrupt", "value": _hours_card()}, {"type": "RUN_FINISHED"}):
+            talks.seen("thread-ask", ev)
+        await asyncio.sleep(0.05)
+        return " ".join(str(m.get("content") or "") for m in live.sent if m["type"] == "session.commentary.append")
+    asked = asyncio.run(go("I will set the hours Monday to Saturday 7 to 17, Sunday 9 to 17, and the dark background. Accept?"))
+    assert "Accept?" in asked and "Shall I fill in" not in asked
+    plain = asyncio.run(go("Here are the hours and the dark background."))
+    assert "Shall I fill in Monday\u2013Saturday" in plain and "Sunday 09:00" in plain
