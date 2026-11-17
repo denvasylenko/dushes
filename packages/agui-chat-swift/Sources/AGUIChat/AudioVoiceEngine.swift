@@ -93,6 +93,7 @@ public final class AudioVoiceEngine: VoiceEngine {
         pump = Task { [weak self] in
             guard let self else { return }
             for await event in transport.incoming { self.received(event) }
+            self.report("end: the transport's stream finished")
             await self.end()
         }
     }
@@ -227,8 +228,9 @@ public final class AudioVoiceEngine: VoiceEngine {
         switch event {
         case .audio(let pcm): play(pcm)
         case .hearing(let text):
-            // he speaks over the voice: it trails off at once, without waiting for the server
-            if Date() < speakingUntil { trailOff() }
+            // not a barge-in by itself: on a loudspeaker the voice's own echo comes back as «hearing», and trailing off
+            // on it cut every answer as it began (owner 17.11: the words showed, nothing was heard). The server's
+            // `interrupted` decides (3+ words, not the echo)
             continuation.yield(.hearing(text))
         case .echo: continuation.yield(.echo)
         case .answer(let c, let t, let a, let x): continuation.yield(.answer(cardId: c, type: t, accepted: a, text: x))
@@ -305,19 +307,21 @@ public final class AudioVoiceEngine: VoiceEngine {
         let nc = NotificationCenter.default
         observers.append(nc.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
             let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt).flatMap(AVAudioSession.InterruptionType.init)
-            if type == .began { Task { @MainActor in await self?.end() } }
+            guard type == .began else { return }
+            Task { @MainActor in self?.report("end: audio interruption"); await self?.end() }
         })
         observers.append(nc.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in await self?.end() }
+            Task { @MainActor in self?.report("end: background"); await self?.end() }
         })
         observers.append(nc.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in await self?.end() }
+            Task { @MainActor in self?.report("end: media services reset"); await self?.end() }
         })
         // headphones in or out, voice processing taking over: the engine stops — wire it again, the talk goes on
         observers.append(nc.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.running else { return }
-                do { try self.wire() } catch { await self.end() }
+                self.report("configuration change")
+                do { try self.wire() } catch { self.report("end: rewire failed \(error)"); await self.end() }
             }
         })
     }
