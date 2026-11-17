@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -504,6 +505,13 @@ class FormGuide:
                     _intent.used_fill(thread_id)
                 if again or answered or left or (_voice.quiet(value, said) if _voice.active(thread_id) else _voice.said_outright(value, said)):
                     value["quiet"] = True
+                    rows = [r for r in value.get("changes") or [] if isinstance(r, dict)]
+                    if not picked and rows and "?" not in said and os.environ.get("FORM_CLOSING_IN_CODE", "1") != "0":
+                        # applied at once: if the form takes it with no complaint the turn ends on one line written
+                        # here, with no second model call (the CPO, 2026-11-17, the owner's "done, one short line")
+                        shown = lambda r: r.get("display") or (r["value"].get("name") if isinstance(r.get("value"), dict) else r.get("value"))  # noqa: E731
+                        _intent.preset_closing(thread_id, ", ".join(f"{r.get('label') or r.get('name')}: {shown(r)}" for r in rows) + ".",
+                                               [str(r.get("name")) for r in rows])
                 interrupts.append(value)
                 if mode not in ("legacy", "both"):
                     continue

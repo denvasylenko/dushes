@@ -561,3 +561,30 @@ def test_the_decision_trace_of_a_turn(guide, model, monkeypatch):
     t = trace(run(site_with(guide, none), "tr-2", message="open the request of Giulia", state={"page": {"path": "/"}}))
     assert t["said"] == "open the request of <name>" and t["outcome"] == "agent" and t["to_agent"]["why"] == "name_masked"
     assert t["filtered"]["names"] == 1 and "Giulia" not in json.dumps(t)
+
+
+def test_an_applied_card_ends_on_one_line_written_in_code(guide, model):
+    """The CPO (2026-11-17), the owner's standard "done, one short line": the form assistant's own card, applied at
+    once because the person said the values outright, is not followed by a second model call that only says so.
+    The other side: when the form reacts with something to explain, the model speaks as before."""
+    from .test_agent import collect
+    assert intent.clean_result("The user confirmed; changes applied.\nCHANGES v1 \u2192 v2:\nagent (confirmed by user): first_name \u2205 \u2192 Anna")
+    assert intent.clean_result("The user confirmed; changes applied.\nform reacted:\n  error fixed: birth_date\n  \u2298\u2192\u2713 became available loan_term")
+    for bad in ('form reacted:\n  ! error birth_date: "must be 18 to 75"', "form reacted:\n  + appeared insurer", "form reacted:\n  * became required insurer",
+                "The user applied: a. Declined (not applied): b."):
+        assert not intent.clean_result("The user confirmed; changes applied.\n" + bad)
+    state = start(guide, LOAN)
+    model.script = [say("", ("p1", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]})), say("SECOND CALL")]
+    ev = collect(guide, "one-1", message="my first name is Anna", state=state)
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    card = json.loads(raw) if isinstance(raw, str) else raw
+    assert card.get("quiet") is True
+    calls = len(model.calls)
+    cfg = LOAN.compute({**state["config"]["state"], "first_name": "Anna"})
+    ev = collect(guide, "one-1", resume={"accepted": True, "config": cfg})
+    assert "First name: Anna." in text(ev) and "SECOND CALL" not in text(ev) and len(model.calls) == calls
+    # a line with a question in it: the model answers after the card, as before
+    model.script = [say("", ("p2", "propose_changes", {"changes": [{"name": "first_name", "value": "Anna"}]})), say("It is Anna now; the rate is 18.9%.")]
+    ev = collect(guide, "one-2", message="my first name is Anna, and what is the rate?", state=start(guide, LOAN))
+    ev = collect(guide, "one-2", resume={"accepted": True, "config": cfg})
+    assert "the rate is 18.9%" in text(ev)

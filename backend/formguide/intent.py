@@ -482,6 +482,24 @@ def preset(thread_id: str, name: str, value: Any, label: str, shown: str) -> Non
     preset_call(thread_id, "propose_changes", {"changes": [{"name": name, "value": value}]}, f"{label}: {shown}.", APPLIED)
 
 
+def preset_closing(thread_id: str, closing: str, fields: list[str]) -> None:
+    """After a card of the form's own assistant that is applied at once (every value said outright): when the form
+    takes it with no complaint, the turn ends with this one line written in code, and the model is not called a
+    second time only to say it (the owner's standard: done, one short line). `fields`: the card's fields, so the
+    line is said only after that very card."""
+    from langchain_core.messages import AIMessage
+    if not has_preset(thread_id):
+        _PRESETS[thread_id] = {"needs": APPLIED, "fields": list(fields), "at": time.time(), "script": [AIMessage(content=closing)]}
+
+
+def clean_result(said: str) -> bool:
+    """Whether the form took an applied card with nothing to explain: nothing refused, edited or declined, no new
+    error, and nothing appeared, hid or became required. An error that went away is not a complaint."""
+    low = (said or "").lower().replace("error fixed", "")
+    return not any(x in low for x in ("error", "not accepted", "\u26a0", "hidden", "disabled", "locked", "cannot", "declined",
+                                      "edited before", "failed validation", "appeared", "became required"))
+
+
 def clear_preset(thread_id: str) -> None:
     _PRESETS.pop(thread_id, None)
 
@@ -517,7 +535,9 @@ def preset_model(thread_id: str | None, messages: list | None = None) -> Any:
         last = messages[-1] if messages else None
         said = str(getattr(last, "content", "") or "")
         fine = (type(last).__name__ == "ToolMessage" and getattr(last, "status", "success") != "error"
-                and said.startswith(entry["needs"]) and not any(x in said.lower() for x in ("error", "not accepted", "\u26a0", "hidden", "disabled", "locked", "cannot")))
+                and said.startswith(entry["needs"]) and clean_result(said)
+                and all(f in said for f in entry.get("fields") or [])                 # this very card's answer
+                and time.time() - entry.get("at", time.time()) < 180)
         if not fine:
             _PRESETS.pop(thread_id or "", None)
             return None
