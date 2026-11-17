@@ -1,0 +1,19 @@
+name: missing_year_named_at_once
+tags: [owner_session, answers_in_words]
+persona: "A person on the loan application who gives a name, a gender and a birthday without the year."
+goal: "Hear at once that the year is missing, without first tapping the card for the other fields."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Anna Rossi, a woman, born on 1 July (the year not said)"
+turns: 2
+# The owner's session (CTO, 2026-11-17, screenshot 4): the line held a date without a year; the card carried only
+# the last name, the first name and the gender, and "Now I need your full date of birth, including the year" came
+# only after the card was accepted (13 s later in his record; by voice nothing until the tap). Expected: the missing
+# year is named or asked in the same turn, before any tap. The guest does not tap. Values invented. Fails first.
+scripted:
+  - "Open personal details"
+  - "my name is Anna Rossi, I was born 1st July and my gender is female"
+expect:
+  asks_on: {"born 1st July": ["year", "date of birth", "born"]}
+  answers_every_turn: true
+min_score: 7
