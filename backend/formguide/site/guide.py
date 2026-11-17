@@ -499,7 +499,7 @@ class Dushes:
                 elif fast and fast.get("handled"):
                     label = f"{who} \u00b7 {fast['ms']} ms"
                 elif getattr(stats, "decided", False):
-                    label = ""
+                    label = self.__dict__.get("_mixed", {}).pop(thread_id, "")   # what the layer did a run ago, if not said yet
                 else:
                     name = str(_model_id(self.model or self.forms.models.agent))
                     took = RunStats.now() - stats.t0
@@ -731,6 +731,9 @@ class Dushes:
             # and a yes / no a section of the open tab, so one line can open several
             sections = [n for n in lay.nodes.values() if n.role in ("accordion", "section") and n.name and n.parent in wide.on_screen
                         and ov.get(n.name) is not None and ov[n.name].visible and ov[n.name].label][:10]
+            if sections:
+                qs["all_sections"] = _intent.Question("noul", "all_sections", "Does the line ask to open all the sections, "
+                                                      "every one of them, of a tab or of the page?", act="show")
             for n in sections:
                 qs[f"s:{n.name}"] = _intent.Question("noul", f"section:{n.name}",
                                                      f'Does the line ask to open or show the section "{ov[n.name].label}"?', act="show")
@@ -772,7 +775,20 @@ class Dushes:
             opens = [(k[2:], str(ov[k[2:]].label)) for k, p in picks.items()
                      if k.startswith("s:") and ov is not None and p.id == "yes" and p.confidence >= 0.8
                      and _intent.said_in(str(ov[k[2:]].label), message)]
+            every = picks.get("all_sections")
+            if every and every.id == "yes" and every.confidence >= 0.8 and ov is not None:
+                # "all the sections of the applicant tab": every section of the tab the line names, else of the open one
+                t0 = picks.get("target")
+                tab = t0.id.rpartition(":")[2] if t0 and t0.id.startswith(f"form:{here.path if here else ''}:") else ""
+                tab = tab if tab in lay.nodes and lay.nodes[tab].role in ("tab", "step") else ""
+                opens = [(n.name, str(ov[n.name].label)) for n in lay.nodes.values()
+                         if n.role in ("accordion", "section") and n.name and ov.get(n.name) is not None and ov[n.name].visible
+                         and ov[n.name].label and (n.parent == tab if tab else n.parent in wide.on_screen)][:12]
+            if every and every.id == "yes" and every.confidence >= 0.8 and len(opens) < 2:
+                return None                           # "all" asked and the layer cannot name them: the agent's turn
             if len(opens) >= 2 and not _intent.has_date(message):
+                if self._again(thread_id, ("open", tuple(n for n, _ in opens))):
+                    return None
                 closing = ", ".join(label for _, label in opens) + "."
                 _intent.preset_calls(f"{thread_id}-{fid}"[:100], [("focus_field", {"name": n}) for n, _ in opens],
                                      "" if tail else closing)
@@ -861,6 +877,8 @@ class Dushes:
                     else:
                         self._keep_note(thread_id, pfid, f"Show {label}.", detect(message) or "")
                         out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title, "form_id": pfid}
+                        # the section opens in the page's own run: the label is said there, with the model's part if any
+                        self.__dict__.setdefault("_mixed", {})[thread_id] = f"opened {page.title} \u203a {label}"
                 else:
                     path, _, pid = ref.partition("#")
                     page = self.site.page(path)
@@ -868,6 +886,9 @@ class Dushes:
                     args = {"path": path, **({("tab" if part.kind in ("tab", "accordion") else "section"): pid} if part else {})}
                     if agent.directive(self.site, args)[1] is not None:   # a place that is not there is the agent's to say
                         out = {"kind": "show" if part else "navigate", "args": args, "title": label}
+        if out and out["kind"] in ("navigate", "show", "focus") and self._again(
+                thread_id, (out["kind"], json.dumps(out.get("args"), sort_keys=True), picks["target"].id if picks.get("target") else "")):
+            return None
         if out:
             stats.fast["handled"] = True
             if tail and out["kind"] in ("navigate", "show") and not named and not _intent.names_more(message, " ".join(
@@ -881,6 +902,16 @@ class Dushes:
                 voice.hush(thread_id)   # in a talking conversation: done already, so no "let me check" before the answer
             return out
         return {"kind": "agent", "mode": "site"} if picks.get("kind") and picks["kind"].id in ("go_to", "show") else None
+
+    def _again(self, thread_id: str, what: Any) -> bool:
+        """Whether the layer did this very thing for the person's previous line, a moment ago. Asked again, the
+        same answer is a miss (the owner, 2026-11-17: "open all the sections" answered twice with the tab's
+        name): the agent takes the line instead."""
+        last = self.__dict__.setdefault("_did", {})
+        before = last.get(thread_id)
+        now = RunStats.now()
+        last[thread_id] = (what, now)
+        return bool(before and before[0] == what and now - before[1] < 120)
 
     async def _form_tree(self, form_id: str) -> list[tuple[str, str, list[str]]]:
         """A form's tabs, steps and sections as the server knows them without the page: (name, label, the labels

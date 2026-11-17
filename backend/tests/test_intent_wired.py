@@ -425,3 +425,28 @@ def test_two_ticks_and_an_option_said_in_everyday_words(guide, model):
     raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
     card = json.loads(raw) if isinstance(raw, str) else raw
     assert {c["name"] for c in card["changes"]} == {"barber", "add_wash", "add_styling"} and len(model.calls) == before
+
+
+def test_all_the_sections_of_a_tab_and_a_repeat_goes_to_the_agent(guide, model):
+    """The owner's two spoken lines (2026-11-17). "All the sections in the applicant tab" is every section of that
+    tab, not the tab. And the same request said again right after the layer answered it is a miss: the agent's."""
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": []}}}
+    answers = {"is_command": ("yes", 0.9), "kind": ("go_to", 0.9), "asks_move": ("yes", 0.9), "asks_more": ("no", 0.9),
+               "target": ("form:/apply:tab_applicant", 0.9), "all_sections": ("yes", 0.93)}
+    site = site_with(guide, Mock(**answers))
+    before = len(model.calls)
+    ev = run(site, "all-1", message="Okay, can you please open all of the sections in the applicant tab", state=state)
+    shown = [e["value"].get("target") for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "ui_directive"]
+    assert shown == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == before
+    assert "Personal details, Passport, Addresses, Contacts, Education." in text(ev)
+    # said again: not the same answer once more; the agent's model is asked and the layer opens nothing
+    model.script = [say("They are all open now; which one do you want to start with?")] * 3
+    ev = run(site, "all-1", message="Yeah, but can you open all the sections in applicant tab", state=state)
+    assert len(model.calls) > before and "Personal details, Passport, Addresses, Contacts, Education." not in text(ev)
+    # a tab alone, asked twice, is the same miss
+    tab = site_with(guide, Mock(**{**answers, "all_sections": ("no", 0.9)}))
+    run(tab, "all-2", message="open the applicant tab", state=state)
+    calls = len(model.calls)
+    model.script = [say("The Applicant tab is open.")] * 3
+    run(tab, "all-2", message="open the applicant tab", state=state)
+    assert len(model.calls) > calls
