@@ -708,6 +708,7 @@ class Dushes:
                     len(targets), {k: (v.id, round(v.confidence, 2)) for k, v in picks.items()})
         fid = str((form or {}).get("form_id") or "form")
         out: dict[str, Any] | None = None
+        tail = False
         if iso and "date_field" in picks and ov is not None:
             # a bare date is a value, with or without a verb; it never moves the person anywhere
             name = picks["date_field"].id

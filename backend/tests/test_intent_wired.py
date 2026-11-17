@@ -295,3 +295,16 @@ def test_what_the_chooser_is_sure_of_is_done_and_the_rest_of_the_line_goes_to_th
     model.script = [say("Here is a text.")]
     ev = run(site_with(guide, chooser), "mix-3", message="write that we are open till late", state={"page": {"path": "/"}})
     assert directives(ev) == [] and "Here is a text." in text(ev)
+
+
+def test_a_bare_date_is_put_into_the_field_the_chooser_names(guide, model):
+    """"1st July 2014" with Personal details open: the chooser says which date field, the date itself is read in
+    code, and the form applies it with Undo; no model."""
+    state = {"page": {"path": "/apply"}, "form": start(guide, LOAN)}
+    chooser = Mock(is_command=("yes", 0.8), kind=("set_value", 0.8), date_field=("birth_date", 0.7))
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "date-1", message="1st July 2014", state=state)
+    raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+    card = json.loads(raw) if isinstance(raw, str) else raw
+    assert card["changes"][0]["name"] == "birth_date" and "2014-07-01" in json.dumps(card) and len(model.calls) == before
+    assert "date_field" in chooser.seen[0][1]
