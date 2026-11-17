@@ -1,0 +1,23 @@
+name: missing_year_named_at_once_taps
+tags: [owner_session]
+persona: "A person on the loan application who gives a name, a gender and a birthday without the year, and taps the cards."
+goal: "Hear or see at once that the year is missing, then have the date filled by a bare year."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Anna Rossi, a woman, born on 1 July (the year not said)"
+turns: 3
+# The tapping twin of missing_year_named_at_once (the owner's screenshot 4, 2026-11-17). The guest accepts the field
+# cards, so the card is applied at once and the server writes no line (demo/jev 5d0e400, by design): the year is then
+# asked by the next card. The CPO (2026-11-17): a year question card in that same reply counts as naming it (on the
+# screen it is seen, by voice its question is read out). The year card is not answered from the scenario's data
+# (answers: birth_date null), so the bare year comes from the person's next line. Values invented.
+scripted:
+  - "Open personal details"
+  - "my name is Anna Rossi, I was born 1st July and my gender is female"
+  - "1991"
+answers: {birth_date: null}
+expect:
+  names_on: {"born 1st July": ["year"]}
+  answers_every_turn: true
+  filled: [birth_date]
+min_score: 7

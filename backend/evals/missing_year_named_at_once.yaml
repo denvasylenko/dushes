@@ -18,6 +18,6 @@ scripted:
   - "1991"
 expect:
   answers_every_turn: true
-  says_on: {"born 1st July": ["year", "____"]}   # in words in that turn (Owner TL's yes, 2026-11-17), not only on a card that waits
+  says_on: {"born 1st July": ["year"]}   # in words in that turn, not only on a card that waits (Owner TL 5d0e400: "Date of birth: 1 July. Which year?")
   filled: [birth_date]
 min_score: 7

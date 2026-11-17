@@ -411,3 +411,13 @@ def test_says_on_needs_the_words_in_that_turns_text_not_on_a_card():
     assert ok("\U0001f916 Date of birth: 01.07.____ ?") is True
     assert ok("\U0001f916 The year of birth is missing.") is True
     assert ok('   ⚙ ask_user({"question": "Which year were you born in?"})', "\U0001f916 — Haiku · 2 s") is False
+
+
+def test_names_on_counts_a_question_card_of_that_turn():
+    import evals
+    sc = _bar("x", names_on={"born 1st July": ["year"]})
+    def ok(*log):
+        return next(c["ok"] for c in evals.checks(sc, _visit(["\n\U0001f464 I was born 1st July", *log])) if c["check"].startswith("names one of"))
+    assert ok("   ❓ question card: Which year were you born in? [] → the user answered nothing") is True
+    assert ok("\U0001f916 Date of birth: 1 July. Which year?") is True
+    assert ok("   \U0001f0cf card shown and accepted by the user (the form now has these values): Gender = Female") is False
