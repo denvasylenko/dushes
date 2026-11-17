@@ -993,3 +993,10 @@ def test_a_bare_yes_answers_the_card_only_when_it_is_the_last_line():
     # a host that confirms its own actions takes only cards of values; a kind that is not a yes or no never counts
     assert answer("no", [confirm], kinds=("card",)) is None and answer("yes", talk, kinds=("card",))["card_id"] == "c1"
     assert answer("yes", [question], kinds=("question",)) is None
+
+
+def test_a_row_labelled_with_its_own_value_is_said_once():
+    """The cabinet's QA (2026-11-17): a row came with the value's name as its label and the voice said it twice."""
+    card = {"type": "set_fields", "changes": [{"name": "palette", "label": "Black minimal", "display": "Black minimal"},
+                                             {"name": "term", "label": "Term", "display": "36"}]}
+    assert voice.said_rows(card) == (["Black minimal", "Term: 36"], 0)

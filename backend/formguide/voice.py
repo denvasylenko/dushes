@@ -1067,7 +1067,8 @@ def said_rows(card: dict) -> tuple[list[str], int]:
             said.append(f"{label}\u2013{items[n][1]} {value}" if n > k else f"{label} {value}")
             k = n + 1
         else:
-            said.append(f"{label}: {value}")
+            # a row whose label is the value itself (the agent named the row by its value) is said once
+            said.append(value if label.strip().lower() == value.strip().lower() else f"{label}: {value}")
             k += 1
     return said[:SAID_ROWS], max(0, len(said) - SAID_ROWS)
 
