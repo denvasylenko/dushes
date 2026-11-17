@@ -10,6 +10,7 @@ import { parseJsx } from './jsx'
 import Manager from './Manager'
 import { TraceLine, type RunStats } from './Trace'
 import { Decisions, type DecidedTurn, type Decision } from './Decisions'
+import { jevSwitch } from './jev'
 import type { Config, JsxNode, RevealStep, UiDirective, UiState } from './types'
 
 // ?dictation=server tries Whisper on the server even where the browser can recognise speech (the demo's switch)
@@ -110,6 +111,14 @@ export default function App() {
   const formRef = useRef<LoadedForm | null>(null)
   formRef.current = form
   const chatRef = useRef<AguiChatElement | null>(null)
+  // the "+" row for the decision model (Jev), behind an access code like the voice mode
+  const jevOff = useRef<null | (() => void)>(null)
+  useEffect(() => {
+    const el = chatRef.current
+    const host = el?.closest('.chat-pane') as HTMLElement | null
+    if (!el || !host || jevOff.current) return
+    jevOff.current = jevSwitch(el, host)
+  })
   const reqId = useRef(0)
   const debounce = useRef<number | undefined>(undefined)
 
