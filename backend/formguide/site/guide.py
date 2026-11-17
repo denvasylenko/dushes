@@ -816,6 +816,9 @@ class Dushes:
                                                      f'the page "{pg.title}"' + (" (on the screen now)" if mine else ""),
                                                      " ".join(str(pg.description or "").split())[:90]))
             if places:
+                # "open all sections" with no place said means the one on the screen; a place that is said and is
+                # not in the list is "none of these", and the agent's
+                places.insert(0, _intent.Option("here", "the line names no place at all"))
                 qs["all_of"] = _intent.Question("choice", "all_of", "If the line asks to open all the sections of a place, which "
                                                 "place does it name? A step, tab or page that is not listed here is none of these.",
                                                 tuple(places[:40]), act="show")
@@ -932,7 +935,7 @@ class Dushes:
             if every and every.id == "yes" and every.confidence >= 0.8 and ov is None:
                 # every part of a page of the site (all the questions of the FAQ): of the page the line names, else this one
                 t0 = picks.get("target")
-                path = whose.id.partition(":")[2] if whose else ""
+                path = (here.path if here else "") if whose and whose.id == "here" else whose.id.partition(":")[2] if whose else ""
                 page = self.site.page(path) if path else None
                 parts = [x for x in (page.parts if page else []) if x.kind in ("accordion", "section")]
                 if elsewhere or page is None:
@@ -949,6 +952,7 @@ class Dushes:
                 return None                           # "all" asked and the layer cannot do all of it: the agent's turn
             if every and every.id == "yes" and every.confidence >= 0.8 and ov is not None:
                 # "all the sections of the applicant tab": every section of the tab the line names, else of the open one
+                on_screen = bool(whose and whose.id == "here")       # no place said: the tab on the screen
                 tab = whose.id.partition(":")[2] if whose else ""
                 tab = tab if tab in lay.nodes and lay.nodes[tab].role in ("tab", "step") else ""
                 opens = [(n.name, str(ov[n.name].label)) for n in lay.nodes.values()
@@ -957,7 +961,7 @@ class Dushes:
                 # QA (2026-11-17, "In contract step open all sections"): the line names a step the layer did not
                 # resolve, and it opened the tab on the screen with confidence. Words beside "all the sections" and
                 # the tab's own name mean a place is named: the agent's turn, which asks which one
-                if elsewhere or not tab:
+                if elsewhere or not (tab or on_screen):
                     stats.trace["why"] = "not_sure"
                     return None
             if every and every.id == "yes" and every.confidence >= 0.8 and len(opens) < 2:

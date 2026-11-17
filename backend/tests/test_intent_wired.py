@@ -801,3 +801,15 @@ def test_the_three_switches_of_the_measurement(guide, model, monkeypatch):
     assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
     asked = plain.seen[0][1]
     assert {"asks_fact", "asks_text"} <= set(asked) and "asks_more" not in asked and "needs_agent" not in asked
+
+
+def test_all_the_sections_with_no_place_said_are_those_on_the_screen(guide, model):
+    """The owner on the form page (2026-11-17): "Open all sections". No tab is named: the chooser says so ("here"),
+    and every section of the tab on the screen opens. A place that is named and is not listed stays the agent's."""
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": []}}}
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.8), asks_move=("yes", 0.9), asks_more=("no", 0.9), all_sections=("yes", 0.91), all_of=("here", 0.9))
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "here-1", message="Open all sections", state=state)
+    shown = [e["value"].get("target") for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "ui_directive"]
+    assert shown == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == before
+    assert chooser.seen[0][1]["all_of"].options[0].id == "here"
