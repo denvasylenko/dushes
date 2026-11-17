@@ -330,3 +330,15 @@ def test_a_tool_called_more_than_once_after_its_error_fails_max_calls():
         v.tools = [("check_promo_code", {"code": "SPRING15"})] * n
         return next(c["ok"] for c in evals.checks(sc, v) if c["check"].startswith("calls check_promo_code"))
     assert ok(1) is True and ok(2) is True and ok(3) is False
+
+
+def test_a_page_refused_from_a_form_fails_opens_or_offers():
+    import evals
+    sc = evals.load_scenario(evals.EVALS / "insist_page_from_form.yaml")
+    def ok(path, last, chips=()):
+        v = _visit([], [("m", last)])
+        v.path, v.suggestions = path, list(chips)
+        return next(c["ok"] for c in evals.checks(sc, v) if c["check"].startswith("opens /insurance"))
+    assert ok("/insurance", "Here is car insurance.") is True
+    assert ok("/apply", "Car insurance is on another page. Want me to open it?") is True
+    assert ok("/apply", "There is no car insurance in this application.") is False
