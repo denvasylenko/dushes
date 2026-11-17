@@ -92,6 +92,13 @@ The chat SHALL end the voice conversation on the host when the page is left (clo
 - **WHEN** the person reloads the page during a voice conversation
 - **THEN** the host receives the end of that conversation
 
+### Requirement: Speaking over the voice
+On an `interrupted` event the chat SHALL fade the voice's sound out in about 150 ms and then mute it, drop the rest of that answer (neither written nor lit), and show the orb listening. The next `heard` SHALL unmute the voice.
+
+#### Scenario: The person cuts in
+- **WHEN** the voice is speaking and `interrupted` arrives
+- **THEN** the sound fades out within about 150 ms, later `spoken` words of that answer are not shown, and the orb listens
+
 ### Requirement: One utterance is one message
 What the person says SHALL reach the conversation as one message per utterance, however the voice's words are interleaved with theirs: `hearing` SHALL only grow the faint line, and `spoken` SHALL NOT turn a phrase still being said into a message nor start a new assistant message in the middle of one. A heard line longer than its width SHALL fade at its start, never be cut hard.
 

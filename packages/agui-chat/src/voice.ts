@@ -180,7 +180,21 @@ export function voice(chat: Chat): void {
   let last: HTMLElement | null = null
   /** One line that says why voice ended; a new one takes the place of the last, they never pile up. */
   function note(text: string): void { last?.remove(); last = el('div', 'notice', text); add(last) }
-  let saidEl: HTMLElement | null = null, answered = false, caption = '', heardAt = 0, reads = 0
+  let saidEl: HTMLElement | null = null, answered = false, caption = '', heardAt = 0, reads = 0, cutOff = false
+  /** The person spoke over the voice (the server's `interrupted`): its sound fades out in 150 ms and what is left of
+   *  that answer is dropped, not played on; the orb listens. The next request is heard again. */
+  let fading: ReturnType<typeof setInterval> | undefined
+  function cutIn(): void {
+    cutOff = true; spokeAt = 0; caption = ''; unread(); saidEl = null
+    clearInterval(fading)
+    const from = audio.volume, t0 = Date.now()
+    fading = setInterval(() => {
+      const k = Math.min(1, (Date.now() - t0) / 150)
+      audio.volume = from * (1 - k)
+      if (k >= 1) { clearInterval(fading); audio.muted = true; audio.volume = 1 }
+    }, 16)
+    paint()
+  }
   /** How loud the voice is, from the sound itself (frames arrive all the time, silence included): it is speaking while there is sound. */
   let ear: { ctx: AudioContext; timers: ReturnType<typeof setInterval>[] } | null = null
   /** Watch a stream's loudness (0 to about 40): `got` hears it eight times a second. */
@@ -377,15 +391,19 @@ export function voice(chat: Chat): void {
         if (ev.type === 'hearing' && ev.delta) {   // the person's words as they speak: their message, growing in the conversation
           // nothing else changes while the person speaks: the voice may still be talking (they speak over it, or it
           // says "okay" between their words), and that must not cut their line into pieces or the answer in two
-          audio.muted = false; heardAt = Date.now()
+          if (!cutOff) audio.muted = false   // after a cut-in the rest of the old answer stays silent until the new request
+          heardAt = Date.now()
           hearing(live.textContent + ev.delta)
         } else if (ev.type === 'heard' && ev.text) {   // the whole request: the ordinary turn, as if typed; its text, steps and cards are the chat's own
           hearing('')   // the whole phrase goes into the conversation as one message
           if (echo(ev.text)) continue   // the voice heard itself through the speakers: not the person's message
+          clearInterval(fading); cutOff = false; audio.volume = 1
           audio.muted = false; saidEl = null; answered = false; reads = 0; voiced = ''; unread()
           if (ev.answers && answer(ev.answers, ev.text)) continue   // a spoken yes or no to the waiting card: the card's own answer, not a new message
           void chat.send(ev.text)
         } else if (ev.type === 'result') { answered = true; reads = 0; saidEl = null; read()   // the agent's answer was handed to the voice: what it says next is that answer, already written in the conversation
+        } else if (ev.type === 'interrupted') { cutIn()
+        } else if (ev.type === 'spoken' && ev.delta && cutOff) {   // the rest of the answer that was cut: not shown, not lit
         } else if (ev.type === 'spoken' && ev.delta) {
           const fresh = Date.now() - spokeAt > 1500   // the voice starts again after a silence: a new thing said, not the next word
           spokeAt = Date.now(); paint(); setTimeout(paint, 950)

@@ -287,7 +287,31 @@ describe('the experimental voice mode', () => {
     expect($<HTMLAudioElement>(el, '.vo-dock audio').muted).toBe(false)
   })
 
-  it('never leaves a microphone on without the orb: a tap during the permission prompt, a closed chat, a new chat', async () => {
+  it('the person speaks over the voice: its sound fades out, the rest of that answer is dropped, the orb listens', async () => {
+    const s = server(); fakeAudio()
+    const el = await talking(s, agent())
+    const player = $<HTMLAudioElement>(el, '.vo-dock audio')
+    s.push({ type: 'spoken', delta: 'Hello! I can help you with ' })
+    await tick(20)
+    expect($(el, '.vo-dock').classList.contains('vo-speak')).toBe(true)
+    s.push({ type: 'hearing', delta: 'wait' }); s.push({ type: 'interrupted', by: 'words' })
+    await tick(60)
+    expect(player.volume).toBeLessThan(1)                                        // fading, not cut with a click
+    await tick(160)
+    expect(player.muted).toBe(true)                                              // gone after ~150 ms
+    expect($(el, '.vo-dock').classList.contains('vo-listen')).toBe(true)
+    const said = $$(el, '.msg.ai').map((m) => m.textContent)
+    s.push({ type: 'spoken', delta: 'the loan form and the booking.' })          // the rest of the old answer
+    await tick(20)
+    expect($$(el, '.msg.ai').map((m) => m.textContent)).toEqual(said)              // not written on
+    expect(player.muted).toBe(true)
+    s.push({ type: 'heard', text: 'wait, open the loans' })                     // the new request is heard again
+    await tick(20)
+    expect(player.muted).toBe(false)
+    expect(player.volume).toBe(1)
+  })
+
+  it('never leaves a microphone on: a tap during the permission prompt, a closed chat, a new chat', async () => {
     // the microphone button is tapped while the browser still asks for the microphone
     let allow!: () => void
     const s = server(), audio = fakeAudio(new Promise<void>((r) => { allow = r }))
