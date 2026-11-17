@@ -189,6 +189,7 @@ export default defineConfig({
 					{ label: 'How it works', collapsed: true, items: [
 						{ label: 'System overview', slug: 'agents/how-it-works' },
 						{ label: 'One turn', slug: 'agents/how-it-works/turn' },
+						{ label: 'The decision model', slug: 'agents/how-it-works/decision-model', badge: { text: 'in development', variant: 'caution' } },
 						{ label: 'What the model sees', slug: 'agents/how-it-works/context' },
 						{ label: 'How documents are retrieved', slug: 'agents/how-it-works/knowledge' },
 						{ label: 'How attachments are read', slug: 'agents/how-it-works/attachments' },
