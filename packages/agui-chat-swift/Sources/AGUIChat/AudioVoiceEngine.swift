@@ -237,7 +237,7 @@ public final class AudioVoiceEngine: VoiceEngine {
         case .interrupted:
             trailOff()
             // the provider is not cancelled: the old answer's tail can still come — dropped until a pause of 0.8 s
-            // (the new answer), as the relay does too (Кабинет TL 17.11)
+            // (the new answer), as the relay does too (the cabinet team, 17.11)
             silenced = true
             droppedAt = Date()
             continuation.yield(.interrupted)
