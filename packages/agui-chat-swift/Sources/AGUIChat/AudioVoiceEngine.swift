@@ -82,7 +82,7 @@ public final class AudioVoiceEngine: VoiceEngine {
         if cancelled { link.cancel(); await transport.close(); throw CancellationError() }
         engine.attach(player)
         engine.attach(pace)
-        // a time-pitch unit colours the voice even at rate 1 (a phase vocoder: «металлический, роботный» — the owner,
+        // a time-pitch unit colours the voice even at rate 1 (a phase vocoder: «metallic, robotic» — the owner,
         // 17.11): it is bypassed, and works only for the 350 ms of a trail-off
         pace.bypass = true
         running = true
