@@ -197,6 +197,17 @@ When the person answers a field-change card in words (a plain yes, typed or spok
 - **WHEN** the agent shows a card "Loan amount = 50000" and the person types "Yes" instead of tapping it
 - **THEN** the run's card for the same change carries `quiet: true` and the client applies it at once
 
+### Requirement: One rule for a bare yes on a waiting card
+The package SHALL offer one function, `formguide.voice.card_answer(text, entries)`, that decides whether a line answers the card that waits, so a host does not keep its own copy of the rule. It SHALL return the card's id, its type and `accepted` only when the line is a bare yes or no and the card (proposed values or a confirmation) is the last line of the conversation and still pending; otherwise it SHALL return nothing and the line is an ordinary message.
+
+#### Scenario: The card is the last line
+- **WHEN** the conversation ends on a pending card of proposed values and the person types "yes"
+- **THEN** `card_answer` returns that card's id with `accepted: true`
+
+#### Scenario: Something came after the card
+- **WHEN** the assistant wrote another line after the pending card, or the person says "yes, show the statistics"
+- **THEN** `card_answer` returns nothing and the line goes to the agent as a message
+
 ### Requirement: Agreement is taken in the person's own words
 A yes SHALL be recognised when the utterance opens with agreement and holds no figure, no refusal and no turn to another request ("true", "yeah, do it", "yes, I said set it"). When the assistant asked in words about the very values of a card and the person answered yes, the card SHALL be marked `quiet`: the question was the confirmation.
 

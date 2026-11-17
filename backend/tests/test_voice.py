@@ -878,3 +878,27 @@ def test_a_days_open_tick_is_part_of_its_hours_and_a_card_waits_only_until_the_n
     first, second = asyncio.run(go())
     assert first["answers"]["accepted"] is True and first["answers"]["card_id"] == "c1"
     assert "answers" not in second
+
+
+def test_a_bare_yes_answers_the_card_only_when_it_is_the_last_line():
+    """The owner (2026-11-17): one rule for a bare yes on a card, in the package, for every host (the cabinet had
+    its own copy). A bare yes or no answers the card that waits when the card is the last line; anything longer,
+    a card further up, a card already answered or a question with options is an ordinary message."""
+    answer = voice.card_answer
+    da = "".join(map(chr, (0x434, 0x430)))   # a Russian yes
+    card = {"id": "c1", "kind": "card", "status": "pending", "changes": [{"name": "term", "value": 36}]}
+    talk = [{"id": "u1", "kind": "user", "text": "36 months"}, {"id": "a1", "kind": "assistant", "text": "Set it?"}, card]
+    assert answer("Yes", talk) == {"card_id": "c1", "type": "set_fields", "accepted": True}
+    assert answer(da, talk) == {"card_id": "c1", "type": "set_fields", "accepted": True}
+    assert answer("no", talk) == {"card_id": "c1", "type": "set_fields", "accepted": False}
+    # the line already stored after the card does not hide the card
+    assert answer("Yes", [*talk, {"id": "u2", "kind": "user", "text": "Yes"}])["card_id"] == "c1"
+    assert answer("yes, show the statistics", talk) is None and answer("48", talk) is None and answer("", talk) is None
+    # something came after the card, the card was answered, or nothing waits
+    assert answer("yes", [*talk, {"id": "a2", "kind": "assistant", "text": "Anything else?"}]) is None
+    assert answer("yes", [*talk[:2], {**card, "status": "accepted"}]) is None
+    assert answer("yes", talk[:2]) is None and answer("yes", []) is None and answer("yes", None) is None
+    confirm = {"id": "k1", "kind": "confirm", "status": "pending", "title": "Submit?"}
+    assert answer("no", [confirm]) == {"card_id": "k1", "type": "confirm", "accepted": False}
+    question = {"id": "q1", "kind": "question", "status": "pending", "question": "Which one?", "options": []}
+    assert answer("yes", [question]) is None
