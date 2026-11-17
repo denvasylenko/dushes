@@ -820,7 +820,6 @@ class Dushes:
         # option's probability for a choice
         env = os.environ.get
         if env("INTENT_COMPANION") == "1":
-            qs["names_place"] = _intent.Question("noul", "names_place", "Does the line name a page, a tab or a section?")
             if "value" in qs:
                 qs["gives_value"] = _intent.Question("noul", "gives_value", "Does the line give a value for a field of the form?")
             for key in [k for k in qs if k.startswith("f:")]:
@@ -829,8 +828,10 @@ class Dushes:
         if env("INTENT_SPLIT") == "1":
             qs.pop("needs_agent", None)
             qs.pop("asks_more", None)
-            qs["asks_question"] = _intent.Question("noul", "asks_question", "Does the line ask a question?")
-            qs["asks_explain"] = _intent.Question("noul", "asks_explain", "Does the line ask to explain something?")
+            # ("can you open the loans" is a polite order, not a question: the first wording, "does the line ask a
+            # question?", said yes to it at 0.93)
+            qs["asks_fact"] = _intent.Question("noul", "asks_fact", "Does the line want to be told a fact: a price, a level, "
+                                               "a rule, how something works?")
             qs["asks_text"] = _intent.Question("noul", "asks_text", "Does the line ask to write a text?")
         context = self._context(thread_id, state, here, ov, lay, pack)
         started = RunStats.now()
@@ -1546,14 +1547,15 @@ create_site_router = create_dushes_router
 
 def _refined(picks: dict[str, Any], layer: Any) -> dict[str, Any]:
     """The chooser's answers after the switches of the measurement (off: unchanged).
-    INTENT_SPLIT: "asks more" is the surest yes of its three single questions. INTENT_BANDS: a yes / no under 0.7
+    INTENT_SPLIT: "asks more" is the surer yes of its two single questions. INTENT_BANDS: a yes / no under 0.7
     is unknown and left out; a choice is read by its top option's probability, which must be 0.5 or more and twice
-    the second. INTENT_COMPANION: a target, a value or a field's value is read only on its companion's yes."""
+    the second. INTENT_COMPANION: no "none of these" among the options; a target counts by its top probability and its lead
+    over the second, a value or a field's value only on its companion's yes."""
     from .. import intent as _intent
     env = os.environ.get
     out = dict(picks)
     if env("INTENT_SPLIT") == "1":
-        parts = [out[k] for k in ("asks_question", "asks_explain", "asks_text") if k in out]
+        parts = [out[k] for k in ("asks_fact", "asks_text") if k in out]
         if parts:
             yes = max((p.confidence if p.id == "yes" else 1 - p.confidence) for p in parts)
             out["asks_more"] = _intent.Pick("yes" if yes >= 0.5 else "no", yes if yes >= 0.5 else 1 - yes, parts[0].ms, parts[0].by)
@@ -1572,8 +1574,13 @@ def _refined(picks: dict[str, Any], layer: Any) -> dict[str, Any]:
     if env("INTENT_COMPANION") == "1":
         def yes(k: str) -> bool:
             return k in out and out[k].id == "yes"
-        if not yes("names_place"):
-            out.pop("target", None)
+        # the target has no "none of these" now, so it always names something: it counts when its top option holds
+        # 0.6 of the probability and is 2.5 times the second (a companion yes / no "does the line name a place?"
+        # was tried first and said no, 0.08-0.28, to lines that plainly name one: it cannot see the list)
+        probs, ratios = getattr(layer.chooser, "probs", {}) or {}, getattr(layer.chooser, "ratios", {}) or {}
+        t = out.get("target")
+        if t is not None and "target" in probs and (probs["target"].get(t.id, 0.0) < 0.6 or ratios.get("target", float("inf")) < 2.5):
+            out.pop("target")
         if not yes("gives_value"):
             out.pop("value", None)
         for key in [k for k in out if k.startswith("f:")]:
