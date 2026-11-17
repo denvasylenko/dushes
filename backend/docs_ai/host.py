@@ -12,6 +12,8 @@ The demo is public, so it is limited (environment, defaults in brackets):
     DEMO_PER_IP_DAY       messages per address a day (60)
     DEMO_PER_THREAD       messages per conversation (15)
     DEMO_PER_DAY          messages for the whole site a day (500)
+    DEMO_CODE_PER_THREAD  messages per conversation for a person who entered an activation code (100)
+    DEMO_CODE_PER_DAY     messages a day for such a person, by address and by visitor (400)
     DEMO_RUNS_DAY         runs a day, card answers and hand-offs included (300)
     DEMO_COST_DAY         US dollars a day in total, from each run's real tokens (run_stats) (5)
     DEMO_COST_CHOICES     dollars a day per model choice, "haiku=3,luna=2"; a choice not named has only the total
@@ -63,6 +65,10 @@ PER_VISITOR_DAY = int(os.environ.get("DEMO_PER_VISITOR_DAY", "10"))
 PER_IP_DAY = int(os.environ.get("DEMO_PER_IP_DAY", "60"))
 PER_THREAD = int(os.environ.get("DEMO_PER_THREAD", "15"))
 PER_DAY = int(os.environ.get("DEMO_PER_DAY", "500"))
+# a person who entered an activation code (the experimental features, or the voice mode) is one of ours: the limits
+# of the owner's own dev host. The site's totals (messages, runs, dollars a day) stay the same for everyone.
+CODE_PER_THREAD = int(os.environ.get("DEMO_CODE_PER_THREAD", "100"))
+CODE_PER_DAY = int(os.environ.get("DEMO_CODE_PER_DAY", "400"))
 RUNS_DAY = int(os.environ.get("DEMO_RUNS_DAY", "300"))
 COST_DAY = float(os.environ.get("DEMO_COST_DAY", "5"))
 KEEP_HOURS = float(os.environ.get("DEMO_KEEP_HOURS", "24"))
@@ -171,8 +177,21 @@ def left(choice: str | None, now: float | None = None) -> bool:
     return d.cost < COST_DAY and not (choice in COST_CHOICES and d.by_choice[choice] >= COST_CHOICES[choice])
 
 
+_holders: dict[str, set[str]] = {}   # the day -> the addresses a right code (or a valid pass) came from
+
+
+def code_holder(ip: str, now: float | None = None, mark: bool = False) -> bool:
+    """Whether a right activation code, or a valid pass, came from this address today; `mark` records one."""
+    date = today(now).date
+    if mark:
+        for old in [d for d in _holders if d != date]:
+            del _holders[old]
+        _holders.setdefault(date, set()).add(ip)
+    return ip in _holders.get(date, ())
+
+
 def demo_limit(thread_id: str, ip: str, visitor: str | None = None, *, message: bool = True,
-               now: float | None = None, choice: str | None = None) -> str | None:
+               now: float | None = None, choice: str | None = None, holder: bool = False) -> str | None:
     """None when this run may go ahead (and it is counted), else the reason it may not: visitor, ip, thread,
     site, runs, cost (the day's total) or model_cost (the budget of the run's model choice). Only a new message
     counts toward the message limits; every run counts as a run."""
@@ -184,11 +203,12 @@ def demo_limit(thread_id: str, ip: str, visitor: str | None = None, *, message: 
     if counting() and choice in COST_CHOICES and d.by_choice[choice] >= COST_CHOICES[choice]:
         return "model_cost"
     if message:
-        if _threads[thread_id] >= PER_THREAD:
+        # `holder`: a person who entered an activation code has the wider limits (the site's totals still hold)
+        if _threads[thread_id] >= (CODE_PER_THREAD if holder else PER_THREAD):
             return "thread"
-        if visitor and d.visitors[visitor] >= PER_VISITOR_DAY:
+        if visitor and d.visitors[visitor] >= (CODE_PER_DAY if holder else PER_VISITOR_DAY):
             return "visitor"
-        if d.ips[ip] >= PER_IP_DAY:
+        if d.ips[ip] >= (CODE_PER_DAY if holder else PER_IP_DAY):
             return "ip"
         if d.messages >= PER_DAY:
             return "site"
@@ -369,19 +389,39 @@ _VISITOR = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 METERED = frozenset({"/agent/prefill", "/agent/attachments", "/agent/transcribe", "/site/transcribe", "/agent/layouts"})
 
 
+def _holds_pass(headers) -> bool:
+    """Whether the request carries a valid pass of the experimental features or of the voice mode."""
+    try:
+        from demo.app import _EXPERIMENTS
+        if _EXPERIMENTS.enabled and _EXPERIMENTS.person(headers):
+            return True
+        voice_talks = globals().get("VOICE")
+        return bool(voice_talks is not None and voice_talks.config.enabled and voice_talks.gate.person(headers.get("x-voice-pass")))
+    except Exception:  # noqa: BLE001 - a pass that cannot be read is no pass
+        return False
+
+
 @app.middleware("http")
 async def public_demo(request, call_next):
     path, method = request.url.path, request.method
+    ip = request.headers.get("fly-client-ip") or (request.client.host if request.client else "?")
+    if method == "POST" and path in ("/experiments/unlock", "/voice/unlock"):
+        response = await call_next(request)
+        if response.status_code == 200:          # a right code: this address is a code holder for today
+            code_holder(ip, mark=True)
+        return response
+    if _holds_pass(request.headers):             # a kept pass (after a restart, or on a new day): the same
+        code_holder(ip, mark=True)
     if path.startswith("/agent/kb") and method in ("POST", "DELETE"):
         return JSONResponse({"detail": "Uploading documents is off in the public demo."}, status_code=403)
     if method == "GET" and path.startswith("/agent/layouts/") and path.rsplit("/", 1)[1] in LANDING:
         fid = path.rsplit("/", 1)[1]   # a landing form by its id: read-only
         return JSONResponse({"jsx_hash": LANDING[fid], "form_id": fid})
     if method == "POST" and path in METERED:   # they call a model or store a file: the same daily limits as a message
-        ip = request.headers.get("fly-client-ip") or (request.client.host if request.client else "?")
         visitor = request.headers.get("x-demo-visitor") or ""
         why = demo_limit(f"{path}|{ip}|{today().date}", ip, visitor if _VISITOR.match(visitor) else None,
-                         message=path != "/agent/layouts")   # registering a form counts as a run, not a message
+                         message=path != "/agent/layouts",   # registering a form counts as a run, not a message
+                         holder=code_holder(ip))
         _save_day(today())
         if why:
             return refused(why)
@@ -418,10 +458,9 @@ async def public_demo(request, call_next):
                 return refused("cost")
         else:
             message = not props.get("command") and not props.get("handoff") and not body.get("resume")
-            ip = request.headers.get("fly-client-ip") or (request.client.host if request.client else "?")
             visitor = request.headers.get("x-demo-visitor") or ""
             why = demo_limit(thread, ip, visitor if _VISITOR.match(visitor) else None, message=message,
-                             choice=choice)
+                             choice=choice, holder=code_holder(ip))
             _save_day(today())
             if why:
                 return refused(why)
