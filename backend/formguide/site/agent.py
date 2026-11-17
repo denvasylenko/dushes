@@ -288,7 +288,13 @@ def directive(site: SiteMap, args: dict[str, Any]) -> tuple[str, dict | None]:
         d["tab" if part.kind in ("tab", "accordion") else "section"] = part.id
         if part.text:   # what the user now sees there: the model can answer from it
             shown.append(f"{part.title}: {part.text}")
-    return f"Opened {page.title}." + (" It shows: " + " | ".join(shown) if shown else ""), d
+    # honest about how much was opened (the owner, 2026-11-17: "all five are open" said with one open): one call
+    # opens one part, and the model is told so in the result it reads
+    opened = [k for k in ("tab", "section") if d.get(k)]
+    only = (f" Only this one part of the page was opened ({page.part(d[opened[0]]).title}); every other part is as it "
+            "was. To open another, call navigate again for it; say that parts are open only for the ones you opened."
+            if opened and len(page.parts) > 1 else "")
+    return f"Opened {page.title}." + only + (" It shows: " + " | ".join(shown) if shown else ""), d
 
 
 def _text(content: Any) -> str:

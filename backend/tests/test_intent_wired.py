@@ -450,3 +450,36 @@ def test_all_the_sections_of_a_tab_and_a_repeat_goes_to_the_agent(guide, model):
     model.script = [say("The Applicant tab is open.")] * 3
     run(tab, "all-2", message="open the applicant tab", state=state)
     assert len(model.calls) > calls
+
+
+def faq_page():
+    return next(p for p in SiteMap.load(SITE).pages if len([x for x in p.parts if x.kind in ("accordion", "section")]) >= 2)
+
+
+def test_all_the_sections_of_a_page_and_an_honest_result_for_the_agent(guide, model):
+    """The owner (2026-11-17), on the FAQ: "open all sections" was answered "all five are open" with one open. The
+    chooser now opens every part of the page; and the agent's own tool tells it that one call opens one part."""
+    page = faq_page()
+    parts = [x for x in page.parts if x.kind in ("accordion", "section")]
+    chooser = Mock(is_command=("yes", 0.9), kind=("go_to", 0.9), asks_move=("yes", 0.9), asks_more=("no", 0.9), all_sections=("yes", 0.92))
+    before = len(model.calls)
+    ev = run(site_with(guide, chooser), "faq-1", message="In frequently asked question open all sections", state={"page": {"path": page.path}})
+    opened = [d.get("tab") or d.get("section") for d in directives(ev)]
+    assert opened == [x.id for x in parts] and len(model.calls) == before
+    from formguide.site import agent as site_agent
+    first = parts[0]
+    told, _ = site_agent.directive(SiteMap.load(SITE), {"path": page.path, ("tab" if first.kind == "accordion" else "section"): first.id})
+    assert "Only this one part of the page was opened" in told and "every other part is as it was" in told
+
+
+def test_several_sections_named_in_another_language(guide, model):
+    """QA (2026-11-17): in Russian, French, Italian only the first section opened. The form's labels are English, so
+    "the line itself says it" cannot be checked there; the chooser's yes for each section stands."""
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": []}}}
+    answers = {"is_command": ("yes", 0.9), "kind": ("go_to", 0.9), "asks_move": ("yes", 0.9), "asks_more": ("no", 0.9),
+               "s:acc_passport": ("yes", 0.9), "s:acc_addresses": ("yes", 0.88), "s:acc_contacts": ("yes", 0.91)}
+    for n, line in enumerate(("\u043e\u0442\u043a\u0440\u043e\u0439 \u043f\u0430\u0441\u043f\u043e\u0440\u0442, \u0430\u0434\u0440\u0435\u0441\u0430 \u0438 \u043a\u043e\u043d\u0442\u0430\u043a\u0442\u044b",   # Russian: open passport, addresses and contacts
+                              "ouvre le passeport, les adresses et les coordonn\u00e9es de contact")):
+        ev = run(site_with(guide, Mock(**answers)), f"lang-{n}", message=line, state=state)
+        shown = [e["value"].get("target") for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "ui_directive"]
+        assert shown == ["acc_passport", "acc_addresses", "acc_contacts"], (line, shown)

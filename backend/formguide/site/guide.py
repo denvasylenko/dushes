@@ -743,6 +743,9 @@ class Dushes:
             for n in sections:
                 qs[f"s:{n.name}"] = _intent.Question("noul", f"section:{n.name}",
                                                      f'Does the line ask to open or show the section "{ov[n.name].label}"?', act="show")
+        if ov is None and any(len([x for x in p.parts if x.kind in ("accordion", "section")]) >= 2 for p in self.site.pages):
+            qs["all_sections"] = _intent.Question("noul", "all_sections", "Does the line ask to open all the sections, "
+                                                  "every one of them (all the questions, all the parts), of a page?", act="show")
         context = self._context(thread_id, state, here, ov, lay, pack)
         started = RunStats.now()
         picks = await layer.pick_many(sent, detect(message) or "en", qs, here.path if here else "", context)
@@ -778,10 +781,28 @@ class Dushes:
             # Lead's measurement sets it (INTENT_TAIL)
             tail = bool(more and more.id == "yes" and more.confidence >= float(os.environ.get("INTENT_TAIL", "0.7"))) or named
             # several sections of the form on the screen in one line: all of them opened, one line naming them
+            # "the line itself says it" can be checked only when the line is in the labels' language; in another
+            # language (QA, 2026-11-17: only English lines opened several) the chooser's answer stands alone
+            same_tongue = ov is None or (detect(message) or "en") == (detect(" ".join(str(ov[n.name].label or "") for n in lay.nodes.values() if ov.get(n.name) is not None)[:600]) or "en")
             opens = [(k[2:], str(ov[k[2:]].label)) for k, p in picks.items()
                      if k.startswith("s:") and ov is not None and p.id == "yes" and p.confidence >= 0.8
-                     and _intent.said_in(str(ov[k[2:]].label), message)]
+                     and (not same_tongue or _intent.said_in(str(ov[k[2:]].label), message))]
             every = picks.get("all_sections")
+            if every and every.id == "yes" and every.confidence >= 0.8 and ov is None:
+                # every part of a page of the site (all the questions of the FAQ): of the page the line names, else this one
+                t0 = picks.get("target")
+                path = t0.id.partition(":")[2].partition("#")[0] if t0 and t0.id.startswith(("screen:", "part:")) else (here.path if here else "")
+                page = self.site.page(path) or here
+                parts = [x for x in (page.parts if page else []) if x.kind in ("accordion", "section")]
+                what = ("all", page.path if page else "")
+                if len(parts) >= 2 and not _intent.has_date(message) and not self._again(thread_id, what):
+                    moves_ = [{"path": page.path, ("tab" if x.kind == "accordion" else "section"): x.id} for x in parts]
+                    stats.fast["handled"] = True
+                    from .. import voice
+                    voice.hush(thread_id)
+                    return {"kind": "show", "args": moves_[0], "more": moves_[1:],
+                            "title": f"{page.title}: {len(parts)} sections open" if len(parts) > 4 else ", ".join(x.title for x in parts)}
+                return None                           # "all" asked and the layer cannot do all of it: the agent's turn
             if every and every.id == "yes" and every.confidence >= 0.8 and ov is not None:
                 # "all the sections of the applicant tab": every section of the tab the line names, else of the open one
                 t0 = picks.get("target")
@@ -838,7 +859,8 @@ class Dushes:
                 # the line must itself say the field or the option: a word of the label without its bracketed note
                 # ("Add hair wash (+$10, +15 min)" is said as "hair wash"), or a word of the option
                 plain = re.sub(r"\(.*?\)", " ", flabel)
-                if _intent.says_any(plain, message) or (not is_bool and _intent.says_any(fshown, message)):
+                if (_intent.says_any(plain, message) or (not is_bool and _intent.says_any(fshown, message))
+                        or (not same_tongue and p.confidence >= 0.9)):
                     many.append((fname, (opt == "true") if is_bool else opt, flabel, fshown))
             if many and not (kind and kind.id in ("question", "other")):
                 closing = ", ".join(f"{fl}: {fs}" for _, _, fl, fs in many) + "."
@@ -1136,6 +1158,10 @@ class Dushes:
         tx.append(thread_id, new_entry("assistant", text=text, message_id=mid))
         if d:
             yield {"type": "CUSTOM", "name": "site_directive", "value": d}
+        for extra in fast.get("more") or []:          # every other part of "open all of them"
+            more = agent.directive(self.site, extra)[1]
+            if more:
+                yield {"type": "CUSTOM", "name": "site_directive", "value": more}
         yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
 
     async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
