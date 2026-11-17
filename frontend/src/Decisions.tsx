@@ -54,11 +54,26 @@ function summary(d: Decision | undefined, s: RunStats): string {
   return SUM[d.outcome ?? 'agent'] ?? SUM.agent
 }
 
+// the agent's tools that only look at the form or point at a field (the chat hides them too, its `quietSteps`): noise
+// for a guest one by one, so they fold into one line that opens on a tap
+const QUIET = ['get_outline', 'get_fields', 'get_field', 'search_fields', 'get_options', 'focus_field']
+function toolSteps(tools: RunStats['tools']): Block[] {
+  const step = (x: RunStats['tools'][number]): Block => ({ mark: 'T', label: `Tool: ${x.name}`, detail: x.error ? 'failed' : undefined, ms: x.ms, tone: x.error ? 'danger' : undefined })
+  const quiet = tools.filter((x) => QUIET.includes(x.name) && !x.error)
+  const out = tools.filter((x) => !quiet.includes(x)).map(step)
+  if (!quiet.length) return out
+  const pointed = quiet.filter((x) => x.name === 'focus_field').length
+  const label = pointed === quiet.length ? `Pointed at ${pointed} ${pointed === 1 ? 'field' : 'fields'}`
+    : `Looked at the form \u00b7 ${quiet.length} ${quiet.length === 1 ? 'step' : 'steps'}`
+  return [...out, { mark: 'T', label, ms: quiet.reduce((a, x) => a + x.ms, 0) || undefined,
+    blocks: quiet.length > 1 ? [{ type: 'details', label: 'Show the steps', blocks: [{ type: 'timeline', items: quiet.map(step) }] }] : [] }]
+}
+
 /** The steps, in order. The filter and the screen have no time of their own, so they show none. */
 function steps(d: Decision | undefined, s: RunStats, jevBlocks: Block[] = []): Block[] {
   const agentMs = s.models.filter((m) => m.kind === 'agent').reduce((a, m) => a + m.ms, 0)
   if (!d) return [...s.models.map((m) => ({ mark: 'A', label: m.kind === 'agent' ? 'Agent answered' : `Model: ${m.kind}`, detail: m.model ?? undefined, ms: m.ms })),
-    ...s.tools.map((x) => ({ mark: 'T', label: `Tool: ${x.name}`, detail: x.error ? 'failed' : undefined, ms: x.ms, tone: x.error ? 'danger' : undefined }))]
+    ...toolSteps(s.tools)]
   const f = d.filtered ?? {}
   const hidden = [f.names ? `${f.names} ${f.names === 1 ? 'name' : 'names'}` : '', f.emails ? 'e-mail' : '', f.phones_or_digits ? 'phone number or long number' : ''].filter(Boolean)
   const jev = d.steps?.find((x) => x.who === 'jev')
