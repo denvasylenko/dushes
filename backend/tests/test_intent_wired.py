@@ -628,15 +628,20 @@ def test_a_bare_name_of_a_place_opens_it_and_okay_is_not_a_name(guide, model, mo
     monkeypatch.setenv("INTENT_LABELS", "1")
     assert intent.mask_names("Oh Okay, okay, okay. Open the apply for a loan", []) == ("Oh Okay, okay, okay. Open the apply for a loan", False)
     assert intent.mask_names("Oh Okay, call Giulia", [])[1]
-    bare = Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), target=("screen:/loans", 0.85))
+    bare = Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), target=("screen:/loans", 0.85), wants_to_go=("yes", 0.85))
     before = len(model.calls)
     ev = run(site_with(guide, bare), "bare-1", message="loans", state={"page": {"path": "/"}})
     assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and len(model.calls) == before
+    assert "wants_to_go" in bare.seen[0][1]
+    # the same word in a conversation about something else: the chooser does not see the wish to go there
+    model.script = [say("Loans start from 18.9% a year.")]
+    idle = Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), target=("screen:/loans", 0.95), wants_to_go=("no", 0.8))
+    assert directives(run(site_with(guide, idle), "bare-0", message="loans", state={"page": {"path": "/"}})) == []
     # not when the line says more than the name, asks, or the chooser is only fairly sure
-    for line, answers in (("loans are expensive these days", dict(target=("screen:/loans", 0.85))),
-                          ("loans?", dict(target=("screen:/loans", 0.85))),
-                          ("loans", dict(target=("screen:/loans", 0.7))),
-                          ("loans", dict(target=("screen:/loans", 0.85), kind=("question", 0.8)))):
+    for line, answers in (("loans are expensive these days", dict(target=("screen:/loans", 0.85), wants_to_go=("yes", 0.9))),
+                          ("loans?", dict(target=("screen:/loans", 0.85), wants_to_go=("yes", 0.9))),
+                          ("loans", dict(target=("screen:/loans", 0.85), wants_to_go=("yes", 0.6))),
+                          ("loans", dict(target=("screen:/loans", 0.85), wants_to_go=("yes", 0.9), kind=("question", 0.8)))):
         model.script = [say("Here is what we have on loans.")]
         ev = run(site_with(guide, Mock(is_command=("no", 0.6), asks_move=("no", 0.6), asks_more=("no", 0.9), **answers)),
                  f"bare-{len(model.calls)}", message=line, state={"page": {"path": "/"}})
@@ -664,3 +669,19 @@ def test_the_chooser_is_told_which_page_was_open_before(guide, model):
     assert not any("just before this one" in o.hint for i, o in options.items() if i != f"screen:{a.path}")
     assert chooser.context["pages_visited"] == [a.title, b.title]
     assert directives(ev) == [{"type": "navigate", "path": a.path}]
+
+
+def test_a_question_about_another_page_asked_on_a_form_goes_to_the_site_assistant(guide, model):
+    """QA (2026-11-17): "what I need for loan" on the booking form was refused by the form's assistant ("I can't
+    help with a loan here"). The chooser says which page the line is about; when it is another page and the line
+    is not an order, the site's assistant answers and nobody is moved."""
+    from .test_agent import BARBER
+    state = {"page": {"path": "/book"}, "form": start(guide, BARBER)}
+    chooser = Mock(is_command=("no", 0.8), kind=("question", 0.9), asks_move=("no", 0.9), asks_more=("yes", 0.9), target=("screen:/loans", 0.8))
+    model.script = [say("For a loan you need a passport and proof of income.")]
+    ev = run(site_with(guide, chooser), "awa-1", message="Okay, what I need for loan", state=state)
+    assert directives(ev) == [] and "passport" in text(ev)
+    assert any(e.get("type") == "CUSTOM" and e.get("name") == "run_stats" and e["value"].get("agent") == "site" for e in ev)
+    from formguide.agent import prompts
+    from formguide.site import agent as site_agent
+    assert "Answer what was asked" in open(prompts.__file__).read() and "Answer what was asked" in site_agent.SYSTEM

@@ -733,6 +733,10 @@ class Dushes:
                 _intent.Option("other", "a text to write, a judgement or a suggestion"))),
             "needs_agent": _intent.Question("noul", "needs_agent", "Does the line name a person or a company that is not "
                                             "on the screen, ask a question, ask for a text, or need judgement?"),
+            "wants_to_go": _intent.Question("noul", "wants_to_go", "Judging by the conversation so far, does the person "
+                                            "want to be taken to the place this line names: they have just been moving "
+                                            "around the site by commands, or the assistant has just offered that place, "
+                                            "or the line answers a question where to go?"),
             "asks_move": _intent.Question("noul", "asks_move", "Does the line, in any part of it, order to open, go to "
                                           "or show a page, a tab or a section?"),
             "asks_more": _intent.Question("noul", "asks_more", "Beside an order to open, show or set something, does the "
@@ -976,12 +980,22 @@ class Dushes:
             # a line that is nothing but the name of a place ("collateral", "assets and liabilities", "purchase
             # request"): the chooser is sure of the place and the line says no more than its name. It need not sound
             # like an order (the owner's session, 2026-11-17: four such lines went to the model for 3 to 8 s each)
-            if (target and target.confidence >= 0.8 and not moves and not value and "?" not in message
+            # ... only when the conversation backs that intent up (the owner, 2026-11-17: "Jev has to orient by
+            # situation"): they have just been moving by commands, or the place was just offered. A bare word in the
+            # middle of a talk about something else is the agent's, which answers or asks
+            wants = picks.get("wants_to_go")
+            if (target and wants and wants.id == "yes" and wants.confidence >= 0.7 and not moves and not value and "?" not in message
                     and not (kind and kind.id in ("question", "other")) and not (more and more.id == "yes")
                     and not _intent.names_more(message, next((o.label for o in targets if o.id == target.id), ""))):
                 moves = True
             if not ordered and not moves and not bare:
                 stats.trace["why"] = stats.trace["why"] or "not_an_order"
+                # a question about another page of the site, asked on a form's page: the site's assistant answers it
+                # (the form's own assistant refused it: "I can't help with a loan here", QA 2026-11-17). The chooser
+                # says which page the line is about; nobody is moved
+                if (target and target.confidence >= 0.6 and state.get("form") and target.id.startswith(("screen:", "part:"))
+                        and not (here and target.id.partition(":")[2].partition("#")[0] == here.path)):
+                    return {"kind": "agent", "mode": "site"}
                 return None                           # not the person's order: the agent's turn
             if bare or (ordered and (kind.id == "set_value" or (value and not target))):
                 if value and not tail:                # a value with more to answer: the form's assistant does both
