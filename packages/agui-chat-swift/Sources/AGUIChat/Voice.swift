@@ -169,6 +169,9 @@ public final class VoiceController {
             if !store.running { state = muted ? .muted : .listening }
         case .level(let l):
             level = max(0, min(1, l))
+            // the microphone records before the server is up: the talk listens from here (the light breathes with
+            // his voice at once — CPO 17.11), its words come when the link is
+            if state == .connecting { state = muted ? .muted : .listening }
         case .error(let code):
             problem = code
         case .ended(let reason):

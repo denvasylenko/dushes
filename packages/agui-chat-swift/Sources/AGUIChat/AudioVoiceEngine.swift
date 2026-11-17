@@ -34,6 +34,11 @@ public final class AudioVoiceEngine: VoiceEngine {
     private var fade: Task<Void, Never>?
     private var answerStarted = Date.distantPast       // the current answer's audio: when it began, how long it is
     private var answerLength: TimeInterval = 0
+    /// The microphone runs before the socket is up (CPO 17.11: recording ≤ 0.5 s after the tap): its audio waits here
+    /// and goes up in order as soon as the transport is connected (at most 10 s of it).
+    private var linked = false
+    private var waiting: [Data] = []
+    private var waitingBytes = 0
     /// A line a second about the sound path (the route, what was scheduled, the level at the mixer): for a check on a
     /// real device, where nobody but the person hears the speaker.
     public var diagnostics: (@Sendable (String) -> Void)?
@@ -48,6 +53,9 @@ public final class AudioVoiceEngine: VoiceEngine {
 
     public func start(threadId: String) async throws {
         guard await AVAudioApplication.requestRecordPermission() else { throw VoiceEngineError.microphone }
+        // the socket opens at once, in parallel with the audio: the microphone does not wait for the server's
+        // `started` — what it records meanwhile is kept and sent when the link is up (CPO 17.11)
+        let link = Task { [transport] in try await transport.connect(threadId: threadId) }
         // off the main thread: activating the session there held the app's frames for up to ~1 s while the system's
         // own animations ran on (a host saw its screen white under the voice)
         try await Task.detached(priority: .userInitiated) {
@@ -56,24 +64,17 @@ public final class AudioVoiceEngine: VoiceEngine {
             try session.setActive(true)
         }.value
         speakerUnlessHeadphones()
-
-        try await transport.connect(threadId: threadId)
-        if cancelled { await transport.close(); throw CancellationError() }
-        let rate = transport.sampleRate
+        let rate = transport.sampleRate                       // fixed by the transport, known before it connects
         wireFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: rate, channels: 1, interleaved: true)
         playFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false)
 
         // echo and noise cancelling by the system; off the main thread too (it reconfigures the audio for ~.3 s)
         nonisolated(unsafe) let input = engine.inputNode
         try await Task.detached(priority: .userInitiated) { try input.setVoiceProcessingEnabled(true) }.value
-        if cancelled { await transport.close(); throw CancellationError() }
+        if cancelled { link.cancel(); await transport.close(); throw CancellationError() }
         engine.attach(player)
         engine.attach(pace)
         running = true
-        if let at = microphoneNotBefore, at.timeIntervalSinceNow > 0 {
-            try? await Task.sleep(for: .seconds(at.timeIntervalSinceNow))
-        }
-        guard running else { throw CancellationError() }     // ended while waiting: the end already closed all
         watchSystem()                                          // before the start: voice processing reconfigures at once
         try wire(startNow: false)
         // starting the engine takes the audio hardware (up to ~.2 s on a phone): off the main thread, like the
@@ -86,10 +87,27 @@ public final class AudioVoiceEngine: VoiceEngine {
         guard running else {                                  // ended while the engine started: stop it again
             nonisolated(unsafe) let late = engine
             await Task.detached { late.stop() }.value
+            link.cancel()
+            await transport.close()
             throw CancellationError()
         }
         player.play()
         speakerUnlessHeadphones()
+        report("microphone on")
+        // the link, then what the microphone kept, then the live audio; the server's events from then on
+        do {
+            try await link.value
+        } catch {
+            report("end: the link failed \(error)")
+            await end()
+            throw error
+        }
+        guard running else { await transport.close(); throw CancellationError() }
+        linked = true
+        report("linked, \(waitingBytes / 2) samples kept sent")
+        for piece in waiting { transport.send(audio: piece) }
+        waiting = []
+        waitingBytes = 0
         pump = Task { [weak self] in
             guard let self else { return }
             for await event in transport.incoming { self.received(event) }
@@ -219,6 +237,16 @@ public final class AudioVoiceEngine: VoiceEngine {
         guard error == nil, out.frameLength > 0, let samples = out.int16ChannelData?[0] else { return }
         var data = Data(bytes: samples, count: Int(out.frameLength) * 2)
         if muted { data = Data(count: data.count) }     // silence, so the talk stays open but hears nothing
+        // the host's start sound is not sent (it would be heard as his words)
+        if let at = microphoneNotBefore, Date() < at { data = Data(count: data.count) }
+        guard linked else {                             // the link is not up yet: kept, in order
+            waiting.append(data)
+            waitingBytes += data.count
+            while waitingBytes > Int(wireFormat.sampleRate) * 2 * 10, !waiting.isEmpty {
+                waitingBytes -= waiting.removeFirst().count
+            }
+            return
+        }
         transport.send(audio: data)
     }
 
