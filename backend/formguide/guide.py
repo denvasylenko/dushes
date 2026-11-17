@@ -502,7 +502,7 @@ class FormGuide:
                     _FAST.add(value.get("card_id"))
                     value["quiet"] = True
                     _intent.used_fill(thread_id)
-                if again or answered or left or (_voice.active(thread_id) and _voice.quiet(value, said)):
+                if again or answered or left or (_voice.quiet(value, said) if _voice.active(thread_id) else _voice.said_outright(value, said)):
                     value["quiet"] = True
                 interrupts.append(value)
                 if mode not in ("legacy", "both"):

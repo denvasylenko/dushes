@@ -362,7 +362,19 @@ def test_a_quiet_card_is_marked_and_not_announced(guide, model):
         model.script = [say_("", ("p2", "propose_changes", {"changes": [{"name": "last_name", "value": "Smith"}]}))]
         ev = collect(guide, "typed-thread-2", message="my last name is Smith", state=start(guide, LOAN))
         raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
-        assert "quiet" not in (json.loads(raw) if isinstance(raw, str) else raw)        # chat is untouched
+        # typed (the owner, 2026-11-17): what the person wrote outright is applied at once with Undo, a last name
+        # too (typed words are not misheard); a value they did not write is still asked on a card
+        assert (json.loads(raw) if isinstance(raw, str) else raw).get("quiet") is True
+        model.script = [say_("", ("p3", "propose_changes", {"changes": [{"name": "last_name", "value": "Smith"}]}))]
+        ev = collect(guide, "typed-thread-3", message="fill in my last name as before", state=start(guide, LOAN))
+        raw = next(e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt")
+        assert "quiet" not in (json.loads(raw) if isinstance(raw, str) else raw)
+        row = lambda name, label, value, shown=None: {"name": name, "label": label, "value": value, **({"display": shown} if shown else {})}  # noqa: E731
+        card = lambda *rows: {"type": "set_fields", "changes": list(rows)}  # noqa: E731
+        assert voice.said_outright(card(row("birth_place", "Place of birth", "Lyon"), row("birth_date", "Date of birth", "1992-07-01")), "Lyon, 1st July '92")
+        assert voice.said_outright(card(row("gender", "Gender", "f", "Female")), "my name is Anna Rossi, I am a woman")
+        assert not voice.said_outright(card(row("gender", "Gender", "f", "Female")), "my name is Anna Rossi")
+        assert not voice.said_outright(card({**row("agree", "I agree", True), "consent": True}), "I agree")
     finally:
         voice.HOSTS.clear()
 

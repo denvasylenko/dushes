@@ -1052,6 +1052,37 @@ def _was_said(row: dict, said: str, numbers: list[str]) -> bool:
     return False
 
 
+# everyday words for an option of a list: saying one is saying the option (English; other languages go to a card)
+_SAME = {"male": {"man", "male", "boy", "guy", "gentleman"}, "female": {"woman", "female", "girl", "lady"}}
+
+
+def _said(row: dict, said: str, numbers: list[str]) -> bool:
+    """`_was_said`, and two more ways of saying a value outright: a date in any wording ("1st July '92" for
+    1992-07-01), and an everyday word for an option ("I am a woman" for Female)."""
+    if _was_said(row, said, numbers):
+        return True
+    value = row.get("value")
+    shown = str(row.get("display") or (value.get("name") if isinstance(value, dict) else value) or "")
+    from . import intent as _intent
+    iso = _intent.spoken_date(said) or _intent.date_in(said)[0]
+    if iso and iso in (str(value), shown):
+        return True
+    words = set(re.findall(_LETTERS, (said or "").lower()))
+    return bool(_SAME.get(shown.strip().lower(), set()) & words)
+
+
+def said_outright(card: dict, said: str | None) -> bool:
+    """In a typed conversation: whether every row of a field-change card is a value the person wrote outright, so
+    it is applied at once with Undo and no card asks (the owner, 2026-11-16 and 17: a clear statement is applied;
+    a card only for a guess or two readings). A consent and a row with an issue are always shown. Typed words are
+    not misheard, so a last name or an e-mail counts here, unlike in `quiet`."""
+    rows = card.get("changes") if isinstance(card, dict) else None
+    if not rows or card.get("type") not in (None, "set_fields") or not (said or "").strip():
+        return False
+    numbers = said_numbers(said or "")
+    return all(isinstance(r, dict) and not r.get("consent") and not r.get("issue") and _said(r, said or "", numbers) for r in rows)
+
+
 def quiet(card: dict, said: str | None) -> bool:
     """Whether a field-change card may be applied without being shown, in a voice conversation: every row is a
     value the person said (named, or picked by name among the options offered), whether the field was empty or
@@ -1068,7 +1099,7 @@ def quiet(card: dict, said: str | None) -> bool:
             return False
         if spelled(row):
             return False
-        if not _was_said(row, said or "", numbers):
+        if not _said(row, said or "", numbers):
             return False
     return True
 
