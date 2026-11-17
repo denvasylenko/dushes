@@ -84,7 +84,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .seg.pane-seg button { flex: 1; border-radius: 7px; padding: 5px 12px; color: var(--text); font-weight: 500; transition: background .15s, box-shadow .15s; }
 .seg.pane-seg button.on { background: var(--seg-thumb); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); }   /* the raised thumb, no tint */
 .pane-decisions .chat-widget { display: none; }
+/* in "How it decided" the whole column below the switch is one scroll area: a swipe over the links strip moves the
+   list too (the owner's trackpad stopped there); the switch stays at the top */
+.chat-pane.pane-decisions { overflow-y: auto; overscroll-behavior: contain; }
+.pane-decisions .seg.pane-seg { position: sticky; top: 0; z-index: 2; margin-top: 0; border-top: 8px solid var(--panel); box-sizing: content-box; box-shadow: 0 8px 0 var(--panel); }   /* the list passes under it, never shows around it */
 .decisions { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 14px 16px; }
+.pane-decisions .decisions { flex: none; overflow: visible; }
 .dec-privacy { display: flex; gap: 6px; align-items: flex-start; margin: 4px 0 12px; font-size: 12px; line-height: 1.4; }
 .dec-privacy svg { flex: none; margin-top: 1px; }
 .chat-widget::part(panel) { border: 0; border-radius: 0; }
