@@ -342,3 +342,13 @@ def test_a_page_refused_from_a_form_fails_opens_or_offers():
     assert ok("/insurance", "Here is car insurance.") is True
     assert ok("/apply", "Car insurance is on another page. Want me to open it?") is True
     assert ok("/apply", "There is no car insurance in this application.") is False
+
+
+def test_a_line_with_no_words_after_it_fails_answers_every_turn():
+    import evals
+    sc = _bar("x", answers_every_turn=True)
+    def ok(*log):
+        return next(c["ok"] for c in evals.checks(sc, _visit(list(log))) if c["check"] == "every line gets words back")
+    assert ok("\n\U0001f464 a", "\U0001f916 yes", "\n\U0001f464 b", "\U0001f916 done") is True
+    assert ok("\n\U0001f464 a", "   \U0001f0cf card", "\U0001f916 — Haiku · 1 s") is False   # only the label: silence
+    assert ok("\n\U0001f464 a", "\U0001f916 ok", "\n\U0001f464 b") is False

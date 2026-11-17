@@ -41,7 +41,7 @@ CONFIG = HERE / "demo" / "formguide.yaml"
 
 KEYS = {"name", "persona", "goal", "start", "knows", "turns", "expect", "min_score", "attach", "documents", "tags", "red_team", "quote", "gold", "scripted", "answers"}
 START_KEYS = {"page", "form", "values", "site", "host", "ui"}   # host: for a host's own runner (e.g. Herefront)
-EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice", "filled", "no_question_card_on", "asks_nothing_on", "never_claims_without", "max_words", "max_calls", "opens_or_offers",
+EXPECT_KEYS = {"says", "never_says", "answered_by", "cards", "reaches", "fields", "tools", "never_tools", "sources", "never_cards", "never_points_at_the_page", "no_cards_on_turns", "options_once", "stays_put_on", "card_results", "asks_on", "never_fills_on", "quiet_cards", "never_same_card_twice", "filled", "no_question_card_on", "asks_nothing_on", "never_claims_without", "max_words", "max_calls", "opens_or_offers", "answers_every_turn",
                "never_repeat_questions", "never_suggests", "never_says_after_card", "rejected_values", "never_numbers",
                "never_preset_pickers", "never_ask_words", "never_fill_words", "cards_in_language", "plain_numbers", "never_model_kinds"}
 CAP_NEVER, CAP_OTHER = 3, 5
@@ -97,6 +97,7 @@ class Scenario:
     never_fills_on: dict[str, list[str]] = field(default_factory=dict)  # {regex of a user message: field labels}: no change card of that reply has them
     asks_nothing_on: list[str] = field(default_factory=list)    # regexes of user messages: a clear request, the reply asks nothing
     never_claims_without: bool = False                      # "I've set / sent / booked" only after the step that did it
+    answers_every_turn: bool = False                         # every line of the person gets words back (voice: never silence after a card)
     opens_or_offers: dict[str, Any] = field(default_factory=dict)   # {paths: [...], words: [...]}: the visit ends on one of the paths, or the last reply offers it (names a word and asks)
     max_calls: dict[str, int] = field(default_factory=dict)  # {tool: n}: the tool is called at most n times (one retry after an error)
     max_words: int = 0                                      # no reply longer than this many words (0: no limit)
@@ -156,7 +157,7 @@ def load_scenario(path: Path) -> Scenario:
                     ui=dict(start.get("ui") or {}), never_points=bool(exp.get("never_points_at_the_page")), options_once=bool(exp.get("options_once")), stays_put_on=[str(x) for x in exp.get("stays_put_on") or []], card_results=[str(x) for x in exp.get("card_results") or []],
                     asks_nothing_on=[str(x) for x in exp.get("asks_nothing_on") or []],
                     never_claims_without=bool(exp.get("never_claims_without")), max_words=int(exp.get("max_words") or 0),
-                    opens_or_offers=dict(exp.get("opens_or_offers") or {}),
+                    opens_or_offers=dict(exp.get("opens_or_offers") or {}), answers_every_turn=bool(exp.get("answers_every_turn")),
                     max_calls={str(k): int(v) for k, v in (exp.get("max_calls") or {}).items()},
                     filled=[str(x) for x in exp.get("filled") or []], no_question_card_on=({str(k): [str(w) for w in (v or [])] for k, v in exp["no_question_card_on"].items()} if isinstance(exp.get("no_question_card_on"), dict)
                                          else {str(x): [] for x in exp.get("no_question_card_on") or []}),
@@ -732,6 +733,20 @@ def checks(sc: Scenario, visit: Visit) -> list[dict]:
     if sc.never_claims_without:   # the bar's point 2: a thing is called done only after the step that did it
         bad = claims_without(visit.log)
         out.append({"check": "claims nothing before the step that does it", "ok": not bad, "detail": " | ".join(bad)[:300], "cap": CAP_OTHER})
+    if sc.answers_every_turn:   # a line with no words after it: the voice would be silent
+        silent, said, cur = [], False, None
+        for entry in visit.log:
+            for line in str(entry).splitlines():
+                t = line.strip()
+                if t.startswith("\U0001f464"):
+                    if cur is not None and not said:
+                        silent.append(cur)
+                    cur, said = t[1:].strip()[:60], False
+                elif t.startswith("\U0001f916") and not t[1:].strip().startswith("\u2014"):
+                    said = True
+        if cur is not None and not said:
+            silent.append(cur)
+        out.append({"check": "every line gets words back", "ok": not silent, "detail": "silent after: " + " | ".join(silent) if silent else "", "cap": CAP_OTHER})
     if sc.opens_or_offers:   # a page from another part of the site: opened, or offered in the last reply, never refused
         paths = [str(x) for x in sc.opens_or_offers.get("paths") or []]
         words = [str(x).lower() for x in sc.opens_or_offers.get("words") or []]

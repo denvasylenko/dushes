@@ -1,0 +1,19 @@
+name: bare_value_on_screen
+tags: [owner_session]
+persona: "A person on the loan application who says bare values, with the field on the screen."
+goal: "Have a bare value whose field and option are on the screen set at once."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Female; two children"
+turns: 3
+# The owner's session (2026-11-17, 18:19 and 18:46): "Gender: Male" (value 0.99) and "two children" (field 1.0) went
+# to Haiku because the gate asked "is it a command" first and the chooser said no. Fix 2 in the CPO's queue: a value
+# on the screen is set without that gate. Values invented. Fails first.
+scripted:
+  - "Open personal details"
+  - "Gender: Female"
+  - "Female, I said"
+expect:
+  fields: {gender: "f"}
+  answers_every_turn: true
+min_score: 7

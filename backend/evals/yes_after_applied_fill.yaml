@@ -17,4 +17,5 @@ expect:
   no_cards_on_turns: ["it's right"]
   never_same_card_twice: true
   max_words: 60
+  answers_every_turn: true   # fix 4: in voice, never silence after a card
 min_score: 7

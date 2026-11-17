@@ -15,8 +15,10 @@ scripted:
   - "Yeah, but I meant the loan application"
   - "Yeah, open it"
   - "Personal details and the information I gave you before"
+# The guest answers no card: the details are filled only if the assistant uses what was said before.
+answers: {first_name: null, last_name: null, birth_date: null}
 expect:
   reaches: "/apply"
   fields: {first_name: "Anna", last_name: "Berg", birth_date: "1992-07-01"}
-  never_says: ["don't have any details from earlier", "I don't see any name", "no name or other data"]
+  never_says: ["don't have any details", "I don't see any name", "no name or other data", "let's start with your name"]
 min_score: 7
