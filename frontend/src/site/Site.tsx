@@ -46,6 +46,9 @@ export default function Site() {
   const pendingHandoff = useRef<string | null>(null)   // a form Dushes opened for the form agent
   // How it decided: each turn's run_stats, with the server's decision_trace when it sent one (joined by run_id)
   const [pane, setPane] = useState<'chat' | 'decisions'>('chat')
+  // the tab is the owner's tool: it shows only once this page has received a decision_trace (the server sends one
+  // only where the host turns it on, his localhost); a public visitor never sees it
+  const [traced, setTraced] = useState(false)
   const [turns, setTurns] = useState<DecidedTurn[]>([])
   const decided = useRef(new Map<string, Decision>())
   const asked = useRef('')
@@ -133,7 +136,7 @@ export default function Site() {
     const onEvent = fg.onEvent!
     fg.onEvent = (ev, chat) => {
       if (ev.type === 'CUSTOM' && ev.name === 'site_directive') { go(ev.value as SiteDirective); return true }
-      if (ev.type === 'CUSTOM' && ev.name === 'decision_trace') {   // Jev's part of a turn, before its run_stats
+      if (ev.type === 'CUSTOM' && ev.name === 'decision_trace') { setTraced(true);   // Jev's part of a turn, before its run_stats
         const d = (typeof ev.value === 'string' ? JSON.parse(ev.value) : ev.value) as Decision
         if (d?.run_id) { decided.current.set(d.run_id, d); setTurns((t) => t.map((x) => (x.stats.run_id === d.run_id ? { ...x, decision: d } : x))) }
       }
@@ -204,12 +207,12 @@ export default function Site() {
             </div>
           )}
         </main>
-        <aside className={`chat-pane${pane === 'decisions' ? ' pane-decisions' : ''}`}>
-          <div className="seg pane-seg" role="tablist" aria-label="Assistant panel">
+        <aside className={`chat-pane${traced && pane === 'decisions' ? ' pane-decisions' : ''}`}>
+          {traced && (<div className="seg pane-seg" role="tablist" aria-label="Assistant panel">
             <button role="tab" aria-selected={pane === 'chat'} className={pane === 'chat' ? 'on' : ''} onClick={() => setPane('chat')}>Chat</button>
             <button role="tab" aria-selected={pane === 'decisions'} className={pane === 'decisions' ? 'on' : ''} onClick={() => setPane('decisions')}>How it decided</button>
-          </div>
-          {pane === 'decisions' && <Decisions turns={turns} />}
+          </div>)}
+          {traced && pane === 'decisions' && <Decisions turns={turns} />}
           <AguiChat
             ref={chatRef}
             className="chat-widget"
