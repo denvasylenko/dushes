@@ -1,0 +1,15 @@
+name: open_now_sections
+tags: [owner_session]
+persona: "A person on the loan application, every section folded, whose 'open all sections' is heard as 'open now sections'."
+goal: "Have every section of the tab on the screen opened."
+start: {page: /apply, form: loan_application}
+knows:
+  - "Wants every section of the Applicant tab open"
+turns: 1
+# The owner's session (2026-11-17), via the CPO: "Open now sections" (speech for "open all sections"); Jev answered
+# "Loan." and opened no sections. Expected: the five sections of the tab on the screen, as for open_all_sections_agent.
+scripted:
+  - "Open now sections"
+expect:
+  opens_all_on: {"^\\W*Open now sections": [acc_personal, acc_passport, acc_addresses, acc_contacts, acc_education]}
+min_score: 7
