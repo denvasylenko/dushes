@@ -146,6 +146,27 @@ the phrase, the chooser answered within the deadline with an id among the option
 above the threshold. Everything else is None, which means the agent takes the turn. It is not wired into a run:
 no host and no agent calls it yet, so behaviour is unchanged.
 
+## When the code hands the turn back to the agent
+
+The principle (the CPO, 2026-11-17, on the owner's question): the code acts by itself only when it is sure and the
+action can be undone. Everything else is the agent's turn. "Built" below means on the demo branch `demo/jev`, with
+a test there; nothing of it is on main, where the layer is not wired in.
+
+| # | Case | What happens | State |
+| --- | --- | --- | --- |
+| 1 | The place is not there (a booking deleted, a part not found) | nothing is opened; the agent says so and offers what exists | built, tested |
+| 2 | The order also holds a question ("open the booking for three, what did they ask for?") | the place is opened, then the agent answers | specified; today the whole line is the agent's, which answers and offers the page |
+| 3 | The app did not confirm the move | the agent says which tab to open | specified; needs the client's acknowledgement of a directive, which does not exist yet |
+| 4 | The value is impossible (a past date, a closed day, a taken slot, too many guests) | nothing is written; the agent explains and offers the nearest | built for a value the form refuses, tested |
+| 5 | Two fields fit ("put 18") | the agent asks one question | built (a pick below the threshold is no pick), tested |
+| 6 | The server rejected the write (a conflict) | the agent explains and shows the choice | built: the closing line is said only after a clean "applied", tested |
+| 7 | A line in two parts: a value, and free text | the value is set; the text goes to the agent with "already done: ..." | specified |
+| 8 | "No, not that" right after the action | Undo, then the agent asks what was meant | specified; needs Undo from the server side |
+
+Two code rules stand in front of every case, with no model involved: a line with a date or a weekday is never a
+place to go (with a date field on the screen it is a value, otherwise the agent's), and a person's or company's
+name that no label on the screen has always goes to the agent and is never sent out.
+
 ## Open, to settle before the layer is wired in
 
 - A wrong confident pick is worse than a slow right one, so the threshold starts high and only the measurement

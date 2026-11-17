@@ -18,6 +18,12 @@ CPO. No supplier's client is written before the owner's yes to that supplier by 
 - [x] 2.6a The fallback: no pick, low confidence, a late or failed chooser, or off returns None (the agent's turn)
 - [ ] 2.7 Offline tests; the QA Lead's scenarios for groups 1 to 4
 
+## 2a. The local demo (branch `demo/jev`, not main; the owner's word through the CPO)
+- [x] 2a.1 The external chooser's client, one module, its key from the keychain through the launcher
+- [x] 2a.2 The layer in Dushes' run: the QA Lead's measured questions and decision order; the CPO's two code rules
+- [x] 2a.3 A value through the form's own card with no model call; a label of who handled each turn
+- [x] 2a.4 Hand-back cases 1, 4, 5, 6 with tests; 2, 3, 7, 8 specified (design.md)
+
 ## 3. After the measurement and the owner's yes
 - [ ] 3.1 The external chooser's client behind `Chooser` (one module; its name nowhere else)
 - [ ] 3.2 Its calls in the run's stats with time and cost
