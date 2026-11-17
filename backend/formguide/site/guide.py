@@ -727,7 +727,15 @@ class Dushes:
             value, target = picks.get("value") if ov is not None else None, picks.get("target")
             # a line that is nothing but a value of the form on the screen ("Gender: Male", "male"): the chooser is
             # very sure of the option and the line asks nothing else. It need not sound like a command
-            bare = bool(value and value.confidence >= 0.9 and not moves and not tail
+            # ... and the option itself is said in the line: with the conversation in its state the chooser may name
+            # the value of an earlier message for a line that is about something else (a check after its pick)
+            said = False
+            if value:
+                e0 = ov.get(value.id.partition("=")[0])
+                opt0 = value.id.partition("=")[2]
+                shown0 = next((str(o.get("name")) for o in (e0.options or []) if str(o.get("id")) == opt0), "") if e0 is not None else ""
+                said = bool(shown0) and _intent.said_in(shown0, message)
+            bare = bool(value and said and value.confidence >= 0.9 and not moves and not tail
                         and not (more and more.id == "yes") and not (kind and kind.id in ("question", "other")))
             if not ordered and not moves and not bare:
                 return None                           # not the person's order: the agent's turn

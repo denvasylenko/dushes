@@ -112,6 +112,10 @@ def test_a_value_named_outright_goes_through_the_forms_own_card_with_no_model_ca
     before = len(model.calls)
     ev = run(site_with(guide, bare), "w4b", message="Loan type: Car loan", state=state)
     assert [e for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt"] and len(model.calls) == before
+    # nor when the line does not say the option (the chooser, holding the conversation, named an earlier value)
+    model.script = [say("Noted.")]
+    ev = run(site_with(guide, bare), "w4d", message="my first name is Anna", state=state)
+    assert not [e for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "on_interrupt"]
     # but not when the line asks about it, or the option is only likely
     for answers in (dict(value=("loan_type=auto", 0.98), kind=("question", 0.8)), dict(value=("loan_type=auto", 0.7)),
                     dict(value=("loan_type=auto", 0.98), asks_more=("yes", 0.6))):
