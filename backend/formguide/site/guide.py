@@ -522,7 +522,9 @@ class Dushes:
         elif message:
             _intent.clear_preset(form_thread0)        # a new message: nothing decided is left over
         fast = None
-        if message and resume is None and not handoff:
+        # INTENT_LAYER=0 (the measurement's "tool only" arm): nothing is decided in front of the model, neither by
+        # the chooser nor in code; every line goes to the model, which still has the choice tool
+        if message and resume is None and not handoff and os.environ.get("INTENT_LAYER", "1") != "0":
             fast = self._taken_up(thread_id, message, stats) or await self._fast(thread_id, message, state, stats)
         if fast and fast["kind"] in ("navigate", "show"):
             async for ev in self._fast_move(thread_id, message, run_id, fast, reply_to):

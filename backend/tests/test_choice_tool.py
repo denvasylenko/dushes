@@ -168,3 +168,17 @@ def test_taking_up_an_offer_is_done_in_code(guide, model, monkeypatch):
     before = len(model.calls)
     ev = run(site, "tu-3", message="yes, but what about Sunday?", state=HOME)
     assert directives(ev) == [] and len(model.calls) == before + 1
+
+
+def test_the_tool_only_arm_puts_every_line_to_the_model(guide, model, monkeypatch):
+    """INTENT_LAYER=0, for the QA Lead's measurement: the layer and the code shortcuts are off, the tool stays."""
+    monkeypatch.setenv("INTENT_LAYER", "0")
+    chooser = Ranker({"loans": [("screen:/loans", 0.95)]}, is_command=("yes", 0.98), kind=("go_to", 0.97), section=("/loans", 0.93))
+    site = tool_site(guide, chooser)
+    model.script = [call("c1", "Loans")]
+    before = len(model.calls)
+    ev = run(site, "arm2-1", message="open the loans page", state=HOME)
+    assert len(model.calls) == before + 1 and not chooser.seen                 # the model was asked, the layer was not
+    assert directives(ev) == [{"type": "navigate", "path": "/loans"}] and text(ev).startswith("Loans.")
+    names = {(t.get("function") or t)["name"] if isinstance(t, dict) else t.name for t in model.bound}
+    assert "choose_on_screen" in names
