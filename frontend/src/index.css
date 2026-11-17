@@ -165,14 +165,14 @@ table.docs th { color: var(--muted); font-weight: 500; }
 /* the decision model's code sheet, over the chat column: the same sheet as the chat's voice mode */
 .chat-pane { position: relative; }
 .jev-veil { position: absolute; inset: 0; z-index: 7; background: rgba(0, 0, 0, .28); }
-.jev-sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; display: grid; gap: 12px; padding: 20px 20px max(20px, env(safe-area-inset-bottom));
+.jev-sheet { outline: none; position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; display: grid; gap: 12px; padding: 20px 20px max(20px, env(safe-area-inset-bottom));
   border-radius: 18px 18px 0 0; background: var(--panel); color: var(--text); box-shadow: 0 -10px 40px -12px rgba(0, 0, 0, .3); font-size: 15px; line-height: 1.45; }
 @media (min-width: 761px) { .jev-sheet { left: 16px; right: 16px; bottom: 24px; border-radius: 18px; } }
 .jev-sheet b { font-size: 17px; font-weight: 600; }
 .jev-sheet p { margin: -8px 0 0; color: var(--muted); font-size: 13px; }
-.jev-sheet input { min-height: 44px; border: 1px solid transparent; border-radius: 10px; padding: 10px 14px; font: inherit; font-size: 16px; letter-spacing: .08em; background: var(--c-fill); color: var(--text); outline: none; }
-.jev-sheet input:focus-visible { border-color: var(--accent); }
-.jev-sheet.bad input { border-color: var(--err); }
+.jev-sheet input[type=text] { min-height: 44px; border: 1px solid transparent; border-radius: 10px; padding: 10px 14px; font: inherit; font-size: 16px; letter-spacing: .08em; background: var(--c-fill); color: var(--text); outline: none; }
+.jev-sheet input[type=text]:focus-visible { border-color: var(--accent); }
+.jev-sheet.bad input[type=text] { border-color: var(--err); }
 .jev-err { min-height: 18px; margin: -8px 0; font-size: 13px; color: var(--err); }
 .jev-sheet button { min-height: 44px; border: 0; border-radius: 999px; font-weight: 600; background: var(--text); color: var(--panel); }
 .jev-sheet button:disabled { opacity: .35; cursor: default; }
@@ -184,7 +184,7 @@ table.docs th { color: var(--muted); font-weight: 500; }
 .exp-row > span { flex: 1; display: grid; gap: 1px; }
 .exp-n { font-size: 16px; } .exp-h { font-size: 13px; color: var(--muted); }
 /* the switch, as on iOS: a pill with a round knob, green when on */
-.exp-sw { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 51px; height: 31px; margin: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background .2s; }
+.exp-sw { appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; outline: none; border: 0; padding: 0; box-sizing: border-box; flex: none; position: relative; width: 51px; height: 31px; margin: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background .2s; }
 .exp-sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, .2); transition: transform .2s; }
 .exp-sw:checked { background: #34c759; } .exp-sw:checked::after { transform: translateX(20px); }
 .exp-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

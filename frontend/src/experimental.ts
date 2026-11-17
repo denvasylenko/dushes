@@ -84,7 +84,8 @@ export function experimental(chat: AguiChatElement, host: HTMLElement, voice: bo
     const done = document.createElement('button'); done.type = 'button'; done.textContent = W.done; done.addEventListener('click', close)
     s.append(title, list, done)
     open(s)
-    list.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true })
+    // focus goes to the sheet, not to a switch: no ring on one switch only; Tab then reaches the switches in order
+    s.tabIndex = -1; s.focus({ preventScroll: true })
   }
 
   /** The code: one for everything; what it opens comes back as passes. */
