@@ -38,7 +38,7 @@ from formguide.site import Dushes, SiteMap, create_dushes_router
 
 ### `Dushes` methods
 
-<ParamList kind="async method" signature="Dushes.run(thread_id, *, message=None, state=None, resume=None, run_id=None, handoff=False, host=None, reply_to=None, model=None, **form_kwargs)" id="dushes-run">
+<ParamList kind="async method" signature="Dushes.run(thread_id, *, message=None, state=None, resume=None, run_id=None, handoff=False, host=None, reply_to=None, model=None, layer=None, never_send=None, layer_history=None, **form_kwargs)" id="dushes-run">
   <Param name="thread_id" type="str" required id="dushes-run-thread-id">The site conversation.</Param>
   <Param name="message" type="str | None" default="None" id="dushes-run-message">The user's new message.</Param>
   <Param name="state" type="dict | None" default="None" id="dushes-run-state">The page: `{page: {path, title}, form?}`; `form` is the form's state on a form page.</Param>
@@ -48,6 +48,9 @@ from formguide.site import Dushes, SiteMap, create_dushes_router
   <Param name="host" type="Any" default="None">Your object for this run, built by the router's `host(request)`.</Param>
   <Param name="reply_to" type="list[dict] | None" default="None" id="dushes-run-reply-to">The parts of earlier messages the user answers, as for `FormGuide.run`.</Param>
   <Param name="model" type="str | None" default="None" id="dushes-run-model">A name from `models.choices`, as for `FormGuide.run`. The site conversation keeps it, and its forms' turns use the same choice.</Param>
+  <Param name="layer" type="bool | None" default="None" id="dushes-run-layer">Whether the [decision model](../../agents/site-agent/decision-model/) may run for this run. `True` or `False` is the host's own decision, made on its server and never taken from the client; it overrides the process settings and the activation-code gate. `None` leaves them to decide.</Param>
+  <Param name="never_send" type="list[str] | None" default="None" id="dushes-run-never-send">This run's own items that never go to the decision model's supplier, such as a site's guests' names. A line that holds one is not sent at all, and the item is masked in everything else that is sent.</Param>
+  <Param name="layer_history" type="bool | None" default="None" id="dushes-run-layer-history">`False` sends the decision model no earlier messages of the conversation. `None` follows `INTENT_HISTORY` (`0` turns them off for the whole process).</Param>
   <Fragment slot="returns">An async iterator of AG-UI events: the site agent's answer, or the UI agent's events on a form page. Other keyword arguments go to `FormGuide.run`.</Fragment>
 </ParamList>
 

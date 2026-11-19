@@ -52,6 +52,8 @@ EXPERIMENT_SECRET=...                                                 # signs th
 
 The decision model is offered as a feature only where the host has one to ask (`INTENT_PROVIDER` is not `off`). A host that installs no gate is not gated at all: its own settings alone decide, as on a developer's machine or a test stand.
 
+A host that knows its own people (a signed-in cabinet) needs no codes: it decides on its server, for each run, by passing `layer=True` (or `False`) to [`Dushes.run`](../../../reference/python-api/#dushes-run-layer). That decision overrides the process settings and the gate.
+
 - **The routes exist only with `EXPERIMENT_CODES`.** A host with voice codes alone has no `/experiments`: there the widget's own "Experimental voice mode" row and `/voice/unlock` are the code entry.
 - **What the gate covers in the package:** the decision model in front of the site assistant (`formguide.site`). The demo host also puts it in front of a form that is talked to directly, behind the same gate; on your own host that part is yours to add.
 
