@@ -578,3 +578,71 @@ def test_a_line_that_names_another_page_never_goes_to_the_form_agent_first(site,
     ev = run(site, "title-1", message="Okay, can you open car insurance", state=st)
     assert not seen                                                        # the form agent was not asked
     assert [e["value"]["path"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "site_directive"] == ["/insurance"]
+
+
+def test_the_site_assistant_remembers_the_conversation_and_where_the_person_has_been(guide, model):
+    """The owner's other host (2026-11-19, no choice layer, another provider): "what was my first message?" was
+    answered by a guess, because the assistant saw the last six entries only; and "where was I before" had no
+    answer, because no page sends its history. The package now shows a real stretch of the conversation, keeps
+    the first message when older turns are cut, and keeps the trail of pages itself, for every host."""
+    def system_and_messages():
+        sent = model.calls[-1]
+        text = lambda m: m.content if isinstance(m.content, str) else "".join(b.get("text", "") for b in m.content if isinstance(b, dict))  # noqa: E731
+        return text(sent[0]), [text(m) for m in sent[1:]]
+    s = Dushes(guide, SiteMap.load(SITE))
+    assert s.history >= 20
+    pages = ["/", "/loans", "/insurance"]
+    for n in range(8):
+        model.script = [say(f"Answer {n}.")]
+        run(s, "mem-1", message="my dog is called Barsik" if n == 0 else f"question {n}", state={"page": {"path": pages[min(n, 2)]}})
+    system, messages = system_and_messages()
+    assert "my dog is called Barsik" in messages and "Answer 0." in messages      # the first exchange is still shown
+    assert "Pages the person opened in this conversation, oldest first" in system
+    assert "Home, Loans, Car insurance" in system and "The page before this one: Loans." in system
+    # a long conversation: the newest turns that fit, and the first message told in one line
+    long = Dushes(guide, SiteMap.load(SITE))
+    for n in range(14):
+        model.script = [say("A long answer. " * 400)]
+        run(long, "mem-2", message="I came about a mortgage for a house in Lugano" if n == 0 else f"and question {n}?", state={"page": {"path": "/"}})
+    system, messages = system_and_messages()
+    assert "I came about a mortgage for a house in Lugano" not in messages and len(messages) >= 6
+    assert "The person's first message in this conversation was: \"I came about a mortgage for a house in Lugano\"" in system
+    assert sum(len(m) for m in messages) < 40000
+    # a path the site does not have is not a page of the trail
+    assert s._visit("mem-1", "/no-such-page") == ["/", "/loans", "/insurance"]
+
+
+def test_the_trail_and_the_memory_outlive_the_process_and_stay_out_of_the_conversation(guide, model):
+    """The CPO (2026-11-19): the trail must not live only in memory, and older turns need a summary like the UI
+    agent's. Both are kept in a record beside the conversation, so the conversation's own lines are untouched;
+    the summary is written by the cheap model after a reply, never in front of one."""
+    from formguide.site import guide as sg
+    text = lambda m: m.content if isinstance(m.content, str) else "".join(b.get("text", "") for b in m.content if isinstance(b, dict))  # noqa: E731
+    s = Dushes(guide, SiteMap.load(SITE))
+    for n, path in enumerate(["/", "/loans", "/insurance"]):
+        model.script = [say(f"Answer {n}.")]
+        run(s, "keep-1", message=f"question {n}", state={"page": {"path": path}})
+    assert [e["kind"] for e in guide.transcripts.list("keep-1")] == ["user", "assistant"] * 3     # only what was said
+    # another process (a restart, a second instance): the trail is there again
+    again = Dushes(guide, SiteMap.load(SITE))
+    model.script = [say("You were on Loans.")]
+    run(again, "keep-1", message="where was I before?", state={"page": {"path": "/insurance"}})
+    assert "Home, Loans, Car insurance" in text(model.calls[-1][0]) and "The page before this one: Loans." in text(model.calls[-1][0])
+    # a long conversation: after the reply that pushes enough turns out of view, the cheap model writes the memory
+    long = Dushes(guide, SiteMap.load(SITE))
+    calls_in_front = []
+    for n in range(12):
+        model.script = [say("A long answer. " * 400), say("- wants a mortgage in Lugano\n- asked about rates")]
+        before = len(model.calls)
+        run(long, "keep-2", message="I want a mortgage in Lugano" if n == 0 else f"and question {n}?", state={"page": {"path": "/"}})
+        first_call = model.calls[before]
+        calls_in_front.append(text(first_call[0]).startswith("You keep the memory"))
+    assert not any(calls_in_front)                                          # the summary never stands in front of a reply
+    side = guide.transcripts.list(sg._side("keep-2"))
+    memory = [e for e in side if e["kind"] == "site_memory"]
+    assert memory and "mortgage in Lugano" in memory[-1]["text"] and memory[-1]["upto"] >= sg.REMEMBER_EVERY
+    assert all(e["kind"] in ("user", "assistant") for e in guide.transcripts.list("keep-2"))
+    model.script = [say("You asked about a mortgage.")]
+    run(long, "keep-2", message="what did we talk about at the start?", state={"page": {"path": "/"}})
+    system = text(model.calls[-1][0]) if not text(model.calls[-1][0]).startswith("You keep the memory") else text(model.calls[-2][0])
+    assert "What was said in them, in short:" in system and "wants a mortgage in Lugano" in system

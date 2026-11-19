@@ -50,8 +50,8 @@ def front_forms(guide, site: Dushes) -> None:
     """The choice layer in front of a form that is talked to directly (the "Form + assistant" page, /agent/run),
     with no site assistant: the owner asked for it by name (2026-11-17). The same layer as on the site, asked
     about the form on the screen only: values, dates, sections, "all the sections". What it is sure of becomes the
-    form assistant's decided steps (its own card, its own "show" step); anything else, and any move to another
-    page, is the form assistant's turn as before. The label and the decision trace follow the run, as on the site."""
+    UI agent's decided steps (its own card, its own "show" step); anything else, and any move to another
+    page, is the UI agent's turn as before. The label and the decision trace follow the run, as on the site."""
     import uuid
 
     from formguide.site.guide import _decision_trace
@@ -73,7 +73,7 @@ def front_forms(guide, site: Dushes) -> None:
             except Exception:  # noqa: BLE001 - the layer never breaks a turn of the form
                 fast = None
             if fast and fast["kind"] not in ("value", "focus"):
-                # a move to another page, or "the site assistant's turn": this page has neither; the form's assistant answers
+                # a move to another page, or "the site assistant's turn": this page has neither; the form's UI agent answers
                 fast = None
                 if getattr(stats, "fast", None):
                     stats.fast["handled"] = False

@@ -1000,3 +1000,24 @@ def test_a_row_labelled_with_its_own_value_is_said_once():
     card = {"type": "set_fields", "changes": [{"name": "palette", "label": "Black minimal", "display": "Black minimal"},
                                              {"name": "term", "label": "Term", "display": "36"}]}
     assert voice.said_rows(card) == (["Black minimal", "Term: 36"], 0)
+
+
+def test_more_words_of_agreement_and_a_removal_is_named_or_not_agreed():
+    """The cabinet (2026-11-18). Five more words its people say for yes. And Platform's audit: a card row that
+    empties a field was not said, yet a spoken yes accepted it; now the removal is named by what goes away, and a
+    removal with nothing to name it by leaves the card not fully said, so a spoken yes accepts nothing."""
+    words = ["\u0434\u0430\u0432\u0430\u0439\u0442\u0435", "\u0437\u0432\u0456\u0441\u043d\u043e", "\u0430\u0432\u0436\u0435\u0436", "klar", "ouais"]
+    card = {"id": "c1", "kind": "card", "status": "pending", "changes": [{"name": "term", "value": 36}]}
+    for word in words:
+        assert voice.yes_or_no(word, strict=True) is True, word
+        assert voice.card_answer(word, [card], kinds=("card",)) == {"card_id": "c1", "type": "set_fields", "accepted": True}
+    named = {"type": "set_fields", "changes": [{"name": "price", "label": "Price", "value": None, "previous": "10"},
+                                               {"name": "title", "label": "Title", "display": "Cheese pizza"}]}
+    assert voice.said_rows(named) == (["remove Price: 10", "Title: Cheese pizza"], 0) and voice.covers(named)
+    unnamed = {"type": "set_fields", "changes": [{"name": "photos", "label": "Photos", "value": [], "previous": [{"id": "p1"}]},
+                                                 {"name": "title", "label": "Title", "display": "Cheese pizza"}]}
+    assert voice.said_rows(unnamed) == (["Title: Cheese pizza"], 1) and not voice.covers(unnamed)
+    # a row that is empty and was empty changes nothing: not said, and the card is still fully said
+    same = {"type": "set_fields", "changes": [{"name": "note", "label": "Note", "value": "", "previous": None},
+                                              {"name": "title", "label": "Title", "display": "Cheese pizza"}]}
+    assert voice.said_rows(same) == (["Title: Cheese pizza"], 0) and voice.covers(same)

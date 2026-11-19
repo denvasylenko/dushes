@@ -833,3 +833,105 @@ def test_on_a_gated_host_the_layer_is_asked_only_for_a_visitor_with_a_pass(guide
     finally:
         experiments._person.reset(mark)
     assert len(chooser.seen) == 1 and directives(ev) == [{"type": "navigate", "path": "/loans"}] and "Jev ·" in text(ev)
+
+
+def test_a_host_decides_the_layer_for_a_run(guide, model, monkeypatch):
+    """The cabinet's needs (2026-11-18): the host's server, not the client, says whether the layer may run for this
+    run; it may add this run's own never-send items; it may send the chooser no earlier messages; and the chooser's
+    own call is in the run's numbers, so a host's usage row and money brake see it."""
+    from formguide import experiments
+    from formguide.transcript import new_entry
+    go = dict(is_command=("yes", 0.98), kind=("go_to", 0.97), target=("screen:/loans", 0.93))
+
+    # off for this run, whatever the process says
+    chooser = Mock(**go)
+    model.script = [say("The loans page has the rates.")]
+    run(site_with(guide, chooser), "h1", message="open the loans page", state={"page": {"path": "/"}}, layer=False)
+    assert chooser.seen == []
+    # on for this run on a gated host, with no pass: the host's own word is enough
+    monkeypatch.setattr(experiments, "_gated", True)
+    chooser = Mock(**go)
+    ev = run(site_with(guide, chooser), "h2", message="open the loans page", state={"page": {"path": "/"}}, layer=True)
+    assert len(chooser.seen) == 1 and directives(ev) == [{"type": "navigate", "path": "/loans"}]
+    monkeypatch.setattr(experiments, "_gated", False)
+
+    # this run's own never-send items, and no earlier messages
+    guide.transcripts.append("h3", new_entry("user", text="book a table for our guest bergstrom"))
+    chooser = Mock(**go)
+    model.script = [say("Which page?")]
+    run(site_with(guide, chooser), "h3", message="open the loans page for bergstrom", state={"page": {"path": "/"}},
+        never_send=["bergstrom"])
+    assert chooser.seen == []                                   # a line that holds such an item is not sent at all
+    chooser = Mock(**go)
+    run(site_with(guide, chooser), "h3", message="open the loans page", state={"page": {"path": "/"}}, never_send=["bergstrom"])
+    sent = " ".join(chooser.context.get("last_messages") or [])
+    assert "bergstrom" not in sent.lower() and "<filled>" in sent       # and it is masked in the earlier messages
+    chooser = Mock(**go)
+    run(site_with(guide, chooser), "h3", message="open the loans page", state={"page": {"path": "/"}}, layer_history=False)
+    assert "last_messages" not in chooser.context
+    monkeypatch.setenv("INTENT_HISTORY", "0")
+    chooser = Mock(**go)
+    run(site_with(guide, chooser), "h3", message="open the loans page", state={"page": {"path": "/"}})
+    assert "last_messages" not in chooser.context
+    monkeypatch.delenv("INTENT_HISTORY")
+
+    # the chooser's call in run_stats: its own kind, its tokens and its price
+    chooser = Mock(**go)
+    chooser.tokens = 5000
+    ev = run(site_with(guide, chooser), "h4", message="open the loans page", state={"page": {"path": "/"}})
+    stats = [e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "run_stats"]
+    assert len(stats) == 1 and stats[0]["models"][0]["kind"] == "chooser" and stats[0]["models"][0]["input_tokens"] == 5000
+    assert stats[0]["models"][0]["cost_usd"] == round(5000 * 0.042 / 1e6, 6) and stats[0]["tokens"]["input"] == 5000
+
+
+def test_open_sections_with_no_section_named_is_all_of_the_tab_on_the_screen(guide, model, monkeypatch):
+    """The owner's session (2026-11-17): "Open now sections" (speech for "open all sections") opened nothing. The
+    chooser's yes to "all of them" is weaker there (0.65 to 0.7) but it is sure whose sections they are: the two
+    answers together open them. A named section keeps its own answer, and an unsure "whose" opens nothing."""
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": []}}}
+    answers = {"is_command": ("yes", 0.83), "asks_move": ("no", 0.78), "asks_more": ("no", 0.72),
+               "all_sections": ("yes", 0.65), "all_of": ("this:tab_applicant", 1.0)}
+
+    def shown(ev):
+        return [e["value"].get("target") for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "ui_directive"]
+
+    before = len(model.calls)
+    ev = run(site_with(guide, Mock(**answers)), "sec-1", message="Open now sections", state=state)
+    assert shown(ev) == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == before
+    # QA's run of the same line: a sure yes to "all" and "here" for whose; with no tab reported by the screen, "here"
+    # is the form's first tab, never the page around the form
+    bare = {"page": {"path": "/apply"}, "form": start(guide, LOAN)}
+    here = {"is_command": ("yes", 0.9), "kind": ("go_to", 0.86), "all_sections": ("yes", 0.91), "all_of": ("here", 0.82)}
+    ev = run(site_with(guide, Mock(**here)), "sec-1h", message="Open now sections", state=bare)
+    assert shown(ev) == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == before
+    # the chooser is not sure whose sections: the agent's turn, as before
+    model.script = [say("Which sections do you mean?")]
+    ev = run(site_with(guide, Mock(**{k: v for k, v in answers.items() if k != "all_of"})), "sec-2", message="Open now sections", state=state)
+    assert shown(ev) == [] and len(model.calls) > before
+    # my own copy's numbers for the same line: all 0.71, "here" 0.62, one section a weak yes
+    weak = {**answers, "all_sections": ("yes", 0.71), "all_of": ("here", 0.62), "s:acc_addresses": ("yes", 0.66)}
+    calls = len(model.calls)
+    ev = run(site_with(guide, Mock(**weak)), "sec-2w", message="Open now sections", state=state)
+    assert shown(ev) == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == calls
+    # the whole live answer of my copy for that line (a move, a "go to", two sections a weak yes): the same five
+    live = {"is_command": ("yes", 0.69), "kind": ("go_to", 0.77), "needs_agent": ("no", 0.7), "was_offered": ("no", 0.76),
+            "asks_move": ("yes", 0.91), "asks_more": ("no", 0.95), "all_sections": ("yes", 0.72), "all_of": ("here", 0.61),
+            "s:acc_personal": ("yes", 0.51), "s:acc_passport": ("no", 0.53), "s:acc_addresses": ("yes", 0.66),
+            "s:acc_contacts": ("no", 0.59), "s:acc_education": ("no", 0.62)}
+    calls = len(model.calls)
+    ev = run(site_with(guide, Mock(**live)), "sec-2l", message="Open now sections", state=state)
+    assert shown(ev) == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == calls
+    # sections of another tab are not "here": the chooser's weak yes does not open them
+    model.script = [say("Which tab?")]
+    ev = run(site_with(guide, Mock(**{**answers, "all_of": ("tab:tab_loan", 0.7)})), "sec-2t", message="Open now sections", state=state)
+    assert shown(ev) == []
+    # a section the line names keeps its own answer: the weaker yes does not open every section over it
+    named = {**answers, "s:acc_passport": ("yes", 0.92)}
+    model.script = [say("Passport is open.")]
+    ev = run(site_with(guide, Mock(**named)), "sec-3", message="Open the passport section", state=state)
+    assert "acc_personal" not in shown(ev) and "acc_education" not in shown(ev)
+    # the switch off: the weaker yes is not enough (the measurement's "before")
+    monkeypatch.setenv("INTENT_SECTIONS", "0")
+    model.script = [say("Which sections do you mean?")]
+    ev = run(site_with(guide, Mock(**answers)), "sec-4", message="Open now sections", state=state)
+    assert shown(ev) == []

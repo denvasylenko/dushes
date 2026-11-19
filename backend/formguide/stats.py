@@ -33,7 +33,7 @@ class RunStats:
         self.models: list[dict[str, Any]] = []
         self.tools: list[dict[str, Any]] = []
         self.choice: str | None = None  # the run's model choice (models.choices), when the server has choices
-        self.agent: str | None = None   # "site" for Dushes' own calls; the form agent leaves it out
+        self.agent: str | None = None   # "site" for Dushes' own calls; the UI agent leaves it out
         self.span: Any = None   # the run's OpenTelemetry turn span (otel.TurnSpan), when tracing is on
 
     @staticmethod

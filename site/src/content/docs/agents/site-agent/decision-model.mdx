@@ -30,7 +30,7 @@ INTENT_PROVIDER=jev            # off (the default) or jev
 INTENT_API_KEY=...             # the provider's key; it stays on the server
 ```
 
-Restart the server. Every line on a page with the site map now goes to the decision model first. To keep it for a few people only, put it behind [activation codes](../../shared/experimental-features/): then it runs only for a request that carries a pass.
+Restart the server. Every line on a page with the site map now goes to the decision model first. To keep it for a few people only, put it behind [activation codes](../../shared/experimental-features/): then it runs only for a request that carries a pass. A host that knows its own people decides per run instead, on its server: `Dushes.run(..., layer=True)`, with `never_send=[...]` for that run's own private words and `layer_history=False` to send no earlier messages.
 
 ### Diagnostics for the operator
 
@@ -64,6 +64,7 @@ These are environment variables of the host, not keys of `formguide.yaml`. They 
 | `INTENT_TAIL` | `0.7` | how sure it must be that a line asks for more than the action, before that rest goes to Dushes as "already done" |
 | `INTENT_TIMEOUT_MS` | `300` | how long one call may take; later is no answer |
 | `INTENT_NEVER_SEND` | none | your own words that never leave the server, separated by `\|` (your guests' names, a list of phones) |
+| `INTENT_HISTORY` | `1` | `0` sends the decision model no earlier messages of the conversation, for the whole process |
 | `INTENT_LABELS` | `0` | diagnostics: `1` shows a short label under each turn, who did it. Never on the public site |
 | `INTENT_TRACE` | `0` | diagnostics: `1` sends [`CUSTOM decision_trace`](../../../reference/agui-events/) with each run. Never on the public site |
 | `INTENT_SCORES` | `0` | diagnostics: `1` sends [`CUSTOM choice_scores`](../../../reference/agui-events/) with each run |

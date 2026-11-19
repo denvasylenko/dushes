@@ -294,6 +294,15 @@ class Layer:
     def on(self) -> bool:
         return self.settings.provider != "off" and self.chooser is not None
 
+    def also_never(self, items: tuple[str, ...]) -> "Layer":
+        """This layer with more never-send items, for one run (a site's own guests' names): the same chooser and
+        settings otherwise."""
+        import copy
+        import dataclasses
+        other = copy.copy(self)
+        other.settings = dataclasses.replace(self.settings, never_send=(*self.settings.never_send, *items))
+        return other
+
     def private(self, text: str) -> bool:
         """Whether a text holds what never leaves the process: a phone, an e-mail, or an item of `never_send`."""
         low = (text or "").lower()
@@ -453,12 +462,12 @@ def says_any(label: str, phrase: str) -> bool:
 
 # ---------------------------------------------------------------- a picked value goes through the form's own card
 
-_PRESETS: dict[str, dict] = {}   # the form thread -> {"script": what the form agent's model would have said, "needs": ...}
-APPLIED = "The user confirmed; changes applied"   # how the form agent's tool result starts when a card was applied
+_PRESETS: dict[str, dict] = {}   # the form thread -> {"script": what the UI agent's model would have said, "needs": ...}
+APPLIED = "The user confirmed; changes applied"   # how the UI agent's tool result starts when a card was applied
 
 
 def preset_calls(thread_id: str, calls: list[tuple[str, dict]], closing: str, needs: str = "") -> None:
-    """As preset_call, with several calls of the form agent's tools in one step (several sections to open)."""
+    """As preset_call, with several calls of the UI agent's tools in one step (several sections to open)."""
     from langchain_core.messages import AIMessage
     stamp = int(time.time() * 1000)
     _PRESETS[thread_id] = {"needs": needs, "tail": not closing, "script": [
@@ -468,7 +477,7 @@ def preset_calls(thread_id: str, calls: list[tuple[str, dict]], closing: str, ne
 
 
 def preset_call(thread_id: str, tool: str, args: dict, closing: str, needs: str = "") -> None:
-    """The layer decided the form agent's next two steps on this thread: call this tool, then say this line. So
+    """The layer decided the UI agent's next two steps on this thread: call this tool, then say this line. So
     the form's own tool, checks and Undo apply and no model is called. `needs`: how the tool's result must start
     for the closing line to be said."""
     from langchain_core.messages import AIMessage
@@ -485,7 +494,7 @@ def preset(thread_id: str, name: str, value: Any, label: str, shown: str) -> Non
 
 
 def preset_closing(thread_id: str, closing: str, fields: list[str]) -> None:
-    """After a card of the form's own assistant that is applied at once (every value said outright): when the form
+    """After a card of the form's UI agent that is applied at once (every value said outright): when the form
     takes it with no complaint, the turn ends with this one line written in code, and the model is not called a
     second time only to say it (the owner's standard: done, one short line). `fields`: the card's fields, so the
     line is said only after that very card."""
@@ -808,6 +817,11 @@ _DAY_THEN_MONTH = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([a-z]{3,
 _MONTH_THEN_DAY = re.compile(r"\b([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b")
 
 
+# Russian month stems, in order ("1 July" in Russian is a day, then the month in the genitive)
+_RU_MONTHS = ("\u044f\u043d\u0432\u0430\u0440", "\u0444\u0435\u0432\u0440\u0430\u043b", "\u043c\u0430\u0440\u0442", "\u0430\u043f\u0440\u0435\u043b", "\u043c\u0430", "\u0438\u044e\u043d", "\u0438\u044e\u043b", "\u0430\u0432\u0433\u0443\u0441\u0442", "\u0441\u0435\u043d\u0442\u044f\u0431\u0440", "\u043e\u043a\u0442\u044f\u0431\u0440", "\u043d\u043e\u044f\u0431\u0440", "\u0434\u0435\u043a\u0430\u0431\u0440")
+_RU_DAY_MONTH = re.compile(r"\b(\d{1,2})(?:-?\u0433\u043e)?\s+([\u0400-\u04ff]{3,9})\b")
+
+
 def partial_date(phrase: str) -> tuple[int, int] | None:
     """(day, month) of a date said without its year ("born on the 1st of July"), or None: no day and month in the
     line, or the line holds a whole date."""
@@ -819,13 +833,96 @@ def partial_date(phrase: str) -> tuple[int, int] | None:
         month = _MONTHS.get(mo) or (_MONTHS.get(mo[:3]) if len(mo) == 3 else None)
         if month and 1 <= int(d) <= 31:
             return int(d), month
+    for m in _RU_DAY_MONTH.finditer(low):
+        word = m.group(2)
+        month = next((i + 1 for i, stem in enumerate(_RU_MONTHS)
+                      if word.startswith(stem) and (stem != "\u043c\u0430" or word in ("\u043c\u0430\u044f", "\u043c\u0430\u0439"))), None)
+        if month and 1 <= int(m.group(1)) <= 31:
+            return int(m.group(1)), month
     return None
 
 
+# a year said in Russian words ("ninety-second", "two thousand fifth"): stems of the tens and of the units, the
+# ordinal and the plain form alike (the owner's own language; written as escapes, the repository is in English)
+_RU_TENS = {"\u0434\u0432\u0430\u0434\u0446\u0430\u0442": 20, "\u0442\u0440\u0438\u0434\u0446\u0430\u0442": 30, "\u0441\u043e\u0440\u043e\u043a": 40, "\u043f\u044f\u0442\u044c\u0434\u0435\u0441\u044f\u0442": 50, "\u0448\u0435\u0441\u0442\u044c\u0434\u0435\u0441\u044f\u0442": 60, "\u0441\u0435\u043c\u044c\u0434\u0435\u0441\u044f\u0442": 70, "\u0432\u043e\u0441\u0435\u043c\u044c\u0434\u0435\u0441\u044f\u0442": 80, "\u0434\u0435\u0432\u044f\u043d\u043e\u0441\u0442": 90}
+_RU_UNITS = {"\u043f\u0435\u0440\u0432": 1, "\u043e\u0434\u0438\u043d": 1, "\u043e\u0434\u043d": 1, "\u0432\u0442\u043e\u0440": 2, "\u0434\u0432\u0430": 2, "\u0434\u0432\u0435": 2, "\u0442\u0440\u0435\u0442": 3, "\u0442\u0440\u0438": 3, "\u0447\u0435\u0442\u0432": 4, "\u0447\u0435\u0442\u044b\u0440": 4, "\u043f\u044f\u0442": 5, "\u0448\u0435\u0441\u0442": 6, "\u0441\u0435\u0434\u044c\u043c": 7, "\u0441\u0435\u043c": 7, "\u0432\u043e\u0441\u044c\u043c": 8, "\u0432\u043e\u0441\u0435\u043c": 8, "\u0434\u0435\u0432\u044f\u0442": 9}
+_RU_1900, _RU_2000 = ("\u0442\u044b\u0441\u044f\u0447", "\u0434\u0435\u0432\u044f\u0442\u044c\u0441\u043e\u0442"), ("\u0434\u0432\u0435", "\u0442\u044b\u0441\u044f\u0447")   # "thousand nine-hundred", "two thousand"
+
+
+def _ru_year(words: list[str]) -> int | None:
+    """The number a line of Russian year words says: 92 for "ninety-second", 1992 and 2005 with the century said."""
+    base, rest = 0, list(words)
+    if len(rest) >= 2 and rest[0].startswith(_RU_1900[0]) and rest[1].startswith(_RU_1900[1]):
+        base, rest = 1900, rest[2:]
+    elif len(rest) >= 2 and rest[0].startswith(_RU_2000[0]) and rest[1].startswith(_RU_2000[1]):
+        base, rest = 2000, rest[2:]
+    n = 0
+    if rest:
+        tens = next((v for k, v in _RU_TENS.items() if rest[0].startswith(k)), None)
+        if tens is not None:
+            n, rest = tens, rest[1:]
+    if rest:
+        unit = next((v for k, v in sorted(_RU_UNITS.items(), key=lambda kv: -len(kv[0])) if rest[0].startswith(k)), None)
+        if unit is None:
+            return None
+        n, rest = n + unit, rest[1:]
+    if rest or (not n and not base):
+        return None
+    return base + n
+
+
+def year_of(short: int, future: bool = False) -> int:
+    """The year a two-digit year means. For a date in the past (a birthday, a date of issue) the nearest past year:
+    92 is 1992, 05 is 2005 (the owner, 2026-11-17: "I can't be 1892"). For a date ahead (an expiry, a booking) this
+    century."""
+    import datetime
+    now = datetime.date.today().year
+    return 2000 + short if future or 2000 + short <= now else 1900 + short
+
+
+def short_year(phrase: str) -> int | None:
+    """The two digits when the line is nothing but a year said short: "92", "'92", "ninety-two", the Russian words.
+    None for a whole year, for one digit ("5" answers something else) and for anything with other words in it."""
+    low = re.sub(r"[\u2019']", " ", (phrase or "").lower())
+    words = [w for w in re.findall(r"[a-z\u0400-\u04ff]+|\d+", low)
+             if w not in _AROUND and w not in ("in", "year", "the", "it", "was", "its", "\u0433\u043e\u0434", "\u0433\u043e\u0434\u0430", "\u0433\u043e\u0434\u0443")]
+    if len(words) == 1 and words[0].isdigit():
+        return int(words[0]) if len(words[0]) == 2 else None
+    if not words or any(w.isdigit() for w in words):
+        return None
+    if all(re.fullmatch(r"[\u0400-\u04ff]+", w) for w in words):
+        n = _ru_year(words)
+        return n if n is not None and 10 <= n <= 99 else None
+    from .voice import _TENS, _UNITS, said_numbers
+    if any(w not in _TENS and w not in _UNITS for w in words):
+        return None
+    said = said_numbers(" ".join(words))
+    return int(said[0]) if len(said) == 1 and 10 <= int(said[0]) <= 99 else None
+
+
 def bare_year(phrase: str) -> int | None:
-    """The year when the line is nothing but a year ("1991", "uh, 1991."), else None."""
-    words = [w for w in re.findall(r"[a-z]+|\d+", (phrase or "").lower()) if w not in _AROUND and w not in ("in", "year", "the", "it", "was", "its")]
-    return int(words[0]) if len(words) == 1 and words[0].isdigit() and 1900 <= int(words[0]) <= 2100 else None
+    """The year when the line is nothing but a year ("1991", "uh, 1991.", "92", "'92", "ninety-two", "nineteen
+    ninety-two"), else None. A year said short is the nearest past one (`year_of`)."""
+    low = re.sub(r"[\u2019']", " ", (phrase or "").lower())
+    words = [w for w in re.findall(r"[a-z\u0400-\u04ff]+|\d+", low)
+             if w not in _AROUND and w not in ("in", "year", "the", "it", "was", "its", "\u0433\u043e\u0434", "\u0433\u043e\u0434\u0430", "\u0433\u043e\u0434\u0443")]
+    if len(words) == 1 and words[0].isdigit() and 1900 <= int(words[0]) <= 2100:
+        return int(words[0])
+    short = short_year(phrase)
+    if short is not None:
+        return year_of(short)
+    if words and all(re.fullmatch(r"[\u0400-\u04ff]+", w) for w in words):
+        n = _ru_year(words)
+        return n if n is not None and 1900 <= n <= 2100 else None
+    if words and not any(w.isdigit() for w in words):
+        from .voice import _TENS, _UNITS, said_numbers
+        if all(w in _TENS or w in _UNITS or w in ("hundred", "thousand", "and") for w in words):
+            said = [int(x) for x in said_numbers(" ".join(words))]
+            if len(said) == 1 and 1900 <= said[0] <= 2100:
+                return said[0]
+            if len(said) == 2 and said[0] in (19, 20) and said[1] < 100:      # "nineteen ninety-two"
+                return said[0] * 100 + said[1]
+    return None
 
 
 def only_names(phrase: str, label: str) -> bool:

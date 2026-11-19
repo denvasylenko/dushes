@@ -1,18 +1,18 @@
-"""Dushes: one assistant for a whole site, above the form agent.
+"""Dushes: one assistant for a whole site, above the UI agent.
 
     site = Dushes(form_guide, SiteMap.load("site.yaml"))
     async for ev in site.run(thread_id, message="open the contacts page", state={"page": {"path": "/apply"}, "form": {...}}):
         ...
 
 Each turn goes to one of two agents:
-- the form agent: `FormGuide.run`, unchanged, on a page with a form (its own conversation per form, thread
+- the UI agent: `FormGuide.run`, unchanged, on a page with a form (its own conversation per form, thread
   `<site thread>-<form id>`), and for every card answer;
 - Dushes (agent.py): on pages without a form, and on a form page when the message is about the
   site rather than the form (navigation, another page).
 
 A hand-off: Dushes' open_form keeps a note of what the user wants; the next run on the form page
-with `forwardedProps.handoff` gives the form agent that note as its first message. With `form_for` (the
-host builds the form's state on the server) the form agent answers at once, in the same run.
+with `forwardedProps.handoff` gives the UI agent that note as its first message. With `form_for` (the
+host builds the form's state on the server) the UI agent answers at once, in the same run.
 
 Host extensions: `context` (live facts in the prompt every turn), `instructions`, `style`, `history`,
 `tools` (SiteTool), `suggestions` and `form_for`; each callback gets a SiteRunCtx whose `host` is the
@@ -20,10 +20,10 @@ object passed to run(host=...) (create_dushes_router(host=fn) builds it per requ
 
 Knowledge: Dushes reads the site map and the business documents of the site's own namespaces
 (`knowledge_namespaces`, default: "site" plus every form on the map), through a search and the document
-researcher. The form agent keeps its own form's documents.
+researcher. The UI agent keeps its own form's documents.
 
 One conversation: the site thread's transcript holds every turn the user saw, Dushes' and the
-form agents' (their text; their cards stay in the form's own thread), plus the hand-off note, so the chat
+UI agents' (their text; their cards stay in the form's own thread), plus the hand-off note, so the chat
 and the note survive a reload or a restart. `GET /threads/{id}` returns it for the page.
 """
 from __future__ import annotations
@@ -134,7 +134,27 @@ def names_a_field(text: str, form: dict[str, Any]) -> bool:
     return False
 
 
-HISTORY = 6
+def _side(thread_id: str) -> str:
+    """Where a conversation's trail of pages and its memory of older turns are kept: a record of their own beside
+    the conversation, so the conversation itself holds only what was said and shown (code that looks at "the last
+    line" of it must never meet a page visit there)."""
+    return f"{thread_id[:92]}-side"
+
+
+# What the site assistant is shown of the conversation so far: up to this many of its latest entries (a message, an
+# answer, a card's result), and of those as many of the newest as fit HISTORY_CHARS (about 6,000 tokens). It was 6
+# entries, three exchanges, and "what was my first message?" was answered by a guess (the owner's other host,
+# 2026-11-19). When older turns are cut, the person's first message is still told, in one line.
+HISTORY = 40
+HISTORY_CHARS = 24000
+TRAIL = 12   # how many pages of a conversation's trail are remembered
+# Older turns than the ones shown are kept as a summary, written by the cheap model after a reply (never in front
+# of one), once this many more entries have fallen out of what is shown
+REMEMBER_EVERY = 8
+SITE_MEMORY = ("You keep the memory of a conversation between a visitor and the assistant of the site \"{title}\". "
+               "Update the memory with the new turns: what the person is after, the facts and preferences they stated "
+               "(in their own words), what was opened, offered, refused or left open, and their first message. Plain "
+               "lines, at most 200 words. Add nothing that was not said and no advice.")
 HANDED = "[Handed over by Dushes]"
 
 
@@ -187,14 +207,14 @@ def with_hand_back(caps: Any) -> list[str]:
 
 
 def handoff_message(note: str, language: str = "") -> str:
-    """The form agent's first message after a hand-off."""
+    """The UI agent's first message after a hand-off."""
     say = f" Reply to the user in {language}." if language else ""
     return f"{HANDED} On the site the user said: {note}{say}"
 
 
 
 class Said:
-    """A form agent's words of one run, by message: a lead it takes back (CUSTOM text_retract) is left out."""
+    """A UI agent's words of one run, by message: a lead it takes back (CUSTOM text_retract) is left out."""
 
     def __init__(self) -> None:
         self.parts: dict[str, str] = {}
@@ -349,8 +369,8 @@ class Dushes:
             return "unclear"
         if self._titled(message, here):
             # another page of the site, said by its whole title ("can you open car insurance", "I said car
-            # insurance"): Dushes sees the site and the form agent does not, so the form agent is never the first
-            # to get such a line. Decided here, in code: told to hand such a line back, the form agent answered
+            # insurance"): Dushes sees the site and the UI agent does not, so the UI agent is never the first
+            # to get such a line. Decided here, in code: told to hand such a line back, the UI agent answered
             # "there is no such section in this form" instead, and argued on a repeat (the QA Lead, 2026-11-17)
             return "site"
         if _NAV_OTHER.search(text):
@@ -432,7 +452,7 @@ class Dushes:
         return f"The last to speak was {name}: \"{said[-300:]}\". "
 
     def _carry_files(self, site_thread: str, form_thread: str, form: dict[str, Any], resume: Any) -> None:
-        """The chat uploads under the site's conversation; the form agent reads files from its own."""
+        """The chat uploads under the site's conversation; the UI agent reads files from its own."""
         ids = [str(a.get("id")) for a in form.get("attachments") or [] if isinstance(a, dict) and a.get("id")]
         if isinstance(resume, dict) and isinstance(resume.get("attachment_ids"), list):
             ids += [str(i) for i in resume["attachment_ids"]]
@@ -447,7 +467,7 @@ class Dushes:
         msgs = [{"id": e["id"], "role": "activity", "activityType": "card", "activity": e.get("card") or {}} if e["kind"] == "display" else
                 {"id": (e.get("message_id") or e["id"]) if e["kind"] == "assistant" else e["id"], "role": e["kind"], "content": e.get("text", ""),
                  **({"reply_to": as_list(e["reply_to"])} if e["kind"] == "user" and e.get("reply_to") else {}),
-                 # who answered: a form agent's words carry the form id in the site thread
+                 # who answered: a UI agent's words carry the form id in the site thread
                  **({"agent": "form" if e.get("form_id") else "dushes"} if e["kind"] == "assistant" else {})}
                 for e in self.forms.transcripts.list(thread_id)
                 if (e["kind"] in ("user", "assistant") and e.get("text")) or (e["kind"] == "display" and e.get("card"))]
@@ -461,16 +481,26 @@ class Dushes:
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None, handoff: bool = False,
                   host: Any = None, reply_to: list[dict[str, Any]] | None = None, model: str | None = None,
+                  layer: bool | None = None, never_send: list[str] | None = None, layer_history: bool | None = None,
                   **form_kwargs: Any) -> AsyncIterator[dict]:
         """One run as AG-UI events. Dushes' own model calls (its answers, the router, its document researcher)
         are reported in a CUSTOM `run_stats` event with `agent: "site"`, right before the terminal event; a form
         agent's turn in the same run reports its own, as it does alone.
 
         `model`: a name from `models.choices`. The site conversation keeps the choice of its first run, and the
-        form agents it hands to run on the same one; a CUSTOM `model` event follows RUN_STARTED."""
+        UI agents it hands to run on the same one; a CUSTOM `model` event follows RUN_STARTED."""
         from ..guide import _choice
         from ..stats import model_id as _model_id
         check_thread_id(thread_id)
+        self._visit(thread_id, str(((state or {}).get("page") or {}).get("path") or ""))   # the trail, for every run
+        # what the host decided for this run about the choice layer (never read from the client): `layer` True / False
+        # turns it on or off for this run whatever the process settings and the experiments gate say, None leaves
+        # them to decide; `never_send` adds this run's own items to the never-send list (a site's guests' names);
+        # `layer_history=False` sends the chooser no earlier messages of the conversation
+        while len(self.__dict__.setdefault("_run_opts", {})) >= 5000:
+            self._run_opts.pop(next(iter(self._run_opts)))
+        self._run_opts[thread_id] = {"layer": layer, "never_send": tuple(x for x in never_send or [] if x),
+                                     "history": layer_history}
         choice = self.forms.check_model(thread_id, model)
         if choice:
             if self.forms.thread_choice(thread_id) is None:
@@ -498,7 +528,7 @@ class Dushes:
                         value = None
                 seen["screen"].append({"name": ev["name"], "value": value})
             if ev.get("type") == "CUSTOM" and ev.get("name") == "model":
-                continue   # the form agent's: this run already said which model answers
+                continue   # the UI agent's: this run already said which model answers
             if choice and not told and ev.get("type") == "RUN_STARTED":
                 told = True
                 s = self.forms._choices[choice]
@@ -506,7 +536,7 @@ class Dushes:
                 yield {"type": "CUSTOM", "name": "model",
                        "value": {"choice": choice, "label": s.label, "model": _model_id(self.model or s.models.agent)}}
                 continue
-            if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1" and _experiments.allowed():
+            if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1" and self._layer_allowed(thread_id):
                 fast = getattr(stats, "fast", None)
                 who = self.intent.settings.provider.capitalize()
                 if fast and fast.get("handled") and fast.get("by"):
@@ -531,7 +561,7 @@ class Dushes:
                 if fast and fast.get("handled") and thread_id in mixed and not fast.get("did"):
                     mixed[thread_id] = f"{label}: {mixed[thread_id]}"       # said with the model's part, in the next run
                     label = ""
-                elif label and thread_id in mixed and not fast and not stats.models:
+                elif label and thread_id in mixed and not fast and not [m for m in stats.models if m.get("kind") != "chooser"]:
                     label = ""                                              # a run with no model in it: said with the next one
                 elif label and thread_id in mixed and not fast:
                     label = f"{mixed.pop(thread_id)} \u00b7 then {label}"
@@ -544,15 +574,15 @@ class Dushes:
                     seen["label"] = label
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
                     yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
-            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_SCORES") == "1" and _experiments.allowed() and getattr(stats, "fast", None):
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_SCORES") == "1" and self._layer_allowed(thread_id) and getattr(stats, "fast", None):
                 yield {"type": "CUSTOM", "name": "choice_scores", "value": {
                     k: stats.fast.get(k) for k in ("ms", "tokens", "targets", "sure", "handled", "late") if k in stats.fast}}
-            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_TRACE") == "1" and _experiments.allowed() and getattr(stats, "trace", None):
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_TRACE") == "1" and self._layer_allowed(thread_id) and getattr(stats, "trace", None):
                 yield {"type": "CUSTOM", "name": "decision_trace", "value": _decision_trace(
                     stats, seen, run_id, thread_id in self.__dict__.get("_mixed", {}), self.site)}
                 if not stats.models:
-                    # a turn the layer carried out alone has no model call, so no run_stats of its own; a host that
-                    # lists turns by run_stats still gets one, with no models in it
+                    # a turn the layer carried out alone with a chooser that reports no usage: no run_stats of its own;
+                    # a host that lists turns by run_stats still gets one, with no models in it
                     yield {"type": "CUSTOM", "name": "run_stats", "value": stats.as_event()}
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR"):
                 _demo_log(thread_id, message, resume, handoff, state, stats, seen, ev["type"])
@@ -562,6 +592,11 @@ class Dushes:
                 stats_log.info(json.dumps(summary, ensure_ascii=False))
                 yield {"type": "CUSTOM", "name": "run_stats", "value": summary}
             yield ev
+        if message:   # the run's last event is out: now, and only now, older turns may be folded into the memory
+            try:
+                await self._remember(thread_id)
+            except Exception:  # noqa: BLE001 - no summary this time
+                log.info("site memory skipped", exc_info=True)
 
     async def _run(self, thread_id: str, stats: RunStats, *, message: str | None, state: dict[str, Any] | None,
                    resume: dict[str, Any] | None, run_id: str, handoff: bool, host: Any,
@@ -617,7 +652,7 @@ class Dushes:
             taken = self._take_note(thread_id, fid) if handoff and not message else None
             typed = message
             if taken:
-                # the request the user made elsewhere on the site, as the form agent's first message: it then
+                # the request the user made elsewhere on the site, as the UI agent's first message: it then
                 # proposes what the note covers with its usual tools and cards
                 message = handoff_message(*taken)
             form_thread = f"{thread_id}-{fid}"[:100]
@@ -625,13 +660,13 @@ class Dushes:
             tx = self.forms.transcripts
             if typed:
                 tx.append(thread_id, new_entry("user", text=typed, form_id=fid, **({"reply_to": as_list(reply_to)} if reply_to else {})))
-            kw["capabilities"] = with_hand_back(kw.get("capabilities"))   # the form agent may give the message back
+            kw["capabilities"] = with_hand_back(kw.get("capabilities"))   # the UI agent may give the message back
             from ..transcript import pending_card
             open_card = pending_card(tx.list(form_thread)) if resume is not None else None
             said = Said()
             back = None
             if typed and reply_to:
-                kw["reply_to"] = reply_to   # the form agent reads the quote too
+                kw["reply_to"] = reply_to   # the UI agent reads the quote too
             if getattr(self.forms, "_layer_front", False):
                 kw["_from_site"] = True   # the layer was asked here already: the form's own front does not ask again
             async for ev in self.forms.run(form_thread, message=message, state=form, resume=resume,
@@ -668,17 +703,17 @@ class Dushes:
                     form_thread: str = "") -> dict[str, Any] | None:
         """The choice layer. The owner's decision (2026-11-17): the target of a line (a page, a tab, a section, a
         field for a value) is always chosen by the chooser, never matched in code. It is given the whole site as
-        paths, what is on the screen, the form's structure as the form's own assistant gets it, and the last ten
+        paths, what is on the screen, the form's structure as the form's UI agent gets it, and the last ten
         messages; one call. Code only carries the chosen path out, checks the state, and keeps the prohibitions:
         a date never moves the person, a consent is never an option, nothing private leaves, only an action that
         can be undone, and only on the person's own request. None: the agent's turn.
         `form_thread`: the form's own conversation when it is not this thread's "<thread>-<form>" (a page that talks
-        to the form's assistant directly, with no site assistant in front)."""
+        to the form's UI agent directly, with no site assistant in front)."""
         from .. import intent as _intent
         from ..language import detect
-        layer = self.intent
+        layer = self._layer_for(thread_id)
         # a gated host (formguide.experiments): the layer is not asked for a visitor without a pass
-        if layer.settings.provider == "off" or not _experiments.allowed():
+        if layer.settings.provider == "off" or not self._layer_allowed(thread_id):
             return None
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
         if os.environ.get("INTENT_CODE") == "1":
@@ -699,10 +734,7 @@ class Dushes:
                 ov = None
         # where the person has been: "back", "the previous one" point at the page open before this one, and the
         # chooser cannot know it from the screen (the QA Lead's probe, 2026-11-17: 24 of its 33 wrong moves)
-        visits = self.__dict__.setdefault("_visits", {}).setdefault(thread_id, [])
-        if here and (not visits or visits[-1] != here.path):
-            visits.append(here.path)
-            del visits[:-6]
+        visits = self._visit(thread_id, here.path if here else "")
         before = visits[-2] if len(visits) >= 2 else ""
         # the whole site as paths: pages, their tabs and sections, each form's tabs, steps and sections
         targets: list[Any] = []
@@ -848,6 +880,15 @@ class Dushes:
         asked: list[dict[str, Any]] = []
         picks = await layer.pick_many(sent, detect(message) or "en", qs, here.path if here else "", context, asked)
         ms = round((RunStats.now() - started) * 1000)
+        used = getattr(layer.chooser, "tokens", None)
+        if used and getattr(layer.chooser, "by", "") == "external":
+            # the chooser's own call in the run's numbers, for a host that counts usage and money per run: it is not a
+            # call of the agent's model, so it has its own kind and its own price (run_stats, `models`)
+            from ..intent_external import MODEL as _chooser_model
+            from ..intent_external import USD_PER_INPUT_TOKEN as _chooser_price
+            stats.models.append({"kind": "chooser", "model": _chooser_model, "at_ms": round((started - stats.t0) * 1000), "ms": ms,
+                                 "ttft_ms": None, "input_tokens": int(used), "output_tokens": 0, "cache_read_tokens": None,
+                                 "cache_write_tokens": None, "cost_usd": round(int(used) * _chooser_price, 6)})
         stats.fast = {"ms": ms, "handled": False, "late": not picks and ms >= layer.settings.timeout_ms - 10}
         # how the turn was decided, for a host that shows it to the person themself (CUSTOM decision_trace): the
         # line as it left the filter, every question with its answer, the bars; what was applied is added at the end
@@ -900,7 +941,12 @@ class Dushes:
         if iso and "date_field" in picks and ov is not None:
             # a bare date is a value, with or without a verb; it never moves the person anywhere
             name = picks["date_field"].id
-            # what else the line says (a place, a name) is the form assistant's, which goes on after the card
+            # a year said short ("92") for a date that lies ahead (an expiry, a booking) is this century, not the last
+            yy = _intent.short_year(message)
+            if yy is not None and re.search(r"expir|valid|until|visit|book|appointment|departure|arrival|deliver|due\b",
+                                            f"{name} {ov[name].label or ''}", re.IGNORECASE):
+                iso = f"{_intent.year_of(yy, future=True):04d}{iso[4:]}"
+            # what else the line says (a place, a name) is the UI agent's, which goes on after the card
             tail = bool(named or _intent.says_more(beside))
             # and the list options or ticks the same line names ("I am a woman, born 1st July '92")
             also = [m for m in fields_named(False) if m[0] != name]
@@ -952,11 +998,31 @@ class Dushes:
                     return {"kind": "show", "args": moves_[0], "more": moves_[1:],
                             "title": f"{page.title}: {len(parts)} sections open" if len(parts) > 4 else ", ".join(x.title for x in parts)}
                 return None                           # "all" asked and the layer cannot do all of it: the agent's turn
-            if every and every.id == "yes" and every.confidence >= 0.8 and ov is not None:
+            # on a form, "open sections" with no section named ("Open now sections", speech for "open all sections":
+            # the owner's session, 2026-11-17) is a weaker yes to "all of them", but the chooser is sure whose they
+            # are: its two answers together are enough. A section the line names keeps its own answer
+            # (measured on the line itself, three sources: the owner's session all 0.65 to 0.7 with the tab at 0.87 to
+            # 1.0; QA's stand all 0.91 with "here" 0.82; my copy all 0.71 with "here" 0.62. Opening sections is a
+            # look, so: a yes to "all" at 0.6 or more, and whose = here or the tab on the screen, at any sureness)
+            both = bool(every and every.id == "yes" and every.confidence >= 0.6 and ov is not None and not opens and whose
+                        and (whose.id == "here" or whose.id.startswith("this:"))
+                        and os.environ.get("INTENT_SECTIONS", "1") != "0")
+            if every and every.id == "yes" and (every.confidence >= 0.8 or both) and ov is not None:
                 # "all the sections of the applicant tab": every section of the tab the line names, else of the open one
                 on_screen = bool(whose and whose.id == "here")       # no place said: the tab on the screen
                 tab = whose.id.partition(":")[2] if whose else ""
                 tab = tab if tab in lay.nodes and lay.nodes[tab].role in ("tab", "step") else ""
+                if on_screen and not tab:
+                    # "here" on a form is the form's tab on the screen, never the page around it (QA, 2026-11-19: "Open
+                    # now sections" got all 0.91 and "here" 0.82, and the page's one section was opened). The tab the
+                    # screen reports, else the form's first tab: the one a form shows when nothing was switched
+                    shown_tabs = [n for n in wide.on_screen if n in lay.nodes and lay.nodes[n].role in ("tab", "step")]
+                    first = next((n.name for n in lay.nodes.values() if n.role in ("tab", "step") and n.name
+                                  and ov.get(n.name) is not None and ov[n.name].visible), "")
+                    # (a form may have tabs inside a section too: the tab meant is one that holds sections)
+                    holds = lambda t: sum(1 for n in lay.nodes.values() if n.role in ("accordion", "section") and n.parent == t  # noqa: E731
+                                          and n.name and ov.get(n.name) is not None and ov[n.name].visible) >= 2
+                    tab = next((t for t in [*shown_tabs, first] if t and holds(t)), "")
                 opens = [(n.name, str(ov[n.name].label)) for n in lay.nodes.values()
                          if n.role in ("accordion", "section") and n.name and ov.get(n.name) is not None and ov[n.name].visible
                          and ov[n.name].label and (n.parent == tab if tab else n.parent in wide.on_screen)][:12]
@@ -1034,14 +1100,14 @@ class Dushes:
             if not ordered and not moves and not bare:
                 stats.trace["why"] = stats.trace["why"] or "not_an_order"
                 # a question about another page of the site, asked on a form's page: the site's assistant answers it
-                # (the form's own assistant refused it: "I can't help with a loan here", QA 2026-11-17). The chooser
+                # (the form's UI agent refused it: "I can't help with a loan here", QA 2026-11-17). The chooser
                 # says which page the line is about; nobody is moved
                 if (target and state.get("form") and target.id.startswith(("screen:", "part:"))
                         and not (here and target.id.partition(":")[2].partition("#")[0] == here.path)):
                     return {"kind": "agent", "mode": "site"}
                 return None                           # not the person's order: the agent's turn
             if bare or (ordered and (kind.id == "set_value" or (value and not target))):
-                if value and not tail:                # a value with more to answer: the form's assistant does both
+                if value and not tail:                # a value with more to answer: the form's UI agent does both
                     name, _, opt = value.id.partition("=")
                     e = ov.get(name)
                     if e is not None and e.editable:
@@ -1061,7 +1127,7 @@ class Dushes:
                     _intent.preset_call((form_thread or f"{thread_id}-{pfid}"[:100]), "focus_field", {"name": node}, f"{label}.")
                     stats.trace.setdefault("labels", {})[node] = label
                     if tail and here and page.path == here.path:
-                        _intent.clear_preset((form_thread or f"{thread_id}-{pfid}"[:100]))   # with more to answer the form's assistant does both
+                        _intent.clear_preset((form_thread or f"{thread_id}-{pfid}"[:100]))   # with more to answer the form's UI agent does both
                     elif here and page.path == here.path and ov is not None:
                         out = {"kind": "focus"}
                     else:
@@ -1254,7 +1320,7 @@ class Dushes:
         a model turn would only make them wait."""
         from .. import intent as _intent
         off = self._offers.get(thread_id)
-        if (os.environ.get("INTENT_CODE") != "1" or not _experiments.allowed() or not isinstance(off, dict)
+        if (os.environ.get("INTENT_CODE") != "1" or not self._layer_allowed(thread_id) or not isinstance(off, dict)
                 or not _intent.takes_up(message)):
             return None
         args = dict(off.get("args") or {})
@@ -1262,7 +1328,7 @@ class Dushes:
             page = self.site.form_page(str(args.get("form_id") or ""))
             if not page:
                 return None
-            # the form's page opens now; the form's assistant takes over there, as after any hand-off
+            # the form's page opens now; the form's UI agent takes over there, as after any hand-off
             self._keep_note(thread_id, page.form or "", str(args.get("note") or "").strip()[:600],
                             str(args.get("language") or "").strip()[:40])
             out = {"kind": "navigate", "args": {"path": page.path}, "title": page.title, "form_id": page.form}
@@ -1276,7 +1342,18 @@ class Dushes:
         voice.hush(thread_id)
         return out
 
-    def _chooser(self, message: str, page: str):
+    def _layer_allowed(self, thread_id: str) -> bool:
+        """Whether the choice layer may run for this conversation's run: the host's own word for the run when it
+        gave one, else the experiments gate (a pass on a gated host; always on a host with no gate)."""
+        said = (self.__dict__.get("_run_opts", {}).get(thread_id) or {}).get("layer")
+        return _experiments.allowed() if said is None else bool(said)
+
+    def _layer_for(self, thread_id: str) -> Any:
+        """The layer with this run's own never-send items added to the host's."""
+        extra = (self.__dict__.get("_run_opts", {}).get(thread_id) or {}).get("never_send") or ()
+        return self.intent.also_never(extra) if extra else self.intent
+
+    def _chooser(self, message: str, page: str, thread_id: str = ""):
         """The choice tool's server half for Dushes: the options are built here, from the site map as it is."""
         from .. import intent as _intent
         from ..language import detect
@@ -1287,7 +1364,7 @@ class Dushes:
                 options += [_intent.Option(f"screen:{p.path}", p.title) for p in self.site.pages]
             if "parts" in sets:
                 options += [_intent.Option(f"part:{p.path}#{x.id}", f"{p.title}: {x.title}") for p in self.site.pages for x in p.parts]
-            return await _intent.choose_on_screen(self.intent, what, options, detect(message) or "en", page)
+            return await _intent.choose_on_screen(self._layer_for(thread_id), what, options, detect(message) or "en", page)
         return choose
 
     def _titled(self, message: str, here: Any) -> Any:
@@ -1302,7 +1379,7 @@ class Dushes:
 
     def _context(self, thread_id: str, state: dict[str, Any], here: Any, ov: Any = None, lay: Any = None,
                  pack: Any = None) -> dict[str, Any]:
-        """What the chooser is told beside the line, about as much as the form's own assistant is told (the owner,
+        """What the chooser is told beside the line, about as much as the form's UI agent is told (the owner,
         2026-11-17): the screen; the form on it, as that assistant reads it (its tabs, steps, sections and fields,
         with their kind, their options, what is required and what is filled; personal data is "<filled>", never a
         value); what the last answer offered and what was opened last; and the last ten messages of the
@@ -1328,7 +1405,11 @@ class Dushes:
         if len(trail) >= 2:
             out["pages_visited"] = trail              # oldest first; the last is the page on the screen
         turns = [e for e in self.forms.transcripts.list(thread_id) if e["kind"] in ("user", "assistant") and e.get("text")]
-        out["last_messages"] = [("person: " if e["kind"] == "user" else "assistant: ") + str(e["text"]) for e in turns[-10:]]
+        # a host may send the chooser no earlier messages at all (INTENT_HISTORY=0, or layer_history=False for a run):
+        # the owner's own talk can hold a guest's name that no filter knows
+        keep_history = (self.__dict__.get("_run_opts", {}).get(thread_id) or {}).get("history")
+        if (os.environ.get("INTENT_HISTORY", "1") != "0") if keep_history is None else keep_history:
+            out["last_messages"] = [("person: " if e["kind"] == "user" else "assistant: ") + str(e["text"]) for e in turns[-10:]]
         return out
 
     async def _fast_move(self, thread_id: str, message: str, run_id: str, fast: dict[str, Any],
@@ -1354,16 +1435,85 @@ class Dushes:
                 yield {"type": "CUSTOM", "name": "site_directive", "value": more}
         yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
 
+    def _window(self, whole: list[tuple[str, str]]) -> int:
+        """How many of the conversation's latest entries the site assistant is shown: up to `history`, and of those
+        the newest that fit HISTORY_CHARS; never fewer than six."""
+        room, kept = HISTORY_CHARS, 0
+        for _role, text in reversed(whole[-self.history:] if self.history > 0 else []):
+            room -= len(text or "")
+            if room < 0 and kept >= 6:
+                break
+            kept += 1
+        return kept
+
+    def _visit(self, thread_id: str, path: str) -> list[str]:
+        """The pages of the site this conversation has been on, oldest first, with `path` added when it is a page of
+        the site and not the one already last. Kept by the server for every run, so "back" and "where was I
+        before" have an answer on any host; written into the conversation's own record as it grows, so it is
+        there again after a restart or on another instance."""
+        trails = self.__dict__.setdefault("_visits", {})
+        while len(trails) >= 5000 and thread_id not in trails:
+            trails.pop(next(iter(trails)))
+        tx = self.forms.transcripts
+        if thread_id not in trails:   # a conversation this process has not seen: its trail as it was recorded
+            trails[thread_id] = [str(e.get("path")) for e in tx.list(_side(thread_id))
+                                 if e["kind"] == "visit" and self.site.page(str(e.get("path") or "")) is not None][-TRAIL:]
+        visits = trails[thread_id]
+        if path and self.site.page(path) is not None and (not visits or visits[-1] != path):
+            visits.append(path)
+            del visits[:-TRAIL]
+            tx.append(_side(thread_id), new_entry("visit", path=path))   # beside the conversation, never a line of it
+        return visits
+
+    async def _remember(self, thread_id: str) -> None:
+        """After a reply: when enough turns have fallen out of what the site assistant is shown, the cheap model
+        folds them into the conversation's memory. Never in front of a reply; a failure only means no summary."""
+        import asyncio
+
+        from langchain_core.messages import HumanMessage, SystemMessage
+        if self.history <= 0:
+            return
+        tx = self.forms.transcripts
+        entries = tx.list(thread_id)
+        whole = [("user" if e["kind"] == "card_result" else e["kind"], e.get("text", "")) for e in entries
+                 if e["kind"] in ("user", "assistant", "card_result")]
+        cut = len(whole) - self._window(whole)
+        last = next((e for e in reversed(tx.list(_side(thread_id))) if e["kind"] == "site_memory"), None)
+        covered = int((last or {}).get("upto") or 0)
+        if cut - covered < REMEMBER_EVERY:
+            return
+        turns = "\n".join(f"{'person' if role == 'user' else 'assistant'}: {(text or '')[:1500]}" for role, text in whole[covered:cut])
+        ask = (f"<previous_memory>\n{(last or {}).get('text') or '(none)'}\n</previous_memory>\n"
+               f"<turns_to_add>\n{turns[:30000]}\n</turns_to_add>\nWrite the updated memory.")
+        t_call = RunStats.now()
+        out = await asyncio.wait_for(self.router_model.ainvoke(
+            [SystemMessage(SITE_MEMORY.format(title=self.site.title)), HumanMessage(ask)]), timeout=12)
+        text = out.content if isinstance(out.content, str) else " ".join(
+            b.get("text", "") for b in out.content if isinstance(b, dict))
+        if text.strip():
+            tx.append(_side(thread_id), new_entry("site_memory", text=text.strip()[:2400], upto=cut))
+            log.info("site memory: %d turns folded in %.1f s", cut - covered, RunStats.now() - t_call)
+
     async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
                          host: Any, form_kwargs: dict[str, Any], recorded: bool = False,
                          reply_to: list[dict[str, Any]] | None = None,
                          stats: RunStats | None = None, done: str = "") -> AsyncIterator[dict]:
         """Dushes' turn (and a same-run hand-off to a form). `done`: what the choice layer carried out for this
         message already (its line is the last in the transcript). `recorded`: the user's message is already in
-        the transcript (the form agent gave it back)."""
+        the transcript (the UI agent gave it back)."""
         tx = self.forms.transcripts
-        history = [("user" if e["kind"] == "card_result" else e["kind"], e.get("text", "")) for e in tx.list(thread_id)
-                   if e["kind"] in ("user", "assistant", "card_result")][-self.history:] if self.history > 0 else []
+        whole = [("user" if e["kind"] == "card_result" else e["kind"], e.get("text", "")) for e in tx.list(thread_id)
+                 if e["kind"] in ("user", "assistant", "card_result")]
+        history = whole[len(whole) - self._window(whole):] if self.history > 0 else []
+        first = next((text for role, text in whole if role == "user" and (text or "").strip()), "")
+        cut_note = ""
+        if self.history > 0 and len(history) < len(whole):
+            kept_memory = next((e for e in reversed(tx.list(_side(thread_id))) if e["kind"] == "site_memory"), None)
+            cut_note = "Earlier turns of this conversation are not shown here."
+            if kept_memory and kept_memory.get("text"):
+                cut_note += f" What was said in them, in short:\n{kept_memory['text']}"
+            if first and ("user", first) not in history:
+                cut_note += f"\nThe person's first message in this conversation was: \"{first[:300]}\"" 
         if done and len(history) >= 2 and history[-1][0] == "assistant" and history[-2][0] == "user":
             history = history[:-2]   # the message and the layer's line: the message goes last, the line is in `done`
         if recorded and history and history[-1][0] == "user":
@@ -1383,10 +1533,17 @@ class Dushes:
                 log.exception("site context failed")
         if done:
             live = f"{live}\n{done}".strip()
+        # where the person has been in this conversation, kept here for every host (no page sends its history)
+        trail = [self.site.page(x).title for x in self._visit(thread_id, page) if self.site.page(x)]
+        if len(trail) >= 2:
+            live = (f"{live}\nPages the person opened in this conversation, oldest first (the last one is on the screen "
+                    f"now): {', '.join(trail)}. The page before this one: {trail[-2]}.").strip()
+        if cut_note:
+            live = f"{live}\n{cut_note}".strip()
         handed: dict[str, Any] = {}
 
         async def keep(form_id: str, note: str, language: str = "") -> bool:
-            """The note for the form; True when the form agent answers now, in this run (form_for built it)."""
+            """The note for the form; True when the UI agent answers now, in this run (form_for built it)."""
             form = None
             if self.form_for:
                 try:
@@ -1398,12 +1555,12 @@ class Dushes:
                 handed.update(form_id=form_id, note=note, language=language, form=form)
             return bool(form)
 
-        back: dict[str, str] = {}   # to_form was called: the form agent answers this message next
+        back: dict[str, str] = {}   # to_form was called: the UI agent answers this message next
 
         def to_form(reason: str) -> None:
             back["reason"] = reason
 
-        # on a form page Dushes can give a form question to the form agent, unless the form agent just gave it back
+        # on a form page Dushes can give a form question to the UI agent, unless the UI agent just gave it back
         give = to_form if state.get("form") and message and not recorded else None
         has_docs = bool(self.forms.knowledge.documents_for(SCOPE))
         failed = False
@@ -1411,7 +1568,7 @@ class Dushes:
         from .. import intent as _intent_mod
         from .. import voice
         aloud = voice.active(thread_id)   # a voice conversation speaks this thread's answers: short, and no chips
-        layer_on = self.intent.on and _experiments.allowed()   # a gated host: only for a visitor with a pass
+        layer_on = self.intent.on and self._layer_allowed(thread_id)   # a gated host: only for a visitor with a pass
         async for ev in agent.answer(self.model or self.forms.models.agent, self.site, voice.heard_as(quoted(message, heard) or "", aloud) or "", history, page,
                                      thread_id, run_id, keep, doc_passages=self.doc_passages(message or "") if has_docs else "",
                                      ask_docs=self._ask_documents if has_docs else None, live=live,
@@ -1419,7 +1576,7 @@ class Dushes:
                                      suggestions=self.suggestions and not aloud, finish=False,
                                      stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats,
                                      asked=message, offered=self._offers.pop(thread_id, False), upfront=aloud,
-                                     chooser=self._chooser(message or "", page) if layer_on and os.environ.get("INTENT_TOOL", "1") == "1" else None,
+                                     chooser=self._chooser(message or "", page, thread_id) if layer_on and os.environ.get("INTENT_TOOL", "1") == "1" else None,
                                      # a direct command or a plain request that the model carries out with its own
                                      # tool ends there: one short line, no description and no question back
                                      end_on_move=os.environ.get("INTENT_END_ON_MOVE") == "1" or (
@@ -1445,7 +1602,7 @@ class Dushes:
             tx.append(thread_id, new_entry("assistant", text="".join(said), **({"message_id": first_mid} if first_mid else {})))
         if failed:
             return
-        if back and not handed:   # the form agent answers the message itself, in this run (no hand_back now)
+        if back and not handed:   # the UI agent answers the message itself, in this run (no hand_back now)
             form = self._with_page(state["form"], state)
             fid = str(form.get("form_id") or "form")
             form_thread = f"{thread_id}-{fid}"[:100]
@@ -1475,7 +1632,7 @@ class Dushes:
         if not handed:
             yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
             return
-        # the form agent answers now, in this same run: its words and cards follow Dushes' open_form
+        # the UI agent answers now, in this same run: its words and cards follow Dushes' open_form
         fid, form = handed["form_id"], self._with_page(handed["form"], state, handed["form_id"])
         form_thread = f"{thread_id}-{fid}"[:100]
         out = Said()
@@ -1483,7 +1640,7 @@ class Dushes:
         async for ev in self.forms.run(form_thread, message=handoff_message(handed["note"], handed["language"]),
                                        state=form, run_id=run_id, **self._marked(kw)):
             if ev["type"] == "CUSTOM" and ev.get("name") == "hand_back":
-                continue   # just handed over: the form agent answers this one
+                continue   # just handed over: the UI agent answers this one
             if ev["type"] == "RUN_STARTED":
                 continue
             out.see(ev)

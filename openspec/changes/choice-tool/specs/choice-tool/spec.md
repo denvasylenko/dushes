@@ -136,3 +136,21 @@ With the switch on, the chooser MAY pick "more context" as a pair of a source an
 #### Scenario: A search in free words
 - **WHEN** the person says "find what the documents say about early repayment"
 - **THEN** the chooser hands on and the model searches
+
+### Requirement: A year said short is the nearest year
+A year answered with two digits or in words ("92", "'92", "ninety-two") SHALL be read in code as the nearest past year for a date in the past, and as this century for a date that lies ahead (an expiry, a booking). One digit, or a line with other words, SHALL NOT be read as a year.
+
+#### Scenario: A birthday
+- **WHEN** the date of birth waits for its year and the person says "92"
+- **THEN** the year is 1992
+
+#### Scenario: A date ahead
+- **WHEN** an expiry date waits for its year and the person says a two-digit year later than this one
+- **THEN** the year is in this century
+
+### Requirement: "Open sections" on a form is the sections of the tab on the screen
+On a form, when the chooser says the line asks for all the sections, even weakly, and is sure whose sections they are, the layer SHALL open every section of that tab. A section the line names SHALL keep its own answer.
+
+#### Scenario: Speech for "open all sections"
+- **WHEN** the Applicant tab is on the screen with every section folded and the person says "Open now sections"
+- **THEN** the five sections of that tab are opened and no model is called

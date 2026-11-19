@@ -156,3 +156,21 @@ def test_the_first_word_of_a_sentence_is_not_a_name():
     line = "Uh, whom you can suggest? So, and options like hair wash and add styling. Then Alex"
     assert intent.mask_names(line, ["Barber: Alex"]) == (line, False)
     assert intent.mask_names("book it. Then call Giulia", [])[0] == "book it. Then call <name>"
+
+
+def test_a_year_said_short_is_the_nearest_past_year():
+    """The owner's live session (2026-11-17): the date of birth waited for its year, he said "92" and it was not
+    taken as 1992 ("I can't be 1892"). A year said short, in digits or in words, is the nearest past year; for a
+    date that lies ahead it is this century. One digit, and a line with other words, is not a year."""
+    ru_92 = "\u0434\u0435\u0432\u044f\u043d\u043e\u0441\u0442\u043e \u0432\u0442\u043e\u0440\u043e\u0439"   # Russian: "ninety-second"
+    for said in ("92", "'92", "’92", "uh, 92.", "ninety-two", "nineteen ninety-two", "1992", ru_92):
+        assert intent.bare_year(said) == 1992, said
+    assert intent.bare_year("05") == 2005 and intent.bare_year("two thousand five") == 2005
+    assert intent.short_year("92") == 92 and intent.short_year("1992") is None and intent.short_year(ru_92) == 92
+    for said in ("5", "yes", "twelve months", "92 thousand", ""):
+        assert intent.bare_year(said) is None, said
+    assert intent.year_of(92) == 1992 and intent.year_of(5) == 2005
+    ahead = (__import__("datetime").date.today().year + 2) % 100
+    assert intent.year_of(ahead) // 100 == 19 and intent.year_of(ahead, future=True) // 100 == 20
+    # a day and a month said in Russian without the year: "I was born on 1 July"
+    assert intent.partial_date("\u042f \u0440\u043e\u0434\u0438\u043b\u0441\u044f 1 \u0438\u044e\u043b\u044f") == (1, 7)

@@ -275,3 +275,29 @@ When opening was refused, the turn's suggestions SHALL start with a button that 
 #### Scenario: The person taps the offer
 - **WHEN** the previous answer offered the Contacts page and the person taps "Open Contacts"
 - **THEN** the page opens
+
+### Requirement: Dushes sees a real stretch of the conversation
+Dushes SHALL be shown the latest entries of the site conversation, up to 40 and as many of the newest as fit about 24,000 characters, never fewer than the last six. When older turns are left out, it SHALL be told the person's first message of the conversation in one line.
+
+#### Scenario: What was my first message
+- **WHEN** the person asks for their first message after eight exchanges
+- **THEN** that message is among the messages the model is shown
+
+#### Scenario: A very long conversation
+- **WHEN** the conversation is longer than the budget
+- **THEN** the newest turns are shown and the first message is told in one line
+
+### Requirement: The server keeps the trail of pages
+For every run, on every host, the server SHALL keep the pages of the site a conversation has been on, oldest first, and SHALL tell Dushes the trail and the page before the current one. A host SHALL NOT need to send or keep it. A path that is not a page of the site SHALL NOT enter the trail. The trail SHALL be kept in a record beside the conversation, so it is there after a restart, and SHALL NOT appear among the conversation's own lines.
+
+#### Scenario: Where was I before
+- **WHEN** the person went from Home to Loans to Car insurance and asks where they were before
+- **THEN** Dushes is told the trail and that the page before this one is Loans
+
+### Requirement: Older turns are kept as a summary, written after a reply
+When turns have fallen out of what Dushes is shown, a cheap model SHALL fold them into a memory of the conversation, kept beside it, and Dushes SHALL be told that memory in place of the turns. The summary SHALL be written only after a run's last event has been sent, never before a reply, and a failure SHALL only mean there is no summary.
+
+#### Scenario: A long conversation
+- **WHEN** eight more entries have fallen out of what Dushes is shown
+- **THEN** after that reply the memory is updated, and the next turn is told it
+
