@@ -37,3 +37,21 @@ A host MAY join its other code-gated features (the voice mode) to the gate. `POS
 #### Scenario: A code on the voice list only
 - **WHEN** a person whose code is only on the voice list enters it
 - **THEN** the answer holds a pass for voice only, and the decision model stays off for them
+
+### Requirement: A host decides the decision model for each run
+A host's server MAY say for one run of the site agent whether the choice layer may run (`layer`), add its own never-send items for that run (`never_send`), and send the chooser no earlier messages of the conversation (`layer_history`, or `INTENT_HISTORY=0` for the process). None of these is read from the client. The host's word for the run SHALL override the process settings and the experiments gate.
+
+#### Scenario: Off for a visitor, on for the owner
+- **WHEN** the host passes `layer=False` for a visitor's run and `layer=True` for the owner's
+- **THEN** the chooser is asked only in the owner's run
+
+#### Scenario: A guest's name
+- **WHEN** the host passes a guest's name in `never_send` for a run
+- **THEN** a line that holds the name is not sent to the chooser, and the name is masked in everything else that is
+
+### Requirement: The chooser's call is in the run's numbers
+When the chooser was asked in a run, the run's `run_stats` SHALL carry one entry of kind `chooser` in `models`, with its model, input tokens and cost, so a host that counts usage and money per run counts it too.
+
+#### Scenario: A turn the layer handled alone
+- **WHEN** the layer carries a line out with no model call
+- **THEN** the run still ends with `run_stats`, whose only model entry is the chooser's

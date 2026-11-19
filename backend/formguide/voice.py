@@ -883,7 +883,9 @@ def active(thread_id: str) -> bool:
 
 
 # a plain yes or no, in the product's seven languages (non-ASCII words as code points: the file stays ASCII)
-_YES_WORDS = {"yes", "yeah", "yep", "yup", "sure", "ok", "okay", "correct", "right", "confirm", "agree", "ja", "genau",
+# (the first three: Russian "let's", Ukrainian "of course" and "sure"; the cabinet's languages, 2026-11-18)
+_YES_WORDS = {"\u0434\u0430\u0432\u0430\u0439\u0442\u0435", "\u0437\u0432\u0456\u0441\u043d\u043e", "\u0430\u0432\u0436\u0435\u0436", "klar", "ouais",
+              "yes", "yeah", "yep", "yup", "sure", "ok", "okay", "correct", "right", "confirm", "agree", "ja", "genau",
               "fine", "good", "great", "perfect", "set", "apply", "go", "ahead", "exactly", "put", "fill", "save",
               "enter", "true", "yea", "ya", "absolutely", "definitely", "indeed", _cyr(0x43f, 0x440, 0x430, 0x432, 0x434, 0x430), _cyr(0x430, 0x433, 0x430),
               _cyr(0x445, 0x43E, 0x440, 0x43E, 0x448, 0x43E),                                # "khorosho"
@@ -1033,6 +1035,7 @@ def said_rows(card: dict) -> tuple[list[str], int]:
 
     rows = [r for r in card.get("changes") or [] if isinstance(r, dict)]
     items: list[tuple[str, str, str]] = []      # (kind, label, value): kind "range" for a joined time range
+    unnamed = 0                                 # removals with nothing to name them by
     used: set[int] = set()
     # a day's "open" tick that is on, beside that day's hours, is part of the hours and is not said by itself (the
     # cabinet's card has one a day: with them said, seven days became fourteen items); a tick that is off is said
@@ -1056,6 +1059,17 @@ def said_rows(card: dict) -> tuple[list[str], int]:
         used.add(i)
         if shown(r):
             items.append(("row", str(r.get("label") or r.get("name")), shown(r)))
+        elif r.get("value") in (None, "", [], {}) and r.get("previous") not in (None, "", [], {}):
+            # a row that empties a field that held something: said as what is removed ("remove Price: 10"), so a yes
+            # is to something heard (Platform's audit, 2026-11-18: a spoken yes removed a price that was never
+            # said). When what was there cannot be said in words, the card counts as not fully said, and a spoken
+            # yes accepts nothing. A row that is empty and was empty changes nothing and is not said
+            gone = r.get("previous")
+            gone = gone.get("name") if isinstance(gone, dict) and gone.get("name") else gone
+            if isinstance(gone, (dict, list)):
+                unnamed += 1
+            else:
+                items.append(("row", f"remove {r.get('label') or r.get('name')}", str(gone)))
     said: list[str] = []
     k = 0
     while k < len(items):
@@ -1070,7 +1084,7 @@ def said_rows(card: dict) -> tuple[list[str], int]:
             # a row whose label is the value itself (the agent named the row by its value) is said once
             said.append(value if label.strip().lower() == value.strip().lower() else f"{label}: {value}")
             k += 1
-    return said[:SAID_ROWS], max(0, len(said) - SAID_ROWS)
+    return said[:SAID_ROWS], max(0, len(said) - SAID_ROWS) + unnamed
 
 
 def covers(card: dict | None) -> bool:

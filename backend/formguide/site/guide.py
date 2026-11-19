@@ -461,6 +461,7 @@ class Dushes:
     async def run(self, thread_id: str, *, message: str | None = None, state: dict[str, Any] | None = None,
                   resume: dict[str, Any] | None = None, run_id: str | None = None, handoff: bool = False,
                   host: Any = None, reply_to: list[dict[str, Any]] | None = None, model: str | None = None,
+                  layer: bool | None = None, never_send: list[str] | None = None, layer_history: bool | None = None,
                   **form_kwargs: Any) -> AsyncIterator[dict]:
         """One run as AG-UI events. Dushes' own model calls (its answers, the router, its document researcher)
         are reported in a CUSTOM `run_stats` event with `agent: "site"`, right before the terminal event; a form
@@ -471,6 +472,14 @@ class Dushes:
         from ..guide import _choice
         from ..stats import model_id as _model_id
         check_thread_id(thread_id)
+        # what the host decided for this run about the choice layer (never read from the client): `layer` True / False
+        # turns it on or off for this run whatever the process settings and the experiments gate say, None leaves
+        # them to decide; `never_send` adds this run's own items to the never-send list (a site's guests' names);
+        # `layer_history=False` sends the chooser no earlier messages of the conversation
+        while len(self.__dict__.setdefault("_run_opts", {})) >= 5000:
+            self._run_opts.pop(next(iter(self._run_opts)))
+        self._run_opts[thread_id] = {"layer": layer, "never_send": tuple(x for x in never_send or [] if x),
+                                     "history": layer_history}
         choice = self.forms.check_model(thread_id, model)
         if choice:
             if self.forms.thread_choice(thread_id) is None:
@@ -506,7 +515,7 @@ class Dushes:
                 yield {"type": "CUSTOM", "name": "model",
                        "value": {"choice": choice, "label": s.label, "model": _model_id(self.model or s.models.agent)}}
                 continue
-            if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1" and _experiments.allowed():
+            if ev.get("type") == "RUN_FINISHED" and os.environ.get("INTENT_LABELS") == "1" and self._layer_allowed(thread_id):
                 fast = getattr(stats, "fast", None)
                 who = self.intent.settings.provider.capitalize()
                 if fast and fast.get("handled") and fast.get("by"):
@@ -531,7 +540,7 @@ class Dushes:
                 if fast and fast.get("handled") and thread_id in mixed and not fast.get("did"):
                     mixed[thread_id] = f"{label}: {mixed[thread_id]}"       # said with the model's part, in the next run
                     label = ""
-                elif label and thread_id in mixed and not fast and not stats.models:
+                elif label and thread_id in mixed and not fast and not [m for m in stats.models if m.get("kind") != "chooser"]:
                     label = ""                                              # a run with no model in it: said with the next one
                 elif label and thread_id in mixed and not fast:
                     label = f"{mixed.pop(thread_id)} \u00b7 then {label}"
@@ -544,15 +553,15 @@ class Dushes:
                     seen["label"] = label
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": lid, "delta": f"\u2014 {label}"}
                     yield {"type": "TEXT_MESSAGE_END", "messageId": lid}
-            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_SCORES") == "1" and _experiments.allowed() and getattr(stats, "fast", None):
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_SCORES") == "1" and self._layer_allowed(thread_id) and getattr(stats, "fast", None):
                 yield {"type": "CUSTOM", "name": "choice_scores", "value": {
                     k: stats.fast.get(k) for k in ("ms", "tokens", "targets", "sure", "handled", "late") if k in stats.fast}}
-            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_TRACE") == "1" and _experiments.allowed() and getattr(stats, "trace", None):
+            if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR") and os.environ.get("INTENT_TRACE") == "1" and self._layer_allowed(thread_id) and getattr(stats, "trace", None):
                 yield {"type": "CUSTOM", "name": "decision_trace", "value": _decision_trace(
                     stats, seen, run_id, thread_id in self.__dict__.get("_mixed", {}), self.site)}
                 if not stats.models:
-                    # a turn the layer carried out alone has no model call, so no run_stats of its own; a host that
-                    # lists turns by run_stats still gets one, with no models in it
+                    # a turn the layer carried out alone with a chooser that reports no usage: no run_stats of its own;
+                    # a host that lists turns by run_stats still gets one, with no models in it
                     yield {"type": "CUSTOM", "name": "run_stats", "value": stats.as_event()}
             if ev.get("type") in ("RUN_FINISHED", "RUN_ERROR"):
                 _demo_log(thread_id, message, resume, handoff, state, stats, seen, ev["type"])
@@ -676,9 +685,9 @@ class Dushes:
         to the form's assistant directly, with no site assistant in front)."""
         from .. import intent as _intent
         from ..language import detect
-        layer = self.intent
+        layer = self._layer_for(thread_id)
         # a gated host (formguide.experiments): the layer is not asked for a visitor without a pass
-        if layer.settings.provider == "off" or not _experiments.allowed():
+        if layer.settings.provider == "off" or not self._layer_allowed(thread_id):
             return None
         here = self.site.page(((state.get("page") or {}).get("path")) or "")
         if os.environ.get("INTENT_CODE") == "1":
@@ -848,6 +857,15 @@ class Dushes:
         asked: list[dict[str, Any]] = []
         picks = await layer.pick_many(sent, detect(message) or "en", qs, here.path if here else "", context, asked)
         ms = round((RunStats.now() - started) * 1000)
+        used = getattr(layer.chooser, "tokens", None)
+        if used and getattr(layer.chooser, "by", "") == "external":
+            # the chooser's own call in the run's numbers, for a host that counts usage and money per run: it is not a
+            # call of the agent's model, so it has its own kind and its own price (run_stats, `models`)
+            from ..intent_external import MODEL as _chooser_model
+            from ..intent_external import USD_PER_INPUT_TOKEN as _chooser_price
+            stats.models.append({"kind": "chooser", "model": _chooser_model, "at_ms": round((started - stats.t0) * 1000), "ms": ms,
+                                 "ttft_ms": None, "input_tokens": int(used), "output_tokens": 0, "cache_read_tokens": None,
+                                 "cache_write_tokens": None, "cost_usd": round(int(used) * _chooser_price, 6)})
         stats.fast = {"ms": ms, "handled": False, "late": not picks and ms >= layer.settings.timeout_ms - 10}
         # how the turn was decided, for a host that shows it to the person themself (CUSTOM decision_trace): the
         # line as it left the filter, every question with its answer, the bars; what was applied is added at the end
@@ -1254,7 +1272,7 @@ class Dushes:
         a model turn would only make them wait."""
         from .. import intent as _intent
         off = self._offers.get(thread_id)
-        if (os.environ.get("INTENT_CODE") != "1" or not _experiments.allowed() or not isinstance(off, dict)
+        if (os.environ.get("INTENT_CODE") != "1" or not self._layer_allowed(thread_id) or not isinstance(off, dict)
                 or not _intent.takes_up(message)):
             return None
         args = dict(off.get("args") or {})
@@ -1276,7 +1294,18 @@ class Dushes:
         voice.hush(thread_id)
         return out
 
-    def _chooser(self, message: str, page: str):
+    def _layer_allowed(self, thread_id: str) -> bool:
+        """Whether the choice layer may run for this conversation's run: the host's own word for the run when it
+        gave one, else the experiments gate (a pass on a gated host; always on a host with no gate)."""
+        said = (self.__dict__.get("_run_opts", {}).get(thread_id) or {}).get("layer")
+        return _experiments.allowed() if said is None else bool(said)
+
+    def _layer_for(self, thread_id: str) -> Any:
+        """The layer with this run's own never-send items added to the host's."""
+        extra = (self.__dict__.get("_run_opts", {}).get(thread_id) or {}).get("never_send") or ()
+        return self.intent.also_never(extra) if extra else self.intent
+
+    def _chooser(self, message: str, page: str, thread_id: str = ""):
         """The choice tool's server half for Dushes: the options are built here, from the site map as it is."""
         from .. import intent as _intent
         from ..language import detect
@@ -1287,7 +1316,7 @@ class Dushes:
                 options += [_intent.Option(f"screen:{p.path}", p.title) for p in self.site.pages]
             if "parts" in sets:
                 options += [_intent.Option(f"part:{p.path}#{x.id}", f"{p.title}: {x.title}") for p in self.site.pages for x in p.parts]
-            return await _intent.choose_on_screen(self.intent, what, options, detect(message) or "en", page)
+            return await _intent.choose_on_screen(self._layer_for(thread_id), what, options, detect(message) or "en", page)
         return choose
 
     def _titled(self, message: str, here: Any) -> Any:
@@ -1328,7 +1357,11 @@ class Dushes:
         if len(trail) >= 2:
             out["pages_visited"] = trail              # oldest first; the last is the page on the screen
         turns = [e for e in self.forms.transcripts.list(thread_id) if e["kind"] in ("user", "assistant") and e.get("text")]
-        out["last_messages"] = [("person: " if e["kind"] == "user" else "assistant: ") + str(e["text"]) for e in turns[-10:]]
+        # a host may send the chooser no earlier messages at all (INTENT_HISTORY=0, or layer_history=False for a run):
+        # the owner's own talk can hold a guest's name that no filter knows
+        keep_history = (self.__dict__.get("_run_opts", {}).get(thread_id) or {}).get("history")
+        if (os.environ.get("INTENT_HISTORY", "1") != "0") if keep_history is None else keep_history:
+            out["last_messages"] = [("person: " if e["kind"] == "user" else "assistant: ") + str(e["text"]) for e in turns[-10:]]
         return out
 
     async def _fast_move(self, thread_id: str, message: str, run_id: str, fast: dict[str, Any],
@@ -1411,7 +1444,7 @@ class Dushes:
         from .. import intent as _intent_mod
         from .. import voice
         aloud = voice.active(thread_id)   # a voice conversation speaks this thread's answers: short, and no chips
-        layer_on = self.intent.on and _experiments.allowed()   # a gated host: only for a visitor with a pass
+        layer_on = self.intent.on and self._layer_allowed(thread_id)   # a gated host: only for a visitor with a pass
         async for ev in agent.answer(self.model or self.forms.models.agent, self.site, voice.heard_as(quoted(message, heard) or "", aloud) or "", history, page,
                                      thread_id, run_id, keep, doc_passages=self.doc_passages(message or "") if has_docs else "",
                                      ask_docs=self._ask_documents if has_docs else None, live=live,
@@ -1419,7 +1452,7 @@ class Dushes:
                                      suggestions=self.suggestions and not aloud, finish=False,
                                      stay_on_form=self._filling(thread_id, state), to_form=give, stats=stats,
                                      asked=message, offered=self._offers.pop(thread_id, False), upfront=aloud,
-                                     chooser=self._chooser(message or "", page) if layer_on and os.environ.get("INTENT_TOOL", "1") == "1" else None,
+                                     chooser=self._chooser(message or "", page, thread_id) if layer_on and os.environ.get("INTENT_TOOL", "1") == "1" else None,
                                      # a direct command or a plain request that the model carries out with its own
                                      # tool ends there: one short line, no description and no question back
                                      end_on_move=os.environ.get("INTENT_END_ON_MOVE") == "1" or (

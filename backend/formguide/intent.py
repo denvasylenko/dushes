@@ -294,6 +294,15 @@ class Layer:
     def on(self) -> bool:
         return self.settings.provider != "off" and self.chooser is not None
 
+    def also_never(self, items: tuple[str, ...]) -> "Layer":
+        """This layer with more never-send items, for one run (a site's own guests' names): the same chooser and
+        settings otherwise."""
+        import copy
+        import dataclasses
+        other = copy.copy(self)
+        other.settings = dataclasses.replace(self.settings, never_send=(*self.settings.never_send, *items))
+        return other
+
     def private(self, text: str) -> bool:
         """Whether a text holds what never leaves the process: a phone, an e-mail, or an item of `never_send`."""
         low = (text or "").lower()

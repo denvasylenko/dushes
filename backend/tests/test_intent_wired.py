@@ -833,3 +833,52 @@ def test_on_a_gated_host_the_layer_is_asked_only_for_a_visitor_with_a_pass(guide
     finally:
         experiments._person.reset(mark)
     assert len(chooser.seen) == 1 and directives(ev) == [{"type": "navigate", "path": "/loans"}] and "Jev ·" in text(ev)
+
+
+def test_a_host_decides_the_layer_for_a_run(guide, model, monkeypatch):
+    """The cabinet's needs (2026-11-18): the host's server, not the client, says whether the layer may run for this
+    run; it may add this run's own never-send items; it may send the chooser no earlier messages; and the chooser's
+    own call is in the run's numbers, so a host's usage row and money brake see it."""
+    from formguide import experiments
+    from formguide.transcript import new_entry
+    go = dict(is_command=("yes", 0.98), kind=("go_to", 0.97), target=("screen:/loans", 0.93))
+
+    # off for this run, whatever the process says
+    chooser = Mock(**go)
+    model.script = [say("The loans page has the rates.")]
+    run(site_with(guide, chooser), "h1", message="open the loans page", state={"page": {"path": "/"}}, layer=False)
+    assert chooser.seen == []
+    # on for this run on a gated host, with no pass: the host's own word is enough
+    monkeypatch.setattr(experiments, "_gated", True)
+    chooser = Mock(**go)
+    ev = run(site_with(guide, chooser), "h2", message="open the loans page", state={"page": {"path": "/"}}, layer=True)
+    assert len(chooser.seen) == 1 and directives(ev) == [{"type": "navigate", "path": "/loans"}]
+    monkeypatch.setattr(experiments, "_gated", False)
+
+    # this run's own never-send items, and no earlier messages
+    guide.transcripts.append("h3", new_entry("user", text="book a table for our guest bergstrom"))
+    chooser = Mock(**go)
+    model.script = [say("Which page?")]
+    run(site_with(guide, chooser), "h3", message="open the loans page for bergstrom", state={"page": {"path": "/"}},
+        never_send=["bergstrom"])
+    assert chooser.seen == []                                   # a line that holds such an item is not sent at all
+    chooser = Mock(**go)
+    run(site_with(guide, chooser), "h3", message="open the loans page", state={"page": {"path": "/"}}, never_send=["bergstrom"])
+    sent = " ".join(chooser.context.get("last_messages") or [])
+    assert "bergstrom" not in sent.lower() and "<filled>" in sent       # and it is masked in the earlier messages
+    chooser = Mock(**go)
+    run(site_with(guide, chooser), "h3", message="open the loans page", state={"page": {"path": "/"}}, layer_history=False)
+    assert "last_messages" not in chooser.context
+    monkeypatch.setenv("INTENT_HISTORY", "0")
+    chooser = Mock(**go)
+    run(site_with(guide, chooser), "h3", message="open the loans page", state={"page": {"path": "/"}})
+    assert "last_messages" not in chooser.context
+    monkeypatch.delenv("INTENT_HISTORY")
+
+    # the chooser's call in run_stats: its own kind, its tokens and its price
+    chooser = Mock(**go)
+    chooser.tokens = 5000
+    ev = run(site_with(guide, chooser), "h4", message="open the loans page", state={"page": {"path": "/"}})
+    stats = [e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "run_stats"]
+    assert len(stats) == 1 and stats[0]["models"][0]["kind"] == "chooser" and stats[0]["models"][0]["input_tokens"] == 5000
+    assert stats[0]["models"][0]["cost_usd"] == round(5000 * 0.042 / 1e6, 6) and stats[0]["tokens"]["input"] == 5000
