@@ -1,0 +1,156 @@
+---
+title: "The psychology of what a person wants: the second round"
+description: "Jobs to be done and self-determination, unspoken needs, emotions and states in text and voice, trust and the sense of control, politeness across languages, and the ethical and legal limits. Translated one to one from the R&D team's document of 19 November 2026."
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+The R&D team, 19 November 2026. Sources are linked; the figures are from abstracts and reviews, and nothing has been checked on our data. The main rule of this page: **we notice the state of the conversation and what the person said or did, and we never attribute feelings, traits or hidden motives to the person**. Not "they are annoyed", but "they are asking for the same thing for the third time". This is more accurate, more honest, and touches neither the AI Act nor Article 9 of the GDPR.
+
+## 1. Intention, wish, need
+
+- **Jobs to be done** ([a review of the two schools](https://builtin.com/product/jobs-to-be-done-framework)). The school of Christensen and Moesta understands a "job" as the progress a person wants. The school of Ulwick (ODI) understands it as measurable steps and outcomes. A job has three sides: functional (book for six), emotional (not to be nervous) and social (look good in front of the guests). Critics call this triad a heuristic, not a measurement.
+- **Self-determination theory (SDT).** A person has three basic needs: autonomy, competence and relatedness. [Yang & Aurisicchio, CHI 2021](https://selfdeterminationtheory.org/wp-content/uploads/2021/05/2021_YangAurisicchio_DesigningConversational.pdf) turned them into rules for conversational agents. [A 2026 study](https://arxiv.org/pdf/2601.02775) warns: attempts to build a "connection" with a person can infringe on their autonomy.
+- **What Jev or the agent notices.** The functional job, yes: this is the goal field in the config and the layer "wish / intention / plan" (rule 1). The emotional and social ones, no, and we do not guess them. We make the interface itself take the anxiety away (see section 2).
+- **What to do differently** (SDT in our language):
+  - **Autonomy:** Undo everywhere, nothing chosen in advance, no overwriting of edits made by hand (rule 12).
+  - **Competence:** progress is visible ("2 fields left"); the agent does not do for the person what they are doing themselves at that moment.
+  - **Relatedness** is not our job: no pretend friendship.
+
+## 2. Hidden motives and unspoken needs
+
+We do not guess the motive. We answer the observable question and build the interface so that the motive stops getting in the way.
+
+| What the person does not say | What can be noticed (observable) | What to do | Size | How to measure |
+| --- | --- | --- | --- | --- |
+| Fear of making a mistake | "Can I change this later?", "what if I get it wrong?"; a pause before sending | A Jev yes/no question "does the line ask whether it can be changed or undone later?". The agent answers by the form's rules ("you can until…"); before anything irreversible, a confirmation card (already there) | S | A scenario: the answer names what can be changed and until when, or honestly says "you can't" |
+| Saving face | The person made a mistake in a value or forgot what they said | Never write "you made a mistake" or "you already said"; speak about the state: "it's set to 5 now". This is the text of the answer: a line in the prompts, if the scenario fails, plus the ux-writer's vocabulary | S | Correction scenarios: no blaming wording in the answer |
+| "Just looking" | The words "just looking for now", a question without a request | The "wish" layer (rule 1): do not pull them into the form, show how the options differ; the site agent already has "question → answer + one offer" | Part of rule 1 | The share of unrequested moves into the form = 0 |
+| Price, embarrassment, money | (we do not notice) | We draw no conclusions about financial standing. We answer what was asked ("the cheapest" → the cheapest, rule 14) | — | — |
+
+## 3. Emotions and states in text and voice
+
+- **Annoyance shows in repeats and haste, not in negative words.** A study on a real booking system (["Stupid robot, I want to speak to a human!"](https://www.themoonlight.io/en/review/stupid-robot-i-want-to-speak-to-a-human-user-frustration-detection-in-task-oriented-dialog-systems), read through a review) found that keyword search finds about 1% of cases, sentiment models do poorly, and an LLM with examples in context does noticeably better. Repeated rephrasing is a sign of dissatisfaction ([2403.12388](https://ar5iv.labs.arxiv.org/html/2403.12388)).
+- **In the voice,** uncertainty can be heard in filled pauses ("uh"), an unsteady tone and pace ([BSNLP 2025](https://aclanthology.org/2025.bsnlp-1.1/), [2026](https://arxiv.org/pdf/2605.12387)). Speech recognition often drops the hesitation markers, and the model's answer becomes more categorical ([Surrey](https://www.ias.surrey.ac.uk/9792-2/); this is a hypothesis, not a measurement).
+- **LLMs' emotional intelligence:** on [EmoBench](https://arxiv.org/html/2402.12071v3) the best model (GPT-4) is below the average human; in most benchmarks the texts are short and have explicit cues ([LongEmotion](https://arxiv.org/html/2509.07403v1)). Attributing an emotion to a person from one line is unreliable.
+
+| State of the conversation | Observable sign | What to do | Size | How to measure |
+| --- | --- | --- | --- | --- |
+| The conversation is stuck | 2 or more rephrasings of one request, Undo in a row, "give me a human" | Change the approach: do not repeat the same answer, but ask "A or B?", show the place on the screen, or offer a human contact if the host has one. The code sees the sign in the correction log and writes a STUCK line; the prompt says what to do with it | S (after the correction log) | The share of stuck conversations and the number of turns to the goal after STUCK; false alarms |
+| Haste | "faster", "urgent", very short lines in a row | Shorter answers, no next step, straight to the point | S | The length of the answer in such scenarios |
+| Hesitation in the voice before a value | "uh" before a number, "probably", "I think" | Keep the hesitation markers in the recognised text (check that Parakeet and Whisper do not drop them). A value with a hesitation marker gets an explicit confirmation instead of being applied quietly. Words only, no acoustics (see section 6) | M (the voice part) | The owner's lines with hesitation: the share of values later corrected, with and without confirmation |
+| Not understanding | "what?", "I don't get it", repeating the agent's question | Retell it simpler and shorter, not word for word (the UI agent's prompt has something similar for "asked again") | S | A guard |
+
+**What we do not do:**
+
+- we do not name the person's emotion to them ("I can see you're annoyed"): this is our design decision; no research on this was found;
+- we do not put emotion labels on a person;
+- we do not keep states in a profile: STUCK and "haste" live only within the conversation.
+
+## 4. Trust and the sense of control
+
+- **Intrusive suggestions annoy.** Suggestions that appear again and again are called "distracting" and "annoying", while suggestions that do not interrupt the work are received better ([2410.04596](https://arxiv.org/pdf/2410.04596)).
+- **Unrequested help hurts self-esteem** more than help on request ([2509.09309](https://arxiv.org/html/2509.09309v1)).
+- **People value a panel of settings for the assistant's behaviour** ([2505.09938](https://arxiv.org/pdf/2505.09938)).
+- **Suggestions inside the text itself take away authorship** if they intrude into what the person is writing ([2501.17258](https://arxiv.org/html/2501.17258v1)).
+- **What to do:**
+  - offer only in natural pauses: after an applied card, at the end of a step;
+  - no more than one next step: this is already there;
+  - do not repeat the same offer after a refusal (rule 14);
+  - **the choice layer does nothing by itself while the person is typing in a field or editing it** (code, S);
+  - the host sets the degree of proactivity (priorities, rule 21).
+- **How to measure:**
+  - the share of offers declined or ignored;
+  - Undo after code actions;
+  - repeats of the same offer = 0;
+  - code actions during typing = 0.
+
+## 5. Politeness and indirectness across languages
+
+**What is known from research:**
+
+- in Russian and Polish a direct request in the imperative is polite and the most frequent; in English and German people most often ask in a conventionally indirect way ("could you…", "könnten Sie…") ([Ogiermann 2009](https://www.degruyterbrill.com/document/doi/10.1515/JPLR.2009.011/html));
+- in Italian requests are more often questions, and the imperative is kept for informal talk; in Russian it is very frequent ([a Russian–Italian corpus](https://iris.unive.it/retrieve/5fac0e7b-515b-43cf-ab33-c00649fa5f50/831549-1204010.pdf));
+- politeness is not the same as indirectness, and directness is not the same as rudeness ([Saadna 2024](https://repository.rudn.ru/en/records/article/record/168648/)).
+
+**Not checked against sources** (general knowledge; hypotheses for QA):
+
+- in French people often ask in the conditional ("pourriez-vous");
+- in Spanish (Spain) the direct imperative is more usual than in English;
+- in Ukrainian the habits are probably close to the Russian ones.
+
+**What to do:**
+
+- **Judge the function of the line separately for each language** (rule 6). In en, de, it and fr a polite question is an order, and in ru and uk a bare imperative is neither rude nor a reason to change tone.
+- **How the agent addresses the person:** the polite form by default (Lei, vous, Sie, usted, and "vy" in Russian and Ukrainian). Otherwise, if the host set an informal tone; this is a config setting and a page in the reference. S, the Tech Lead and the Docs Lead.
+- **How to measure:** a slice of indirect lines in seven languages, with a separate count of false orders on plain questions for each language.
+
+## 6. Ethical limits and the law
+
+This is not legal advice: before launch it needs a review by a lawyer and by the Security team.
+
+- **EU AI Act, Art. 5(1)(f).** Systems that infer emotions in the workplace and in education are prohibited. The exceptions are medicine and safety. The prohibition is tied to biometric data (the definition in Art. 3(39)) ([FPF](https://fpf.org/blog/red-lines-under-eu-ai-act-unpacking-the-prohibition-of-emotion-recognition-in-the-workplace-and-education-institutions/), [Freshfields](https://technologyquotient.freshfields.com/post/102kfql/eu-ai-act-unpacked-25-european-commission-releases-critical-ai-act-implementati)). Commentators read the inference of intentions differently. For us this means:
+  - the Herefront dashboard, which a business's employees work with, is a workplace, and acoustic emotion recognition (tone, pace) is prohibited there;
+  - elsewhere such a system is high-risk and requires telling people (Art. 50(3));
+  - **our policy: no emotion recognition from the acoustics of the voice anywhere**. Only words and behaviour in the conversation, and only as a state of the conversation, not a label on the person;
+  - that inference from text alone does not fall under the definition is the R&D team's conclusion, not a checked position.
+- **GDPR, Art. 9, and the CJEU ruling C-184/20** ([a review](https://www.insideprivacy.com/eu-data-protection/special-category-data-by-inference-cjeu-significantly-expands-the-scope-of-article-9-gdpr/)). Data that even indirectly reveal a special category (health, religion, orientation, politics, ethnic origin) count as a special category themselves. For us this means:
+  - no inferring such traits from lines and behaviour;
+  - no adapting to them;
+  - **a dietary choice in a booking (halal, gluten-free, allergies) is used only for that request and is never kept as a preference between visits** and does not go into the prior's aggregates. In code this needs a list of special-category fields in the config (like never_send), S.
+- **No manipulation** (the AI Act, Art. 5(1)(a), prohibits manipulative techniques). A state that was noticed (haste, being stuck, hesitation) is never used to offer, raise a price or sell. It changes only how we help: shorter, an explicit confirmation, another approach. This is code (the state does not enter recommendations) and rule 14.
+- **Transparency.** If behaviour adapts to the state of the conversation, this is described in the documentation and in the host's privacy text (the Docs Lead).
+
+## What we change (a summary for the "In work" table)
+
+| # | What | Where | Who | Size | QA scenario |
+| --- | --- | --- | --- | --- | --- |
+| R2-1 | Do not act while the person is typing or editing a field (autonomy) | Code | Tech Lead, QA | S | Code actions during typing = 0 |
+| R2-2 | Fear of making a mistake: the question "can it be changed later" → an answer by the form's rules | Jev + the UI agent's prompt | Tech Lead, QA | S | The answer names what can be changed and until when |
+| R2-3 | Saving face: no "you made a mistake" | Prompts (if the scenario fails), ux-writer | Tech Lead, designer, QA | S | Correction scenarios |
+| R2-4 | Being stuck (STUCK) → change the approach | Code + prompts | Tech Lead, QA | S, after the correction log | Three rephrasings → another approach, not the same answer |
+| R2-5 | Haste → shorter | Prompts | Tech Lead, QA | S | The length of the answer |
+| R2-6 | Hesitation in the voice → an explicit confirmation of the value; hesitation markers not dropped from the text | The voice service + code | Tech Lead, QA | M | The owner's lines with hesitation |
+| R2-7 | The function of the line, separately by language; the polite form of address by default, set by the host | Jev; config + reference | Tech Lead, Docs Lead, QA | S | A slice of indirect lines in 7 languages |
+| R2-8 | No emotion recognition from acoustics; states only within the conversation; the state does not affect recommendations | Policy + code + documentation | Tech Lead, Security, Docs Lead | S | A code check: no acoustic features; no state in preferences and recommendations |
+| R2-9 | Special-category fields (diet, health and so on) do not go into preferences and the prior | Config (a list) + code | Tech Lead, Security, Docs Lead | S | The person chose "gluten-free" → preferences and aggregates are empty |
+
+## Sources
+
+- [JTBD, a review of the two schools](https://builtin.com/product/jobs-to-be-done-framework)
+- [Yang & Aurisicchio, SDT and conversational agents, CHI 2021](https://selfdeterminationtheory.org/wp-content/uploads/2021/05/2021_YangAurisicchio_DesigningConversational.pdf)
+- [SDT and AI interviewers, 2026](https://arxiv.org/pdf/2601.02775)
+- ["Stupid robot…", frustration in dialogue (review)](https://www.themoonlight.io/en/review/stupid-robot-i-want-to-speak-to-a-human-user-frustration-detection-in-task-oriented-dialog-systems)
+- [Interpretable estimation of satisfaction, 2024](https://ar5iv.labs.arxiv.org/html/2403.12388)
+- [Filled pauses, BSNLP 2025](https://aclanthology.org/2025.bsnlp-1.1/)
+- [A speaker's confidence from the voice, 2026](https://arxiv.org/pdf/2605.12387)
+- [Hesitation markers and trust, Surrey](https://www.ias.surrey.ac.uk/9792-2/)
+- [EmoBench, ACL 2024](https://arxiv.org/html/2402.12071v3)
+- [LongEmotion, 2025](https://arxiv.org/html/2509.07403v1)
+- [Proactive assistants in programming, 2024](https://arxiv.org/pdf/2410.04596)
+- [Proactive help as a threat, 2025](https://arxiv.org/html/2509.09309v1)
+- [10 studies of assistants, 2025](https://arxiv.org/pdf/2505.09938)
+- [Suggestions in the text and authorship, 2025](https://arxiv.org/html/2501.17258v1)
+- [Ogiermann 2009, requests in en/de/pl/ru](https://www.degruyterbrill.com/document/doi/10.1515/JPLR.2009.011/html)
+- [Requests in Russian and Italian, a corpus](https://iris.unive.it/retrieve/5fac0e7b-515b-43cf-ab33-c00649fa5f50/831549-1204010.pdf)
+- [Saadna 2024, politeness and indirectness](https://repository.rudn.ru/en/records/article/record/168648/)
+- [FPF: the prohibition of emotion recognition in the AI Act](https://fpf.org/blog/red-lines-under-eu-ai-act-unpacking-the-prohibition-of-emotion-recognition-in-the-workplace-and-education-institutions/)
+- [Freshfields: the Commission's guidelines on prohibited practices](https://technologyquotient.freshfields.com/post/102kfql/eu-ai-act-unpacked-25-european-commission-releases-critical-ai-act-implementati)
+- [C-184/20, special categories by inference (review)](https://www.insideprivacy.com/eu-data-protection/special-category-data-by-inference-cjeu-significantly-expands-the-scope-of-article-9-gdpr/)
+
+Not checked:
+
+- the primary text of "Stupid robot…" (only reviews were read);
+- the text of Art. 50(3) of the AI Act as applied to text;
+- the politeness habits for fr, es and uk;
+- whether Parakeet and Whisper keep filled pauses.
+
+## What Dushes takes from it
+
+None of R2-1 to R2-9 is in the package yet; each ships only with a QA scenario that fails before it and passes after it. What the agents do today is on [How the agent behaves](../../how-it-works/behaviour/).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="The psychology of desires and motives" description="The second study, in full." href="../motives/" />
+  <LinkCard title="The psychology of intentions" description="The first review: intentions, and the rules for Dushes' agents." href="../intentions/" />
+</CardGrid>

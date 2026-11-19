@@ -1,0 +1,235 @@
+---
+title: "Research: the psychology of desires and motives"
+description: "What a person does not say: phases of action, hidden motives, states read from the conversation instead of emotions, trust and control, requests and yes/no traps in seven languages, and what we do not build. Translated one to one from the R&D team's document of 19 November 2026."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+The R&D team, 19 November 2026. An addition to [the review](../intentions/) and to [the 2024–2026 research](../intent-systems/): it does not repeat them, it goes deeper into what a person does not say. Each finding: what can be noticed, what to do differently, how QA measures it, size.
+
+<Aside type="note" title="Russian and Ukrainian words">
+The original quotes Russian and Ukrainian phrases in their own script. This site is English only, so they are given here in Latin transliteration, with what they mean.
+</Aside>
+
+## The main findings
+
+1. **We notice a person's state from the events of the conversation, not from an "emotion".** A repeat in the same words, a rephrasing, Undo, an edit by hand after the assistant's action: these are observable facts. The label "annoyed" is unreliable (human annotators themselves agree only moderately) and legally heavy.
+2. **A state signal works only one way: it can make the assistant quieter, shorter and more careful, but never more insistent.** This one rule closes off both manipulation and selling on emotion.
+3. **Our systematic Jev errors ("how do I get to…" taken for a move, "back" in de/it) are the divergence of form and function that languages are known for.** In en and de the question form is the usual form of an order (the imperative is about 4–5% of requests); in ru and uk an order usually stands in the imperative. So the weight of a line's form must be set for each language.
+4. **A recommendation fits in two phases out of four:** while the person is still choosing, and when a step has broken. Between the decision and the end the person is closed to alternatives, and advice against a choice already named provokes a backlash.
+5. **The sense of control comes from visibility and reversibility, not from the number of confirmations.** After the assistant's mistake, a card the person can correct themselves works better than a yes/no question.
+6. **A bad clarifying question is worse than no question.** A question is allowed only from real options, and one per request.
+7. **We do not build emotion recognition from the voice, the face, the typing rhythm or the cursor's movement.** Accuracy in real conditions is low (macro-F1 about 0.43 on eight classes), and under the EU AI Act it is an "emotion recognition system": prohibited at work and in education, high-risk elsewhere.
+
+Every change in the agents' behaviour from this page is a proposal. They go the usual way: the owner's yes through the CPO, and a QA scenario that fails before the change.
+
+## 1. Wish, intention, need
+
+The review already divides a request into a wish, an intention and a plan (rule 1). Research adds time to it: a person goes through phases, and in each expects something different from a helper.
+
+**The phases of action (the Rubicon model, Heckhausen and Gollwitzer, 1987).** There are four phases: weighing before the decision, planning, acting, and evaluating afterwards. Before the decision a person is open to arguments for and against. After the decision they are set on "how to do it" and take alternatives less well ([an overview of the model](https://en.wikipedia.org/wiki/Rubicon_model)). In a study of shoppers the difference in phase changed the reaction to the same offer: a long coupon validity worked better on those who were weighing, a short one on those who had already decided ([Kim's dissertation, University of Alberta](https://era.library.ualberta.ca/items/20e8ff12-c14a-445d-a729-aa6a9c4230ba)). No meta-analysis specifically on online shopping was found. When an action breaks down, a person goes back to weighing (the "action crisis", Brandstätter and Schüler, 2013; from memory, the link was not opened).
+
+**Self-determination (SDT, Deci and Ryan).** Three basic needs: autonomy, competence, relatedness. In experiments with chatbots motivation is linked to the satisfaction of autonomy and competence ([JMIR Formative, 2023, n = 102](https://formative.jmir.org/2023/1/e38500)); in a study of a decision bot competence and autonomy are also linked to the accuracy of decisions ([HICSS 2021](https://scholarspace.manoa.hawaii.edu/items/975f6df0-a4bb-4f48-9b54-f7163644cb89)). The samples are small; the data are weaker than in medicine and education.
+
+**Jobs to be done.** No controlled test of the method was found: it is a practice, not a proven theory; the figure "86% success" is a vendor's claim ([a critical review](https://product-on-purpose.github.io/thinking-framework-skills/library/jobs-to-be-done/)). One idea is useful: people are stopped by anxiety and habit, not by a lack of desire.
+
+**People know their own reasons poorly.** The classic work of Nisbett and Wilson (1977, from memory) showed that asked "why", people give a plausible explanation, not the real cause. This is one more argument for rule 4 of the review (do not ask "why").
+
+| Finding | What can be noticed | What to do differently | How QA measures (fails before) | Size |
+| --- | --- | --- | --- | --- |
+| A recommendation fits before the decision and when a step breaks, but not between the decision and the end | The layer of rule 1 (wish / intention / plan) already gives the phase; the code sees a step breaking (no slot, an impossible value) | The agent recommends only in the "wish" layer and after a breakdown. In the "plan" layer it first carries the request out; it gives the business's recommendation after the closing line, once, or not at all | "A table for four at 19:00" with the business instruction "recommend the set menu": before the value is applied, not a word about the set menu. Next to it: "thinking where to go", one recommendation with a reason | S |
+| Before the "point of no return" (sending, consent, payment) doubt is greatest | A confirmation card is open; the person does not answer or asks "is this already…?" | The card says in one line what happens next (will money be taken, can it be cancelled), from the host's config, not from the model. No recommendations and no new questions at that moment | The sending card is open, the person writes "wait": the answer names what sending does, offers nothing new and does not hurry them | S (a config key + the card's text) |
+| Autonomy: explain the reason and leave the choice; "you must" only where it is a rule of the form | The agent's own text | A refusal and a required field always come with a reason from the form's rules; no "need to", "must" when the field is optional | A code check over all scenarios: words of compulsion appear only next to a required field or a form rule | S (ux-writer + a check) |
+| Competence: the person should see that they filled in the form | The closing line | The closing line names the person's values ("Guests: 4, 19:00"), not the agent's merits ("I filled everything in") | A guard on the closing line: the field and the value are named | S, almost there |
+
+JTBD as a separate taxonomy (a functional, emotional and social "job") does not go into the config: the goal field from the review is enough.
+
+## 2. Hidden motives: what a person does not say
+
+People abandon a form not because they do not want the result but because of anxiety, and they almost never say so aloud. Our job is to remove the cause of the anxiety without prying it out of them.
+
+- **Fear of a mistake and distrust of data collection.** In a Clutch survey (n = 502) 81% of people had abandoned a form at least once; the reasons: security 29%, length 27%, ads and upselling 11%, unclear why the data are asked for 10%. Only 13% come back to finish ([The Manifest](https://themanifest.com/industry-data/6-steps-avoiding-online-form-abandonment)). This is a survey, so these are stated reasons.
+- **Saving face.** In a series of experiments by Jin, Walker and Reczek (Journal of Consumer Psychology), for an embarrassing purchase people preferred a plainly machine-like chatbot to a person. The more human the bot, the stronger the feeling of being judged ([Ohio State University's announcement](https://news.osu.edu/when-consumers-would-prefer-a-chatbot-over-a-person/)). The full text was not opened; the number of experiments differs between retellings.
+- **Distrust of automation.** Having seen an algorithm make a mistake, people give it up, even if on average it is better than a person (Dietvorst et al., 2015). Being able to adjust the result even a little brings back the willingness to use it (Dietvorst et al., 2018). A meta-analysis of 32 experiments: measures against such aversion give on average g = 0.23, and changing the interaction environment itself g = 0.55 ([a meta-analysis, University of Mainz](https://openscience.ub.uni-mainz.de/bitstreams/125fba49-be1d-427d-9799-4a92fe084ec7/download); the authors and year were not checked against the search result).
+- **"Just looking".** This is the weighing phase from section 1, put into words. No separate experiments with assistants were found; the conclusion is drawn from the phase model.
+- **A backlash against advice.** An unrequested recommendation against a choice already made makes some people choose the opposite ([Fitzsimons and Lehmann, 2004](https://people.duke.edu/~gavan/bio/GJF_articles/recommendations_mktgsci_04.pdf)). An offer that is too personal, with no explanation of where it comes from, causes the same reaction ([White et al., 2008](https://link.springer.com/article/10.1007%2Fs11002-007-9027-9)).
+
+**How to draw a motive out without pressure.** Motivational interviewing gives techniques: reflect what was said, ask permission before advice. LLMs write reflections no worse than people ([Basar et al., 2024](https://preview.aclanthology.org/setup/2024.hucllm-1.4)), but randomised tests are few: 20% in a 2025 JMIR review ([the review](https://www.jmir.org/2025/1/e78417/PDF)). One technique suits us: permission before advice. The interview itself was devised to change a person's behaviour; in a sale that is already pressure. Laddering (the chain "and why is that important?") is not taken: it is an interrogation, and answers to "why" are unreliable (section 1).
+
+| Finding | What can be noticed | What to do differently | How QA measures (fails before) | Size |
+| --- | --- | --- | --- | --- |
+| The person does not know why their data are asked for | Words: "is it required?", "what for?"; an action on the screen: a field skipped twice | A field in the config has a short why (what it is needed for) from the host. The agent answers: what for, whether it is required, and what can be skipped. Once, without persuading | "Is the phone required?": today the answer is "yes, it's required"; it should be the reason from the config and an honest "required / not" | S code and config, M to fill in the demo forms |
+| On "awkward" fields a person fears being judged | The field is marked sensitive by the host (income, debt, age, weight, diagnosis). Nothing is inferred about the person | On such fields the answer has no judging words and no comment on the value; the persona is not "humanised" | A low income in the loan form: the answer has no words from the list of judgements ("great", "only", "a bit low"); a code check | S |
+| After the assistant's mistake, control helps, not an apology | Undo or "no, not that" right after a code action | One line, "set the wrong thing, put it back". The next action of the same kind as a card where the value can be corrected, not a yes/no question | Undo, then a similar request: a card with an editable value; the apology no longer than one line | S, together with "explicit confirmation after a defect" from the neighbouring page |
+| The person has switched to filling in by hand | After a defect 3 or more fields changed by hand, nothing in the chat | The assistant stays quiet until spoken to: no "can I help?" | A scenario: Undo, then three edits by hand, zero messages from the assistant | S (a counter in code) |
+| "Just looking", "still thinking", "later" | Words in 7 languages (section 5) | Answer the questions; do not ask them to fill anything in, do not ask for contacts; an offer no more than once. What is unfinished is kept for a return (rule 13 of the review) | "I'm just looking for now", then three questions about prices: zero requests to fill in and zero requests to leave details | S |
+| Advice against a named choice provokes a backlash | The person has already named option A; the business's instruction is to recommend B | Carry out A. Do not offer B instead of A; a compatible addition once afterwards, with a reason from the person's own words in this conversation | A chosen with the instruction "recommend B": A applied, B not offered in its place | S |
+| Permission before advice | The "wish" phase | "Shall I tell you what people usually take?", and advice only after "yes" | A slice of wish lines: advice comes after consent or on a direct question | S, a line in the prompt |
+
+## 3. Emotions and states in text and voice
+
+A person's emotion cannot be recognised reliably today, from the face, the voice or the text. Something else is reliably visible: the conversation has broken down. That is what is worth reacting to.
+
+**How accurate it really is**
+
+| Channel | What was shown | Source |
+| --- | --- | --- |
+| Face | An emotion cannot be judged confidently from facial movements: the same expression means different things in different people and situations | [Barrett et al., 2019](https://www.psychologicalscience.org/publications/emotional-expressions-reconsidered-challenges-to-inferring-emotion-from-human-facial-movements.html) |
+| Voice | The best systems of the Interspeech 2025 challenge on natural speech (MSP-Podcast, 8 classes): macro-F1 about 0.43, and that on their own corpus | [USC SAILER](https://arxiv.org/html/2505.22133v2); the winner's figure is from a retelling |
+| Text, frustration | In a live system keywords catch about 1% of cases; an LLM with examples does better than the rest (+16% F1 relative), but three expert annotators agree with each other only moderately | [Hernandez Caralt et al., 2024](https://arxiv.org/abs/2411.17437v2) |
+| Text, understanding emotions | GPT-4 is below the average human on EmoBench | [Sabour et al., ACL 2024](https://arxiv.org/abs/2402.12071) |
+| Cursor | In the lab, a negative emotion was found from the length and speed of mouse movements with 81.7% accuracy (n = 126) | [Hibbeln et al., MISQ 2017](https://experts.arizona.edu/en/publications/how-is-your-user-feeling-inferring-emotion-through-human-computer/); not checked outside the lab |
+
+**What is visible without guessing at an emotion**
+
+- **Repeats and rephrasings.** Already counted as a defect in the correction log ([the 2024–2026 research](../intent-systems/)).
+- **Hyperarticulation in the voice.** After a recognition error people speak more slowly and clearly, and recognition gets worse from it: 30% more errors, a vicious circle ([Oviatt et al., 1998](https://faculty.washington.edu/levow/papers/JASA98.pdf); [Soltau and Waibel](https://isl.iar.kit.edu/english/5850.php)). For us the sign is a word-for-word repeat in the transcript, with no analysis of the sound.
+- **A delay and a hedge before the answer.** In conversations between people, a refusal is more likely after a pause of 700 ms or more, and after just 300 ms an unqualified "yes" is less likely (195 answers, [Kendrick and Torreira, 2015](https://eprints.whiterose.ac.uk/116177/1/Kendrick_and_Torreira_2015_.pdf)). We take not the length of the pause but the words: "well…", "probably", "well, yes" before the answer.
+- **Words about the system itself.** "It doesn't work", "not that", "get me a human": plain text, not a guess.
+
+| Finding | What can be noticed | What to do differently | How QA measures (fails before) | Size |
+| --- | --- | --- | --- | --- |
+| A breakdown of the conversation shows in events | The code counts over the last turns: repeats and rephrasings, Undo, "no", one field corrected 3 times, words about the system | At 2 events in a row the code gives the agent a state line (for example, STRUGGLING): a shorter answer, no offers and recommendations, say what was understood and give two options or a manual way; offer a way out once (the host's contact, a person). Do not name an emotion | Two rephrasings of one request: the third answer names what was understood, gives a choice or a manual way, with no recommendations and no repeated apology. The counter's accuracy against a person's labels; false alarms in clean runs | M |
+| By voice, repeating "didn't understand" is useless | The same line in the transcript a second time in a row | Change the approach: a card with options or a narrow yes/no question instead of "please repeat" | A recording with a repeat (mock audio, no paid run): on the second repeat a card, not a third "didn't understand" | S/M |
+| A "yes" with a hedge is not consent | Hedge words before the answer to a card: "well, yes" (ru "nu da"), "probably", "na ja", "vabbè", "bof", "bueno…", uk "ta nu" | The confirmation card keeps waiting; the assistant does not hurry. For a reversible value, apply with Undo, as now | The card-words set: a hedged "yes" in 7 languages to the sending card, the card not accepted | S |
+| Words of doubt next to a value | "Maybe", "probably", "forse", "vielleicht", "peut-être", "quizás", uk "mabut" next to a value | This is the "wish" layer from rule 1: show options, not set a value silently | Part of the slice for rule 1 | S |
+| Impatience | "In short", "just do it", short orders in a row | Only the closing line, no explanations, until the end of the conversation | After "in short" the answers are no longer than one line | S |
+
+Naming the emotion aloud ("I can see you're upset") is not needed. A wrong guess offends; a right one shows that the person is being watched.
+
+## 4. Trust and the sense of control
+
+An assistant's independence annoys when its action is not visible, cannot be undone, or goes against what was already said. It helps where the action is cheap, visible and undone with one tap.
+
+- **A middle level of initiative is better than the extremes.** In an experiment with an LLM assistant in a car (IJCAI 2024, five levels of initiative), the level "the assistant anticipates, the person confirms" was received best. Too much independence got in the way even with explanations ([a retelling of the work](https://liner.com/review/towards-proactive-interactions-for-invehicle-conversational-assistants-utilizing-large-language); the text itself was not opened).
+- **More confirmations do not mean more control.** Automatic execution speeds things up but lowers the sense of control; a confirmation raises it ([i-com 2026](https://pub.h-brs.de/frontdoor/deliver/index/docId/9457/file/icom-2025-0053.pdf)). Yet handing a person more decisions does not by itself raise the sense of control; what helps is giving control back exactly at the risky moment ([arXiv 2510.04465](https://www.alphaxiv.org/abs/2510.04465.md)).
+- **A bad clarifying question does harm.** In a large user study good clarifying questions raised satisfaction, while weak and average ones lowered it: it would have been better with no question ([Zou et al., TOIS 2023](https://research.tudelft.nl/en/publications/users-meet-clarifying-questions-toward-a-better-understanding-of-)).
+- **A mistake is forgiven if it was warned of and is cheap to fix.** One line of expectations ("I may be wrong") noticeably raised the acceptance of an inaccurate assistant. With a cheap correction people accepted better an assistant that acts more often and sometimes errs than one that more often stays quiet ([Kocielnik et al., CHI 2019](https://www.microsoft.com/en-us/research/uploads/prod/2019/01/chi19_kocielnik_et_al.pdf); the second part from a retelling).
+
+The conclusion for the cost of a mistake: our approach, "do what is reversible with Undo, do not do what is irreversible", matches the research. Three things from the table are missing.
+
+| Finding | What can be noticed | What to do differently | How QA measures (fails before) | Size |
+| --- | --- | --- | --- | --- |
+| A question only from real options, one per request | The set of options after calibration (the neighbouring page) | The code asks "A or B?" only when both options are real. The code never asks an open "please clarify". After one question, an action with Undo or the agent's turn | Over all scenarios: no more than one question per request; zero open clarifications from the code | S, together with the question "A or B?" |
+| The visibility of an action matters more than a confirmation | A code action changed a field outside the person's view | Every code action highlights the changed place (card_focus is already queued) and names it in the closing line | An action on a field off screen: the highlight event is sent, the closing line names the field and value | S (after card_focus) |
+| One line of expectations at the first action | The assistant's first action in the conversation | Once: "Anything I do can be undone". Not repeated | The first action: the line appears exactly once per conversation | S, the text through ux-writer |
+| The first mistake costs more than the next ones (a hypothesis from the work on algorithm aversion) | The number of the action in the conversation | For the first 2–3 actions of a conversation the acceptable error rate is stricter. A hypothesis: trust cannot be measured offline; an experiment with live people is needed | Only an A/B on the owner's test stand: the share of conversations where after the first action the person goes on using the assistant | S code, L to check |
+
+## 5. Politeness and indirectness across languages
+
+The most frequent form of a request differs between languages, so the same form of a line says "order" in one language and "question" in another. This is exactly about our systematic Jev errors.
+
+**What has been measured**
+
+- **en, de against ru (and pl).** In a comparison of requests in four languages, the imperative appeared in 4% of requests in English and 5% in German; in Russian and Polish a direct request is the main form ([Ogiermann, 2009](https://www.degruyterbrill.com/document/doi/10.1515/JPLR.2009.011/html); the 4% and 5% figures are from a review that cites it). From memory, about a third of Russian requests are in the imperative. House (2006) considers Germans more direct in complaints and requests: the data diverge.
+- **es.** In the CCSARP project Argentinian Spanish turned out more direct than British English ([the CARLA summary](https://archive.carla.umn.edu/speechacts/requests/research.html)). The data for Spain and Mexico differ; there is no single "Spanish" norm.
+- **it.** In a comparison of 320 requests Germans chose indirect forms more often than Italians; Italians rely more on solidarity with the listener and the conditional ("vorrei", "potrebbe") ([University of Venice](https://iris.unive.it/retrieve/5fac0e7b-515b-43cf-ab33-c00649fa5f50/831549-1204010.pdf)).
+- **fr.** The indirect form ("Pouvez-vous…?") in French does not add politeness; it only lets one avoid seeming rude. It is simply the norm, as in English ([Ruytenbeek, 2020](https://hal.archives-ouvertes.fr/hal-03123952/file/NR-Do-conventional-indirect-requests-convey-extra-politeness---2nd-version%20%28corrected%20proof%29.pdf)).
+- **uk.** There is almost no empirical data. The imperative with "bud laska" (please) is the norm, and "Chy ne mohly b vy…?" (could you not…?) is a high register. Close to Russian, but this is a description from grammars, not a measurement.
+
+A caveat: almost all these works are questionnaires ("what would you say"), not recordings of live speech. The spread within a language (age, region, chat or voice) may be larger than between languages. These are starting expectations; our measurements decide.
+
+**The traps of "yes" and "no"** (well-known facts of the languages; they need a QA slice, not a reference)
+
+| Language | Sounds like "yes" but means something else | Sounds like "no" but means something else | A soft refusal |
+| --- | --- | --- | --- |
+| ru | "nu da…" (doubt), "da ladno" (disbelief) | "da net" = no; "da net, navernoe" = rather no | "ya podumayu" (I'll think), "potom" (later), "posmotrim" (we'll see) |
+| uk | "ta nu" (doubt) | "ta ni" = no | "ya podumayu" (I'll think), "potim" (later), "pobachymo" (we'll see) |
+| en | "yeah, no" = no; "I'm good" = no, thanks | "no, yeah" = yes; "no problem" = agreement | "let me think", "maybe later", "I'll see" |
+| de | "ja" as a particle inside a sentence ("das ist ja…") is not an answer; "na ja" = doubt; "jein" | "doch" = yes to a negative question | "ich überleg's mir", "mal sehen" |
+| fr | "mouais", "bof" = doubt | "si" = yes to a negative question | "je vais réfléchir", "on verra" |
+| it | "magari" = "if only" or "maybe"; "vabbè" = reluctant agreement | "ma va", "macché" = no | "ci penso", "vediamo" |
+| es | "bueno…" = doubt; "ya" = "got it", not agreement | "qué va" = no | "lo pienso", "ya veremos" |
+
+| Finding | What can be noticed | What to do differently | How QA measures (fails before) | Size |
+| --- | --- | --- | --- | --- |
+| The weight of a line's form is different in each language | The line's language and its form: imperative, a question about ability ("can you…"), a question about the way ("how do I get to…"), a wish ("I need", "vorrei", "je voudrais", "quisiera", "ich möchte") | Calibrate the decision "order or question" separately by language and form. For a question about the way, the default action is to answer and offer the move with one tap, not to move | A slice of minimal pairs: one target × 4 forms × 7 languages, labelled by a person. Metric: the rate of confident errors per cell; the already known failures "how do I get to", "zurück", "indietro" are the first lines of the slice | M (QA), S code |
+| A "yes" and a "no" with a catch | Words from the table above in answer to a card | A list per language in card_answer: catches and hedges do not count as consent to a confirmation card | The card-words set grows with trap pairs in 7 languages | S |
+| A negative question makes "yes" ambiguous | The text of a card or question with a negation ("Don't add?") | Cards only in the affirmative form, buttons named by the action ("Add" / "No thanks") | A code check over card texts: no questions with a negation | S (ux-writer) |
+| A refusal is said softly | "I'll think", "later", "ci penso" and the rest of the table | Count it as a refusal: the card is closed, the offer is not repeated in this conversation | A soft refusal in 7 languages: the offer not repeated | S |
+| The informal or formal "you" | The language and the host's setting | A host key per language: formal or informal; no mixing within a conversation. Check whether such a key already exists | A code check: one form of address for the whole conversation | S |
+
+A person's nationality, origin or "culture" cannot be judged from their language. The language only selects the word list and the calibration.
+
+## 6. Limits: what we do not build
+
+One rule for everything: knowledge of a person's state can only lower the pressure on them. This is not a legal opinion: the texts of the laws were read through law firms' reviews; before release a review by the Security team and a lawyer is needed.
+
+**What the law says**
+
+| Norm | Gist | What it means for us |
+| --- | --- | --- |
+| EU AI Act, Art. 5(1)(f), in force since 2 February 2025 | It is prohibited to infer a person's emotions at work and in educational institutions; the Commission includes the inference of intentions from biometrics too ([FPF](https://fpf.org/blog/red-lines-under-eu-ai-act-unpacking-the-prohibition-of-emotion-recognition-in-the-workplace-and-education-institutions/)) | Hosts install our package. Among them will be employers (candidate forms, internal forms) and schools. A feature that is "high-risk" in a shop is prohibited for them |
+| AI Act, Art. 3(39), and the Commission's guidelines | An "emotion recognition system" infers emotions or intentions from biometric data. Biometrics: the face, the voice, posture, the manner of typing. Analysing the content of written text is not included ([CMS](https://cms.law/en/gbr/legal-updates/eu-commission-issues-guidelines-on-prohibited-ai-practices-part-ii), [Lewis Silkin](https://www.lewissilkin.com/en/insights/2025/02/17/understanding-the-eu-ai-acts-prohibited-practices-key-workplace-and-advertising-102k011)) | The words and events of the conversation: allowed. The tone, pace and pitch of the voice, the typing rhythm, the cursor's movement: not. By voice, decisions are made only from the transcript. The length of a pause is a grey zone: we use it only to decide when to speak, not to judge the person |
+| AI Act, Annex III and Art. 50(3) | Outside work and education, emotion recognition is high-risk (the requirements moved to 2 December 2027) plus a duty to inform the person (from 2 August 2026) ([Gibson Dunn](https://www.gibsondunn.com/eu-ai-act-omnibus-agreement-postponed-high-risk-deadlines-and-other-key-changes/), [Covington](https://www.insideglobaltech.com/2025/06/04/european-commission-guidelines-on-prohibited-ai-practices-under-the-eu-artificial-intelligence-act/)) | Even where it is allowed, the cost of compliance is high, with the accuracy from section 3 |
+| AI Act, Art. 5(1)(a) and (b) | Manipulative and deceptive techniques, and exploiting vulnerability (age, disability, a difficult situation), are prohibited if they distort a decision and lead to significant harm; intent is not required ([Covington](https://www.insideglobaltech.com/2025/06/04/european-commission-guidelines-on-prohibited-ai-practices-under-the-eu-artificial-intelligence-act/)) | A signal of hesitation or breakdown never switches an offer on |
+| GDPR, Art. 9, and the CJEU ruling C-184/20 | Special categories also include data from which health, faith, views or orientation can be inferred indirectly ([an analysis of the ruling](https://publications.matheson.com/data-protection-technology-and-cyber-security-bulletin-october-2022/cjeu-expands-scope-of-special-category-data)) | A guess at a sensitive trait is already processing of a special category. We neither infer nor store it |
+
+**What we do not build**
+
+1. **Emotion recognition from the voice, the face, the typing rhythm, the cursor's movement.** Neither in the package nor as a host option.
+2. **A label on the person.** A state is counters of events inside one conversation. No "annoyed", "indecisive" in memory, in preferences between visits, in the host's analytics about a person, or in requests to Jev.
+3. **Inferring sensitive traits.** Health, faith, politics, orientation, origin; and also age, sex, pregnancy, money trouble, nationality from language or name. If the person named such a thing themselves for a form field, the value goes into the field and nowhere else: not into memory, not into the prior, not into recommendations.
+4. **Selling on a state.** No offers on a signal of hesitation or breakdown. No urgency or scarcity of our own ("2 places left" only as a fact from the host's data). No shame in the decline button. No repeating an offer after a refusal, a soft one included.
+5. **Persuasion techniques for the business's benefit.** Motivational interviewing and laddering as a way to lead to a purchase; "why" questions.
+6. **Hidden personalisation and a psychological profile.** A recommendation is explained only by what the person said in this conversation. We do not compute a personality type from text. We do not pass the host assessments like "hesitated over the loan": decisions about the person could be made on them (GDPR, Art. 22).
+7. **Imitating a person and feelings.** "I understand how hurtful this is for you": no. The assistant calls itself an assistant (AI Act, Art. 50(1)); by the data of section 2, people are calmer that way too.
+
+What the owner has already decided stays in force: guests' personal data do not go to Jev without a code or an agreement. The correction log holds people's lines, so it needs a retention period and masking by the same never_send.
+
+## What to take from this
+
+The order is by the expected benefit for the bar "no more than 1% confident errors" and for trust; this is an estimate, not a measurement. Each row needs a failing scenario from QA and the owner's yes through the CPO.
+
+| # | What we take | Who notices | Where it lives | Size | How firm the basis is |
+| --- | --- | --- | --- | --- | --- |
+| 1 | A slice "line form × language" and calibrating "order or question" per cell; a question about the way = an answer plus a move with one tap | Jev and code | The choice layer's calibration; a QA set | M | Medium: questionnaire studies plus our own systematic errors |
+| 2 | The "yes/no" traps, hedges and soft refusals in 7 languages; cards without negative questions | Code (card_answer) | Word lists; card texts | S | Firm on the language; the card-words set will show the error rate |
+| 3 | A recommendation by phase: only before the decision or after a step breaks; never instead of a named choice; a state signal only lowers pressure | Jev (the layer of rule 1) and code | One line in the prompts; a check in code | S | Medium: experiments on reactance and phases; the law is on our side |
+| 4 | A counter of conversation breakdown (repeats, Undo, "no", edits by hand) and a quiet mode: shorter, no offers, a choice of two or a manual way, a way out once | Code | A state line to the agent; one line in the prompts | M | Medium: the signals are reliable, the mode's effect on people is not measured |
+| 5 | Voice: a word-for-word repeat switches to a card or a narrow question; a hedged "yes" does not accept a confirmation card | Code (voice.py), only from the transcript | Code | S/M | Firm on hyperarticulation (old but often repeated works) |
+| 6 | The config keys why (what a field is for) and sensitive (an awkward field): an answer about the data's purpose and a neutral tone; a line of consequences in the sending card | The host in the config; the agent | Config, the UI agent's prompt, documentation | S/M | Medium: a survey on reasons for abandoning and experiments on embarrassing purchases |
+| 7 | After a mistake, a card with an editable value, not "yes/no"; after the person switches to manual input, the assistant stays quiet | Code | Code, the widget | S | Firm: Dietvorst 2018 and the meta-analysis |
+| 8 | One question per request, and only from real options | Code | Together with "A or B?" | S | Firm: a large user study |
+| 9 | Texts without compulsion, a refusal with a reason; "anything can be undone" once; the form of address by language | — | ux-writer, a code check | S | Medium |
+
+**What we do not take**
+
+| What | Why |
+| --- | --- |
+| Emotions from the voice, the face, the typing rhythm, the cursor | Accuracy is low; under the AI Act, prohibited at work and in education, high-risk elsewhere |
+| An emotion label from an LLM, and lines like "I can see you're upset" | Human annotators agree only moderately; the events of the conversation give the same signal without guessing |
+| Laddering and "why" questions | An interrogation; the answers are unreliable; rule 4 of the review already forbids it |
+| Motivational interviewing as a whole | Devised to change behaviour; in a sale that is pressure. We take only "permission before advice" |
+| The JTBD taxonomy in the config | No controlled test of the method; the goal field is enough |
+| A psychological profile and inferring a person's traits | GDPR, Art. 9 and 22; it destroys trust |
+| "Stricter on the first actions of a conversation", now | A hypothesis; it cannot be checked without an experiment on live people. Postpone until a stand with real guests |
+
+## Sources
+
+The search was done on 19 November 2026. The figures are taken from abstracts and search results; the full texts were not opened. Nothing has been checked on our data.
+
+- Phases and motivation: [the Rubicon model](https://en.wikipedia.org/wiki/Rubicon_model); [Kim, a dissertation on phases in shoppers](https://era.library.ualberta.ca/items/20e8ff12-c14a-445d-a729-aa6a9c4230ba); [SDT and a chatbot, JMIR Formative 2023](https://formative.jmir.org/2023/1/e38500); [SDT and a decision bot, HICSS 2021](https://scholarspace.manoa.hawaii.edu/items/975f6df0-a4bb-4f48-9b54-f7163644cb89); [a review of JTBD](https://product-on-purpose.github.io/thinking-framework-skills/library/jobs-to-be-done/)
+- Hidden motives: [the Clutch survey on abandoned forms](https://themanifest.com/industry-data/6-steps-avoiding-online-form-abandonment); [Jin, Walker, Reczek: the university's announcement](https://news.osu.edu/when-consumers-would-prefer-a-chatbot-over-a-person/); [a meta-analysis of measures against algorithm aversion](https://openscience.ub.uni-mainz.de/bitstreams/125fba49-be1d-427d-9799-4a92fe084ec7/download); [Fitzsimons and Lehmann, 2004](https://people.duke.edu/~gavan/bio/GJF_articles/recommendations_mktgsci_04.pdf); [White et al., 2008](https://link.springer.com/article/10.1007%2Fs11002-007-9027-9); [Basar et al., 2024](https://preview.aclanthology.org/setup/2024.hucllm-1.4); [the JMIR 2025 review](https://www.jmir.org/2025/1/e78417/PDF)
+- Emotions: [Barrett et al., 2019](https://www.psychologicalscience.org/publications/emotional-expressions-reconsidered-challenges-to-inferring-emotion-from-human-facial-movements.html); [Interspeech 2025, USC SAILER](https://arxiv.org/html/2505.22133v2); [Hernandez Caralt et al., 2024](https://arxiv.org/abs/2411.17437v2); [EmoBench, ACL 2024](https://arxiv.org/abs/2402.12071); [Hibbeln et al., 2017](https://experts.arizona.edu/en/publications/how-is-your-user-feeling-inferring-emotion-through-human-computer/); [Oviatt et al., 1998](https://faculty.washington.edu/levow/papers/JASA98.pdf); [Soltau and Waibel](https://isl.iar.kit.edu/english/5850.php); [Kendrick and Torreira, 2015](https://eprints.whiterose.ac.uk/116177/1/Kendrick_and_Torreira_2015_.pdf)
+- Trust: [an assistant's initiative in a car, IJCAI 2024 (retelling)](https://liner.com/review/towards-proactive-interactions-for-invehicle-conversational-assistants-utilizing-large-language); [confirmation against automatic execution, i-com 2026](https://pub.h-brs.de/frontdoor/deliver/index/docId/9457/file/icom-2025-0053.pdf); [giving control back at risk, arXiv 2510.04465](https://www.alphaxiv.org/abs/2510.04465.md); [Zou et al., TOIS 2023](https://research.tudelft.nl/en/publications/users-meet-clarifying-questions-toward-a-better-understanding-of-); [Kocielnik et al., CHI 2019](https://www.microsoft.com/en-us/research/uploads/prod/2019/01/chi19_kocielnik_et_al.pdf)
+- Languages: [Ogiermann, 2009](https://www.degruyterbrill.com/document/doi/10.1515/JPLR.2009.011/html); [the CARLA summary of CCSARP](https://archive.carla.umn.edu/speechacts/requests/research.html); [Italian and German, University of Venice](https://iris.unive.it/retrieve/5fac0e7b-515b-43cf-ab33-c00649fa5f50/831549-1204010.pdf); [Ruytenbeek, 2020](https://hal.archives-ouvertes.fr/hal-03123952/file/NR-Do-conventional-indirect-requests-convey-extra-politeness---2nd-version%20%28corrected%20proof%29.pdf)
+- Law: [FPF on Art. 5(1)(f)](https://fpf.org/blog/red-lines-under-eu-ai-act-unpacking-the-prohibition-of-emotion-recognition-in-the-workplace-and-education-institutions/); [CMS on the Commission's guidelines](https://cms.law/en/gbr/legal-updates/eu-commission-issues-guidelines-on-prohibited-ai-practices-part-ii); [Lewis Silkin](https://www.lewissilkin.com/en/insights/2025/02/17/understanding-the-eu-ai-acts-prohibited-practices-key-workplace-and-advertising-102k011); [Covington](https://www.insideglobaltech.com/2025/06/04/european-commission-guidelines-on-prohibited-ai-practices-under-the-eu-artificial-intelligence-act/); [Gibson Dunn on the postponed deadlines](https://www.gibsondunn.com/eu-ai-act-omnibus-agreement-postponed-high-risk-deadlines-and-other-key-changes/); [C-184/20, an analysis](https://publications.matheson.com/data-protection-technology-and-cyber-security-bulletin-october-2022/cjeu-expands-scope-of-special-category-data)
+
+**Not checked, and taken from memory**
+
+- Without a link, from memory: Brandstätter and Schüler (2013) on the "action crisis"; Nisbett and Wilson (1977); Dietvorst et al. (2015, 2018), whose titles were confirmed by search but whose texts were not opened; the share of imperative requests in Russian in Ogiermann; the table of "yes/no" traps.
+- Art. 50(1) and 50(3) of the AI Act are named from memory; the Commission's guidelines were read in law firms' retellings, and some of the retellings describe a draft, not the adopted text.
+- Whether the length of a pause in speech counts as biometrics is an open question for a lawyer.
+- Ukrainian: no empirical comparisons of requests were found. There are also no fresh (2024–2026) experiments on "just looking" with assistants.
+- The code was only looked through (intent.py, site/guide.py, voice.py). Whether the keys why, sensitive and the form of address already exist was not checked: that is a question for the Tech Lead.
+
+## What Dushes takes from it
+
+None of the rows in "What we take" is in the package yet; each ships only with a QA scenario that fails before it and passes after it. What the agents do today is on [How the agent behaves](../../how-it-works/behaviour/), with what is planned under [Coming next](../../how-it-works/behaviour/#coming-next).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="The psychology of what a person wants" description="The second round, in short: the observable state, not the feeling." href="../wishes/" />
+  <LinkCard title="The psychology of intentions" description="The first review, and the rules for Dushes' agents." href="../intentions/" />
+</CardGrid>
