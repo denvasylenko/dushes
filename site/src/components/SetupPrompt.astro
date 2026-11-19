@@ -86,7 +86,7 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
 
   function prompt(c: Choice): string {
     const p = PROVIDER[c.provider], cl = CLIENT[c.client], sv = SERVER[c.server]
-    const pages = [...new Set(['get-started/quickstart', 'agents/shared/install', 'agents/shared/configuration', 'agents/shared/models', ...sv.pages, ...cl.pages])]
+    const pages = [...new Set(['get-started/quickstart', 'get-started/describe-your-site', 'agents/shared/install', 'agents/shared/configuration', 'agents/shared/models', ...sv.pages, ...cl.pages])]
     const agentUrl = c.server === 'fastapi' ? '/agent/run (my app serves it)' : 'http://localhost:8000/agent/run'
     let n = 0
     const step = (s: string) => `${++n}. ${s}`
@@ -118,6 +118,10 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
       step(`Load the chat script: ${WIDGET} to try it (the widget is not on npm yet); for my app, build it from the repository (cd packages/agui-chat && npm install && npm run build, the file is in dist/) and serve it myself.`),
       step(`Point the chat at the agent: ${agentUrl}.`),
       ...cl.steps.map(step),
+      ``,
+      `Describe my data (required, do not skip it):`,
+      step(`Follow ${md('get-started/describe-your-site')} section by section: page titles and keywords in every language of my site, the site map with its sections and which page holds which form, field labels and options in my users' words, required fields, pii, each form's documents, a human contact, consents, and what happens after sending. Ask me for anything you cannot find in the project.`),
+      step(`Run the check again (formguide check --config formguide.yaml), fix what it names, and go through the page's "Before launch" list with me.`),
       ``,
       `Finally, tell me what you changed, what is still missing (documents I have not given you, fields you could not map, anything you guessed), and how to try it: send "Where do I start?" in the chat.`,
     ].join('\n')
