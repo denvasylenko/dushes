@@ -1,11 +1,11 @@
 ---
 title: An AI assistant for your interface
-description: Dushes is an AI assistant inside your site or app. It answers from your pages and documents, takes people to the right page, tab or field, and fills forms with them after they confirm.
+description: Dushes is an AI assistant for your whole site or app. It answers from your pages and documents, takes people to the right page, tab or section, and on a page with a form its UI agent fills the form with them after they confirm.
 tableOfContents: false
 template: splash
 hero:
   title: 'Your product, <span class="hero-accent">guided.</span>'
-  tagline: Dushes is an AI assistant inside your site or app. It answers from your pages and documents, takes people to the right page, tab or field, and fills forms with them, only after they confirm.
+  tagline: Dushes is an AI assistant for your whole site or app. It answers from your pages and documents, takes people to the right page, tab or section, and on a page with a form its UI agent fills the form with them, only after they confirm.
   actions:
     - text: Quickstart
       link: get-started/quickstart/
@@ -17,6 +17,7 @@ hero:
 ---
 import { Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
 import LiveDemo from '../../components/LiveDemo.astro';
+import SiteDemo from '../../components/SiteDemo.astro';
 import Stats from '../../components/Stats.astro';
 import Flow from '../../components/Flow.astro';
 import SetupPrompt from '../../components/SetupPrompt.astro';
@@ -27,9 +28,15 @@ export const demoBase = import.meta.env.PUBLIC_DEMO_URL ? import.meta.env.PUBLIC
 {/* search lists this page by its title, not the hero headline */}
 <span hidden data-pagefind-meta="title:Dushes: an AI assistant for your interface"></span>
 
-## See it on a form
+## See it on a site
 
-The UI agent on a loan application, right here in your browser.
+Dushes on Main Street, a whole site: it answers about any page, takes you there, and hands a form to its UI agent.
+
+<SiteDemo />
+
+## And on a form
+
+The UI agent on a loan application, right here in your browser: the part of Dushes that works on a page with a form.
 
 <LiveDemo />
 
@@ -42,7 +49,7 @@ The UI agent on a loan application, right here in your browser.
   <Entry icon="form" eyebrow="One screen" title="UI agent" text="One guide that knows the screen in front of the user: every field of your form." points={['Shows where to click', 'Reads the user\'s documents', 'Fills fields after a yes']} href="agents/ui-agent/" demo={demoBase ?? undefined} />
 </Entries>
 
-Both run on one base: any LangChain model, your business documents, the `<agui-chat>` widget with its cards and themes, and one Python package (`formguide`).
+Start with the site agent: it knows every page, and each form page gets the UI agent. Both run on one base: any LangChain model, your business documents, the `<agui-chat>` widget with its cards and themes, and one Python package (`formguide`).
 
 ## Set it up
 
@@ -74,23 +81,24 @@ Both run on one base: any LangChain model, your business documents, the `<agui-c
 
 <CardGrid>
   <Card title="Backend · Python" icon="seti:python">
-    ```yaml title="formguide.yaml"
-    model: "anthropic:claude-haiku-5-5"
-    domain_packs: {dir: domain_packs}
-    knowledge: {dir: data/kb}
+    ```yaml title="site.yaml"
+    title: Main Street
+    pages:
+      - {path: /loans, title: Loans, keywords: [loan, Kredit, prestito]}
+      - {path: /apply, title: Apply for a loan, form: loan_application}
     ```
-    ```bash
-    formguide serve --config formguide.yaml
+    ```python title="app.py"
+    site = Dushes(guide, SiteMap.load("site.yaml"))
+    app.include_router(create_dushes_router(site), prefix="/site")
     ```
-    [Configure the backend →](agents/shared/configuration/)
+    [Set up the site agent →](agents/site-agent/)
   </Card>
   <Card title="Frontend · any page" icon="seti:html">
-    ```js
-    chat.use(formguide({
-      getState: () => ({ config, jsx_hash, form_id }),
-      applyChanges: (c) => myBackend.apply(c),
-    }))
+    ```html
+    <agui-chat url="/site/run"></agui-chat>
+    <script src="agui-chat.iife.js"></script>
     ```
+    On a form page, the form plugin hands the form to the UI agent.
     [Pick a client →](frontend/)
   </Card>
 </CardGrid>
@@ -115,7 +123,7 @@ Both run on one base: any LangChain model, your business documents, the `<agui-c
 Every page has **Ask AI** in the header: an assistant that answers from these pages, in the language you ask in, with code you can paste and links to where it found it. Or take any page to your own assistant with **Copy page**, **Open in Claude** or **Open in ChatGPT**; [`llms.txt`](llms.txt) lists every page for AI tools.
 
 <CardGrid>
-  <LinkCard title="Quickstart" description="A site agent or a UI agent running in five minutes." href="get-started/quickstart/" />
+  <LinkCard title="Quickstart" description="The site agent, or a UI agent on one form, running in five minutes." href="get-started/quickstart/" />
   <LinkCard title="Configuration" description="From one line to per-role models, documents and durable history." href="agents/shared/configuration/" />
   <LinkCard title="Choose a client" description="Widget, React, react-hook-form, CopilotKit, any AG-UI client." href="frontend/" />
   <LinkCard title="How it works" description="One turn, the context, memory, with diagrams." href="agents/how-it-works/" />

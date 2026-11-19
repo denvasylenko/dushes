@@ -7,11 +7,11 @@
 import { Button, Callout, ChipGroup, CodePanel, CopyButton, Disclosure, Tile } from './ui'
 
 const CLIENTS = [
-  ['widget', 'Any page'],
-  ['react', 'React'],
+  ['site', 'A whole site'],
+  ['widget', 'One form, any page'],
+  ['react', 'One form, React'],
   ['rhf', 'react-hook-form'],
   ['copilotkit', 'CopilotKit'],
-  ['site', 'A whole site'],
 ]
 const PROVIDERS = [['anthropic', 'Anthropic'], ['openai', 'OpenAI'], ['azure', 'Azure OpenAI'], ['gemini', 'Gemini'], ['ollama', 'Ollama']]
 const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAPI app']]
@@ -87,18 +87,22 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
   function prompt(c: Choice): string {
     const p = PROVIDER[c.provider], cl = CLIENT[c.client], sv = SERVER[c.server]
     const pages = [...new Set(['get-started/quickstart', 'get-started/describe-your-site', 'get-started/describe-your-site/site-agent', 'get-started/describe-your-site/ui-agent', 'get-started/describe-your-site/researcher', 'agents/shared/install', 'agents/shared/configuration', 'agents/shared/models', ...sv.pages, ...cl.pages])]
-    const agentUrl = c.server === 'fastapi' ? '/agent/run (my app serves it)' : 'http://localhost:8000/agent/run'
+    const agentUrl = c.client === 'site'
+      ? (c.server === 'fastapi' ? '/site/run (my app serves it; forms keep /agent/run)' : 'http://localhost:8000/site/run (the site agent; forms keep /agent/run)')
+      : (c.server === 'fastapi' ? '/agent/run (my app serves it)' : 'http://localhost:8000/agent/run')
     let n = 0
     const step = (s: string) => `${++n}. ${s}`
     return [
-      `Add Dushes (the Python package formguide) to this project: a chat agent next to my form that shows where to click, answers from my documents and fills fields after the user confirms. My starting choices: ${cl.name}, ${PROVIDERS_LABEL[c.provider]}, ${c.server === 'fastapi' ? 'inside my FastAPI app' : 'its own server'}.`,
+      c.client === 'site'
+        ? `Add Dushes (the Python package formguide) to this project: an AI assistant for my whole site that answers from my pages and documents, takes people to the right page, tab or section, and, on a page that holds a form, hands over to its UI agent, which fills the form with them after they confirm. My starting choices: ${cl.name}, ${PROVIDERS_LABEL[c.provider]}, ${c.server === 'fastapi' ? 'inside my FastAPI app' : 'its own server'}.`
+        : `Add Dushes (the Python package formguide) to this project: its UI agent, a chat next to my form that shows where to click, answers from my documents and fills fields after the user confirms. My starting choices: ${cl.name}, ${PROVIDERS_LABEL[c.provider]}, ${c.server === 'fastapi' ? 'inside my FastAPI app' : 'its own server'}.`,
       ``,
       `Read these pages first and follow them exactly; do not invent keys, endpoints or options they do not show:`,
       ...pages.map((s) => `- ${md(s)}`),
       `The index of all pages: ${docs}llms.txt`,
       ``,
       `Before you change anything, ask me these questions one message at a time. For each, say in one line what it decides and what the default is, look at my project to suggest an answer, and wait for mine:`,
-      `- Site or form: one form, or a whole site with several pages and forms? (default: one form; a site adds a site map and the site agent)`,
+      `- Site or form: a whole site with several pages and forms, or one form? (default: the whole site, with a site map and the site agent; each form page gets the UI agent)`,
       `- Model: which provider and model? (default: ${p.yaml.split('\n')[0]}); where will the key live (default: the server's environment, never the browser)`,
       `- Server: its own process, or mounted in my FastAPI app? (default: its own, formguide serve)`,
       `- Business documents: should it answer from my policies, prices or FAQs? (default: none; with them, the researcher reads them on demand)`,
@@ -128,7 +132,7 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
   }
 
   for (const root of document.querySelectorAll<HTMLElement>('[data-sp]')) {
-    const choice: Choice = { client: 'widget', provider: 'anthropic', server: 'standalone' }
+    const choice: Choice = { client: 'site', provider: 'anthropic', server: 'standalone' }
     const code = root.querySelector<HTMLElement>('[data-prompt] code')!
     const claude = root.querySelector<HTMLAnchorElement>('[data-open-claude]')!
     const render = () => {

@@ -131,7 +131,7 @@ export const FEATURES: Feature[] = [
     id: 'highlight', title: 'Changes light up in the form',
     why: 'When a card is accepted, the fields it filled flash in the form itself, so people see what changed and where.',
     ref: { label: 'The form plugin', href: '../widget/#the-form-plugin' },
-    show: { kind: 'link', href: '../../#see-it-on-a-form', label: 'See it in the live demo' },
+    show: { kind: 'link', href: '../../#and-on-a-form', label: 'See it in the live demo' },
     code: { lang: 'JavaScript', text: "chat.use(formguide({\n  getState, applyChanges,\n  highlight: true,          // the default; false when your page draws its own\n}))" },
     shots: ['change-highlight'],
   },
@@ -139,7 +139,7 @@ export const FEATURES: Feature[] = [
     id: 'limits', title: 'A public demo with limits',
     why: 'A public agent costs money. The demo counts messages per visitor and per day; past the limit, the chat says so and plays a recorded conversation.',
     ref: { label: 'A public demo host', href: '../../agents/shared/deploy/#a-public-demo-host' },
-    show: { kind: 'link', href: '../../#see-it-on-a-form', label: 'Try the live demo' },
+    show: { kind: 'link', href: '../../#and-on-a-form', label: 'Try the live demo' },
   },
 ]
 
