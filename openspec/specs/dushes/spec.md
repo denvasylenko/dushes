@@ -329,3 +329,10 @@ When turns have fallen out of what Dushes is shown, a cheap model SHALL fold the
 - **WHEN** eight more entries have fallen out of what Dushes is shown
 - **THEN** after that reply the memory is updated, and the next turn is told it
 
+
+### Requirement: The UI agent's tools work under the site agent
+In a run that goes through the site agent, the UI agent SHALL be offered the form guide's server tools and the tools the page sent with the run, a browser tool's result sent with no message SHALL go to the UI agent, and `confirm_tools` SHALL hold a call as they do without the site agent. The site agent's own tools (`Dushes(tools=...)`) SHALL NOT be offered to the UI agent; a name present on both sides SHALL be logged as a warning at start-up.
+
+#### Scenario: A browser tool on a form page
+- **WHEN** the UI agent calls the page's tool in a site run and the page sends the result with no message
+- **THEN** the next run gives that result to the UI agent, which answers
