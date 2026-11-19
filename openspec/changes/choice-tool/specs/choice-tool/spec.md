@@ -136,3 +136,14 @@ With the switch on, the chooser MAY pick "more context" as a pair of a source an
 #### Scenario: A search in free words
 - **WHEN** the person says "find what the documents say about early repayment"
 - **THEN** the chooser hands on and the model searches
+
+### Requirement: A year said short is the nearest year
+A year answered with two digits or in words ("92", "'92", "ninety-two") SHALL be read in code as the nearest past year for a date in the past, and as this century for a date that lies ahead (an expiry, a booking). One digit, or a line with other words, SHALL NOT be read as a year.
+
+#### Scenario: A birthday
+- **WHEN** the date of birth waits for its year and the person says "92"
+- **THEN** the year is 1992
+
+#### Scenario: A date ahead
+- **WHEN** an expiry date waits for its year and the person says a two-digit year later than this one
+- **THEN** the year is in this century

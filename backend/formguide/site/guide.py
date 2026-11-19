@@ -918,6 +918,11 @@ class Dushes:
         if iso and "date_field" in picks and ov is not None:
             # a bare date is a value, with or without a verb; it never moves the person anywhere
             name = picks["date_field"].id
+            # a year said short ("92") for a date that lies ahead (an expiry, a booking) is this century, not the last
+            yy = _intent.short_year(message)
+            if yy is not None and re.search(r"expir|valid|until|visit|book|appointment|departure|arrival|deliver|due\b",
+                                            f"{name} {ov[name].label or ''}", re.IGNORECASE):
+                iso = f"{_intent.year_of(yy, future=True):04d}{iso[4:]}"
             # what else the line says (a place, a name) is the UI agent's, which goes on after the card
             tail = bool(named or _intent.says_more(beside))
             # and the list options or ticks the same line names ("I am a woman, born 1st July '92")
