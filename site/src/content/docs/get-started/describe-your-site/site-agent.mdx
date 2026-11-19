@@ -111,7 +111,7 @@ site = Dushes(guide, SiteMap.load("site.yaml"), history=20)
 
 ## When it moves the person
 
-**What it affects.** Whether a move to a page is carried out is the agent's own decision, read from the conversation and the trail, with no list of moving words. Each `navigate` call says how the agent read the line (`asked`: `ordered`, `back`, `yes` or `question`); only `question` keeps the person where they are, with the page offered. A page the person told it to open is opened without asking. Starting a form (`open_form`) still needs the person's own request or a yes to an offer.
+**What it affects.** Whether a move to a page is carried out is the agent's own decision, read from the conversation and the trail, with no list of moving words. Each `navigate` call says how the agent read the line (`asked`: `ordered`, `back`, `yes` or `question`); only `question` keeps the person where they are, with the page offered. A page the person told it to open is opened without asking. An order moves the person only to the page they named: each call also says which page that was (`named`, a path of the site, or `none`). When the site has no such page nothing opens; the agent says so and offers the closest page, one tap away. "How do I get to X?" and "where do I find X?" are questions: the agent answers, and the page is offered, nobody moved. Starting a form (`open_form`) still needs the person's own request or a yes to an offer.
 
 **How to write it.** Nothing. `INTENT_GATE=words` in the server's environment brings back the list of moving words for `navigate`.
 

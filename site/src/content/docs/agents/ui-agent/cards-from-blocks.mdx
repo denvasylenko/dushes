@@ -101,6 +101,13 @@ blocks:
 
 The widget's form plugin announces the `blocks` capability. A client that does not (a Telegram bot, an older widget) never gets the `show_*` tools, so the model asks in text instead.
 
+## Coming next
+
+The server already accepts these in a card spec; the widget does not draw them yet, so do not use them in a card people see.
+
+- **A `search` block:** an input with matching options under it; a pick is `values[name] = {id, label}` (a list with `multiple: true`, at most `max`, 1 to 50). Options come from the card's data or from a list the page serves (`source`); `minChars` (0 to 10) and `debounceMs` (0 to 2000) set when it searches.
+- **Your own block:** a type named with a hyphen (`signature-pad`) in a card spec; its keys reach the page as they are, for a component the page registers.
+
 ## Every option
 
 | `cards[]` key | Default | |
