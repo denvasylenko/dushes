@@ -38,6 +38,24 @@ Start with the site agent: the site map is what every other agent builds on. The
 | [Develop a domain](domain/) | a new kind of form or business from scratch: its pack, instructions, documents, keywords and QA scenarios, with a complete pack to copy | a form for a business the package has no pack for |
 | [Configuration examples](examples/) | the demo's complete site map and three domain packs, to copy and adapt | always: start from the closest one |
 
+## What a host gets by default, and what to set
+
+Every default below is safe, but weaker than what most sites need. Each row says what you get without configuration and the setting that changes it.
+
+| By default | What to set |
+| --- | --- |
+| Conversations live in memory: a restart forgets them | `checkpointer: {sqlite: data/checkpoints.sqlite}` in `formguide.yaml` (or a Postgres or Redis saver in Python) |
+| No quick replies after an answer | `suggestions: {enabled: true, max: 3}` in `formguide.yaml`, and `Dushes(..., suggestions=True)` |
+| After a hand-off, a form's first turn waits for its page to load | `Dushes(..., form_for=fn)`, where `fn(form_id, ctx)` returns `{config, jsx_hash, form_id}` |
+| One model serves every role | `models:` with a model per role (`agent`, `research`, `compile`, `extract`, `memory`, `suggestions`): [Configuration](../../../reference/configuration/) |
+| The site agent sees the last 6 entries of the conversation | `Dushes(..., history=40)` |
+| No domain pack: a neutral persona, no field notes, no personal fields marked | a pack per form with `title`, `persona`, `glossary`, `pii` and `rules` ([UI agent](ui-agent/), [Configuration examples](examples/)) |
+| No business documents: the agent answers from the form alone | upload them: `POST /agent/kb/{form_id}/documents` ([Researcher](researcher/)) |
+| Pages without keywords, or fewer than the site's languages | `keywords:` per page in `site.yaml`, at least one per language ([Site agent](site-agent/)) |
+| The page a person is on is unknown | the host sends `state.page.path` with every run |
+
+Voice mode and the decision model are off unless configured ([Voice](voice/), [Decision model](decision-model/)).
+
 ## Before launch
 
 Go through each page's checklist, then run the check of the configuration, which calls no model:
