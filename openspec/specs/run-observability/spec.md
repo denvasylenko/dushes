@@ -22,6 +22,13 @@ Time spent waiting for the user to answer a card SHALL not be counted: a resumed
 - **WHEN** a turn ends with a card, the user answers ten minutes later, and the resumed run takes two seconds
 - **THEN** the resumed run's total is about two seconds
 
+### Requirement: A model call made after the reply is reported too
+When the site agent folds older turns into its memory after a run's terminal event, that model call SHALL be reported in a second `CUSTOM run_stats` event with the same `run_id`, `late: true` and that call alone (`kind: "memory"`), sent after the terminal event, so a host that adds up cost per run counts it once.
+
+#### Scenario: The memory is written
+- **WHEN** a run's reply is followed by the memory's model call
+- **THEN** the stream ends with `RUN_FINISHED` and then one `run_stats` with `late: true` and a `memory` call
+
 ### Requirement: The run_stats event
 Before `RUN_FINISHED` (or `RUN_ERROR`) a run SHALL send `CUSTOM run_stats` with:
 - `{run_id, thread_id, ttft_ms, total_ms, model_ms, tool_ms}`;
