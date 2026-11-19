@@ -121,6 +121,13 @@ A `chart` SHALL take `data: [{label, value}]` or `labels` with `series: [{name, 
 - **WHEN** a chart comes with `data: []`
 - **THEN** the card says "No data for this period"
 
+### Requirement: A search block
+A card SHALL accept `{type: search, name, label?, placeholder?, options?: [{id, label, description?}], source?, required?, value?}`: an input under which matching options appear as the person types. A pick SHALL set the card's `values[name]` to `{id, label}`; text that was not picked SHALL NOT be a value. `source` names a list the page serves through `options.searchSource(source, query)`.
+
+#### Scenario: A supplier is picked
+- **WHEN** the person types "nor", picks "Northwind" and taps the card's button
+- **THEN** the card's answer holds `values.supplier` equal to `{id: "s1", label: "Northwind"}`
+
 ### Requirement: A host's own block in a card spec
 A card spec SHALL accept a block whose type is not built in when the type is lower-case words joined by hyphens (`city-search`, at most 40 characters): the block's keys SHALL reach the widget unchanged, with placeholders filled. A type without a hyphen that is not built in SHALL still be rejected when the configuration is read.
 

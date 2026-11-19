@@ -160,3 +160,17 @@ def test_a_hosts_own_block_passes_with_its_props_as_data():
     for wrong in ("feild", "City-Search", "-search", "search-", "a" * 30 + "-" + "b" * 30):
         with pytest.raises(ValueError, match="unknown block"):
             parse_cards([{**BARBER, "blocks": [{"type": wrong}]}])
+
+
+def test_a_search_block_in_a_card_spec():
+    """The owner (2026-11-19): an input with search, options appearing as the person types, is a built-in block. The
+    spec passes its options (from the model's data) or the name of a list the page serves."""
+    spec = parse_cards([{
+        "type": "pick_supplier", "description": "Ask which supplier.", "data": {"suppliers": "object[]"},
+        "blocks": [{"type": "search", "name": "supplier", "label": "Supplier", "placeholder": "Type a name",
+                    "options": "{suppliers}", "required": True},
+                   {"type": "search", "name": "city", "source": "cities"},
+                   {"type": "buttons", "items": [{"id": "ok", "label": "Choose", "style": "primary"}]}]}])[0]
+    card = build(spec, {"suppliers": [{"id": "s1", "label": "Northwind", "description": "Paper"}]})
+    assert card["blocks"][0]["options"] == [{"id": "s1", "label": "Northwind", "description": "Paper"}]
+    assert card["blocks"][1] == {"type": "search", "name": "city", "source": "cities"}
