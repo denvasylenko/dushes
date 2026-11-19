@@ -235,11 +235,25 @@ In a voice conversation Dushes SHALL be given, before its first model call, the 
 - **THEN** Dushes answers from the page text it was given, without calling read_page or search_site
 
 ### Requirement: A question is answered before anything opens
-The site agent SHALL open a page or start a form only when the person's own message asks for it (a request such as "open…", "show me…", "take me…", "I want…", "book me…", or the same as a polite question, "can you open…") or says yes to an offer made in the previous answer. This SHALL be decided in code from the person's words: a `navigate` or `open_form` call for any other message is refused, and the model is told to answer first and offer.
+The site agent SHALL open a page or start a form only when the person's own message asks for it (a request such as "open…", "show me…", "take me…", "I want…", "book me…", or the same as a polite question, "can you open…") or says yes to an offer made in the previous answer. For `open_form` this SHALL be decided in code from the person's words: a call for any other message is refused, and the model is told to answer first and offer.
 
 #### Scenario: How do I get it
 - **WHEN** the person asks "how can I get car insurance?" and the model calls `open_form` for the insurance form
 - **THEN** no form opens, the answer explains how, and it ends by offering to open the insurance form
+
+### Requirement: A move to a page is the agent's own decision
+Whether a `navigate` call moves the person SHALL be the agent's decision, read from the conversation and the trail of pages, with no word list: the call carries `asked` (`ordered`, `back`, `yes`, `question`), and only `question` keeps the person where they are, with the page offered. `INTENT_GATE=words` SHALL restore the word list.
+
+#### Scenario: A misspelt order
+- **WHEN** the person writes "nvigate me back" and the agent calls `navigate` for the page before this one with `asked: back`
+- **THEN** that page opens in this turn
+
+### Requirement: Back means the page before this one
+The agent SHALL be told, on every host, the pages the conversation has been on and the page before the current one with its path; the agent's own moves SHALL count as visits, so a host that sends no page has a trail too. Its rules SHALL say that "back" in any wording opens that page at once and that a page the person told it to open is opened without asking.
+
+#### Scenario: Navigate me back
+- **WHEN** the person went from Purchase request to Loans and writes "navigate me back"
+- **THEN** the agent is told "The page before this one: Purchase request (/procurement)" and its move there is carried out
 
 ### Requirement: An order to change something starts the form
 A message that tells the assistant to change something (change, set, add, remove and the like, in the languages the product ships) SHALL count as a direct request for what a form does: an `open_form` call for it starts the form. A question that uses such a word stays a question, and a page still opens only when asked.

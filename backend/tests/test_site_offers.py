@@ -46,18 +46,18 @@ def test_a_how_question_is_answered_and_the_form_is_offered(site, model):
 
 
 def test_a_yes_without_an_offer_opens_nothing(site, model):
-    model.script = [say("", ("n1", "navigate", {"path": "/contacts"})), say("The contacts are on the Contacts page.")]
+    model.script = [say("", ("n1", "navigate", {"path": "/contacts", "asked": "question"})), say("The contacts are on the Contacts page.")]
     ev = run(site, "of2", message="yes", state={"page": {"path": "/"}})
     assert _events(ev, "site_directive") == []
 
 
 def test_a_where_question_gets_the_page_as_an_offer_and_the_tap_opens_it(site, model):
-    model.script = [say("", ("n1", "navigate", {"path": "/contacts", "section": "bank"})),
+    model.script = [say("", ("n1", "navigate", {"path": "/contacts", "section": "bank", "asked": "question"})),
                     say("The branch is open on Saturday 10:00 to 16:00. Want me to open Contacts?")]
     ev = run(site, "of3", message="when is the bank open on Saturday?", state={"page": {"path": "/"}})
     assert _events(ev, "site_directive") == []
     tap = _events(ev, "suggestions")[0]["items"][0]
-    model.script = [say("", ("n2", "navigate", {"path": "/contacts", "section": "bank"})), say("Here is Contacts.")]
+    model.script = [say("", ("n2", "navigate", {"path": "/contacts", "section": "bank", "asked": "yes"})), say("Here is Contacts.")]
     ev = run(site, "of3", message=tap, state={"page": {"path": "/"}})        # the person tapped the offer
     assert _events(ev, "site_directive") == [{"type": "navigate", "path": "/contacts", "section": "bank"}]
 
@@ -65,7 +65,7 @@ def test_a_where_question_gets_the_page_as_an_offer_and_the_tap_opens_it(site, m
 def test_a_refused_move_still_lets_the_agent_read_the_page(site, model):
     """Found by QA on indirect-v1 (2026-11-15): with the move refused, the agent had no way to read a section and
     answered "I could not find it, shall I open the page?". The refusal now carries what the page says."""
-    model.script = [say("", ("n1", "navigate", {"path": "/insurance", "tab": "levels"})),
+    model.script = [say("", ("n1", "navigate", {"path": "/insurance", "tab": "levels", "asked": "question"})),
                     say("Third-party liability starts from 300 a year. Want me to open Car insurance?")]
     ev = run(site, "rd1", message="what does car insurance cost?", state={"page": {"path": "/"}})
     assert _events(ev, "site_directive") == []                               # the person stays where they are
@@ -73,7 +73,7 @@ def test_a_refused_move_still_lets_the_agent_read_the_page(site, model):
     assert result.startswith("Not opened") and "from 300" in result          # the tab's text, to answer from
     assert "Drivers under 21" not in result                                  # only the part the call named
 
-    model.script = [say("", ("n2", "navigate", {"path": "/insurance"})), say("Claims within 7 days.")]
+    model.script = [say("", ("n2", "navigate", {"path": "/insurance", "asked": "question"})), say("Claims within 7 days.")]
     run(site, "rd2", message="how do I report a claim?", state={"page": {"path": "/"}})
     result = next(m.content for m in model.calls[-1] if getattr(m, "tool_call_id", None) == "n2")
     assert "Report a claim within 7 days" in result and "from 300" in result  # no part named: the whole page
@@ -107,7 +107,7 @@ def test_a_page_is_read_without_being_opened(site, model):
     """QA's rerun on b758cd8: on a question the model no longer calls navigate, so the text a refused move returns
     was never asked for (the fact lost in 6 of 21 answers). read_page is the way to read that does not look like
     moving."""
-    model.script = [say("", ("r1", "read_page", {"path": "/insurance", "tab": "levels"})),
+    model.script = [say("", ("r1", "read_page", {"path": "/insurance", "tab": "levels", "asked": "question"})),
                     say("Third-party liability starts from 300 a year. Want me to open Car insurance?")]
     ev = run(site, "rp1", message="what does car insurance cost?", state={"page": {"path": "/"}})
     assert _events(ev, "site_directive") == [] and _events(ev, "site_offer") == []   # a read moves and offers nothing
@@ -132,6 +132,6 @@ def test_a_request_to_change_something_starts_the_form(site, model):
     model.script = [say("", ("c1", "open_form", {"form_id": "loan_application", "note": "amount 900 000"})), say("Opening it.")]
     ev = run(site, "of-change", message="Set the loan amount to 900 000", state={"page": {"path": "/"}})
     assert [d["form_id"] for d in _events(ev, "site_directive")] == ["loan_application"]
-    model.script = [say("", ("c2", "navigate", {"path": "/contacts"})), say("The contacts are on the Contacts page.")]
+    model.script = [say("", ("c2", "navigate", {"path": "/contacts", "asked": "question"})), say("The contacts are on the Contacts page.")]
     ev = run(site, "of-change2", message="Set the loan amount to 900 000", state={"page": {"path": "/"}})
     assert _events(ev, "site_directive") == []                              # a page still opens only when asked

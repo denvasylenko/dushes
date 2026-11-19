@@ -16,6 +16,7 @@ CUSTOM `site_directive {type: "navigate", path, tab?, section?, form_id?}` for t
 from __future__ import annotations
 
 import json
+import os
 import re
 import logging
 import uuid
@@ -178,8 +179,13 @@ Each turn
    nothing for it: name the page or the form that helps and offer it in one closing sentence ("Want me to open
    the insurance form?"). Opening a page or starting a form is for a direct request ("open…", "show me…", "take
    me…", "I want to apply", "fill in…") or a yes to your offer.
-5. A direct request to go somewhere: call navigate (a page path from the site contents, plus the tab, accordion
-   or section id where the answer is).{stay}
+5. A direct request to go somewhere, however it is worded or misspelt ("navigate me to my requests", "nvigate me
+   back"): call navigate in this same turn (a page path from the site contents, plus the tab, accordion or
+   section id where the answer is). Never ask "would you like me to open it?" about a page the person just told
+   you to open, and never ask which page when they named one.
+   "Back", "go back", "the previous page", in any language: the page that was open before this one. The live
+   facts name it ("The page before this one"): navigate there at once, without asking where. Only when no page
+   was open before this one, say so in one line.{stay}
 6. A direct request for something a form does (apply, book): call open_form with that form and a note of
    everything the user already said that the form needs (amounts, dates, names, choices), in their words, and
    the language the user writes in. Do not ask for the rest yourself: the form takes over on that page, in this
@@ -250,8 +256,12 @@ TOOLS: list[dict[str, Any]] = [
          "tab": {"type": "string", "description": "a tab or accordion id on that page"},
          "section": {"type": "string", "description": "a section id on that page"},
          "parts": {"type": "array", "items": {"type": "string"},
-                   "description": "ids of several accordions or sections of that page to open together"}},
-         "required": ["path"]}},
+                   "description": "ids of several accordions or sections of that page to open together"},
+         "asked": {"type": "string", "enum": ["ordered", "back", "yes", "question"],
+                   "description": "your reading of the person's last message: `ordered` they told you to open or "
+                                  "show this place; `back` they asked to go back; `yes` they agreed to your offer "
+                                  "to open it; `question` they asked about something and did not ask to go"}},
+         "required": ["path", "asked"]}},
     {"name": "read_page", "description": "Read what a page, or one tab, accordion or section of it, says, without "
                                   "opening it: the person stays where they are. Use it to answer a question "
                                   "from a section the site contents list.",
@@ -390,6 +400,11 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
     # a page opens and a form starts only on a direct request, or a yes to the last answer's offer (the person's own
     # words decide, `asked`; never the model)
     may_go = wants_to_go(asked if asked is not None else question, offered)
+    # a move to a page is the agent's own decision, from the conversation and the trail of pages; only its own
+    # reading "a question" keeps the person where they are. INTENT_GATE=words: the word list decides, as before
+    # (the owner, 2026-11-19: "nvigate me back" and "navigate me back" were refused or met with "which page?")
+    by_words = os.environ.get("INTENT_GATE") == "words"
+    moves = lambda a: may_go if by_words else str((a or {}).get("asked") or "") != "question"   # noqa: E731
     offer: dict[str, Any] | None = None
     host_tools = {t.name: t for t in tools or []}
     schemas = [t for t in TOOLS if ask_docs or t["name"] != "ask_documents"]
@@ -480,12 +495,12 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                         result = "Too many options to pick from: name the page as well (\"Loans: Rate discounts\") and call again."
                     else:
                         result = "The quick pick is not available now. Use navigate with a path from the site contents instead."
-                elif name == "navigate" and args.get("parts") and may_go:
+                elif name == "navigate" and args.get("parts") and moves(args):
                     result, several = directives_for(site, args)
                     directives.extend(several)
                 elif name == "navigate":
                     result, d = directive(site, args)
-                    if d and not may_go:   # a question: the answer first, the page as an offer
+                    if d and not moves(args):   # a question: the answer first, the page as an offer
                         target = site.page(d["path"])
                         offer = {"tool": "navigate", "args": args, "title": target.title if target else d["path"]}
                         result = NOT_ASKED.format(title=offer["title"]) + reads(target, args)

@@ -598,7 +598,7 @@ def test_the_site_assistant_remembers_the_conversation_and_where_the_person_has_
     system, messages = system_and_messages()
     assert "my dog is called Barsik" in messages and "Answer 0." in messages      # the first exchange is still shown
     assert "Pages the person opened in this conversation, oldest first" in system
-    assert "Home, Loans, Car insurance" in system and "The page before this one: Loans." in system
+    assert "Home, Loans, Car insurance" in system and "The page before this one: Loans (/loans)." in system
     # a long conversation: the newest turns that fit, and the first message told in one line
     long = Dushes(guide, SiteMap.load(SITE))
     for n in range(14):
@@ -627,7 +627,7 @@ def test_the_trail_and_the_memory_outlive_the_process_and_stay_out_of_the_conver
     again = Dushes(guide, SiteMap.load(SITE))
     model.script = [say("You were on Loans.")]
     run(again, "keep-1", message="where was I before?", state={"page": {"path": "/insurance"}})
-    assert "Home, Loans, Car insurance" in text(model.calls[-1][0]) and "The page before this one: Loans." in text(model.calls[-1][0])
+    assert "Home, Loans, Car insurance" in text(model.calls[-1][0]) and "The page before this one: Loans (/loans)." in text(model.calls[-1][0])
     # a long conversation: after the reply that pushes enough turns out of view, the cheap model writes the memory
     long = Dushes(guide, SiteMap.load(SITE))
     calls_in_front, reports, ends = [], [], []

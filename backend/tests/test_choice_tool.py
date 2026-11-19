@@ -147,7 +147,7 @@ def test_taking_up_an_offer_is_done_in_code(guide, model, monkeypatch):
     for line in ("yes, but what does it cost?", "open the other one with the prices", "no", ""):
         assert not intent.takes_up(line) or line == "no", line
     site = tool_site(guide, Mock())
-    model.script = [say("", ("n1", "navigate", {"path": "/contacts"})),
+    model.script = [say("", ("n1", "navigate", {"path": "/contacts", "asked": "question"})),
                     say("The office is open 9:00 to 13:00 on Saturday. Want me to open Contacts?")]
     ev = run(site, "tu-1", message="when is the bank open on Saturday?", state=HOME)
     assert directives(ev) == []                                              # a question: offered, not opened
