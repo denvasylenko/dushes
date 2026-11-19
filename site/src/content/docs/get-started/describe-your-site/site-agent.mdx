@@ -95,7 +95,7 @@ A dedicated key for the human contact is [coming next](#coming-next).
 
 ## How much of the conversation it remembers
 
-**What it affects.** `history` on `Dushes(...)` is how many of the conversation's latest entries the site agent may see; a message, an answer and a card's result each count as one. The default is 40, and of those the newest that fit about 24,000 characters are shown (never fewer than six). Once eight more entries have fallen out of view, the router's model (the memory model by default) folds them into a memory of the conversation, written after the reply is sent, and the agent gets it in their place; the person's first message is always named. The UI agent has its own memory: [Long conversations](../../../agents/how-it-works/memory/).
+**What it affects.** `history` on `Dushes(...)` is how many of the conversation's latest entries the site agent may see; a message, an answer and a card's result each count as one. The default is 40, and of those the newest that fit about 24,000 characters are shown (never fewer than six). Once eight more entries have fallen out of view, the router's model (the memory model by default) folds them into a memory of the conversation, written after the reply is sent, and the agent gets it in their place; the person's first message is always named. Writing that memory is one more call of the cheap model, and it is not yet counted in `run_stats`. The UI agent has its own memory: [Long conversations](../../../agents/how-it-works/memory/).
 
 **How to write it.** Nothing, for most sites. A host that wants less in each prompt lowers it:
 

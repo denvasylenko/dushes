@@ -127,7 +127,7 @@ app.include_router(create_dushes_router(site, host=lambda request: {"site": curr
 | `context(ctx)` | live facts in the prompt on every turn; the model trusts them over the site map's passages |
 | `instructions` | your brief, added to the site map's `instructions:` |
 | `style` | replaces the default "one to three short sentences" |
-| `history` | how many of the conversation's latest entries Dushes may see (default 40); of those, the newest that fit about 24,000 characters (never fewer than six). Older entries are folded into a memory of the conversation by the router's model, and the person's first message is always named |
+| `history` | how many of the conversation's latest entries Dushes may see (default 40); of those, the newest that fit about 24,000 characters (never fewer than six). Older entries are folded into a memory of the conversation by the router's model, and the person's first message is always named. Writing that memory is one cheap-model call, not yet counted in `run_stats` |
 | `tools` | your `SiteTool`s next to its own; a tool that raises tells the model, the turn goes on (the client gets a `TOOL_CALL_RESULT` with the error, never a `RUN_ERROR`) |
 | `suggestions` | a `suggest_next` tool: its options arrive as CUSTOM `suggestions {items}`, the chat's quick replies |
 | `form_for(form_id, ctx)` | the form's state on the server: after `open_form` the UI agent answers in the same run, and the directive says `handoff: "done"` so the page does not run again |
