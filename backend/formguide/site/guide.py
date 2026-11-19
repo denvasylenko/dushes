@@ -134,6 +134,13 @@ def names_a_field(text: str, form: dict[str, Any]) -> bool:
     return False
 
 
+def _side(thread_id: str) -> str:
+    """Where a conversation's trail of pages and its memory of older turns are kept: a record of their own beside
+    the conversation, so the conversation itself holds only what was said and shown (code that looks at "the last
+    line" of it must never meet a page visit there)."""
+    return f"{thread_id[:92]}-side"
+
+
 # What the site assistant is shown of the conversation so far: up to this many of its latest entries (a message, an
 # answer, a card's result), and of those as many of the newest as fit HISTORY_CHARS (about 6,000 tokens). It was 6
 # entries, three exchanges, and "what was my first message?" was answered by a guess (the owner's other host,
@@ -141,6 +148,13 @@ def names_a_field(text: str, form: dict[str, Any]) -> bool:
 HISTORY = 40
 HISTORY_CHARS = 24000
 TRAIL = 12   # how many pages of a conversation's trail are remembered
+# Older turns than the ones shown are kept as a summary, written by the cheap model after a reply (never in front
+# of one), once this many more entries have fallen out of what is shown
+REMEMBER_EVERY = 8
+SITE_MEMORY = ("You keep the memory of a conversation between a visitor and the assistant of the site \"{title}\". "
+               "Update the memory with the new turns: what the person is after, the facts and preferences they stated "
+               "(in their own words), what was opened, offered, refused or left open, and their first message. Plain "
+               "lines, at most 200 words. Add nothing that was not said and no advice.")
 HANDED = "[Handed over by Dushes]"
 
 
@@ -578,6 +592,11 @@ class Dushes:
                 stats_log.info(json.dumps(summary, ensure_ascii=False))
                 yield {"type": "CUSTOM", "name": "run_stats", "value": summary}
             yield ev
+        if message:   # the run's last event is out: now, and only now, older turns may be folded into the memory
+            try:
+                await self._remember(thread_id)
+            except Exception:  # noqa: BLE001 - no summary this time
+                log.info("site memory skipped", exc_info=True)
 
     async def _run(self, thread_id: str, stats: RunStats, *, message: str | None, state: dict[str, Any] | None,
                    resume: dict[str, Any] | None, run_id: str, handoff: bool, host: Any,
@@ -1416,18 +1435,64 @@ class Dushes:
                 yield {"type": "CUSTOM", "name": "site_directive", "value": more}
         yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
 
+    def _window(self, whole: list[tuple[str, str]]) -> int:
+        """How many of the conversation's latest entries the site assistant is shown: up to `history`, and of those
+        the newest that fit HISTORY_CHARS; never fewer than six."""
+        room, kept = HISTORY_CHARS, 0
+        for _role, text in reversed(whole[-self.history:] if self.history > 0 else []):
+            room -= len(text or "")
+            if room < 0 and kept >= 6:
+                break
+            kept += 1
+        return kept
+
     def _visit(self, thread_id: str, path: str) -> list[str]:
         """The pages of the site this conversation has been on, oldest first, with `path` added when it is a page of
         the site and not the one already last. Kept by the server for every run, so "back" and "where was I
-        before" have an answer on any host; in memory, so a restart forgets it."""
+        before" have an answer on any host; written into the conversation's own record as it grows, so it is
+        there again after a restart or on another instance."""
         trails = self.__dict__.setdefault("_visits", {})
         while len(trails) >= 5000 and thread_id not in trails:
             trails.pop(next(iter(trails)))
-        visits = trails.setdefault(thread_id, [])
+        tx = self.forms.transcripts
+        if thread_id not in trails:   # a conversation this process has not seen: its trail as it was recorded
+            trails[thread_id] = [str(e.get("path")) for e in tx.list(_side(thread_id))
+                                 if e["kind"] == "visit" and self.site.page(str(e.get("path") or "")) is not None][-TRAIL:]
+        visits = trails[thread_id]
         if path and self.site.page(path) is not None and (not visits or visits[-1] != path):
             visits.append(path)
             del visits[:-TRAIL]
+            tx.append(_side(thread_id), new_entry("visit", path=path))   # beside the conversation, never a line of it
         return visits
+
+    async def _remember(self, thread_id: str) -> None:
+        """After a reply: when enough turns have fallen out of what the site assistant is shown, the cheap model
+        folds them into the conversation's memory. Never in front of a reply; a failure only means no summary."""
+        import asyncio
+
+        from langchain_core.messages import HumanMessage, SystemMessage
+        if self.history <= 0:
+            return
+        tx = self.forms.transcripts
+        entries = tx.list(thread_id)
+        whole = [("user" if e["kind"] == "card_result" else e["kind"], e.get("text", "")) for e in entries
+                 if e["kind"] in ("user", "assistant", "card_result")]
+        cut = len(whole) - self._window(whole)
+        last = next((e for e in reversed(tx.list(_side(thread_id))) if e["kind"] == "site_memory"), None)
+        covered = int((last or {}).get("upto") or 0)
+        if cut - covered < REMEMBER_EVERY:
+            return
+        turns = "\n".join(f"{'person' if role == 'user' else 'assistant'}: {(text or '')[:1500]}" for role, text in whole[covered:cut])
+        ask = (f"<previous_memory>\n{(last or {}).get('text') or '(none)'}\n</previous_memory>\n"
+               f"<turns_to_add>\n{turns[:30000]}\n</turns_to_add>\nWrite the updated memory.")
+        t_call = RunStats.now()
+        out = await asyncio.wait_for(self.router_model.ainvoke(
+            [SystemMessage(SITE_MEMORY.format(title=self.site.title)), HumanMessage(ask)]), timeout=12)
+        text = out.content if isinstance(out.content, str) else " ".join(
+            b.get("text", "") for b in out.content if isinstance(b, dict))
+        if text.strip():
+            tx.append(_side(thread_id), new_entry("site_memory", text=text.strip()[:2400], upto=cut))
+            log.info("site memory: %d turns folded in %.1f s", cut - covered, RunStats.now() - t_call)
 
     async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
                          host: Any, form_kwargs: dict[str, Any], recorded: bool = False,
@@ -1439,19 +1504,16 @@ class Dushes:
         tx = self.forms.transcripts
         whole = [("user" if e["kind"] == "card_result" else e["kind"], e.get("text", "")) for e in tx.list(thread_id)
                  if e["kind"] in ("user", "assistant", "card_result")]
-        history = whole[-self.history:] if self.history > 0 else []
-        room, kept = HISTORY_CHARS, 0
-        for role, text in reversed(history):             # the newest that fit; never fewer than the last six
-            room -= len(text or "")
-            if room < 0 and kept >= 6:
-                break
-            kept += 1
-        history = history[len(history) - kept:]
+        history = whole[len(whole) - self._window(whole):] if self.history > 0 else []
         first = next((text for role, text in whole if role == "user" and (text or "").strip()), "")
         cut_note = ""
-        if self.history > 0 and len(history) < len(whole) and first and ("user", first) not in history:
-            cut_note = ("Earlier turns of this conversation are not shown here. The person's first message in it was: "
-                        f"\"{first[:300]}\"")
+        if self.history > 0 and len(history) < len(whole):
+            kept_memory = next((e for e in reversed(tx.list(_side(thread_id))) if e["kind"] == "site_memory"), None)
+            cut_note = "Earlier turns of this conversation are not shown here."
+            if kept_memory and kept_memory.get("text"):
+                cut_note += f" What was said in them, in short:\n{kept_memory['text']}"
+            if first and ("user", first) not in history:
+                cut_note += f"\nThe person's first message in this conversation was: \"{first[:300]}\"" 
         if done and len(history) >= 2 and history[-1][0] == "assistant" and history[-2][0] == "user":
             history = history[:-2]   # the message and the layer's line: the message goes last, the line is in `done`
         if recorded and history and history[-1][0] == "user":
