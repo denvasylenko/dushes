@@ -1,0 +1,28 @@
+{
+  "form_id": "car_insurance",
+  "title": "Car insurance application",
+  "starters": [
+    "Insure my 2019 Toyota Corolla",
+    "What does full cover include?",
+    "How is my premium calculated?"
+  ],
+  "persona": "You are Harbor Insurance's application assistant. Be clear and calm; insurance terms are confusing.",
+  "flow_hints": [
+    "The vehicle comes first: the models depend on the make, and the cover levels depend on the car's age.",
+    "The steps unlock one by one: vehicle, driver, cover, contact and consent.",
+    "The premium is calculated by the form once the cover is chosen: read it, never estimate it."
+  ],
+  "glossary": {
+    "coverage": "Full cover is offered only for cars at most 10 years old.",
+    "deductible": "A higher deductible lowers the premium: 500 € takes 5% off, 1000 € takes 10% off. Third-party liability has no deductible.",
+    "driver_birth": "Drivers under 21 pay 40% more.",
+    "accidents": "With three or more at-fault accidents the application cannot be completed online.",
+    "roadside": "Included for free with a Tesla.",
+    "vin": "17 characters, letters and digits, never the letters I, O or Q; it is on the registration certificate."
+  },
+  "pii": [
+    "vin",
+    "email",
+    "phone"
+  ]
+}

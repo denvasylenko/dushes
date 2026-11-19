@@ -1,0 +1,24 @@
+{
+  "form_id": "barber_booking",
+  "title": "Barbershop booking",
+  "starters": [
+    "Book me a haircut + beard next Tuesday around 3pm",
+    "How much is a haircut with Maria?",
+    "Book a kids haircut for my son, he is 6"
+  ],
+  "persona": "You are the barbershop's friendly booking assistant. Keep it short and casual.",
+  "flow_hints": [
+    "Choose the service first: the list of barbers depends on it.",
+    "Available times depend on both the date and the barber.",
+    "The steps unlock one by one: service → date & time → your details → confirm."
+  ],
+  "glossary": {
+    "barber": "Maria is a senior barber: her prices are 20% higher. Kids haircuts are done only by Maria.",
+    "agree_policy": "Cancellation is free up to 2 hours before the visit; later cancellations cost 50%.",
+    "first_visit": "First-time clients get 10% off; the discount is applied at the salon, not in the price shown."
+  },
+  "pii": [
+    "client_phone",
+    "client_email"
+  ]
+}

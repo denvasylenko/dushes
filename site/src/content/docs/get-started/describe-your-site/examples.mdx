@@ -1,0 +1,85 @@
+---
+title: Configuration examples
+description: "The prompts you write yourself, as configuration: the demo's complete site map (Main Street) and the domain packs of a loan application, a barbershop booking and a car insurance form, ready to copy and adapt."
+---
+import { Aside, Code, LinkCard, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+import PagePrompt from '../../../../components/PagePrompt.astro';
+import siteMap from '../../../../../public/examples/config/site.yaml?raw';
+import loanPack from '../../../../../public/examples/config/loan_application.json?raw';
+import barberPack from '../../../../../public/examples/config/barber_booking.json?raw';
+import insurancePack from '../../../../../public/examples/config/car_insurance.json?raw';
+
+The agents' own prompts live inside the package and you do not edit them. What you write is **configuration**: the site map, with its instructions, page descriptions and keywords, and one domain pack per form, with its persona, flow hints, glossary, rules, `pii` and consents. These are the words that make an assistant sound like your business and know your terms. Below are the demo's complete files, the ones the [live demo](../../live-demo/) runs on: open them, copy them, and write your own the same way.
+
+<Aside type="tip" title="How to use them">
+Each file is the real one from the repository's demo (`backend/demo/`). Start from the one closest to your business, keep its structure, and replace every text with your own. Each part is explained on [Site agent](../site-agent/), [UI agent](../ui-agent/) and [Develop a domain](../domain/).
+</Aside>
+
+<PagePrompt what="my site map and a domain pack for each of my forms, modelled on these examples" asks={[
+  "Which example is closest to my business, and which of my forms does each pack cover?",
+  "What tone should the assistant have, and what should it recommend or never say?",
+  "Which languages do my visitors write in?",
+  "Which fields hold personal data, and which checkboxes are consents?",
+]} />
+
+## The site map: Main Street
+
+A portal of three businesses on one site. What to look at:
+
+- **`instructions`** at the top: the brief for the site agent, here one rule about not mixing the businesses and one about where to send loan comparisons.
+- **`description`** of each page: one line on what it is.
+- **`keywords`**: the words that send a message to that page from anywhere on the site.
+- **`text`** of every tab, accordion and section: the facts people ask about (rates, prices, hours), in the page's own words. The site agent answers only from these.
+- **`form`** on the pages that hold a form.
+
+<Code code={siteMap} lang="yaml" title="site.yaml" />
+
+[Download it](../../../examples/config/site.yaml).
+
+## Domain packs
+
+One JSON per form. What to look at in each:
+
+- **`persona`**: who the assistant is and how it speaks, in one or two sentences.
+- **`flow_hints`**: which choice unlocks which part of the form.
+- **`glossary`**: the business's facts about a field ("Full cover is offered only for cars at most 10 years old"): what the agent tells a person when they ask about it.
+- **`pii`**: the fields the model sees only as `<filled>`.
+- **`starters`**: the first suggestions in an empty chat.
+
+<Tabs>
+  <TabItem label="Loan application">
+    <Code code={loanPack} lang="json" title="domain_packs/loan_application.json" />
+    [Download it](../../../examples/config/loan_application.json).
+  </TabItem>
+  <TabItem label="Barbershop booking">
+    <Code code={barberPack} lang="json" title="domain_packs/barber_booking.json" />
+    [Download it](../../../examples/config/barber_booking.json).
+  </TabItem>
+  <TabItem label="Car insurance">
+    <Code code={insurancePack} lang="json" title="domain_packs/car_insurance.json" />
+    [Download it](../../../examples/config/car_insurance.json).
+  </TabItem>
+</Tabs>
+
+## What the demo packs leave out
+
+The demo forms are small, so their packs use only some keys. Your own forms will often need two more:
+
+```json title="domain_packs/your_form.json (the additions)"
+{
+  "rules": ["After sending, we reply by email within one working day; the request can be changed or cancelled until then."],
+  "consents": {"agree_terms": {"required": true, "doc": {"title": "Terms", "text": "The terms you accept by ticking."}}}
+}
+```
+
+- **`rules`**: the business's rules the form's props do not show, including what happens after sending.
+- **`consents`**: every agreement box, applied only by the person's own tick.
+
+Every key of a pack: [Domain packs](../../../agents/ui-agent/domain-packs/). Every key of the site map: [Site agent, every option](../../../agents/site-agent/#every-option).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Develop a domain" description="Write a pack for a new business from scratch." href="../domain/" />
+  <LinkCard title="Describe your site" description="What each agent reads, and the checks before launch." href="../" />
+</CardGrid>

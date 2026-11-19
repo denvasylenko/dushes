@@ -8,7 +8,7 @@ import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
 Nothing here is committed. The texts are a proposal for the switch the Tech Lead puts them behind, and QA's run before and after decides.
 </Aside>
 
-The R&D team, 19 November 2026. The prompts were rewritten in full, not extended with lists. The full new texts are on the sub-pages ([UI agent: the new text](../prompts-ui-agent/) and [Site agent, researcher, Jev, router: the new texts](../prompts-site-researcher-jev/)) and in the R&D team's sandbox. Nothing is committed. Next, the Tech Lead puts the new texts behind a switch, QA runs the whole set before and after, and what is no worse goes into work.
+The R&D team, 19 November 2026. The prompts were rewritten in full, not extended with lists. The full new texts are in the R&D team's sandbox; the package's prompts are not reprinted in these docs. Nothing is committed. Next, the Tech Lead puts the new texts behind a switch, QA runs the whole set before and after, and what is no worse goes into work.
 
 ## Size and the check
 
@@ -48,14 +48,14 @@ The target "no more than +15%" is kept: the new knowledge is paid for by removed
 | 13 | Each turn, item 4 | A long duplicate of the Replies section | A reference to Replies | Removing a duplicate |
 | 14 | "When the choice is left to you", "One answer, one field" | — | The same meaning, shorter; every example kept | Clean-up |
 | 15 | Showing where | — | Asked for one concrete step: show one place and one step, not an overview | The hierarchy: going down · rule 5 |
-| 16 | Showing where | "being on the right page already is no reason…", "A list in the chat alone does not answer…" | removed as repeats of neighbouring lines | **Clean-up: QA to check separately** |
+| 16 | Showing where | two lines that repeated their neighbours | removed as repeats | **Clean-up: QA to check separately** |
 | 17 | Filling | "The person took a value back" | + a correction: the corrected value on a card the person can still edit; no long apologies | The R&D study; assistance games · rule 12 |
 | 18 | Sending | "Do not say that everything is done" | + say what of the request is not done, and why | Checking the goal after the action · A-1 (the request register) |
 | 19 | Sending | — | The next step depends on the future: "when X, do Y here" | Gollwitzer · rule 15 |
-| 20 | Off the path | "Answer what was asked. Do not describe this form…" | moved to Replies, one place | Removing a duplicate |
+| 20 | Off the path | the rule to answer only what was asked | moved to Replies, one place | Removing a duplicate |
 | 21 | Replies | Separate items "answer at the end", "if the form computes" | One item: answer the question with the concrete value in the last text of the turn | Grice, quantity and relevance · rule 9 |
 | 22 | Replies | — | The polite form of address by default (Lei, vous, Sie, usted, and "vy" in Russian and Ukrainian) unless the business said otherwise | The R&D study; politeness by language · R2-7 |
-| 23 | Replies | "one short sentence answers the message" | "one short sentence says what you understood, and answers" | Showing what was understood (Clark) · rule 8 |
+| 23 | Replies | the opening sentence answers the message | the opening sentence also says what was understood | Showing what was understood (Clark) · rule 8 |
 
 No code writes the CONFLICT and RESUMED lines yet: the Tech Lead will add them (rules 12, 13). Until then the rules about them simply stay silent and break nothing.
 
@@ -77,7 +77,7 @@ No code writes the CONFLICT and RESUMED lines yet: the Tech Lead will add them (
 
 ## Jev's questions and the router
 
-The "before → after" table for each question and the router's wording are on the sub-page [Site agent, researcher, Jev, router](../prompts-site-researcher-jev/). The main points:
+The main points of the change to each question and to the router:
 
 - is_command and the options of kind are rewritten by function, not form (rule 6);
 - the option other gained "still deciding" (rule 1);
@@ -90,6 +90,6 @@ The "before → after" table for each question and the router's wording are on t
 ## Next
 
 <CardGrid>
-  <LinkCard title="UI agent: the new text" description="The full rewritten CORE of the UI agent." href="../prompts-ui-agent/" />
-  <LinkCard title="Site agent, researcher, Jev, router" description="The other new texts." href="../prompts-site-researcher-jev/" />
+  <LinkCard title="How to understand a person" description="The shared core the rewrite led to." href="../../how-it-works/understanding/" />
+  <LinkCard title="Configuration examples" description="The prompts you write yourself, as configuration." href="../../../get-started/describe-your-site/examples/" />
 </CardGrid>

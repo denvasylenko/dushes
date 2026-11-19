@@ -15,7 +15,7 @@ In the package, off by default; a host switches it on ([how](../../site-agent/de
 
 The agent's large model is slow at one thing that people do all the time: "open personal details", "Gender: Male", "go to car insurance". These need no thinking, only a pick from what the screen already shows. The decision model is a small, fast model that makes that pick, and the server carries it out. In the demo the decision model is Jev, a small classification model by TypeSafe AI.
 
-Everything that needs thinking still goes to the agent: a question, an explanation, a text to write.
+Everything that needs thinking still goes to the agent: questions, explanations, texts to write.
 
 ## What happens to a line
 
@@ -102,11 +102,11 @@ From the demo, on the loan application page, the line "open personal details". T
     "form": "FORM \"Loan application\" · required filled 0/33\n1.1 [Tab tab_applicant] \"Applicant\" [FOCUS]\n  1.1.1 [Accordion acc_personal] \"Personal details\"\n  1.1.2 [Accordion acc_passport] \"Passport\"\n  …"
   },
   "questions": {
-    "is_command": {"type": "noul", "instructions": "Is this a command to do something?"},
-    "kind": {"type": "choice", "instructions": "What kind of line is it?",
-             "criteria": {"go_to": "an order to go to a section or open an item", "show": "…", "set_value": "…", "question": "where, how, why, what, can I", "other": "…", "none": "…"}},
-    "asks_more": {"type": "noul", "instructions": "Beside an order to open, show or set something, does the line ask anything else: a question, an explanation, a text to write, an opinion?"},
-    "target": {"type": "choice", "instructions": "Which object of the site does the line ask to open or show? …",
+    "is_command": {"type": "noul", "instructions": "…"},
+    "kind": {"type": "choice", "instructions": "…",
+             "criteria": {"go_to": "…", "show": "…", "set_value": "…", "question": "…", "other": "…", "none": "…"}},
+    "asks_more": {"type": "noul", "instructions": "…"},
+    "target": {"type": "choice", "instructions": "…",
                "criteria": {"screen:/": "Home", "screen:/loans": "Loans", "form:/apply:acc_personal": "…", "…": "…"}}
   }
 }

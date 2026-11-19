@@ -86,7 +86,7 @@ const SERVERS = [['standalone', 'Its own server'], ['fastapi', 'Inside my FastAP
 
   function prompt(c: Choice): string {
     const p = PROVIDER[c.provider], cl = CLIENT[c.client], sv = SERVER[c.server]
-    const pages = [...new Set(['get-started/quickstart', 'get-started/describe-your-site', 'get-started/describe-your-site/site-agent', 'get-started/describe-your-site/ui-agent', 'get-started/describe-your-site/researcher', 'agents/shared/install', 'agents/shared/configuration', 'agents/shared/models', ...sv.pages, ...cl.pages])]
+    const pages = [...new Set(['get-started/quickstart', 'get-started/describe-your-site', 'get-started/describe-your-site/site-agent', 'get-started/describe-your-site/ui-agent', 'get-started/describe-your-site/researcher', 'get-started/describe-your-site/examples', 'agents/shared/install', 'agents/shared/configuration', 'agents/shared/models', ...sv.pages, ...cl.pages])]
     const agentUrl = c.client === 'site'
       ? (c.server === 'fastapi' ? '/site/run (my app serves it; forms keep /agent/run)' : 'http://localhost:8000/site/run (the site agent; forms keep /agent/run)')
       : (c.server === 'fastapi' ? '/agent/run (my app serves it)' : 'http://localhost:8000/agent/run')
