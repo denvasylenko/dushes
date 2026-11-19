@@ -120,7 +120,8 @@ Nothing in this list works with the package you install today.
 - **The site's whole vocabulary counts:** a page's keywords in any language, every page and part title of the site and every label of the form on the screen are never masked as a name before the decision model (built, not released).
 - **A dedicated key for the human contact** (planned).
 - **A longer memory by default:** `history` of 40, with the newest entries that fit about 24,000 characters shown (never fewer than six), and the person's first message named when older turns are cut (built, not released).
-- **The page trail for every host:** the server keeps the pages a conversation has been on (up to 12, in memory) and tells the site agent the trail and the previous page each turn, with nothing more for the host to send than the current page (built, not released). Today the trail exists only where the decision model runs, and only it sees it.
+- **The page trail for every host:** the server keeps the pages a conversation has been on (up to 12, in a record beside the conversation in the transcripts store, so it survives a restart and works across instances) and tells the site agent the trail and the previous page each turn, with nothing more for the host to send than the current page (built, not released).
+- **A memory of older turns for the site agent:** once eight more entries have fallen out of what it is shown, the cheap model (the router's, the memory model by default) folds them into a memory of the conversation, written after the reply is sent, and the agent is told it in their place (built, not released). Today the trail exists only where the decision model runs, and only it sees it.
 
 ## Next
 
