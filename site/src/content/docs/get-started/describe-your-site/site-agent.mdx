@@ -9,6 +9,14 @@ Dushes, the site agent, answers from the site map and may go only where it says.
 
 <PagePrompt what="the site map (site.yaml) and the site agent's instructions" asks={["Which pages should the assistant know, and which of them hold a form?", "Which languages do your visitors write in, and what words do they use for each page?", "Which facts do people ask about (prices, hours, conditions), and where are they?", "Who should a person contact when the assistant cannot help?"]} />
 
+<Aside type="note" title="What you get by default">
+- **Conversation state is in memory** unless `checkpointer` is set in `formguide.yaml` (a restart forgets it).
+- **Quick replies are off** unless `suggestions: {enabled: true}` in `formguide.yaml` and `Dushes(..., suggestions=True)`.
+- **Without `form_for`**, a form's first turn after a hand-off waits for its page to load.
+- **One model serves every role** unless `models` names others.
+- **Dushes sees the last 6 entries of the conversation** (`history`, below).
+</Aside>
+
 ## Pages, parts and which page holds which form
 
 **What breaks without it.** A page that is not in the map does not exist: Dushes cannot open it, name it or answer from it. A tab, accordion or section that is not listed cannot be opened. A page with a form that does not say `form` cannot hand a request to apply to the UI agent.
@@ -83,6 +91,16 @@ instructions: |
 
 A dedicated key for the human contact is [coming next](#coming-next).
 
+## How much of the conversation it remembers
+
+**What breaks without it.** `history` on `Dushes(...)` is how many of the conversation's latest entries the site agent is shown; a message, an answer and a card's result each count as one. The default is 6, about three exchanges, so in a longer conversation "what was my first message?" is answered by a guess. There is no summary of older turns for the site agent yet (the UI agent has one: [memory](../../../agents/how-it-works/memory/)).
+
+**How to write it.**
+
+```python title="app.py"
+site = Dushes(guide, SiteMap.load("site.yaml"), history=40)
+```
+
 ## Checklist
 
 - [ ] Every page a person may ask about is in the map, with its tabs, accordions and sections.
@@ -91,6 +109,7 @@ A dedicated key for the human contact is [coming next](#coming-next).
 - [ ] Every page has a one-line `description`.
 - [ ] The facts people ask about are in the `text` of a part, or come from `context`.
 - [ ] A human contact is on a page, and `instructions` say when to give it.
+- [ ] `history=40` on `Dushes(...)` for conversations longer than a few exchanges; `checkpointer` set if a conversation must survive a restart.
 
 ## Coming next
 
@@ -100,6 +119,8 @@ Nothing in this list works with the package you install today.
 
 - **The site's whole vocabulary counts:** a page's keywords in any language, every page and part title of the site and every label of the form on the screen are never masked as a name before the decision model (built, not released).
 - **A dedicated key for the human contact** (planned).
+- **A longer memory by default:** `history` of 40, with the newest entries that fit about 24,000 characters shown (never fewer than six), and the person's first message named when older turns are cut (built, not released).
+- **The page trail for every host:** the server keeps the pages a conversation has been on (up to 12, in memory) and tells the site agent the trail and the previous page each turn, with nothing more for the host to send than the current page (built, not released). Today the trail exists only where the decision model runs, and only it sees it.
 
 ## Next
 
