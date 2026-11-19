@@ -143,3 +143,65 @@ def test_a_button_fills_form_fields_in_one_tap(tmp_path):
 def test_a_closed_card_says_so():
     spec = parse_cards([BARBER])[0]
     assert "without answering" in answer_text(spec, {"accepted": False})
+
+
+def test_a_hosts_own_block_passes_with_its_props_as_data():
+    """The owner (2026-11-19): his own component as a block in any card. A card spec may hold a block type that is
+    not built in when it is named with a hyphen; its keys reach the widget as they are, placeholders filled. A
+    name without a hyphen that is no built-in is still a mistake."""
+    spec = parse_cards([{
+        "type": "pick_city", "description": "Ask which city.", "data": {"country": "string", "cities": "object[]"},
+        "blocks": [{"type": "title", "text": "Which city in {country}?"},
+                   {"type": "city-search", "name": "city", "placeholder": "Type a city", "options": "{cities}", "limit": 8},
+                   {"type": "buttons", "items": [{"id": "ok", "label": "Use it", "style": "primary"}]}]}])[0]
+    card = build(spec, {"country": "Portugal", "cities": [{"id": "lis", "label": "Lisbon"}]})
+    assert card["blocks"][1] == {"type": "city-search", "name": "city", "placeholder": "Type a city",
+                                 "options": [{"id": "lis", "label": "Lisbon"}], "limit": 8}
+    for wrong in ("feild", "City-Search", "-search", "search-", "a" * 30 + "-" + "b" * 30):
+        with pytest.raises(ValueError, match="unknown block"):
+            parse_cards([{**BARBER, "blocks": [{"type": wrong}]}])
+
+
+def test_a_search_block_in_a_card_spec():
+    """The owner (2026-11-19): an input with search, options appearing as the person types, is a built-in block. The
+    spec passes its options (from the model's data) or the name of a list the page serves."""
+    spec = parse_cards([{
+        "type": "pick_supplier", "description": "Ask which supplier.", "data": {"suppliers": "object[]"},
+        "blocks": [{"type": "search", "name": "supplier", "label": "Supplier", "placeholder": "Type a name",
+                    "options": "{suppliers}", "required": True},
+                   {"type": "search", "name": "city", "source": "cities"},
+                   {"type": "buttons", "items": [{"id": "ok", "label": "Choose", "style": "primary"}]}]}])[0]
+    card = build(spec, {"suppliers": [{"id": "s1", "label": "Northwind", "description": "Paper"}]})
+    assert card["blocks"][0]["options"] == [{"id": "s1", "label": "Northwind", "description": "Paper"}]
+    assert card["blocks"][1] == {"type": "search", "name": "city", "source": "cities"}
+
+
+def test_a_search_blocks_own_settings_are_numbers_within_bounds():
+    """The owner (2026-11-19): how many letters start the search and the pause before it are set on the block. The
+    server passes them as whole numbers within bounds; something that is not a number is dropped, so the widget's
+    default stands."""
+    def one(**settings):
+        spec = parse_cards([{"type": "pick_city", "description": "Ask which city.", "data": {},
+                             "blocks": [{"type": "search", "name": "city", "source": "cities", **settings}]}])[0]
+        return build(spec, {})["blocks"][0]
+    assert one(minChars=3, debounceMs=300) == {"type": "search", "name": "city", "source": "cities", "minChars": 3, "debounceMs": 300}
+    got = one(minChars=40, debounceMs=-5)
+    assert (got["minChars"], got["debounceMs"]) == (10, 0)
+    got = one(minChars="2", debounceMs=99999.0)
+    assert (got["minChars"], got["debounceMs"]) == (2, 2000)
+    got = one(minChars="three", debounceMs=True)
+    assert "minChars" not in got and "debounceMs" not in got
+
+
+def test_a_search_block_with_several_picks():
+    """The owner (2026-11-19): "we need to have multi search as well". `multiple` is true or false, `max` a whole
+    number from 1 to 50 that means something only with it."""
+    def one(**settings):
+        spec = parse_cards([{"type": "pick_cities", "description": "Ask which cities.", "data": {},
+                             "blocks": [{"type": "search", "name": "cities", "source": "cities", **settings}]}])[0]
+        return build(spec, {})["blocks"][0]
+    assert one(multiple=True, max=3) == {"type": "search", "name": "cities", "source": "cities", "multiple": True, "max": 3}
+    assert one(multiple=True, max=900)["max"] == 50 and one(multiple=True, max=0)["max"] == 1
+    assert one(multiple=False, max=3) == {"type": "search", "name": "cities", "source": "cities"}
+    assert one(multiple="yes", max=3) == {"type": "search", "name": "cities", "source": "cities"}
+    assert one(max=3) == {"type": "search", "name": "cities", "source": "cities"}

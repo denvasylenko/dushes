@@ -28,10 +28,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 BLOCKS = frozenset({"title", "text", "note", "row", "image", "place", "stat", "diff", "steps", "progress",
-                    "swatches", "choice", "field", "buttons", "links", "divider", "hours", "preview", "chart"})
+                    "swatches", "choice", "field", "search", "buttons", "links", "divider", "hours", "preview", "chart"})
 TYPES = {"string": "string", "number": "number", "integer": "integer", "boolean": "boolean",
          "string[]": "array", "object[]": "array", "object": "object"}
 _PH = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
+# a host's own block, drawn by a component the page registered with the widget: a name with a hyphen, as a custom
+# element has, so a mistyped built-in ("feild") is still an error. Its other keys go to the component as they are
+_HOST_BLOCK = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)+$")
 _NAME = re.compile(r"^[a-z][a-z0-9_]{1,40}$")
 
 
@@ -104,9 +107,11 @@ def parse_cards(raw: Any) -> list[CardSpec]:
         if not isinstance(blocks, list) or not blocks:
             raise ValueError(f"cards.{t}.blocks must be a non-empty list")
         for j, b in enumerate(blocks):
-            if not isinstance(b, dict) or b.get("type") not in BLOCKS:
-                raise ValueError(f"cards.{t}.blocks[{j}]: unknown block {b.get('type') if isinstance(b, dict) else b!r}; "
-                                 f"known: {sorted(BLOCKS)}")
+            kind = b.get("type") if isinstance(b, dict) else None
+            if kind not in BLOCKS and not (isinstance(kind, str) and len(kind) <= 40 and _HOST_BLOCK.match(kind)):
+                raise ValueError(f"cards.{t}.blocks[{j}]: unknown block {kind if isinstance(b, dict) else b!r}; "
+                                 f"known: {sorted(BLOCKS)}, or your own block registered with the widget, "
+                                 "named with a hyphen (city-search)")
         missing = _placeholders(blocks) - set(data) - {"left"}   # {left}: the steps block counts it itself
         missing |= {str(b["if"]) for b in blocks if b.get("if") and str(b["if"]) not in data}
         if missing:
@@ -162,6 +167,34 @@ def check(spec: CardSpec, args: Any) -> dict[str, Any]:
     return out
 
 
+SEARCH_LIMITS = {"minChars": (0, 10), "debounceMs": (0, 2000), "max": (1, 50)}   # a search block's own settings, and their bounds
+
+
+def _search_limits(block: dict[str, Any]) -> dict[str, Any]:
+    """A search block's `minChars` and `debounceMs` as whole numbers within their bounds; anything else is left out,
+    and the widget's default stands."""
+    if block.get("type") != "search":
+        return block
+    out = dict(block)
+    for key, (low, high) in SEARCH_LIMITS.items():
+        if key not in out:
+            continue
+        v = out.pop(key)
+        if isinstance(v, str) and v.strip().lstrip("-").isdigit():
+            v = int(v)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            out[key] = max(low, min(high, int(v)))
+    if "multiple" in out:   # several picks: true or false, nothing else; `max` means something only with it
+        if isinstance(out["multiple"], bool):
+            if not out["multiple"]:
+                out.pop("multiple")
+        else:
+            out.pop("multiple")
+    if not out.get("multiple"):
+        out.pop("max", None)
+    return out
+
+
 def build(spec: CardSpec, args: Any) -> dict[str, Any]:
     """The card payload the widget draws: {type: blocks, name, blocks}."""
     data = check(spec, args)
@@ -170,7 +203,7 @@ def build(spec: CardSpec, args: Any) -> dict[str, Any]:
         cond = b.get("if")
         if cond and _empty(data.get(str(cond))):
             continue
-        blocks.append(_fill({k: v for k, v in b.items() if k != "if"}, data))
+        blocks.append(_search_limits(_fill({k: v for k, v in b.items() if k != "if"}, data)))
     return {"type": "blocks", "name": spec.type, "blocks": blocks}
 
 

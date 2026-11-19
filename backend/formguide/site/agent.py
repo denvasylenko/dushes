@@ -126,6 +126,9 @@ def wants_a_change(message: str) -> bool:
     return bool(text) and bool(_EDIT.search(text)) and (bool(_POLITE.match(text)) or not _ASKS.search(text))
 
 
+NO_SUCH = ("Not opened: the site has no page for what the person named. Say that plainly in one sentence (\"We have no "
+           "page about that.\"), then offer the closest one, {title}, in one sentence, without opening it: it opens "
+           "when they say yes or tap the button under your answer.")
 NOT_ASKED = ("Not opened: the person asked a question and did not ask to go anywhere. Answer the question first, from "
              "the passages and from what the page says (below, when it says anything): give the fact they asked "
              "about, never \"I could not find it\" when it is there. Then offer it in one closing sentence (\"Want me to open {title}?\") and stop: it opens "
@@ -175,9 +178,11 @@ Each turn
    passage says stands even when ask_documents finds nothing about it.
 3. A general concept that is not about this business (what a co-borrower is, what an appraisal is): explain it
    briefly from general knowledge and say it is general, as this business's terms may differ.
-4. A question about something ("how do I…", "what does … cost", "can I…", "where is…") gets its answer first. Open
-   nothing for it: name the page or the form that helps and offer it in one closing sentence ("Want me to open
-   the insurance form?"). Opening a page or starting a form is for a direct request ("open…", "show me…", "take
+4. A question about something ("how do I…", "what does … cost", "can I…", "where is…", and also "how do I get
+   to…", "where do I find…") gets its answer first. Open nothing for it: name the page or the form that helps
+   and always end with the offer in one closing sentence ("Want me to open the insurance form?"). For a question
+   about where something is or how to get there, call navigate with asked: question for that page: nobody is
+   moved, and the button to open it appears under your answer. Opening a page or starting a form is for a direct request ("open…", "show me…", "take
    me…", "I want to apply", "fill in…") or a yes to your offer.
 5. A direct request to go somewhere, however it is worded or misspelt ("navigate me to my requests", "nvigate me
    back"): call navigate in this same turn (a page path from the site contents, plus the tab, accordion or
@@ -185,7 +190,10 @@ Each turn
    you to open, and never ask which page when they named one.
    "Back", "go back", "the previous page", in any language: the page that was open before this one. The live
    facts name it ("The page before this one"): navigate there at once, without asking where. Only when no page
-   was open before this one, say so in one line.{stay}
+   was open before this one, say so in one line.
+   A place the site contents do not have ("open the pension page" on a site with no such page): open nothing.
+   Say the site has no such page and offer the closest one. In navigate, `named` is the page the person named,
+   and `none` when there is no such page.{stay}
 6. A direct request for something a form does (apply, book): call open_form with that form and a note of
    everything the user already said that the form needs (amounts, dates, names, choices), in their words, and
    the language the user writes in. Do not ask for the rest yourself: the form takes over on that page, in this
@@ -260,8 +268,13 @@ TOOLS: list[dict[str, Any]] = [
          "asked": {"type": "string", "enum": ["ordered", "back", "yes", "question"],
                    "description": "your reading of the person's last message: `ordered` they told you to open or "
                                   "show this place; `back` they asked to go back; `yes` they agreed to your offer "
-                                  "to open it; `question` they asked about something and did not ask to go"}},
-         "required": ["path", "asked"]}},
+                                  "to open it; `question` they asked something, also how to get somewhere or "
+                                  "where something is (\"how do I get to the prices?\"): they stay where they "
+                                  "are and a button to open the page appears under your answer"},
+         "named": {"type": "string",
+                   "description": "the page the person named, as its path from the site contents; `none` when the "
+                                  "site contents have no page for what they named (never the closest one instead)"}},
+         "required": ["path", "asked", "named"]}},
     {"name": "read_page", "description": "Read what a page, or one tab, accordion or section of it, says, without "
                                   "opening it: the person stays where they are. Use it to answer a question "
                                   "from a section the site contents list.",
@@ -405,6 +418,16 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
     # (the owner, 2026-11-19: "nvigate me back" and "navigate me back" were refused or met with "which page?")
     by_words = os.environ.get("INTENT_GATE") == "words"
     moves = lambda a: may_go if by_words else str((a or {}).get("asked") or "") != "question"   # noqa: E731
+
+    def unnamed(a: dict[str, Any]) -> bool:
+        """An order for a place the site does not have: the agent says which page the person named, and an ordered
+        move goes only to that page. `none`, nothing, a page that is not on the site, or another page than the one
+        it is about to open: the person named something else, and nothing opens (QA, 2026-11-19: "open the pension
+        page" opened Loans in five languages)."""
+        if by_words or str(a.get("asked") or "") != "ordered":
+            return False
+        said, target = site.page(str(a.get("named") or "").strip()), site.page(str(a.get("path") or ""))
+        return said is None or target is None or said.path != target.path
     offer: dict[str, Any] | None = None
     host_tools = {t.name: t for t in tools or []}
     schemas = [t for t in TOOLS if ask_docs or t["name"] != "ask_documents"]
@@ -495,6 +518,10 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                         result = "Too many options to pick from: name the page as well (\"Loans: Rate discounts\") and call again."
                     else:
                         result = "The quick pick is not available now. Use navigate with a path from the site contents instead."
+                elif name == "navigate" and site.page(str(args.get("path") or "")) and unnamed(args):
+                    target = site.page(str(args.get("path") or ""))
+                    offer = {"tool": "navigate", "args": {**args, "asked": "yes", "named": target.path}, "title": target.title}
+                    result = NO_SUCH.format(title=target.title)
                 elif name == "navigate" and args.get("parts") and moves(args):
                     result, several = directives_for(site, args)
                     directives.extend(several)
