@@ -521,6 +521,8 @@ class Dushes:
                 seen["said"].append(str(ev.get("delta") or ""))
             elif ev.get("type") == "CUSTOM" and ev.get("name") in ("site_directive", "card", "display", "ui_directive", "on_interrupt"):
                 value = ev.get("value")
+                if ev["name"] == "site_directive" and isinstance(value, dict) and value.get("type") == "navigate":
+                    self._visit(thread_id, str(value.get("path") or ""))   # the agent's own move is part of the trail
                 if ev["name"] == "on_interrupt" and isinstance(value, str):
                     try:
                         value = json.loads(value)
@@ -734,7 +736,7 @@ class Dushes:
                 ov = None
         # where the person has been: "back", "the previous one" point at the page open before this one, and the
         # chooser cannot know it from the screen (the QA Lead's probe, 2026-11-17: 24 of its 33 wrong moves)
-        visits = self._visit(thread_id, here.path if here else "")
+        visits = self._visit(thread_id, "")
         before = visits[-2] if len(visits) >= 2 else ""
         # the whole site as paths: pages, their tabs and sections, each form's tabs, steps and sections
         targets: list[Any] = []
@@ -1534,10 +1536,12 @@ class Dushes:
         if done:
             live = f"{live}\n{done}".strip()
         # where the person has been in this conversation, kept here for every host (no page sends its history)
-        trail = [self.site.page(x).title for x in self._visit(thread_id, page) if self.site.page(x)]
+        # (read only: the page a run really names was added when the run began; a default must not join the trail)
+        went = [x for x in self._visit(thread_id, "") if self.site.page(x)]
+        trail = [self.site.page(x).title for x in went]
         if len(trail) >= 2:
             live = (f"{live}\nPages the person opened in this conversation, oldest first (the last one is on the screen "
-                    f"now): {', '.join(trail)}. The page before this one: {trail[-2]}.").strip()
+                    f"now): {', '.join(trail)}. The page before this one: {trail[-2]} ({went[-2]}).").strip()
         if cut_note:
             live = f"{live}\n{cut_note}".strip()
         handed: dict[str, Any] = {}
