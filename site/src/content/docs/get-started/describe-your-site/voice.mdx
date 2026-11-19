@@ -34,7 +34,10 @@ VOICE_MAX_SECONDS=300        # one conversation ends here
 VOICE_MAX_USD=0.75           # or here, the voice and the agent's turns together
 VOICE_AT_ONCE=1              # conversations at the same time on this host
 VOICE_SILENCE_SECONDS=30     # this long without speech ends a conversation
+VOICE_MINUTE_USD=0.05        # the provider's price of a connected minute, used for the limits
 ```
+
+One person has one voice conversation at a time; that is fixed.
 
 When a limit is reached the conversation ends and the chat says why; typing always keeps working. Every key: [Voice mode, every option](../../../agents/shared/voice/#every-option).
 
@@ -44,7 +47,7 @@ When a limit is reached the conversation ends and the chat says why; typing alwa
 
 ## What is filled from speech, and what still asks
 
-**What it affects.** A value the person said aloud is filled at once, with no card: the line under the orb names it ("First name: Anna") with Undo. Numbers count as people shorten them: "50k", "one and a half million". A card still appears for a consent, an action that cannot be undone, a value the person did not say, replacing a value they typed by hand, a value the form refused, and a real choice between options.
+**What it affects.** A value the person said aloud is filled at once, with no card, and the line under the orb names it ("First name: Anna") with Undo. That happens when every value on the card is one the person said (named, or picked by name among the options offered), whether the field was empty or held another value, none is a consent, none has an issue, and none is spelled data: a last name, a company name or an e-mail may be misheard, so it is confirmed on a card. Numbers count as people shorten them: "50k", "one and a half million". A card also appears for an action that cannot be undone and a real choice between options.
 
 **How to write it.** The same labels, options and consents as for typing ([UI agent](../ui-agent/)): a field whose label people say aloud ("date of birth", not "dob") is filled from speech; an unmarked consent is the one thing that would not wait for a tick, so mark every one.
 
@@ -56,7 +59,7 @@ When a limit is reached the conversation ends and the chat says why; typing alwa
 
 ## Where the audio goes
 
-**What it affects.** The microphone audio goes to the voice provider of `VOICE_MODEL` (`gpt-live-1` by default) for as long as a conversation is open, under that provider's own data policy; read it and say so in your privacy notice. The microphone is never on without the moving orb on screen. Dushes keeps no audio; with `log_dir` set, it keeps a text record of each conversation (what was heard, what the voice said, the end and its cost).
+**What it affects.** The microphone audio goes to the voice provider of `VOICE_MODEL` (`gpt-live-1` by default) for as long as a conversation is open, under that provider's own data policy; read it and say so in your privacy notice. The microphone is never on without the moving orb on screen. Dushes keeps no audio; with `log_dir` given to `Talks(...)`, it keeps a text record of each conversation's events (what was heard, what the voice said, the end and its cost).
 
 ## Checklist
 
@@ -64,7 +67,7 @@ When a limit is reached the conversation ends and the chat says why; typing alwa
 - [ ] The day, person, conversation and seconds limits fit your traffic and budget.
 - [ ] Labels and options are what people say aloud; every consent is marked.
 - [ ] Your privacy notice names the voice provider and links its data policy.
-- [ ] If you keep `log_dir`, its folder is protected like the rest of your personal data.
+- [ ] If you give `Talks(...)` a `log_dir`, its folder is protected like the rest of your personal data.
 
 ## Next
 

@@ -8,7 +8,7 @@ The UI agent works from two things: the form's **props**, which your form backen
 
 ## Labels and options in your users' words
 
-**What breaks without it.** The agent names a field by its `label` and picks among its `options` by their `name`. A label like `fld_2` or an option like `OPT_A` is what it will say to a person, and what the [decision model](../decision-model/) has to match a line against; it also masks a capitalised word that is not a label on the screen.
+**What breaks without it.** The agent names a field by its `label` and picks among its `options` by their `name`. A label like `fld_2` or an option like `OPT_A` is what it will say to a person, and what the [decision model](../decision-model/) has to match a line against. Before a line goes to the decision model, a capitalised word it does not know is masked as `<name>`; today it knows the labels and options of the fields with options on the screen.
 
 **How to write it.** Labels as a person would say them, options as they appear on the screen, and `i18n` with the label in every language your users write in (cards then show it with no model call):
 
@@ -68,7 +68,7 @@ It does not hide what the person types into the chat: a message goes to the mode
 
 **What breaks without it.** A consent is applied only by the person's own tick; the agent never gives one, not even after a typed "yes". A checkbox the agent does not know is a consent could be treated as an ordinary field.
 
-**How to write it.** Mark it in the props (`"consent": true`) or in the pack, with the document it refers to:
+**How to write it.** Mark it in the props (`"consent": true`, with `consent_doc` for its document; `"consent": false` says a checkbox is not one) or in the pack's `consents`, whose `doc` wins over the props' `consent_doc`:
 
 ```json title="domain_packs/car_insurance.json"
 {

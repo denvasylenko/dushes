@@ -98,7 +98,7 @@ A 300-page handbook is not searched as one text. When you add it, it is cut into
 
 ```mermaid
 flowchart LR
-  D["A document<br/><small>PDF, DOCX, text</small>"] --> H["Cut on its headings,<br/>then on paragraphs"]
+  D["A document<br/><small>PDF, Markdown, text</small>"] --> H["Cut on its headings,<br/>then on paragraphs"]
   H --> S["Sections of about 1,200 characters<br/><small>each keeps its heading path and page</small>"]
   S --> I["An index, built once<br/><small>and again when the server starts</small>"]
   Q["A question"] --> I --> R["The best sections,<br/>spread over the documents"]

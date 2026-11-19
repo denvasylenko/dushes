@@ -118,7 +118,7 @@ A conversation that may not start is refused with a reason: `pass` (no valid pas
 
 In chat every proposed value is a card the person accepts. In a voice conversation a value the person just said aloud is filled at once: the `set_fields` card of that thread carries `quiet: true`. A client applies it through the form as an accepted card (the same resume), draws no card and keeps a line with Undo.
 
-Numbers count as said in the forms people shorten them to: "50k", "1.5 million", "one and a half million", "half a million". A card is marked quiet only when every value on it was said by the person, the fields were empty, and none is a consent. Everything else waits as a card, as always: a consent tick, an action that cannot be undone, a value the person did not say, replacing a value typed by hand, a value the form refused, a real choice between options. The form keeps the last word: a value it refuses comes back as a card.
+Numbers count as said in the forms people shorten them to: "50k", "1.5 million", "one and a half million", "half a million". A card is marked quiet only when every value on it was said by the person (named, or picked by name among the options offered), whether the field was empty or held another value, none is a consent, none has an issue, and none is spelled data: a last name, a company name or an e-mail may be misheard, so it is confirmed on a card. Everything else waits as a card, as always: a consent tick, an action that cannot be undone, a value the person did not say, a value the form refused, a real choice between options. The form keeps the last word: a value it refuses comes back as a card.
 
 ## Limits and money
 

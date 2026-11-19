@@ -10,7 +10,7 @@ The researcher answers the agents' questions from a form's business documents, w
 
 **What breaks without it.** With no documents for the form, the researcher can only say that the documents do not answer, and the agent says so to the person. By default, a form reads only its own namespace (its form id).
 
-**How to write it.** PDF, DOCX, Markdown or text, uploaded into the form's namespace:
+**How to write it.** Markdown (`.md`), text (`.txt`) or PDF (`.pdf`), uploaded into the form's namespace; other formats (a DOCX, a spreadsheet) are not read, so save them as one of these first:
 
 ```bash
 curl -F "files=@policy_terms.pdf" -F "files=@faq.md" http://localhost:8000/agent/kb/car_insurance/documents

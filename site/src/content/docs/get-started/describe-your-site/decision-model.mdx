@@ -36,7 +36,7 @@ Without `EXPERIMENT_CODES` there is no gate: the host's own settings decide. Mor
 
 ## What is sent to the provider, and what is masked
 
-**What it affects.** Every line goes to the provider after a filter in code: phone numbers, e-mails, long numbers, capitalised words that are not on the screen (likely a person's or a company's name, sent as `<name>`) and the items of your never-send list are masked first. Personal form values go only as "filled" or "empty".
+**What it affects.** The provider gets the person's line, the last ten messages of the conversation (both sides), what was last offered and opened, the pages visited, and the form on the screen as the UI agent reads it: its tabs, sections and fields with their kind, options, what is required and what is filled, and **the values of the fields the domain pack does not mark `pii`**. Everything sent passes a filter in code first: phone numbers, e-mails, long runs of digits and the items of your never-send list become `<filled>`, and a capitalised word that is not on the screen becomes `<name>`. Only the fields in the pack's `pii` go as `<filled>`: that list is what protects a form value, so check it ([UI agent](../ui-agent/#pii-what-it-does-and-does-not)).
 
 **How to write it.** Give the screen the words your visitors use, so they are not masked: page and part titles, field labels with `i18n`, options ([Site agent](../site-agent/#titles-and-keywords-in-every-language-of-the-site), [UI agent](../ui-agent/)). List what must never leave the server:
 
@@ -51,7 +51,8 @@ INTENT_NEVER_SEND="Anna Schmidt|Ben Okafor|+49 30 1234567"
 **How to set it.** Leave the defaults until your own measurement says otherwise:
 
 ```bash
-INTENT_THRESHOLD=0.8     # how sure, before the large model is called
+INTENT_THRESHOLD=0.8     # how sure a pick must be to count at all
+INTENT_ACT=0.8           # how sure, to carry a pick out
 INTENT_MARGIN=0.2        # how far the first option must be ahead of the second
 INTENT_TIMEOUT_MS=300    # later than this is no answer, and the line goes on
 ```
@@ -74,7 +75,7 @@ INTENT_TRACE=1
 - [ ] `INTENT_PROVIDER` and `INTENT_API_KEY` are set on the server, never in the browser.
 - [ ] On a public host, `EXPERIMENT_CODES` and a fixed `EXPERIMENT_SECRET` decide who uses it.
 - [ ] Titles, labels and options carry the words your visitors use, in their languages.
-- [ ] Names and numbers that must never leave are in `INTENT_NEVER_SEND`.
+- [ ] Every form field with personal data is in the domain pack's `pii`; names and numbers that must never leave are in `INTENT_NEVER_SEND`.
 - [ ] The bars are the defaults, or set from your own measurement.
 - [ ] `INTENT_LABELS`, `INTENT_TRACE` and `INTENT_SCORES` are off on the public site.
 
@@ -84,10 +85,10 @@ INTENT_TRACE=1
 Nothing in this list works with the package you install today.
 </Aside>
 
-- **A host decides per run** whether the decision model is used, for people it already knows, with no codes; and its own never-send list and history per run (built, arriving with the next release).
-- **Its cost in `run_stats`**, the chooser's call with its tokens and price (built, arriving with the next release).
-- **Keywords count as the site's own words**, so they are never masked (built, arriving with the next release).
-- **Bars by action, calibrated for an acceptable error rate**, with host presets (cautious, balanced, eager) instead of fixed numbers (designed).
+- **A host decides per run** whether the decision model is used, for people it already knows, with no codes; and its own never-send list and history per run, as arguments of `run()` (built, not released).
+- **Its cost in `run_stats`**, the chooser's call with its tokens and price (built, not released).
+- **The site's whole vocabulary counts**, so keywords and titles are never masked (built, not released).
+- **Bars by action, calibrated for an acceptable error rate**, with host presets (cautious, balanced, eager) instead of fixed numbers (built and off; the numbers wait for a measurement).
 - **The decision journal**, to set the bars from what happened on your site (built, not released).
 
 ## Next

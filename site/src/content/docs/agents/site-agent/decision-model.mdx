@@ -44,7 +44,7 @@ Each has its own switch and is off by default. They are for the operator on a te
 
 ## What it sends and what it never does
 
-- **Every line goes to the provider**, after a filter in code: phone numbers, e-mails, long numbers, names that are not on the screen and the items of your never-send list are masked first. Personal form values go only as "filled" or "empty".
+- **Every line goes to the provider**, with the last ten messages, what was last offered and opened, the pages visited, and the form on the screen as the UI agent reads it, including the values of fields the domain pack does not mark `pii`. Everything passes a filter in code first: phone numbers, e-mails, long runs of digits and your never-send items become `<filled>`, names that are not on the screen become `<name>`, and the `pii` fields go as `<filled>`.
 - **It does by itself only looking and edits that can be undone:** open a page or a part of it, open a form's sections, fill in a value the person said (with Undo), a date. Never sending a form, never a consent. It acts only on the person's own request.
 - **Anything it is not sure of goes to Dushes unchanged.**
 - **Late is no answer.** When the provider does not answer in time, the line goes to Dushes.
