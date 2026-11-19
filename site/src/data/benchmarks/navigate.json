@@ -1,0 +1,31 @@
+{
+ "source": "backend/scripts/navigate_bench.py",
+ "measured_at": "2026-11-19",
+ "commit": "0edae85",
+ "model": "GPT-6 Luna",
+ "layer": false,
+ "measured": true,
+ "report": "backend/scripts/runs/site-probe-20261119-navfix-0edae85.jsonl (site probe, 196 lines, 1 pass)",
+ "rows": [
+  {
+   "id": "no_such_page",
+   "label": "An order for a page the site does not have opens nothing",
+   "passed": 14,
+   "total": 14
+  },
+  {
+   "id": "questions_open_page",
+   "label": "Questions that open a page",
+   "passed": 70,
+   "total": 70,
+   "failed": 0
+  },
+  {
+   "id": "orders_refused",
+   "label": "Orders refused",
+   "passed": 140,
+   "total": 140,
+   "failed": 0
+  }
+ ]
+}
