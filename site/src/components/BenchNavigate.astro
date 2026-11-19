@@ -1,0 +1,21 @@
+---
+/** The site agent's moves, measured: QA's navigate.json (navigate_bench.py), shown with its date; never typed. */
+import BenchFreshness from './BenchFreshness.astro'
+import data from '../data/benchmarks/navigate.json'
+type Row = { id: string; label: string; passed: number; total: number; failed?: number }
+const rows = data.rows as Row[]
+// a row with `failed` counts what went wrong (lower is better); one without it counts what passed
+const shown = (r: Row) => r.failed !== undefined ? `${r.failed} of ${r.total}` : `${r.passed} of ${r.total}`
+---
+<BenchFreshness date={data.measured_at} model={data.model} commit={data.commit} what="How the site agent moves" />
+
+<table>
+  <thead><tr><th>What was checked</th><th>Result</th></tr></thead>
+  <tbody>{rows.map((r) => <tr><td>{r.label}</td><td>{shown(r)}</td></tr>)}</tbody>
+</table>
+
+<p class="bn-how">{data.layer ? 'With' : 'Without'} the decision model, one pass of the site probe, counted by code (<code>{data.source}</code>). The questions include the lines that name a page the site does not have.</p>
+
+<style>
+  .bn-how { color: var(--fg-ink-2); font-size: var(--fg-fs-footnote); }
+</style>

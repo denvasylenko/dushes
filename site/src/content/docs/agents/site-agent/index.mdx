@@ -5,6 +5,7 @@ description: "One chat for a whole site: it answers about any page, takes the us
 import { LinkCard, CardGrid, Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 import SiteDemoLink from '../../../../components/SiteDemoLink.astro';
 import { Summary } from '../../../../components/ui';
+import BenchNavigate from '../../../../components/BenchNavigate.astro';
 
 <Summary what={"One chat for a whole site, above the UI agent."} when={"Your site has many pages and the forms are only some of them."} write={"A site map (`site.yaml`) and `create_dushes_router(Dushes(guide, site_map))`."} />
 
@@ -87,6 +88,12 @@ sequenceDiagram
 3. **Each move is checked** against the site map. A valid one becomes a `site_directive` event for the page; an unknown path is refused and the model is told so.
 4. **The hand-off.** After `open_form` the page opens the form and runs once with `handoff: true`. The router gives the UI agent the note as its first message, so it proposes those fields at once.
 5. **The UI agent** is the same `FormGuide` as on a page of its own, with its own conversation per form inside the site's thread: its history, cards and Undo work as everywhere else.
+
+## How well it moves
+
+QA's measurement of the rules above: an order opens the page named, a question keeps the person in place, and a page the site does not have opens nothing.
+
+<BenchNavigate />
 
 ## Your instructions
 
