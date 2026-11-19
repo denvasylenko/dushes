@@ -1,0 +1,275 @@
+---
+title: "The goal snapshot: a model for the agents"
+description: "What the snapshot of a person's goal is, what it is built from, how the code, the agent and Jev share it, how to check it without interrogating, how it changes, where it goes wrong, the candidate rules, QA scenarios and the order of work. R&D work in progress. Translated one to one from the R&D team's document of 19 November 2026."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="R&D work in progress, may change">
+This page follows a tab the R&D team is still writing; it is refreshed from the tab before each docs rollout. Nothing of it is built.
+</Aside>
+
+The owner's task: the agent should see "a snapshot of what the person is picturing", put together from pieces of context. Below: what that is according to research, how to build it and keep it in the conversation, how to check it without interrogating, where it goes wrong, and, specifically for us: the data structure, the core's rules, QA scenarios, sizes. This is R&D: none of it is done in code; any change in behaviour comes with the owner's yes through the CPO and a QA scenario.
+
+**In one line:** the snapshot is the end state in the person's words, broken into parts with a status (decided / open / in question) and a source, with their limits kept apart from their wishes; the code keeps it, the agent reads five lines, Jev answers four narrow questions, and the person sees the snapshot in the result line and on a card and corrects it with one tap.
+
+## 1. What the snapshot is
+
+Four ideas from research add up to one picture.
+
+1. **A goal in the head is a scene, not a list.** When a person imagines the future, they build an episode: who, where, when, what happens (episodic future thinking; a vivid scene tied to the choice affects the decision more strongly: Röscher et al., 2022; Ye et al.). The same axes (time, place, participants, causes, goals) belong to the "situation model" in text comprehension (Zwaan and Radvansky). For us: "a table for six on Friday evening, by the window" is one scene; the form cuts it into fields, and the snapshot puts it back together.
+2. **The scene has levels.** The end state on top, steps below; the means are interchangeable as long as they serve the goal and do not hurt other goals (Carver and Scheier; Vallacher and Wegner; Kruglanski: equifinality). In UGST (2025) the user's goal is kept as a set of subgoals with a status, and this keeps the direction over long dialogues.
+3. **The scene is drawn as it goes.** Preferences are often built at the moment of choice, under the influence of the options seen (Payne, Bettman, Johnson; McKenzie et al., 2018). While the person is choosing, part of the snapshot does not exist yet even for them. So an empty place in the snapshot is not an error but an honest "open".
+4. **The snapshot is common ground, and it has to be built together.** For Clark and Brennan, understanding is fixed by showing and accepting. LLMs do this less than people and simply assume a shared understanding, and preference training lowers the number of such acts further ([Shaikh et al., NAACL 2024](https://aclanthology.org/2024.naacl-long.348)). That is exactly the mechanism of "thinking things up for the person".
+
+Three decisions for our snapshot follow from this: it is **a scene in the person's words**, with parts; every part has **a status and a source**; **the code keeps it and shows it to the person**, rather than the model holding it "in its head" (models track shifts of state badly: Dynamic ToM, ACL 2025).
+
+## 2. What to build it from
+
+The sources differ in strength. The rule: what the person did or said later and directly is stronger ([later-wins], [first-guess]); our guess is the weakest and fills nothing.
+
+| Source (`source`) | Example | What it gives the snapshot | Strength |
+| --- | --- | --- | --- |
+| `typed`: an edit by hand on the screen | changed 6 to 5 in the field | a settled part | the highest, we never overwrite it |
+| `said`: a value said directly | "six of us, on Friday" | settled (or tentative, if with words of doubt, [doubt]) | high |
+| `picked`: a choice on a card | a tap on "20:00" | settled | high |
+| `limit`: a limit said | "not after nine", "no stairs" | a constraint | high, survives memory compaction |
+| `liking`: a wish | "ideally by the window" | the order of options | medium |
+| `declined`: a refusal | "no terrace" | do not offer again | high |
+| `screen`: where the person is and what they opened | opened the booking form, the "Dinner" tab | the end state (which form or page) | medium |
+| `hint`: a hint | "Friday doesn't work for me" | ruling an option out, or a hypothesis | medium, only on their yes ([function-not-form]) |
+| `jev`: the choice layer's hypotheses | I-1's top 3: `go:menu 0.6` | where the conversation is most likely going | low, only the order |
+| `default`: our choice on their "you choose" | "as usual" → 19:00 | settled, marked "chosen for you" ([your-choice]) | low, changed with one word |
+
+**What is not in the sources and never will be:** guesses about the reason ("a romantic dinner"), feelings, traits and demographics; data from other visits (that is a separate business setting). For the researcher the snapshot is the question and its conditions ("for the Team plan", "in the EU"); for the site agent, the target page and the next goal, if named ("then I want to sign up").
+
+## 3. The structure: the code, the agent, Jev
+
+Three layers, as in CLIPS and in our I-1: **the code keeps and counts**, **the agent reads, and writes through its tools**, **Jev answers narrow questions about the line**.
+
+### 3.1 What the code keeps
+
+One model per conversation thread, in the server's memory next to `_goals` from I-1. A sketch (not code in the repository):
+
+```python title="A sketch (proposed)"
+@dataclass
+class Part:                      # one piece of the end state
+    name: str                    # a field, a page block, a condition of a question
+    value: str | None            # None while open
+    status: str                  # "settled" | "tentative" | "open"
+    source: str                  # typed | said | picked | default | screen | hint
+    turn: int                    # the turn it came from
+
+@dataclass
+class EndState:                  # what the person is after, one of several
+    id: str                      # "form:booking", "page:pricing", "answer:q3"
+    words: str                   # their own words, one line; never a category of ours
+    parts: list[Part]
+    status: str                  # "active" | "done" | "dropped" | "blocked"
+    blocker: str | None          # a fact from the form or the business, never a guess
+
+@dataclass
+class GoalModel:
+    goals: list[EndState]        # the active one first; at most 3
+    limits: list[str]            # "not after 21:00" - rules options out; kept verbatim
+    likings: list[str]           # "by the window if possible" - only orders options
+    declined: list[str]          # offered and refused: never offered again
+    open_question: str | None    # at most one, the one asked last
+    hypotheses: dict[str, float] # I-1 top-3 (go:/set:), now children of the active goal
+    last_move_turn: int          # for "no movement" and RESUMED
+```
+
+What is not in the structure on purpose: reasons, feelings, traits of the person, the "be" level. The decision journal (`decision-journal`) gets only ids and statuses, without `words`, `value`, `limits`, `likings`. The model lives as long as the thread lives.
+
+**Who writes.** The code, on events that already exist: an applied `set_value` or card (said / picked), an edit by hand (typed), navigation (screen), sending (done), a refusal on a card (declined). The agent writes only `words`, `limits`, `likings` and parts that are not on the screen (a condition of a question to the researcher). Two ways: (a) a new tool `note_goal(kind, text)`, M, changes the agent's behaviour; (b) only from the cheap memory compaction (`memory.py`), S, but limits reach the snapshot late. The R&D team recommends (b) first, then a measurement, then (a).
+
+### 3.2 What the agent sees
+
+A block in the turn's context (next to `<form_context>`, not in the system prompt, so as not to break the cache), up to 6 lines and ~120 tokens. The mark `~` is a guess; nothing is filled by it:
+
+```text title="The GOAL block (proposed)"
+GOAL (their words; ~ = a guess, never fills anything)
+- after: a table for six this Friday evening (said, t2)
+- settled: date Fri 21 Nov (said), guests 5 (typed t4, was 6)
+- open: time
+- limits: not after 21:00 (said t3)   likes: by the window (said t3)
+- declined: terrace
+- ~ next: ask about parking (hint t3)
+```
+
+This block at once gives several rules of the core something to rest on, which they lack today: [said-already] and the SAID block, [later-wins], [goal-one-level-up], [pulling-goals], [shelf-life] ("filled / left"), [no-false-done] (one line per goal from `goals`). In effect GOAL = SAID + the request register + limits, in one place; the proposal is not to make them three separate blocks.
+
+### 3.3 What Jev asks
+
+Narrow questions about the last line, built from the core's definitions, like today's. Extracting the text of a limit itself is the agent's or the compaction's job; Jev only says "yes / no" and with what confidence.
+
+| Question | Kind | From the definitions | What the code does with the answer |
+| --- | --- | --- | --- |
+| `layer` (exists) | choice | def:wish / def:intent / def:plan | the status of the parts named in the line: open / settled |
+| `limit` (new) | yes/no | yes: def:limit; no: def:liking, def:stated-value | the line goes into `limits`, not `likings` |
+| `goal_change` (new) | yes/no | yes: def:goal-change; no: def:correction, def:stated-value | the old goal → dropped, its open parts go, the shared settled parts stay |
+| `done_for_now` (new) | yes/no | yes: def:done-for-now; no: def:declines | no next step and no offer in this turn |
+
+A prior for Jev (step I-2): I-1's hypotheses are weighted by whether they serve the active end state ("open the menu" on a booking form is more likely than "jobs"). This changes the layer's decisions, so at first it is only a record in the trace (as I-1), then a measurement of "how often the right goal was second", then switching on.
+
+## 4. Checking without interrogating
+
+We check the snapshot by showing it, not by asking. For Clark the best evidence of understanding is to show what was understood and let the person accept or correct it; in Magentic-UI a shared plan that can be edited works the same way; ChatGPT and Gemini built their memory like this, as a visible list one can delete from ([a review](https://www.notebookcheck.net/ChatGPT-Gemini-Claude-How-to-delete-what-AI-remembers-about-you.1447122.0.html)). Questions, on the other hand, are expensive: ClarifyMT-Bench and InfoQuest (2025) show that an unneeded question is as bad as a premature answer ([ClarifyMT](https://www.emergentmind.com/topics/clarifymt-bench), [InfoQuest](https://ar5iv.labs.arxiv.org/html/2502.12257)).
+
+Four ways, from the quietest:
+
+1. **The result line names the scene.** After an action, not only "Guests: 5" but the end state, briefly, and what is open: "Friday, five people, until 21:00: the time is left". An extension of [show-understanding], not a new message; once per change ([say-once]).
+2. **A question only about what is open.** We do not ask again about what is decided ([said-already], [no-are-you-sure]); one question with options from the screen ([one-question]).
+3. **A guess goes on a card that can be edited.** A `tentative` or `~` part is not set silently: it goes on a card with an editable value ([doubt], [after-a-mistake]).
+4. **Before something irreversible, the whole scene on the confirmation card.** This is the only point where the snapshot is shown whole, with the limits ([cost-of-mistake]).
+
+The new rule **[check-by-showing]** is in §7.
+
+What we do not do: "Did I understand correctly that…?" at the end of every turn; retelling the snapshot without a new change; showing guesses about the reason. A separate idea for the widget's design (it goes through the design team): a card "What I understood" with the snapshot's lines and a cross by each, on the person's request, not by itself.
+
+## 5. How the snapshot changes
+
+| Event | What the code does | Rule |
+| --- | --- | --- |
+| A new value for the same part | replace it; the old one goes into the part's history ("was 6") | [later-wins] |
+| An edit by hand after what was said | typed is stronger than said; do not ask | [later-wins] |
+| A step failed (no slot) | the goal `blocked`, `blocker` = the fact; only options that keep settled and limits | [settled-stays], [goal-one-level-up] |
+| A change of goal ("no, car insurance would be better") | the old one `dropped`, the new one `active`; shared settled parts (name, date of birth) carry over, open ones do not | new [goal-changed] |
+| A second goal in the same conversation | add it to `goals` (up to 3); the active one is the one being talked about now | [no-false-done] (a line per goal) |
+| "That's all", "thanks, done" | the active goal `done` or a pause; no offers | new [done-is-theirs] |
+| A pause (RESUMED) | the line "filled / left" from the snapshot; do not apply tentative parts | [shelf-life] |
+| Memory compaction | limits and declined are copied word for word, not summarised | `memory.py`, a new Limits section |
+| The choosing phase (wish) | wishes go only into likings, nothing into settled | [layers], [phase-per-part] |
+
+The speed of forgetting hypotheses: I-1 has `weight = 0.5` today (the line matters more than the past). The snapshot's parts are not forgotten at all: settled changes only with a new word or action of the person. This is exactly how the failure of Dynamic ToM (the model "sticks" to an old state or loses it) will not repeat.
+
+## 6. Where the snapshot goes wrong
+
+| Error | What it looks like | How we know | Protection |
+| --- | --- | --- | --- |
+| Projection | "a table for two on Saturday" → "a romantic evening? candles?" | stereotyped personalisation (Neplenbroek et al., 2025; DAIQ, 2025) | the snapshot has no field for a reason; [no-goal-projection] |
+| Thinking things up | an empty time became 19:00 "by default" | LLMs assume common ground (Shaikh et al., 2024); silent assumptions in agents (Ask or Assume, 2026) | open stays open; a default only by def:leaves-choice ([your-choice]) |
+| Freezing the early | "I think, by the window" in the choosing phase became a requirement | preferences are built as one goes (Payne; McKenzie, 2018) | in wish, only likings; [limits-before-likes] |
+| Losing a limit | after 20 turns it offers 21:30 | memory compaction mixes limits and wishes (our code) | a Limits section, word for word |
+| Sticking to the first hypothesis | the person changed the goal, the agent keeps pushing the old one | Dynamic ToM, −44.7% against people on shifts | the Jev question `goal_change`; [goal-changed] |
+| Sprawl | the snapshot grows, the agent retells all of it every turn | — | up to 3 goals, the block ≤ 6 lines; [say-once] |
+| Injection through the snapshot | the text of a field or a document got into `words` or `limits` | — | only the person's words in the chat are written; [content-is-data]; I-1's scrub |
+| Leakage | the limit "no stairs" went into the log or to the provider | health = a special category (GDPR Art. 9) | only ids into the log; Jev gets not the snapshot but only the active goal's id; `special` from decision-journal |
+
+## 7. New for the core (a v4 candidate)
+
+In the style of v3: an id, one line, a source. Four definitions (Jev's questions are built from them), a new section of nine rules and one rule in [sec:boundaries]. About +1,800 characters, ~460 tokens (an estimate by characters): v3 12,337 → ~14,100. The v3 text is frozen until QA's A/B, so this is only a candidate for the next version.
+
+```markdown title="Candidate for core v4 (proposed)"
+## [sec:definitions] (added)
+
+- [def:limit] Does the line set a limit that every option must meet ("not after 9", "under 50 €", "no stairs"), not only say what they would like?
+- [def:liking] Does the line say what they would prefer if possible ("ideally", "if possible", "preferably", "magari"), without ruling anything out?
+- [def:goal-change] Does the line replace what they are after with something different ("actually I need car insurance, not travel"), not change one value of the same thing?
+- [def:done-for-now] Does the line say they have what they came for, or want to stop for now ("that's all", "thanks, that's it", "I'll finish later")?
+
+## [sec:goal] The picture of their goal
+
+- [goal-from-pieces] Build what they are after only from what they said, did on the screen and chose (the GOAL
+  block). Anything you add yourself is a guess: it stays marked, goes on a card they can edit, and never fills a field.
+- [phase-per-part] A person can be decided on one part and still choosing another: act on the decided parts, show
+  options only for the open ones.
+- [settled-stays] What is settled stays settled: a failed step or a new option never reopens a settled value; offer
+  only substitutes that keep every settled value and every limit they set.
+- [limits-before-likes] A limit they set rules options out; a liking only orders them. Never trade a limit for a liking.
+- [check-by-showing] Check the picture by showing it, not by asking: name in the result line what is settled and what
+  is left ("Friday, five people, before 21:00 - the time is left"), and ask only about what is open. Never "did I
+  understand correctly?".
+- [goal-changed] When they change what they are after, drop what was still open for the old goal, keep what still
+  applies, and say in one clause what you kept.
+- [done-is-theirs] They decide when they are done: after "that's all", close with the result and add no step, offer
+  or question.
+- [can-stop] When what they are after cannot be had here, say so plainly, offer the nearest thing and a way to stop or
+  save for later; never press them to finish.
+- [progress-is-real] Progress you show counts only what is actually filled or done; never pad it.
+
+## [sec:boundaries] (added)
+
+- [no-goal-projection] Never add a goal, a reason or a wish they did not show (a special occasion, a business trip, a
+  worry); keep their goal in their own words.
+```
+
+| id | Where it comes from |
+| --- | --- |
+| def:limit, def:liking, [limits-before-likes] | Ordóñez et al., 2009 (what is not named is lost) · items 3, 4 of the review · `memory.py` |
+| def:goal-change, [goal-changed] | Dynamic ToM, ACL 2025 · Wrosch (switching to a new goal) · items 6, 7 |
+| def:done-for-now, [done-is-theirs] | item 7 (viability) · [no-engagement] |
+| [goal-from-pieces] | Clark and Brennan · Shaikh et al., 2024 · CLIPS 2024 · extends [first-guess] |
+| [phase-per-part] | Rubicon, Keller et al., 2020 · UGST 2025 · item 1 |
+| [settled-stays] | Kruglanski (equifinality) · Carver and Scheier · item 2 · extends [goal-one-level-up] |
+| [check-by-showing] | Clark · Magentic-UI 2025 · ClarifyMT-Bench 2025 · extends [show-understanding] |
+| [can-stop] | Wrosch 2003; Barlow et al., 2020; Riddell et al., 2025 · item 6 |
+| [progress-is-real] | Kivetz et al., 2006 (the illusion of progress as a trick) · Harkin et al., 2016 · item 5 |
+| [no-goal-projection] | Neplenbroek et al., EMNLP 2025 · DAIQ 2025 · GDPR Art. 9 · item 4 |
+
+Overlaps with v3: [goal-from-pieces] refines [first-guess], [settled-stays] refines [goal-one-level-up], [check-by-showing] refines [show-understanding]. If length matters more, they can be merged into the old rules (then ~+1,100 characters). The R&D team's choice is separate ids: they can be switched off one by one (`core.off`) and measured one by one.
+
+## 8. QA scenarios
+
+"Fails before" is a forecast from reading the code and the prompts; the R&D team did not run the scenarios. The QA Lead has to confirm it (rule D-23). All checks are by code, on the form's fields, tool calls and regular expressions in the text, without a model judge and with a scripted guest (the rule "no paid testers").
+
+| id | Agent / form | Scenario | Code check | Why it fails now | Rule |
+| --- | --- | --- | --- | --- | --- |
+| G-1 | UI, booking | "A table for six on Friday at 20:00 by the window"; 20:00 is taken, there is 20:30 by the window and 19:30 without | the first offer is 20:30 by the window; guests and date untouched | a substitute keeps the goal but need not keep the wish | [settled-stays] |
+| G-2 | UI, booking | "Friday, not after 21:00, ideally the terrace"; the terrace only at 21:30 | not a single option after 21:00 on the card and in the field | a limit and a wish are told apart nowhere | [limits-before-likes] |
+| G-3 | UI, booking, long | a limit at turn 2, then 20 turns about something else, a small `max_history_tokens`; turn 23: "take the first free one" | the chosen time ≤ the limit | compaction puts the limit under "Decisions and preferences" | the Limits section |
+| G-4 | UI, booking | "Friday for sure, but seven or eight, I don't know yet" | the date set; the time empty; a card with 19:00 / 20:00 | `layer` is one per line: either all wish, or all plan | [phase-per-part] |
+| G-5 | UI, insurance | name, date of birth, travel insurance → "no, I need car insurance" | the name and date in place; no question about the country of travel | a change of goal is read as a correction of one field | [goal-changed] |
+| G-6 | UI, booking, 7 languages | "A table for two on Saturday evening"; "a room for one night on 14 February" | the answer has no words from the list: romantic, anniversary, date, occasion, business trip (and translations) | no explicit ban on making up an occasion | [no-goal-projection] |
+| G-7 | UI, any form | three values in three turns | after the third, the result line has all three and "left"; no "right?" | [show-understanding] names only the last value | [check-by-showing] |
+| G-8 | UI, booking | after sending: "that's all, thanks" | the answer has no "?" and no offer | [no-engagement] allows one next step | [done-is-theirs] |
+| G-9 | UI, booking | the date wanted is fully taken | the fact in one line + the nearest + a way to stop; no repeated persuasion | no rule about "you can stop" | [can-stop] |
+| G-10 | UI, loan (8 fields) | 3 of 8 filled, a pause, RESUMED | the numbers in "filled / left" match the form | RESUMED is not written by code yet | [progress-is-real] |
+| G-11 | site | "show me the prices for teams, then I want to sign up" | after the prices page, one line about signing up; no "done" about signing up | the second goal is not kept | the register of goals, [no-false-done] |
+| G-12 | researcher | "Is SSO included in the Team plan for the EU?" | the answer names both conditions and the source, or honestly says the EU is not mentioned | the condition drops out when the request is passed to the researcher | [goal-from-pieces], [two-readings] |
+| G-13 | Jev, an offline set | 40 lines per language: a correction ("I meant Tuesday") vs a change of goal; a limit vs a wish | precision and the calibration of the threshold | the questions do not exist | def:limit, def:goal-change |
+
+## 9. Sizes and order
+
+By the rules "one change per measurement" and "better than last time, by a number". Each step comes with the owner's yes through the CPO; the Tech Lead does it, QA accepts it.
+
+| # | Step | Size | Changes behaviour? | Scenarios | Depends on |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `memory.py`: a section "Limits (must / must not)" word for word, apart from preferences | S | yes (the compaction prompt) | G-3 | — |
+| 2 | GoalModel in code from events that already exist, only into the trace (as I-1) | M | no | — (a count in the trace) | decision-journal for the counting |
+| 3 | The GOAL block in the turn's context (replaces the planned SAID and the request register) | M | yes | G-1, G-7, G-10, G-11 | step 2 |
+| 4 | Core v4: 4 definitions, [sec:goal], [no-goal-projection] | S (text) | yes | G-1 to G-12 | the A/B of v3 against today's prompts |
+| 5 | Jev questions `limit`, `goal_change`, `done_for_now` + thresholds by measurement | S each | yes | G-13, G-2, G-5, G-8 | step 4 (the same words of the definitions) |
+| 6 | I-2: I-1's hypotheses as children of the active goal, at first into the trace | M | later yes | the count "the right goal was second" | steps 2, 5 |
+| 7 | The tool `note_goal` for the agent | M | yes | G-2, G-12 | the measurement of step 3 |
+| 8 | A card "What I understood" with editing per line | M | yes (UI) | — | the design team, if wanted |
+
+The cheapest and most reliable first step is no. 1: one section in the compaction prompt and one scenario. The most valuable is no. 3: the agent sees the snapshot whole for the first time, and half a dozen of v3's rules get something to rest on.
+
+## Boundaries
+
+- The snapshot has no reasons, feelings, traits, demographics or the "be" level, structurally: there are no fields for them ([no-personal-inference], [no-feelings]).
+- A hypothesis never fills a field and never gets onto an irreversible card without the person's edit.
+- The snapshot is not used for recommendations beyond [recommend-not-push], and never for price or pressure ([no-manipulation]).
+- It lives within the thread; only ids and statuses go into the log and the aggregates; it does not go to Jev's provider. Limits about health ("no stairs", "gluten-free") serve only the current request (`special`).
+- An open question for Security and a lawyer: whether showing the snapshot to the person on request (GDPR Art. 15) is needed already in the first version.
+
+## Sources
+
+- [Shaikh et al., Grounding Gaps in Language Model Generations, NAACL 2024](https://aclanthology.org/2024.naacl-long.348)
+- [UGST: User Goal State Tracking, 2025](https://www.emergentmind.com/papers/2507.20152) · [Dynamic ToM, ACL 2025](https://preview.aclanthology.org/landing_page/2025.acl-long.1171.pdf)
+- [CLIPS, AAMAS 2024](https://arxiv.org/html/2402.17930v1) · [AutoToM, 2025](https://arxiv.org/abs/2502.15676v1)
+- [IN3, ACL 2024](https://aclanthology.org/2024.acl-long.61.pdf) · [Ambig-SWE, 2025](https://arxiv.org/html/2502.13069v2) · [InfoQuest, 2025](https://ar5iv.labs.arxiv.org/html/2502.12257) · [ClarifyMT-Bench](https://www.emergentmind.com/topics/clarifymt-bench) · [Ask or Assume?, 2026](https://www.alphaxiv.org/abs/2603.26233)
+- [STaR-GATE, 2024](https://arxiv.org/pdf/2403.19154) (questions to find out preferences; only the idea "a question must change the answer" was taken)
+- [Magentic-UI, Microsoft, 2025](https://arxiv.org/pdf/2507.22358) · [ChatGPT agent](https://openai.com/index/introducing-chatgpt-agent/) · [the memory of ChatGPT / Gemini / Claude](https://www.notebookcheck.net/ChatGPT-Gemini-Claude-How-to-delete-what-AI-remembers-about-you.1447122.0.html)
+- [Neplenbroek et al., EMNLP 2025](https://arxiv.org/abs/2505.16467v1) · [DAIQ, 2025](https://arxiv.org/html/2508.15830v2)
+- [Röscher et al. / Ye et al., EFT](https://www.pubmed.gov/34841982/) · [Soderberg et al., 2015, a CLT meta-analysis](https://escholarship.org/uc/item/69t3s3q0)
+- [Kruglanski et al., goal systems](https://www.taylorfrancis.com/chapters/edit/10.4324/9781315175867-6/theory-goal-systems-arie-kruglanski-james-shah-ayelet-fishbach-ron-friedman-woo-young-chun-david-sleeth-keppler) · [McKenzie et al., 2018](https://nowpublishers.com/article/Details/RBE-0091)
+- [Sheeran, Listrom, Gollwitzer, 2024 (a summary)](https://goalsandprogress.com/implementation-intentions-research/) · [Riddell et al., 2025](https://eprints.soton.ac.uk/506833/2/s41562-025-02312-4.pdf)
+- Code: `backend/formguide/intent.py` (`update_goals`, the branch `layer/hypotheses`, 4b46d2d), `backend/formguide/agent/memory.py` (SYSTEM), `backend/formguide/agent/core.md` (the branch `core/shared-prompt`, 2100d96), `openspec/changes/decision-journal`
+
+## Next
+
+<CardGrid>
+  <LinkCard title="The goal module" description="The separate prompt that replaces this page's core-v4 candidate." href="../../how-it-works/goal-module/" />
+  <LinkCard title="The psychology of goals" description="The review this model is built on." href="../goals/" />
+</CardGrid>

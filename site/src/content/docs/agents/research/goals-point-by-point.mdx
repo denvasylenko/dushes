@@ -1,0 +1,175 @@
+---
+title: "Goals: point by point"
+description: "Every section of The psychology of goals: what it says, what 2015–2026 research and assistant practice add, what is best for Dushes, and where we disagree. R&D work in progress. Translated one to one from the R&D team's document of 19 November 2026."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="R&D work in progress, may change">
+This page follows a tab the R&D team is still writing; it is refreshed from the tab before each docs rollout. Nothing of it is built.
+</Aside>
+
+The R&D team's study "The psychology of a goal". Every section of [the review](../goals/): what it says (with nothing lost), what new was found for 2015–2026 and in the practice of assistants, and what of it is best for Dushes. The prompt lines are in English, in the style of core v3. The model of the goal in the conversation (the "snapshot") is on the neighbouring page, [The goal snapshot](../goal-snapshot/).
+
+## How to read
+
+Each item has four parts: **In the document**, what is said, nothing left out; **New**, research from 2015–2026 and the practice of assistants; **Best for us**, what we take, as a line of the core, a Jev question or code; **Disagreement**, where we disagree with the document and why. References to rules are ids of core v3 ([How to understand a person](../../how-it-works/understanding/)). New rules are marked "new" and gathered on [The goal snapshot](../goal-snapshot/).
+
+A caveat: the figures are taken from abstracts and reviews; the full texts of the articles were not opened. Where a figure came from a secondary source, that is said next to it.
+
+The main conclusion in one line: of the eight properties of a goal, Jev reliably asks only two (the phase and a change of goal), four more the code knows better than any model (level, specificity, progress, viability), and two (reason and direction) are conclusions about the person, which we do not draw.
+
+## Item 1. What a goal is: the Rubicon and the two mindsets
+
+**In the document.** A goal is a desired end state, an intention is the decision to pursue it; for Locke and Latham a goal is the object of an action, often a level by a deadline. The Rubicon model (Heckhausen and Gollwitzer, 1987): four phases, before the decision, before the action, the action, after the action; the decision is the crossing of the Rubicon. Before the decision the mindset is deliberative (choose what; pros and cons, realistically; options and honest risks help; early pressure to act gets in the way), after it implemental (how, when, where; optimistically; a plan and the next step help; discussing what is decided all over again gets in the way). Help is needed in different ways before and after (Keller, Gollwitzer, Sheeran, 2020). Jev's first question: is the person still choosing or have they decided? If they have decided, laying out the "pros and cons" again does harm.
+
+**New.**
+
+- The phase is a property not of the conversation but of each part of the goal. A person can firmly decide the day and still be choosing the time. In user goal tracking (UGST, 2025) the goal is broken into subgoals, each with its own status, and models without such a breakdown lose the goal over a long dialogue ([UGST](https://www.emergentmind.com/papers/2507.20152)).
+- Preferences are often built during the choice rather than retrieved from memory (Payne, Bettman, Johnson; the review by McKenzie et al., 2018: building a preference from the context can be rational) ([McKenzie et al.](https://nowpublishers.com/article/Details/RBE-0091), [Payne et al.](https://business.columbia.edu/faculty/research/constructive-process-view-decision-making-multiple-strategies-judgment-and-choice)). So in the choosing phase early "I'd like" cannot be frozen as a decision.
+- Practice: ChatGPT agent and Gemini's agent mode ask for confirmation before consequences (send, buy), not before every step: that is the Rubicon line at the level of an action ([OpenAI](https://openai.com/index/introducing-chatgpt-agent/)).
+
+**Best for us.** We already have def:wish / def:intent / def:plan and the rule [layers]. We add the phase per part, a new rule **[phase-per-part]**: "A person can be decided on one part and still choosing another: act on the decided parts, show options only for the open ones." In the goal model every value has a status `settled | open | tentative` ([The goal snapshot](../goal-snapshot/)).
+
+**Disagreement.** None.
+
+## Item 2. The hierarchy of goals and feedback
+
+**In the document.** For Carver and Scheier a goal is a reference against which a person checks the current state; the loops are nested, the upper level sets the reference for the lower (Edwards, 1998). A second loop watches the speed at which the gap closes, and emotions come from it. Two conclusions for Jev: (1) help at the lower level makes sense while it serves the upper; (2) mood is a signal of the speed of progress: irritation often means "I am moving more slowly than I expected", not a complaint about the answer.
+
+**New.**
+
+- Goal systems theory (Kruglanski et al.): one goal is served by several means (equifinality), one means serves several goals (multifinality); means are interchangeable, and the more of them, the weaker the attachment to each ([Kruglanski et al.](https://www.taylorfrancis.com/chapters/edit/10.4324/9781315175867-6/theory-goal-systems-arie-kruglanski-james-shah-ayelet-fishbach-ron-friedman-woo-young-chun-david-sleeth-keppler), [UMD](https://drum.lib.umd.edu/items/c950be47-ad88-4d24-b6de-1a707d432319)). In practice: when a means did not work (no table at 20:00), the person holds on to the goal and easily accepts a substitute means, if the substitute does not break their other goals.
+- Bayesian inverse planning with LLMs: CLIPS (AAMAS 2024) and AutoToM (2025) keep a distribution over goals and update it from words and actions; the LLM proposes hypotheses and a separate engine counts, and this is more accurate than an LLM alone ([CLIPS](https://arxiv.org/html/2402.17930v1), [AutoToM](https://arxiv.org/abs/2502.15676v1)). That is exactly how our step I-1 is built (`update_goals`: hypotheses from Jev, the counting in code).
+- From the speed of progress to emotion is a theoretical link; the reverse reading (guessing the speed from the emotion) is unreliable: emotion recognition from text and voice is about 0.43 macro-F1 (see [The psychology of desires and motives](../motives/)), and in the EU it is AI Act territory.
+
+**Best for us.**
+
+- The goal model has two levels, both in code: **the end state** ("a table for six on Friday") and **the step** (the "guests" field, the "prices" page). The "be" level is never stored: it is already personal (see item 4).
+- A substitute means after a failure is [goal-one-level-up]; we add what it lacks: the substitute keeps everything already decided and every constraint, a new **[settled-stays]**: "What is settled stays settled: a failed step or a new option never reopens a settled value; offer only substitutes that keep every settled value and every limit they set."
+- Instead of mood, the speed itself, measured by code: how many parts of the goal closed over the last N turns, repeats, Undo. It is the same counter that gives the STUCK line; its effect only lowers ([state-only-lowers], [stuck]).
+
+**Disagreement.** Conclusion (2) in the form "irritation means…" is not taken: it requires naming a feeling, which [no-feelings] forbids. The mechanism stays, through the observed speed rather than the emotion. The second half ("not a complaint about the answer") is dangerous: sometimes it is exactly a complaint, and [told-wrong] requires checking the answer again.
+
+## Item 3. Which goals work
+
+**In the document.** Specific hard goals give more than "do your best": d = 0.52–0.82 over 35 years; growth hits the limit of ability or the loss of commitment (Locke and Latham, 2002). The mechanism: attention, effort, persistence, the search for a strategy. Conditions: commitment, feedback, ability, a task not too complex; praise, feedback and taking part in the choice act through a specific hard goal. Side effects (Ordóñez et al., 2009): a narrow focus and the forgotten "unnamed", risk, unethical behaviour, inhibited learning, a fall in intrinsic motivation; goals as a prescription drug; in new tasks an outcome goal gets in the way of trying things. For Jev: making things specific is worth it, but keep in mind what the person does not want to lose; in new tasks, a learning goal, not a number.
+
+**New.**
+
+- Agents show the same thing on underspecified tasks: the model silently thinks up what was left unsaid. IN3 (ACL 2024) labels a task's missing details and the importance of each; a trained agent finds >85% of vague tasks and recovers >70% of the most important details ([IN3](https://aclanthology.org/2024.acl-long.61.pdf)). In Ambig-SWE (2025) being allowed to ask gives up to +74%, and it is exactly the questions one can act on that decide it ([Ambig-SWE](https://arxiv.org/html/2502.13069v2)).
+- For us "specificity" is already set by the form: "done" is the required fields filled and sending (the send check by the form's tree, commit 8f95ddc); for the site, the page opened; for the researcher, an answer with a source.
+
+**Best for us.**
+
+- "What the person does not want to lose" is a separate field of the model: **limits** ("not after nine", "no stairs", "up to 50 €") apart from **preferences** ("ideally by the window"). A new rule **[limits-before-likes]**: "A limit they set ("not after 9") rules options out; a liking ("ideally by the window") only orders them. Never trade a limit for a liking."
+- A finding in the code: the memory of a long conversation (`agent/memory.py`, the SYSTEM prompt) puts limits and preferences into one section, "Decisions and preferences". After compaction "not after nine" can become a wish. A proposal (S): a separate section "## Limits (must / must not)", word for word, never dropped.
+- Make specific only what the next step needs, with one question ([one-question]); a detail that changes nothing is not asked about.
+- A "learning goal" for us = the person wants to understand, not to have it done for them. Covered by def:question-about-the-way and [step-by-step]; nothing new is needed.
+
+**Disagreement.** "Make the goal hard but reachable" is not our role: the assistant of a form or a site does not set people goals and does not judge whether they are realistic. The only thing we say is a fact from the business ("closed on Mondays", [missing-fact]).
+
+## Item 4. What stands behind a goal: three axes
+
+**In the document.** The chance of reaching a goal depends on why it is pursued. Three independent axes: (1) autonomous ↔ controlled motivation (self-concordance; autonomous motives mean more effort, attainment and well-being, the meta-analysis of Sezer et al., 2024; "I want to learn" vs "I have to, or my boss"); (2) approach ↔ avoidance (approach goals are on the whole better; "perform well" vs "if only I don't make a fool of myself"); (3) mastery ↔ performance (Elliot and Church, 1997: mastery holds intrinsic motivation, performance-approach raises grades, performance-avoidance harms both). The reason matters more than the type of goal (Gore et al.); in sport the link of autonomy to effort cannot be reduced to difficulty (Smith, Ntoumanis, Duda). For Jev: the axes are hidden features that can be heard in the wording; rephrase an avoidance goal as an approach goal; a controlled goal is a signal that more support and reminders are needed.
+
+**New.**
+
+- LLMs already draw such conclusions themselves, and they draw them from stereotypes. Neplenbroek, Bisazza, Fernández (EMNLP 2025): models infer demographics from stereotyped features, sometimes even against what the person said about themselves directly ([arXiv 2505.16467](https://arxiv.org/abs/2505.16467v1)). DAIQ (2025): models fill in demographics even from neutral questions, and a prompt to abstain lowers it noticeably ([DAIQ](https://arxiv.org/html/2508.15830v2)); an audit of queries about disability: a confident guess in up to 97% of cases ([Who's Asking?](https://web3.arxiv.org/abs/2508.15831)). A guess about a motive is the same mechanism.
+- A useful kernel: the words of a reason often carry **a fact for the task**: "my boss wants it by Friday" = a deadline, "if only I'm not late" = a hard time limit, "so that the visa is not refused" = the completeness of the documents matters.
+
+**Best for us.** Of the three axes we take only what turns into a fact of the task. Avoidance in the words ("if only I don't…", "so as not to…") is a limit in the goal model, and a deadline or a requirement from "I have to, or…" is a fact. The motive itself is neither stored nor named. A new rule **[no-goal-projection]** (in [sec:boundaries]): "Never add a goal, a reason or a wish they did not show (a special occasion, a business trip, a worry). Keep their goal in their own words."
+
+**Disagreement.** Three things are not taken. (1) Recognising the axes as a property of the person: that is a psychological profile, [no-personal-inference] forbids it, and by the 2025 papers the model would do it from stereotypes. (2) Rephrasing someone else's avoidance goal into an approach goal: that is coaching; in a form or on a site it comes across as lecturing and loses the limit ("not to be late" → "to arrive on time" is already a different strictness). (3) "More reminders" with controlled motivation: it contradicts [no-engagement] and [state-only-lowers]. The decision about reminders belongs to the business and the person, not to a guess about a motive.
+
+## Item 5. Dynamics on the way to a goal
+
+**In the document.** Monitoring progress works: 138 experiments, N = 19,951, interventions greatly increased checking (d = 1.98), this raised attainment (average d ≈ 0.40), more strongly when progress was recorded or made public (Harkin et al., 2016). The goal gradient: the closer the reward, the more effort; even an illusion of progress speeds people up (a card with 12 stamps and two bonus ones faster than an ordinary one with 10; Kivetz, Urminsky, Zheng, 2006). "Done" helps when commitment is in question, "left" when it is not (Koo and Fishbach). Progress can "permit" actions against the goal; thoughts of commitment hold people (Fishbach and Dhar, 2005; later data are mixed, Isherwood, 2015). With one goal people go consistently, with several they balance. For Jev: a visible, recorded progress; "already done" at the start and when wavering, "left" near the finish; praise can make people relax, importance can hold them.
+
+**New.**
+
+- Agents make progress visible and editable: Magentic-UI (Microsoft, 2025) keeps a plan shared with the person in words, which can be edited before and during execution; 12 participants valued joint planning for subjective preferences and "guards" before critical actions ([Magentic-UI](https://arxiv.org/pdf/2507.22358), [blog](https://www.microsoft.com/en-us/research/blog/magentic-ui-an-experimental-human-centered-web-agent/)).
+- The illusion of progress ("bonus stamps") is a known loyalty trick. In an assistant with our boundaries it falls under [no-manipulation].
+- Koo and Fishbach's rule requires knowing commitment, and we do not measure it. The honest replacement is the phase and the share done, both visible to the code.
+
+**Best for us.**
+
+- We already have the line "filled: …; left: …" ([shelf-life]) and the change `form-progress`. A frame by share instead of commitment: under half, "filled" first; over half, "left" first. This is code (S), not a prompt; a QA measurement is needed, because the effect was shown by one lab and not on forms.
+- A new rule **[progress-is-real]**: "Progress you show counts only what is actually filled or done; never pad it, never count a step they did not take."
+- Several goals in one conversation ("book it and tell me about parking"): the goal model has a list of end states, each with its own status. It is the same request register ("what was asked, what is done") from the queue, and it also feeds [no-false-done], "one line per part".
+
+**Disagreement.** We never use the illusion of progress. The item about licensing and praise gives no rule: we do not praise anyway ([no-engagement], [say-once]), and the data are mixed. "Stressing the goal's importance to hold them": no, that is pressure, [state-only-lowers].
+
+## Item 6. Fantasies, unconscious goals and giving up goals
+
+**In the document.** For Oettingen, positive fantasies about success make people relax; the alternative is WOOP (wish, outcome, obstacle, an "if… then" plan); a meta-analysis of 21 studies, 15,907 participants (Wang et al., 2021). Unconscious goals (goal priming) are disputed: replications often do not reproduce the effect (Harris et al., 2013); a meta-analysis sees an effect, but probably overestimated (Weingarten et al.; Sanders); building a product on it is risky. Being able to let go of an unreachable goal and take up a new one is linked to well-being, less distress, health, meaning (Wrosch et al., 2003; Wrosch, Scheier, Miller). For Jev: ask about the main obstacle and the plan for it; if a goal has stood still for a long time, gently ask whether it still stands and help with a replacement.
+
+**New.**
+
+- Implementation intentions, a new synthesis: Sheeran, Listrom, Gollwitzer (2024), 642 tests. By secondary sources, after correcting for publication bias the effect is smaller than the classic d = 0.65 (2006): around d = 0.15–0.35; one clear cue → one useful action works best ([a summary](https://goalsandprogress.com/implementation-intentions-research/), [Konstanz](https://kops.uni-konstanz.de/entities/publication/2e749bfb-8533-437c-8203-7e788c910c5f); the figures should be checked against the article).
+- MCII in the meta-analysis of Wang et al.: g ≈ 0.34, with interaction with a person 0.47, through a document 0.28; the authors themselves write that because of bias the true effect may be smaller ([PMC](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8149892/)).
+- An imagined future works when it is vivid and tied to the choice: episodic future thinking lowers the discounting of the future, r = .44 across 174 effects (Röscher et al., 2022), g = 0.52 across 47 studies, a positive scene 0.64, a neutral one ≈ 0 (Ye et al.) ([PubMed](https://www.pubmed.gov/34841982/), [a meta-analysis](https://www.aminer.org/pub/61a752695244ab9dcbcc2ecf/promoting-farsighted-decisions-via-episodic-future-thinking-a-meta-analysis)). Important for the snapshot: a person holds a goal as a scene (who, where, when), not as a list of fields.
+- Giving up goals: Barlow, Wrosch, McGrath (2020), 31 samples: the link with quality of life is small (giving up r = 0.08, switching to a new one r = 0.19), and in groups at risk of depression the sign of the link with depression flips; in 2025, a meta-analysis of 235 studies in Nature Human Behaviour (Riddell et al.) ([Soton](https://eprints.soton.ac.uk/506833/2/s41562-025-02312-4.pdf)). In other words, nudging a person to give up a goal is not neutral.
+
+**Best for us.**
+
+- We know the "obstacle" ourselves; there is no need to ask: a closed step, a missing document, no slot on the date. From WOOP we take only the last link, one "when… then…", which is already [when-then]. The new 2024 synthesis (one cue → one action) confirms the rule's form.
+- The snapshot is a scene: in the result line and on the confirmation card we name the end state in one phrase, in their words ("Friday, 20:00, six people, by the window"), not as a list of fields. This is exactly checking without interrogating ([The goal snapshot](../goal-snapshot/), §4).
+- Letting go: when the end state cannot be had here, say so directly, give the nearest thing and a way to stop, a new **[can-stop]**: "When what they are after cannot be had here, say so plainly, offer the nearest thing and a way to stop or save for later; never press them to finish." After a pause [shelf-life] already works.
+
+**Disagreement.** We will not ask the person about their "main obstacle" or "whether the goal still stands": that is a therapeutic question, outside the role of a form's or a site's assistant, and it conflicts with [never-ask-why]. The assistant does not hold goals for weeks: for us "weeks without movement" is an abandoned draft, and the business decides about it (the owner's setting "preferences between visits" is separate). On priming: agreed; we build nothing and do not "nudge" with the interface.
+
+## Item 7. The eight properties of a goal: who sees them
+
+**In the document.** A goal has eight properties, and Jev recognises them with some probability: phase, level, specificity, difficulty, reason, direction, progress, viability (the question, how it sounds, what Jev does: in the document's table). Two layers: the intention, what one wants now; the goal, for the sake of what and for how long; a live model of goals makes inferring intentions more accurate: every request is checked against the active goals.
+
+**New.** Models track badly how a person's state changes over time: in Dynamic ToM (ACL 2025) the lag behind people is 44.7% on average ([ACL 2025](https://preview.aclanthology.org/landing_page/2025.acl-long.1171.pdf)). Hence the decision: the code keeps the snapshot, the model reads it every turn, and Jev answers narrow questions about the line. CLIPS and UGST are built the same way.
+
+**Best for us**: who measures each property:
+
+| Property | Who | How we do it | Status |
+| --- | --- | --- | --- |
+| Phase | Jev | the question `layer` (wish / intent / plan) + new: the phase per part of the goal | exists, behind a switch |
+| Level | code | the end state (form, page, answer) and the step (field, button) are known from the structure | new, M |
+| Specificity | code | "done" = the required fields and sending; what is missing is the open list | partly exists (the send check) |
+| Difficulty | nobody | we do not judge; only the business's fact ([missing-fact]) | drop |
+| Reason | nobody | we do not infer it; a deadline or a requirement from the words goes into the limits | drop as a property |
+| Direction | Jev (narrowly) | not "towards / away from" but def:limit: "does the line set a limit?" | new, S |
+| Progress | code | filled / left, a frame by share | partly exists |
+| Viability | code + Jev | code: a pause (RESUMED), no movement; Jev: def:goal-change and def:done-for-now | new, S |
+
+In sum: Jev asks four narrow questions about the line (layer, already there; new: limit, goal_change, done_for_now), and the code builds the snapshot. "Check every request against the active goals" is a prior for Jev: I-1's hypotheses become children of the end state (step I-2, [The goal snapshot](../goal-snapshot/)).
+
+**Disagreement.** The document puts all eight properties on Jev. We leave Jev only judgements about the line; what can be seen from the structure the code counts (more accurately, and for free), and difficulty and reason nobody counts. "Data from trackers" for progress means only the data of the form itself and of the conversation; history between visits is a separate business setting.
+
+## Item 8. In short: checking the six theses
+
+| The document's thesis | Agreed? | What we have |
+| --- | --- | --- |
+| A goal is a reference; phase, level, reason, progress are needed | yes, except the reason | the goal snapshot in code; the reason is not stored |
+| Before the decision, options; after it, a plan | yes | [layers] + new [phase-per-part] |
+| The hierarchy and the loop; speed gives rise to emotions | yes, without reading emotions | two levels in the snapshot; the code counts the speed → only quieter |
+| Specific hard goals narrow the focus | yes | limits apart from preferences, [settled-stays] |
+| One's own goals and approach goals are reached more often | the fact yes, the application no | we do not diagnose, we do not rephrase; [no-goal-projection] |
+| Recorded progress; "done" or "left" | yes | a frame by the share filled, [progress-is-real] |
+| Dreams without obstacles relax; be able to let go | yes | we name the obstacle ourselves + [when-then]; new [can-stop] |
+
+## Sources (new, beyond the document's list)
+
+- [UGST: User Goal State Tracking, 2025](https://www.emergentmind.com/papers/2507.20152)
+- [Dynamic Theory of Mind, ACL 2025](https://preview.aclanthology.org/landing_page/2025.acl-long.1171.pdf)
+- [CLIPS, Zhi-Xuan et al., AAMAS 2024](https://arxiv.org/html/2402.17930v1) · [AutoToM, 2025](https://arxiv.org/abs/2502.15676v1)
+- [Kruglanski et al., A theory of goal systems](https://www.taylorfrancis.com/chapters/edit/10.4324/9781315175867-6/theory-goal-systems-arie-kruglanski-james-shah-ayelet-fishbach-ron-friedman-woo-young-chun-david-sleeth-keppler) · [The quest for multifinality](https://drum.lib.umd.edu/items/c950be47-ad88-4d24-b6de-1a707d432319)
+- [McKenzie et al., constructed preferences, 2018](https://nowpublishers.com/article/Details/RBE-0091) · [Payne, Bettman, Johnson](https://business.columbia.edu/faculty/research/constructive-process-view-decision-making-multiple-strategies-judgment-and-choice)
+- [IN3, Qian et al., ACL 2024](https://aclanthology.org/2024.acl-long.61.pdf) · [Ambig-SWE, 2025](https://arxiv.org/html/2502.13069v2)
+- [Neplenbroek, Bisazza, Fernández, EMNLP 2025](https://arxiv.org/abs/2505.16467v1) · [DAIQ, 2025](https://arxiv.org/html/2508.15830v2) · [Who's Asking?, 2025](https://web3.arxiv.org/abs/2508.15831)
+- [Magentic-UI, Microsoft, 2025](https://arxiv.org/pdf/2507.22358) · [ChatGPT agent](https://openai.com/index/introducing-chatgpt-agent/)
+- [Sheeran, Listrom, Gollwitzer, 2024 (a summary)](https://goalsandprogress.com/implementation-intentions-research/) · [Wang et al., MCII, 2021](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8149892/)
+- [Röscher et al. / Ye et al., EFT and discounting](https://www.pubmed.gov/34841982/)
+- [Barlow, Wrosch, McGrath, 2020; Riddell et al., Nature Human Behaviour, 2025](https://eprints.soton.ac.uk/506833/2/s41562-025-02312-4.pdf)
+
+## Next
+
+<CardGrid>
+  <LinkCard title="The goal snapshot" description="The model of the goal for the agents." href="../goal-snapshot/" />
+  <LinkCard title="The goal module" description="The separate prompt built from these items." href="../../how-it-works/goal-module/" />
+</CardGrid>

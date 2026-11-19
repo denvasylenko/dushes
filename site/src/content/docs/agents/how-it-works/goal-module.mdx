@@ -8,7 +8,7 @@ import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
 Experimental, not built. This is the R&D team's draft; nothing of it is in the repository. It would come behind its own switch, off by default, and only after QA's comparison of [the shared core](../understanding/).
 </Aside>
 
-The owner's decision (through the CPO, 19 November): "we'll take everything that is useful… and let's also create a separate prompt that will be added too. We need to think where it goes in the anatomy." Here: a check of the CPO's list, the text of the separate module `goal.md`, and its place in the agents' anatomy. The module replaces the candidate [sec:goal] for core v4 from the "Goal snapshot" tab: the core stays v3, and everything about the goal is in the module. This is R&D; there is nothing in the repository.
+The owner's decision (through the CPO, 19 November): "we'll take everything that is useful… and let's also create a separate prompt that will be added too. We need to think where it goes in the anatomy." Here: a check of the CPO's list, the text of the separate module `goal.md`, and its place in the agents' anatomy. The module replaces the candidate [sec:goal] for core v4 from [the goal snapshot](../../research/goal-snapshot/): the core stays v3, and everything about the goal is in the module. This is R&D; there is nothing in the repository.
 
 ## 1. A check of the CPO's list
 
@@ -173,7 +173,7 @@ The thresholds for each question come from QA's measurement (scenario G-13); the
 
 ### 3.3 What the code keeps
 
-The `GoalModel` structure from §3 of the "Goal snapshot" tab, plus a phase field: each goal has the end state in the person's words, parts with a status and a source, limits, likings, refusals, the phase (derived from the parts' statuses: anything open means choosing, everything settled means a plan) and progress (filled / total, from the form). Only ids and statuses go into the decision log.
+The `GoalModel` structure from §3 of [the goal snapshot](../../research/goal-snapshot/#31-what-the-code-keeps), plus a phase field: each goal has the end state in the person's words, parts with a status and a source, limits, likings, refusals, the phase (derived from the parts' statuses: anything open means choosing, everything settled means a plan) and progress (filled / total, from the form). Only ids and statuses go into the decision log.
 
 ### 3.4 The link to I-1 and the request register
 
