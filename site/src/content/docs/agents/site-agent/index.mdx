@@ -83,6 +83,7 @@ sequenceDiagram
 2. **Dushes** gets the message, the last few turns, the sections of the site map that match it best (a BM25 search) and the best matching passages of the site's business documents. It answers in one to three sentences and may call five tools: `search_site` (look again), `read_page` (read a page, or one tab, accordion or section of it, without opening it), `ask_documents` (the researcher; only when the site has business documents), `navigate` (a page, tab or section; the result tells it what that part says) and `open_form` (a form, with a note of what the user already said).
    **A question is answered where the person is.** When the answer sits in a section of another page, Dushes reads that section with `read_page` and answers; nobody is moved, and no directive or offer is sent. It must read the section that would hold an answer before it says the answer was not found, or offers to open that section. If the model calls `navigate` or `open_form` on a question anyway, the move is refused and the refusal carries that page's text, so the answer is the same.
    Besides the five, a run may also offer `suggest_next` (the quick replies, when suggestions are on), `to_form` (only on a page with a form) and your own tools.
+   **A move is the agent's own decision.** Each `navigate` call carries `asked`, how the agent read the line: `ordered`, `back`, `yes` or `question`. Only `question` keeps the person in place, with the page offered; "back" opens the page before this one at once. `open_form` still opens a form only on the person's own request or a yes to an offer. `INTENT_GATE=words` brings back the list of moving words for `navigate`.
 3. **Each move is checked** against the site map. A valid one becomes a `site_directive` event for the page; an unknown path is refused and the model is told so.
 4. **The hand-off.** After `open_form` the page opens the form and runs once with `handoff: true`. The router gives the UI agent the note as its first message, so it proposes those fields at once.
 5. **The UI agent** is the same `FormGuide` as on a page of its own, with its own conversation per form inside the site's thread: its history, cards and Undo work as everywhere else.
@@ -209,6 +210,10 @@ create_dushes_router(site, host=None)  # POST /run (AG-UI), GET /map, GET /threa
 | --- | --- | --- |
 | `handoff` | `false` | the first run on a form page after `open_form`: the UI agent gets the note as its first message |
 | `capabilities` | all | the card variants the page draws, as for the UI agent |
+
+| Environment | Default | What it does |
+| --- | --- | --- |
+| `INTENT_GATE` | unset | `words`: a `navigate` moves the person only when their words ask for a move or say yes to an offer, as before; unset, the agent's own reading (`asked`) decides |
 
 ## Next
 

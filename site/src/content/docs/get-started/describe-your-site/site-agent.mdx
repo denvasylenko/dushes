@@ -105,9 +105,15 @@ site = Dushes(guide, SiteMap.load("site.yaml"), history=20)
 
 ## The pages a person has been on
 
-**What it affects.** The server keeps the pages a conversation has been on (up to 12), in a record beside the conversation in the transcripts store, so it survives a restart and works across instances. Each turn it tells the site agent the trail and the page before the current one, so "the page I was on" is understood.
+**What it affects.** The server keeps the pages a conversation has been on (up to 12), in a record beside the conversation in the transcripts store, so it survives a restart and works across instances. Each turn it tells the site agent the trail and the page before the current one, with its path, so "back" in any wording, even misspelt, opens that page at once. The agent's own moves count as visits, so a host that sends no page has a trail too.
 
-**How to write it.** Send the current page with every run, as before (`state.page.path`); there is nothing else to send.
+**How to write it.** Send the current page with every run (`state.page.path`); there is nothing else to send.
+
+## When it moves the person
+
+**What it affects.** Whether a move to a page is carried out is the agent's own decision, read from the conversation and the trail, with no list of moving words. Each `navigate` call says how the agent read the line (`asked`: `ordered`, `back`, `yes` or `question`); only `question` keeps the person where they are, with the page offered. A page the person told it to open is opened without asking. Starting a form (`open_form`) still needs the person's own request or a yes to an offer.
+
+**How to write it.** Nothing. `INTENT_GATE=words` in the server's environment brings back the list of moving words for `navigate`.
 
 ## Checklist
 
@@ -127,7 +133,6 @@ Nothing in this list works with the package you install today.
 
 - **The site's whole vocabulary counts:** a page's keywords in any language, every page and part title of the site and every label of the form on the screen are never masked as a name before the decision model (built, not released).
 - **A dedicated key for the human contact** (planned).
-- **A move to a page is the agent's own decision**, with no list of moving words; "back" opens the page before this one at once, and the agent's own moves count in the trail; `INTENT_GATE=words` brings the word list back (built, not released).
 
 ## Next
 
