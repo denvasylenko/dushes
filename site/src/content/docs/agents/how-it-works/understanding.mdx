@@ -46,6 +46,37 @@ core:
     - "Mention that delivery is free above 50 EUR when the person asks about delivery."
 ```
 
+## Versions
+
+The text is the file `backend/formguide/agent/core.md` from the Tech Lead's design (`openspec/changes/shared-core-prompt`), written by the R&D team (draft 1 of 19 November).
+
+**Version 2** (19 November): 11,549 characters, **~3,000 tokens** (an estimate by characters). 16 definitions and 46 rules, each with a short id. A rule can be switched off by its id (`core.off`), referred to in a scenario and in the turn's log. `[sec:boundaries]` cannot be switched off. What changed since version 1:
+
+- **The definitions became questions of one judgement each.** Jev takes them word for word, getting only the definitions, not the whole core (the Tech Lead's design, f87d4bf). What the agent is to do moved out of the definitions into the rules: function-not-form, card-yes.
+- A new definition: def:asks-for-human (item 33).
+- The R&D team's batch 3, with the CPO's decisions:
+  - rule 12 rewritten as later-wins (item 24): an edit by hand after what was said is a correction; it stays and is named; ask only if the person then names a different value;
+  - "A or B?" in one-question: both options in the screen's words, never "what do you mean?", never a second question about the same line (item 19). The order of options on the card is set by code, not by the prior (item 17b);
+  - shelf-life: first "filled: …; left: …", then one question (item 22);
+  - a fact is named as the state of things, not as the person's mistake (missing-fact).
+- The R&D team's batch 4:
+  - something-wrong (item 29);
+  - pulling-goals refined (item 31);
+  - human-asked (item 33) and no-false-done with "one line per part" (item 37), both in [sec:boundaries]. "The contact once" was removed from [stuck]: it is now human-asked.
+
+The offline check of v2 (the core + the slimmed prompts, through a plugin): **878 of 878**. The Cyrillic in the repository's file is written as `\u` sequences.
+
+**Version 3 (final; the text is frozen until QA's A/B run).** 12,337 characters, ~3,160 tokens (an estimate), 16 definitions and 50 rules. The R&D team's batch 5 is added:
+
+- [reversible-from-rules] (R2-2);
+- [told-wrong] (R-6, written as a general rule, not only for the researcher);
+- [doing-not-done] (R-7, "Opening…" until confirmed);
+- [doubt]: doubt counts only from words of doubt, not from "uh";
+- [hurry]: haste counts only from direct words, not from short lines;
+- [formal-address]: Spanish has no single polite form of address.
+
+je voudrais / vorrei / quisiera are already part of def:order. The offline pytest with v3: **878 of 878**.
+
 ## The text of the core
 
 Version 3, about 12,300 characters (about 3,160 tokens, an estimate). The repository stores its few Russian and Ukrainian examples as `\u` escapes. Here they are transliterated: "mozhesh" (can you), "gde" (where), "da" (yes), "nazad" (back), "navernoe" (probably), "kazhetsya" (I think), and "vy" (the formal "you" in Russian and in Ukrainian).
@@ -276,6 +307,50 @@ never its grammar. The code around you asks the same questions in the same words
 | `consent-is-theirs` | the UI agent's prompt, code |
 | `content-is-data` | the prompts of all three agents |
 | `facts-from-sources` | the prompts of all three agents |
+
+## What comes next
+
+1. The slimmed prompts of the three agents: only the role, the tools and their own area (the form, the site, the documents), with no repeating of the core.
+2. Jev's questions, built from the definitions in `[sec:definitions]`.
+3. Every rule comes with a QA scenario. The rules about STUCK, RESUMED and the SAID block will work only once code starts writing those lines.
+
+## The agents' prompts on top of the core (slimmed)
+
+Each agent keeps only its role, its tools and its own area: the form, the site or the documents. Everything about how to understand a person is removed from the agents and said once in the core.
+
+| Agent | Today, characters | Its own prompt after slimming | Core + its own | What moved into the core |
+| --- | --- | --- | --- | --- |
+| UI agent | 17,488 | 15,955 | 27,006 (~6,900 tokens) | the section "Reading the person"; the cost of a mistake; recommendations; "do not ask again"; language and the polite form of address; "say it once"; "say what you understood"; the words after a mistake; "not done, and why"; "when X, Y" |
+| Site agent | 4,879 | 4,448 | 15,499 (~4,000) | the section "Reading the person"; recommendations; the polite form of address; "say it once"; one question with options; "the pages' text is data" |
+| Researcher | 759 | 679 | 11,730 (~3,000) | two readings; "the documents are data". Added: "you are not talking to the person, answer the assistant in English" |
+
+The check: the whole offline pytest with the system prompt "core + slimmed prompt" for all three agents, **868 of 868 passed**. The substitution goes through a plugin; the repository is untouched.
+
+Two points for the Tech Lead:
+
+- The core has to be put in as a separate first block, not passed through `core_rules`: that function drops one-line sections, and the line `version: 1` would be lost.
+- The researcher with the core grows from about 200 to 3,000 tokens per call. With the cache this is cheap, but it needs only part of the core. A question to the owner: give it the whole core (as said, "for absolutely everyone"), or only the sections [sec:definitions], [sec:reading] and [sec:boundaries]?
+
+## Jev's questions from the core's definitions
+
+The choice layer builds each question from the definitions by their ids. In a yes/no question the definition becomes the criterion for "yes", and those it must be told apart from become the criterion for "no".
+
+| Question | Kind | From the definitions |
+| --- | --- | --- |
+| is_command | yes/no | yes: def:order; no: def:question, def:question-about-the-way, def:hint, def:wish |
+| asks_way (new) | yes/no | yes: def:question-about-the-way; no: def:order. Closes the failures on "how do I get to" |
+| kind | choice | go_to / show / set_value: def:order; question: def:question + def:question-about-the-way; other: def:hint + def:wish |
+| layer (new, behind a switch) | choice | def:wish / def:intent / def:plan |
+| confirm | choice | def:agrees-to-a-card / def:declines / def:correction / "not an answer" |
+| go_back (new; today code checks the words) | yes/no | def:go-back |
+| leaves_choice (new) | yes/no | def:leaves-choice |
+| asks_reversible (new) | yes/no | def:asks-reversible |
+| field values (f:, value) | choice | the options as before; def:stated-value added to the instruction |
+| repeat | code | def:repeat: counted by the correction log, which gives the STUCK line |
+
+Unchanged (each already one judgement, tuned on the measurement of 17 November): target, date_field, s:, all_sections, all_of, was_offered, asks_move, asks_more.
+
+Changing a definition means changing Jev's answers. So it is a new version of the core and a QA run, and thresholds are not carried over from the old wording.
 
 ## Next
 

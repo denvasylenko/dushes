@@ -1,0 +1,88 @@
+---
+title: "What from the document is in work"
+description: "The R&D team's working tracker: every idea of the review and every R&D conclusion as one row, with what we do, where, who, its status and the QA scenario. Translated one to one; the statuses are as of 19 November 2026."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="A working tracker">
+The statuses are as of 19 November 2026. The R&D team updates the tracker in its own document every day; this page is a copy of that day and is not kept up to date.
+</Aside>
+
+Each idea of the document is one row: every list item and every table row of [the review](../intentions/), plus the conclusions of the R&D team's research. Ideas we deliberately do not take stay in the table as a row with the reason.
+
+Legend:
+
+- **Rule N** is from the section "Rules for Dushes' agents". **F-N** is a function from the function map. **A-N** is an item of the order by agents. **H** is the prior probability. **S-N** is an item of "What the R&D team would do differently" on [the 2024–2026 page](../intent-systems/).
+- The statuses, in order:
+  - not taken;
+  - not planned;
+  - proposed: the R&D team proposed it, the CPO has not decided yet;
+  - queued: with the Tech Lead, with an item;
+  - built: with a commit hash;
+  - accepted by QA: with numbers;
+  - in production.
+- "Already there" means that on 19 November it is already in the prompts or the code of main, but QA has no guard scenario for it yet.
+
+Updates: the R&D team, once a day, from the messages of the Tech Lead and QA that the CPO forwards. **Last update: 19 November.** On that day there is not a single hash: the R&D team saw no work started on these ideas.
+
+## Ideas of the review
+
+| # | Idea (section) | What we do | Where | Who | Status | QA scenario |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Bratman: an intention is a decision made (what an intention is) | Rule 2: do not dispute the person's decision | The UI agent's prompt | Tech Lead, QA | Already there | An allowed value is set without "are you sure?" |
+| 2 | The BDI architecture (Rao & Georgeff) | Not taken: its role is played by the frame "action × target × value" and the request register; the task needs no separate BDI engine | — | — | Not taken | — |
+| 3 | Ajzen: attitude, norm, perceived control | Attitude and norm are not taken: they predict long-term behaviour, not one turn. Perceived control is taken: see row R2-1 (competence and autonomy in SDT) | — | — | Partly not taken | — |
+| 4 | Gollwitzer: "if Y, then Z" plans | Rule 15: the next step as "when X, do Y"; F-10, the scheduler, L | The UI agent's prompt (if the scenario shows a benefit); the scheduler, code | Tech Lead, QA; the scheduler is a product decision | Proposed; the scheduler not planned | A form waits for a statement: the condition is named at the end of the turn |
+| 5 | Wish / intention / plan (the table of layers) | Rule 1 | Jev (choosing the layer) + the prompts of the UI agent and the site agent | Tech Lead, QA | Proposed | "I'm thinking, maybe I'll book a brunch…" → 2–3 options, nothing filled |
+| 6 | Vallacher & Wegner: hold the goal one level up (the hierarchy) | Rule 3, F-5 (the goal field), A-4 (the goal in the hand-over) | Config (goal), code, the UI agent's prompt; the new key goes into the reference | Tech Lead, QA, Docs Lead | Partly already there (an impossible value → the nearest); the rest proposed | A slot taken → the nearest slot or day offered |
+| 7 | Going one level up, but without asking "why" | Rule 4 | The prompt, only if the scenario fails | QA | Needs a guard | The loan form: no question "why do you want a loan" |
+| 8 | Going down is a sign that concrete help is needed | Rule 5 | Code and Jev (show, focus), the prompt | QA | Already there | "Where's the date here?" → the field highlighted and one line |
+| 9 | Speech acts (Austin, Searle): form and function | Rule 6, F-1 | Jev (a yes/no question about the line's function) | Tech Lead, QA | Proposed (partly already there for the site agent) | A slice of indirect lines by language |
+| 10 | Grice: the four maxims and implicature ("it's cold here") | Rule 9 (answer exactly the question), rule 6 (implicature) | The prompts of both agents; Jev | QA | 9 already there; 6 proposed | A question about the price → an answer with the price |
+| 11 | Clark & Brennan: common ground | Rule 7, F-3 | The UI agent's prompt; the conversation's memory | QA | Already there | A name said three turns ago is not asked for again |
+| 12 | Least collaborative effort; confirming understanding | Rule 8 (the closing line); S-5 (implicit or explicit confirmation by voice) | Code | Tech Lead, QA | 8 already there; S-5 proposed | Undo, then a similar request → an explicit confirmation |
+| 13 | "Three things for Jev": function, memory, showing what was understood | Rules 6, 7, 8 | See rows 9, 11, 12 | — | See rows 9, 11, 12 | — |
+| 14 | Inverse planning (Baker, Saxe, Tenenbaum) | Rule 10, F-4, H; the turn's result carries over into the next turn (the 2024–2026 page) | Code | Tech Lead, QA | H queued (item H); the rest proposed | Lines against the prior; a goal over 2–3 lines |
+| 15 | BToM: a person may not know a fact | Rule 11, F-6 | Code ("there is no such thing, the closest is…") + prompts | Tech Lead, QA | Partly already there; the general rule proposed | A page with no barbershop: zero moves |
+| 16 | Theory of mind as inverse decision-making: a choice reveals a preference | Rule 16; the correction log (F-12) | Code | Tech Lead, QA | Proposed | The share of corrections by action |
+| 17 | The prior is the person's history | H (page aggregates); personal history through configurable preferences | Code; the host setting goes into the reference | Tech Lead, QA, Docs Lead | H queued; preferences decided by the owner (a host setting, off by default), not taken into work | w = 0 / 0.15 / 0.3; lines against the prior |
+| 18 | The likelihood: how sensible the request is under each hypothesis | Jev's probabilities | Jev | — | Already there (the chooser gives p) | A reliability curve of Jev's p (S-1) |
+| 19 | The result is a distribution, not one answer | F-4, F-8 ("A or B?"), S-3 (the size of the set of options decides) | Code; a card in the widget | Tech Lead, the widget's designer, QA | Proposed | "Set 18" with two fields that fit |
+| 20 | A separate hypothesis about beliefs: point out the fact | Rule 11 | See row 15 | — | See row 15 | — |
+| 21 | The size of the gap between intention and behaviour (d = 0.66 → 0.36, 28%) | Not taken as an action: it is the background that grounds rules 12–14 | — | — | Not taken | — |
+| 22 | Why the gap: did not start, got derailed, missed the moment, habit won | Rule 13 (RESUMED), A-1 (the request register) | Code + prompts | Tech Lead, QA | Proposed | A resumed conversation with an unfinished request |
+| 23 | Stated and revealed preferences; engagement is not what people want | Rule 14 (do not work for engagement), rule 16 | Prompts + code | Tech Lead, QA | Rule 14 agreed by the owner on 19 November; not taken into work | "Recommend Premium" + "the cheapest"; "what do you recommend?" |
+| 24 | Words are the starting hypothesis; in a conflict, ask | Rule 12 (CONFLICT) | Code + the UI agent's prompt + a card | Tech Lead, designer, QA | Proposed | "4 guests" → the person sets 5 themselves → "confirm" |
+| 25 | Closing the gap with "if… then" plans | Rule 15 | See row 4 | — | See row 4 | — |
+| 26 | A goal has a shelf life | Rule 13 | See row 22 | — | See row 22 | — |
+| 27 | Horvitz: act, ask or stay quiet by the expected benefit | Rule 17, F-7; S-2 (thresholds calibrated for an error rate α) | Code | Tech Lead, QA | Proposed | Curves by action; ≥ 300 held-out lines for each |
+| 28 | CIRL: a clarifying question is rational | Rule 18 | Code + prompt (partly already there) | Tech Lead, QA | Partly already there | "Set 18" |
+| 29 | Assistance games: learn from examples and corrections | Rule 20, F-12, A-2; S-4 (a rephrasing counts as a correction) | Code | Tech Lead, QA | Proposed | The defect rate (Undo + rephrasing) |
+| 30 | CLAMBER: measure the ambiguity detector on our own data | F-8; S-3 | Code | Tech Lead, QA | Proposed | The detector's precision and recall against a person's labels |
+| 31 | ClarifyMT-Bench: different kinds of unclarity need different questions | Rule 19 (a conflict of goals); an unclear line → "A or B?" | The UI agent's prompt + code | Tech Lead, QA | Proposed | "The fastest and the cheapest delivery" |
+| 32 | Intent engineering: write the priorities in a conflict down explicitly | Rule 21 (priorities in the config) | Config + code; the new key goes into the reference | Tech Lead, Docs Lead, QA | Proposed | Three presets on one set |
+| 33 | The Klarna example | Not taken as proof: it is the blog authors' interpretation, not research (as the review itself says) | — | — | Not taken | — |
+| 34 | The Jev loop: 4 phases, 12 functions | The function map (F-1 to F-12) and "By Dushes' agents" | See the rows by function | — | See below | — |
+| 35 | "Start with three things": (1) the distribution of hypotheses | See row 19 | — | — | See row 19 | — |
+| 36 | (2) The "act or ask" rule by confidence and reversibility | See row 27 | — | — | See row 27 | — |
+| 37 | (3) Checking the goal after the action, and corrections into memory | A-1 (the request register), A-2 (corrections) | Code (the UI agent) | Tech Lead, QA | Proposed | Requests of several parts: zero "done" without being applied |
+
+## R&D conclusions that are not in the review
+
+| # | Idea | What we do | Where | Who | Status | QA scenario |
+| --- | --- | --- | --- | --- | --- | --- |
+| R-1 | Break down our ~2.5% confident errors by kind of question, action and language (S-1) | Confidence intervals and a reliability curve from turn logs already taken | QA's data analysis | QA | Proposed | — (this is the measurement itself) |
+| R-2 | "≤ 1%" has to be proven: ≥ 300–1000 held-out lines per action | QA sets of the needed size, split by config and by time (S-6) | Scenarios | QA | Proposed | — |
+| R-3 | Do not write conclusions from edits into the config or the prompt automatically (S-7) | Synonyms and descriptions only as proposals; a person checks them before they are applied | Code + a review tool | Tech Lead, designer | Proposed | — |
+| R-4 | Accuracy against the number of options (10 / 50 / 150 / 255) | A measurement; if accuracy falls, narrow by levels | QA, then code | QA, Tech Lead | Proposed | The same lines with different numbers of options |
+| R-5 | Checking the researcher's claims against passages | Rule 24, A-3 | Code + Jev | Tech Lead, QA | Proposed | Answers with a wrong reference |
+| R-6 | The researcher: an ambiguous question, "this is wrong", an answer cache | Rule 23, A-5 | The researcher's prompt + code | Tech Lead, QA | Proposed | Two rules that fit; "this is wrong" |
+| R-7 | The site agent: dropping an offer on a manual move; confirmation of the move from the client | Rule 22; F-11, A-7 | Code; the widget | Tech Lead, the widget's designer, QA | Proposed | A form offered, the person left themselves, then "yes"; a lost move |
+| R2-* | The second round of research ([The psychology of what a person wants](../wishes/)) | See the table "What we change" on that page | — | — | Proposed | — |
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Point by point" description="The R&D team's review of every row." href="../point-by-point/" />
+  <LinkCard title="The psychology of intentions" description="The review these ideas come from." href="../intentions/" />
+</CardGrid>

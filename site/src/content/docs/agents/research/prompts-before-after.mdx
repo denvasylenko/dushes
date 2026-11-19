@@ -1,0 +1,95 @@
+---
+title: "Prompts: before and after"
+description: "The R&D team's rewrite of the agents' prompts: the size and the check, what changed in the UI agent, the site agent and the researcher, and Jev's questions and the router. Translated one to one from the R&D team's document of 19 November 2026."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+<Aside type="note" title="A proposal, not the package">
+Nothing here is committed. The texts are a proposal for the switch the Tech Lead puts them behind, and QA's run before and after decides.
+</Aside>
+
+The R&D team, 19 November 2026. The prompts were rewritten in full, not extended with lists. The full new texts are on the sub-pages ([UI agent: the new text](../prompts-ui-agent/) and [Site agent, researcher, Jev, router: the new texts](../prompts-site-researcher-jev/)) and in the R&D team's sandbox. Nothing is committed. Next, the Tech Lead puts the new texts behind a switch, QA runs the whole set before and after, and what is no worse goes into work.
+
+## Size and the check
+
+| Prompt | Before, characters | After | Change |
+| --- | --- | --- | --- |
+| UI agent (CORE in `agent/prompts.py`) | 17,488 | 19,276 | +10.2% |
+| Site agent (SYSTEM in `site/agent.py`) | 4,879 | 5,523 | +13.2% |
+| Researcher (SYSTEM in `knowledge/research.py`) | 759 | 783 | +3.2% |
+| Jev's questions and the router | — | new wordings + 3 new questions behind a switch | — |
+
+The target "no more than +15%" is kept: the new knowledge is paid for by removed repeats. For example, "answer exactly the question" used to stand in three places and now stands in one.
+
+**The offline check.**
+
+- The new texts were put into the whole test suite through a plugin from the sandbox, without editing the repository: **864 of 864 passed**.
+- Phrases pinned by tests are kept word for word.
+- Lines with tools that can be switched off (ask_user, request_file, confirm_action and others) stayed separate list items, so a switched-off tool is still cut out of the prompt whole.
+- The Cyrillic in the forms of address is written as `\u` sequences (the check_english rule).
+- These tests do not check how the model behaves: that is QA's run before and after.
+
+## The UI agent: what changed
+
+| # | Where | Before | After | Idea of the document · rule |
+| --- | --- | --- | --- | --- |
+| 1 | Priorities, item 3 | The business decides what to recommend | + "Recommending is not pushing": while the person is choosing, asks for advice or a step has broken; once, with the reason; never above or instead of what they asked for, not after a refusal, with no preselection | The gap, stated and revealed preferences · rule 14 (the owner's decision of 19 November), the R&D study |
+| 2 | A new section "Reading the person" | — | Words are the first guess; "what goal would make the message reasonable" | Inverse planning, BToM · rule 10 |
+| 3 | the same | — | The function, not the form: "can you open…" is an order, "Friday doesn't work" is a change of date, "can I pay by card?" is a question | Searle, Grice · rule 6 |
+| 4 | the same | — | The goal one level above the step; a step failed, another way to the same goal; do not ask "why" | Vallacher & Wegner · rules 3, 4 |
+| 5 | the same | — | A request does not fit the facts: first name the fact, then the nearest thing that works | BToM, the hypothesis about beliefs · rule 11 |
+| 6 | the same | — | Not decided yet: 2–3 options and what differs, fill nothing | Wish / intention / plan · rule 1 |
+| 7 | the same | — | Words and the screen disagree (a CONFLICT line): ask, both options on one card; do not overwrite what the person typed themselves | The gap between words and behaviour · rule 12 |
+| 8 | the same | — | After a pause (a RESUMED line), ask once whether the unfinished request still stands | A goal's shelf life · rule 13 |
+| 9 | the same | — | Two goals pull in different directions: say so and ask which matters more | ClarifyMT-Bench · rule 19 |
+| 10 | the same | — | Do not name or guess feelings; infer nothing personal; repeats and haste only lower the load and never switch an offer on | The R&D study; ethics (AI Act, GDPR Art. 9) · R2-4, R2-5, R2-8 |
+| 11 | the same | — | Talk about the state, not the person ("it is 5 now", not "you made a mistake"); awkward fields neutrally, in the form's words | Saving face; the R&D study · R2-3 |
+| 12 | Each turn | "Clear: act; ambiguous: one question" | "Weigh the cost of a mistake": reversible, act; ambiguous, one question with real options, "a weak question is worse than none"; irreversible, confirm first | Horvitz, CIRL, CLAMBER · rules 17, 18 |
+| 13 | Each turn, item 4 | A long duplicate of the Replies section | A reference to Replies | Removing a duplicate |
+| 14 | "When the choice is left to you", "One answer, one field" | — | The same meaning, shorter; every example kept | Clean-up |
+| 15 | Showing where | — | Asked for one concrete step: show one place and one step, not an overview | The hierarchy: going down · rule 5 |
+| 16 | Showing where | "being on the right page already is no reason…", "A list in the chat alone does not answer…" | removed as repeats of neighbouring lines | **Clean-up: QA to check separately** |
+| 17 | Filling | "The person took a value back" | + a correction: the corrected value on a card the person can still edit; no long apologies | The R&D study; assistance games · rule 12 |
+| 18 | Sending | "Do not say that everything is done" | + say what of the request is not done, and why | Checking the goal after the action · A-1 (the request register) |
+| 19 | Sending | — | The next step depends on the future: "when X, do Y here" | Gollwitzer · rule 15 |
+| 20 | Off the path | "Answer what was asked. Do not describe this form…" | moved to Replies, one place | Removing a duplicate |
+| 21 | Replies | Separate items "answer at the end", "if the form computes" | One item: answer the question with the concrete value in the last text of the turn | Grice, quantity and relevance · rule 9 |
+| 22 | Replies | — | The polite form of address by default (Lei, vous, Sie, usted, and "vy" in Russian and Ukrainian) unless the business said otherwise | The R&D study; politeness by language · R2-7 |
+| 23 | Replies | "one short sentence answers the message" | "one short sentence says what you understood, and answers" | Showing what was understood (Clark) · rule 8 |
+
+No code writes the CONFLICT and RESUMED lines yet: the Tech Lead will add them (rules 12, 13). Until then the rules about them simply stay silent and break nothing.
+
+## The site agent: what changed
+
+| # | Where | After | Idea · rule |
+| --- | --- | --- | --- |
+| 1 | Priorities, item 3 | "Recommend, don't push": while choosing or asking for advice, once, with the reason, not instead of what was named, not after a refusal | Rule 14, the R&D study |
+| 2 | A new section "Reading the person" | The function, not the form; what goal would make the request reasonable; what is asked for is not there, say so first and offer the closest way to the same goal; "just looking", 2–3 options, do not open a form; do not name feelings; repeats, shorter and show the page, no offers | Searle, Grice, inverse planning, BToM, Vallacher & Wegner, the R&D study · rules 1, 3, 6, 10, 11 |
+| 3 | Each turn, item 2 | The same meaning, shorter | Clean-up |
+| 4 | Each turn, item 6 | The note for the form starts with the goal in one line ("Goal: a table for six on Friday"); two forms fit, ask with both as options, not a vague question | The goal in the hand-over · A-4; CLAMBER · rule 18 |
+| 5 | Each turn, item 7 | The polite form of address by default | R2-7, the R&D study |
+
+## The researcher
+
+| After | Idea · rule |
+| --- | --- |
+| "Two readings the documents answer differently: answer both, each with its source"; the line about sources is shorter | Ambiguity (ClarifyMT) · rule 23 |
+
+## Jev's questions and the router
+
+The "before → after" table for each question and the router's wording are on the sub-page [Site agent, researcher, Jev, router](../prompts-site-researcher-jev/). The main points:
+
+- is_command and the options of kind are rewritten by function, not form (rule 6);
+- the option other gained "still deciding" (rule 1);
+- three new questions behind a switch:
+  - undecided: the person is still deciding (rule 1);
+  - asks_reversible: whether it can be changed later (R2-2);
+  - names_known: whether what is named is on the screen (rule 11);
+- confirm tells "no" apart from "a different value" (rule 12).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="UI agent: the new text" description="The full rewritten CORE of the UI agent." href="../prompts-ui-agent/" />
+  <LinkCard title="Site agent, researcher, Jev, router" description="The other new texts." href="../prompts-site-researcher-jev/" />
+</CardGrid>
