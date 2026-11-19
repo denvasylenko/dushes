@@ -174,7 +174,7 @@ export default function Site() {
   return (
     <div className="page site">
       <nav className="site-nav" aria-label="Site">
-        {import.meta.env.BASE_URL !== '/' && <span className="back-docs"><a href="/">{'\u2039'} Docs</a><a href="./">Form assistant demo {'\u203a'}</a></span>}
+        {import.meta.env.BASE_URL !== '/' && <span className="back-docs"><a href="/">{'\u2039'} Docs</a><a href="./">UI agent demo {'\u203a'}</a></span>}
         <a className="site-logo" href="#/">{map.title}</a>
         {map.pages.filter((p) => p.path !== '/').map((p) => (
           <a key={p.path} href={`#${p.path}`} className={p.path === page.path ? 'on' : ''}>{p.title}</a>

@@ -117,11 +117,12 @@ button:disabled { opacity: 0.5; cursor: default; }
 .page > .app { flex: 1; min-height: 0; height: auto; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
 .back-docs { display: flex; gap: 2px; margin-right: auto; }
-.back-docs a { font-size: 13px; font-weight: 500; color: var(--muted, inherit); text-decoration: none; padding: 6px 10px; border-radius: 999px; transition: background .18s, color .18s; }
+.back-docs a { white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--muted, inherit); text-decoration: none; padding: 6px 10px; border-radius: 999px; transition: background .18s, color .18s; }
 .back-docs a:hover { color: var(--text); background: var(--input); }
 .topbar select { border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; background: var(--input); color: var(--text); font: inherit; font-size: 12px; }
+.topbar > .seg { flex: none; }   /* the tab keeps its words; the form picker gives up the room */
 .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.seg button { border: 0; background: none; padding: 6px 12px; font-size: 13px; color: var(--muted); }
+.seg button { border: 0; background: none; padding: 6px 12px; white-space: nowrap; font-size: 13px; color: var(--muted); }
 .seg button.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
 .manager { overflow: auto; padding: 20px 28px 60px; display: flex; flex-direction: column; gap: 16px; max-width: 1000px; width: 100%; margin: 0 auto; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }

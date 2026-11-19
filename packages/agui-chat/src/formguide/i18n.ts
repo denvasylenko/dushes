@@ -116,7 +116,7 @@ export const TOOL_LABELS: Record<string, Record<string, string>> = {
     "search_site": "Looking through the site",
     "navigate": "Opening the page",
     "open_form": "Opening the form",
-    "to_form": "Passing it to the form's assistant",
+    "to_form": "Passing it to the UI agent",
     "suggest_next": "",
     "docs.search_documents": "Searching",
     "docs.read_section": "Reading a section",

@@ -277,7 +277,7 @@ export default function App() {
     <div className="topbar">
       {HOSTED && <span className="back-docs"><a href="/">{'‹'} Docs</a><a href="site.html">Dushes demo {'›'}</a></span>}
       <div className="seg" role="tablist">
-        <button className={view === 'form' ? 'on' : ''} onClick={() => setView('form')}>Form + assistant</button>
+        <button className={view === 'form' ? 'on' : ''} onClick={() => setView('form')}>UI agent</button>
         {!HOSTED && <button className={view === 'manager' ? 'on' : ''} onClick={() => setView('manager')}>Manager: documents</button>}
       </div>
       <Select className="ctl-field small" value={formId} onChange={(e) => setFormId(e.target.value)} aria-label="Demo form">
@@ -335,8 +335,8 @@ export default function App() {
           lang={lang}
           dictation={DICTATION}   // auto: the browser's recognition where it works, else Whisper on the server
           voiceMode={voice}
-          title={form.title === form.formId ? "Form assistant" : form.title}
-          subtitle="formguide · AI assistant, can make mistakes"
+          title={form.title === form.formId ? "UI agent" : form.title}
+          subtitle="UI agent · AI, can make mistakes"
           plugins={plugins}
           tools={TOOLS}
           onEvent={onEvent}
