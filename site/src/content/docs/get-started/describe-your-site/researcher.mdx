@@ -1,0 +1,64 @@
+---
+title: "Describe your site: the researcher"
+description: "The documents the researcher answers from: format, how they are cut, which form reads which, versions, language and what not to put in. What breaks without each, how to write it, a checklist."
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+The researcher answers the agents' questions from a form's business documents, with the file and section as its source. It reads only what you uploaded.
+
+## Upload the documents, in the form's namespace
+
+**What breaks without it.** With no documents for the form, the researcher can only say that the documents do not answer, and the agent says so to the person. By default, a form reads only its own namespace (its form id).
+
+**How to write it.** PDF, DOCX, Markdown or text, uploaded into the form's namespace:
+
+```bash
+curl -F "files=@policy_terms.pdf" -F "files=@faq.md" http://localhost:8000/agent/kb/car_insurance/documents
+```
+
+Documents several forms share go into their own namespace, and each form is given it in `knowledge.scopes`:
+
+```yaml title="formguide.yaml"
+knowledge:
+  scopes: {car_insurance: [car_insurance, aster_common]}
+```
+
+## Headings, so a document is cut well
+
+**What breaks without it.** A document is cut into sections of about 1,200 characters, on its headings first and then on paragraphs; each section keeps its heading path and page, which become the source of an answer. A document with no headings is cut on paragraphs only, and the sources say little.
+
+**How to write it.** Real headings ("4 Fees", "4.2 Late payment"), one topic under each, tables kept as tables (they stay whole while they fit). Leave `knowledge.chunk_chars` and `chunk_overlap` alone unless answers miss context or bring unrelated text. How it is cut: [Business documents](../../../agents/shared/business-documents/#how-a-document-is-cut-and-found).
+
+## Versions
+
+**What breaks without it.** Two versions of the same terms in one namespace give two answers, and the researcher may quote the old one.
+
+**How to write it.** One current version per document: delete the old one (`DELETE /agent/kb/{namespace}/documents/{doc_id}`) when you upload the new. Put the date or version in the file name or the first heading, so a source shows which one it is.
+
+## Language
+
+**What it affects.** The documents may be in any language; the search reads them as written. The researcher reports to the agent in English, and the agent answers the person in the person's language.
+
+**How to write it.** Nothing to set. Write the documents in the language your business writes its terms in.
+
+## What not to put in
+
+- **Personal data.** No customers' names, contracts, account numbers or case files: whatever is in a document can be quoted to anyone who asks.
+- **Internal instructions to the agents.** Text inside a document is read as data, never as instructions; tone and rules go into the domain pack or the site map's `instructions`.
+- **Drafts and superseded versions** (see Versions).
+- **What changes every day.** Today's prices or availability belong in the form, the page's text or the site agent's `context`, not in a document that has to be uploaded again.
+
+## Checklist
+
+- [ ] Each form's documents are uploaded into its namespace; shared ones are in `knowledge.scopes`.
+- [ ] Every document has real headings, one topic under each.
+- [ ] Only the current version of each document is uploaded, with its date or version in its name.
+- [ ] No document holds personal data, instructions to the agents, drafts or daily figures.
+- [ ] A question only the documents answer gets an answer with its source.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Voice" description="Codes, limits and what is said aloud." href="../voice/" />
+  <LinkCard title="Business documents" description="Upload, scopes, the index, every option." href="../../../agents/shared/business-documents/" />
+</CardGrid>

@@ -1,0 +1,74 @@
+---
+title: "Describe your site: voice"
+description: "Voice mode: who may use it (codes and the pass secret), its limits in money and seconds, interrupting, what is filled from speech and what still asks, what is said aloud, and where the audio goes. What breaks without each, how to set it, a checklist."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Experimental">
+Voice mode is off until the host has voice codes, and each person needs their own code, entered under **+** in the chat. Without one, nothing is sent to the voice provider.
+</Aside>
+
+## Who may use it: codes and the pass secret
+
+**What breaks without it.** Without `VOICE_CODES` there is no voice mode at all. Without `VOICE_SECRET` the passes are signed with a key made at every start, so every restart logs everyone out and they enter their code again.
+
+**How to set it.** One code per person, 8 characters or more, and a fixed secret, in the host's environment:
+
+```bash
+VOICE_CODES="anna=correct-horse-battery,ben=another-long-code"
+VOICE_SECRET="a-long-random-string-kept-with-your-other-secrets"
+```
+
+A host with its own sign-in needs no codes: it names the person of each request with `person_of`. How: [A host that already knows its people](../../../agents/shared/voice/#a-host-that-already-knows-its-people).
+
+## The limits: money and seconds
+
+**What breaks without it.** An open conversation is billed by the second, silence included. The defaults keep a forgotten microphone from running up a bill; a host with more traffic needs its own figures.
+
+**How to set it.**
+
+```bash
+VOICE_DAY_USD=5              # this host's voice budget for a day
+VOICE_PERSON_DAY_USD=1       # one person's daily budget inside it (0: none)
+VOICE_MAX_SECONDS=300        # one conversation ends here
+VOICE_MAX_USD=0.75           # or here, the voice and the agent's turns together
+VOICE_AT_ONCE=1              # conversations at the same time on this host
+VOICE_SILENCE_SECONDS=30     # this long without speech ends a conversation
+```
+
+When a limit is reached the conversation ends and the chat says why; typing always keeps working. Every key: [Voice mode, every option](../../../agents/shared/voice/#every-option).
+
+## Interrupting, and silent mode
+
+**What it affects.** Speaking over the assistant stops its answer, as does a press on the orb. The microphone button turns the voice off: the person types, and the assistant answers in text. Nothing to set; tell your users it works this way.
+
+## What is filled from speech, and what still asks
+
+**What it affects.** A value the person said aloud is filled at once, with no card: the line under the orb names it ("First name: Anna") with Undo. Numbers count as people shorten them: "50k", "one and a half million". A card still appears for a consent, an action that cannot be undone, a value the person did not say, replacing a value they typed by hand, a value the form refused, and a real choice between options.
+
+**How to write it.** The same labels, options and consents as for typing ([UI agent](../ui-agent/)): a field whose label people say aloud ("date of birth", not "dob") is filled from speech; an unmarked consent is the one thing that would not wait for a tick, so mark every one.
+
+## What is said aloud
+
+**What it affects.** The assistant answers aloud in one or two short sentences, the same answer as in the chat. When a card waits, it asks the card's question aloud, and a spoken yes or no answers it.
+
+**How to write it.** Short labels and option names, because they are read out. A card's question comes from the same props and pack as in chat.
+
+## Where the audio goes
+
+**What it affects.** The microphone audio goes to the voice provider of `VOICE_MODEL` (`gpt-live-1` by default) for as long as a conversation is open, under that provider's own data policy; read it and say so in your privacy notice. The microphone is never on without the moving orb on screen. Dushes keeps no audio; with `log_dir` set, it keeps a text record of each conversation (what was heard, what the voice said, the end and its cost).
+
+## Checklist
+
+- [ ] `VOICE_CODES` hold one code per person (or `person_of` names the person), and `VOICE_SECRET` is fixed.
+- [ ] The day, person, conversation and seconds limits fit your traffic and budget.
+- [ ] Labels and options are what people say aloud; every consent is marked.
+- [ ] Your privacy notice names the voice provider and links its data policy.
+- [ ] If you keep `log_dir`, its folder is protected like the rest of your personal data.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Decision model" description="The provider, codes, the mask, the bars." href="../decision-model/" />
+  <LinkCard title="Voice mode" description="The server side, every option." href="../../../agents/shared/voice/" />
+</CardGrid>

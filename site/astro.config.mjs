@@ -109,7 +109,14 @@ export default defineConfig({
 				{ label: 'Get started', link: '/get-started/', icon: 'rocket', items: [
 					{ label: 'Overview', slug: 'get-started' },
 					{ label: 'Quickstart', slug: 'get-started/quickstart' },
-					{ label: 'Describe your site and forms', slug: 'get-started/describe-your-site' },
+					{ label: 'Describe your site', collapsed: false, items: [
+						{ label: 'Overview', slug: 'get-started/describe-your-site' },
+						{ label: 'Site agent', slug: 'get-started/describe-your-site/site-agent' },
+						{ label: 'UI agent', slug: 'get-started/describe-your-site/ui-agent' },
+						{ label: 'Researcher', slug: 'get-started/describe-your-site/researcher' },
+						{ label: 'Voice', slug: 'get-started/describe-your-site/voice' },
+						{ label: 'Decision model', slug: 'get-started/describe-your-site/decision-model' },
+					] },
 					{ label: 'Install', link: '/agents/shared/install/' },
 					{ label: 'Live demo', slug: 'get-started/live-demo' },
 					{ label: 'Benchmarks', slug: 'get-started/benchmarks' },

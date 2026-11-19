@@ -1,0 +1,98 @@
+---
+title: "Describe your site: the decision model"
+description: "The decision model (Jev): the provider and its key, who it is on for (codes), what is sent to the provider and what is masked, your never-send list, how sure it must be, and the diagnostics that stay local. What breaks without each, how to set it, a checklist."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Experimental">
+On a host with activation codes it works only for a person who entered a code under **+** → **Experimental**. Without a code it is off, and nothing is sent to its provider.
+</Aside>
+
+The [decision model](../../../agents/site-agent/decision-model/) does plain requests at once ("open the loans page", "Gender: Male") from what the screen shows, before the site agent's large model is called. Whatever it is not sure of goes to the site agent unchanged.
+
+## The provider and its key
+
+**What breaks without it.** With `INTENT_PROVIDER` unset it is off, and every line goes to the large model.
+
+**How to set it.** In the host's environment:
+
+```bash
+INTENT_PROVIDER=jev
+INTENT_API_KEY="your-provider-key"
+```
+
+## Who it is on for: codes
+
+**What breaks without it.** On a host with experiment codes, a visitor without a code never uses it. Without `EXPERIMENT_SECRET`, every restart ends the passes.
+
+**How to set it.**
+
+```bash
+EXPERIMENT_CODES="anna=correct-horse-battery,ben=another-long-code"
+EXPERIMENT_SECRET="a-long-random-string-kept-with-your-other-secrets"
+```
+
+Without `EXPERIMENT_CODES` there is no gate: the host's own settings decide. More: [Experimental features](../../../agents/shared/experimental-features/).
+
+## What is sent to the provider, and what is masked
+
+**What it affects.** Every line goes to the provider after a filter in code: phone numbers, e-mails, long numbers, capitalised words that are not on the screen (likely a person's or a company's name, sent as `<name>`) and the items of your never-send list are masked first. Personal form values go only as "filled" or "empty".
+
+**How to write it.** Give the screen the words your visitors use, so they are not masked: page and part titles, field labels with `i18n`, options ([Site agent](../site-agent/#titles-and-keywords-in-every-language-of-the-site), [UI agent](../ui-agent/)). List what must never leave the server:
+
+```bash
+INTENT_NEVER_SEND="Anna Schmidt|Ben Okafor|+49 30 1234567"
+```
+
+## How sure it must be
+
+**What it affects.** It carries a line out alone only when it is at least this sure; below the bar the line goes to the site agent. A lower bar means more lines done at once and more mistakes; a higher one, fewer of both.
+
+**How to set it.** Leave the defaults until your own measurement says otherwise:
+
+```bash
+INTENT_THRESHOLD=0.8     # how sure, before the large model is called
+INTENT_MARGIN=0.2        # how far the first option must be ahead of the second
+INTENT_TIMEOUT_MS=300    # later than this is no answer, and the line goes on
+```
+
+Every key: [The decision model, every option](../../../agents/site-agent/decision-model/#every-option).
+
+## Diagnostics, only on a local or test host
+
+**What it affects.** `INTENT_LABELS=1` shows under each turn who did it; `INTENT_TRACE=1` sends the turn's decision in `CUSTOM decision_trace`; `INTENT_SCORES=1` sends the chooser's numbers. They show how the site works to anyone who opens the chat.
+
+**How to set it.** On a local or test host only, never on the public site:
+
+```bash
+INTENT_LABELS=1
+INTENT_TRACE=1
+```
+
+## Checklist
+
+- [ ] `INTENT_PROVIDER` and `INTENT_API_KEY` are set on the server, never in the browser.
+- [ ] On a public host, `EXPERIMENT_CODES` and a fixed `EXPERIMENT_SECRET` decide who uses it.
+- [ ] Titles, labels and options carry the words your visitors use, in their languages.
+- [ ] Names and numbers that must never leave are in `INTENT_NEVER_SEND`.
+- [ ] The bars are the defaults, or set from your own measurement.
+- [ ] `INTENT_LABELS`, `INTENT_TRACE` and `INTENT_SCORES` are off on the public site.
+
+## Coming next
+
+<Aside type="note" title="Not in the package yet">
+Nothing in this list works with the package you install today.
+</Aside>
+
+- **A host decides per run** whether the decision model is used, for people it already knows, with no codes; and its own never-send list and history per run (built, arriving with the next release).
+- **Its cost in `run_stats`**, the chooser's call with its tokens and price (built, arriving with the next release).
+- **Keywords count as the site's own words**, so they are never masked (built, arriving with the next release).
+- **Bars by action, calibrated for an acceptable error rate**, with host presets (cautious, balanced, eager) instead of fixed numbers (designed).
+- **The decision journal**, to set the bars from what happened on your site (built, not released).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Describe your site" description="Back to the overview and the check before launch." href="../" />
+  <LinkCard title="The decision model" description="How it decides, every option." href="../../../agents/site-agent/decision-model/" />
+</CardGrid>

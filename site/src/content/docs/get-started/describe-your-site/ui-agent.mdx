@@ -1,0 +1,126 @@
+---
+title: "Describe your site: the UI agent"
+description: "What the UI agent reads from a form: labels and options in your users' words, required fields and rules, the order of work, the glossary, pii, consents and what happens after sending. What breaks without each, how to write it, a checklist."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+The UI agent works from two things: the form's **props**, which your form backend sends with every turn, and the form's **domain pack**, a JSON file per form (`domain_packs/<form_id>.json`). The props say what the form is right now; the pack says what it means.
+
+## Labels and options in your users' words
+
+**What breaks without it.** The agent names a field by its `label` and picks among its `options` by their `name`. A label like `fld_2` or an option like `OPT_A` is what it will say to a person, and what the [decision model](../decision-model/) has to match a line against; it also masks a capitalised word that is not a label on the screen.
+
+**How to write it.** Labels as a person would say them, options as they appear on the screen, and `i18n` with the label in every language your users write in (cards then show it with no model call):
+
+```json title="the form's props"
+{
+  "first_name": {"label": "First name", "required": true, "i18n": {"de": {"label": "Vorname"}, "it": {"label": "Nome"}}},
+  "coverage": {
+    "label": "Coverage",
+    "required": true,
+    "options": [{"id": "basic", "name": "Basic"}, {"id": "full", "name": "Full cover"}],
+    "i18n": {"de": {"label": "Deckung"}, "it": {"label": "Copertura"}}
+  },
+  "start_date": {"label": "Cover starts on", "required": true, "placeholder": "YYYY-MM-DD"}
+}
+```
+
+The whole contract: [Connect your form](../../../frontend/connect-your-form/contract/).
+
+## Required fields and the form's rules
+
+**What breaks without it.** The agent asks only for what is missing, and `review_form` tells the person what still blocks sending. A field your backend requires but the props do not mark `required` is never asked for; the person finds out only when sending fails. A rule the agent was never told (an age limit, a document needed above an amount) can only be guessed.
+
+**How to write it.** `required: true` on every field the backend needs right now, the backend's validation message in `error`, and new props whenever a rule changes the form (a field appears for one option): the agent reads them every turn. Rules that are not visible in the props go into the pack's `rules`:
+
+```json title="domain_packs/car_insurance.json"
+{
+  "rules": ["Drivers under 21 pay a surcharge.", "Full cover needs a photo of the car."]
+}
+```
+
+## The order of work and the glossary
+
+**What breaks without it.** The agent does not know that one choice unlocks a tab, or what an in-house term means; it may start in the wrong place or explain a field wrongly.
+
+**How to write it.** `flow_hints` for the order (which choices unlock which parts) and `glossary` for what each unclear field means:
+
+```json title="domain_packs/car_insurance.json"
+{
+  "flow_hints": ["Choose the coverage first: it decides which tabs appear."],
+  "glossary": {"no_claims_years": "Years in a row without a claim; each year lowers the price."}
+}
+```
+
+## `pii`: what it does and does not
+
+**What it affects.** A field listed in `pii` reaches the model only as `<filled>`: the model knows it has a value and does not ask again, but cannot read it back. An unlisted field is seen as typed.
+
+```json title="domain_packs/car_insurance.json"
+{
+  "pii": ["email", "phone", "iban", "id_number"]
+}
+```
+
+It does not hide what the person types into the chat: a message goes to the model as written. Ask for personal data in its field. Details: [What `pii` does, and what it does not](../../../agents/ui-agent/domain-packs/#what-pii-does-and-what-it-does-not).
+
+## Consents
+
+**What breaks without it.** A consent is applied only by the person's own tick; the agent never gives one, not even after a typed "yes". A checkbox the agent does not know is a consent could be treated as an ordinary field.
+
+**How to write it.** Mark it in the props (`"consent": true`) or in the pack, with the document it refers to:
+
+```json title="domain_packs/car_insurance.json"
+{
+  "consents": {
+    "accept_terms": {"required": true, "doc": {"title": "Policy terms", "text": "The terms you accept by ticking."}},
+    "marketing": {"required": false}
+  }
+}
+```
+
+## What happens after sending
+
+**What breaks without it.** People hesitate before a step they cannot undo. The agent can say what happens next only if you wrote it down.
+
+**How to write it.** Write it in the pack's `rules` (or on the page, for the site agent). Make the sending tool ask first with `confirm_tools`, and report the result on the form's root with `submitted`:
+
+```yaml title="formguide.yaml"
+confirm_tools: [submit_application]
+```
+
+```json title="domain_packs/car_insurance.json"
+{
+  "rules": ["After sending, we reply by email within one working day; the request can be changed or cancelled until then."]
+}
+```
+
+## The form's documents
+
+Questions the form cannot answer (conditions, exclusions, fees) go to the researcher, which reads the form's own documents: [Researcher](../researcher/).
+
+## Checklist
+
+- [ ] Every field has a label in the users' words, with `i18n` for each language; every choice field has options with readable names.
+- [ ] Every field the backend requires is `required: true`, and validation messages come back in `error`.
+- [ ] Rules not visible in the props are in `rules`.
+- [ ] `flow_hints` say which choices unlock which parts; `glossary` explains every unclear field.
+- [ ] Every field with an e-mail, phone number, ID, account or card number is in `pii`.
+- [ ] Every consent checkbox is marked as a consent.
+- [ ] What happens after sending is in `rules`, the sending tool is in `confirm_tools`, and the root reports `submitted`.
+
+## Coming next
+
+<Aside type="note" title="Not in the package yet">
+Nothing in this list works with the package you install today.
+</Aside>
+
+- **Per-field notes:** why a field is asked, and which fields are sensitive or special (planned).
+- **"Done when":** the conditions on the form's fields that mean the person's goal is reached (designed: [The goal module](../../../agents/how-it-works/goal-module/)).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="Researcher" description="The form's documents." href="../researcher/" />
+  <LinkCard title="Domain packs" description="Every key of the pack." href="../../../agents/ui-agent/domain-packs/" />
+</CardGrid>

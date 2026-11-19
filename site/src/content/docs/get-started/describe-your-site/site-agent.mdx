@@ -1,0 +1,106 @@
+---
+title: "Describe your site: the site agent"
+description: "The site map Dushes works from: pages, parts and forms, titles and keywords in every language, descriptions, the facts people ask about, hand-offs and the human contact. What breaks without each, how to write it, a checklist."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Dushes, the site agent, answers from the site map and may go only where it says. Everything on this page goes into `site.yaml` (or the same shape built in code with `SiteMap.load(dict)`).
+
+## Pages, parts and which page holds which form
+
+**What breaks without it.** A page that is not in the map does not exist: Dushes cannot open it, name it or answer from it. A tab, accordion or section that is not listed cannot be opened. A page with a form that does not say `form` cannot hand a request to apply to the UI agent.
+
+**How to write it.** One entry for every page that matters, with its parts, and `form` on the page that holds a form.
+
+```yaml title="site.yaml"
+title: Main Street
+pages:
+  - path: /insurance
+    title: Car insurance
+    description: "Car insurance from Aster: cover, prices, how to claim."
+    form: car_insurance
+    tabs:
+      - {id: cover, title: What is covered, text: "Basic cover: third-party damage. Full cover: also your own car."}
+    sections:
+      - {id: prices, title: Prices, text: "Basic cover from 19 EUR a month; full cover from 34 EUR a month."}
+```
+
+Every key: [Site agent, every option](../../../agents/site-agent/#every-option). A large site can build the map from its CMS: [Site map](../../../agents/site-agent/site-map/).
+
+## Titles and keywords in every language of the site
+
+**What breaks without it.** `keywords` are the words that send a message to a page from anywhere on the site; a visitor who writes in German finds nothing with English keywords alone. The [decision model](../decision-model/) also masks a capitalised word it does not know as `<name>` before the line leaves your host. Today it knows the titles of the pages and parts it is choosing between, the form's labels and the options on screen, so in German, where every noun has a capital, "jetzt die Kfz-Versicherung" goes out as "jetzt die `<name>`" unless that word is one of those.
+
+**How to write it.** Keywords in every language your visitors use, and titles people actually say:
+
+```yaml title="site.yaml"
+pages:
+  - path: /insurance
+    title: Car insurance
+    keywords: [car insurance, insurance, Kfz-Versicherung, assicurazione auto]
+  - path: /loans
+    title: Loans
+    keywords: [car loan, mortgage, Kredit, prestito]
+```
+
+That a page's keywords also count as the site's own words, so they are never masked, is built and arrives with the next release ([Coming next](#coming-next)).
+
+## Page descriptions and the facts people ask about
+
+**What breaks without it.** Dushes answers only from the `text` of the parts, the live facts and the documents. A price, opening hours or a condition that is in none of them gets an honest "the site does not say", or a hand-off to the documents.
+
+**How to write it.** A one-line `description` per page, and the facts in the `text` of a tab or section, in the words the page itself uses. Facts that change every day come from code, with `context` on `Dushes(...)` (a function that returns them as text each turn).
+
+```yaml title="site.yaml"
+pages:
+  - path: /contacts
+    title: Contacts
+    description: How to reach us, and when.
+    keywords: [contact, phone, Kontakt, contatti]
+    sections:
+      - {id: hours, title: Opening hours, text: "Monday to Friday, 9:00 to 18:00. Closed on public holidays."}
+```
+
+## Offers and hand-offs to a form
+
+**What affects it.** A question about a place ("how do I get to the loan form?") is answered first, and the page or form is offered in one closing sentence; it opens only on a direct request or a yes. A direct request to apply opens the form with a note of everything already said, and the UI agent takes over on that page. How it hands over: [Hand-off](../../../agents/site-agent/hand-off/).
+
+**How to write it.** Nothing extra in the map beyond `form` on the right page. Your own rules (what to recommend, what to offer first) go in `instructions`, and `stay_on_forms` on `Dushes(...)` (default `True`) keeps Dushes answering in place while the person fills a form in.
+
+## A human contact
+
+**What breaks without it.** When someone asks for a person, Dushes can give only a contact it has been given; otherwise it has nothing to point to.
+
+**How to write it.** Put the contact on a page of the map (as the Contacts page above) and say in `instructions` when to give it:
+
+```yaml title="site.yaml"
+instructions: |
+  For anything you cannot do here, give the phone number on the Contacts page.
+```
+
+A dedicated key for the human contact is [coming next](#coming-next).
+
+## Checklist
+
+- [ ] Every page a person may ask about is in the map, with its tabs, accordions and sections.
+- [ ] Every page with a form names it in `form`.
+- [ ] Keywords cover every language of the site; titles are the words people use.
+- [ ] Every page has a one-line `description`.
+- [ ] The facts people ask about are in the `text` of a part, or come from `context`.
+- [ ] A human contact is on a page, and `instructions` say when to give it.
+
+## Coming next
+
+<Aside type="note" title="Not in the package yet">
+Nothing in this list works with the package you install today.
+</Aside>
+
+- **Keywords count as the site's own words:** a page's keywords, in any language, are never masked as a name before the decision model (built, arriving with the next release).
+- **A dedicated key for the human contact** (planned).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="UI agent" description="The form's labels, options, pii and consents." href="../ui-agent/" />
+  <LinkCard title="Site agent" description="Set it up, every option." href="../../../agents/site-agent/" />
+</CardGrid>
