@@ -105,7 +105,7 @@ site = Dushes(guide, SiteMap.load("site.yaml"), history=20)
 
 ## The pages a person has been on
 
-**What it affects.** The server keeps the pages a conversation has been on (up to 12), in a record beside the conversation in the transcripts store, so it survives a restart and works across instances. Each turn it tells the site agent the trail and the page before the current one, with its path, so "back" in any wording, even misspelt, opens that page at once. The agent's own moves count as visits, so a host that sends no page has a trail too.
+**What it affects.** The server keeps the pages a conversation has been on (up to 12), in a record beside the conversation in the transcripts store, so it survives a restart and works across instances. Each turn it tells the site agent the trail and the page before the current one, with its path, and its rules tell it to open that page at once on "back" in any wording, even misspelt, without asking where; when no page was open before, it says so. The move is still the agent's call. The agent's own moves count as visits, so a host that sends no page has a trail too.
 
 **How to write it.** Send the current page with every run (`state.page.path`); there is nothing else to send.
 
