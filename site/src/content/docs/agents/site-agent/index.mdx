@@ -143,7 +143,7 @@ Dushes reads the site map and the business documents of its own knowledge scope:
 
 ## What a run cost
 
-When Dushes calls a model (its answer, the router, the document researcher), the run ends with a `run_stats` event marked `agent: "site"`: timings and tokens per call. A UI agent's turn in the same run sends its own. How to read them: [Speed and tracing](../shared/observability/#the-numbers-of-every-turn-run_stats).
+When Dushes calls a model (its answer, the router, the document researcher), the run ends with a `run_stats` event marked `agent: "site"`: timings and tokens per call. The call that writes the memory of older turns is not in it yet. A UI agent's turn in the same run sends its own. How to read them: [Speed and tracing](../shared/observability/#the-numbers-of-every-turn-run_stats).
 
 ## One conversation, after a reload too
 
