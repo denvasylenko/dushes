@@ -1,0 +1,14 @@
+---
+title: Research
+description: What psychology and recent AI research say about how people express what they want, and how an assistant should decide to act, ask or wait. What Dushes takes from it.
+---
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+These pages collect the research behind how Dushes reads a request and decides what to do with it. They are summaries in our own words, with links to every source. Figures quoted from papers are as their authors report them; none of them are our own measurements.
+
+<CardGrid>
+  <LinkCard title="Intentions: what psychology and AI say" description="Wishes, intentions and plans; how people say what they want, and how others work it out; acting, asking or waiting." href="intentions/" />
+  <LinkCard title="Guessing intent, 2024–2026" description="How leading systems guess what a person wants and decide whether to act, ask or stay quiet: calibration, goal inference, clarifying questions, learning from corrections." href="intent-systems/" />
+</CardGrid>
+
+Each page ends with what Dushes takes from it, linking to [How the agent behaves](../how-it-works/behaviour/) and to [the decision model](../how-it-works/decision-model/).
