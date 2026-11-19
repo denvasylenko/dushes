@@ -15,6 +15,8 @@ export default defineConfig({
 	base,
 	// every address published before docs-restructure -> the page that holds its content now
 	redirects: Object.fromEntries(Object.entries({
+		'/agents/research/prompts-ui-agent/': '/agents/research/prompts-before-after/',
+		'/agents/research/prompts-site-researcher-jev/': '/agents/research/prompts-before-after/',
 		'/agents/form-agent/document-researcher/': '/agents/researcher/',
 		'/backend/cards/': '/agents/ui-agent/cards-from-blocks/',
 		'/backend/configuration/': '/agents/shared/configuration/',
