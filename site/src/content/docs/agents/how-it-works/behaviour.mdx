@@ -1,0 +1,97 @@
+---
+title: How the agent behaves, and how you set it
+description: What the agents do with a line, shown on short examples, and the setting that changes each behaviour. Only what is in the package today; what is coming is marked.
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { Summary } from '../../../../components/ui';
+
+<Summary what={"How Dushes and the UI agent behave, line by line, and the switch behind each behaviour."} when={"You want to know what the assistant will do on your site, and what you can change."} write={"Nothing for the defaults; one setting per behaviour you want different."} />
+
+DRAFT: setting names below are checked with the Tech Lead before this page is published.
+
+Each example is one line from a person, what the agent does with it, and what changes that. "Fixed" means no setting changes it: it is how the package works.
+
+## Do it, or ask one question
+
+**"Book a table for Friday."** The agent fills in what it can and asks only what is missing, **one question at a time**. A choice comes as a card with its options to tap, not as a list in the text.
+
+- **Setting:** fixed.
+
+## Undo instead of "are you sure?"
+
+**"Set the guests to 4."** The value is filled in at once, with **Undo** on the card. Nothing asks "are you sure?".
+
+**"Send it."** Sending is the one step that asks first: a confirmation card names what is sent, and nothing goes out until the person taps it.
+
+- **Which tools ask first:** `confirm_tools` in `formguide.yaml`, for example `[submit_application]`. A tool on that list always waits for the person's yes. [Configuration](../../../reference/configuration/).
+- **How long Undo stays on a card:** the widget's `undoSeconds` (default 20). [The form plugin](../../../frontend/widget/#the-form-plugin).
+
+## Answer what was asked
+
+**"What does full cover cost?"** The answer is the price, plus at most one next step. Not an overview of the form, not a list of everything else.
+
+- **Dushes' reply length:** `style` when you build `Dushes(...)`: it replaces the default "one to three short sentences". [Extend it for your app](../../site-agent/#extend-it-for-your-app).
+
+## "How do I get to…" gets an answer
+
+**"How do I get to the loan form?"** Dushes answers where it is and offers to open it. It does not move the person. A page opens only on a direct request ("open the loan form") or a yes to the offer just made.
+
+**"Open it."** right after that offer opens the loan form.
+
+- **Setting:** fixed: the person's own words decide whether a page opens, never the model.
+- **On a page with a form:** `stay_on_forms` on `Dushes(...)`, default `True`: Dushes answers in place while the person fills the form in, unless they ask to go.
+
+## "Back"
+
+**"Back"**, **"the previous one"** goes to the page the person had open before this one, by the conversation's own trail.
+
+- **Needs:** the [decision model](../../site-agent/decision-model/) switched on; without it, the line goes to Dushes like any other.
+
+## A two-digit year
+
+**"Born 1st July '85."** The date field gets 1985-07-01. A two-digit year is this century when that is not in the future, otherwise the last one.
+
+- **Needs:** DRAFT, to confirm whether this is the decision model's or the form's own.
+
+## A card waits, and the person says "yes, and…"
+
+The assistant asked "Fill in these three values?" on a card. The person writes **"yes"**: that answers the card, as a tap would.
+
+**"Yes, and show me the statistics."** is a request, not an answer: the card keeps waiting, and the line is answered as an ordinary message.
+
+- **Setting:** fixed: one rule for every host, in text and by voice (`formguide.voice.card_answer`, [Python API](../../../reference/python-api/#voice-helpers)).
+
+## Experimental features, behind a code
+
+**A visitor without a code** gets the assistant as it is: no decision model, no voice mode, nothing sent to their providers.
+
+**A person who entered their code** under **+ → Experimental** gets the features their code opens.
+
+- **Settings:** `EXPERIMENT_CODES` and `VOICE_CODES` in the host's environment; a host that knows its own people decides per run with `Dushes.run(..., layer=True)`. [Experimental features](../../shared/experimental-features/).
+
+## The limits
+
+**A turn that keeps calling tools** stops after a set number of rounds and answers with what it has.
+
+- **Setting:** `max_tool_rounds` in `formguide.yaml`, default 10.
+- **Voice mode:** a conversation's length and money, and a daily budget: [Voice mode, every option](../../shared/voice/#every-option).
+- DRAFT: the public demo's visitor limits, if they are a host setting.
+
+## Coming next
+
+<Aside type="note" title="Planned">
+Decided, not built yet. Nothing in this section works today.
+</Aside>
+
+- **Recommend, don't push.** The business decides what to recommend; the agent decides when it fits. Asked for "the cheapest plan", the agent picks the cheapest and names the business's recommendation once, with its reason; it never preselects it, never repeats it after a no. Asked "what do you recommend?", it recommends.
+- **Thresholds by action.** How sure the decision model must be will depend on what it does: opening a page asks less certainty than replacing a value someone already filled in. Sending stays never.
+- **"A or B?"** When two readings fit about equally ("set 18" with two fields it could be), one card with both, instead of a guess or an open question.
+- **Preferences between visits.** A host setting to let the assistant remember a person's preferences from one visit to the next.
+
+## Next
+
+<CardGrid>
+  <LinkCard title="One turn" description="What happens inside a turn, step by step." href="../turn/" />
+  <LinkCard title="Configuration" description="Every key of formguide.yaml." href="../../../reference/configuration/" />
+  <LinkCard title="The decision model" description="The part that does plain requests at once." href="../../site-agent/decision-model/" />
+</CardGrid>

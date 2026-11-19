@@ -191,6 +191,7 @@ export default defineConfig({
 					{ label: 'How it works', collapsed: true, items: [
 						{ label: 'System overview', slug: 'agents/how-it-works' },
 						{ label: 'One turn', slug: 'agents/how-it-works/turn' },
+						{ label: 'How the agent behaves', slug: 'agents/how-it-works/behaviour' },
 						{ label: 'The decision model', slug: 'agents/how-it-works/decision-model', badge: { text: 'in development', variant: 'caution' } },
 						{ label: 'One schema for what a person wants', slug: 'agents/how-it-works/intents', badge: { text: 'proposal', variant: 'note' } },
 						{ label: 'What the model sees', slug: 'agents/how-it-works/context' },
