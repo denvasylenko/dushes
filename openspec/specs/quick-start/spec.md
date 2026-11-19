@@ -39,3 +39,15 @@ The package SHALL install with core dependencies only (LangGraph, LangChain core
 #### Scenario: A typo in confirm_tools
 - **WHEN** a file has `confrim_tools: [send_form]`
 - **THEN** loading fails with "confrim_tools (did you mean confirm_tools?)", and no agent starts with a tool that needed a confirmation left unguarded
+
+### Requirement: The check says what is weak and how to fix it
+`formguide check` SHALL, with no model call, list what is weak in the host's description of its site (`--site`), of a form (`--jsx` with `--form-config`) and in the environment (`--public` for a public host). Each finding SHALL say where it is, what follows from it and what to write instead. The command SHALL exit with a non-zero code when a finding is an error.
+
+#### Scenario: A phone field the pack does not mark
+- **WHEN** a form has a field named for a phone number that the pack's `pii` does not list
+- **THEN** the check prints an error that names the field and says to add it to `pii`, and exits with 1
+
+#### Scenario: Warnings only
+- **WHEN** the only findings are a page without keywords and a form without documents
+- **THEN** the check prints them with their fixes and exits with 0
+

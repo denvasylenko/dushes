@@ -138,6 +138,32 @@ def cmd_check(args: argparse.Namespace) -> int:
         if warnings:
             print(f"{len(warnings)} warning(s)")
             return 1
+    # what is weak in the host's own description, and how to fix it (no model call; see advice.py)
+    from . import advice
+    found: list[advice.Finding] = []
+    langs = cfg.languages or ([cfg.language] if cfg.language else [])
+    site = None
+    if args.site:
+        from .site.sitemap import SiteMap
+        try:
+            site = SiteMap.load(args.site)
+        except Exception as e:  # noqa: BLE001
+            print(f"site map error: {type(e).__name__}: {e}")
+            return 1
+        documents = (lambda form_id: cfg.knowledge.documents_for(form_id)) if cfg.knowledge else None
+        found += advice.check_site(site, langs, documents, packs)
+        print(f"site {args.site}: {len(site.pages)} pages, {sum(len(p.parts) for p in site.pages)} parts")
+    if args.jsx and args.form_config:
+        sample = json.loads(Path(args.form_config).read_text(encoding="utf-8"))
+        form_id = args.form_id or str(sample.get("form_id") or Path(args.jsx).stem)
+        found += advice.check_form(form_id, lay, sample, packs.get(form_id) if packs else None)
+    found += advice.check_defaults(cfg, site if args.site else None)
+    found += advice.check_environment(dict(os.environ), bool(args.public))
+    if found:
+        print()
+        print(advice.render(found))
+    if any(f.level == "error" for f in found):
+        return 1
     print("OK")
     return 0
 
@@ -166,6 +192,9 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--jsx", help="also check a form: its JSX file")
     c.add_argument("--form-config", help="with --jsx: a sample config JSON {props, state} to check value formats")
     c.add_argument("--config", default="formguide.yaml")
+    c.add_argument("--site", help="also check a site map (site.yaml): keywords, titles, forms without documents")
+    c.add_argument("--form-id", help="with --jsx and --form-config: the form's id, for its domain pack")
+    c.add_argument("--public", action="store_true", help="the host is public: switches meant for the owner are errors")
     s = sub.add_parser("serve", help="run the agent endpoints (needs the `server` extra)")
     s.add_argument("--config", default=None)
     s.add_argument("--host", default="127.0.0.1")
