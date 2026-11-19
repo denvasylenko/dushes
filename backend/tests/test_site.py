@@ -630,14 +630,22 @@ def test_the_trail_and_the_memory_outlive_the_process_and_stay_out_of_the_conver
     assert "Home, Loans, Car insurance" in text(model.calls[-1][0]) and "The page before this one: Loans." in text(model.calls[-1][0])
     # a long conversation: after the reply that pushes enough turns out of view, the cheap model writes the memory
     long = Dushes(guide, SiteMap.load(SITE))
-    calls_in_front = []
+    calls_in_front, reports, ends = [], [], []
     for n in range(12):
         model.script = [say("A long answer. " * 400), say("- wants a mortgage in Lugano\n- asked about rates")]
         before = len(model.calls)
-        run(long, "keep-2", message="I want a mortgage in Lugano" if n == 0 else f"and question {n}?", state={"page": {"path": "/"}})
+        ev = run(long, "keep-2", message="I want a mortgage in Lugano" if n == 0 else f"and question {n}?", state={"page": {"path": "/"}})
+        reports.append([e["value"] for e in ev if e.get("name") == "run_stats"])
+        ends.append([e["type"] for e in ev].index("RUN_FINISHED") - len(ev))
         first_call = model.calls[before]
         calls_in_front.append(text(first_call[0]).startswith("You keep the memory"))
     assert not any(calls_in_front)                                          # the summary never stands in front of a reply
+    # the memory's model call is in the run's cost: a second run_stats of the same run, after the terminal event
+    folded = [(r, end) for r, end in zip(reports, ends) if len(r) == 2]
+    assert folded and all(end == -2 for _r, end in folded)
+    first, late = folded[0][0]
+    assert late["run_id"] == first["run_id"] and late.get("late") is True and [m["kind"] for m in late["models"]] == ["memory"]
+    assert all("memory" not in [m["kind"] for m in r[0]["models"]] for r in reports)   # never counted twice
     side = guide.transcripts.list(sg._side("keep-2"))
     memory = [e for e in side if e["kind"] == "site_memory"]
     assert memory and "mortgage in Lugano" in memory[-1]["text"] and memory[-1]["upto"] >= sg.REMEMBER_EVERY
