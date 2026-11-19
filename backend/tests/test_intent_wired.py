@@ -882,3 +882,33 @@ def test_a_host_decides_the_layer_for_a_run(guide, model, monkeypatch):
     stats = [e["value"] for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "run_stats"]
     assert len(stats) == 1 and stats[0]["models"][0]["kind"] == "chooser" and stats[0]["models"][0]["input_tokens"] == 5000
     assert stats[0]["models"][0]["cost_usd"] == round(5000 * 0.042 / 1e6, 6) and stats[0]["tokens"]["input"] == 5000
+
+
+def test_open_sections_with_no_section_named_is_all_of_the_tab_on_the_screen(guide, model, monkeypatch):
+    """The owner's session (2026-11-17): "Open now sections" (speech for "open all sections") opened nothing. The
+    chooser's yes to "all of them" is weaker there (0.65 to 0.7) but it is sure whose sections they are: the two
+    answers together open them. A named section keeps its own answer, and an unsure "whose" opens nothing."""
+    state = {"page": {"path": "/apply"}, "form": {**start(guide, LOAN), "ui": {"activeTabs": {}, "openAccordions": []}}}
+    answers = {"is_command": ("yes", 0.83), "asks_move": ("no", 0.78), "asks_more": ("no", 0.72),
+               "all_sections": ("yes", 0.65), "all_of": ("this:tab_applicant", 1.0)}
+
+    def shown(ev):
+        return [e["value"].get("target") for e in ev if e.get("type") == "CUSTOM" and e.get("name") == "ui_directive"]
+
+    before = len(model.calls)
+    ev = run(site_with(guide, Mock(**answers)), "sec-1", message="Open now sections", state=state)
+    assert shown(ev) == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == before
+    # the chooser is not sure whose sections: the agent's turn, as before
+    model.script = [say("Which sections do you mean?")]
+    ev = run(site_with(guide, Mock(**{**answers, "all_of": ("this:tab_applicant", 0.6)})), "sec-2", message="Open now sections", state=state)
+    assert shown(ev) == [] and len(model.calls) > before
+    # a section the line names keeps its own answer: the weaker yes does not open every section over it
+    named = {**answers, "s:acc_passport": ("yes", 0.92)}
+    model.script = [say("Passport is open.")]
+    ev = run(site_with(guide, Mock(**named)), "sec-3", message="Open the passport section", state=state)
+    assert "acc_personal" not in shown(ev) and "acc_education" not in shown(ev)
+    # the switch off: the weaker yes is not enough (the measurement's "before")
+    monkeypatch.setenv("INTENT_SECTIONS", "0")
+    model.script = [say("Which sections do you mean?")]
+    ev = run(site_with(guide, Mock(**answers)), "sec-4", message="Open now sections", state=state)
+    assert shown(ev) == []

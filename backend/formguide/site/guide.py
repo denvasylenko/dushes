@@ -975,7 +975,12 @@ class Dushes:
                     return {"kind": "show", "args": moves_[0], "more": moves_[1:],
                             "title": f"{page.title}: {len(parts)} sections open" if len(parts) > 4 else ", ".join(x.title for x in parts)}
                 return None                           # "all" asked and the layer cannot do all of it: the agent's turn
-            if every and every.id == "yes" and every.confidence >= 0.8 and ov is not None:
+            # on a form, "open sections" with no section named ("Open now sections", speech for "open all sections":
+            # the owner's session, 2026-11-17) is a weaker yes to "all of them", but the chooser is sure whose they
+            # are: its two answers together are enough. A section the line names keeps its own answer
+            both = bool(every and every.id == "yes" and ov is not None and not opens and whose and whose.confidence >= 0.8
+                        and os.environ.get("INTENT_SECTIONS", "1") != "0")
+            if every and every.id == "yes" and (every.confidence >= 0.8 or both) and ov is not None:
                 # "all the sections of the applicant tab": every section of the tab the line names, else of the open one
                 on_screen = bool(whose and whose.id == "here")       # no place said: the tab on the screen
                 tab = whose.id.partition(":")[2] if whose else ""
