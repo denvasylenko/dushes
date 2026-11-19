@@ -3,12 +3,15 @@ title: "Describe your site: the decision model"
 description: "The decision model (Jev): the provider and its key, who it is on for (codes), what is sent to the provider and what is masked, your never-send list, how sure it must be, and the diagnostics that stay local. What breaks without each, how to set it, a checklist."
 ---
 import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import PagePrompt from '../../../../components/PagePrompt.astro';
 
 <Aside type="caution" title="Experimental">
 On a host with activation codes it works only for a person who entered a code under **+** → **Experimental**. Without a code it is off, and nothing is sent to its provider.
 </Aside>
 
 The [decision model](../../../agents/site-agent/decision-model/) does plain requests at once ("open the loans page", "Gender: Male") from what the screen shows, before the site agent's large model is called. Whatever it is not sure of goes to the site agent unchanged.
+
+<PagePrompt what="the decision model settings in the host's environment" asks={["Is the provider's key available on the server?", "Is the host public, so that codes must decide who uses it?", "Which names and numbers must never leave the server?"]} />
 
 ## The provider and its key
 

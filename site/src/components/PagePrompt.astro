@@ -1,0 +1,59 @@
+---
+/**
+ * "Copy prompt for your coding agent" on a guide page: one prompt that has the agent read this page as Markdown,
+ * ask what it needs, write or fix the configuration by the page, run `formguide check`, go through the page's
+ * checklist and report. Same pattern as SetupPrompt; one main action: Copy prompt.
+ */
+import { Callout, CodePanel, CopyButton, Disclosure, Tile } from './ui'
+
+interface Props {
+  /** What the agent writes or fixes, e.g. "the site map (site.yaml)". */
+  what: string
+  /** The questions the agent asks the person first, one message at a time. */
+  asks: string[]
+}
+const { what, asks } = Astro.props
+---
+<Tile class="pp not-content" data-pp data-what={what} data-asks={JSON.stringify(asks)}>
+  <Callout title="Copy prompt for your coding agent">One prompt for Claude Code, Cursor or any coding agent: it reads this page, asks you what it needs, writes {what}, runs the check and goes through the checklist with you.</Callout>
+  <div class="pp-acts">
+    <CopyButton variant="filled" size="lg" label="Copy prompt" done="Copied. Paste it into your agent" auto={false} data-copy />
+  </div>
+  <Disclosure summary="See the prompt" data-preview>
+    <CodePanel copy={false} wrap maxHeight="320px" data-prompt />
+  </Disclosure>
+</Tile>
+
+<script>
+  import { copyText } from './ui/ui'
+  for (const root of document.querySelectorAll<HTMLElement>('[data-pp]')) {
+    const what = root.dataset.what ?? 'the configuration'
+    const asks: string[] = JSON.parse(root.dataset.asks ?? '[]')
+    const page = new URL(location.pathname.replace(/\/+$/, '') + '.md', location.origin).href
+    const index = new URL(import.meta.env.BASE_URL.replace(/\/?$/, '/') + 'llms.txt', location.origin).href
+    const text = [
+      `Read this page and follow it exactly: ${page}`,
+      `Do not invent keys, endpoints or options it does not show; the index of all pages is ${index}.`,
+      ``,
+      `Before you change anything, look at my project, then ask me these questions one message at a time. For each, say in one line why it matters, suggest an answer from what you found, and wait for mine:`,
+      ...asks.map((a) => `- ${a}`),
+      ``,
+      `Then write or fix ${what} exactly as the page shows, and show me the changes before you save them.`,
+      `Run the check, which calls no model: formguide check --config formguide.yaml. Fix what it names.`,
+      `Finally, go through the page's checklist item by item and report each one: done, not done and why, or what you need from me. Name anything you guessed.`,
+    ].join('\n')
+    const code = root.querySelector<HTMLElement>('[data-prompt] code')!
+    code.textContent = text
+    const copy = root.querySelector<HTMLElement>('[data-copy]')!
+    copy.addEventListener('click', async () => {
+      if (!(await copyText(copy, code.textContent ?? ''))) root.querySelector<HTMLDetailsElement>('[data-preview]')!.open = true
+    })
+  }
+</script>
+
+<style>
+  /* layout only: every control is a primitive from ./ui */
+  .pp { margin: 1.5rem 0 2rem; display: flex; flex-direction: column; gap: 20px; }
+  .pp-acts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  @media (max-width: 50rem) { .pp-acts { justify-content: center; } .pp-acts > .ui-btn--filled { width: 100%; } }
+</style>

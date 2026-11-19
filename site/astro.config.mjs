@@ -116,6 +116,7 @@ export default defineConfig({
 						{ label: 'Researcher', slug: 'get-started/describe-your-site/researcher' },
 						{ label: 'Voice', slug: 'get-started/describe-your-site/voice' },
 						{ label: 'Decision model', slug: 'get-started/describe-your-site/decision-model' },
+						{ label: 'Develop a domain', slug: 'get-started/describe-your-site/domain' },
 					] },
 					{ label: 'Install', link: '/agents/shared/install/' },
 					{ label: 'Live demo', slug: 'get-started/live-demo' },

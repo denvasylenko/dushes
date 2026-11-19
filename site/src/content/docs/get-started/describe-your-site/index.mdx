@@ -3,6 +3,7 @@ title: Describe your site so it works reliably
 description: "For you and your coding agent (Claude Code, Cursor): what each agent reads from your site, forms and documents, how to write it, and a check before launch. One page per agent, voice and the decision model."
 ---
 import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import PagePrompt from '../../../../components/PagePrompt.astro';
 
 <Aside type="tip" title="For a coding agent">
 These pages are written to be followed step by step, by a person or by a coding agent after it has installed Dushes. Each one goes: what to describe, what breaks without it, exactly how to write it (keys and a block to copy), and a checklist. Give your agent a page's Markdown: append `.md` to its address.
@@ -21,7 +22,9 @@ flowchart LR
   V["Voice codes and limits"] --> VO["Voice mode"]
 ```
 
-## The five pages
+<PagePrompt what="your site, forms and documents for every agent you use (the site map, the domain packs, the documents, the voice and decision model settings)" asks={["Is it one form, or a whole site with several pages and forms?", "Which languages do your visitors write in?", "Do people talk to it (voice mode)? Do you use the decision model?", "Which forms hold personal data, and which have documents people ask about?"]} />
+
+## The pages
 
 | Page | What you describe | When you need it |
 | --- | --- | --- |
@@ -30,6 +33,7 @@ flowchart LR
 | [Researcher](researcher/) | the form's documents: format, how they are cut, versions, what not to put in | a form people ask questions about that the form itself cannot answer |
 | [Voice](voice/) | codes, limits, what is filled from speech and what is said aloud, the audio's privacy | people talk instead of typing |
 | [Decision model](decision-model/) | the provider and its key, codes, what is sent and masked, the bars, diagnostics | plain requests done at once, without the large model |
+| [Develop a domain](domain/) | a new kind of form or business from scratch: its pack, instructions, documents, keywords and QA scenarios, with a complete pack to copy | a form for a business the package has no pack for |
 
 ## Before launch
 

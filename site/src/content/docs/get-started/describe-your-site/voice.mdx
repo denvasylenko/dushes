@@ -3,10 +3,13 @@ title: "Describe your site: voice"
 description: "Voice mode: who may use it (codes and the pass secret), its limits in money and seconds, interrupting, what is filled from speech and what still asks, what is said aloud, and where the audio goes. What breaks without each, how to set it, a checklist."
 ---
 import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import PagePrompt from '../../../../components/PagePrompt.astro';
 
 <Aside type="caution" title="Experimental">
 Voice mode is off until the host has voice codes, and each person needs their own code, entered under **+** in the chat. Without one, nothing is sent to the voice provider.
 </Aside>
+
+<PagePrompt what="the voice mode settings in the host's environment" asks={["Who may use voice mode: a list of people with codes, or your own sign-in?", "What may voice cost per day, per person and per conversation?", "Is your privacy notice ready to name the voice provider?"]} />
 
 ## Who may use it: codes and the pass secret
 

@@ -1,0 +1,187 @@
+---
+title: "Describe your site: develop a domain"
+description: "How to write the domain for a new kind of form or business from scratch: the domain pack, the business's instructions, its documents, its keywords in every language, its QA scenarios and how to measure it. With a complete pack to copy."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import PagePrompt from '../../../../components/PagePrompt.astro';
+
+A **domain** is everything form-specific: the core knows nothing about haircuts, loans or insurance. For a new kind of form or business you write its domain pack, its instructions, its documents and its keywords, then prove it with scenarios. This page goes through each, in that order.
+
+<PagePrompt what="the domain pack (domain_packs/<form_id>.json), the business's instructions, the page's keywords and the domain's QA scenarios" asks={[
+  "Which form is it (its form_id), and what does a person come to it for?",
+  "Which fields hold personal data (e-mail, phone, ID, account or card numbers)?",
+  "Which checkboxes are consents, and which document does each refer to?",
+  "What should the agent recommend, and what must it never say?",
+  "What happens after the form is sent, and can it be changed or cancelled?",
+  "Which documents answer the questions the form cannot (terms, prices, FAQ)?",
+  "Which languages do the visitors write in?",
+]} />
+
+## 1. The domain pack
+
+**What breaks without it.** Without a pack the agent has a generic persona and no knowledge of the form: it does not know what an in-house term means, which choice unlocks a step, which fields are private or which checkbox is a consent.
+
+**How to write it.** One JSON per form, `domain_packs/<form_id>.json`. The keys on main:
+
+| Key | What it is for |
+| --- | --- |
+| `title` | the form's name |
+| `persona` | the agent's voice and role: who it is, its tone, house rules |
+| `flow_hints` | the order of work: which choices unlock which parts |
+| `glossary` | `field name → explanation`, for "what is this field?" |
+| `rules` | the business's rules the props do not show; documents compiled by managers are merged in here |
+| `pii` | fields whose values the model sees only as `<filled>` |
+| `consents` | `{field: {required?, doc?}}`: checkboxes applied only by the person's own tick |
+| `starters` | up to 6 opening messages shown in an empty chat |
+
+A field's label in other languages is not in the pack: it is `i18n` on the field's props ([UI agent](../ui-agent/#labels-and-options-in-your-users-words)). Every key: [Domain packs](../../../agents/ui-agent/domain-packs/).
+
+**A complete pack to copy**, the barbershop's from the demo:
+
+```json title="domain_packs/barber_booking.json"
+{
+  "form_id": "barber_booking",
+  "title": "Barbershop booking",
+  "starters": ["Book me a haircut + beard next Tuesday around 3pm", "How much is a haircut with Maria?",
+               "Book a kids haircut for my son, he is 6"],
+  "persona": "You are the barbershop's friendly booking assistant. Keep it short and casual.",
+  "flow_hints": [
+    "Choose the service first: the list of barbers depends on it.",
+    "Available times depend on both the date and the barber.",
+    "The steps unlock one by one: service → date & time → your details → confirm."
+  ],
+  "glossary": {
+    "barber": "Maria is a senior barber: her prices are 20% higher. Kids haircuts are done only by Maria.",
+    "agree_policy": "Cancellation is free up to 2 hours before the visit; later cancellations cost 50%.",
+    "first_visit": "First-time clients get 10% off; the discount is applied at the salon, not in the price shown."
+  },
+  "pii": ["client_phone", "client_email"]
+}
+```
+
+For a new domain, add `rules` for what the props do not show and `consents` for every agreement box:
+
+```json title="domain_packs/barber_booking.json (the additions)"
+{
+  "rules": ["A visit can be moved or cancelled until 2 hours before it, by phone or in this chat."],
+  "consents": {"agree_policy": {"required": true, "doc": {"title": "Cancellation policy", "text": "Free up to 2 hours before the visit; later, 50%."}}}
+}
+```
+
+## 2. The business's instructions
+
+**What breaks without it.** The agent follows the business's instructions over its own defaults, as long as they keep to integrity and to the form as it is. Without them it has no tone, no house rules and no idea what to recommend.
+
+**How to write it.** In `persona` (and the site map's `instructions` for the site agent), as plainly as you would brief a new colleague: who it is, its tone, what to ask first, what to mention, what it must never say. Write what to recommend as a recommendation, not as pressure: recommend when it fits what the person asked for or when they ask for advice, once, with the reason, and never instead of what they named.
+
+```json title="domain_packs/barber_booking.json"
+{
+  "persona": "You are the barbershop's friendly booking assistant. Keep it short and casual. When someone is unsure which service to take, recommend haircut + beard once, with the reason (it costs $5 less than the two apart); never choose it for them."
+}
+```
+
+An instruction the form cannot follow right now (it names a field that is hidden) is quietly skipped. How the agent weighs instructions against its own rules: [Domain packs](../../../agents/ui-agent/domain-packs/#your-instructions-and-the-agents-own-rules). Recommending, never pushing, as a rule of the agents themselves, is [coming next](#coming-next).
+
+## 3. The domain's documents
+
+Upload the documents that answer what the form cannot (terms, price lists, an FAQ) into the form's namespace, in Markdown, text or PDF, with real headings and one current version each: [Researcher](../researcher/).
+
+## 4. Keywords for the decision model, in every language
+
+**What breaks without it.** A person writes in their own words and language; a page whose keywords and titles do not have those words is not found, and a capitalised word the decision model does not know is masked as `<name>` before it leaves your host.
+
+**How to choose them.**
+
+1. Write down how people name the page and what it is for: the service, the product, the action ("book a haircut", "beard trim").
+2. Translate each into every language your visitors use, as people say it, not word for word ("Haarschnitt", "taglio di capelli").
+3. Add the forms of a word people really use: singular and plural, a short form ("Kfz-Versicherung" and "Versicherung").
+4. Check each one: write a line with it in that language and see that the page is found.
+
+```yaml title="site.yaml"
+pages:
+  - path: /book
+    title: Book a visit
+    form: barber_booking
+    keywords: [book, haircut, beard trim, Haarschnitt, Termin, taglio di capelli, prenotare]
+```
+
+Keywords that are never masked as names are built, not released ([Coming next](#coming-next)); today a field's label with options and the titles of the places being chosen between are the words it knows.
+
+## 5. The domain's QA scenarios
+
+**What breaks without them.** Without a scenario a change to the pack or the instructions is a guess: nothing shows it helped, and nothing catches what it broke.
+
+**How to write them.** One YAML file a scenario, in your own folder, in the format of the repository's `backend/evals/README.md`. Write it **red first**: run it before the change and see it fail; then make the change and see it pass. A check counted from the events (no model) is the strongest:
+
+```yaml title="evals/barber_no_done_before_card.yaml"
+name: barber_no_done_before_card
+tags: [bar, answers_in_words]
+persona: "A person booking a haircut who says what they want and does not tap the card; then asks whether it is done."
+goal: "Hear 'I propose' while the card waits, never 'booked' or 'set'."
+start: {page: /book, form: barber_booking}
+knows:
+  - "Says: A haircut with Ivan, please."
+  - "Says: Is it booked now?"
+turns: 2
+scripted:
+  - "A haircut with Ivan, please."
+  - "Is it booked now?"
+expect:
+  never_claims_without: true
+  never_says: ["you are booked", "you're booked", "it is booked", "it's booked"]
+min_score: 7
+```
+
+Write them in pairs where it matters:
+
+- **One message and in pieces:** the same request in one line, and spread over several turns (the value in turn 1, the date in turn 3); both must reach the same form.
+- **A false "done":** a scenario where the card is not tapped and the agent is asked whether it is done; `never_says` and `never_claims_without` catch a "booked" that the form does not show.
+- **Every language** your visitors use, and a line that names a value directly against one that hints at it.
+
+## 6. Measure it
+
+Run your folder with the repository's runner, against your server at `FORMGUIDE_BASE`. `--no-testers` uses only the scripted lines and the checks, with no user model and no judge, and `--max-usd` stops the run at that spend:
+
+```bash
+cd backend && FORMGUIDE_BASE=http://localhost:8000 uv run python scripts/evals.py --folder ../evals --no-testers --max-usd 1
+```
+
+Keep a baseline and compare every change with it (`--save-baseline`, then `--baseline` and `--margin`). A change ships when its own scenario went from red to green and the rest did not drop. For the decision model, the bar is no more than 1% confident errors on lines it was not tuned on; showing that needs a few hundred such lines per action ([How the best systems guess intent](../../../agents/research/intent-systems/)). The repository's own numbers: [Benchmarks](../../benchmarks/).
+
+## 7. The check
+
+```bash
+formguide check --config formguide.yaml
+```
+
+A check of the domain's descriptions (labels, `pii`, untranslated titles, a form with no documents or no pack) is being added to `formguide check`; this page will name what it reports when it is released.
+
+## Checklist
+
+- [ ] `domain_packs/<form_id>.json` has `title`, `persona`, `flow_hints`, `glossary`, `pii`, `rules`, `consents` and `starters`.
+- [ ] Every field with personal data is in `pii`; every agreement box is in `consents`.
+- [ ] The persona says the tone, the house rules, what to recommend (once, with the reason) and what never to say.
+- [ ] What happens after sending is in `rules`.
+- [ ] The domain's documents are uploaded into its namespace.
+- [ ] The page's keywords cover every language and the forms of a word people use, and each was tried in a line.
+- [ ] Every change has a scenario that was red before and green after; pairs "one message / in pieces" and a false "done" are among them.
+- [ ] The folder runs against a baseline and nothing dropped.
+- [ ] `formguide check` passes.
+
+## Coming next
+
+<Aside type="note" title="Not in the package yet">
+Nothing in this list works with the package you install today.
+</Aside>
+
+- **The site's whole vocabulary counts**, so keywords and titles are never masked as names (built, not released).
+- **"Recommend, don't push" as the agents' own rule**, in the shared core (designed: [How to understand a person](../../../agents/how-it-works/understanding/)).
+- **Per-field notes** (why a field is asked, which are sensitive or special) and **"done when"** (planned and designed: [The goal module](../../../agents/how-it-works/goal-module/)).
+- **A check of the domain's descriptions** in `formguide check` (built, not released).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="UI agent" description="Labels, options, required fields, pii, consents." href="../ui-agent/" />
+  <LinkCard title="Domain packs" description="Every key of the pack." href="../../../agents/ui-agent/domain-packs/" />
+</CardGrid>

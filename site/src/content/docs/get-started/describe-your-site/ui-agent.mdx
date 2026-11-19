@@ -3,8 +3,11 @@ title: "Describe your site: the UI agent"
 description: "What the UI agent reads from a form: labels and options in your users' words, required fields and rules, the order of work, the glossary, pii, consents and what happens after sending. What breaks without each, how to write it, a checklist."
 ---
 import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import PagePrompt from '../../../../components/PagePrompt.astro';
 
 The UI agent works from two things: the form's **props**, which your form backend sends with every turn, and the form's **domain pack**, a JSON file per form (`domain_packs/<form_id>.json`). The props say what the form is right now; the pack says what it means.
+
+<PagePrompt what="the form's props and its domain pack (domain_packs/<form_id>.json)" asks={["Which form is it, and where does its backend build the props?", "Which fields are required, and which rules does the backend check?", "Which fields hold personal data, and which checkboxes are consents?", "What happens after the form is sent?"]} />
 
 ## Labels and options in your users' words
 

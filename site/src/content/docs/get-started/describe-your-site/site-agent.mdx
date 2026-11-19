@@ -3,8 +3,11 @@ title: "Describe your site: the site agent"
 description: "The site map Dushes works from: pages, parts and forms, titles and keywords in every language, descriptions, the facts people ask about, hand-offs and the human contact. What breaks without each, how to write it, a checklist."
 ---
 import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import PagePrompt from '../../../../components/PagePrompt.astro';
 
 Dushes, the site agent, answers from the site map and may go only where it says. Everything on this page goes into `site.yaml` (or the same shape built in code with `SiteMap.load(dict)`).
+
+<PagePrompt what="the site map (site.yaml) and the site agent's instructions" asks={["Which pages should the assistant know, and which of them hold a form?", "Which languages do your visitors write in, and what words do they use for each page?", "Which facts do people ask about (prices, hours, conditions), and where are they?", "Who should a person contact when the assistant cannot help?"]} />
 
 ## Pages, parts and which page holds which form
 

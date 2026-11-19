@@ -3,8 +3,11 @@ title: "Describe your site: the researcher"
 description: "The documents the researcher answers from: format, how they are cut, which form reads which, versions, language and what not to put in. What breaks without each, how to write it, a checklist."
 ---
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+import PagePrompt from '../../../../components/PagePrompt.astro';
 
 The researcher answers the agents' questions from a form's business documents, with the file and section as its source. It reads only what you uploaded.
+
+<PagePrompt what="the form's documents and the knowledge settings in formguide.yaml" asks={["Which documents answer the questions the form cannot, and in which format are they?", "Which documents do several forms share?", "Which version of each is current?"]} />
 
 ## Upload the documents, in the form's namespace
 
