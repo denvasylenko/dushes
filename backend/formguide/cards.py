@@ -167,6 +167,26 @@ def check(spec: CardSpec, args: Any) -> dict[str, Any]:
     return out
 
 
+SEARCH_LIMITS = {"minChars": (0, 10), "debounceMs": (0, 2000)}   # a search block's own settings, and their bounds
+
+
+def _search_limits(block: dict[str, Any]) -> dict[str, Any]:
+    """A search block's `minChars` and `debounceMs` as whole numbers within their bounds; anything else is left out,
+    and the widget's default stands."""
+    if block.get("type") != "search":
+        return block
+    out = dict(block)
+    for key, (low, high) in SEARCH_LIMITS.items():
+        if key not in out:
+            continue
+        v = out.pop(key)
+        if isinstance(v, str) and v.strip().lstrip("-").isdigit():
+            v = int(v)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            out[key] = max(low, min(high, int(v)))
+    return out
+
+
 def build(spec: CardSpec, args: Any) -> dict[str, Any]:
     """The card payload the widget draws: {type: blocks, name, blocks}."""
     data = check(spec, args)
@@ -175,7 +195,7 @@ def build(spec: CardSpec, args: Any) -> dict[str, Any]:
         cond = b.get("if")
         if cond and _empty(data.get(str(cond))):
             continue
-        blocks.append(_fill({k: v for k, v in b.items() if k != "if"}, data))
+        blocks.append(_search_limits(_fill({k: v for k, v in b.items() if k != "if"}, data)))
     return {"type": "blocks", "name": spec.type, "blocks": blocks}
 
 

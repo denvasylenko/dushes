@@ -174,3 +174,20 @@ def test_a_search_block_in_a_card_spec():
     card = build(spec, {"suppliers": [{"id": "s1", "label": "Northwind", "description": "Paper"}]})
     assert card["blocks"][0]["options"] == [{"id": "s1", "label": "Northwind", "description": "Paper"}]
     assert card["blocks"][1] == {"type": "search", "name": "city", "source": "cities"}
+
+
+def test_a_search_blocks_own_settings_are_numbers_within_bounds():
+    """The owner (2026-11-19): how many letters start the search and the pause before it are set on the block. The
+    server passes them as whole numbers within bounds; something that is not a number is dropped, so the widget's
+    default stands."""
+    def one(**settings):
+        spec = parse_cards([{"type": "pick_city", "description": "Ask which city.", "data": {},
+                             "blocks": [{"type": "search", "name": "city", "source": "cities", **settings}]}])[0]
+        return build(spec, {})["blocks"][0]
+    assert one(minChars=3, debounceMs=300) == {"type": "search", "name": "city", "source": "cities", "minChars": 3, "debounceMs": 300}
+    got = one(minChars=40, debounceMs=-5)
+    assert (got["minChars"], got["debounceMs"]) == (10, 0)
+    got = one(minChars="2", debounceMs=99999.0)
+    assert (got["minChars"], got["debounceMs"]) == (2, 2000)
+    got = one(minChars="three", debounceMs=True)
+    assert "minChars" not in got and "debounceMs" not in got

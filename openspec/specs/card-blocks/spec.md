@@ -122,11 +122,18 @@ A `chart` SHALL take `data: [{label, value}]` or `labels` with `series: [{name, 
 - **THEN** the card says "No data for this period"
 
 ### Requirement: A search block
-A card SHALL accept `{type: search, name, label?, placeholder?, options?: [{id, label, description?}], source?, required?, value?}`: an input under which matching options appear as the person types. A pick SHALL set the card's `values[name]` to `{id, label}`; text that was not picked SHALL NOT be a value. `source` names a list the page serves through `options.searchSource(source, query)`.
+A card SHALL accept `{type: search, name, label?, placeholder?, options?: [{id, label, description?}], source?, required?, value?}`: an input under which matching options appear as the person types. A pick SHALL set the card's `values[name]` to `{id, label}`; text that was not picked SHALL NOT be a value. `source` names a handler the page registered, `options.searchSources[source](query, {signal, block, lang})`.
 
 #### Scenario: A supplier is picked
 - **WHEN** the person types "nor", picks "Northwind" and taps the card's button
 - **THEN** the card's answer holds `values.supplier` equal to `{id: "s1", label: "Northwind"}`
+
+### Requirement: A search block's own settings
+A search block MAY carry `minChars` (how many letters start the search) and `debounceMs` (the pause before a call). The server SHALL pass them as whole numbers within 0–10 and 0–2000 and SHALL leave out a value that is not a number. `source` SHALL name a handler the page registered in `options.searchSources`.
+
+#### Scenario: Out of bounds
+- **WHEN** a card spec sets `minChars: 40` and `debounceMs: -5`
+- **THEN** the card's block has `minChars: 10` and `debounceMs: 0`
 
 ### Requirement: A host's own block in a card spec
 A card spec SHALL accept a block whose type is not built in when the type is lower-case words joined by hyphens (`city-search`, at most 40 characters): the block's keys SHALL reach the widget unchanged, with placeholders filled. A type without a hyphen that is not built in SHALL still be rejected when the configuration is read.
