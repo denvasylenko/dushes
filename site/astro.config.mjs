@@ -194,6 +194,7 @@ export default defineConfig({
 						{ label: 'How the agent behaves', slug: 'agents/how-it-works/behaviour' },
 						{ label: 'The decision model', slug: 'agents/how-it-works/decision-model', badge: { text: 'experimental', variant: 'caution' } },
 						{ label: 'How to understand a person', slug: 'agents/how-it-works/understanding', badge: { text: 'experimental', variant: 'caution' } },
+						{ label: 'The goal module', slug: 'agents/how-it-works/goal-module', badge: { text: 'not built', variant: 'caution' } },
 						{ label: 'One schema for what a person wants', slug: 'agents/how-it-works/intents', badge: { text: 'proposal', variant: 'note' } },
 						{ label: 'What the model sees', slug: 'agents/how-it-works/context' },
 						{ label: 'How documents are retrieved', slug: 'agents/how-it-works/knowledge' },
