@@ -48,7 +48,6 @@ Every default below is safe, but weaker than what most sites need. Each row says
 | No quick replies after an answer | `suggestions: {enabled: true, max: 3}` in `formguide.yaml`, and `Dushes(..., suggestions=True)` |
 | After a hand-off, a form's first turn waits for its page to load | `Dushes(..., form_for=fn)`, where `fn(form_id, ctx)` returns `{config, jsx_hash, form_id}` |
 | One model serves every role | `models:` with a model per role (`agent`, `research`, `compile`, `extract`, `memory`, `suggestions`): [Configuration](../../reference/configuration/) |
-| The site agent sees the last 6 entries of the conversation | `Dushes(..., history=40)` |
 | No domain pack: a neutral persona, no field notes, no personal fields marked | a pack per form with `title`, `persona`, `glossary`, `pii` and `rules` ([UI agent](ui-agent/), [Configuration examples](examples/)) |
 | No business documents: the agent answers from the form alone | upload them: `POST /agent/kb/{form_id}/documents` ([Researcher](researcher/)) |
 | Pages without keywords, or fewer than the site's languages | `keywords:` per page in `site.yaml`, at least one per language ([Site agent](site-agent/)) |
@@ -58,13 +57,20 @@ Voice mode and the decision model are off unless configured ([Voice](voice/), [D
 
 ## Before launch
 
-Go through each page's checklist, then run the check of the configuration, which calls no model:
+Go through each page's checklist, then run the check, which calls no model. Give it the site map and, for each form, its JSX and a sample of its props; `--public` for a host anyone can open:
 
 ```bash
-formguide check --config formguide.yaml
+formguide check --config formguide.yaml --site site.yaml --jsx form.jsx --form-config sample.json --form-id <form_id> --public
 ```
 
-A check of the descriptions themselves (missing labels, untranslated titles, pages without text) is being added to `formguide check`; these pages will name what it reports when it is released.
+It prints the configuration, then what it found, grouped as ERROR, WARNING and NOTE, each with what follows from it and a `fix:` line to paste, and `OK` when there is no error. It exits with 1 on any error. What it looks at:
+
+- **the site map:** a page with no keywords, fewer keywords than `languages:` in `formguide.yaml`, a title two places share, a form with no documents or no domain pack;
+- **each form:** a label that is empty, its own name or written like an identifier; options with no readable name; a phone or e-mail field not in `pii` (an error), an ID or bank detail not in it (a warning), a special category such as health (an error); a required field with no note in the `glossary`;
+- **the weaker defaults** it can see: no `checkpointer`, quick replies off, a site with forms and no `form_for`;
+- **the environment:** `INTENT_PROVIDER` without `INTENT_API_KEY`, a voice secret without `VOICE_CODES`, the diagnostics switches (`INTENT_LABELS`, `INTENT_TRACE`, `INTENT_SCORES`) on; with `--public` those switches and `DEMO_SHOW_CONFIG=1` are errors, and the decision model without `EXPERIMENT_CODES` and `VOICE_CODES` without `VOICE_SECRET` are warnings.
+
+Every option: [CLI](../../reference/cli/#formguide-check).
 
 ## Next
 

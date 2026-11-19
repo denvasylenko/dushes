@@ -62,6 +62,18 @@ INTENT_TIMEOUT_MS=300    # later than this is no answer, and the line goes on
 
 Every key: [The decision model, every option](../../../agents/site-agent/decision-model/#every-option).
 
+## A host that knows its people decides per run
+
+**What it affects.** A signed-in cabinet needs no codes: the host decides on its server, for each run, whether the decision model is used, and can add that run's own private words and send it no earlier messages.
+
+**How to write it.**
+
+```python title="app.py"
+await site.run(thread_id, message=text, state=state, layer=True, never_send=[guest.name, guest.phone], layer_history=False)
+```
+
+`INTENT_HISTORY=0` sends no earlier messages for the whole process. The chooser's call, with its tokens and price, is in the run's `run_stats` (kind `chooser`). Every option: [The decision model](../../../agents/site-agent/decision-model/).
+
 ## Diagnostics, only on a local or test host
 
 **What it affects.** `INTENT_LABELS=1` shows under each turn who did it; `INTENT_TRACE=1` sends the turn's decision in `CUSTOM decision_trace`; `INTENT_SCORES=1` sends the chooser's numbers. They show how the site works to anyone who opens the chat.
@@ -88,8 +100,6 @@ INTENT_TRACE=1
 Nothing in this list works with the package you install today.
 </Aside>
 
-- **A host decides per run** whether the decision model is used, for people it already knows, with no codes; and its own never-send list and history per run, as arguments of `run()` (built, not released).
-- **Its cost in `run_stats`**, the chooser's call with its tokens and price (built, not released).
 - **The site's whole vocabulary counts**, so keywords and titles are never masked (built, not released).
 - **Bars by action, calibrated for an acceptable error rate**, with host presets (cautious, balanced, eager) instead of fixed numbers (built and off; the numbers wait for a measurement).
 - **The decision journal**, to set the bars from what happened on your site (built, not released).

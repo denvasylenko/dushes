@@ -11,13 +11,20 @@ Writes a starter configuration into `dir` (default `.`): `formguide.yaml`, a dom
 
 ## `formguide check`
 
-Loads a configuration and reports it, without calling any model: the model per role (noting a missing API key), domain packs, skills, knowledge, tools, `interrupt_mode`, tracing and the component map. With `--jsx` it also parses the form and lists its warnings.
+Loads a configuration and reports it, without calling any model: the model per role (noting a missing API key), domain packs, skills, knowledge, tools, `interrupt_mode`, tracing and the component map. Then it lists what it found in the site map, the form, the weaker defaults and the environment, grouped as `ERROR`, `WARNING` and `NOTE`; each finding says where, what follows from it and a `fix:` line to paste, then a count line, and `OK` when there is no error. The exit code is 1 on any error, else 0. What each part looks at: [Describe your site, before launch](../../get-started/describe-your-site/#before-launch).
+
+```bash
+formguide check --config formguide.yaml --site site.yaml --jsx form.jsx --form-config sample.json --public
+```
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--config` | `formguide.yaml` | the file to load |
 | `--jsx` | | also check a form: its JSX file |
-| `--form-config` | | with `--jsx`: a sample config JSON `{props, state}`, to check value formats against the field specs |
+| `--form-config` | | with `--jsx`: a sample config JSON `{props, state}`, to check value formats against the field specs, and the form's labels, options, `pii` and `glossary` |
+| `--form-id` | from the sample, else the JSX file's name | with `--jsx`: the form's id, to find its domain pack |
+| `--site` | | also check a site map (`site.yaml`): keywords per page against `languages:`, titles two places share, forms without documents or a domain pack |
+| `--public` | off | the host is public: the diagnostics switches (`INTENT_LABELS`, `INTENT_TRACE`, `INTENT_SCORES`) are errors, not warnings; `DEMO_SHOW_CONFIG=1` is an error; the decision model without `EXPERIMENT_CODES` and `VOICE_CODES` without `VOICE_SECRET` are warnings |
 
 ## `formguide serve`
 

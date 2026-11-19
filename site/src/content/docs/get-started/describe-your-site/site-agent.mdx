@@ -14,7 +14,7 @@ Dushes, the site agent, answers from the site map and may go only where it says.
 - **Quick replies are off** unless `suggestions: {enabled: true}` in `formguide.yaml` and `Dushes(..., suggestions=True)`.
 - **Without `form_for`**, a form's first turn after a hand-off waits for its page to load.
 - **One model serves every role** unless `models` names others.
-- **Dushes sees the last 6 entries of the conversation** (`history`, below).
+- **Dushes sees up to the last 40 entries of the conversation**, the newest that fit about 24,000 characters, with a memory of the older ones, and the pages the person has been on (below).
 
 What to set for each: [What a host gets by default](../#what-a-host-gets-by-default-and-what-to-set).
 </Aside>
@@ -95,13 +95,19 @@ A dedicated key for the human contact is [coming next](#coming-next).
 
 ## How much of the conversation it remembers
 
-**What breaks without it.** `history` on `Dushes(...)` is how many of the conversation's latest entries the site agent is shown; a message, an answer and a card's result each count as one. The default is 6, about three exchanges, so in a longer conversation "what was my first message?" is answered by a guess. There is no summary of older turns for the site agent yet (the UI agent has one: [memory](../../../agents/how-it-works/memory/)).
+**What it affects.** `history` on `Dushes(...)` is how many of the conversation's latest entries the site agent may see; a message, an answer and a card's result each count as one. The default is 40, and of those the newest that fit about 24,000 characters are shown (never fewer than six). Once eight more entries have fallen out of view, the router's model (the memory model by default) folds them into a memory of the conversation, written after the reply is sent, and the agent gets it in their place; the person's first message is always named. The UI agent has its own memory: [Long conversations](../../../agents/how-it-works/memory/).
 
-**How to write it.**
+**How to write it.** Nothing, for most sites. A host that wants less in each prompt lowers it:
 
 ```python title="app.py"
-site = Dushes(guide, SiteMap.load("site.yaml"), history=40)
+site = Dushes(guide, SiteMap.load("site.yaml"), history=20)
 ```
+
+## The pages a person has been on
+
+**What it affects.** The server keeps the pages a conversation has been on (up to 12), in a record beside the conversation in the transcripts store, so it survives a restart and works across instances. Each turn it tells the site agent the trail and the page before the current one, so "the page I was on" is understood.
+
+**How to write it.** Send the current page with every run, as before (`state.page.path`); there is nothing else to send.
 
 ## Checklist
 
@@ -111,7 +117,7 @@ site = Dushes(guide, SiteMap.load("site.yaml"), history=40)
 - [ ] Every page has a one-line `description`.
 - [ ] The facts people ask about are in the `text` of a part, or come from `context`.
 - [ ] A human contact is on a page, and `instructions` say when to give it.
-- [ ] `history=40` on `Dushes(...)` for conversations longer than a few exchanges; `checkpointer` set if a conversation must survive a restart.
+- [ ] Every run sends the current page (`state.page.path`); `checkpointer` is set if a conversation must survive a restart.
 
 ## Coming next
 
@@ -121,9 +127,6 @@ Nothing in this list works with the package you install today.
 
 - **The site's whole vocabulary counts:** a page's keywords in any language, every page and part title of the site and every label of the form on the screen are never masked as a name before the decision model (built, not released).
 - **A dedicated key for the human contact** (planned).
-- **A longer memory by default:** `history` of 40, with the newest entries that fit about 24,000 characters shown (never fewer than six), and the person's first message named when older turns are cut (built, not released).
-- **The page trail for every host:** the server keeps the pages a conversation has been on (up to 12, in a record beside the conversation in the transcripts store, so it survives a restart and works across instances) and tells the site agent the trail and the previous page each turn, with nothing more for the host to send than the current page (built, not released).
-- **A memory of older turns for the site agent:** once eight more entries have fallen out of what it is shown, the cheap model (the router's, the memory model by default) folds them into a memory of the conversation, written after the reply is sent, and the agent is told it in their place (built, not released). Today the trail exists only where the decision model runs, and only it sees it.
 - **A move to a page is the agent's own decision**, with no list of moving words; "back" opens the page before this one at once, and the agent's own moves count in the trail; `INTENT_GATE=words` brings the word list back (built, not released).
 
 ## Next

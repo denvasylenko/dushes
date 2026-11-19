@@ -151,10 +151,10 @@ Keep a baseline and compare every change with it (`--save-baseline`, then `--bas
 ## 7. The check
 
 ```bash
-formguide check --config formguide.yaml
+formguide check --config formguide.yaml --site site.yaml --jsx form.jsx --form-config sample.json --form-id <form_id> --public
 ```
 
-A check of the domain's descriptions (labels, `pii`, untranslated titles, a form with no documents or no pack) is being added to `formguide check`; this page will name what it reports when it is released.
+It names a label that is empty or written like an identifier, a personal field not in `pii`, a required field with no `glossary` note, a page with too few keywords for the site's languages, and a form with no documents or no pack, each with the line to paste ([what it reports](../#before-launch)).
 
 ## Checklist
 
@@ -177,7 +177,6 @@ Nothing in this list works with the package you install today.
 - **The site's whole vocabulary counts**, so keywords and titles are never masked as names (built, not released).
 - **"Recommend, don't push" as the agents' own rule**, in the shared core (designed: [How to understand a person](../../../agents/how-it-works/understanding/)).
 - **Per-field notes** (why a field is asked, which are sensitive or special) and **"done when"** (planned and designed: [The goal module](../../../agents/how-it-works/goal-module/)).
-- **A check of the domain's descriptions** in `formguide check` (built, not released).
 
 ## Next
 

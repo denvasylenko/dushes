@@ -39,7 +39,7 @@ const { what, asks } = Astro.props
       ...asks.map((a) => `- ${a}`),
       ``,
       `Then write or fix ${what} exactly as the page shows, and show me the changes before you save them.`,
-      `Run the check, which calls no model: formguide check --config formguide.yaml. Fix what it names.`,
+      `Run the check, which calls no model: formguide check --config formguide.yaml (add --site site.yaml for a site, and --jsx form.jsx --form-config sample.json for each form). Fix every ERROR and WARNING it names.`,
       `Finally, go through the page's checklist item by item and report each one: done, not done and why, or what you need from me. Name anything you guessed.`,
     ].join('\n')
     const code = root.querySelector<HTMLElement>('[data-prompt] code')!
