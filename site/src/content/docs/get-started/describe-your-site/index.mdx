@@ -47,7 +47,7 @@ Every default below is safe, but weaker than what most sites need. Each row says
 | Conversations live in memory: a restart forgets them | `checkpointer: {sqlite: data/checkpoints.sqlite}` in `formguide.yaml` (or a Postgres or Redis saver in Python) |
 | No quick replies after an answer | `suggestions: {enabled: true, max: 3}` in `formguide.yaml`, and `Dushes(..., suggestions=True)` |
 | After a hand-off, a form's first turn waits for its page to load | `Dushes(..., form_for=fn)`, where `fn(form_id, ctx)` returns `{config, jsx_hash, form_id}` |
-| One model serves every role | `models:` with a model per role (`agent`, `research`, `compile`, `extract`, `memory`, `suggestions`): [Configuration](../../../reference/configuration/) |
+| One model serves every role | `models:` with a model per role (`agent`, `research`, `compile`, `extract`, `memory`, `suggestions`): [Configuration](../../reference/configuration/) |
 | The site agent sees the last 6 entries of the conversation | `Dushes(..., history=40)` |
 | No domain pack: a neutral persona, no field notes, no personal fields marked | a pack per form with `title`, `persona`, `glossary`, `pii` and `rules` ([UI agent](ui-agent/), [Configuration examples](examples/)) |
 | No business documents: the agent answers from the form alone | upload them: `POST /agent/kb/{form_id}/documents` ([Researcher](researcher/)) |
