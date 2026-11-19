@@ -47,7 +47,8 @@ and from the next release `model` (a name from the server's model choices, never
 - Cards that do not wait: `CUSTOM card` (display cards from blocks), `receipt`, `sources`, `suggestions`.
 - Block `search`: an input with matching options under it; a pick is `values[name] = {id, label}`. `source` names a
   search handler the app itself provides; static `options` need nothing from the app. `minChars` (0-10) and
-  `debounceMs` (0-2000) are the block's own settings.
+  `debounceMs` (0-2000) are the block's own settings. With `multiple: true` the value is a list of
+  `{id, label}`, at most `max` (1-50) of them.
 - A block whose `type` holds a hyphen (`city-search`) is a host's own component, registered with the web widget.
   A client that has no component for it skips the block and draws the rest of the card.
   `suggestions` is `{items: [string], applies?: [changes | null]}`: items are plain strings, never objects;

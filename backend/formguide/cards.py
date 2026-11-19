@@ -167,7 +167,7 @@ def check(spec: CardSpec, args: Any) -> dict[str, Any]:
     return out
 
 
-SEARCH_LIMITS = {"minChars": (0, 10), "debounceMs": (0, 2000)}   # a search block's own settings, and their bounds
+SEARCH_LIMITS = {"minChars": (0, 10), "debounceMs": (0, 2000), "max": (1, 50)}   # a search block's own settings, and their bounds
 
 
 def _search_limits(block: dict[str, Any]) -> dict[str, Any]:
@@ -184,6 +184,14 @@ def _search_limits(block: dict[str, Any]) -> dict[str, Any]:
             v = int(v)
         if isinstance(v, (int, float)) and not isinstance(v, bool):
             out[key] = max(low, min(high, int(v)))
+    if "multiple" in out:   # several picks: true or false, nothing else; `max` means something only with it
+        if isinstance(out["multiple"], bool):
+            if not out["multiple"]:
+                out.pop("multiple")
+        else:
+            out.pop("multiple")
+    if not out.get("multiple"):
+        out.pop("max", None)
     return out
 
 

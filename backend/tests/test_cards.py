@@ -191,3 +191,17 @@ def test_a_search_blocks_own_settings_are_numbers_within_bounds():
     assert (got["minChars"], got["debounceMs"]) == (2, 2000)
     got = one(minChars="three", debounceMs=True)
     assert "minChars" not in got and "debounceMs" not in got
+
+
+def test_a_search_block_with_several_picks():
+    """The owner (2026-11-19): "we need to have multi search as well". `multiple` is true or false, `max` a whole
+    number from 1 to 50 that means something only with it."""
+    def one(**settings):
+        spec = parse_cards([{"type": "pick_cities", "description": "Ask which cities.", "data": {},
+                             "blocks": [{"type": "search", "name": "cities", "source": "cities", **settings}]}])[0]
+        return build(spec, {})["blocks"][0]
+    assert one(multiple=True, max=3) == {"type": "search", "name": "cities", "source": "cities", "multiple": True, "max": 3}
+    assert one(multiple=True, max=900)["max"] == 50 and one(multiple=True, max=0)["max"] == 1
+    assert one(multiple=False, max=3) == {"type": "search", "name": "cities", "source": "cities"}
+    assert one(multiple="yes", max=3) == {"type": "search", "name": "cities", "source": "cities"}
+    assert one(max=3) == {"type": "search", "name": "cities", "source": "cities"}

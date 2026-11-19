@@ -135,6 +135,13 @@ A search block MAY carry `minChars` (how many letters start the search) and `deb
 - **WHEN** a card spec sets `minChars: 40` and `debounceMs: -5`
 - **THEN** the card's block has `minChars: 10` and `debounceMs: 0`
 
+### Requirement: A search block with several picks
+With `multiple: true` a search block's value SHALL be a list of `{id, label}`, `required` SHALL mean at least one, and `max` (1–50) SHALL stop the picks at that number. The server SHALL pass `multiple` only when it is true and `max` only with it, within its bounds.
+
+#### Scenario: Three cities at most
+- **WHEN** a card spec sets `multiple: true, max: 3` and the person picks Lisbon and Porto
+- **THEN** the card's answer holds `values.cities` as a list of the two picks, and a fourth pick would be refused with a hint
+
 ### Requirement: A host's own block in a card spec
 A card spec SHALL accept a block whose type is not built in when the type is lower-case words joined by hyphens (`city-search`, at most 40 characters): the block's keys SHALL reach the widget unchanged, with placeholders filled. A type without a hyphen that is not built in SHALL still be rejected when the configuration is read.
 
