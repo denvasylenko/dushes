@@ -35,6 +35,15 @@ The core knows nothing about loans or haircuts. A domain pack is everything form
 | `pii` | fields whose values are masked in the model's context |
 | `starters` | up to 6 opening messages shown in an empty chat |
 
+### What `pii` does, and what it does not
+
+- **A marked field reaches the model only as `<filled>`.** The model knows the field has a value, so it does not ask for it again. It never gets the value itself, so it cannot read it back, quote it or reason about it. This holds everywhere the form's values are described to the model: the form context and the list of changes.
+- **The person still sees their own values.** The field on their screen shows what they typed. A confirmation the page draws itself from the form (as the demo forms' send card does) shows it too. Both happen in the browser and do not go into a run.
+- **An unmarked field is seen by the model as typed.**
+- **`pii` masks form fields, not chat messages.** If the person types their e-mail or phone into the chat, that message goes to the model as written. Ask for personal data in its field, not in the chat.
+
+Mark every field that holds e-mail addresses, phone numbers, ID or account numbers, or anything else the model has no need to read.
+
 ## Your instructions and the agent's own rules
 
 Write `persona` as plainly as you would brief a new colleague: who the agent is, its tone, and any house rules ("Ask for the loan amount before anything else", "Always mention that the first consultation is free"). The prompt tells the model how to weigh them against its own rules:
