@@ -121,6 +121,34 @@ A `chart` SHALL take `data: [{label, value}]` or `labels` with `series: [{name, 
 - **WHEN** a chart comes with `data: []`
 - **THEN** the card says "No data for this period"
 
+### Requirement: A search block
+A card SHALL accept `{type: search, name, label?, placeholder?, options?: [{id, label, description?}], source?, required?, value?}`: an input under which matching options appear as the person types. A pick SHALL set the card's `values[name]` to `{id, label}`; text that was not picked SHALL NOT be a value. `source` names a handler the page registered, `options.searchSources[source](query, {signal, block, lang})`.
+
+#### Scenario: A supplier is picked
+- **WHEN** the person types "nor", picks "Northwind" and taps the card's button
+- **THEN** the card's answer holds `values.supplier` equal to `{id: "s1", label: "Northwind"}`
+
+### Requirement: A search block's own settings
+A search block MAY carry `minChars` (how many letters start the search) and `debounceMs` (the pause before a call). The server SHALL pass them as whole numbers within 0–10 and 0–2000 and SHALL leave out a value that is not a number. `source` SHALL name a handler the page registered in `options.searchSources`.
+
+#### Scenario: Out of bounds
+- **WHEN** a card spec sets `minChars: 40` and `debounceMs: -5`
+- **THEN** the card's block has `minChars: 10` and `debounceMs: 0`
+
+### Requirement: A search block with several picks
+With `multiple: true` a search block's value SHALL be a list of `{id, label}`, `required` SHALL mean at least one, and `max` (1–50) SHALL stop the picks at that number. The server SHALL pass `multiple` only when it is true and `max` only with it, within its bounds.
+
+#### Scenario: Three cities at most
+- **WHEN** a card spec sets `multiple: true, max: 3` and the person picks Lisbon and Porto
+- **THEN** the card's answer holds `values.cities` as a list of the two picks, and a fourth pick would be refused with a hint
+
+### Requirement: A host's own block in a card spec
+A card spec SHALL accept a block whose type is not built in when the type is lower-case words joined by hyphens (`city-search`, at most 40 characters): the block's keys SHALL reach the widget unchanged, with placeholders filled. A type without a hyphen that is not built in SHALL still be rejected when the configuration is read.
+
+#### Scenario: A city search
+- **WHEN** a spec holds `{type: city-search, name: city, options: "{cities}"}` and the model passes two cities
+- **THEN** the card's block has type `city-search`, the name, and the two cities as `options`
+
 ### Requirement: Card specs become tools
 A card spec (`type`, `description`, `data`, `blocks`, `wait`) in the config SHALL become a model tool `show_<type>` whose parameters are `data`. Calling it SHALL send the card filled from the arguments: as an interrupt that waits for the answer when `wait` is true, else as a `CUSTOM card` event while the turn goes on.
 
