@@ -156,6 +156,12 @@ def check_defaults(cfg: Any, site: Any = None) -> list[Finding]:
                            "turn waits for its page to load, and the decision model does not see another page's form "
                            "(this check cannot read your Python, so it only reminds)",
                            "pass `form_for=` a function (form_id, ctx) that returns the form's {config, jsx_hash, form_id}"))
+    if site is not None and any(p.form for p in site.pages) and not getattr(cfg, "tools", None):
+        out.append(Finding("note", "formguide.yaml: tools", "no server tool is configured for the UI agent. Tools passed "
+                           "to `Dushes(tools=...)` are the site agent's own: the UI agent on a form does not see them",
+                           "a tool the UI agent should call goes in `tools: [\"my_module:my_tool\"]` (or a skill's "
+                           "`tools`), or the page registers it with `chat.registerTool(...)`; add it to `confirm_tools` "
+                           "when it must wait for the person's yes"))
     return out
 
 

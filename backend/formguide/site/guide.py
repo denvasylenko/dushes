@@ -256,6 +256,12 @@ class Dushes:
         self.style = style                # replaces the default reply length rule
         self.history = history            # past turns Dushes sees
         self.tools = list(tools or [])    # the host's SiteTools
+        # (these are the site agent's own tools. A tool for the UI agent goes into the form guide: `tools:` or a skill
+        #  on the server, or a tool the page registers with the widget. The same name on both sides is two tools)
+        shared = {t.name for t in self.tools} & {str(getattr(t, "name", "")) for t in getattr(self.forms, "_tools", [])}
+        if shared:
+            log.warning("the site agent and the UI agent each have a tool named %s: the site agent calls its own "
+                        "(Dushes(tools=...)), the UI agent the form guide's (tools: in the configuration)", sorted(shared))
         self.suggestions = suggestions    # suggest_next -> CUSTOM suggestions
         self.form_for = form_for          # (form_id, ctx) -> form state | None: the same-run hand-off
         self._offers: dict[str, bool] = {}   # conversations whose last answer offered to open a page or a form
