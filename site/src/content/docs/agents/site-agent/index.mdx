@@ -170,6 +170,8 @@ site = Dushes(guide, SiteMap.load("site.yaml"))
 
 A tool for some forms only goes in a skill's `tools` ([Skills and tools](../ui-agent/skills/)). A tool that runs in the browser is registered on the page (`chat.registerTool`, or `tools` on the React component: [Frontend tools](../../frontend/frontend-tools/)); the widget sends it with every run, and its result comes back as a run with no message, which goes to the UI agent.
 
+A `SiteTool` and a form tool with the same name are two tools, each agent calling its own; the server logs a warning at start-up when it sees one. `formguide check --site site.yaml` notes a site with forms and no `tools:` configured.
+
 **With the mounted route** (`create_dushes_router(site)`) nothing else is needed. A host that calls `site.run(...)` itself passes through what the page sent: the run's `tools` (`client_tools=`), the trailing tool messages (`tool_results=`, `{toolCallId: content}`) and the form's `state`. `agui.run_kwargs` builds exactly these from the request body:
 
 ```python title="app.py"

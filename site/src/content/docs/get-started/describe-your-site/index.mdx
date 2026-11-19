@@ -67,7 +67,7 @@ It prints the configuration, then what it found, grouped as ERROR, WARNING and N
 
 - **the site map:** a page with no keywords, fewer keywords than `languages:` in `formguide.yaml`, a title two places share, a form with no documents or no domain pack;
 - **each form:** a label that is empty, its own name or written like an identifier; options with no readable name; a phone or e-mail field not in `pii` (an error), an ID or bank detail not in it (a warning), a special category such as health (an error); a required field with no note in the `glossary`;
-- **the weaker defaults** it can see: no `checkpointer`, quick replies off, a site with forms and no `form_for`;
+- **the weaker defaults** it can see: no `checkpointer`, quick replies off, a site with forms and no `form_for`, a site with forms and no `tools:` for the UI agent (tools given to `Dushes(tools=...)` are the site agent's own);
 - **the environment:** `INTENT_PROVIDER` without `INTENT_API_KEY`, a voice secret without `VOICE_CODES`, the diagnostics switches (`INTENT_LABELS`, `INTENT_TRACE`, `INTENT_SCORES`) on; with `--public` those switches and `DEMO_SHOW_CONFIG=1` are errors, and the decision model without `EXPERIMENT_CODES` and `VOICE_CODES` without `VOICE_SECRET` are warnings.
 
 Every option: [CLI](../../reference/cli/#formguide-check).
