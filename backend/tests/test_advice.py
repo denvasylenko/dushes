@@ -61,6 +61,8 @@ def test_the_environment_what_is_not_for_a_public_host():
     public = advice.check_environment(env, public=True)
     assert [f.level for f in public if "INTENT_LABELS" in f.what] == ["error"]
     assert any("no access codes" in f.what for f in public)
+    shows = advice.check_environment({"DEMO_SHOW_CONFIG": "1"}, public=True)
+    assert [f.level for f in shows] == ["error"] and advice.check_environment({"DEMO_SHOW_CONFIG": "1"}, public=False) == []
     assert advice.check_environment({}, public=True) == [] and advice.render([]) == "nothing weak found"
     assert any("INTENT_API_KEY" in f.what for f in advice.check_environment({"INTENT_PROVIDER": "jev"}, True))
 
@@ -77,3 +79,22 @@ def test_the_command_fails_on_an_error_so_a_coding_agent_sees_it(tmp_path, monke
     monkeypatch.setenv("INTENT_LABELS", "1")
     assert main([*args, "--public"]) == 1                                           # an error: the exit code says so
     assert "ERROR   environment" in capsys.readouterr().out
+
+
+def test_what_a_host_gets_weaker_by_default_with_the_line_to_paste(tmp_path, monkeypatch, capsys):
+    """The owner's other host (2026-11-19): a coding agent should be told before the owner notices. An in-memory
+    conversation state, quick replies off, and a reminder about `form_for` when the site has forms."""
+    from formguide.config import load_config
+    (tmp_path / "formguide.yaml").write_text("model: anthropic:claude-haiku-5-5\n")
+    cfg = load_config(tmp_path / "formguide.yaml")
+    found = {f.where: f for f in advice.check_defaults(cfg, SiteMap.load(SITE))}
+    assert found["formguide.yaml: checkpointer"].level == "warning" and "checkpointer: {sqlite:" in found["formguide.yaml: checkpointer"].fix
+    assert "suggestions: {enabled: true" in found["formguide.yaml: suggestions"].fix
+    assert "form_for=" in found["your code: Dushes(...)"].fix
+    (tmp_path / "formguide.yaml").write_text("model: anthropic:claude-haiku-5-5\ncheckpointer: {sqlite: cp.sqlite}\nsuggestions: {enabled: true}\n")
+    assert advice.check_defaults(load_config(tmp_path / "formguide.yaml"), None) == []
+    for name in ("INTENT_LABELS", "INTENT_TRACE", "INTENT_SCORES", "INTENT_PROVIDER", "DEMO_SHOW_CONFIG", "JOURNAL", "VOICE_CODES"):
+        monkeypatch.delenv(name, raising=False)
+    (tmp_path / "formguide.yaml").write_text("model: anthropic:claude-haiku-5-5\n")
+    assert main(["check", "--config", str(tmp_path / "formguide.yaml")]) == 0
+    assert "checkpointer: {sqlite: data/checkpoints.sqlite}" in capsys.readouterr().out

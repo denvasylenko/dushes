@@ -142,6 +142,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     from . import advice
     found: list[advice.Finding] = []
     langs = cfg.languages or ([cfg.language] if cfg.language else [])
+    site = None
     if args.site:
         from .site.sitemap import SiteMap
         try:
@@ -156,6 +157,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         sample = json.loads(Path(args.form_config).read_text(encoding="utf-8"))
         form_id = args.form_id or str(sample.get("form_id") or Path(args.jsx).stem)
         found += advice.check_form(form_id, lay, sample, packs.get(form_id) if packs else None)
+    found += advice.check_defaults(cfg, site if args.site else None)
     found += advice.check_environment(dict(os.environ), bool(args.public))
     if found:
         print()

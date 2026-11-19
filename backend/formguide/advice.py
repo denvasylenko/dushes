@@ -138,6 +138,27 @@ def check_form(form_id: str, layout: Any, config: dict[str, Any], pack: Any) -> 
     return out
 
 
+def check_defaults(cfg: Any, site: Any = None) -> list[Finding]:
+    """What a host gets weaker by default than it probably expects, each with the line to paste. Read from the
+    loaded configuration; what lives in the host's own Python (the site agent's arguments) cannot be seen from
+    here, so it is said as a thing to look at."""
+    out: list[Finding] = []
+    if getattr(cfg, "checkpointer", None) is None:
+        out.append(Finding("warning", "formguide.yaml: checkpointer", "the UI agent's conversation state is kept in memory: "
+                           "after a restart, or on a second instance, it has forgotten the conversation",
+                           "add `checkpointer: {sqlite: data/checkpoints.sqlite}` (or pass a Postgres or Redis saver in Python)"))
+    suggestions = getattr(cfg, "suggestions", None)
+    if suggestions is not None and not getattr(suggestions, "enabled", False):
+        out.append(Finding("note", "formguide.yaml: suggestions", "quick replies under an answer are off",
+                           "add `suggestions: {enabled: true, max: 3}`; for the site agent also `Dushes(..., suggestions=True)`"))
+    if site is not None and any(p.form for p in site.pages):
+        out.append(Finding("note", "your code: Dushes(...)", "the site has pages with forms: without `form_for` a form's first "
+                           "turn waits for its page to load, and the decision model does not see another page's form "
+                           "(this check cannot read your Python, so it only reminds)",
+                           "pass `form_for=` a function (form_id, ctx) that returns the form's {config, jsx_hash, form_id}"))
+    return out
+
+
 def check_environment(env: dict[str, str], public: bool) -> list[Finding]:
     """The process's switches: what must not be on for a public host, and what is on with nobody let in."""
     out: list[Finding] = []
@@ -146,6 +167,10 @@ def check_environment(env: dict[str, str], public: bool) -> list[Finding]:
         out.append(Finding("error" if public else "warning", "environment", f"{', '.join(shown)} show every person how their "
                            "turn was decided (the model's name, its numbers, the masked line)",
                            "unset them on a public host; they are for the owner's own demo"))
+    if env.get("DEMO_SHOW_CONFIG") == "1" and public:
+        out.append(Finding("error", "environment", "DEMO_SHOW_CONFIG=1 publishes this host's configuration, packs, "
+                           "documents and every prompt to anyone who asks", "unset it on a public host; show a "
+                           "snapshot built from the repository's files instead, checked for secrets before it ships"))
     if env.get("INTENT_PROVIDER") and not env.get("EXPERIMENT_CODES") and public:
         out.append(Finding("warning", "environment", "the choice layer is on (INTENT_PROVIDER) and no access codes are set: "
                            "every visitor's lines go to its supplier", "set EXPERIMENT_CODES so it runs only for people "
