@@ -878,7 +878,7 @@ def active(thread_id: str) -> bool:
     as_if = os.environ.get("VOICE_AS_IF", "")
     if as_if and thread_id.startswith(as_if):
         return True
-    # a form agent that answers inside a site conversation runs on its own thread, "<the conversation>-<form id>"
+    # a UI agent that answers inside a site conversation runs on its own thread, "<the conversation>-<form id>"
     return any(thread_id == t or thread_id.startswith(t + "-") for talks in HOSTS for t in list(talks._by_thread))
 
 
