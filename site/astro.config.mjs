@@ -206,6 +206,7 @@ export default defineConfig({
 						{ label: 'The best systems, 2024–2026', slug: 'agents/research/intent-systems' },
 						{ label: 'Desires and motives', slug: 'agents/research/motives' },
 						{ label: 'What a person wants', slug: 'agents/research/wishes' },
+						{ label: 'Point by point', slug: 'agents/research/point-by-point' },
 					] },
 				] },
 				{ label: 'Reference', link: '/reference/configuration/', icon: 'open-book', items: [

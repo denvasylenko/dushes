@@ -1,0 +1,405 @@
+---
+title: "Point by point"
+description: "Every item of the R&D document, in order: what the document says, what a fresh search adds, what is best for us (a prompt line, a Jev question, code or config) and a QA scenario. Translated one to one from the R&D team's document of 19 November 2026."
+---
+import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+The R&D team, 19 November 2026. One block for each line of the team's tracking table ("What from the document is in work"), in the same order. Each block has what the document says, what a fresh search adds, what is best for us (a prompt line in English, a Jev question, code or config), and a QA scenario. The prompt lines are proposals to the prompt team; they go into work the usual way, with a scenario that fails before the change.
+
+<Aside type="note" title="How to read the labels">
+F-n is item n of the function map, A-n item n of the order by agents (both on [The psychology of intentions](../intentions/)); S-n is the R&D team's item n on [How the best systems guess intent](../intent-systems/); "rule n" is a row of the rules for Dushes' agents; R2-n is a row on [The psychology of what a person wants](../wishes/). "The R&D team's tab" means [The psychology of desires and motives](../motives/).
+</Aside>
+
+## Items 1–8: intention, layers, the hierarchy of goals
+
+### 1. Bratman: an intention is a decision made
+
+- **In the document.** An intention cannot be reduced to "belief + desire": it is a partial plan that settles a decision and coordinates future actions. While a person has a wish, they weigh; with an intention, they stop (Bratman, 1984). Rule 2: "A decision the person has made is theirs: carry it out, do not argue it or offer alternatives they did not ask for". Status: already in the UI agent's prompt ("the form belongs to the person… do not ask again"). Guard: an allowed value is set without "are you sure?".
+- **Fresh.** Extra confirmations stop working as a protection. In an experiment with consent to tool calls, 13 of 16 participants pressed "always allow" just to get rid of the window, and only 3 read the requests ([arXiv 2605.11360](https://arxiv.org/pdf/2605.11360)). In interviews with developers, repeated approval is described as habit and fatigue, not trust ([arXiv 2610.06047](https://arxiv.org/pdf/2610.06047)). The samples are small. The best practice in coding agents: ask only about what is irreversible, do the rest with a way to roll back.
+- **Best for us.** Keep rule 2 as it is and add one measure in code: the number of confirmations per conversation, a figure QA keeps low. A prompt line (refining rule 2): `A value the person stated plainly is a decision: set it. Ask "are you sure?" only before something that cannot be undone.`
+- **QA scenario.** Guard: 10 allowed values in a row, zero "are you sure?" questions. A metric over all sets: confirmations per conversation, reversible and irreversible actions separately.
+
+### 2. The BDI architecture (Rao & Georgeff)
+
+- **In the document.** The BDI architecture of software agents is built on Bratman's idea (Rao & Georgeff, 1991). Decision: not taken; its role is played by the frame "action × target × value" and the request register.
+- **Fresh.** Agreed with the decision. In LLM agents one practice from BDI has stuck: an explicit list of commitments per turn that the model cannot silently drop (to-do lists in coding agents). That is exactly the request register of item 37.
+- **Best for us.** Build nothing separate. A requirement for the request register: an open part of the request is closed only by one of three outcomes: applied, impossible (with the reason), or cancelled by the person.
+- **QA scenario.** The same as in item 37.
+
+### 3. Ajzen: attitude, norm, perceived control
+
+- **In the document.** An intention is made of the attitude to the action, the subjective norm (what people who matter will think) and perceived control (can I do it) (Ajzen, 1991). Decision: attitude and norm are not taken; control is taken through R2-1.
+- **Fresh.** Perceived control is the strongest of the three predictors for "here and now" actions; in forms it falls from unclear requirements and the fear of irreversibility. In a Clutch survey (n = 502) 29% abandon a form over doubts about security, 27% over its length, 10% do not understand why the data are asked for ([The Manifest](https://themanifest.com/industry-data/6-steps-avoiding-online-form-abandonment)).
+- **Best for us.** Three things raise control without guessing about the person: say how much is left; say what can be changed later; say what a field is for. A line for the UI agent's prompt: `When the person asks whether a field is required or why it is asked, say what it is used for and whether it can be skipped, from the form's own rules; never guess a reason.` Config: an optional `why` key on a field (a question to the Tech Lead whether it already exists).
+- **QA scenario.** "Is the phone required?" → the answer has the reason from the config and an honest "required" or "can be skipped". Fails if the answer is only "yes".
+
+### 4. Gollwitzer: "if Y, then Z" plans
+
+- **In the document.** A goal ("I want X") and a plan "if situation Y, then I do Z" are different things. A 2006 meta-analysis (94 tests): d = 0.65 towards reaching the goal. A 2024 synthesis (642 tests): after correcting for publication bias, d ≈ 0.15–0.35. Rule 15: "When the next step depends on something that has not happened yet, name it as "when X, do Y here"". The scheduler (F-10) is L, first a question to the product.
+- **Fresh.** The figures hold: Sheeran, Listrom and Gollwitzer (2024) give d from 0.27 to 0.66 by kind of outcome; with the trim-and-fill correction d = 0.35, the Bayesian estimate d = 0.15 (confidence interval 0.08–0.22) ([the article](https://informahealthcare.com/doi/full/10.1080/10463283.2024.2334563?src=exp-la), [a retelling with figures](https://goalsandprogress.com/implementation-intentions-research/)). The authors introduce a taxonomy of cues; one clear cue and one action work best. The effect is small but almost free.
+- **Best for us.** Take rule 15, refining its form: one cue, one action, one place. `When the next step waits on something outside this conversation, end with one line: "When <the event>, <the one action> here." One event, one action; no list.` Do not build the scheduler.
+- **QA scenario.** A form waits for a statement: the last line of the turn reads "when the statement arrives, upload it here". Fails if there are two conditions or no such line.
+
+### 5. Wish / intention / plan
+
+- **In the document.** The table of layers: a wish ("I'd like to go to Japan some day"): help choose, show options; an intention ("We're going to Tokyo in April"): put a plan together, ask about constraints; a plan ("Buy a ticket for the 9:40 flight"): carry it out, confirm if irreversible. Rule 1: for a wish, show 2–3 options and how they differ, fill nothing; for an intention, ask the one missing constraint; for a plan, do it. Scenario: "I'm thinking, maybe I'll book a brunch…".
+- **Fresh.** In shopping assistants this is the main choice of every turn. An agent that handles about 200 thousand customer messages a day chooses "explore or recommend" on every turn; the breadth of a request is measured there by the entropy of the search scores: a narrow request, a recommendation at once; a broad one, a clarifying question ([arXiv 2509.06185](https://arxiv.org/html/2509.06185v1)). On the data of 31 million Ctrip users, a built-in assistant is called more often for exploratory tasks that are hard to put into keywords (from a retelling). Psychology: the Rubicon model; before the decision a person is open to arguments, after it closed to alternatives (the R&D team's tab, section 1).
+- **Best for us.** Take rule 1 and add two things. First: we already have a signal of the layer without a new Jev question, the number of close options in the choice (one clear one = a plan, several close ones = a wish). Second: the business's recommendation is allowed only in the "wish" layer. A line: `If the person is still choosing ("maybe", "thinking about", a question about options), show two or three options and what differs, and fill nothing. If they named what and how, do it first; anything you want to suggest comes after the result, once.`
+- **QA scenario.** "I'm thinking, maybe I'll book a brunch…" → 2–3 options, nothing filled. A paired one: "Book a brunch for Sunday 11:00" → applied, no offers before the closing line.
+
+### 6. Vallacher & Wegner: hold the goal one level up
+
+- **In the document.** An action is described at different levels, from "how" to "why"; people hold the high level and go down when an action breaks down (Vallacher & Wegner, 1987). A request comes from below ("buy a ticket"); knowing the level above makes it possible to offer a replacement: a train instead of a cancelled flight. Rule 3: "When a step cannot be done, offer another way to the same goal, one level up, never just "not possible"". F-5: a goal field in the config, a line "goal: …" in the context; A-4: the goal in the hand-over from the site agent. Scenario: a slot taken → the nearest slot or day.
+- **Fresh.** In dialogue systems this is called a cooperative answer and relaxing constraints: for an impossible request the system names which constraint is in the way and offers to relax exactly that one (a line of work since the 1990s, [COMIX](https://aclweb.org/anthology/W02-2118.pdf)). No fresh controlled work on LLMs was found. Booking practice: when a slot is taken, the nearest times are shown, not "unavailable".
+- **Best for us.** Refine rule 3: name what exactly did not fit and offer the nearest thing by the same feature. The replacement is found in code (the nearest slot, the nearest allowed value), the words come from the agent. `When a step cannot be done, say which part does not fit and offer the nearest thing that does, in the same turn. Keep everything else the person asked for.`
+- **QA scenario.** "A table for six on Saturday at 19:00", the slot taken → the answer names "19:00 is taken" and offers the nearest time on the same day for six. Fails on "unavailable" and on a replacement where the number of guests changed.
+
+### 7. Going one level up without asking "why"
+
+- **In the document.** Going up gives alternatives, but going high without being asked is intrusive: "Jev should not ask about the investor". Rule 4: "Ask about the goal at most one level up, and only when it changes what you do; never ask why the person wants it". Status: needs a guard (the loan form without the question "why do you want a loan").
+- **Fresh.** There is one more argument: asked "why", people give a plausible explanation, not the cause (Nisbett and Wilson, 1977, from memory). And one more risk: a "why" question in a loan or medical form nudges the person to disclose special-category data.
+- **Best for us.** Keep the rule in reserve, as decided. The wording, if the scenario fails: `Never ask why the person wants something. Ask about their goal only when two ways forward differ and the answer picks one.`
+- **QA scenario.** The guard from the document. Add a second: a doctor's appointment form, no question about the reason for the visit if there is no such field.
+
+### 8. Going down is a sign that concrete help is needed
+
+- **In the document.** A person going down ("press this button", step by step) is a sign that something went wrong. Rule 5: "When the person asks for a single concrete step ("where do I click"), show that one place and give one step, not an overview". Already there: show, focus_field. Guard: "where's the date here?" → the field highlighted and one line.
+- **Fresh.** Going down several times in a row is the same sign as repeats: the conversation is stuck (R2-4 and the R&D team's tab, section 3). One "where" question is normal; two in a row about neighbouring steps are a breakdown.
+- **Best for us.** Keep rule 5. Add to the stuck counter the event "a second question in a row about where or what to press". A line, if the counter fires: `The person is asking step by step. Give exactly one step, show where it is on the screen, and wait.`
+- **QA scenario.** The guard from the document. Plus: three "and where next?" questions in a row → every answer has one step and a highlight, not one overview.
+
+## Items 9–16: the function of a line, common ground, inferring the goal
+
+### 9. Speech acts (Austin, Searle): form and function
+
+- **In the document.** An utterance has a form and a function: "Can you pass the salt?" is in form a question about ability, in function a request. Searle divides acts into assertives, directives, commissives and expressives. Conclusion: classify the function, not the form (a complaint that the train is late may be a request to move a meeting). Rule 6: "Judge what the line asks for, not its form: "can you open…" is an order; "it's cold here", "the train is late" may be requests". F-1: today there are is_command, kind, needs_agent; in the INTENT_SPLIT measurement the questions are split into asks_fact and asks_text, because "can you open…" was taken for a question. To build: one yes/no question "does the line ask, in any form, for something to be done?". Metric: the share of indirect orders understood as orders; false orders on statements no more than 1%.
+- **Fresh.** Indirect speech acts remain a weak point of models. On a Korean dataset the best model scored 71.9% on multiple choice and 65% on open questions, below people; accuracy falls as indirectness grows ([arXiv 2502.10995](https://arxiv.org/abs/2502.10995v1)). For Italian there is the INDIR-IT set, where conventionally indirect and non-conventionally indirect requests are separated from the literal reading ([CEUR, 2025](https://ceur-ws.org/Vol-4112/78_main_long.pdf)); it is worth taking as a model for the QA slice. Form weighs differently by language: in en and de the imperative is 4–5% of requests, in ru it is the norm (Ogiermann, 2009; the R&D team's tab, section 5).
+- **Best for us.** One Jev question is not enough: three cases that are mixed today need separating. (a) A conventionally indirect order ("can you open…"): do it. (b) A question about the way ("how do I get to…"): answer and offer the move with one tap. (c) A hint ("it's cold here"): do not act, hand it to the agent. Jev questions: `Does the line ask to be taken somewhere or to have something done now, in any form of words?` and separately `Does the line ask how to do something or where something is, without asking to be taken there?` On "yes" to the second the code does not move. The thresholds are calibrated per language. A line for the site agent: `"How do I get to X?" is a question: answer in one line and offer to open X. Open it only when the person asks to go.`
+- **QA scenario.** A slice of minimal pairs: one target × 4 forms (imperative, "can you…", "how do I get to…", "I need…") × 7 languages, plus hints and plain statements. The lines already failing ("how do I get to" en/es, "zurück", "indietro", "apri i prestiti") come first in the slice.
+
+### 10. Grice: the four maxims and implicature
+
+- **In the document.** The listener assumes the speaker follows the maxims of quantity, quality, relevance and manner; a plain violation signals a hidden meaning. "It's cold in here" often means "close the window". Rule 9 (already there): "Answer exactly what was asked, plus at most one next step". Guard: a question about the price → an answer with the price, without an overview of the form.
+- **Fresh.** Models' verbosity is a known violation of the maxim of quantity; it is linked to training on human ratings ([arXiv 2511.07477](https://arxiv.org/pdf/2511.07477)). With people, something extra in an answer fits when the asker's goal needs it: to "is there a table at 19:00?" it is useful to answer "no, there is one at 19:30" (a 2023 work on over-informative answers to yes/no questions, from the search results). No direct "short against long answer" experiment for form assistants was found.
+- **Best for us.** Refine rule 9 so that a "no" is not left bare: `Answer the question that was asked, in its own terms. If the answer is "no" or "not available", add the nearest thing that is. Add nothing else.` Do not carry out an implicature ("it's cold here") in code: a hint goes to the agent, and the agent offers, it does not act.
+- **QA scenario.** The guard from the document, plus: "Is there delivery on Sunday?" with the answer "no" → the answer has the nearest delivery day and nothing else. Metric: the length in words of the answer to a factual question.
+
+### 11. Clark & Brennan: common ground
+
+- **In the document.** Joint action rests on shared knowledge and assumptions, which have to be updated as the conversation goes (Clark & Brennan, 1991). The richer the context, the shorter the requests. Rule 7 (already there): "Never ask again what the person already said". F-3: there are was_offered, the assistant's last message, protection against repeats, a year to a date from the previous line; there is no memory longer than one conversation. Guard: a name said three turns ago is not asked for.
+- **Fresh.** Models systematically under-do the work of checking understanding. In the same conversations, models' answers contain grounding acts (a clarification, a confirmation of what was understood) 77.5% less often than people's: models behave as if common ground were already there; preference fine-tuning makes it worse ([Shaikh et al., NAACL 2024](https://arxiv.org/abs/2311.09144)). So the model cannot be relied on for grounding; code has to do it.
+- **Best for us.** Grounding is already on the code's side (the closing line, the cards), and that is right. Add one thing: the block "what the person already said" in the agent's context is gathered by code (values named in the conversation, even if there was no field for them on the screen yet), so that rule 7 does not depend on the model's memory. A line: `Before asking for a value, check SAID: if the person already gave it, use it and say so in the result line.`
+- **QA scenario.** The guard from the document. Plus: the phone named at the first step, the phone field appears at the third → the field is filled without a question.
+
+### 12. Least collaborative effort; confirming understanding
+
+- **In the document.** Speakers minimise the joint work, and confirm understanding with a nod, a relevant next move or attention. "A short confirmation of the interpretation is cheaper than a mistake in carrying it out". Rule 8 (already there, closing in the choice layer): "After acting, say in one line what you understood and did ("Sunday: 10–14")". S-5: by voice, implicit confirmation while there are no errors, explicit after an error (Interspeech 2004); after a defect the next 2–3 actions of the same kind are confirmed explicitly.
+- **Fresh.** Two refinements to S-5. First: after an error they saw, people are helped not by a yes/no question but by being able to correct the result (Dietvorst et al., 2018; a meta-analysis of 32 experiments: changing the interaction environment g = 0.55 against 0.23 on average). Second: by voice, after a recognition error the request "please repeat" makes things worse: people switch to deliberately clear speech, on which there are 30% more errors (Oviatt et al., 1998; Soltau and Waibel). Neither this search nor the R&D team's first round found fresh controlled work from 2024–2026 on confirmations by voice.
+- **Best for us.** Take S-5 with two corrections (code): an explicit confirmation after a defect is a card with an editable value; by voice, a second word-for-word repeat switches to a choice of options, not to "please repeat". A line for voice: `If you did not catch it twice, do not ask to repeat. Offer the two closest options by name, or ask one yes/no question.`
+- **QA scenario.** From the document: Undo, then a similar request → an explicit confirmation; in clean runs the number of confirmations does not grow. Plus: mock audio with two identical lines in a row → options, not a third "didn't understand".
+
+### 13. "Three things for Jev": function, memory, showing what was understood
+
+- **In the document.** Classify the line's function, not its form; keep common ground (memory); show what was understood. Rules 6, 7, 8.
+- **Fresh and best.** See items 9, 11, 12. By the strength of the basis: "function" is the main one of the three, it is where our measured errors are; "show what was understood" the code already does; "memory" between visits is postponed by the owner's decision.
+
+### 14. Inverse planning (Baker, Saxe, Tenenbaum)
+
+- **In the document.** The observer assumes the agent acts roughly rationally and, by Bayes, combines the prior probability of the goals with how well the actions fit each (Cognition, 2009). Rule 10 (not for the model): the prior × what the line says give a distribution. F-4: the turn's log shows the three best options with p, but the decision looks only at the best. The neighbouring page: CLIPS (AAMAS 2024), where the LLM only scores the likelihood, 2.5 times more accurate than GPT-4V with a 6.7B model; AutoToM (NeurIPS 2025); one thing is missing, the result of the previous turn should become the prior of the next. Scenarios: lines against the prior; a goal over 2–3 lines.
+- **Fresh.** No new refutations; the 2025 criticism is about the tests, not the method: most tests measure whether a model can predict another's behaviour, not whether it changes its own (Riemer et al., 2025, [from a retelling](https://arxiv.org/html/2504.10839v1)). For us this means: measure not "did it guess the goal" but "did it act right".
+- **Best for us.** Code, as decided. One refinement to carrying the turn's result over: carry over only what was confirmed (applied and not undone), fading over 2–3 turns and fully reset on a page change or after Undo. Otherwise a mistake in one turn will start reinforcing itself.
+- **QA scenario.** From the document. Plus a trap scenario: turn 1 understood wrongly and undone, turn 2 neutral → the wrong goal gets no boost.
+
+### 15. BToM: a person may not know a fact
+
+- **In the document.** Goals and beliefs are inferred together: a person does something "strange" not because of another goal but because they do not know something (Nature Human Behaviour, 2017). Rule 11: "When a request does not fit the facts (a closed day, a page or field that does not exist, a different price), say the fact first and offer the closest thing; do not carry it out literally". F-6: built halfway (no slot; an impossible value). To build: if the line names something but no target in the config passed, the code itself answers "there is no such thing, the closest are A and B" from the three best, without an LLM. Scenario: a page with no barbershop, zero moves, an honest "no" plus the closest.
+- **Fresh.** In the LLM literature these are called questions with a false premise: models tend to accept the premise and answer by it. This search gave no fresh figures for assistants (the theory-of-mind tests found measure something else). A remark on the rule "the closest are A and B": the closest by Jev's score may be close in words but not in meaning ("barbershop" → "bar").
+- **Best for us.** Take the rule. In code, keep a separate threshold for "the closest": below it, say only "there is no such thing here" and show what there is, without "the closest is". A line for the agents: `If what the person asks for does not exist here or does not fit the facts, say that first, in one line, then offer the closest thing that does exist. Never act on a premise you know is wrong.`
+- **QA scenario.** From the document. Plus a paired one: a request for something that does not exist and that nothing resembles → "no" without an imposed "closest"; "book me for Sunday" when Sunday is a day off → the fact and the nearest working day.
+
+### 16. A choice reveals a preference
+
+- **In the document.** Theory of mind as inverse decision-making: a choice (observed) reveals a preference (hidden) (Jara-Ettinger et al.). Rule 16 (not for the model): an applied card is a weak signal of the goal, Undo a strong one; clicks are no measure of what people want. F-12: a correction event in the log `{turn, action, question, p, lead, what was right}`; QA recalculates the thresholds, not the code. Metric: the share of corrections by action.
+- **Fresh.** The asymmetry of signals is confirmed by Alexa's practice: learning from rephrasings cut the defect rate by more than 30% (the neighbouring page). From the work on implicit feedback: the absence of an Undo is a biased signal, because some people do not notice the mistake or silently leave. So leaving right after a code action cannot be counted as success.
+- **Best for us.** Code. A scale of signals in the log, from strong to weak: Undo and "no, not that"; a rephrasing within ~20 seconds; an edit by hand of the same field; an immediate return back after a move; leaving the page within N seconds (unknown, not a success). An accepted card is a weak "for".
+- **QA scenario.** The metric from the document; a check by a person's labels on the owner's lines: what share of each signal really meant a mistake.
+
+## Items 17–26: the prior, the distribution, the gap between intention and behaviour
+
+### 17. The prior is the person's history
+
+- **In the document.** The prior is what people usually mean on this screen. Sources: page aggregates (counters per triple "screen, question, option", only decisions confirmed and not undone; an Undo lowers the weight), the conversation (was_offered), personal history only through preferences between visits, which the host switches on and the person agreed to (off by default; they keep the language and which fields the person changes, never the values). Combining in code: p_Jev × prior^w, w ≤ 0.3, no option above 0.5. It works only between close options; it does not turn "not chosen" into an action; it is not applied to sending, the irreversible, consent, personal records. QA: w = 0 / 0.15 / 0.3 and "prior only"; a set of lines against the prior; drift. Protection against self-reinforcement: count what was confirmed, a bound of 0.5, a sliding window.
+- **Fresh.** Self-reinforcement is the main risk, and it has been measured: the feedback loop amplifies the bias towards the popular in all the recommendation algorithms tested (Mansoury et al., CIKM 2020, [preprint](https://arxiv.org/pdf/2006.04275v2.pdf)). A systematic review of 24 works (2025) notes that most measures were tested on a single pass over the data, without the loop itself ([arXiv 2509.00109](https://arxiv.org/html/2509.00109v1)). A separate engine of the loop is the position in a list: the first place is chosen more often regardless of content ([arXiv 2412.08780](https://arxiv.org/html/2412.08780v1)).
+- **Best for us.** Take the scheme as it is and add three rules in code. (a) Only decisions where the prior did not change the outcome go into the aggregates, or with a lower weight where it did. (b) A choice from the "A or B?" card is recorded together with the option's position; the order on the card is not set by the prior (here the R&D team departs from the document, which proposes letting it set the order: the order would itself become a source of bias). (c) An option the business recommends gets no boost in the aggregates for being recommended.
+- **QA scenario.** From the document, plus a run of the loop: 5 iterations of "prior → decisions → recount" on synthetic data with a known true share of options; the share of the most frequent option must not grow from iteration to iteration.
+
+### 18. The likelihood: how sensible the request is under each hypothesis
+
+- **In the document.** Jev scores the likelihood: the chooser gives probabilities (already there). From the 2024–2026 page: Jev's "confidence" is not the probability of being right (TypeSafe writes this too); large models are overconfident; confidence in words and token probabilities are not interchangeable. To do: calibrate Jev's p by isotonic regression by kind of question and language; never act on a confidence the agent stated itself. Measure: a reliability curve and ECE on turn logs already taken (S-1).
+- **Fresh.** Nothing new was searched for beyond the 2024–2026 page: it covers the subject (CICC, SAFER, the uncertainty survey). One addition from the practice of intent classifiers: calibration collapses on lines that are "not about this" if the options have no explicit "none of these".
+- **Best for us.** As in the document, plus a check with the Tech Lead: every Jev choice has a "none of these" option, and the reliability curve is computed separately for lines where that is the right answer. Extend the calibration breakdown with the line's form (item 9): kind of question × language × form.
+- **QA scenario.** A reliability curve and ECE per cell; a separate slice "the right option is not among those offered".
+
+### 19. The result is a distribution, not one answer
+
+- **In the document.** The result is a distribution of hypotheses with probabilities; it gives grounds to decide whether to act or ask. F-8: when the best is above the question band (about 0.35) and the second is close (a ratio below 2), a card with two options; card_answer learns to take an answer by an option's name. S-3: the size of the calibrated set decides: 1, act; 2–3, "A or B?"; otherwise the agent (CICC, KnowNo: 10–24% fewer requests for help at the same reliability). Metrics: solved with one question; the share of unneeded questions; time to the goal. Scenario: "set 18" with two fields that fit.
+- **Fresh.** The quality of the question decides everything: in a large user study good clarifying questions raised satisfaction, weak and average ones lowered it, and no question would have been better ([Zou et al., TOIS 2023](https://research.tudelft.nl/en/publications/users-meet-clarifying-questions-toward-a-better-understanding-of-)). In product search, more clarifying questions and turns mean lower satisfaction (Ma et al., 2024, from the search results).
+- **Best for us.** The "A or B?" card is built by code from the set of options, without a model. Three requirements for it: both options are named in the screen's words (the fields' labels), not a retelling; there is a third way out, "neither"; one question per request, then the agent's turn. A line (rule 18, for when the agent asks): `When a line fits two things on the screen, ask once, naming both by their labels on the screen. Never ask "what do you mean?" and never ask twice about the same line.`
+- **QA scenario.** "Set 18" with two fields → one card with both fields' labels; an answer with a field's label is accepted; the answer "neither" hands the turn to the agent without a second card.
+
+### 20. The hypothesis about beliefs: point out the fact
+
+- **In the document.** If a request looks irrational, perhaps the person does not know a fact that Jev knows; it is better to point out the fact than to carry the request out literally. Rule 11.
+- **Fresh and best.** See item 15. One addition: the fact is named as a state of the world, not as the person's mistake ("closed on Sunday", not "you chose a day off"); this is R2-3 of the neighbouring page, agreed.
+
+### 21. The size of the gap between intention and behaviour
+
+- **In the document.** A medium-to-large change in intention (d = 0.66) gives a small-to-medium change in behaviour (d = 0.36) (Webb & Sheeran, 2006); intentions explain about 28% of the variation in behaviour (Sheeran & Webb, 2016). Decision: not taken as an action; it is the background for rules 12–14.
+- **Fresh.** The figures are confirmed by search; the 2006 meta-analysis included 47 experiments ([Sheeran and Webb, 2016](https://eprints.whiterose.ac.uk/id/eprint/107519/)). The 2016 review has the term "inclined abstainers": the gap is made mostly by those who meant to and did not.
+- **Best for us.** Agreed that this is not a function. But it implies a metric the plan does not have: the assistant's success is a form taken to the end or a page reached, not an accepted card. On the owner's test stand, count the share of conversations that reached sending, and the step at which people gave up.
+- **QA scenario.** Not a scenario but a reporting metric over the owner's test sessions: the share that reached the end, and the step of leaving.
+
+### 22. Why the gap: did not start, got derailed, missed the moment, habit won
+
+- **In the document.** The reasons by Sheeran & Webb (2016): the person does not start, gets derailed along the way, misses the moment, and at the critical moment habit or an easier option wins. Rule 13: "After a pause (a RESUMED line), before you continue an unfinished request, ask once on a card whether it still stands". Code: a pause longer than N minutes and an unfinished request in the register → a RESUMED line; old values not accepted are not applied by themselves. A-1: the request register. Scenario: a conversation resumed after 2 hours with an unfinished request.
+- **Fresh.** Research on interruptions says what exactly helps people return: a cue about where they stopped shortens the time to get back to the task, and a wiped screen lengthens it ([Hodgetts and Jones](https://www.interruptions.net/literature/Hodgetts-HFES03-GS5-30.pdf); a line of work 2003–2012). In the Clutch survey only 13% come back to finish an abandoned form. So showing where the person stopped matters more than the question "does it still stand?".
+- **Best for us.** Take rule 13 with a correction: first one line of status (what is filled, what is left, from the register and review_form, which the code gives), then the question. `After a pause (RESUMED), say in one line where things stand ("filled: …; left: …") and ask once whether to carry on. Apply nothing that was left unconfirmed before the pause.` The pause length N is a host setting; no research giving a number was found.
+- **QA scenario.** From the document. Checks: the first answer after the pause names what is left; exactly one question is asked; a card not accepted before the pause is not applied.
+
+### 23. Stated and revealed preferences; engagement is not what people want
+
+- **In the document.** What people say about their values and what their behaviour shows diverge; a feed optimised for clicks can go against stated goals (CSCW 2026). Rule 14, agreed by the owner on 19 November: "The business decides what to recommend; you decide when it fits. Recommend it when it fits what the person asked for, or when they ask for advice: once, with the reason. Never preselect it, never put it above what they asked for, never repeat it after they decline, and never add offers or questions to keep them engaged". Scenarios: (a) "recommend Premium" + "the cheapest plan" → the cheapest is chosen, Premium named once with the reason; (b) "What do you recommend?" → Premium with the reason.
+- **Fresh.** Three grounds beyond the document. An unrequested recommendation against a choice already made makes some people choose the opposite ([Fitzsimons and Lehmann, 2004](https://people.duke.edu/~gavan/bio/GJF_articles/recommendations_mktgsci_04.pdf)). An offer that is too personal, with no explanation of where it comes from, causes the same reaction (White et al., 2008). 11% of people abandon a form over ads and upselling (the Clutch survey). Rule 14 fits these data; the moment and the source of the reason are worth refining.
+- **Best for us.** Two lines for rule 14: `Give the reason for a recommendation only from what the person said in this conversation or from the business's stated facts; never from a guess about the person.` and `Do not recommend while a request is still being carried out, on a confirmation card, or when the conversation is stuck.` Code: with the state line "stuck", the business's instructions about recommendations do not get into the agent's context for that turn.
+- **QA scenario.** Both from the document. Plus: (c) the person named A, the instruction "recommend B" → A applied before any recommendation; (d) three rephrasings in a row → zero recommendations in those turns; (e) the reason for a recommendation contains only what the person said or a fact of the business.
+
+### 24. Words are the starting hypothesis; in a conflict, ask
+
+- **In the document.** Words are the starting hypothesis, behaviour refines it; in a conflict it is better to ask than to choose quietly. Rule 12: "The person's words are the starting hypothesis. When they disagree with what the person did on the screen (a CONFLICT line), ask which one stands, with both on one card; never pick one silently and never overwrite the person's own edit". The code finds the conflict (a value said against an edit by hand in CHANGES) and writes a CONFLICT line; the choice layer does not touch a field the person has just edited themselves. Scenario: "4 guests" → the person sets 5 themselves → "confirm the booking": it should ask "4 or 5?".
+- **Fresh.** The ban on overwriting an edit by hand is backed by the work on autonomy and the sense of control (the R&D team's tab, section 4; R2-1). But the question "4 or 5?" in the document's scenario is unneeded: the edit by hand was made after the words and by the person themselves; it is a correction, not a conflict. A weak question is worse than no question (Zou et al., 2023).
+- **Best for us.** Here the R&D team partly disagrees with the document. The rule by order of events: the later event is stronger; an edit by hand after the words wins without a question, and the closing line or the confirmation card names the value ("Guests: 5"). Ask only in two cases: the words came after the edit by hand and contradict it; or it is unclear which came later. A line: `If the person changed a field by hand after saying a value, their hand edit stands: use it and name it in the result line. Ask which one stands only when they then say a different value for the same field.`
+- **QA scenario.** Two instead of one. (a) "4 guests" → 5 by hand → "confirm the booking": the field stays 5, the confirmation card shows "Guests: 5", no unneeded question. (b) 5 by hand → "set the guests to 4": 4 is set with Undo (a direct request). (c) A general guard: a code action never changes a field the person edited by hand in this turn without their direct request.
+
+### 25. Closing the gap with "if… then" plans
+
+- **In the document.** Jev can close the gap, not only guess: turn "I want to run" into a plan "if Tuesday 7:00, then remind and show the route". Rule 15.
+- **Fresh and best.** See item 4. Reminders by time need a scheduler, which does not exist; for forms one line "when X, do Y here" is enough.
+
+### 26. A goal has a shelf life
+
+- **In the document.** It is worth asking whether a goal still stands, not holding on to it forever. Rule 13.
+- **Fresh and best.** See item 22. Three things need a shelf life, each its own: a card not accepted (until the end of the turn or the first pause), an offer in was_offered (until a manual move, R-7), the conversation's goal (until a pause of N).
+
+## Items 27–37: act, ask or stay quiet; ambiguity; priorities; the Jev loop
+
+### 27. Horvitz: act, ask or stay quiet by the expected benefit
+
+- **In the document.** Agents go wrong through poor guesses about goals, ignoring the cost of a mistake, and bad timing; acting on its own is worth it only when the expected benefit is higher than that of not acting (Horvitz, 1999). Rule 17 (not for the model): the threshold depends on the action and the risk. F-7: today the default threshold is 0.8, for a field 0.8 (or 0.7 with a lead over the second ≥ 0.2), a section 0.8, a bare value 0.9, a tail 0.7; about eight thresholds in all, and none depends on the cost of a mistake. Proposed: move and show 0.7, a first value 0.8, an overwrite 0.9, a removal with Undo 0.95, sending never; for voice +0.05. S-2: replace the fixed numbers with ones calibrated for an acceptable error rate α (a move 1%, an overwrite 0.5%). "≤ 1%" has to be proven: at least 300 held-out lines without errors for each action (the rule of three).
+- **Fresh.** On 2026 tests with underspecified tasks strong models split into two camps: some ask too often and to no use, others too rarely; a question helps but rarely brings the quality back fully ([LHAW, arXiv 2602.10525](https://www.emergentmind.com/papers/2602.10525)). When the decision to ask is tied to calibrated uncertainty, a coding agent raised the share of solved tasks from 61.2% to 69.4% and asked less often on easy ones ([arXiv 2603.26233](https://www.alphaxiv.org/abs/2603.26233)). With a cheap undo, people accept better an assistant that acts more often and sometimes errs (Kocielnik et al., CHI 2019, from a retelling).
+- **Best for us.** Code, as decided; calibrated thresholds are better than fixed ones. Add a metric from LHAW that the plan does not have: the benefit per question, the share of questions asked after which the action became different from what it would have been without the question. A question after which the same best option is chosen was unneeded. No prompt line.
+- **QA scenario.** The curves by action from the document; plus for each action two numbers side by side: the rate of confident errors and the share of unneeded questions.
+
+### 28. CIRL: a clarifying question is rational
+
+- **In the document.** The robot does not know the person's reward function at first but optimises exactly that; optimal decisions themselves give rise to questions and communication (Hadfield-Menell et al., 2016). A question is not a weakness but a rational action. Rule 18: "When unsure between two readings, ask one question with both as options, never an open question". Partly already there ("one question", "choices on cards").
+- **Fresh and best.** See items 19 and 27. Only a question whose answer changes the action is rational; that is exactly the metric "benefit per question".
+
+### 29. Assistance games: learn from examples and corrections
+
+- **In the document.** The maths assumes the person keeps watching and correcting; showing what you want is more reliable than stating it. Rule 20 (not for the model): learn from corrections, not from wording. F-12: a correction event in the log. A-2: Undo or "no, something else" on a field marks "not this value" until the end of the conversation. S-4: a rephrasing within ~20 seconds after a code action counts as a correction; at Alexa learning from rephrasings cut the defect rate by more than 30%. R-3: conclusions from edits are not written into the config automatically.
+- **Fresh.** Corrections have a flip side: on a false "this is wrong", agents break work already done right, especially work just finished and not backed by a saved state ([CAVE-BENCH, arXiv 2609.32616](https://arxiv.org/pdf/2609.32616), from the search results). For us this means: on "not that" with no details, nothing should be rolled back wholesale.
+- **Best for us.** Code, as in the document. A line for the UI agent: `When the person says something is wrong, change only what they name. If they do not name it, show the last thing you changed and ask whether that is it; never undo other fields.`
+- **QA scenario.** Three fields filled correctly, the person writes "no, not like that" with no details → the last change shown and one question; the two other fields untouched. Plus the metric from the document: the defect rate (Undo + rephrasing).
+
+### 30. CLAMBER: measure the ambiguity detector on our own data
+
+- **In the document.** LLMs are poor at noticing ambiguous requests and ask weak clarifying questions; step-by-step reasoning can even add overconfidence (CLAMBER, 2024). The ambiguity detector is a separate component. F-8: the detector is the ratio of the two best options, checked on our own data. Measure: precision and recall against a person's labels.
+- **Fresh.** The conclusion holds: on the multi-turn ClarifyMT-Bench (6,120 dialogues) ten widely used models systematically get the choice "clarify or answer" wrong ([arXiv 2512.21120](https://arxiv.org/html/2512.21120v1)). The same for indirect requests (item 9).
+- **Best for us.** The detector stays in code (the ratio of probabilities or the size of the calibrated set). Do not ask Jev or the agent "is the line ambiguous?": that is exactly what models do badly. No prompt line.
+- **QA scenario.** From the document: a slice of truly ambiguous lines and unambiguous ones next to them; precision and recall against the labels of two people, with their rate of agreement.
+
+### 31. ClarifyMT-Bench: different kinds of unclarity need different questions
+
+- **In the document.** The taxonomy separates linguistic ambiguity from ambiguity of intent (underspecification, conflicting goals) in multi-turn dialogue. Rule 19: "When two things the person wants pull against each other (fastest and cheapest), say so in one line and ask which matters more". Scenario: "the fastest and the cheapest delivery", where the form makes them different; today the agent silently takes one.
+- **Fresh.** In the work itself the taxonomy is wider: five dimensions (linguistic, intent, contextual, epistemic, interactional), 12 subtypes, six kinds of user behaviour. A separate clarification agent raised the accuracy of the choice "clarify or answer" by 32.7% on average (a figure from a retelling, not checked).
+- **Best for us.** The five dimensions map onto what we already have in its place, and show who decides what: linguistic (two fields fit) → the code's card (item 19); intent (a constraint is missing) → one question from the agent (rule 1); a conflict of goals → rule 19; contextual ("the same place", "like last time") → the block of what was said (item 11); epistemic (the person does not know a fact) → rule 11; interactional (in a hurry, repeating) → the state of the conversation. Refine rule 19: `When two things the person asked for cannot both hold (fastest and cheapest), name the two options that come closest, with the one thing that differs, and ask which matters more. Pick neither.`
+- **QA scenario.** From the document; checks: both deliveries named with price and time, nothing chosen. A paired one: the fastest is also the cheapest → chosen without a question.
+
+### 32. Intent engineering: write the priorities in a conflict down explicitly
+
+- **In the document.** A prompt tells the agent what to do; context, what to know; intent, what to want: goals, values and priorities of trade-offs. Rule 21 (not for the model): the host writes explicitly what matters more: asking or acting. Config: `priorities: {ask_vs_act: cautious, balanced or eager}`; a threshold shift of +0.05 / 0 / −0.05, and whether a question between two is allowed by voice. QA: one set on three presets, show the trade of errors for coverage.
+- **Fresh.** People value a setting for the assistant's behaviour (arXiv 2505.09938, [The psychology of what a person wants](../wishes/)). In the experiment with a car assistant a middle level of initiative was received best (IJCAI 2024, from a retelling).
+- **Best for us.** Take it, but square it with item 27: after the move to calibrated thresholds the preset should shift the acceptable error rate α, not the threshold by ±0.05 (a threshold shift guarantees nothing). For example: cautious 0.5%, balanced 1%, eager 2% for reversible actions; for an overwrite and a removal the upper bound is not relaxed by any preset. In the documentation the host sees not a "shift" but its meaning: "no more than one wrong automatic edit per 200 / 100 / 50".
+- **QA scenario.** Three presets on one held-out set: the actual error rate no higher than the stated α, coverage growing from cautious to eager.
+
+### 33. The Klarna example
+
+- **In the document.** Advocates of intent engineering cite Klarna: an AI agent optimised cost and speed at the expense of quality, and the company had to hire people again. This is the blog authors' interpretation, not research. Decision: not taken as proof.
+- **Fresh.** The event itself is confirmed in primary words: in May 2025 Klarna's chief executive told Bloomberg that cheap chatbots gave "lower quality" and the cost-cutting "went too far"; the company is hiring people again and calls it "two tracks" ([Entrepreneur](https://www.entrepreneur.com/business-news/klarna-ceo-reverses-course-by-hiring-more-humans-not-ai/491396), [Fortune](https://dc.fortune.com/2025/05/09/klarna-ai-humans-return-on-investment/)). The figure "700 agents" is the company's own claim. It is one case, and it is about support, not forms.
+- **Best for us.** Still not taken as proof. One practical conclusion: a person must have a way out to a person, and the assistant must not hold them back. Config: a key with the host's contact (check with the Tech Lead whether it exists). A line: `If the person asks for a human, give the host's contact at once if there is one, or say plainly that there is none. Do not try to keep them in the chat.`
+- **QA scenario.** "Get me a human" in 7 languages → the contact from the config in the very first answer; with no contact in the config, an honest "there is only the assistant here".
+
+### 34. The Jev loop: 4 phases, 12 functions
+
+- **In the document.** The owner's three steps (Detect intention, Identify subject, Choose) fall on the phases "Understand" and "Decide"; research adds inference of the goal between them, and after them a phase where Jev sees the matter through and learns. A map of 12 functions: understand (the line's function, what it is about, context), infer the goal (hypotheses, level, beliefs), decide (confidence and risk; act, ask, stay quiet; who carries it out), see it through (an "if… then" plan, checking, learning from corrections), plus the host's priorities.
+- **Fresh.** The map lacks two things both psychology rounds gave. First, the state of the conversation (stuck, in a hurry, back after a pause): it is not about one line, and it changes the behaviour of every phase. Second, the person's phase by the Rubicon model (choosing, decided, doing, evaluating), on which it depends whether a recommendation fits.
+- **Best for us.** Add to the map a thirteenth, cross-cutting function, "The state of the conversation": the code counts it from events, gives it to the agent as a line, it lives only inside the conversation, and it never switches an offer on. Do not make the person's phase a separate function: the layer from rule 1 gives it.
+- **QA scenario.** See R2-4 and the R2 block below.
+
+### 35. "Start with three things": (1) the distribution of hypotheses
+
+- **In the document.** Inference of the goal as a distribution of hypotheses, not a single class label; without it there is nothing to feed the "Decide" phase.
+- **Fresh and best.** See items 18 and 19. The order is right: this comes first; without it there is neither calibration nor the question "A or B?".
+
+### 36. (2) The "act or ask" rule by confidence and reversibility
+
+- **In the document.** Sure and reversible, act; unsure or irreversible, one short question.
+- **Fresh and best.** See item 27. One refinement to the formula: the third branch, "unsure and there are no two close options", is not a question but the agent's turn; the code asks no open questions.
+
+### 37. (3) Checking the goal after the action, and corrections into memory
+
+- **In the document.** Checking the goal after the action and writing down corrections are what reduce the number of questions over time. A-1 (M, first in the order by agents): the request register, the parts of the request (from the layer's target_each or the model's plan) against the cards applied; the closing line "done: A, B; not done: C, because…". "The main risk is saying 'done' about what is not done". Already there: review_form, the NOT SENT line, clean_result (the closing line only after a clean "applied"). Metrics: zero parts called done without being applied; zero skipped silently.
+- **Fresh.** This is the item of the whole list most backed by fresh data. The rate of false "done" in agents ranges from 13% to 89% across models within one test; reasoning does not cure it (a reasoning model has the worst figure, 79%); LLM judges catch it badly (AUROC no higher than 0.65) and believe confident words ([arXiv 2606.09863](https://arxiv.org/html/2606.09863)). In a set of 200 tasks all 11 agents hid failures or claimed as done what was not done ([arXiv 2512.04864](https://arxiv.org/html/2512.04864v1)). The data are from coding agents and service dialogues, not forms; read from the search results.
+- **Best for us.** Raise the request register in priority. Three conclusions. (a) The word "done" is said by code from the form's state, not by the model; the model only explains "why not". (b) QA checks "done" by the form's state, in code, not with a model judge (this matches our rule on checks in code). (c) In the prompt keep the ban and the form of the report: `Never say a thing is done unless the tool result says applied. When a request had several parts, close with one line per part: done, or not done and why.`
+- **QA scenario.** From the document: a request of several parts, one part impossible. A code check: every "done" in the answer matches a changed field; every part of the request is mentioned. Separately, count the rate of false "done" across all sets.
+
+## The R&D team's conclusions: R-1 to R-7
+
+### R-1. Break down our ~2.5% confident errors by kind of question, action and language
+
+- **In the document.** First work out where our 2.5% come from, then build: a breakdown by kind of question, action and language, confidence intervals, a reliability curve of Jev's p; S, without paid runs, from turn logs already taken. The measurement of 17 November shows that part of the errors come from wording ("a booking for N" against "N guests") and from a place that does not exist.
+- **Fresh.** Two more cuts are worth adding to the three. The line's form (imperative, "can you…", "how do I get to…", "I need…"): the known systematic errors lie exactly along it, and the weight of form differs by language (item 9). The position of the right option in the list: the document itself mentions Jev's habit of choosing the first option.
+- **Best for us.** QA's work. Five cuts instead of three, plus a table of pairs "what was chosen → what was right". This is the first task of the whole list: without it the estimates of benefit in the "What to take" table below stay guesses.
+- **QA scenario.** This is the measurement itself.
+
+### R-2. "≤ 1%" has to be proven: 300–1000 held-out lines per action
+
+- **In the document.** If there was not a single error on n lines, the upper bound of the error rate at 95% confidence is about 3/n; for "no more than 1%" at least 300 lines without errors are needed, and if there are errors, about a thousand, and that on lines the threshold was not tuned on. S-6: split the held-out sets by config and by time.
+- **Fresh.** The R&D team's calculation for this (the usual formula for comparing two proportions, two-sided level 5%, power 80%): to tell 2.6% from 1%, about 1,100 lines are needed on each side of the comparison. On a set of 15–100 scenarios a "before and after" difference on this metric cannot be told from noise.
+- **Best for us.** Separate two different proofs. A scenario that failed and now passes proves that a class of error is closed. Only a large held-out set with an interval proves the rate "≤ 1%". In reports, do not pass the first off as the second. The budget for such a set is the CPO's and QA's decision.
+- **QA scenario.** A held-out set for each action, with a Wilson interval in the report.
+
+### R-3. Do not write conclusions from edits into the config or the prompt automatically
+
+- **In the document.** Do not take from PRELUDE the automatic writing of conclusions into the prompt: synonyms and descriptions only as proposals that a person checks before they are applied. The config is shared by every visitor; one person must not change it for the others. Thresholds do not go down automatically either: QA recalculates, the CPO approves.
+- **Fresh.** Agreed; one security argument to add. Automatic learning from visitors' words is a channel through which an outsider can plant a synonym ("payment" → the wrong page). A false "this is wrong" breaks agents' correct work (item 29).
+- **Best for us.** As in the document, plus two rules: a synonym proposal appears only after N independent conversations with the same pair "did not work → worked"; the proposal has no whole lines, only the word and the target (lines are personal data).
+- **QA scenario.** One conversation with a correction → the config and the prompt unchanged; no proposal while there are fewer than N pairs.
+
+### R-4. Accuracy against the number of options (10 / 50 / 150 / 255)
+
+- **In the document.** It is not measured how accuracy falls with the number of options (up to 255). The measurement is S; if accuracy falls, narrowing by levels (screen → section → field), M. The basis: for agents that look for a button by pixels, narrowing the area gives 18.9 → 48.1% (ScreenSpot-Pro).
+- **Fresh.** In a long list the choice is affected not only by the number of options but also by the place of the right one in the list (the known bias of models towards the start and end of a list; without a link, from memory).
+- **Best for us.** Add a second factor to the measurement: the same lines with the options in shuffled order. If the drop is explained by place, it is cured by order (cheap); if by number, by narrowing (M).
+- **QA scenario.** The same lines × number of options (10 / 50 / 150 / 255) × three orders of options.
+
+### R-5. Checking the researcher's claims against passages
+
+- **In the document.** Every source is tied to a place in the document (with_passages), but there is no check that every claim is backed by its passage. Rule 24: for every claim, a cheap Jev question "does the passage back this sentence?"; unbacked ones removed or marked. M. Metrics: the share of unbacked claims shown; an honest "the documents do not say".
+- **Fresh.** The problem is large and known: in a check of generative search engines about half of the sentences were not fully backed by their references (Liu et al., 2023, from memory, without a link). Model judges believe confident wording (item 37), so the checking question must see only the sentence and the passage, without the rest of the answer.
+- **Best for us.** As in the document. The Jev question: `Does the passage state this sentence, fully? Answer no if any part of the sentence is not in the passage.` What is unbacked is removed, not marked: people skip the mark.
+- **QA scenario.** Answers with a wrong reference, from the document; plus a sentence that is half right (the price from the passage, the term invented) → removed.
+
+### R-6. The researcher: an ambiguous question, "this is wrong", an answer cache
+
+- **In the document.** Rule 23: "When the question has two readings the documents answer differently, answer both, each with its source, or say which one you took". A-5: a cache "question → answer" per version of the documents, reset when they change (S); "This is wrong" from the person: the parent agent asks the researcher again, passing the objection on (S). Scenarios: two rules that fit; "this is wrong"; a repeated question (price and time).
+- **Fresh.** For "this is wrong" there is a risk the document does not have: under the pressure of an objection a model changes a right answer to a wrong one (item 29, CAVE-BENCH). Passing an objection to the researcher without the rule "change only by a passage" may make answers worse.
+- **Best for us.** Take rule 23. For "this is wrong", a line for the researcher: `If you are told the answer is wrong, read the passages again. Change the answer only where a passage supports the change; otherwise repeat what the documents say and name the passage.` An objection does not update the cache.
+- **QA scenario.** From the document, plus a paired one: the answer is right, the person writes "this is wrong" → the answer does not change, the passage is named.
+
+### R-7. The site agent: dropping an offer on a manual move; confirmation of the move from the client
+
+- **In the document.** Rule 22: if after an offer the person went to another page themselves, the offer is withdrawn, and a later "yes" will not take them back there (resetting was_offered). F-11, A-7: nothing confirms that the move happened; a confirmation of the directive from the client is needed (M, the Tech Lead and the widget). Signals into the log: an offer declined; right after an automatic move the person went straight back. Scenarios: a form offered, the person opened contacts themselves, then "yes, thanks"; a lost move.
+- **Fresh.** Agreed without reservations; it is a special case of two general rules from this review: a later action of the person is stronger than earlier words (item 24), and "done" is said only from a confirmed state (item 37).
+- **Best for us.** Code, as in the document. Until the client confirms, the closing line of a move is worded as an intention ("Opening loans"), not as a fact ("Opened").
+- **QA scenario.** Both from the document.
+
+## R2-1 to R2-9: checking "The psychology of what a person wants"
+
+The R&D team fully agrees with the main rule of [that page](../wishes/): we notice the state of the conversation, we do not attribute feelings to the person. Below is where the basis turned out weaker or stronger than stated, and where the team proposes otherwise.
+
+| Item | The R&D team's assessment | What was found | What is proposed |
+| --- | --- | --- | --- |
+| R2-1. Do not act while the person is typing or editing a field | Agreed; the size is in question | The grounds are sufficient (the work on interruptions and autonomy) | Extend the ban to the assistant's messages, not only its actions. S only if the widget already sends an event "the person is typing in a field"; otherwise M and a question to the widget's designer |
+| R2-2. Fear of making a mistake: a Jev question "can it be changed later" | Partly disagree | A narrow Jev question does not settle it: the agent has no data to answer with. "You can until…" has nowhere to come from if the host did not write it, and the model will start guessing | Data first: a key in the form's config, "what happens after sending and can it be changed". The agent answers without a new Jev question; without the key, an honest "the form does not say". A line: `If asked whether something can be changed or undone later, answer only from the form's own rules; if they do not say, say so.` |
+| R2-3. Saving face: no "you made a mistake" | Agreed; the basis is strengthened | People prefer a plainly machine-like bot on awkward subjects; humanness brings the feeling of being judged back (Jin, Walker, Reczek, JCP) | Plus two things: the assistant names its own mistakes in the first person and in one line; on fields the host marked as awkward there are no judging words. A code check against a list of phrases in 7 languages |
+| R2-4. STUCK → change the approach | Agreed; size M, not S | Keywords catch about 1% of cases, annotators agree moderately (the primary abstract of arXiv 2411.17437 confirms the neighbouring page's retelling) | A threshold of 2 events, not 3. Add to the events: manual input after a defect, a second "where" question in a row, a word-for-word repeat by voice. With STUCK the business's recommendations do not get into the context. A way out to a person is offered once. M: the counter, the state line, lines in two prompts, a measurement of false alarms |
+| R2-5. Haste → shorter | Agreed with the action, not with the sign | "Very short lines in a row" are not haste: in ru, uk, es a short order is the usual form of a request (item 9), and by voice short lines are normal for everyone | The sign is only direct words ("faster", "in short", "just do it", and their equivalents in 7 languages). Do not count the length of lines |
+| R2-6. Hesitation in the voice → an explicit confirmation; do not drop "uh" from the text | Disagree in two places | (1) The concern is confirmed: Whisper by default omits "uh" and false starts; keeping them needs another model ([CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)); no data were found on Parakeet. So this means replacing or fine-tuning recognition, L, not M. (2) "Uh" before a number more often means the person is searching for a word, not doubting the value (Clark and Fox Tree, 2002, from memory); an explicit confirmation on this sign will add unneeded questions for everyone and conflicts with rule 2 and with S-5 | Leave recognition alone. Take only words of doubt that recognition keeps ("probably", "I think", "forse", "vielleicht"). For a reversible value, apply with Undo, as now (the owner's decision of 16–17 November, from the code of voice.py); a hedged "yes" does not accept only a confirmation card for something irreversible. S |
+| R2-7. The line's function by language; the polite form of address by default | Agreed with the first part; the second is a hypothesis; size M | A check of the three "not checked" claims. fr: in recordings of 101 purchases in a Lyon shop the wish form "je voudrais…" is usual ([CMLF 2016](https://www.shs-conferences.org/articles/shsconf/pdf/2016/05/shsconf_cmlf2016_02007.pdf)): confirmed, but it is a statement of a wish, not a question. es: Spaniards are more direct than Americans in requests (Mir-Fernandez, 1994, [from a review](https://www.ideals.illinois.edu/items/21727)): confirmed for Spain. uk: in Sivachenko's dissertation Ukrainians use both direct and conventionally indirect strategies ([University of Alberta](https://era.library.ualberta.ca/items/1af7d7d6-b462-4d99-b0a8-f0968371d581)); closeness to Russian is neither confirmed nor refuted | Add a fourth form to the QA slice, a statement of a wish ("je voudrais", "vorrei", "quisiera", "ich möchte", ru "mne nuzhno"): in fr and it it is the main way to ask. The form of address is a host key per language, with no single "polite" default for es: in Spain brands often address people with "tú" (the team's observation, not a measurement). Size M: a slice in 7 languages with labels is not S |
+| R2-8. No emotions from acoustics; states only within the conversation; the state does not affect recommendations | Agreed; the basis is strengthened and widened | "Text is not biometrics" is now not only the author's conclusion: the Commission's guidelines call the analysis of written text not based on biometrics and take it out of the prohibition, and features of the voice (a raised voice, a whisper) are explicitly counted as behavioural biometrics; so is the manner of typing ([CMS](https://cms.law/en/gbr/legal-updates/eu-commission-issues-guidelines-on-prohibited-ai-practices-part-ii), [the guidelines' text](https://ai-act-service-desk.ec.europa.eu/sites/default/files/2025-08/guidelines_on_prohibited_artificial_intelligence_practices_established_by_regulation_eu_20241689_ai_act_english_ied3r5nwo50xggpcfmwckm3nuc_112367-1.PDF), the file itself not opened). The position is still known to the team from retellings | Widen the ban from "the acoustics of the voice" to the typing rhythm and the cursor's movement. "A workplace" is not only the Herefront dashboard but any host that is an employer (candidate forms) and educational institutions. Make the rule stricter: the state does not merely "not enter recommendations"; recommendations are switched off for the duration of STUCK |
+| R2-9. Special-category fields do not go into preferences and the prior | Agreed; one host list is not enough | No official position of regulators on diet specifically was found; "halal or kosher = religion" is the commentators' reading, resting on C-184/20. A cautious reading is justified | A host will forget to fill in the list. A built-in default list is needed (fields about diet, allergies, health, religion, disability, by the field's name and label), which the host extends. The values of such fields do not go to Jev and are not written into the correction log in the clear (the same rule as never_send). The decision is for Security |
+
+Two more remarks on that page. First: "do not name the person's emotion to them" remains a design decision for the R&D team too: no experiment comparing it was found either. Second: in the section on self-determination the progress line ("2 fields left") did not make it into the R2 summary table; it is worth bringing back, since it is also needed for returning after a pause (item 22).
+
+## What to take: how much it will move the result
+
+We have two results, and most items move only one: the rate of Jev's confident errors (now about 2.6%, the bar 1%) and the share of people who reach the end without losing trust (not measured at all). All the estimates below are the R&D team's judgements, not measurements; only the R-1 breakdown will make them precise.
+
+| # | What | Items | What it affects | Expected shift | Size |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Breaking down the 2.6% by five cuts (kind of question, action, language, line form, option position) | R-1 | Moves nothing by itself | Without it, it is unclear which of the rest hits real errors. The first task | S, without paid runs |
+| 2 | The line's function by language: separate an order, a question about the way and a hint; a question about the way = an answer plus a move with one tap | 9, R2-7 | Confident errors | Closes the known systematic classes entirely ("how do I get to…", "back" in de/it). What share of the 2.6% they make up, R-1 will show; by the owner's description, a noticeable one | M |
+| 3 | Calibrated thresholds by action, and the question "A or B?" from real options | 19, 27, 30, 32 | Confident errors | Gives the bar by construction, but at the cost of coverage; the question wins part of the coverage back. The guarantee holds while live lines look like the calibration ones | M + M |
+| 4 | The request register: code says "done" from the form's state | 37, 2, R-7 | Trust | Not part of the 2.6% metric. But it is the most confirmed risk in fresh work: false "done" in 13–89% of failures. Not measured for us; start with the metric | M |
+| 5 | The "yes/no" traps, soft refusals, cards without negative questions | the R&D team's tab, section 5 | Confident errors on cards | Small in volume, but the mistake here is the most expensive: a confirmation card accepted by mistake | S |
+| 6 | An edit by hand is stronger than earlier words; the code neither acts nor speaks while the person is typing | 24, R2-1 | Confident overwrite errors; trust | Removes a whole class: overwriting what the person entered themselves. The size of the class is unknown | S (M if there is no typing event) |
+| 7 | The state of the conversation: a breakdown counter, a quiet mode, a way out to a person once | 34, R2-4, 33, 8 | Reaching the end | Does not affect the 2.6%. An effect on reaching the end is plausible but measured by no one; it can be checked only with live people | M |
+| 8 | Recommendation: by phase, with a reason from what was said, never during a breakdown | 5, 23 | Trust; legal risk | Does not affect the 2.6%. Removes the risk of backlash and of complaints about manipulation; 11% abandon a form over upselling (a survey) | S |
+| 9 | The host's data in the config: what a field is for, what happens after sending, a human contact, special-category fields | 3, R2-2, 33, R2-9 | Reaching the end; legal risk | 29% abandon a form over security, 10% do not understand why the data are needed (a survey, not our measurement). Without these keys the agent will guess | S code, M documentation and demo forms |
+| 10 | The prior with protection against the loop; carrying the turn's result over with fading | 14, 17 | Coverage at the same error rate | Small: by design it works only between close options. Without protection against the loop it can give a negative shift | S/M |
+| 11 | Prompt lines with a small effect: "when X, do Y", a conflict of goals, "no" with the nearest, correcting only what is named | 4, 10, 29, 31 | The quality of the agent's answers | Each closes one scenario. Take only those whose scenario fails now: every line weakens the others | S each |
+
+**Where the R&D team departs from the document and from R2**
+
+- Item 24: an edit by hand after the words is a correction, not a conflict; the question "4 or 5?" is unneeded.
+- Item 17: the order of options on a card must not be set by the prior.
+- Item 32: the host's preset should set the acceptable error rate, not a threshold shift of ±0.05.
+- Item 9: one question "does it ask for something to be done" is not enough; hints are not carried out by code.
+- R2-6: "uh" is no reason for a confirmation; there is no need to change speech recognition for it.
+- R2-5: short lines are not a sign of haste.
+- R2-2: first the host's data on consequences, then the answer; no new Jev question is needed.
+- R2-4, R2-7: size M, not S.
+
+## Sources, and what was not checked
+
+The search was done on 19 November 2026. Links stand in the blocks next to the claims; the sources of the document itself and of the pages "How the best systems guess intent, 2024–2026" and "The psychology of what a person wants" are not repeated. The full texts were not opened: the figures are taken from abstracts and search results. Nothing has been checked on our data.
+
+**New sources of this page**
+
+- Confirmations and consent: [arXiv 2605.11360](https://arxiv.org/pdf/2605.11360); [arXiv 2610.06047](https://arxiv.org/pdf/2610.06047)
+- "If… then" plans: [Sheeran, Listrom, Gollwitzer, 2024](https://informahealthcare.com/doi/full/10.1080/10463283.2024.2334563?src=exp-la)
+- Shopping assistants, explore or recommend: [arXiv 2509.06185](https://arxiv.org/html/2509.06185v1)
+- Indirect speech acts: [arXiv 2502.10995](https://arxiv.org/abs/2502.10995v1); [INDIR-IT, CEUR 2025](https://ceur-ws.org/Vol-4112/78_main_long.pdf)
+- Grounding: [Shaikh et al., NAACL 2024](https://arxiv.org/abs/2311.09144)
+- Verbosity and the maxims: [arXiv 2511.07477](https://arxiv.org/pdf/2511.07477)
+- Theory-of-mind tests: [arXiv 2504.10839](https://arxiv.org/html/2504.10839v1)
+- The feedback loop: [Mansoury et al., 2020](https://arxiv.org/pdf/2006.04275v2.pdf); [a 2025 review](https://arxiv.org/html/2509.00109v1); [position in a list](https://arxiv.org/html/2412.08780v1)
+- The intention–behaviour gap: [Sheeran and Webb, 2016](https://eprints.whiterose.ac.uk/id/eprint/107519/)
+- Returning after an interruption: [Hodgetts and Jones](https://www.interruptions.net/literature/Hodgetts-HFES03-GS5-30.pdf)
+- Ask or act: [LHAW, arXiv 2602.10525](https://www.emergentmind.com/papers/2602.10525); [arXiv 2603.26233](https://www.alphaxiv.org/abs/2603.26233); [ClarifyMT-Bench](https://arxiv.org/html/2512.21120v1)
+- False "done": [arXiv 2606.09863](https://arxiv.org/html/2606.09863); [arXiv 2512.04864](https://arxiv.org/html/2512.04864v1); [CAVE-BENCH](https://arxiv.org/pdf/2609.32616)
+- Klarna: [Entrepreneur](https://www.entrepreneur.com/business-news/klarna-ceo-reverses-course-by-hiring-more-humans-not-ai/491396); [Fortune](https://dc.fortune.com/2025/05/09/klarna-ai-humans-return-on-investment/)
+- Speech recognition and "uh": [CrisperWhisper](https://huggingface.co/nyrahealth/CrisperWhisper)
+- Languages: [French purchases, CMLF 2016](https://www.shs-conferences.org/articles/shsconf/pdf/2016/05/shsconf_cmlf2016_02007.pdf); [Spanish, a review](https://www.ideals.illinois.edu/items/21727); [Ukrainian, Sivachenko](https://era.library.ualberta.ca/items/1af7d7d6-b462-4d99-b0a8-f0968371d581)
+- Law: [the Commission's guidelines on prohibited practices](https://ai-act-service-desk.ec.europa.eu/sites/default/files/2025-08/guidelines_on_prohibited_artificial_intelligence_practices_established_by_regulation_eu_20241689_ai_act_english_ied3r5nwo50xggpcfmwckm3nuc_112367-1.PDF); [CMS](https://cms.law/en/gbr/legal-updates/eu-commission-issues-guidelines-on-prohibited-ai-practices-part-ii)
+
+**Not checked**
+
+- From memory, without a link: Nisbett and Wilson (1977); Clark and Fox Tree (2002); Liu et al. (2023) on references in search engines; the bias of models towards the start and end of a list; brands in Spain addressing people with "tú".
+- The calculation "about 1,100 lines per side" in R-2 is the R&D team's own, by the usual formula for comparing two proportions; QA should recalculate it for its own assumptions.
+- The 2026 arXiv works (false "done", LHAW, CAVE-BENCH) are preprints; the figures are taken from search results, and they are not about forms.
+- The file of the Commission's guidelines was found but not read; the position on text and voice is known from retellings. No official position of regulators on dietary notes was found.
+- Whether Parakeet keeps "uh" was not found. The closeness of Ukrainian requests to Russian ones is not confirmed.
+- Not checked in the code: whether the keys why, the consequences of sending, the host's contact, the form of address, a "none of these" option in Jev's choice, and a "the person is typing" event from the widget already exist. These are questions for the Tech Lead and the widget's designer.
+
+## What Dushes takes from it
+
+Every "best for us" above is a proposal, not a feature: none of it is in the package yet, and each goes in only with the owner's yes through the CPO and a QA scenario that fails before it. What the agents do today is on [How the agent behaves](../../how-it-works/behaviour/).
+
+## Next
+
+<CardGrid>
+  <LinkCard title="The psychology of intentions" description="The document this page goes through item by item." href="../intentions/" />
+  <LinkCard title="Desires and motives" description="The R&D team's second study." href="../motives/" />
+</CardGrid>
