@@ -212,6 +212,7 @@ export default defineConfig({
 						{ label: 'The psychology of goals', slug: 'agents/research/goals' },
 						{ label: 'Goals: point by point', slug: 'agents/research/goals-point-by-point', badge: { text: 'in progress', variant: 'note' } },
 						{ label: 'The goal snapshot', slug: 'agents/research/goal-snapshot', badge: { text: 'in progress', variant: 'note' } },
+						{ label: 'Similar ideas in AI', slug: 'agents/research/similar-ideas', badge: { text: 'in progress', variant: 'note' } },
 						{ label: 'Prompts: before and after', slug: 'agents/research/prompts-before-after' },
 						{ label: 'UI agent: the new text', slug: 'agents/research/prompts-ui-agent' },
 						{ label: 'Site, researcher, Jev: new texts', slug: 'agents/research/prompts-site-researcher-jev' },
