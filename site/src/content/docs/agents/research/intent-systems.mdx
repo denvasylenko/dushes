@@ -1,96 +1,51 @@
 ---
-title: "Guessing intent, 2024–2026"
-description: How leading systems guess what a person wants and decide whether to act, ask or stay quiet. Calibrated thresholds, goal inference, clarifying questions judged by their outcome, and learning from rephrasings.
+title: "How the best systems guess intent and decide: act, ask or stay quiet"
+description: "The R&D team's research beyond the review, sources from 2024–2026: calibrated thresholds, goal inference, clarifying questions judged by their outcome, learning from rephrasings, and what that means for our numbers. Translated one to one from the R&D team's document of 19 November 2026."
 ---
-import { Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
-A review of recent work, mostly 2024 to 2026, with a few older anchor papers. The question it asks: when an assistant reads a line, how do the best systems decide whether to carry it out, ask a question, or hand it on?
-
-<Aside type="note" title="How to read the figures">
-Figures are as the papers' authors report them, mostly from their abstracts and reviews. None of them were checked on Dushes' own data.
-</Aside>
+The R&D team's research beyond [the review](../intentions/), sources from 2024–2026 (plus a few older anchor papers). The searching and reading were done on 19 November. The reasoning has not been checked on our data anywhere. The papers' figures are from abstracts and reviews; the full texts were not opened.
 
 ## The main findings
 
-1. **Thresholds are calibrated, not picked by hand.** Conformal prediction and risk control turn any classifier's scores into a set of candidates with a guaranteed error rate. The size of the set decides what to do: one candidate, act; two or three, ask; none or many, hand it on (CICC, KnowNo, SAFER).
-2. **"At most 1% wrong" has to be shown.** With no error in *n* test lines, the upper bound of the error rate at 95% confidence is about 3/*n* (the rule of three). Showing "at most 1%" for one action needs at least 300 error-free lines, or about a thousand if there are errors, on lines the threshold was not tuned on.
-3. **A model scores how well a line fits each goal; the arithmetic decides.** Systems where a language model only scores the fit of a line to each possible goal, and the goal is inferred by explicit probability, beat large models that answer directly (CLIPS, AutoToM). What carries over from turn to turn matters: the result of one turn should be the starting point of the next.
-4. **A correction is more often a rephrasing than an Undo.** Alexa's self-learning treats a rephrasing as a correction, and reported more than 30% fewer defects in A/B tests.
-5. **How much to confirm depends on the cost of a mistake, and on whether one just happened.** While all goes well, an implicit confirmation is enough. After a mistake, an explicit one.
-6. **Finding the element is the weak point of screen-reading agents.** Agents that locate buttons by pixels hit the right element in roughly 18% to 73% of cases on ScreenSpot-Pro. An assistant that picks from a known tree of pages and fields does not have this problem; its errors are about intent, and about not checking the result.
-
-## The set of candidates decides
-
-```mermaid
-flowchart LR
-  L["A line"] --> S["Scores for every candidate<br/>(any classifier)"]
-  S --> C["Calibration<br/>on held-out lines,<br/>for a chosen error rate"]
-  C --> N{"How many candidates<br/>are left?"}
-  N -->|"one"| A["Act"]
-  N -->|"two or three"| Q["Ask: A or B?"]
-  N -->|"none, or many"| H["Hand it on"]
-```
-
-One mechanism replaces a handful of hand-set thresholds. Its guarantee holds only while live lines look like the lines it was calibrated on, so it has to be recalculated when the configuration changes.
+1. **Thresholds are not picked by hand: they are calibrated for an acceptable error rate.** Conformal prediction and risk control exist for this. The size of the set of options settles the matter at once: one option, act; two or three, ask; more or none, hand it to the agent (CICC, KnowNo, SAFER). So one mechanism replaces our eight thresholds, the ratio of the two best and the companion question.
+2. **"No more than 1%" has to be proven.** If there was not a single error on n lines, the upper bound of the error rate at 95% confidence is about 3/n (the "rule of three"). So, to claim "no more than 1%" for one action, at least 300 lines without errors are needed, and if there are errors, about a thousand. And that on lines the threshold was not tuned on.
+3. **The model only scores how well a line fits a hypothesis, and the arithmetic decides.** CLIPS and AutoToM are more accurate than large models that answer directly. Our scheme "Jev as the likelihood, the prior in code" matches this. One thing is missing: the result of the previous turn should become the prior of the next.
+4. **A correction is more often a repeat in other words than an Undo.** Alexa's self-learning is built on this: in A/B tests the defect rate fell by more than 30%.
+5. **Confirmation depends on the cost of a mistake and on whether there was a mistake recently.** While everything goes without errors, an implicit confirmation is enough. After a mistake, an explicit one is needed.
+6. **Finding the element is the weak point of GUI agents, and we do not have this problem.** Agents that look for a button by pixels hit the right element on ScreenSpot-Pro in 18–73% of cases. We choose from the config's tree, so we have no such errors. What remains for us are errors of intent and an unchecked result of the action.
 
 ## By area
 
-### Calibration and selective prediction
+| Area | What the best do (source) | What we do not have | What to change | Size | How to measure |
+| --- | --- | --- | --- | --- | --- |
+| Calibration and selective prediction | [CICC](https://arxiv.org/pdf/2403.18973) (NAACL 2024) turns the scores of any intent classifier into a set of options with a coverage guarantee: one option, act; several, a clarifying question; better than heuristic thresholds on 7 datasets, without retraining. [KnowNo](https://arxiv.org/abs/2307.01928) (CoRL 2023, an anchor paper): the same for a robot's planner, 10–24% fewer requests for help at the same reliability. [SAFER](https://arxiv.org/abs/2510.10193) (ICLR 2026): risk control and abstaining from an answer if the target risk cannot be reached | The thresholds are chosen by hand (about 8), and Jev's "confidence" is not the probability of being right (TypeSafe itself writes this too). No guarantee on the error rate | The threshold for each action is computed on a calibration set for an acceptable error rate α (1% for a move, 0.5% for an overwrite). The size of the set of options decides: act, "A or B?", or the agent. Recalculated after a config change: the guarantee holds only while live lines look like the calibration ones | M (code S, QA calibration M) | On held-out lines: the rate of confident errors by action with a confidence interval; coverage; the average size of the set of options. A comparison with today's thresholds at equal coverage |
+| Calibrating an LLM's confidence | [A UQ survey](https://arxiv.org/pdf/2412.05563) (2024–25): large models are still overconfident; [2026](https://arxiv.org/pdf/2609.26489): the confidence a model states in words and the token probabilities are not interchangeable, and calibrating one says nothing about the other | There is no reliability curve of Jev's p by kind of question and language | Calibrate Jev's p (isotonic regression) by kind of question and language on QA's data. Never act on a confidence the agent stated itself | S | A reliability curve and ECE by kind of question × language, on turn logs already taken, without new runs |
+| Bayesian inference of the goal | [CLIPS](https://arxiv.org/abs/2402.17930) (AAMAS 2024): the LLM only scores the likelihood of the line under each hypothesis about the goal, and the goal is inferred by inverse planning; 2.5 times more accurate than GPT-4V with a 6.7B model. [AutoToM](https://arxiv.org/abs/2502.15676) (NeurIPS 2025): the LLM proposes several hypotheses, the posterior probability is computed by Bayes, and when unsure the model is refined (more variables, more turns) | Every turn is decided afresh; the goal does not build up from turn to turn | The result of the previous turn over the config's goals becomes the prior of the next (in code, in the conversation's state). The hypotheses come from the goal field in the config | M | Scenarios where the goal becomes clear only over 2–3 lines: the accuracy of the goal on every turn |
+| Clarifying questions | [CLAMBER](https://arxiv.org/abs/2405.12063) (2024): LLMs are poor at noticing ambiguity. [Zhang et al.](https://arxiv.org/abs/2410.13788) (ICLR 2025): a question is judged by what happens after it is answered (preferences over two turns), +4–5% F1, and the model learns not to ask when it is not needed. CICC builds the question from the set of options | We judge a question by itself (asked or not), not by its outcome | The "A or B?" card is built by code from the set of options, without an LLM. The metric is the outcome after the answer: the goal reached, and in how many turns | S (together with row 1) | Two numbers together: the goal reached after the question, and the number of turns; the share of unneeded questions |
+| Learning from corrections | Alexa: [self-learning from rephrasings](https://ar5iv.arxiv.org/html/1911.02557): a chain of rephrasings is treated as an absorbing Markov chain (success or failure), successful rephrasings turn into a rewrite of the request; more than 30% fewer defects in A/B; [ContReph](https://preview.aclanthology.org/moar-dois/2021.emnlp-main.143.pdf) finds a rephrasing by the context and the pause between turns. [PRELUDE/CIPHER](https://arxiv.org/abs/2404.15269) (NeurIPS 2024): a text description of a preference is derived from a person's edits and retrieved by similar context | We count as a correction only Undo and "no, something else"; the synonyms of objects are written by hand | (a) In the log, a rephrasing within ~20 seconds after a code action also counts as a defect (the same goal, other words). (b) From pairs "did not work → worked" the code proposes synonyms for the config's objects; they are applied only after a person checks them. (c) Preferences between visits (configurable, off by default), as in PRELUDE: a text description, not the raw history | (a) S, (b) M, (c) M | The defect rate (Undo plus rephrasing) by action before and after the new synonyms; the precision of finding rephrasings against a person's labels |
+| Voice assistants: confirmations | [Interspeech 2004](https://www.isca-archive.org/interspeech_2004/sagawa04_interspeech.html): while there are no errors, people prefer fewer confirmations, after an error, an explicit one; the practice of voice interfaces: implicit confirmation (say what you understood while doing it) when a mistake is cheap. No fresh controlled studies from 2024–2026 were found | The level of confirmation does not depend on whether there was a mistake in the conversation | By default, implicit confirmation (the closing line is already there). After a defect in this conversation (Undo or a rephrasing), the next 2–3 actions of the same kind are confirmed explicitly: the code raises their threshold | S | A scenario: Undo, then a similar request, an explicit confirmation; in clean runs the number of confirmations does not grow |
+| UI agents: what they do on the screen | By pixels on [ScreenSpot-Pro](https://arxiv.org/html/2504.07981v1) they hit the right element in 18.9% (OS-Atlas-7B) … 73% (the multi-stage [MEGA-GUI](https://arxiv.org/html/2511.13087v1)) of cases. Narrowing the search area gives 18.9 → 48.1%. [GUI-Critic-R1](https://arxiv.org/abs/2506.04614) (NeurIPS 2025): a critic checks an action before it runs, because an irreversible one can no longer be fixed after it runs; success on AndroidWorld 22.4 → 27.6% | We do not need to search by pixels: we choose by id from the config. There is no check of the result of a move. Not measured how accuracy falls with the number of options (up to 255) | (a) A check after the action: the client reports the new state, the code compares it with the goal (already in the plan, M). (b) For large configs, narrowing by levels (screen → section → field) instead of a flat list of up to 255 options, but only if a measurement shows accuracy falling. (c) We do not need a critic before the action: the code does nothing irreversible at all | (a) M, (b) S measure, M build | The accuracy of the goal against the number of options (10 / 50 / 150 / 255) on the same lines; the share of moves without a confirmation from the client |
 
-[CICC](https://arxiv.org/pdf/2403.18973) (NAACL 2024) turns any intent classifier's scores into a candidate set with a coverage guarantee: one candidate acts, several ask; better than heuristic thresholds on seven datasets, without retraining. [KnowNo](https://arxiv.org/abs/2307.01928) (CoRL 2023) does the same for a robot planner, with 10–24% fewer requests for help at the same reliability. [SAFER](https://arxiv.org/abs/2510.10193) (ICLR 2026) controls risk and abstains when the target risk cannot be met
+## Our numbers: about 2.5% confident errors against the bar of ≤ 1%
 
-**What it suggests:** a threshold per action, derived for an acceptable error rate rather than chosen.
+- To prove "≤ 1%" at 95% confidence, at least 300 held-out lines without a single error are needed for each action, and with a few errors, about a thousand. With smaller sets the difference between 2.5% and 1% drowns in noise. The first thing is to give our 2.5% a confidence interval and break it down by kind of question, action and language.
+- Where the drop to ≤ 1% may come from, in order of the expected effect (an estimate, not a measurement):
+  1. A calibrated threshold for each action with an acceptable error rate: gives ≤ 1% by construction, at the cost of coverage.
+  2. The question "A or B?" instead of a confident choice of one of two: turns part of the errors into questions and wins coverage back.
+  3. There is no breakdown of errors by kind yet, but the measurement of 17 November shows that part of them come from wording ("a booking for N" against "N guests") and from a place that does not exist. This is cured by descriptions and synonyms in the config and the rule "there is no such thing".
+  4. The rules from "The gap" (a conflict with an edit by hand, lines against the prior): remove separate classes of errors.
+- The guarantee holds only while live lines look like the calibration ones. While we measure on synthetic data (until the data processing agreement), it has to be checked on the owner's lines from the test stand as a separate set.
 
-### Calibrating a model's confidence
+## What the R&D team would do differently from the current plan
 
-[A 2024 survey](https://arxiv.org/pdf/2412.05563): large models are still overconfident. [A 2026 study](https://arxiv.org/pdf/2609.26489): the confidence a model states in words and its token probabilities are not interchangeable
-
-**What it suggests:** calibrate scores per kind of question and per language; never act on a confidence the model states about itself.
-
-### Inferring the goal
-
-[CLIPS](https://arxiv.org/abs/2402.17930) (AAMAS 2024): a language model only scores how likely a line is under each goal, and the goal is inferred by inverse planning; reported 2.5 times more accurate than GPT-4V, with a 6.7B model. [AutoToM](https://arxiv.org/abs/2502.15676) (NeurIPS 2025): a model proposes several goals, probabilities are computed by Bayes, and the model is refined when unsure
-
-**What it suggests:** carry the goal from one turn to the next instead of deciding every turn from scratch.
-
-### Clarifying questions
-
-[CLAMBER](https://arxiv.org/abs/2405.12063) (2024): language models are poor at noticing ambiguity. [Zhang et al.](https://arxiv.org/abs/2410.13788) (ICLR 2025): judge a question by what happens after it is answered; reported +4–5% F1, and the model learns not to ask when it need not
-
-**What it suggests:** build "A or B?" from the candidate set; judge a question by whether the goal was reached after it, and in how many turns.
-
-### Learning from corrections
-
-Alexa's [self-learning from rephrasings](https://ar5iv.arxiv.org/html/1911.02557) models a chain of rephrasings as an absorbing Markov chain and turns successful ones into rewrites; reported more than 30% fewer defects. [ContReph](https://preview.aclanthology.org/moar-dois/2021.emnlp-main.143.pdf) finds rephrasings from context and the pause between turns. [PRELUDE/CIPHER](https://arxiv.org/abs/2404.15269) (NeurIPS 2024) derives a written preference from a person's edits
-
-**What it suggests:** count a rephrasing soon after an action as a correction; suggest new synonyms for the configuration from what failed and then worked, applied only after a person checks them.
-
-### Confirmation by voice
-
-[Interspeech 2004](https://www.isca-archive.org/interspeech_2004/sagawa04_interspeech.html): while there are no errors, people prefer fewer confirmations; after one, an explicit one. Implicit confirmation (saying what was understood while doing it) is common voice practice when a mistake is cheap. No recent controlled study was found
-
-**What it suggests:** implicit by default; explicit for the next few actions of the same kind after a mistake.
-
-### Screen-reading agents
-
-On [ScreenSpot-Pro](https://arxiv.org/html/2504.07981v1), pixel-based agents hit the right element in 18.9% to 73% of cases ([MEGA-GUI](https://arxiv.org/html/2511.13087v1), multi-stage); narrowing the search area takes one from 18.9% to 48.1%. [GUI-Critic-R1](https://arxiv.org/abs/2506.04614) (NeurIPS 2025) checks an action before it runs, because an irreversible one cannot be fixed afterwards
-
-**What it suggests:** check the result after a move; narrow level by level (screen, section, field) when the list of options is long.
-
-## What Dushes takes from it
-
-**In the package today:**
-
-- **Picking from a known tree, not from pixels.** The [decision model](../../how-it-works/decision-model/) chooses among the pages, sections and fields the server lists, so it cannot invent a target.
-- **A model scores; code decides.** The decision model only answers fixed questions with probabilities. Code applies the thresholds and the rules, and never carries out anything that cannot be undone.
-- **Implicit confirmation:** after an action, one short line says what was done, with Undo ([How the agent behaves](../../how-it-works/behaviour/)).
-
-**Studied, not built** ([Coming next](../../how-it-works/behaviour/#coming-next)):
-
-- Thresholds calibrated per action for an acceptable error rate, instead of fixed numbers.
-- "A or B?" built from the candidate set when two fit.
-- Counting a rephrasing as a correction, and learning synonyms from it after a person's review.
-- Explicit confirmation for a short while after a mistake, by voice.
+1. **First work out where our 2.5% come from, then build** (S, without paid runs: from turn logs already taken). A breakdown by kind of question, action and language, confidence intervals, a reliability curve of Jev's p. The function map today is a list of ideas; the breakdown will say which of them hit real errors.
+2. **Replace our own fixed thresholds by action (0.7 / 0.8 / 0.9 / 0.95 from the map) with calibrated ones.** For each action an acceptable error rate α is set, and the threshold is derived on a calibration set. The numbers from the map are only a starting point.
+3. **One mechanism instead of several.** The size of the set of options decides: 1, act; 2–3, "A or B?"; otherwise, the agent. It replaces today's eight thresholds, the ratios and the INTENT_* switches: there will be less code and fewer cases.
+4. **Count a rephrasing as a correction from the log's first day.** Many people do not tap Undo; they simply say it again. Otherwise the log will show fewer errors than there are.
+5. **By voice, confirm by the conversation's history:** implicitly while there are no errors, explicitly after an error. This is cheaper than one high threshold for voice (+0.05 from the map).
+6. **Split the held-out sets by config and by time, and recalculate the thresholds after a config change.** Tuning and measuring on the same lines is not allowed.
+7. **Do not take from PRELUDE the automatic writing of conclusions into the prompt.** For us these are proposals of synonyms and descriptions that a person checks before they are applied: the config is shared by every visitor, and one person must not change it for the others.
 
 ## Sources
 
@@ -98,12 +53,12 @@ On [ScreenSpot-Pro](https://arxiv.org/html/2504.07981v1), pixel-based agents hit
 - [KnowNo, CoRL 2023](https://arxiv.org/abs/2307.01928)
 - [SAFER, ICLR 2026](https://arxiv.org/abs/2510.10193)
 - [Conformal Abstention Policies, 2025](https://www.arxiv.org/abs/2502.06884)
-- [A survey of uncertainty in large language models, 2024](https://arxiv.org/pdf/2412.05563)
+- [A survey of uncertainty in LLMs, 2024](https://arxiv.org/pdf/2412.05563)
 - [Calibration as a criterion, 2026](https://arxiv.org/pdf/2609.26489)
 - [CLIPS, AAMAS 2024](https://arxiv.org/abs/2402.17930)
 - [AutoToM, NeurIPS 2025](https://arxiv.org/abs/2502.15676)
 - [CLAMBER, 2024](https://arxiv.org/abs/2405.12063)
-- [Zhang, Knox & Choi, ICLR 2025](https://arxiv.org/abs/2410.13788)
+- [Zhang, Knox, Choi, ICLR 2025](https://arxiv.org/abs/2410.13788)
 - [Alexa, self-learning from feedback](https://ar5iv.arxiv.org/html/1911.02557)
 - [Amazon Science: how Alexa corrects her own defects](https://www.amazon.science/blog/how-we-taught-alexa-to-correct-her-own-defects)
 - [ContReph, EMNLP 2021](https://preview.aclanthology.org/moar-dois/2021.emnlp-main.143.pdf)
@@ -113,11 +68,15 @@ On [ScreenSpot-Pro](https://arxiv.org/html/2504.07981v1), pixel-based agents hit
 - [MEGA-GUI, 2025](https://arxiv.org/html/2511.13087v1)
 - [GUI-Critic-R1, NeurIPS 2025](https://arxiv.org/abs/2506.04614)
 
-Not checked: no recent controlled studies of voice confirmations were found; the exact candidate-set rules of CICC should be checked against the paper's text; some ScreenSpot-Pro figures come from aggregators.
+Not checked: no fresh (2024–2026) controlled studies of confirmations by voice were found; the exact rules for the size of the set of options in CICC should be checked against the paper's text; part of the ScreenSpot-Pro figures are taken from aggregators.
+
+## What Dushes takes from it
+
+None of the changes above is in the package yet. What is in it today: the [decision model](../../how-it-works/decision-model/) picks from a known tree of pages, sections and fields, not from pixels; it only scores, and code decides and never does anything irreversible; after an action one short line says what was done, with Undo ([How the agent behaves](../../how-it-works/behaviour/)). What is planned is under [Coming next](../../how-it-works/behaviour/#coming-next).
 
 ## Next
 
 <CardGrid>
-  <LinkCard title="Intentions: what psychology and AI say" description="The base: wishes, intentions, plans, and reading them." href="../intentions/" />
+  <LinkCard title="The psychology of intentions" description="The review this research goes beyond." href="../intentions/" />
   <LinkCard title="The decision model" description="What runs in the package today." href="../../how-it-works/decision-model/" />
 </CardGrid>

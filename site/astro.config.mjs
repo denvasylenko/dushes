@@ -202,8 +202,8 @@ export default defineConfig({
 					] },
 					{ label: 'Research', collapsed: true, items: [
 						{ label: 'Overview', slug: 'agents/research' },
-						{ label: 'Intentions: psychology and AI', slug: 'agents/research/intentions' },
-						{ label: 'Guessing intent, 2024–2026', slug: 'agents/research/intent-systems' },
+						{ label: 'The psychology of intentions', slug: 'agents/research/intentions' },
+						{ label: 'The best systems, 2024–2026', slug: 'agents/research/intent-systems' },
 					] },
 				] },
 				{ label: 'Reference', link: '/reference/configuration/', icon: 'open-book', items: [
