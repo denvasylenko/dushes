@@ -275,3 +275,22 @@ When opening was refused, the turn's suggestions SHALL start with a button that 
 #### Scenario: The person taps the offer
 - **WHEN** the previous answer offered the Contacts page and the person taps "Open Contacts"
 - **THEN** the page opens
+
+### Requirement: Dushes sees a real stretch of the conversation
+Dushes SHALL be shown the latest entries of the site conversation, up to 40 and as many of the newest as fit about 24,000 characters, never fewer than the last six. When older turns are left out, it SHALL be told the person's first message of the conversation in one line.
+
+#### Scenario: What was my first message
+- **WHEN** the person asks for their first message after eight exchanges
+- **THEN** that message is among the messages the model is shown
+
+#### Scenario: A very long conversation
+- **WHEN** the conversation is longer than the budget
+- **THEN** the newest turns are shown and the first message is told in one line
+
+### Requirement: The server keeps the trail of pages
+For every run, on every host, the server SHALL keep the pages of the site a conversation has been on, oldest first, and SHALL tell Dushes the trail and the page before the current one. A host SHALL NOT need to send or keep it. A path that is not a page of the site SHALL NOT enter the trail.
+
+#### Scenario: Where was I before
+- **WHEN** the person went from Home to Loans to Car insurance and asks where they were before
+- **THEN** Dushes is told the trail and that the page before this one is Loans
+

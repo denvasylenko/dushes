@@ -134,7 +134,13 @@ def names_a_field(text: str, form: dict[str, Any]) -> bool:
     return False
 
 
-HISTORY = 6
+# What the site assistant is shown of the conversation so far: up to this many of its latest entries (a message, an
+# answer, a card's result), and of those as many of the newest as fit HISTORY_CHARS (about 6,000 tokens). It was 6
+# entries, three exchanges, and "what was my first message?" was answered by a guess (the owner's other host,
+# 2026-11-19). When older turns are cut, the person's first message is still told, in one line.
+HISTORY = 40
+HISTORY_CHARS = 24000
+TRAIL = 12   # how many pages of a conversation's trail are remembered
 HANDED = "[Handed over by Dushes]"
 
 
@@ -472,6 +478,7 @@ class Dushes:
         from ..guide import _choice
         from ..stats import model_id as _model_id
         check_thread_id(thread_id)
+        self._visit(thread_id, str(((state or {}).get("page") or {}).get("path") or ""))   # the trail, for every run
         # what the host decided for this run about the choice layer (never read from the client): `layer` True / False
         # turns it on or off for this run whatever the process settings and the experiments gate say, None leaves
         # them to decide; `never_send` adds this run's own items to the never-send list (a site's guests' names);
@@ -708,10 +715,7 @@ class Dushes:
                 ov = None
         # where the person has been: "back", "the previous one" point at the page open before this one, and the
         # chooser cannot know it from the screen (the QA Lead's probe, 2026-11-17: 24 of its 33 wrong moves)
-        visits = self.__dict__.setdefault("_visits", {}).setdefault(thread_id, [])
-        if here and (not visits or visits[-1] != here.path):
-            visits.append(here.path)
-            del visits[:-6]
+        visits = self._visit(thread_id, here.path if here else "")
         before = visits[-2] if len(visits) >= 2 else ""
         # the whole site as paths: pages, their tabs and sections, each form's tabs, steps and sections
         targets: list[Any] = []
@@ -1412,6 +1416,19 @@ class Dushes:
                 yield {"type": "CUSTOM", "name": "site_directive", "value": more}
         yield {"type": "RUN_FINISHED", "threadId": thread_id, "runId": run_id}
 
+    def _visit(self, thread_id: str, path: str) -> list[str]:
+        """The pages of the site this conversation has been on, oldest first, with `path` added when it is a page of
+        the site and not the one already last. Kept by the server for every run, so "back" and "where was I
+        before" have an answer on any host; in memory, so a restart forgets it."""
+        trails = self.__dict__.setdefault("_visits", {})
+        while len(trails) >= 5000 and thread_id not in trails:
+            trails.pop(next(iter(trails)))
+        visits = trails.setdefault(thread_id, [])
+        if path and self.site.page(path) is not None and (not visits or visits[-1] != path):
+            visits.append(path)
+            del visits[:-TRAIL]
+        return visits
+
     async def _site_turn(self, thread_id: str, message: str | None, state: dict[str, Any], run_id: str,
                          host: Any, form_kwargs: dict[str, Any], recorded: bool = False,
                          reply_to: list[dict[str, Any]] | None = None,
@@ -1420,8 +1437,21 @@ class Dushes:
         message already (its line is the last in the transcript). `recorded`: the user's message is already in
         the transcript (the UI agent gave it back)."""
         tx = self.forms.transcripts
-        history = [("user" if e["kind"] == "card_result" else e["kind"], e.get("text", "")) for e in tx.list(thread_id)
-                   if e["kind"] in ("user", "assistant", "card_result")][-self.history:] if self.history > 0 else []
+        whole = [("user" if e["kind"] == "card_result" else e["kind"], e.get("text", "")) for e in tx.list(thread_id)
+                 if e["kind"] in ("user", "assistant", "card_result")]
+        history = whole[-self.history:] if self.history > 0 else []
+        room, kept = HISTORY_CHARS, 0
+        for role, text in reversed(history):             # the newest that fit; never fewer than the last six
+            room -= len(text or "")
+            if room < 0 and kept >= 6:
+                break
+            kept += 1
+        history = history[len(history) - kept:]
+        first = next((text for role, text in whole if role == "user" and (text or "").strip()), "")
+        cut_note = ""
+        if self.history > 0 and len(history) < len(whole) and first and ("user", first) not in history:
+            cut_note = ("Earlier turns of this conversation are not shown here. The person's first message in it was: "
+                        f"\"{first[:300]}\"")
         if done and len(history) >= 2 and history[-1][0] == "assistant" and history[-2][0] == "user":
             history = history[:-2]   # the message and the layer's line: the message goes last, the line is in `done`
         if recorded and history and history[-1][0] == "user":
@@ -1441,6 +1471,13 @@ class Dushes:
                 log.exception("site context failed")
         if done:
             live = f"{live}\n{done}".strip()
+        # where the person has been in this conversation, kept here for every host (no page sends its history)
+        trail = [self.site.page(x).title for x in self._visit(thread_id, page) if self.site.page(x)]
+        if len(trail) >= 2:
+            live = (f"{live}\nPages the person opened in this conversation, oldest first (the last one is on the screen "
+                    f"now): {', '.join(trail)}. The page before this one: {trail[-2]}.").strip()
+        if cut_note:
+            live = f"{live}\n{cut_note}".strip()
         handed: dict[str, Any] = {}
 
         async def keep(form_id: str, note: str, language: str = "") -> bool:
