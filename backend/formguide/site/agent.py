@@ -4,11 +4,11 @@ Tools:
   search_site(query)                 more passages when the first ones do not answer
   ask_documents(question)            the document researcher over the site's business documents (when it has any)
   navigate(path, tab?, section?)     open a page (and a tab, accordion or section on it)
-  open_form(form_id, note)           open the page with that form and hand the request to the form agent
+  open_form(form_id, note)           open the page with that form and hand the request to the UI agent
 
 Host extensions (Dushes passes them in): live facts and instructions in the prompt, the host's own
 tools (`SiteTool`), `suggest_next` (CUSTOM suggestions after the answer), and a same-run hand-off (the turn
-ends after open_form and the form agent answers in the same stream).
+ends after open_form and the UI agent answers in the same stream).
 
 `navigate` and `open_form` are checked against the site map. A valid call becomes a
 CUSTOM `site_directive {type: "navigate", path, tab?, section?, form_id?}` for the page.
@@ -345,7 +345,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                  chooser: Callable[..., Awaitable[dict]] | None = None, end_on_move: bool = False) -> AsyncIterator[dict]:
     """One site turn as AG-UI events.
 
-    `on_handoff(form_id, note, language)` keeps the note; when it returns True the form agent answers right after
+    `on_handoff(form_id, note, language)` keeps the note; when it returns True the UI agent answers right after
     in this same run, so the turn ends after that round and the directive says `handoff: "done"`.
     `doc_passages` are the business documents that match the question, `ask_docs` the document researcher;
     `live` and `instructions` come from the host, `tools` are the host's; `finish=False` leaves RUN_FINISHED
@@ -422,7 +422,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                         started = True
                     yield {"type": "TEXT_MESSAGE_CONTENT", "messageId": mid, "delta": delta}
                     said = True
-            if stats is not None:   # Dushes' own model call, counted like the form agent's
+            if stats is not None:   # Dushes' own model call, counted like the UI agent's
                 stats.model_call(t_call, first, dict(getattr(full, "usage_metadata", None) or {}), kind="site",
                                  model=model_id(model))
             calls = list(getattr(full, "tool_calls", None) or [])
@@ -532,7 +532,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                                   if now else "Opened {t}; the form takes over there. Say so in one short sentence.").format(t=page.title)
                 elif name == "to_form" and to_form:
                     to_form(str(args.get("reason") or "")[:200])
-                    handed = True   # the form agent answers this message next, in this run
+                    handed = True   # the UI agent answers this message next, in this run
                     result = "Given to the form's assistant: it answers the user now. Say nothing."
                 elif name == "suggest_next" and suggestions:
                     suggested = [str(o).strip()[:60] for o in (args.get("options") or [])[:3] if str(o).strip()]
@@ -551,7 +551,7 @@ async def answer(model: BaseChatModel, site: SiteMap, question: str, history: li
                 msgs.append(ToolMessage(content=result, tool_call_id=cid))
                 yield {"type": "TOOL_CALL_RESULT", "toolCallId": cid, "messageId": f"tool_{uuid.uuid4().hex[:12]}",
                        "content": result[:200], "role": "tool", **({"error": True} if bad else {})}
-            if handed:   # the form agent answers next, in this run
+            if handed:   # the UI agent answers next, in this run
                 break
             if ended:    # a move the server carried out: its one line is the answer, the model is not called again
                 yield {"type": "TEXT_MESSAGE_START", "messageId": mid, "role": "assistant"}

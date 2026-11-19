@@ -88,10 +88,10 @@ form, takes the config the form computed, and sends that back.
 - `state.page.path` says where the person is; `state.form` is the form on that page, when there is one.
 - `CUSTOM site_directive {type: "navigate", path, tab?, section?, form_id?, handoff?}`: the host moves. One per
   run, the last one wins. With `form_id` the host opens that form's page and, unless `handoff: "done"`, starts a
-  run with `forwardedProps.handoff: true` so the form's agent takes over in the same chat.
+  run with `forwardedProps.handoff: true` so the form's UI agent takes over in the same chat.
 - From the next release a page opens only on the person's direct request or a yes to an offer; a question gets
   its answer and an offer (a suggestion "Open <page>").
-- One conversation: the site thread shows the form agents' words too; `GET <site>/threads/{id}` restores it.
+- One conversation: the site thread shows the UI agents' words too; `GET <site>/threads/{id}` restores it.
 
 ## History and restore
 

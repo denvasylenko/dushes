@@ -462,12 +462,12 @@ def says_any(label: str, phrase: str) -> bool:
 
 # ---------------------------------------------------------------- a picked value goes through the form's own card
 
-_PRESETS: dict[str, dict] = {}   # the form thread -> {"script": what the form agent's model would have said, "needs": ...}
-APPLIED = "The user confirmed; changes applied"   # how the form agent's tool result starts when a card was applied
+_PRESETS: dict[str, dict] = {}   # the form thread -> {"script": what the UI agent's model would have said, "needs": ...}
+APPLIED = "The user confirmed; changes applied"   # how the UI agent's tool result starts when a card was applied
 
 
 def preset_calls(thread_id: str, calls: list[tuple[str, dict]], closing: str, needs: str = "") -> None:
-    """As preset_call, with several calls of the form agent's tools in one step (several sections to open)."""
+    """As preset_call, with several calls of the UI agent's tools in one step (several sections to open)."""
     from langchain_core.messages import AIMessage
     stamp = int(time.time() * 1000)
     _PRESETS[thread_id] = {"needs": needs, "tail": not closing, "script": [
@@ -477,7 +477,7 @@ def preset_calls(thread_id: str, calls: list[tuple[str, dict]], closing: str, ne
 
 
 def preset_call(thread_id: str, tool: str, args: dict, closing: str, needs: str = "") -> None:
-    """The layer decided the form agent's next two steps on this thread: call this tool, then say this line. So
+    """The layer decided the UI agent's next two steps on this thread: call this tool, then say this line. So
     the form's own tool, checks and Undo apply and no model is called. `needs`: how the tool's result must start
     for the closing line to be said."""
     from langchain_core.messages import AIMessage
@@ -494,7 +494,7 @@ def preset(thread_id: str, name: str, value: Any, label: str, shown: str) -> Non
 
 
 def preset_closing(thread_id: str, closing: str, fields: list[str]) -> None:
-    """After a card of the form's own assistant that is applied at once (every value said outright): when the form
+    """After a card of the form's UI agent that is applied at once (every value said outright): when the form
     takes it with no complaint, the turn ends with this one line written in code, and the model is not called a
     second time only to say it (the owner's standard: done, one short line). `fields`: the card's fields, so the
     line is said only after that very card."""
