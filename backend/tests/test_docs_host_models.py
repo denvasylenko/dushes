@@ -120,3 +120,22 @@ def test_an_existing_conversation_is_told_to_start_a_new_one(monkeypatch, tmp_pa
         host.today().by_choice["haiku"] = 3.0                          # neither has budget left
         assert c.post("/agent/run", json=_body("f3", "luna")).json()["reason"] == "cost"
         assert asked == ["luna"]                                       # no refused run reached the agent
+
+
+def test_a_code_holder_has_the_wider_limits_and_the_sites_totals_still_hold(monkeypatch):
+    """The owner (2026-11-17), after the public demo refused him with 429 in his own test: a person who entered an
+    activation code gets the limits of his dev host (100 a conversation, 400 a day); a visitor without a code keeps
+    the public ones; the site's totals (runs, dollars a day) are the same for both."""
+    _fresh(monkeypatch)
+    monkeypatch.setattr(host, "_holders", {})
+    monkeypatch.setattr(host, "_threads", host.defaultdict(int))
+    assert not host.code_holder("9.9.9.9") and host.code_holder("9.9.9.9", mark=True) and host.code_holder("9.9.9.9")
+    assert not host.code_holder("8.8.8.8")
+    for _ in range(host.PER_THREAD):
+        assert host.demo_limit("t-guest", "8.8.8.8") is None
+    assert host.demo_limit("t-guest", "8.8.8.8") == "thread"                     # a visitor: 15 a conversation
+    for _ in range(host.PER_THREAD + 5):
+        assert host.demo_limit("t-ours", "9.9.9.9", holder=True) is None         # a code holder goes on
+    assert host.CODE_PER_THREAD == 100 and host.CODE_PER_DAY == 400
+    monkeypatch.setattr(host, "RUNS_DAY", host.today().runs)                     # the site's total is spent
+    assert host.demo_limit("t-ours-2", "9.9.9.9", holder=True) == "runs"
