@@ -978,13 +978,28 @@ class Dushes:
             # on a form, "open sections" with no section named ("Open now sections", speech for "open all sections":
             # the owner's session, 2026-11-17) is a weaker yes to "all of them", but the chooser is sure whose they
             # are: its two answers together are enough. A section the line names keeps its own answer
-            both = bool(every and every.id == "yes" and ov is not None and not opens and whose and whose.confidence >= 0.8
+            # (measured on the line itself, three sources: the owner's session all 0.65 to 0.7 with the tab at 0.87 to
+            # 1.0; QA's stand all 0.91 with "here" 0.82; my copy all 0.71 with "here" 0.62. Opening sections is a
+            # look, so: a yes to "all" at 0.6 or more, and whose = here or the tab on the screen, at any sureness)
+            both = bool(every and every.id == "yes" and every.confidence >= 0.6 and ov is not None and not opens and whose
+                        and (whose.id == "here" or whose.id.startswith("this:"))
                         and os.environ.get("INTENT_SECTIONS", "1") != "0")
             if every and every.id == "yes" and (every.confidence >= 0.8 or both) and ov is not None:
                 # "all the sections of the applicant tab": every section of the tab the line names, else of the open one
                 on_screen = bool(whose and whose.id == "here")       # no place said: the tab on the screen
                 tab = whose.id.partition(":")[2] if whose else ""
                 tab = tab if tab in lay.nodes and lay.nodes[tab].role in ("tab", "step") else ""
+                if on_screen and not tab:
+                    # "here" on a form is the form's tab on the screen, never the page around it (QA, 2026-11-19: "Open
+                    # now sections" got all 0.91 and "here" 0.82, and the page's one section was opened). The tab the
+                    # screen reports, else the form's first tab: the one a form shows when nothing was switched
+                    shown_tabs = [n for n in wide.on_screen if n in lay.nodes and lay.nodes[n].role in ("tab", "step")]
+                    first = next((n.name for n in lay.nodes.values() if n.role in ("tab", "step") and n.name
+                                  and ov.get(n.name) is not None and ov[n.name].visible), "")
+                    # (a form may have tabs inside a section too: the tab meant is one that holds sections)
+                    holds = lambda t: sum(1 for n in lay.nodes.values() if n.role in ("accordion", "section") and n.parent == t  # noqa: E731
+                                          and n.name and ov.get(n.name) is not None and ov[n.name].visible) >= 2
+                    tab = next((t for t in [*shown_tabs, first] if t and holds(t)), "")
                 opens = [(n.name, str(ov[n.name].label)) for n in lay.nodes.values()
                          if n.role in ("accordion", "section") and n.name and ov.get(n.name) is not None and ov[n.name].visible
                          and ov[n.name].label and (n.parent == tab if tab else n.parent in wide.on_screen)][:12]

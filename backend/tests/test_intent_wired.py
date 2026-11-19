@@ -898,10 +898,33 @@ def test_open_sections_with_no_section_named_is_all_of_the_tab_on_the_screen(gui
     before = len(model.calls)
     ev = run(site_with(guide, Mock(**answers)), "sec-1", message="Open now sections", state=state)
     assert shown(ev) == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == before
+    # QA's run of the same line: a sure yes to "all" and "here" for whose; with no tab reported by the screen, "here"
+    # is the form's first tab, never the page around the form
+    bare = {"page": {"path": "/apply"}, "form": start(guide, LOAN)}
+    here = {"is_command": ("yes", 0.9), "kind": ("go_to", 0.86), "all_sections": ("yes", 0.91), "all_of": ("here", 0.82)}
+    ev = run(site_with(guide, Mock(**here)), "sec-1h", message="Open now sections", state=bare)
+    assert shown(ev) == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == before
     # the chooser is not sure whose sections: the agent's turn, as before
     model.script = [say("Which sections do you mean?")]
-    ev = run(site_with(guide, Mock(**{**answers, "all_of": ("this:tab_applicant", 0.6)})), "sec-2", message="Open now sections", state=state)
+    ev = run(site_with(guide, Mock(**{k: v for k, v in answers.items() if k != "all_of"})), "sec-2", message="Open now sections", state=state)
     assert shown(ev) == [] and len(model.calls) > before
+    # my own copy's numbers for the same line: all 0.71, "here" 0.62, one section a weak yes
+    weak = {**answers, "all_sections": ("yes", 0.71), "all_of": ("here", 0.62), "s:acc_addresses": ("yes", 0.66)}
+    calls = len(model.calls)
+    ev = run(site_with(guide, Mock(**weak)), "sec-2w", message="Open now sections", state=state)
+    assert shown(ev) == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == calls
+    # the whole live answer of my copy for that line (a move, a "go to", two sections a weak yes): the same five
+    live = {"is_command": ("yes", 0.69), "kind": ("go_to", 0.77), "needs_agent": ("no", 0.7), "was_offered": ("no", 0.76),
+            "asks_move": ("yes", 0.91), "asks_more": ("no", 0.95), "all_sections": ("yes", 0.72), "all_of": ("here", 0.61),
+            "s:acc_personal": ("yes", 0.51), "s:acc_passport": ("no", 0.53), "s:acc_addresses": ("yes", 0.66),
+            "s:acc_contacts": ("no", 0.59), "s:acc_education": ("no", 0.62)}
+    calls = len(model.calls)
+    ev = run(site_with(guide, Mock(**live)), "sec-2l", message="Open now sections", state=state)
+    assert shown(ev) == ["acc_personal", "acc_passport", "acc_addresses", "acc_contacts", "acc_education"] and len(model.calls) == calls
+    # sections of another tab are not "here": the chooser's weak yes does not open them
+    model.script = [say("Which tab?")]
+    ev = run(site_with(guide, Mock(**{**answers, "all_of": ("tab:tab_loan", 0.7)})), "sec-2t", message="Open now sections", state=state)
+    assert shown(ev) == []
     # a section the line names keeps its own answer: the weaker yes does not open every section over it
     named = {**answers, "s:acc_passport": ("yes", 0.92)}
     model.script = [say("Passport is open.")]
