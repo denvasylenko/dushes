@@ -248,6 +248,20 @@ Whether a `navigate` call moves the person SHALL be the agent's decision, read f
 - **WHEN** the person writes "nvigate me back" and the agent calls `navigate` for the page before this one with `asked: back`
 - **THEN** that page opens in this turn
 
+### Requirement: An ordered move goes only to the page the person named
+A `navigate` call SHALL carry `named`: the page the person named, as a path of the site, or `none`. With `asked: ordered` the move SHALL be carried out only when `named` is a page of the site and the same page as the target; otherwise nothing opens, the agent is told to say the site has no such page, and the closest page is offered.
+
+#### Scenario: Open the pension page
+- **WHEN** the site has no pension page and the agent calls `navigate` for Loans with `asked: ordered`, `named: none`
+- **THEN** nothing opens, and the turn's first suggestion offers to open Loans
+
+### Requirement: How to get somewhere is a question
+The agent's rules SHALL treat "how do I get to X?" and "where do I find X?" as questions: it answers, calls `navigate` with `asked: question` so the page is one tap away, and ends with the offer.
+
+#### Scenario: How do I get to the contacts
+- **WHEN** the agent calls `navigate` for Contacts with `asked: question`
+- **THEN** the person stays where they are and the first suggestion opens Contacts
+
 ### Requirement: Back means the page before this one
 The agent SHALL be told, on every host, the pages the conversation has been on and the page before the current one with its path; the agent's own moves SHALL count as visits, so a host that sends no page has a trail too. Its rules SHALL say that "back" in any wording opens that page at once and that a page the person told it to open is opened without asking.
 

@@ -26,7 +26,7 @@ def _result(model, call_id):
 
 def test_the_owners_transcript_back_and_a_direct_move_at_once(site, model):
     # 1. "navigate me to my requests": the page opens in this turn
-    model.script = [say("", ("n1", "navigate", {"path": "/loans", "asked": "ordered"})), say("Loans.")]
+    model.script = [say("", ("n1", "navigate", {"path": "/loans", "asked": "ordered", "named": "/loans"})), say("Loans.")]
     ev = run(site, "tr1", message="navigate me to loans", state={"page": {"path": "/procurement"}})
     assert _moves(ev) == ["/loans"]
 
@@ -41,7 +41,7 @@ def test_the_owners_transcript_back_and_a_direct_move_at_once(site, model):
     assert _moves(run(site, "tr1", message="what my first message?", state={"page": {"path": "/procurement"}})) == []
 
     # 5. "navigate me back to where I asked initially"
-    model.script = [say("", ("n5", "navigate", {"path": "/procurement", "asked": "ordered"})), say("Purchase request.")]
+    model.script = [say("", ("n5", "navigate", {"path": "/procurement", "asked": "ordered", "named": "/procurement"})), say("Purchase request.")]
     run(site, "tr1", message="navigate me back to where I asked initially", state={"page": {"path": "/procurement"}})
 
     # 6. "nvigate me back", misspelt: the page before this one is still Loans, and the move is carried out
@@ -59,9 +59,9 @@ def test_the_owners_transcript_back_and_a_direct_move_at_once(site, model):
 
 
 def test_the_agents_own_moves_are_the_trail_on_a_host_that_sends_no_page(site, model):
-    model.script = [say("", ("a1", "navigate", {"path": "/loans", "asked": "ordered"})), say("Loans.")]
+    model.script = [say("", ("a1", "navigate", {"path": "/loans", "asked": "ordered", "named": "/loans"})), say("Loans.")]
     run(site, "tr2", message="open loans", state={})
-    model.script = [say("", ("a2", "navigate", {"path": "/contacts", "asked": "ordered"})), say("Contacts.")]
+    model.script = [say("", ("a2", "navigate", {"path": "/contacts", "asked": "ordered", "named": "/contacts"})), say("Contacts.")]
     run(site, "tr2", message="now the contacts", state={})
     model.script = [say("", ("a3", "navigate", {"path": "/loans", "asked": "back"})), say("Loans.")]
     ev = run(site, "tr2", message="zurück bitte", state={})
@@ -81,3 +81,40 @@ def test_the_word_list_decides_again_under_the_switch(site, model, monkeypatch):
     model.script = [say("", ("w1", "navigate", {"path": "/loans", "asked": "back"})), say("Which page?")]
     ev = run(site, "tr4", message="nvigate me back", state={"page": {"path": "/procurement"}})
     assert _moves(ev) == [] and _result(model, "w1").startswith("Not opened")
+
+
+def test_an_order_for_a_page_the_site_does_not_have_opens_nothing(site, model):
+    """QA on GPT-6 Luna (2026-11-19): "open the pension page", "go to crypto" opened Loans, in five languages. The
+    agent states which page the person named; an ordered move goes only to that page. Here it reaches for the
+    closest page with `named: none` (or names a page that is not on the site, or another page): nothing opens,
+    it is told to say the site has no such page, and the closest page is one tap away."""
+    lines = ("open the pension page", "go to crypto",
+             "\u00f6ffne die Rentenseite",                                             # de
+             "ouvre la page des retraites",                                            # fr
+             "\u043e\u0442\u043a\u0440\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u043f\u0435\u043d\u0441\u0438\u0439")   # ru
+    for n, (line, named) in enumerate(zip(lines, ("none", "none", "/pension", "", "/contacts"))):
+        model.script = [say("", (f"p{n}", "navigate", {"path": "/loans", "asked": "ordered", "named": named})),
+                        say("We have no page about that. The closest is Loans: want me to open it?")]
+        ev = run(site, f"none-{n}", message=line, state={"page": {"path": "/"}})
+        assert _moves(ev) == [], line
+        result = _result(model, f"p{n}")
+        assert result.startswith("Not opened: the site has no page for what the person named") and "Loans" in result
+        taps = [e["value"]["items"] for e in ev if e.get("name") == "suggestions"]
+        assert taps and "Loans" in taps[0][0], line                                 # the closest page, one tap away
+    # the tap, or a yes, opens it
+    model.script = [say("", ("y1", "navigate", {"path": "/loans", "asked": "yes", "named": "/loans"})), say("Loans.")]
+    assert _moves(run(site, "none-0", message="yes", state={"page": {"path": "/"}})) == ["/loans"]
+    # a page that is on the site still opens at once, by a part of it too
+    model.script = [say("", ("ok", "navigate", {"path": "/loans", "tab": "car", "asked": "ordered", "named": "/loans"})), say("Car loan.")]
+    assert _moves(run(site, "none-ok", message="open the car loan", state={"page": {"path": "/"}})) == ["/loans"]
+
+
+def test_how_do_i_get_there_is_a_question_with_the_page_one_tap_away(site, model):
+    """The CPO's decision (2026-11-19): "how do I get to X?" is a question: the agent says how and offers, nobody is
+    moved. Its own reading keeps the person in place and puts the button under the answer."""
+    model.script = [say("", ("q1", "navigate", {"path": "/contacts", "asked": "question", "named": "/contacts"})),
+                    say("Contacts is in the top menu. Want me to open it?")]
+    ev = run(site, "how-1", message="how do I get to the contacts?", state={"page": {"path": "/"}})
+    assert _moves(ev) == [] and "Contacts" in [e["value"]["items"] for e in ev if e.get("name") == "suggestions"][0][0]
+    rules = str(model.calls[0][0].content)
+    assert '"how do I get' in rules and "always end with the offer" in rules and "`none` when there is no such page" in rules
