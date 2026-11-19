@@ -121,6 +121,13 @@ A `chart` SHALL take `data: [{label, value}]` or `labels` with `series: [{name, 
 - **WHEN** a chart comes with `data: []`
 - **THEN** the card says "No data for this period"
 
+### Requirement: A host's own block in a card spec
+A card spec SHALL accept a block whose type is not built in when the type is lower-case words joined by hyphens (`city-search`, at most 40 characters): the block's keys SHALL reach the widget unchanged, with placeholders filled. A type without a hyphen that is not built in SHALL still be rejected when the configuration is read.
+
+#### Scenario: A city search
+- **WHEN** a spec holds `{type: city-search, name: city, options: "{cities}"}` and the model passes two cities
+- **THEN** the card's block has type `city-search`, the name, and the two cities as `options`
+
 ### Requirement: Card specs become tools
 A card spec (`type`, `description`, `data`, `blocks`, `wait`) in the config SHALL become a model tool `show_<type>` whose parameters are `data`. Calling it SHALL send the card filled from the arguments: as an interrupt that waits for the answer when `wait` is true, else as a `CUSTOM card` event while the turn goes on.
 

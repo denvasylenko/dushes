@@ -143,3 +143,20 @@ def test_a_button_fills_form_fields_in_one_tap(tmp_path):
 def test_a_closed_card_says_so():
     spec = parse_cards([BARBER])[0]
     assert "without answering" in answer_text(spec, {"accepted": False})
+
+
+def test_a_hosts_own_block_passes_with_its_props_as_data():
+    """The owner (2026-11-19): his own component as a block in any card. A card spec may hold a block type that is
+    not built in when it is named with a hyphen; its keys reach the widget as they are, placeholders filled. A
+    name without a hyphen that is no built-in is still a mistake."""
+    spec = parse_cards([{
+        "type": "pick_city", "description": "Ask which city.", "data": {"country": "string", "cities": "object[]"},
+        "blocks": [{"type": "title", "text": "Which city in {country}?"},
+                   {"type": "city-search", "name": "city", "placeholder": "Type a city", "options": "{cities}", "limit": 8},
+                   {"type": "buttons", "items": [{"id": "ok", "label": "Use it", "style": "primary"}]}]}])[0]
+    card = build(spec, {"country": "Portugal", "cities": [{"id": "lis", "label": "Lisbon"}]})
+    assert card["blocks"][1] == {"type": "city-search", "name": "city", "placeholder": "Type a city",
+                                 "options": [{"id": "lis", "label": "Lisbon"}], "limit": 8}
+    for wrong in ("feild", "City-Search", "-search", "search-", "a" * 30 + "-" + "b" * 30):
+        with pytest.raises(ValueError, match="unknown block"):
+            parse_cards([{**BARBER, "blocks": [{"type": wrong}]}])

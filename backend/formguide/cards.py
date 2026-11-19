@@ -32,6 +32,9 @@ BLOCKS = frozenset({"title", "text", "note", "row", "image", "place", "stat", "d
 TYPES = {"string": "string", "number": "number", "integer": "integer", "boolean": "boolean",
          "string[]": "array", "object[]": "array", "object": "object"}
 _PH = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
+# a host's own block, drawn by a component the page registered with the widget: a name with a hyphen, as a custom
+# element has, so a mistyped built-in ("feild") is still an error. Its other keys go to the component as they are
+_HOST_BLOCK = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)+$")
 _NAME = re.compile(r"^[a-z][a-z0-9_]{1,40}$")
 
 
@@ -104,9 +107,11 @@ def parse_cards(raw: Any) -> list[CardSpec]:
         if not isinstance(blocks, list) or not blocks:
             raise ValueError(f"cards.{t}.blocks must be a non-empty list")
         for j, b in enumerate(blocks):
-            if not isinstance(b, dict) or b.get("type") not in BLOCKS:
-                raise ValueError(f"cards.{t}.blocks[{j}]: unknown block {b.get('type') if isinstance(b, dict) else b!r}; "
-                                 f"known: {sorted(BLOCKS)}")
+            kind = b.get("type") if isinstance(b, dict) else None
+            if kind not in BLOCKS and not (isinstance(kind, str) and len(kind) <= 40 and _HOST_BLOCK.match(kind)):
+                raise ValueError(f"cards.{t}.blocks[{j}]: unknown block {kind if isinstance(b, dict) else b!r}; "
+                                 f"known: {sorted(BLOCKS)}, or your own block registered with the widget, "
+                                 "named with a hyphen (city-search)")
         missing = _placeholders(blocks) - set(data) - {"left"}   # {left}: the steps block counts it itself
         missing |= {str(b["if"]) for b in blocks if b.get("if") and str(b["if"]) not in data}
         if missing:
