@@ -594,9 +594,16 @@ class Dushes:
             yield ev
         if message:   # the run's last event is out: now, and only now, older turns may be folded into the memory
             try:
-                await self._remember(thread_id)
+                await self._remember(thread_id, stats)
             except Exception:  # noqa: BLE001 - no summary this time
                 log.info("site memory skipped", exc_info=True)
+            if stats.models:
+                # the memory's model call is this run's cost too: a second run_stats with the same run id and that
+                # call alone, after the terminal event (a host that adds up cost per run adds it; nothing waits for it)
+                late = {**stats.as_event(), "late": True}
+                stats.models = []
+                stats_log.info(json.dumps(late, ensure_ascii=False))
+                yield {"type": "CUSTOM", "name": "run_stats", "value": late}
 
     async def _run(self, thread_id: str, stats: RunStats, *, message: str | None, state: dict[str, Any] | None,
                    resume: dict[str, Any] | None, run_id: str, handoff: bool, host: Any,
@@ -1465,7 +1472,7 @@ class Dushes:
             tx.append(_side(thread_id), new_entry("visit", path=path))   # beside the conversation, never a line of it
         return visits
 
-    async def _remember(self, thread_id: str) -> None:
+    async def _remember(self, thread_id: str, stats: RunStats | None = None) -> None:
         """After a reply: when enough turns have fallen out of what the site assistant is shown, the cheap model
         folds them into the conversation's memory. Never in front of a reply; a failure only means no summary."""
         import asyncio
@@ -1488,6 +1495,10 @@ class Dushes:
         t_call = RunStats.now()
         out = await asyncio.wait_for(self.router_model.ainvoke(
             [SystemMessage(SITE_MEMORY.format(title=self.site.title)), HumanMessage(ask)]), timeout=12)
+        if stats is not None:
+            from ..stats import model_id
+            stats.model_call(t_call, None, dict(getattr(out, "usage_metadata", None) or {}), kind="memory",
+                             model=model_id(self.router_model))
         text = out.content if isinstance(out.content, str) else " ".join(
             b.get("text", "") for b in out.content if isinstance(b, dict))
         if text.strip():
